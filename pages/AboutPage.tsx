@@ -24,7 +24,7 @@ const AboutPage: React.FC = () => {
               {/* Left Column: Image */}
               <div className="md:w-1/2 flex-shrink-0 text-center">
                 <img
-                  src="/huaxu/IMG/2.jpg" // Path updated for GitHub Pages base URL
+                  src="/IMG/2.jpg" // 路徑修正，未來 GitHub Pages 會自動加上 base
                   alt="Hua-Xu Zhong"
                   className="rounded-lg shadow-xl w-full mx-auto h-3/4 object-cover"
                   loading="lazy"

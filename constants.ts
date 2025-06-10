@@ -330,7 +330,7 @@ export const ACADEMIC_ACTIVITIES_DATA: AcademicActivity[] = [
   },
   { 
     id: 'act2', 
-    type: 'Conference Oral Presentation', 
+    type: 'Oral Presentation', 
     title: NA_STRING, 
     eventName: NA_STRING, 
     location: NA_STRING, 
@@ -386,7 +386,7 @@ export const ACADEMIC_ACTIVITIES_DATA: AcademicActivity[] = [
 export const CAROUSEL_SLIDES_DATA: CarouselSlide[] = [
   {
     id: 'carousel-1',
-    imageUrl: '/huaxu/IMG/3.jpg',
+    imageUrl: '/IMG/3.jpg', // 路徑修正
     alt: 'Academic Activity 1',
     caption: '',
   },

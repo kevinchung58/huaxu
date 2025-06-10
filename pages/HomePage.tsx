@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Section from '../components/Section';
 import Card from '../components/Card';
@@ -22,7 +21,7 @@ const HomePage: React.FC = () => {
           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
             <div className="md:w-1/3 flex-shrink-0">
               <img
-                src="/huaxu/IMG/1.jpg" // Path updated for GitHub Pages base URL
+                src="/IMG/1.jpg" // 路徑修正，未來 GitHub Pages 會自動加上 base
                 alt="Hua-Xu Zhong - Professional Photo"
                 className="rounded-full shadow-2xl w-64 h-64 md:w-80 md:h-80 object-cover mx-auto border-4 border-sky-500"
                 loading="lazy"
