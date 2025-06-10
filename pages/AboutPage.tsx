@@ -24,7 +24,7 @@ const AboutPage: React.FC = () => {
               {/* Left Column: Image */}
               <div className="md:w-1/2 flex-shrink-0 text-center">
                 <img
-                  src="/IMG/2.jpg" // Corrected image path
+                  src="IMG/2.jpg" // Corrected image path
                   alt="Hua-Xu Zhong"
                   className="rounded-lg shadow-xl w-full mx-auto h-3/4 object-cover"
                   loading="lazy"
