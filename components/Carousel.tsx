@@ -1,61 +1,50 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { CarouselSlide } from '../types';
-import { ChevronLeftIcon, ChevronRightIcon } from './icons'; // Assuming these are created
+import { asset } from '../src/lib/assets';
+import { ChevronLeftIcon, ChevronRightIcon } from './icons';
 
 interface CarouselProps {
   slides: CarouselSlide[];
-  autoPlayInterval?: number; // in milliseconds, 0 to disable
+  autoPlayInterval?: number;
 }
 
 const Carousel: React.FC<CarouselProps> = ({ slides, autoPlayInterval = 5000 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const goToPrevious = useCallback(() => {
-    const isFirstSlide = currentIndex === 0;
-    const newIndex = isFirstSlide ? slides.length - 1 : currentIndex - 1;
-    setCurrentIndex(newIndex);
-  }, [currentIndex, slides.length]);
+    setCurrentIndex((index) => (index === 0 ? slides.length - 1 : index - 1));
+  }, [slides.length]);
 
   const goToNext = useCallback(() => {
-    const isLastSlide = currentIndex === slides.length - 1;
-    const newIndex = isLastSlide ? 0 : currentIndex + 1;
-    setCurrentIndex(newIndex);
-  }, [currentIndex, slides.length]);
-
-  const goToSlide = (slideIndex: number) => {
-    setCurrentIndex(slideIndex);
-  };
+    setCurrentIndex((index) => (index === slides.length - 1 ? 0 : index + 1));
+  }, [slides.length]);
 
   useEffect(() => {
-    if (autoPlayInterval && autoPlayInterval > 0 && slides.length > 1) {
-      const timer = setTimeout(goToNext, autoPlayInterval);
-      return () => clearTimeout(timer);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, autoPlayInterval, slides.length]); // Rerun if currentIndex or autoPlayInterval changes
+    if (!autoPlayInterval || slides.length <= 1) return;
+    const timer = window.setTimeout(goToNext, autoPlayInterval);
+    return () => window.clearTimeout(timer);
+  }, [currentIndex, autoPlayInterval, slides.length, goToNext]);
 
-  if (!slides || slides.length === 0) {
-    return <div className="text-center p-4 text-slate-600">No slides to display.</div>;
+  if (!slides.length) {
+    return null;
   }
 
   return (
-    <div className="relative w-full max-w-3xl mx-auto aspect-video overflow-hidden rounded-lg shadow-xl group">
-      {/* Slides */}
+    <div className="group relative mx-auto aspect-[16/9] w-full max-w-4xl overflow-hidden rounded-[var(--radius-card)] shadow-[var(--shadow-lift)]">
       <div
-        className="flex transition-transform duration-700 ease-in-out h-full"
+        className="flex h-full transition-transform duration-500 ease-out"
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
       >
         {slides.map((slide) => (
-          <div key={slide.id} className="w-full h-full flex-shrink-0 relative">
+          <div key={slide.id} className="relative h-full w-full flex-shrink-0">
             <img
-              src={slide.imageUrl}
-              alt={slide.caption || `Slide ${slide.id}`}
-              className="w-full h-full object-cover"
+              src={asset(slide.imageUrl)}
+              alt={slide.alt || slide.caption || 'Activity photo'}
+              className="h-full w-full object-cover"
               loading="lazy"
             />
             {slide.caption && (
-              <div className="absolute bottom-0 left-0 right-0 bg-slate-800 bg-opacity-70 text-slate-100 p-3 text-sm md:text-base">
+              <div className="absolute inset-x-0 bottom-0 bg-primary/75 px-4 py-3 text-sm text-white">
                 {slide.caption}
               </div>
             )}
@@ -63,40 +52,38 @@ const Carousel: React.FC<CarouselProps> = ({ slides, autoPlayInterval = 5000 }) 
         ))}
       </div>
 
-      {/* Navigation Buttons */}
       {slides.length > 1 && (
         <>
           <button
+            type="button"
             onClick={goToPrevious}
-            className="absolute top-1/2 left-2 -translate-y-1/2 bg-slate-700 bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-80 transition-opacity opacity-0 group-hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-sky-600"
+            className="absolute top-1/2 left-3 -translate-y-1/2 cursor-pointer rounded-full bg-primary/60 p-2 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:bg-primary focus:opacity-100"
             aria-label="Previous slide"
           >
-            <ChevronLeftIcon className="w-6 h-6" />
+            <ChevronLeftIcon className="h-6 w-6" />
           </button>
           <button
+            type="button"
             onClick={goToNext}
-            className="absolute top-1/2 right-2 -translate-y-1/2 bg-slate-700 bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-80 transition-opacity opacity-0 group-hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-sky-600"
+            className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-full bg-primary/60 p-2 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:bg-primary focus:opacity-100"
             aria-label="Next slide"
           >
-            <ChevronRightIcon className="w-6 h-6" />
+            <ChevronRightIcon className="h-6 w-6" />
           </button>
-        </>
-      )}
-
-      {/* Dots Indicators */}
-      {slides.length > 1 && (
-         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-            {slides.map((_, slideIndex) => (
-            <button
-                key={slideIndex}
-                onClick={() => goToSlide(slideIndex)}
-                className={`w-3 h-3 rounded-full transition-colors ${
-                currentIndex === slideIndex ? 'bg-sky-600' : 'bg-slate-400 hover:bg-slate-300'
+          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
+            {slides.map((slide, slideIndex) => (
+              <button
+                key={slide.id}
+                type="button"
+                onClick={() => setCurrentIndex(slideIndex)}
+                className={`h-2.5 w-2.5 cursor-pointer rounded-full transition-colors duration-200 ${
+                  currentIndex === slideIndex ? 'bg-accent' : 'bg-white/70 hover:bg-white'
                 }`}
                 aria-label={`Go to slide ${slideIndex + 1}`}
-            />
+              />
             ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

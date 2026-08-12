@@ -1,27 +1,43 @@
-
 import React from 'react';
 
 interface SectionProps {
   title: string;
   subtitle?: string;
+  eyebrow?: string;
   id?: string;
   children: React.ReactNode;
   className?: string;
   titleClassName?: string;
   contentClassName?: string;
+  align?: 'left' | 'center';
 }
 
-const Section: React.FC<SectionProps> = ({ title, subtitle, id, children, className = '', titleClassName = '', contentClassName = '' }) => {
+const Section: React.FC<SectionProps> = ({
+  title,
+  subtitle,
+  eyebrow,
+  id,
+  children,
+  className = '',
+  titleClassName = '',
+  contentClassName = '',
+  align = 'left',
+}) => {
+  const alignClass = align === 'center' ? 'text-center' : 'text-left';
+
   return (
-    <section id={id} className={`py-12 md:py-16 ${className}`}>
-      <div className="container mx-auto px-4">
-        <h2 className={`text-3xl sm:text-4xl font-bold text-center mb-4 text-sky-600 ${titleClassName}`}>
-          {title}
-        </h2>
-        {subtitle && <p className="text-center text-slate-600 text-lg mb-8 md:mb-12">{subtitle}</p>}
-        <div className={contentClassName}>
-          {children}
+    <section id={id} className={`py-14 md:py-20 ${className}`}>
+      <div className="container mx-auto max-w-6xl px-4">
+        <div className={`mb-10 md:mb-12 ${alignClass}`}>
+          {eyebrow && (
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-accent">{eyebrow}</p>
+          )}
+          <h2 className={`font-serif text-3xl font-semibold text-primary sm:text-4xl ${titleClassName}`}>
+            {title}
+          </h2>
+          {subtitle && <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-fg">{subtitle}</p>}
         </div>
+        <div className={contentClassName}>{children}</div>
       </div>
     </section>
   );

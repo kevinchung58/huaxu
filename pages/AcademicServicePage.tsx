@@ -1,97 +1,98 @@
-
 import React from 'react';
 import Section from '../components/Section';
 import Card from '../components/Card';
+import EmptyState from '../components/EmptyState';
 import { ACADEMIC_SERVICE_DATA } from '../constants';
 import { ServiceItem } from '../types';
-import { UsersIcon, CalendarIcon } from '../components/icons';
+import { CalendarIcon, UsersIcon } from '../components/icons';
 
 const renderJournalReviewDetails = (details: string) => {
   const lines = details.split('\n');
-  const elements: JSX.Element[] = [];
+  const elements: React.ReactNode[] = [];
   let currentListItems: string[] = [];
 
-  lines.forEach((line) => {
-      const trimmedLine = line.trim();
-      if (trimmedLine.startsWith('- ')) {
-          currentListItems.push(trimmedLine.substring(2).trim());
-      } else {
-          if (currentListItems.length > 0) {
-              elements.push(
-                  <ul key={`ul-${elements.length}`} className="list-disc list-inside text-slate-700 space-y-1.5 pl-5 mb-2 mt-2">
-                      {currentListItems.map((item, itemIndex) => (
-                          <li key={itemIndex}>{item}</li>
-                      ))}
-                  </ul>
-              );
-              currentListItems = []; // Reset for next potential list
-          }
-          if (trimmedLine !== '') { // Render non-empty lines that are not list items as paragraphs
-              elements.push(<p key={`p-${elements.length}`} className="text-slate-700 mb-2">{line}</p>);
-          }
-      }
-  });
+  const flushList = () => {
+    if (currentListItems.length === 0) return;
+    elements.push(
+      <ul key={`ul-${elements.length}`} className="mt-3 mb-2 list-disc space-y-1.5 pl-5 text-secondary">
+        {currentListItems.map((item, itemIndex) => (
+          <li key={itemIndex}>{item}</li>
+        ))}
+      </ul>
+    );
+    currentListItems = [];
+  };
 
-  // If the details end with list items
-  if (currentListItems.length > 0) {
-      elements.push(
-          <ul key={`ul-${elements.length}`} className="list-disc list-inside text-slate-700 space-y-1.5 pl-5 mb-2 mt-2">
-              {currentListItems.map((item, itemIndex) => (
-                  <li key={itemIndex}>{item}</li>
-              ))}
-          </ul>
-      );
-  }
+  lines.forEach((line) => {
+    const trimmedLine = line.trim();
+    if (trimmedLine.startsWith('- ')) {
+      currentListItems.push(trimmedLine.substring(2).trim());
+    } else {
+      flushList();
+      if (trimmedLine !== '') {
+        elements.push(
+          <p key={`p-${elements.length}`} className="mb-2 text-secondary">
+            {line}
+          </p>
+        );
+      }
+    }
+  });
+  flushList();
   return elements;
 };
 
-
 const AcademicServicePage: React.FC = () => {
-  const serviceCategories: { title: string, type: ServiceItem['type'][] }[] = [
-    { title: '期刊與會議審稿 (Journal & Conference Reviewing)', type: ['Journal Reviewing', 'Conference Reviewing'] },
-    { title: '學術期刊編輯職務 (Editorial Roles)', type: ['Editorial Role'] },
-    { title: '學術委員會服務 (Committee Service)', type: ['Committee Service'] },
-    { title: '學術會議組織 (Conference Organization)', type: ['Conference Organization'] },
-    { title: '學生指導 (Student Mentoring)', type: ['Student Mentoring'] },
-    { title: '學術推廣 (Academic Outreach)', type: ['Academic Outreach'] },
+  const serviceCategories: { title: string; type: ServiceItem['type'][] }[] = [
+    { title: 'Journal & conference reviewing', type: ['Journal Reviewing', 'Conference Reviewing'] },
+    { title: 'Editorial roles', type: ['Editorial Role'] },
+    { title: 'Committee service', type: ['Committee Service'] },
+    { title: 'Conference organization', type: ['Conference Organization'] },
+    { title: 'Student mentoring', type: ['Student Mentoring'] },
+    { title: 'Academic outreach', type: ['Academic Outreach'] },
   ];
 
   return (
-    <div className="animate-fadeIn">
-      <Section title="學術服務與社群 (Academic Service & Community)" subtitle="Contributing to the Growth of Our Field" className="bg-white">
-        {serviceCategories.map(category => {
-          const items = ACADEMIC_SERVICE_DATA.filter(item => category.type.includes(item.type));
-          if (items.length === 0) return null;
-
-          return (
-            <div key={category.title} className="mb-12">
-              <h3 className="text-2xl font-semibold text-sky-600 mb-6 flex items-center">
-                <UsersIcon className="w-7 h-7 mr-3"/> {category.title}
-              </h3>
+    <Section
+      title="Academic service"
+      eyebrow="Community"
+      subtitle="Reviewing and other contributions to the field."
+      className="bg-background"
+    >
+      {serviceCategories.map((category) => {
+        const items = ACADEMIC_SERVICE_DATA.filter((item) => category.type.includes(item.type));
+        return (
+          <div key={category.title} className="mb-12">
+            <h3 className="mb-6 flex items-center font-serif text-2xl font-semibold text-primary">
+              <UsersIcon className="mr-3 h-7 w-7 text-accent" /> {category.title}
+            </h3>
+            {items.length > 0 ? (
               <div className="space-y-4">
                 {items.map((item: ServiceItem) => (
-                  <Card key={item.id} className="bg-slate-50">
+                  <Card key={item.id} hoverEffect={false} className="bg-card">
                     {item.type === 'Journal Reviewing' ? (
                       <div>{renderJournalReviewDetails(item.details)}</div>
                     ) : (
-                      <p className="text-slate-700 font-medium">{item.details}</p>
+                      <p className="font-medium text-secondary">{item.details}</p>
                     )}
                     {item.period && (
-                      <p className="text-sm text-slate-600 mt-1 flex items-center">
-                        <CalendarIcon className="w-4 h-4 mr-1.5 text-sky-600" /> {item.period}
+                      <p className="mt-2 flex items-center text-sm text-muted-fg">
+                        <CalendarIcon className="mr-1.5 h-4 w-4 text-accent" /> {item.period}
                       </p>
                     )}
                   </Card>
                 ))}
               </div>
-            </div>
-          );
-        })}
-         {ACADEMIC_SERVICE_DATA.length === 0 && (
-            <p className="text-slate-600 text-center italic">No academic service activities listed yet.</p>
-        )}
-      </Section>
-    </div>
+            ) : (
+              <EmptyState
+                title={`${category.title} will be listed here`}
+                description="This category is ready for editorial roles, committees, or mentoring notes when they are available."
+              />
+            )}
+          </div>
+        );
+      })}
+    </Section>
   );
 };
 

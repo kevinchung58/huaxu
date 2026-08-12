@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface CardProps {
@@ -10,16 +9,22 @@ interface CardProps {
   hoverEffect?: boolean;
 }
 
-const Card: React.FC<CardProps> = ({ title, subtitle, children, className = '', onClick, hoverEffect = true }) => {
+const Card: React.FC<CardProps> = ({
+  title,
+  subtitle,
+  children,
+  className = '',
+  onClick,
+  hoverEffect = true,
+}) => {
   return (
     <div
-      className={`bg-white shadow-lg rounded-lg overflow-hidden p-6 ${hoverEffect ? 'hover:shadow-xl hover:scale-[1.02] transition-all duration-300' : ''} ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      className={`${hoverEffect ? 'surface-card-hover' : 'surface-card'} p-6 ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      onClick={onClick}
     >
-      {title && <h3 className={`text-xl font-semibold text-sky-600 mb-2 ${onClick && 'group-hover:text-sky-500'}`}>{title}</h3>}
-      {subtitle && <p className="text-sm text-slate-500 mb-3">{subtitle}</p>}
-      <div className="text-slate-700">
-        {children}
-      </div>
+      {title && <h3 className="mb-1 font-serif text-xl font-semibold text-primary">{title}</h3>}
+      {subtitle && <p className="mb-3 text-sm text-muted-fg">{subtitle}</p>}
+      <div className="text-secondary">{children}</div>
     </div>
   );
 };

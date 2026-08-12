@@ -1,129 +1,198 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Section from '../components/Section';
 import Card from '../components/Card';
-import { PUBLICATIONS_DATA, PROJECTS_DATA } from '../constants';
+import EmptyState from '../components/EmptyState';
+import { PROJECTS_DATA, PUBLICATIONS_DATA } from '../constants';
 import { Publication, ResearchProject } from '../types';
-import { BookOpenIcon, BriefcaseIcon, LinkIcon, CalendarIcon, ClipboardCopyIcon, CheckIcon } from '../components/icons'; // Replaced SparklesIcon with CheckIcon
+import {
+  BookOpenIcon,
+  BriefcaseIcon,
+  CalendarIcon,
+  CheckIcon,
+  ClipboardCopyIcon,
+  LinkIcon,
+} from '../components/icons';
+import { isFilled } from '../src/lib/content';
 
 const PublicationItem: React.FC<{ pub: Publication; itemNumber: number }> = ({ pub, itemNumber }) => {
   const [showBibtex, setShowBibtex] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const handleCopyBibtex = () => {
-    if (pub.bibtex) {
-      navigator.clipboard.writeText(pub.bibtex).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }).catch(err => console.error('Failed to copy BibTeX:', err));
-    }
-  };
-
-  // Helper to make "Zhong, Hua-Xu" bold and black
-  const renderAuthors = (authors: string) => {
-    const parts = authors.split(/(Zhong, Hua-Xu)/gi);
-    return parts.map((part, index) => {
-      if (part.toLowerCase() === 'zhong, hua-xu') {
-        return <strong key={index} className="text-black">{part}</strong>;
-      }
-      return part;
+    if (!pub.bibtex) return;
+    navigator.clipboard.writeText(pub.bibtex).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
     });
   };
 
+  const renderAuthors = (authors: string) =>
+    authors.split(/(Zhong, Hua-Xu)/gi).map((part, index) =>
+      part.toLowerCase() === 'zhong, hua-xu' ? (
+        <strong key={index} className="text-foreground">
+          {part}
+        </strong>
+      ) : (
+        part
+      )
+    );
 
   return (
-    <Card className="mb-6 bg-white">
-      <div className="flex items-start">
-        <BookOpenIcon className="w-6 h-6 mr-4 text-sky-600 flex-shrink-0 mt-1" />
-        <div>
-          <h4 className="text-lg font-semibold text-sky-600">{itemNumber}. {pub.title}</h4>
-          <p className="text-sm text-slate-600 italic">{renderAuthors(pub.authors)}</p>
-          <p className="text-sm text-slate-600">{pub.source} ({pub.year})</p>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 items-center">
+    <article className="surface-card mb-4 bg-card p-5">
+      <div className="flex items-start gap-4">
+        <BookOpenIcon className="mt-1 h-5 w-5 flex-shrink-0 text-accent" />
+        <div className="min-w-0">
+          <h4 className="font-serif text-lg font-semibold text-primary">
+            {itemNumber}. {pub.title}
+          </h4>
+          <p className="mt-1 text-sm text-muted-fg italic">{renderAuthors(pub.authors)}</p>
+          <p className="mt-1 text-sm text-secondary">
+            {pub.source} ({pub.year})
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             {pub.doi && (
-              <a href={`https://doi.org/${pub.doi}`} target="_blank" rel="noopener noreferrer" className="text-xs text-sky-600 hover:text-sky-700 flex items-center">
-                <LinkIcon className="w-3 h-3 mr-1" /> DOI
+              <a
+                href={`https://doi.org/${pub.doi}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex cursor-pointer items-center text-xs font-medium text-accent hover:text-accent-soft"
+              >
+                <LinkIcon className="mr-1 h-3 w-3" /> DOI
               </a>
             )}
             {pub.url && (
-              <a href={pub.url} target="_blank" rel="noopener noreferrer" className="text-xs text-sky-600 hover:text-sky-700 flex items-center">
-                <LinkIcon className="w-3 h-3 mr-1" /> Official Link
+              <a
+                href={pub.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex cursor-pointer items-center text-xs font-medium text-accent hover:text-accent-soft"
+              >
+                <LinkIcon className="mr-1 h-3 w-3" /> Official link
               </a>
             )}
-            {/* PDF Download Link Removed */}
             {pub.bibtex && (
-              <button onClick={() => setShowBibtex(!showBibtex)} className="text-xs text-sky-600 hover:text-sky-700 flex items-center">
+              <button
+                type="button"
+                onClick={() => setShowBibtex(!showBibtex)}
+                className="cursor-pointer text-xs font-medium text-accent hover:text-accent-soft"
+              >
                 BibTeX
               </button>
             )}
           </div>
           {showBibtex && pub.bibtex && (
-            <div className="mt-2 p-3 bg-slate-100 rounded text-xs text-slate-700 whitespace-pre-wrap relative border border-slate-200">
-              <code>{pub.bibtex}</code>
-              <button 
+            <div className="relative mt-3 rounded-lg border border-border bg-muted p-3 text-xs text-secondary">
+              <code className="whitespace-pre-wrap">{pub.bibtex}</code>
+              <button
+                type="button"
                 onClick={handleCopyBibtex}
-                className="absolute top-2 right-2 p-1 bg-sky-600 hover:bg-sky-700 rounded text-white"
+                className="absolute top-2 right-2 cursor-pointer rounded bg-primary p-1 text-white hover:bg-primary-soft"
                 title="Copy BibTeX"
               >
-                {copied ? <CheckIcon className="w-4 h-4" /> : <ClipboardCopyIcon className="w-4 h-4" />}
+                {copied ? <CheckIcon className="h-4 w-4" /> : <ClipboardCopyIcon className="h-4 w-4" />}
               </button>
             </div>
           )}
         </div>
       </div>
-    </Card>
+    </article>
   );
 };
 
 const ResearchPage: React.FC = () => {
   const publicationTypes: Publication['type'][] = ['Journal', 'Conference', 'Book', 'Book Chapter'];
-  const projectStatuses: ResearchProject['status'][] = ['Ongoing', 'Completed'];
+  const [activeType, setActiveType] = useState<Publication['type'] | 'All'>('All');
+
+  const visiblePubs = useMemo(() => {
+    const list =
+      activeType === 'All' ? PUBLICATIONS_DATA : PUBLICATIONS_DATA.filter((item) => item.type === activeType);
+    return [...list].sort((a, b) => b.year - a.year);
+  }, [activeType]);
+
+  const projectsByStatus = (['Ongoing', 'Completed'] as ResearchProject['status'][]).map((status) => ({
+    status,
+    items: PROJECTS_DATA.filter((project) => project.status === status && isFilled(project.name)),
+  }));
 
   return (
-    <div className="animate-fadeIn">
-      <Section title="研究成果 (Research)" subtitle="My Contributions to Science and Technology" className="bg-slate-50">
-        
-        {/* Publications Section */}
+    <div>
+      <Section
+        title="Research"
+        eyebrow="Output"
+        subtitle="Publications and projects in educational technology, AI learning platforms, and design-based instruction."
+        className="bg-muted/40"
+      >
         <div className="mb-16">
-          <h3 className="text-2xl font-semibold text-sky-600 mb-6 flex items-center">
-            <BookOpenIcon className="w-7 h-7 mr-3"/> 出版物 (Publications)
+          <h3 className="mb-5 flex items-center font-serif text-2xl font-semibold text-primary">
+            <BookOpenIcon className="mr-3 h-7 w-7 text-accent" /> Publications
           </h3>
-          {publicationTypes.map(type => {
-            const filteredPubs = PUBLICATIONS_DATA.filter(p => p.type === type).sort((a, b) => b.year - a.year);
-            if (filteredPubs.length === 0) return null;
-            return (
-              <div key={type} className="mb-8">
-                <h4 className="text-xl font-medium text-slate-700 mb-4 border-b border-slate-300 pb-2">{type} Articles</h4>
-                {filteredPubs.map((pub, index) => <PublicationItem key={pub.id} pub={pub} itemNumber={index + 1} />)}
-              </div>
-            );
-          })}
+          <div className="mb-6 flex flex-wrap gap-2">
+            {(['All', ...publicationTypes] as const).map((type) => {
+              const count =
+                type === 'All' ? PUBLICATIONS_DATA.length : PUBLICATIONS_DATA.filter((item) => item.type === type).length;
+              if (type !== 'All' && count === 0) return null;
+              const selected = activeType === type;
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setActiveType(type)}
+                  className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-200 ${
+                    selected ? 'bg-primary text-on-primary' : 'bg-card text-secondary ring-1 ring-border hover:bg-muted'
+                  }`}
+                >
+                  {type} ({count})
+                </button>
+              );
+            })}
+          </div>
+          {visiblePubs.map((pub, index) => (
+            <PublicationItem key={pub.id} pub={pub} itemNumber={index + 1} />
+          ))}
         </div>
 
-        {/* Research Projects Section */}
         <div>
-          <h3 className="text-2xl font-semibold text-sky-600 mb-6 flex items-center">
-            <BriefcaseIcon className="w-7 h-7 mr-3"/> 研究計畫 (Research Projects)
+          <h3 className="mb-5 flex items-center font-serif text-2xl font-semibold text-primary">
+            <BriefcaseIcon className="mr-3 h-7 w-7 text-accent" /> Research projects
           </h3>
-          {projectStatuses.map(status => {
-            const filteredProjects = PROJECTS_DATA.filter(p => p.status === status);
-            if (filteredProjects.length === 0) return null;
-            return (
-              <div key={status} className="mb-8">
-                <h4 className="text-xl font-medium text-slate-700 mb-4 border-b border-slate-300 pb-2">{status} Projects</h4>
-                <div className="space-y-6">
-                  {filteredProjects.map(proj => (
-                    <Card key={proj.id} title={proj.name} className="bg-white">
-                      <p className="text-sm text-slate-600 mb-1"><strong className="text-slate-700">Role:</strong> {proj.role}</p>
-                      {proj.funding && <p className="text-sm text-slate-600 mb-1"><strong className="text-slate-700">Funding:</strong> {proj.funding}</p>}
-                      <p className="text-sm text-slate-600 mb-1 flex items-center"><CalendarIcon className="w-4 h-4 mr-1 text-sky-600" /> <strong className="text-slate-700">Period:</strong> {proj.period}</p>
-                      <p className="mt-2 text-slate-700"><strong className="text-sky-600">Goals:</strong> {proj.goals}</p>
-                      {proj.outcomes && <p className="mt-1 text-slate-700"><strong className="text-sky-600">Outcomes:</strong> {proj.outcomes}</p>}
+          {projectsByStatus.map(({ status, items }) => (
+            <div key={status} className="mb-8">
+              <h4 className="mb-4 border-b border-border pb-2 text-lg font-medium text-secondary">{status}</h4>
+              {items.length > 0 ? (
+                <div className="space-y-5">
+                  {items.map((proj) => (
+                    <Card key={proj.id} title={proj.name} className="bg-card">
+                      <p className="mb-1 text-sm">
+                        <strong className="text-primary">Role:</strong> {proj.role}
+                      </p>
+                      {isFilled(proj.funding) && (
+                        <p className="mb-1 text-sm">
+                          <strong className="text-primary">Funding:</strong> {proj.funding}
+                        </p>
+                      )}
+                      <p className="mb-1 flex items-center text-sm">
+                        <CalendarIcon className="mr-1 h-4 w-4 text-accent" />
+                        <strong className="mr-1 text-primary">Period:</strong> {proj.period}
+                      </p>
+                      <p className="mt-2 text-sm">
+                        <strong className="text-accent">Goals:</strong> {proj.goals}
+                      </p>
+                      {isFilled(proj.outcomes) && (
+                        <p className="mt-1 text-sm">
+                          <strong className="text-accent">Outcomes:</strong> {proj.outcomes}
+                        </p>
+                      )}
                     </Card>
                   ))}
                 </div>
-              </div>
-            );
-          })}
+              ) : (
+                <EmptyState
+                  title={`No ${status.toLowerCase()} projects listed`}
+                  description="When a new grant or collaboration starts, it will be recorded in this column with role, period, and outcomes."
+                />
+              )}
+            </div>
+          ))}
         </div>
       </Section>
     </div>

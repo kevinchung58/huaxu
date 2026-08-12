@@ -11,6 +11,7 @@ export { default as LinkIcon } from './LinkIcon';
 export { default as ArrowUpIcon } from './ArrowUpIcon';
 export { default as ChevronLeftIcon } from './ChevronLeftIcon';
 export { default as ChevronRightIcon } from './ChevronRightIcon';
+export { default as ChevronDownIcon } from './ChevronDownIcon';
 export { default as MenuIcon } from './MenuIcon';
 export { default as XIcon } from './XIcon';
 export { default as ExternalLinkIcon } from './ExternalLinkIcon';

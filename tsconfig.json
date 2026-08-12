@@ -23,8 +23,10 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 
+    "types": ["vite/client"],
     "paths": {
       "@/*" :  ["./*"]
     }
-  }
+  },
+  "include": ["./**/*.ts", "./**/*.tsx", "./src/custom.d.ts"]
 }

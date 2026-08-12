@@ -1,14 +1,26 @@
 import { NavLinkItem, SocialLink, NewsItem, AwardItem, EducationItem, Publication, ResearchProject, Course, AcademicActivity, CarouselSlide, ServiceItem, ExternalLink } from './types';
 import { EmailIcon, GoogleScholarIcon, LinkIcon } from './components/icons'; // Removed GitHubIcon, XTwitterIcon, OrcidIcon, LinkedInIcon, ResearchGateIcon
 
+export const SITE = {
+  name: 'Hua-Xu Zhong',
+  chineseName: '鍾華栩',
+  honorific: 'PhD',
+  role: 'Researcher in Educational Technology & AI',
+};
+
 export const NAVIGATION_LINKS: NavLinkItem[] = [
-  { label: '首頁 (Home)', path: '/' },
-  { label: '關於我 (About Me)', path: '/about' },
-  { label: '研究成果 (Research)', path: '/research' },
-  { label: '教學與實踐 (Teaching)', path: '/teaching' },
-  { label: '學術活動 (Academic Activities)', path: '/activities' },
-  { label: '學術服務與社群 (Academic Service & Community)', path: '/service' },
-  { label: '資源連結 (Links)', path: '/links' },
+  { label: 'Home', path: '/' },
+  { label: 'About', path: '/about' },
+  { label: 'Research', path: '/research' },
+  { label: 'Teaching', path: '/teaching' },
+  { label: 'Activities', path: '/activities' },
+  {
+    label: 'More',
+    children: [
+      { label: 'Service', path: '/service' },
+      { label: 'Resources', path: '/links' },
+    ],
+  },
 ];
 
 export const SOCIAL_LINKS: SocialLink[] = [
@@ -330,7 +342,7 @@ export const ACADEMIC_ACTIVITIES_DATA: AcademicActivity[] = [
   },
   { 
     id: 'act2', 
-    type: 'Oral Presentation', 
+    type: 'Conference Oral Presentation', 
     title: NA_STRING, 
     eventName: NA_STRING, 
     location: NA_STRING, 
@@ -386,32 +398,8 @@ export const ACADEMIC_ACTIVITIES_DATA: AcademicActivity[] = [
 export const CAROUSEL_SLIDES_DATA: CarouselSlide[] = [
   {
     id: 'carousel-1',
-    imageUrl: 'IMG/3.jpg', // 改為相對路徑
-    alt: 'Academic Activity 1',
-    caption: '',
-  },
-  {
-    id: 'carousel-2',
-    imageUrl: 'IMG/4.jpg',
-    alt: 'Academic Activity 2',
-    caption: '',
-  },
-  {
-    id: 'carousel-3',
-    imageUrl: 'IMG/5.jpg',
-    alt: 'Academic Activity 3',
-    caption: '',
-  },
-  {
-    id: 'carousel-4',
-    imageUrl: 'IMG/6.jpg',
-    alt: 'Academic Activity 4',
-    caption: '',
-  },
-  {
-    id: 'carousel-5',
-    imageUrl: 'IMG/7.jpg',
-    alt: 'Academic Activity 5',
+    imageUrl: 'IMG/3.jpg',
+    alt: 'Academic activity',
     caption: '',
   },
 ];

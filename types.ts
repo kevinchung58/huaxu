@@ -1,6 +1,7 @@
 export interface NavLinkItem {
   label: string;
-  path: string;
+  path?: string;
+  children?: NavLinkItem[];
 }
 
 export interface NewsItem {

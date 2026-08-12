@@ -1,47 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowUpIcon } from './icons'; // Assuming this is created
+import React, { useEffect, useState } from 'react';
+import { ArrowUpIcon } from './icons';
 
 const ScrollToTopButton: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
 
-  const toggleVisibility = () => {
-    if (window.pageYOffset > 300) {
-      setIsVisible(true);
-    } else {
-      setIsVisible(false);
-    }
-  };
-
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth',
-    });
-  };
-
   useEffect(() => {
+    const toggleVisibility = () => setIsVisible(window.scrollY > 300);
     window.addEventListener('scroll', toggleVisibility);
-    return () => {
-      window.removeEventListener('scroll', toggleVisibility);
-    };
+    return () => window.removeEventListener('scroll', toggleVisibility);
   }, []);
 
+  if (!isVisible) return null;
+
   return (
-    <>
-      {isVisible && (
-        <button
-          type="button"
-          onClick={scrollToTop}
-          className="fixed bottom-6 right-6 bg-sky-600 text-white p-4 rounded-full shadow-lg
-            transition-all duration-300
-            hover:bg-sky-700 hover:shadow-xl hover:scale-105
-            focus:bg-sky-700 focus:shadow-xl focus:scale-105"
-          aria-label="Scroll to top"
-        >
-          <ArrowUpIcon className="w-6 h-6" />
-        </button>
-      )}
-    </>
+    <button
+      type="button"
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      className="fixed right-6 bottom-6 z-40 cursor-pointer rounded-full bg-accent p-3.5 text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent-soft hover:shadow-xl"
+      aria-label="Scroll to top"
+    >
+      <ArrowUpIcon className="h-5 w-5" />
+    </button>
   );
 };
 
