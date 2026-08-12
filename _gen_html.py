@@ -129,17 +129,17 @@ projects = [
 def pub_card(p, n):
     badges = f'<span class="badge">{p["year"]}</span><span class="badge">{p["type"]}</span>'
     if p.get("featured"):
-        badges += '<span class="badge gold">★ Featured</span>'
+        badges += '<span class="badge gold">Featured</span>'
     if p.get("corresponding"):
         badges += '<span class="badge">Corresponding author</span>'
     title = escape(p["title"])
     if p.get("featured"):
-        title_html = f'''<button type="button" data-featured data-title="{escape(p["title"])}" data-authors="{escape(p["authors"])}" data-source="{escape(p["source"])}" data-doi="{p.get("doi","")}" data-corresponding="{"true" if p.get("corresponding") else "false"}">{n}. {title}</button>'''
+        title_html = f'''<button class="title-btn" type="button" data-featured data-title="{escape(p["title"])}" data-authors="{escape(p["authors"])}" data-source="{escape(p["source"])}" data-doi="{p.get("doi","")}" data-corresponding="{"true" if p.get("corresponding") else "false"}">{n}. {title}</button>'''
     else:
         title_html = f"{n}. {title}"
     links = ""
     if p.get("featured"):
-        links += f'''<button type="button" data-featured data-title="{escape(p["title"])}" data-authors="{escape(p["authors"])}" data-source="{escape(p["source"])}" data-doi="{p.get("doi","")}" data-corresponding="{"true" if p.get("corresponding") else "false"}">View figure</button>'''
+        links += f'''<button class="title-btn" type="button" data-featured data-title="{escape(p["title"])}" data-authors="{escape(p["authors"])}" data-source="{escape(p["source"])}" data-doi="{p.get("doi","")}" data-corresponding="{"true" if p.get("corresponding") else "false"}">View figure</button>'''
     if p.get("doi"):
         links += f' <a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">DOI</a>'
     feat = " is-featured" if p.get("featured") else ""
@@ -251,7 +251,7 @@ featured = [p for p in pubs if p.get("featured")]
 feat_html = []
 for p in featured:
     feat_html.append(f'''<button class="featured-card reveal" type="button" data-featured data-title="{escape(p["title"])}" data-authors="{escape(p["authors"])}" data-source="{escape(p["source"])}" data-doi="{p.get("doi","")}" data-corresponding="{"true" if p.get("corresponding") else "false"}">
-  <div class="badges"><span class="badge gold">★ Featured</span>{"<span class='badge'>Corresponding author</span>" if p.get("corresponding") else ""}</div>
+  <div class="badges"><span class="badge gold">Featured</span>{"<span class='badge'>Corresponding author</span>" if p.get("corresponding") else ""}</div>
   <h4>{escape(p["title"])}</h4>
   <p class="authors">{authors_html(p["authors"])}</p>
   <p class="source">{escape(p["source"])}</p>
