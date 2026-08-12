@@ -8,19 +8,11 @@ import { ExternalLinkIcon, LinkIcon as DefaultLinkIcon } from '../components/ico
 
 const LinksPage: React.FC = () => {
   const mainCategoriesOrder: ExternalLinkCategory[] = [
-    '文本生成與輔助 (Text Generation & LLM Assistance)',
-    'AI 影音圖像生成 (AI Multimedia Generation)',
-    'AI 學術應用與研究資源 (AI in Academic Applications & Research)',
-    'GAI/AI 輔助學習與教學平台 (GAI/AI-Assisted Learning & Teaching Platforms)',
+    'Text Generation & LLM Assistance',
+    'AI Multimedia Generation',
+    'AI in Academic Applications & Research',
+    'GAI/AI-Assisted Learning & Teaching Platforms',
   ];
-
-  const categoryLabels: Record<string, string> = {
-    '文本生成與輔助 (Text Generation & LLM Assistance)': 'Text generation & LLM assistance',
-    'AI 影音圖像生成 (AI Multimedia Generation)': 'AI multimedia generation',
-    'AI 學術應用與研究資源 (AI in Academic Applications & Research)': 'AI for research',
-    'GAI/AI 輔助學習與教學平台 (GAI/AI-Assisted Learning & Teaching Platforms)':
-      'AI-assisted learning & teaching',
-  };
 
   const linksByMainCategory = mainCategoriesOrder
     .map((mainCat) => {
@@ -54,7 +46,7 @@ const LinksPage: React.FC = () => {
       {linksByMainCategory.map((mainGroup) => (
         <div key={mainGroup.mainCategoryName} className="mb-12">
           <h3 className="mb-6 border-b-2 border-accent/70 pb-2 font-serif text-2xl font-semibold text-primary">
-            {categoryLabels[mainGroup.mainCategoryName] ?? mainGroup.mainCategoryName}
+            {mainGroup.mainCategoryName}
           </h3>
           {mainGroup.subGroups.map(
             (subGroup, subIndex) =>

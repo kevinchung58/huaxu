@@ -98,15 +98,15 @@ export interface ServiceItem {
   period?: string;
 }
 
-export type ExternalLinkCategory = 
-  | 'Academic Profile' 
-  | 'Professional Affiliation' 
-  | 'Collaboration/Lab' 
+export type ExternalLinkCategory =
+  | 'Academic Profile'
+  | 'Professional Affiliation'
+  | 'Collaboration/Lab'
   | 'Other Resource'
-  | '文本生成與輔助 (Text Generation & LLM Assistance)'
-  | 'AI 影音圖像生成 (AI Multimedia Generation)'
-  | 'AI 學術應用與研究資源 (AI in Academic Applications & Research)'
-  | 'GAI/AI 輔助學習與教學平台 (GAI/AI-Assisted Learning & Teaching Platforms)';
+  | 'Text Generation & LLM Assistance'
+  | 'AI Multimedia Generation'
+  | 'AI in Academic Applications & Research'
+  | 'GAI/AI-Assisted Learning & Teaching Platforms';
 
 export interface ExternalLink {
   id: string;

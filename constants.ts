@@ -74,24 +74,24 @@ export const AWARDS_DATA: AwardItem[] = [
 export const EDUCATION_DATA: EducationItem[] = [
   {
     id: 'edu1',
-    degree: '博士 (Ph.D.)',
-    field: '工程科學系 (資訊與應用組) (Department of Engineering Science (Information and Application Group))',
-    institution: '國立成功大學 (National Cheng Kung University)',
-    year: '2019/9 - 2024/6' 
+    degree: 'Ph.D.',
+    field: 'Department of Engineering Science (Computer Science and Its Applications)',
+    institution: 'National Cheng Kung University',
+    year: '2019/9 - 2024/6',
   },
-  { 
-    id: 'edu2', 
-    degree: '碩士 (Master\'s)', 
-    field: '數位學習設計與管理學系 (Department of e-Learning Design & Management)', 
-    institution: '國立嘉義大學 (National Chiayi University)', 
-    year: '2018/9 - 2019/1' 
+  {
+    id: 'edu2',
+    degree: "Master's",
+    field: 'Department of E-learning Design and Management',
+    institution: 'National Chiayi University',
+    year: '2018/9 - 2019/1',
   },
-  { 
-    id: 'edu3', 
-    degree: '學士 (Bachelor\'s)', 
-    field: '數位學習設計與管理學系 (Department of e-Learning Design & Management)', 
-    institution: '國立嘉義大學 (National Chiayi University)', 
-    year: '2014/9 - 2018/6' 
+  {
+    id: 'edu3',
+    degree: "Bachelor's",
+    field: 'Department of E-learning Design and Management',
+    institution: 'National Chiayi University',
+    year: '2014/9 - 2018/6',
   },
 ];
 
@@ -467,64 +467,64 @@ export const ACADEMIC_SERVICE_DATA: ServiceItem[] = [
 
 export const EXTERNAL_LINKS_DATA: ExternalLink[] = [
   // Category 1: Text Generation & LLM Assistance
-  { id: 'ext_link_text_gen_1', name: 'ChatGPT (OpenAI)', url: 'https://chat.openai.com', icon: LinkIcon, category: '文本生成與輔助 (Text Generation & LLM Assistance)' },
-  { id: 'ext_link_text_gen_2', name: 'Gemini (Google)', url: 'https://gemini.google.com', icon: LinkIcon, category: '文本生成與輔助 (Text Generation & LLM Assistance)' },
-  { id: 'ext_link_text_gen_3', name: 'Claude (Anthropic)', url: 'https://claude.ai', icon: LinkIcon, category: '文本生成與輔助 (Text Generation & LLM Assistance)' },
-  { id: 'ext_link_text_gen_4', name: 'Perplexity AI', url: 'https://www.perplexity.ai', icon: LinkIcon, category: '文本生成與輔助 (Text Generation & LLM Assistance)' },
-  { id: 'ext_link_text_gen_5', name: 'Notion AI (整合於 Notion)', url: 'https://www.notion.so', icon: LinkIcon, category: '文本生成與輔助 (Text Generation & LLM Assistance)', subCategory: '學術與專業寫作輔助' },
-  { id: 'ext_link_text_gen_6', name: 'Gamma.app', url: 'https://gamma.app', icon: LinkIcon, category: '文本生成與輔助 (Text Generation & LLM Assistance)', subCategory: '學術與專業寫作輔助' },
-  { id: 'ext_link_text_gen_7', name: 'Elicit.org', url: 'https://elicit.org', icon: LinkIcon, category: '文本生成與輔助 (Text Generation & LLM Assistance)', subCategory: '學術與專業寫作輔助' },
-  { id: 'ext_link_text_gen_8', name: 'Grammarly', url: 'https://www.grammarly.com', icon: LinkIcon, category: '文本生成與輔助 (Text Generation & LLM Assistance)', subCategory: '學術與專業寫作輔助' },
+  { id: 'ext_link_text_gen_1', name: 'ChatGPT (OpenAI)', url: 'https://chat.openai.com', icon: LinkIcon, category: 'Text Generation & LLM Assistance' },
+  { id: 'ext_link_text_gen_2', name: 'Gemini (Google)', url: 'https://gemini.google.com', icon: LinkIcon, category: 'Text Generation & LLM Assistance' },
+  { id: 'ext_link_text_gen_3', name: 'Claude (Anthropic)', url: 'https://claude.ai', icon: LinkIcon, category: 'Text Generation & LLM Assistance' },
+  { id: 'ext_link_text_gen_4', name: 'Perplexity AI', url: 'https://www.perplexity.ai', icon: LinkIcon, category: 'Text Generation & LLM Assistance' },
+  { id: 'ext_link_text_gen_5', name: 'Notion AI (in Notion)', url: 'https://www.notion.so', icon: LinkIcon, category: 'Text Generation & LLM Assistance', subCategory: 'Academic and professional writing' },
+  { id: 'ext_link_text_gen_6', name: 'Gamma.app', url: 'https://gamma.app', icon: LinkIcon, category: 'Text Generation & LLM Assistance', subCategory: 'Academic and professional writing' },
+  { id: 'ext_link_text_gen_7', name: 'Elicit.org', url: 'https://elicit.org', icon: LinkIcon, category: 'Text Generation & LLM Assistance', subCategory: 'Academic and professional writing' },
+  { id: 'ext_link_text_gen_8', name: 'Grammarly', url: 'https://www.grammarly.com', icon: LinkIcon, category: 'Text Generation & LLM Assistance', subCategory: 'Academic and professional writing' },
 
   // Category 2: AI Multimedia Generation
-  { id: 'ext_link_mm_img_1', name: 'Midjourney', url: 'https://www.midjourney.com', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '圖像生成 (Image Generation)' },
-  { id: 'ext_link_mm_img_2', name: 'DALL-E 3 (OpenAI/ChatGPT Plus)', url: 'https://chat.openai.com', description: '透過 ChatGPT Plus 使用', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '圖像生成 (Image Generation)' },
-  { id: 'ext_link_mm_img_3', name: 'Stable Diffusion (模型)', url: 'https://stability.ai/stablediffusion', description: '官方資訊, 可透過不同介面使用', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '圖像生成 (Image Generation)' },
-  { id: 'ext_link_mm_img_4', name: 'Adobe Firefly', url: 'https://firefly.adobe.com', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '圖像生成 (Image Generation)' },
-  { id: 'ext_link_mm_img_5', name: 'Canva Magic Media (整合於 Canva)', url: 'https://www.canva.com', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '圖像生成 (Image Generation)' },
+  { id: 'ext_link_mm_img_1', name: 'Midjourney', url: 'https://www.midjourney.com', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Image generation' },
+  { id: 'ext_link_mm_img_2', name: 'DALL-E 3 (OpenAI/ChatGPT Plus)', url: 'https://chat.openai.com', description: 'Available via ChatGPT Plus', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Image generation' },
+  { id: 'ext_link_mm_img_3', name: 'Stable Diffusion (model)', url: 'https://stability.ai/stablediffusion', description: 'Official site; available through multiple interfaces', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Image generation' },
+  { id: 'ext_link_mm_img_4', name: 'Adobe Firefly', url: 'https://firefly.adobe.com', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Image generation' },
+  { id: 'ext_link_mm_img_5', name: 'Canva Magic Media (in Canva)', url: 'https://www.canva.com', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Image generation' },
 
-  { id: 'ext_link_mm_vid_1', name: 'Runway Gen-2', url: 'https://runwayml.com', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '影片生成與編輯 (Video Generation & Editing)' },
-  { id: 'ext_link_mm_vid_2', name: 'Pika Labs', url: 'https://pika.art', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '影片生成與編輯 (Video Generation & Editing)' },
-  { id: 'ext_link_mm_vid_3', name: 'Sora (OpenAI - 預覽階段)', url: 'https://openai.com/sora', description: '資訊頁面', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '影片生成與編輯 (Video Generation & Editing)' },
-  { id: 'ext_link_mm_vid_4', name: 'HeyGen', url: 'https://www.heygen.com', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '影片生成與編輯 (Video Generation & Editing)' },
-  // { id: 'ext_link_mm_vid_5', name: 'Synthesia', url: 'https://www.synthesia.io', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '影片生成與編輯 (Video Generation & Editing)' }, // Removed by user
-  // { id: 'ext_link_mm_vid_6', name: 'Descript', url: 'https://www.descript.com', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '影片生成與編輯 (Video Generation & Editing)' }, // Removed by user
+  { id: 'ext_link_mm_vid_1', name: 'Runway Gen-2', url: 'https://runwayml.com', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Video generation and editing' },
+  { id: 'ext_link_mm_vid_2', name: 'Pika Labs', url: 'https://pika.art', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Video generation and editing' },
+  { id: 'ext_link_mm_vid_3', name: 'Sora (OpenAI — preview)', url: 'https://openai.com/sora', description: 'Information page', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Video generation and editing' },
+  { id: 'ext_link_mm_vid_4', name: 'HeyGen', url: 'https://www.heygen.com', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Video generation and editing' },
+  // { id: 'ext_link_mm_vid_5', name: 'Synthesia', url: 'https://www.synthesia.io', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Video generation and editing' }, // Removed by user
+  // { id: 'ext_link_mm_vid_6', name: 'Descript', url: 'https://www.descript.com', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Video generation and editing' }, // Removed by user
 
-  { id: 'ext_link_mm_aud_1', name: 'Suno AI', url: 'https://suno.ai', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '音樂與音訊生成 (Music & Audio Generation)' },
-  { id: 'ext_link_mm_aud_2', name: 'Udio AI', url: 'https://www.udio.com', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '音樂與音訊生成 (Music & Audio Generation)' },
-  { id: 'ext_link_mm_aud_3', name: 'ElevenLabs', url: 'https://elevenlabs.io', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '音樂與音訊生成 (Music & Audio Generation)' },
-  // { id: 'ext_link_mm_aud_4', name: 'Adobe Podcast (Enhance Speech)', url: 'https://podcast.adobe.com/enhance', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '音樂與音訊生成 (Music & Audio Generation)' }, // Removed by user
-  { id: 'ext_link_mm_aud_5', name: 'AIVA', url: 'https://www.aiva.ai', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '音樂與音訊生成 (Music & Audio Generation)' },
-  { id: 'ext_link_mm_aud_6', name: 'Soundraw.io', url: 'https://soundraw.io', icon: LinkIcon, category: 'AI 影音圖像生成 (AI Multimedia Generation)', subCategory: '音樂與音訊生成 (Music & Audio Generation)' },
+  { id: 'ext_link_mm_aud_1', name: 'Suno AI', url: 'https://suno.ai', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Music and audio generation' },
+  { id: 'ext_link_mm_aud_2', name: 'Udio AI', url: 'https://www.udio.com', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Music and audio generation' },
+  { id: 'ext_link_mm_aud_3', name: 'ElevenLabs', url: 'https://elevenlabs.io', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Music and audio generation' },
+  // { id: 'ext_link_mm_aud_4', name: 'Adobe Podcast (Enhance Speech)', url: 'https://podcast.adobe.com/enhance', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Music and audio generation' }, // Removed by user
+  { id: 'ext_link_mm_aud_5', name: 'AIVA', url: 'https://www.aiva.ai', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Music and audio generation' },
+  { id: 'ext_link_mm_aud_6', name: 'Soundraw.io', url: 'https://soundraw.io', icon: LinkIcon, category: 'AI Multimedia Generation', subCategory: 'Music and audio generation' },
 
   // Category 3: AI in Academic Applications & Research
-  { id: 'ext_link_acad_res_1', name: 'Elicit.org', url: 'https://elicit.org', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 輔助研究工具' },
-  { id: 'ext_link_acad_res_2', name: 'Connected Papers', url: 'https://www.connectedpapers.com', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 輔助研究工具' },
-  { id: 'ext_link_acad_res_3', name: 'ResearchRabbit', url: 'https://www.researchrabbit.ai', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 輔助研究工具' },
-  { id: 'ext_link_acad_res_4', name: 'SciSpace', url: 'https://scispace.com', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 輔助研究工具' },
-  { id: 'ext_link_acad_res_5', name: 'Zotero', url: 'https://www.zotero.org', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 輔助研究工具' },
-  { id: 'ext_link_acad_res_6', name: 'Mendeley', url: 'https://www.mendeley.com', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 輔助研究工具' },
+  { id: 'ext_link_acad_res_1', name: 'Elicit.org', url: 'https://elicit.org', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI research tools' },
+  { id: 'ext_link_acad_res_2', name: 'Connected Papers', url: 'https://www.connectedpapers.com', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI research tools' },
+  { id: 'ext_link_acad_res_3', name: 'ResearchRabbit', url: 'https://www.researchrabbit.ai', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI research tools' },
+  { id: 'ext_link_acad_res_4', name: 'SciSpace', url: 'https://scispace.com', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI research tools' },
+  { id: 'ext_link_acad_res_5', name: 'Zotero', url: 'https://www.zotero.org', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI research tools' },
+  { id: 'ext_link_acad_res_6', name: 'Mendeley', url: 'https://www.mendeley.com', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI research tools' },
 
-  { id: 'ext_link_acad_plat_1', name: 'Google Colaboratory (Colab)', url: 'https://colab.research.google.com', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 研究與數據分析平台/工具' },
-  { id: 'ext_link_acad_plat_2', name: 'Hugging Face Hub', url: 'https://huggingface.co', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 研究與數據分析平台/工具' },
-  { id: 'ext_link_acad_plat_3', name: 'Kaggle', url: 'https://www.kaggle.com', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 研究與數據分析平台/工具' },
+  { id: 'ext_link_acad_plat_1', name: 'Google Colaboratory (Colab)', url: 'https://colab.research.google.com', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI research and data analysis platforms' },
+  { id: 'ext_link_acad_plat_2', name: 'Hugging Face Hub', url: 'https://huggingface.co', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI research and data analysis platforms' },
+  { id: 'ext_link_acad_plat_3', name: 'Kaggle', url: 'https://www.kaggle.com', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI research and data analysis platforms' },
 
-  { id: 'ext_link_acad_eth_1', name: 'AI4People', url: 'https://www.eismd.eu/project/ai4people/', description: '或相關報告連結', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 倫理與負責任創新' },
-  { id: 'ext_link_acad_eth_2', name: 'IEEE Ethically Aligned Design', url: 'https://ethicsinaction.ieee.org', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 倫理與負責任創新' },
-  { id: 'ext_link_acad_eth_3', name: 'Partnership on AI', url: 'https://partnershiponai.org', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 倫理與負責任創新' },
-  { id: 'ext_link_acad_eth_4', name: 'AI Now Institute', url: 'https://ainowinstitute.org', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 倫理與負責任創新' },
-  { id: 'ext_link_acad_eth_5', name: 'Stanford HAI', url: 'https://hai.stanford.edu', description: '各大學 AI 倫理研究中心網站 範例', icon: LinkIcon, category: 'AI 學術應用與研究資源 (AI in Academic Applications & Research)', subCategory: 'AI 倫理與負責任創新' },
+  { id: 'ext_link_acad_eth_1', name: 'AI4People', url: 'https://www.eismd.eu/project/ai4people/', description: 'or related reports', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI ethics and responsible innovation' },
+  { id: 'ext_link_acad_eth_2', name: 'IEEE Ethically Aligned Design', url: 'https://ethicsinaction.ieee.org', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI ethics and responsible innovation' },
+  { id: 'ext_link_acad_eth_3', name: 'Partnership on AI', url: 'https://partnershiponai.org', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI ethics and responsible innovation' },
+  { id: 'ext_link_acad_eth_4', name: 'AI Now Institute', url: 'https://ainowinstitute.org', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI ethics and responsible innovation' },
+  { id: 'ext_link_acad_eth_5', name: 'Stanford HAI', url: 'https://hai.stanford.edu', description: 'Example university AI ethics research center', icon: LinkIcon, category: 'AI in Academic Applications & Research', subCategory: 'AI ethics and responsible innovation' },
 
   // Category 4: GAI/AI-Assisted Learning & Teaching Platforms
-  { id: 'ext_link_learn_lit_1', name: 'Code.org (AI and Machine Learning courses)', url: 'https://code.org/ai', icon: LinkIcon, category: 'GAI/AI 輔助學習與教學平台 (GAI/AI-Assisted Learning & Teaching Platforms)', subCategory: 'AI 素養與程式設計教學平台' },
-  { id: 'ext_link_learn_lit_2', name: 'Machine Learning for Kids', url: 'https://machinelearningforkids.co.uk', icon: LinkIcon, category: 'GAI/AI 輔助學習與教學平台 (GAI/AI-Assisted Learning & Teaching Platforms)', subCategory: 'AI 素養與程式設計教學平台' },
-  { id: 'ext_link_learn_lit_3', name: 'AI4K12.org', url: 'https://ai4k12.org', icon: LinkIcon, category: 'GAI/AI 輔助學習與教學平台 (GAI/AI-Assisted Learning & Teaching Platforms)', subCategory: 'AI 素養與程式設計教學平台' },
-  { id: 'ext_link_learn_lit_4', name: 'Google AI Education', url: 'https://ai.google/education/', icon: LinkIcon, category: 'GAI/AI 輔助學習與教學平台 (GAI/AI-Assisted Learning & Teaching Platforms)', subCategory: 'AI 素養與程式設計教學平台' },
-  // { id: 'ext_link_learn_lit_5', name: 'Microsoft Learn (AI Path)', url: 'https://learn.microsoft.com/training/ai/', icon: LinkIcon, category: 'GAI/AI 輔助學習與教學平台 (GAI/AI-Assisted Learning & Teaching Platforms)', subCategory: 'AI 素養與程式設計教學平台' }, // Removed by user
-  { id: 'ext_link_learn_lit_6', name: 'MIT RAISE', url: 'https://raise.mit.edu', icon: LinkIcon, category: 'GAI/AI 輔助學習與教學平台 (GAI/AI-Assisted Learning & Teaching Platforms)', subCategory: 'AI 素養與程式設計教學平台' },
+  { id: 'ext_link_learn_lit_1', name: 'Code.org (AI and Machine Learning courses)', url: 'https://code.org/ai', icon: LinkIcon, category: 'GAI/AI-Assisted Learning & Teaching Platforms', subCategory: 'AI literacy and programming education' },
+  { id: 'ext_link_learn_lit_2', name: 'Machine Learning for Kids', url: 'https://machinelearningforkids.co.uk', icon: LinkIcon, category: 'GAI/AI-Assisted Learning & Teaching Platforms', subCategory: 'AI literacy and programming education' },
+  { id: 'ext_link_learn_lit_3', name: 'AI4K12.org', url: 'https://ai4k12.org', icon: LinkIcon, category: 'GAI/AI-Assisted Learning & Teaching Platforms', subCategory: 'AI literacy and programming education' },
+  { id: 'ext_link_learn_lit_4', name: 'Google AI Education', url: 'https://ai.google/education/', icon: LinkIcon, category: 'GAI/AI-Assisted Learning & Teaching Platforms', subCategory: 'AI literacy and programming education' },
+  // { id: 'ext_link_learn_lit_5', name: 'Microsoft Learn (AI Path)', url: 'https://learn.microsoft.com/training/ai/', icon: LinkIcon, category: 'GAI/AI-Assisted Learning & Teaching Platforms', subCategory: 'AI literacy and programming education' }, // Removed by user
+  { id: 'ext_link_learn_lit_6', name: 'MIT RAISE', url: 'https://raise.mit.edu', icon: LinkIcon, category: 'GAI/AI-Assisted Learning & Teaching Platforms', subCategory: 'AI literacy and programming education' },
 
-  { id: 'ext_link_learn_adv_1', name: 'Coursera', url: 'https://www.coursera.org', icon: LinkIcon, category: 'GAI/AI 輔助學習與教學平台 (GAI/AI-Assisted Learning & Teaching Platforms)', subCategory: '進階 AI 技術學習平台' },
-  { id: 'ext_link_learn_adv_2', name: 'edX', url: 'https://www.edx.org', icon: LinkIcon, category: 'GAI/AI 輔助學習與教學平台 (GAI/AI-Assisted Learning & Teaching Platforms)', subCategory: '進階 AI 技術學習平台' },
-  { id: 'ext_link_learn_adv_3', name: 'fast.ai', url: 'https://www.fast.ai', icon: LinkIcon, category: 'GAI/AI 輔助學習與教學平台 (GAI/AI-Assisted Learning & Teaching Platforms)', subCategory: '進階 AI 技術學習平台' },
-  { id: 'ext_link_learn_adv_4', name: 'NVIDIA Deep Learning Institute (DLI)', url: 'https://www.nvidia.com/en-us/training/', icon: LinkIcon, category: 'GAI/AI 輔助學習與教學平台 (GAI/AI-Assisted Learning & Teaching Platforms)', subCategory: '進階 AI 技術學習平台' },
+  { id: 'ext_link_learn_adv_1', name: 'Coursera', url: 'https://www.coursera.org', icon: LinkIcon, category: 'GAI/AI-Assisted Learning & Teaching Platforms', subCategory: 'Advanced AI learning platforms' },
+  { id: 'ext_link_learn_adv_2', name: 'edX', url: 'https://www.edx.org', icon: LinkIcon, category: 'GAI/AI-Assisted Learning & Teaching Platforms', subCategory: 'Advanced AI learning platforms' },
+  { id: 'ext_link_learn_adv_3', name: 'fast.ai', url: 'https://www.fast.ai', icon: LinkIcon, category: 'GAI/AI-Assisted Learning & Teaching Platforms', subCategory: 'Advanced AI learning platforms' },
+  { id: 'ext_link_learn_adv_4', name: 'NVIDIA Deep Learning Institute (DLI)', url: 'https://www.nvidia.com/en-us/training/', icon: LinkIcon, category: 'GAI/AI-Assisted Learning & Teaching Platforms', subCategory: 'Advanced AI learning platforms' },
 ];

@@ -114,7 +114,7 @@ const HomePage: React.FC = () => {
             {[
               { label: 'Publications', value: `${PUBLICATIONS_DATA.length}` },
               { label: 'Research projects', value: `${projects.length}` },
-              { label: 'Latest papers', value: '2025' },
+              { label: 'Latest papers', value: '2026' },
             ].map((stat) => (
               <div key={stat.label} className="rounded-2xl bg-white/10 px-5 py-4 backdrop-blur-sm">
                 <dt className="text-xs uppercase tracking-wider text-slate-300">{stat.label}</dt>
