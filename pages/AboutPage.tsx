@@ -36,8 +36,8 @@ const AboutPage: React.FC = () => {
           </div>
           <div className="p-6 md:p-10 lg:col-span-7">
             <div className="mb-5 flex items-center">
-              <UserIcon className="mr-3 h-7 w-7 flex-shrink-0 text-accent" />
-              <h3 className="font-serif text-2xl font-semibold text-primary">Personal academic statement</h3>
+              <UserIcon className="mr-3 h-7 w-7 flex-shrink-0 text-primary" />
+              <h3 className="font-sans text-2xl font-semibold text-primary">Personal academic statement</h3>
             </div>
             <div className="space-y-4 text-justify leading-relaxed text-secondary">
               {academicStatementParagraphs.map((paragraph, index) =>

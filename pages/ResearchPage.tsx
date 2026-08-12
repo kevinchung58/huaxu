@@ -48,7 +48,7 @@ const PublicationItem: React.FC<{
       className={`mb-4 p-5 ${pub.featured ? 'rounded-[var(--radius-card)] border-2 border-accent/40 bg-gold-tint/50 shadow-[var(--shadow-soft)]' : 'surface-card bg-card'}`}
     >
       <div className="flex items-start gap-4">
-        <BookOpenIcon className="mt-1 h-5 w-5 flex-shrink-0 text-accent" />
+        <BookOpenIcon className="mt-1 h-5 w-5 flex-shrink-0 text-primary" />
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap gap-2">
             <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-secondary">{pub.year}</span>
@@ -64,7 +64,7 @@ const PublicationItem: React.FC<{
               </span>
             )}
           </div>
-          <h4 className="font-serif text-lg font-semibold text-primary">
+          <h4 className="font-sans text-lg font-semibold text-primary">
             {pub.featured && onOpenFeatured ? (
               <button
                 type="button"
@@ -79,7 +79,7 @@ const PublicationItem: React.FC<{
               </>
             )}
           </h4>
-          <p className="mt-1 text-sm text-muted-fg italic">{highlightAuthors(pub.authors)}</p>
+          <p className="mt-1 text-sm text-muted-fg">{highlightAuthors(pub.authors)}</p>
           <p className="mt-1 text-sm text-secondary">
             {pub.source} ({pub.year})
           </p>
@@ -173,37 +173,8 @@ const ResearchPage: React.FC = () => {
         className="bg-muted/40"
       >
         <div className="mb-16">
-          <h3 className="mb-5 flex items-center font-serif text-2xl font-semibold text-primary">
-            <SparklesIcon className="mr-3 h-7 w-7 text-accent" /> Featured papers
-          </h3>
-          <div className="mb-12 grid gap-5 md:grid-cols-2">
-            {featured.map((pub) => (
-              <button
-                key={pub.id}
-                type="button"
-                onClick={() => setOpenFeatured(pub)}
-                className="surface-card-hover cursor-pointer border-2 border-accent/30 bg-gold-tint/40 p-5 text-left"
-              >
-                <div className="mb-2 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-xs font-semibold text-accent">
-                    ★ Featured
-                  </span>
-                  {pub.correspondingAuthor && (
-                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                      Corresponding author
-                    </span>
-                  )}
-                </div>
-                <h4 className="font-serif text-lg font-semibold text-primary">{pub.title}</h4>
-                <p className="mt-2 text-sm text-muted-fg italic">{highlightAuthors(pub.authors)}</p>
-                <p className="mt-1 text-sm text-secondary">{pub.source}</p>
-                <p className="mt-3 text-xs font-medium text-accent">Open figure →</p>
-              </button>
-            ))}
-          </div>
-
-          <h3 className="mb-5 flex items-center font-serif text-2xl font-semibold text-primary">
-            <BookOpenIcon className="mr-3 h-7 w-7 text-accent" /> Publications
+          <h3 className="mb-5 flex items-center font-sans text-2xl font-semibold text-primary">
+            <BookOpenIcon className="mr-3 h-7 w-7 text-primary" /> Publications
           </h3>
           <div className="mb-8 flex flex-wrap gap-2">
             {(
@@ -232,7 +203,7 @@ const ResearchPage: React.FC = () => {
             const yearPubs = visiblePubs.filter((item) => item.year === year);
             return (
               <div key={year} className="mb-10">
-                <h4 className="mb-4 border-b border-border pb-2 font-serif text-xl text-primary">
+                <h4 className="mb-4 border-b border-border pb-2 font-sans text-xl font-semibold text-primary">
                   {year}
                   <span className="ml-2 font-sans text-sm font-normal text-muted-fg">
                     {yearPubs.length} {yearPubs.length === 1 ? 'publication' : 'publications'}
@@ -252,7 +223,7 @@ const ResearchPage: React.FC = () => {
         </div>
 
         <div className="mb-16">
-          <h3 className="mb-5 flex items-center font-serif text-2xl font-semibold text-primary">
+          <h3 className="mb-5 flex items-center font-sans text-2xl font-semibold text-primary">
             <SparklesIcon className="mr-3 h-7 w-7 text-accent" /> Featured papers
           </h3>
           <div className="grid gap-5 md:grid-cols-2">
@@ -273,8 +244,8 @@ const ResearchPage: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <h4 className="font-serif text-lg font-semibold text-primary">{pub.title}</h4>
-                <p className="mt-2 text-sm text-muted-fg italic">{highlightAuthors(pub.authors)}</p>
+                <h4 className="font-sans text-lg font-semibold text-primary">{pub.title}</h4>
+                <p className="mt-2 text-sm text-muted-fg">{highlightAuthors(pub.authors)}</p>
                 <p className="mt-1 text-sm text-secondary">{pub.source}</p>
                 <p className="mt-3 text-xs font-medium text-accent">Open figure →</p>
               </button>
@@ -283,8 +254,8 @@ const ResearchPage: React.FC = () => {
         </div>
 
         <div>
-          <h3 className="mb-5 flex items-center font-serif text-2xl font-semibold text-primary">
-            <BriefcaseIcon className="mr-3 h-7 w-7 text-accent" /> Research projects
+          <h3 className="mb-5 flex items-center font-sans text-2xl font-semibold text-primary">
+            <BriefcaseIcon className="mr-3 h-7 w-7 text-primary" /> Research projects
           </h3>
           {projectsByStatus.map(({ status, items }) => (
             <div key={status} className="mb-8">

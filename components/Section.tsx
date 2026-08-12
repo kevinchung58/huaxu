@@ -30,12 +30,14 @@ const Section: React.FC<SectionProps> = ({
       <div className="container mx-auto max-w-6xl px-4">
         <div className={`mb-10 md:mb-12 ${alignClass}`}>
           {eyebrow && (
-            <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-accent">{eyebrow}</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary/70">{eyebrow}</p>
           )}
-          <h2 className={`font-serif text-3xl font-semibold text-primary sm:text-4xl ${titleClassName}`}>
+          <h2 className={`font-sans text-3xl font-semibold tracking-tight text-primary sm:text-4xl ${titleClassName}`}>
             {title}
           </h2>
-          {subtitle && <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-fg">{subtitle}</p>}
+          {subtitle && (
+            <p className={`mt-3 max-w-2xl text-lg text-muted-fg ${align === 'center' ? 'mx-auto' : ''}`}>{subtitle}</p>
+          )}
         </div>
         <div className={contentClassName}>{children}</div>
       </div>

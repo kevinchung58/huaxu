@@ -63,7 +63,7 @@ const Navbar: React.FC = () => {
       <div className="container mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex h-[4.25rem] items-center justify-between">
           <Link to="/" className="group flex min-w-0 flex-col leading-tight">
-            <span className="truncate font-serif text-lg font-semibold text-white transition-colors group-hover:text-gold-tint sm:text-xl">
+            <span className="truncate font-sans text-lg font-semibold text-white transition-colors group-hover:text-white/80 sm:text-xl">
               {SITE.name}
             </span>
             <span className="text-[11px] font-medium tracking-wide text-slate-300">{SITE.honorific}</span>

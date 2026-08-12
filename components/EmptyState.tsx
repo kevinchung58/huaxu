@@ -13,7 +13,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ title, description, icon }) => 
         {icon}
       </div>
     )}
-    <h3 className="font-serif text-xl font-semibold text-primary">{title}</h3>
+    <h3 className="font-sans text-xl font-semibold text-primary">{title}</h3>
     <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-muted-fg">{description}</p>
   </div>
 );

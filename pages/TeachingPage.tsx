@@ -29,8 +29,8 @@ const TeachingPage: React.FC = () => {
       <div className="mb-14">
         <Card hoverEffect={false} className="bg-gold-tint/50">
           <div className="mb-4 flex items-center">
-            <LightBulbIcon className="mr-3 h-8 w-8 text-accent" />
-            <h3 className="font-serif text-2xl font-semibold text-primary">Teaching philosophy</h3>
+            <LightBulbIcon className="mr-3 h-8 w-8 text-primary" />
+            <h3 className="font-sans text-2xl font-semibold text-primary">Teaching philosophy</h3>
           </div>
           <div className="space-y-4 leading-relaxed text-secondary">
             {teachingPhilosophyParagraphs.map((paragraph, index) => (
@@ -41,8 +41,8 @@ const TeachingPage: React.FC = () => {
       </div>
 
       <div className="mb-14">
-        <h3 className="mb-6 flex items-center font-serif text-2xl font-semibold text-primary">
-          <AcademicCapIcon className="mr-3 h-7 w-7 text-accent" /> Courses taught
+        <h3 className="mb-6 flex items-center font-sans text-2xl font-semibold text-primary">
+          <AcademicCapIcon className="mr-3 h-7 w-7 text-primary" /> Courses taught
         </h3>
         {courses.length > 0 ? (
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">

@@ -2,9 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Section from '../components/Section';
 import Card from '../components/Card';
-import EmptyState from '../components/EmptyState';
 import {
-  AWARDS_DATA,
   EDUCATION_DATA,
   LATEST_NEWS_DATA,
   PROJECTS_DATA,
@@ -12,15 +10,21 @@ import {
   SITE,
   SOCIAL_LINKS,
 } from '../constants';
-import { AwardItem, EducationItem, NewsItem, SocialLink } from '../types';
-import {
-  AcademicCapIcon,
-  BriefcaseIcon,
-  CalendarIcon,
-  SparklesIcon,
-} from '../components/icons';
+import { EducationItem, NewsItem, SocialLink } from '../types';
+import { BriefcaseIcon } from '../components/icons';
 import { asset } from '../src/lib/assets';
-import { filled } from '../src/lib/content';
+
+const formatNewsDate = (iso: string) => {
+  const date = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return { month: '', day: iso, year: '' };
+  }
+  return {
+    month: date.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
+    day: String(date.getDate()).padStart(2, '0'),
+    year: String(date.getFullYear()),
+  };
+};
 
 const HomePage: React.FC = () => {
   const researchInterests = [
@@ -49,37 +53,34 @@ const HomePage: React.FC = () => {
     },
   ];
 
-  const awards = filled(AWARDS_DATA, ['name']);
   const projects = PROJECTS_DATA.filter((project) => project.name !== 'N/A');
 
   return (
     <div>
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary-soft to-[#15293f] text-white">
-        <div className="pointer-events-none absolute -top-24 -right-16 h-72 w-72 rounded-full bg-accent/20 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-0 h-48 w-48 rounded-full bg-paper/10 blur-2xl" />
+      <section className="relative overflow-hidden bg-primary text-white">
         <div className="container mx-auto max-w-6xl px-4 py-16 md:py-24">
           <div className="flex flex-col items-center gap-10 md:flex-row md:items-center md:gap-14">
             <div className="flex-shrink-0">
               <img
                 src={asset('IMG/1.jpg')}
                 alt={`${SITE.name} professional portrait`}
-                className="mx-auto h-56 w-56 rounded-full border-4 border-gold-tint/80 object-cover shadow-[var(--shadow-xl)] md:h-72 md:w-72"
+                className="mx-auto h-56 w-56 rounded-full border-4 border-white/20 object-cover shadow-[var(--shadow-lift)] md:h-72 md:w-72"
                 width={288}
                 height={288}
               />
             </div>
             <div className="text-center md:text-left">
-              <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-amber-200">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
                 Educational technology · AI · design thinking
               </p>
-              <h1 className="font-serif text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
+              <h1 className="font-sans text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
                 {SITE.name}
-                <span className="mt-2 block font-sans text-lg font-normal text-slate-200 sm:text-xl">
+                <span className="mt-2 block text-lg font-normal text-white/85 sm:text-xl">
                   {SITE.chineseName} · {SITE.honorific}
                 </span>
               </h1>
-              <p className="mt-4 text-xl text-amber-100">{SITE.role}</p>
-              <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-200 md:text-lg">
+              <p className="mt-4 text-xl text-white">{SITE.role}</p>
+              <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-50 md:text-lg">
                 I work at the intersection of technology, education, and practical AI. My recent work focuses on
                 LLM-powered learning systems — from GAI concept-map generation to tools that foster creativity —
                 so students can inquire, not only adapt.
@@ -89,7 +90,10 @@ const HomePage: React.FC = () => {
                   <BriefcaseIcon className="h-5 w-5" />
                   View research
                 </Link>
-                <Link to="/about" className="btn border-2 border-white/70 bg-transparent text-white hover:bg-white hover:text-primary">
+                <Link
+                  to="/about"
+                  className="inline-flex cursor-pointer items-center justify-center rounded-lg border-2 border-white/80 px-6 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-white hover:text-primary"
+                >
                   About my work
                 </Link>
               </div>
@@ -101,7 +105,7 @@ const HomePage: React.FC = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={link.name}
-                    className="cursor-pointer text-slate-200 transition-colors duration-200 hover:text-white"
+                    className="cursor-pointer text-white/85 transition-colors duration-200 hover:text-white"
                   >
                     <link.icon className="h-6 w-6" />
                   </a>
@@ -116,9 +120,9 @@ const HomePage: React.FC = () => {
               { label: 'Research projects', value: `${projects.length}` },
               { label: 'Latest papers', value: '2026' },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-2xl bg-white/10 px-5 py-4 backdrop-blur-sm">
-                <dt className="text-xs uppercase tracking-wider text-slate-300">{stat.label}</dt>
-                <dd className="mt-1 font-serif text-3xl text-white">{stat.value}</dd>
+              <div key={stat.label} className="rounded-2xl bg-white/10 px-5 py-4">
+                <dt className="text-xs font-medium uppercase tracking-wider text-white/70">{stat.label}</dt>
+                <dd className="mt-1 font-sans text-3xl font-semibold text-white">{stat.value}</dd>
               </div>
             ))}
           </dl>
@@ -135,55 +139,38 @@ const HomePage: React.FC = () => {
         </div>
       </Section>
 
-      <Section title="Education" eyebrow="Path" className="bg-muted/60">
-        <div className="grid gap-5 md:grid-cols-3">
+      <Section title="Education" eyebrow="Path" className="bg-card">
+        <ol className="relative ml-2 border-l-2 border-primary/15 pl-8">
           {EDUCATION_DATA.map((edu: EducationItem) => (
-            <Card key={edu.id} title={edu.degree} subtitle={edu.institution} className="bg-card">
-              <div className="mb-1 flex items-start text-sm text-secondary">
-                <AcademicCapIcon className="mt-0.5 mr-2 h-5 w-5 flex-shrink-0 text-accent" />
-                {edu.field}
-              </div>
-              <div className="flex items-center text-sm text-muted-fg">
-                <CalendarIcon className="mr-2 h-5 w-5 flex-shrink-0 text-accent" />
-                {edu.year}
-              </div>
-            </Card>
+            <li key={edu.id} className="relative mb-10 last:mb-0">
+              <span className="absolute top-1.5 -left-[41px] h-3.5 w-3.5 rounded-full border-2 border-primary bg-card" />
+              <p className="text-sm font-medium text-muted-fg">{edu.year}</p>
+              <h3 className="mt-1 font-sans text-xl font-semibold text-primary">{edu.degree}</h3>
+              <p className="mt-1 text-secondary">{edu.institution}</p>
+              <p className="mt-1 text-sm text-muted-fg">{edu.field}</p>
+            </li>
           ))}
-        </div>
+        </ol>
       </Section>
 
-      <Section title="Awards & honors" eyebrow="Recognition">
-        {awards.length > 0 ? (
-          <div className="grid gap-5 md:grid-cols-2">
-            {awards.slice(0, 4).map((award: AwardItem) => (
-              <Card key={award.id} className="bg-card">
-                <div className="flex items-start">
-                  <SparklesIcon className="mt-1 mr-3 h-6 w-6 flex-shrink-0 text-accent" />
-                  <div>
-                    <h4 className="font-serif text-lg font-semibold text-primary">{award.name}</h4>
-                    {award.institution && <p className="text-sm text-muted-fg">{award.institution}</p>}
-                    <p className="text-sm text-muted-fg">{award.year}</p>
-                  </div>
+      <Section title="Latest news" eyebrow="Updates" className="bg-background">
+        <div className="divide-y divide-border rounded-[var(--radius-card)] border border-border bg-card">
+          {LATEST_NEWS_DATA.map((news: NewsItem) => {
+            const stamped = formatNewsDate(news.date);
+            return (
+              <article key={news.id} className="flex gap-5 px-5 py-5 md:gap-8 md:px-7">
+                <time dateTime={news.date} className="w-16 shrink-0 text-primary md:w-20">
+                  <span className="block text-[11px] font-semibold tracking-wide text-muted-fg">{stamped.month}</span>
+                  <span className="block font-sans text-3xl font-semibold leading-none">{stamped.day}</span>
+                  <span className="mt-1 block text-xs text-muted-fg">{stamped.year}</span>
+                </time>
+                <div className="min-w-0">
+                  <h3 className="font-sans text-lg font-semibold text-primary">{news.title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-secondary">{news.content}</p>
                 </div>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            icon={<SparklesIcon className="h-6 w-6" />}
-            title="Honors will appear here"
-            description="This space is reserved for awards and distinctions. The layout is ready — records will be added as they are confirmed."
-          />
-        )}
-      </Section>
-
-      <Section title="Latest news" eyebrow="Updates" className="bg-muted/60">
-        <div className="space-y-4">
-          {LATEST_NEWS_DATA.map((news: NewsItem) => (
-            <Card key={news.id} title={news.title} subtitle={news.date} className="bg-card">
-              <p className="text-sm leading-relaxed">{news.content}</p>
-            </Card>
-          ))}
+              </article>
+            );
+          })}
         </div>
       </Section>
     </div>

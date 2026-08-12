@@ -63,8 +63,8 @@ const AcademicServicePage: React.FC = () => {
         const items = ACADEMIC_SERVICE_DATA.filter((item) => category.type.includes(item.type));
         return (
           <div key={category.title} className="mb-12">
-            <h3 className="mb-6 flex items-center font-serif text-2xl font-semibold text-primary">
-              <UsersIcon className="mr-3 h-7 w-7 text-accent" /> {category.title}
+            <h3 className="mb-6 flex items-center font-sans text-2xl font-semibold text-primary">
+              <UsersIcon className="mr-3 h-7 w-7 text-primary" /> {category.title}
             </h3>
             {items.length > 0 ? (
               <div className="space-y-4">

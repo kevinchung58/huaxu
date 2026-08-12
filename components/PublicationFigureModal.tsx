@@ -57,7 +57,7 @@ const PublicationFigureModal: React.FC<PublicationFigureModalProps> = ({ publica
         </button>
 
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">Featured paper</p>
-        <h3 id="featured-paper-title" className="mt-2 pr-8 font-serif text-2xl font-semibold text-primary">
+        <h3 id="featured-paper-title" className="mt-2 pr-8 font-sans text-2xl font-semibold text-primary">
           {publication.title}
         </h3>
         <p className="mt-2 text-sm text-muted-fg italic">{highlightAuthors(publication.authors)}</p>

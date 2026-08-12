@@ -22,7 +22,7 @@ const Card: React.FC<CardProps> = ({
       className={`${hoverEffect ? 'surface-card-hover' : 'surface-card'} p-6 ${onClick ? 'cursor-pointer' : ''} ${className}`}
       onClick={onClick}
     >
-      {title && <h3 className="mb-1 font-serif text-xl font-semibold text-primary">{title}</h3>}
+      {title && <h3 className={`mb-1 font-sans text-lg font-semibold text-primary ${onClick && 'group-hover:text-primary-soft'}`}>{title}</h3>}
       {subtitle && <p className="mb-3 text-sm text-muted-fg">{subtitle}</p>}
       <div className="text-secondary">{children}</div>
     </div>

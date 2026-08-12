@@ -1,29 +1,29 @@
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Crimson+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,600;0,8..60,700;1,8..60,600&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Crimson Pro", ui-serif, Georgia, "Times New Roman", serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Source Serif 4", ui-serif, Georgia, "Times New Roman", serif;
 
-  --color-primary: #1e3a5f;
-  --color-primary-soft: #2a4d73;
+  --color-primary: #101b39;
+  --color-primary-soft: #1a2b50;
   --color-on-primary: #ffffff;
-  --color-secondary: #334155;
+  --color-secondary: #1e293b;
   --color-accent: #b45309;
   --color-accent-soft: #c2410c;
-  --color-background: #f8fafc;
-  --color-foreground: #0f172a;
-  --color-muted: #e9eef5;
-  --color-muted-fg: #475569;
-  --color-border: #cbd5e1;
+  --color-background: #f3f4f6;
+  --color-foreground: #101b39;
+  --color-muted: #e8ecf1;
+  --color-muted-fg: #4b5563;
+  --color-border: #d1d5db;
   --color-card: #ffffff;
   --color-destructive: #dc2626;
-  --color-ring: #1e3a5f;
+  --color-ring: #101b39;
   --color-paper: #f4efe6;
   --color-gold-tint: #fdf6ec;
 
-  --shadow-soft: 0 8px 24px rgba(30, 58, 95, 0.08);
-  --shadow-lift: 0 14px 32px rgba(30, 58, 95, 0.12);
+  --shadow-soft: 0 8px 24px rgba(16, 27, 57, 0.08);
+  --shadow-lift: 0 16px 32px rgba(16, 27, 57, 0.12);
   --radius-card: 0.875rem;
 }
 
@@ -48,8 +48,16 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-size: 16px;
-    line-height: 1.6;
+    font-size: 16.5px;
+    line-height: 1.65;
+    letter-spacing: -0.011em;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.02em;
   }
 
   :focus-visible {
@@ -69,18 +77,18 @@
   }
 
   .btn-primary {
-    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-px hover:bg-accent-soft hover:shadow-lg;
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:-translate-y-px hover:bg-accent-soft hover:shadow-lg;
   }
 
   .btn-secondary {
-    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-primary bg-transparent px-6 py-3 text-sm font-bold text-primary transition-all duration-200 hover:-translate-y-px hover:bg-primary hover:text-on-primary;
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-primary bg-transparent px-6 py-3 text-sm font-semibold text-primary transition-all duration-200 hover:-translate-y-px hover:bg-primary hover:text-on-primary;
   }
 
   .surface-card {
-    @apply rounded-[var(--radius-card)] border border-border/70 bg-card shadow-[var(--shadow-soft)] transition-all duration-200;
+    @apply rounded-[var(--radius-card)] border border-border/80 bg-card shadow-[var(--shadow-soft)] transition-all duration-200;
   }
 
   .surface-card-hover {
-    @apply rounded-[var(--radius-card)] border border-border/70 bg-card shadow-[var(--shadow-soft)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)];
+    @apply rounded-[var(--radius-card)] border border-border/80 bg-card shadow-[var(--shadow-soft)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)];
   }
 }
