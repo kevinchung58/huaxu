@@ -43,6 +43,10 @@ export interface Publication {
   url?: string;
   pdfUrl?: string;
   bibtex?: string;
+  featured?: boolean;
+  correspondingAuthor?: boolean;
+  figureUrl?: string;
+  figureCaption?: string;
 }
 
 export interface ResearchProject {

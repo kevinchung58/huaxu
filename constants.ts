@@ -30,6 +30,20 @@ export const SOCIAL_LINKS: SocialLink[] = [
 
 export const LATEST_NEWS_DATA: NewsItem[] = [
   {
+    id: 'news_isf_2026',
+    date: '2026-07-08',
+    title: 'New publication in Information Systems Frontiers',
+    content:
+      'Our paper "A Decade of Technological Advancements in Information Systems Frontiers (2015–2025): Emerging Trends, Dominant Topics, and Future Directions" has been published. Hua-Xu Zhong is the corresponding author.',
+  },
+  {
+    id: 'news_pac_2026',
+    date: '2026-06-01',
+    title: 'New publication in ETR&D',
+    content:
+      'Our paper "Enhancing programming learning with the peer-adaptive-clustering learning approach in virtual learning environments" has been published in Educational Technology Research and Development.',
+  },
+  {
     id: 'news_gittens_2025',
     date: '2025-03-01', 
     title: 'New Publication Accepted!',
@@ -105,6 +119,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
     title: 'Information undergraduate and non-information undergraduate on an artificial intelligence learning platform: an artificial intelligence assessment model using PLS-SEM analysis',
     source: 'Education and Information Technologies, Vol. 29, No. 4, pp. 4371-4400. Springer',
     year: 2024,
+    featured: true,
   },
   {
     id: 'pub4',
@@ -143,7 +158,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
     type: 'Journal',
     authors: 'Jeng, Yu-Lin; Lai, Chin-Feng; Huang, Sheng-Bo; Chiu, Po-Sheng; Zhong, Hua-Xu',
     title: 'To cultivate creativity and a maker mindset through an internet-of-things programming course',
-    source: 'Frontiers in Psychology, Vol. 11, p. 1572. Frontiers Media SA',
+    source: 'Frontiers in Psychology, Vol. 11, p. 546616. Frontiers Media SA',
     year: 2020,
   },
   {
@@ -215,8 +230,36 @@ export const PUBLICATIONS_DATA: Publication[] = [
     type: 'Journal',
     authors: 'Gazit, Tali; Tager-Shafrir, Tair; Zhong, Hua-Xu; Hung, Patrick CK; Cheung, Vien',
     title: 'The dark side of the interface: examining the influence of different background modes on cognitive performance',
-    source: 'Ergonomics, Published online: January 14th. Taylor & Francis',
+    source: 'Ergonomics, Vol. 69, No. 5, pp. 828-841. Taylor & Francis',
+    year: 2026,
+  },
+  {
+    id: 'pub19',
+    type: 'Journal',
+    authors: 'Chang, Jui-Hung; Lai, Chin-Feng; Huang, Chia-Lun; Zhong, Hua-Xu',
+    title: 'A Decade of Technological Advancements in Information Systems Frontiers (2015–2025): Emerging Trends, Dominant Topics, and Future Directions',
+    source: 'Information Systems Frontiers, pp. 1-44. Springer',
+    year: 2026,
+    doi: '10.1007/s10796-026-10779-3',
+    featured: true,
+    correspondingAuthor: true,
+  },
+  {
+    id: 'pub20',
+    type: 'Journal',
+    authors: 'Chang, Jui-Hung; Zhong, Hua-Xu; Lai, Chin-Feng',
+    title: 'Enhancing programming learning with the peer-adaptive-clustering learning approach in virtual learning environments',
+    source: 'Educational technology research and development, Published online. Springer',
+    year: 2026,
+  },
+  {
+    id: 'pub21',
+    type: 'Conference',
+    authors: 'Zhong, Hua-Xu; Lai, Chin-Feng; Hua, Wang-I; Chang, Jui-Hung',
+    title: 'Exploring the Impact of Mind Maps in Information Security Courses',
+    source: 'Innovative Technologies and Learning. ICITL 2025. Lecture Notes in Computer Science, vol 15914, pp. 3-11. Springer, Cham.',
     year: 2025,
+    doi: '10.1007/978-3-031-98197-5_1',
   },
   {
     id: 'pub18',
