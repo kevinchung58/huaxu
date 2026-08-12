@@ -4,6 +4,10 @@ from html import escape
 
 ROOT = Path(__file__).resolve().parent
 
+ICON_MAIL = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>'
+ICON_SCHOLAR = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5.242 13.769L0 9.5L12 0l12 9.5l-5.242 4.269L12 10.731l-6.758 3.038zm0 0L12 18l6.758-4.231L12 22l-6.758-4.231z" /></svg>'
+ICON_CASE = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 .414-.336.75-.75.75h-15a.75.75 0 01-.75-.75v-4.25m16.5 0a2.25 2.25 0 00.75-1.687V8.25A2.25 2.25 0 0018.75 6h-5.379a1.5 1.5 0 01-1.06-.44L11.25 4.5H5.25A2.25 2.25 0 003 6.75v5.713c0 .651.287 1.269.75 1.687m16.5 0H3.75" /></svg>'
+
 def nav(active: str) -> str:
     def a(href, label, key):
         cls = " is-active" if active == key else ""
@@ -43,15 +47,15 @@ def nav(active: str) -> str:
 </header>"""
 
 
-FOOT = """<footer>
+FOOT = f"""<footer>
   <div class="wrap foot">
     <div>
       <strong style="color:#fff">Hua-Xu Zhong</strong> <span>PhD</span>
       <p>Researcher in Educational Technology &amp; AI</p>
     </div>
-    <div>
-      <a href="mailto:your.email@example.com">Email</a> ·
-      <a href="https://scholar.google.com.tw/citations?user=JTwxPuEAAAAJ&amp;hl=zh-TW" target="_blank" rel="noopener">Google Scholar</a> ·
+    <div class="social" style="justify-content:center">
+      <a href="mailto:your.email@example.com" aria-label="Email">{ICON_MAIL}</a>
+      <a href="https://scholar.google.com.tw/citations?user=JTwxPuEAAAAJ&amp;hl=zh-TW" target="_blank" rel="noopener" aria-label="Google Scholar">{ICON_SCHOLAR}</a>
       <a href="research.html">Research</a>
     </div>
     <p>© 2026 Hua-Xu Zhong. All rights reserved.</p>
@@ -160,12 +164,12 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
         <p class="role">Researcher in Educational Technology &amp; AI</p>
         <p class="lede">I work at the intersection of technology, education, and practical AI. My recent work focuses on LLM-powered learning systems — from GAI concept-map generation to tools that foster creativity — so students can inquire, not only adapt.</p>
         <div class="actions">
-          <a class="btn btn-primary" href="research.html">View research</a>
+          <a class="btn btn-primary" href="research.html">{ICON_CASE} View research</a>
           <a class="btn btn-ghost" href="about.html">About my work</a>
         </div>
         <div class="social">
-          <a href="mailto:your.email@example.com" aria-label="Email">✉</a>
-          <a href="https://scholar.google.com.tw/citations?user=JTwxPuEAAAAJ&amp;hl=zh-TW" target="_blank" rel="noopener" aria-label="Google Scholar">Scholar</a>
+          <a href="mailto:your.email@example.com" aria-label="Email">{ICON_MAIL}</a>
+          <a href="https://scholar.google.com.tw/citations?user=JTwxPuEAAAAJ&amp;hl=zh-TW" target="_blank" rel="noopener" aria-label="Google Scholar">{ICON_SCHOLAR}</a>
         </div>
       </div>
     </div>
