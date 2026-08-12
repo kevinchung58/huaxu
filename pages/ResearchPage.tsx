@@ -17,8 +17,8 @@ import {
 import { isFilled } from '../src/lib/content';
 
 const highlightAuthors = (authors: string) =>
-  authors.split(/(Zhong, Hua-Xu)/gi).map((part, index) =>
-    part.toLowerCase() === 'zhong, hua-xu' ? (
+  authors.split(/(H\.-X\. Zhong\*?)(?=,|$)/g).map((part, index) =>
+    part.startsWith('H.-X. Zhong') ? (
       <strong key={index} className="text-foreground">
         {part}
       </strong>
@@ -249,6 +249,37 @@ const ResearchPage: React.FC = () => {
               </div>
             );
           })}
+        </div>
+
+        <div className="mb-16">
+          <h3 className="mb-5 flex items-center font-serif text-2xl font-semibold text-primary">
+            <SparklesIcon className="mr-3 h-7 w-7 text-accent" /> Featured papers
+          </h3>
+          <div className="grid gap-5 md:grid-cols-2">
+            {featured.map((pub) => (
+              <button
+                key={pub.id}
+                type="button"
+                onClick={() => setOpenFeatured(pub)}
+                className="surface-card-hover cursor-pointer border-2 border-accent/30 bg-gold-tint/40 p-5 text-left"
+              >
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-xs font-semibold text-accent">
+                    ★ Featured
+                  </span>
+                  {pub.correspondingAuthor && (
+                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                      Corresponding author
+                    </span>
+                  )}
+                </div>
+                <h4 className="font-serif text-lg font-semibold text-primary">{pub.title}</h4>
+                <p className="mt-2 text-sm text-muted-fg italic">{highlightAuthors(pub.authors)}</p>
+                <p className="mt-1 text-sm text-secondary">{pub.source}</p>
+                <p className="mt-3 text-xs font-medium text-accent">Open figure →</p>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div>

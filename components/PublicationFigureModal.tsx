@@ -9,8 +9,8 @@ interface PublicationFigureModalProps {
 }
 
 const highlightAuthors = (authors: string) =>
-  authors.split(/(Zhong, Hua-Xu)/gi).map((part, index) =>
-    part.toLowerCase() === 'zhong, hua-xu' ? (
+  authors.split(/(H\.-X\. Zhong\*?)(?=,|$)/g).map((part, index) =>
+    part.startsWith('H.-X. Zhong') ? (
       <strong key={index} className="text-foreground">
         {part}
       </strong>

@@ -99,7 +99,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub1',
     type: 'Journal',
-    authors: 'Lai, Chin-Feng; Zhong, Hua-Xu; Chiu, Po-Sheng',
+    authors: 'C.-F. Lai, H.-X. Zhong, P.-S. Chiu',
     title: 'Investigating the impact of a flipped programming course using the DT-CDIO approach',
     source: 'Computers & Education, Vol. 173, p. 104287. Elsevier',
     year: 2021,
@@ -107,7 +107,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub2',
     type: 'Journal',
-    authors: 'Huang, Po-Sen; Chiu, Po-Sheng; Huang, Yueh-Min; Zhong, Hua-Xu; Lai, Chin-Feng',
+    authors: 'P.-S. Huang, P.-S. Chiu, Y.-M. Huang, H.-X. Zhong, C.-F. Lai',
     title: 'Cooperative mobile learning for the investigation of natural science courses in elementary schools',
     source: 'Sustainability, Vol. 12, No. 16, p. 6606. MDPI',
     year: 2020,
@@ -115,7 +115,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub3',
     type: 'Journal',
-    authors: 'Zhong, Hua-Xu; Chang, Jui-Hung; Lai, Chin-Feng; Chen, Pei-Wen; Ku, Shang-Hsuan; Chen, Shih-Yeh',
+    authors: 'H.-X. Zhong, J.-H. Chang, C.-F. Lai, P.-W. Chen, S.-H. Ku, S.-Y. Chen',
     title: 'Information undergraduate and non-information undergraduate on an artificial intelligence learning platform: an artificial intelligence assessment model using PLS-SEM analysis',
     source: 'Education and Information Technologies, Vol. 29, No. 4, pp. 4371-4400. Springer',
     year: 2024,
@@ -124,7 +124,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub4',
     type: 'Conference',
-    authors: 'Zhong, Hua-Xu; Lai, Chin-Feng; Huang, Yu-Che; Wu, Pei-Hsuan; Chang, Jui-Hung',
+    authors: 'H.-X. Zhong, C.-F. Lai, Y.-C. Huang, P.-H. Wu, J.-H. Chang',
     title: 'Exploring the impact of artificial intelligence learning platforms on interest in and attitudes toward learning',
     source: 'Innovative Technologies and Learning: 4th International Conference, ICITL 2021, Virtual Event, November 29–December 1, 2021, Proceedings 4, pp. 22-29. Springer',
     year: 2021,
@@ -132,7 +132,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub5',
     type: 'Journal',
-    authors: 'Zhong, Hua-Xu; Lai, Chin-Feng; Chang, Jui-Hung; Chiu, Po-Sheng',
+    authors: 'H.-X. Zhong, C.-F. Lai, J.-H. Chang, P.-S. Chiu',
     title: 'Developing creative material in STEM courses using integrated engineering design based on APOS theory',
     source: 'International Journal of Technology and Design Education, Vol. 33, No. 4, pp. 1627-1651. Springer',
     year: 2023,
@@ -140,7 +140,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub6',
     type: 'Journal',
-    authors: 'Lai, Chin-Feng; Zhong, Hua-Xu; Chiu, Po-Sheng; Pu, Ying-Hung',
+    authors: 'C.-F. Lai, H.-X. Zhong, P.-S. Chiu, Y.-H. Pu',
     title: 'Development and evaluation of a cloud bookcase system for mobile library',
     source: 'Library Hi Tech, Vol. 39, No. 2, pp. 380-395. Emerald Publishing Limited',
     year: 2021,
@@ -148,7 +148,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub7',
     type: 'Journal',
-    authors: 'Chang, Jui-Hung; Chiang, Hung-Hsi; Zhong, Hua-Xu; Chou, Yu-Kai',
+    authors: 'J.-H. Chang, H.-H. Chiang, H.-X. Zhong, Y.-K. Chou',
     title: 'Travel package recommendation based on reinforcement learning and trip guaranteed prediction',
     source: 'Journal of Internet Technology, Vol. 22, No. 6, pp. 1359-1373.',
     year: 2021,
@@ -156,7 +156,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub8',
     type: 'Journal',
-    authors: 'Jeng, Yu-Lin; Lai, Chin-Feng; Huang, Sheng-Bo; Chiu, Po-Sheng; Zhong, Hua-Xu',
+    authors: 'Y.-L. Jeng, C.-F. Lai, S.-B. Huang, P.-S. Chiu, H.-X. Zhong',
     title: 'To cultivate creativity and a maker mindset through an internet-of-things programming course',
     source: 'Frontiers in Psychology, Vol. 11, p. 546616. Frontiers Media SA',
     year: 2020,
@@ -164,7 +164,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub9',
     type: 'Journal',
-    authors: 'Chang, Jui-Hung; Wang, Chi-Jane; Zhong, Hua-Xu; Chen, Pei-Wen; Pan, Ai-Jou; Chiu, Po-Sheng',
+    authors: 'J.-H. Chang, C.-J. Wang, H.-X. Zhong, P.-W. Chen, A.-J. Pan, P.-S. Chiu',
     title: 'Implementation and evaluation of the school\'s COVID-19 prevention website',
     source: 'Library Hi Tech, Vol. 41, No. 1, pp. 71-90. Emerald Publishing Limited',
     year: 2023,
@@ -172,7 +172,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub10',
     type: 'Journal',
-    authors: 'Zhong, Hua-Xu; Chiu, Po-Sheng; Lai, Chin-Feng',
+    authors: 'H.-X. Zhong, P.-S. Chiu, C.-F. Lai',
     title: 'Effects of the use of CDIO engineering design in a flipped programming course on flow experience, cognitive load',
     source: 'Sustainability, Vol. 13, No. 3, p. 1381. MDPI',
     year: 2021,
@@ -180,7 +180,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub11',
     type: 'Journal',
-    authors: 'Lai, Chin-Feng; Zhong, Hua-Xu; Chang, Jui-Hung; Chiu, Po-Sheng',
+    authors: 'C.-F. Lai, H.-X. Zhong, J.-H. Chang, P.-S. Chiu',
     title: 'Applying the DT-CDIO engineering design model in a flipped learning programming course',
     source: 'Educational technology research and development, Vol. 70, No. 3, pp. 823-847. Springer',
     year: 2022,
@@ -188,7 +188,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub12',
     type: 'Journal',
-    authors: 'Wang, Chi-Jane; Zhong, Hua-Xu; Chiu, Po-Sheng; Chang, Jui-Hung; Wu, Pei-Hsuan',
+    authors: 'C.-J. Wang, H.-X. Zhong, P.-S. Chiu, J.-H. Chang, P.-H. Wu',
     title: 'Research on the impacts of cognitive style and computational thinking on college students in a visual artificial intelligence course',
     source: 'Frontiers in Psychology, Vol. 13, p. 864416. Frontiers Media SA',
     year: 2022,
@@ -196,7 +196,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub13',
     type: 'Journal',
-    authors: 'Chiu, Po-Sheng; Zhong, Hua-Xu; Lai, Chin-Feng',
+    authors: 'P.-S. Chiu, H.-X. Zhong, C.-F. Lai',
     title: 'Investigating the effects of a programming course using flipped learning',
     source: 'Innovations in Education and Teaching International, Vol. 60, No. 4, pp. 578-590. Taylor & Francis',
     year: 2023,
@@ -204,7 +204,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub14',
     type: 'Journal',
-    authors: 'Chang, Jui-Hung; Wang, Chi-Jane; Zhong, Hua-Xu; Weng, Hsiu-Chen; Zhou, Yu-Kai; Ong, Hoe-Yuan; Lai, Chin-Feng',
+    authors: 'J.-H. Chang, C.-J. Wang, H.-X. Zhong, H.-C. Weng, Y.-K. Zhou, H.-Y. Ong, C.-F. Lai',
     title: 'Artificial intelligence learning platform in a visual programming environment: exploring an artificial intelligence learning model',
     source: 'Educational technology research and development, Vol. 72, No. 2, pp. 997-1024. Springer US New York',
     year: 2024,
@@ -212,7 +212,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub15',
     type: 'Conference',
-    authors: 'Zhong, Hua-Xu; Lai, Chin-Feng; Ku, Shang-Hsuan; Chang, Jui-Hung',
+    authors: 'H.-X. Zhong, C.-F. Lai, S.-H. Ku, J.-H. Chang',
     title: 'Exploring the Relationship Between Collaborative Learning Factors and Perceived Learning',
     source: 'International Conference on Innovative Technologies and Learning, pp. 167-174. Springer Nature Switzerland Cham',
     year: 2024,
@@ -220,7 +220,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub16',
     type: 'Journal',
-    authors: 'Castaneda, Jennifer A Cardenas; Lin, Pei-Chun; Hung, Patrick CK; Zhong, Hua-Xu; Tseng, Hao-An; Huang, Yung-Fa; Ahmad, Rafiq',
+    authors: 'J. A. C. Castaneda, P.-C. Lin, P. C. K. Hung, H.-X. Zhong, H.-A. Tseng, Y.-F. Huang, R. Ahmad',
     title: 'Designing inclusive tech playful educative solutions for visually impaired learners in STEM education',
     source: 'Smart Learning Environments, Vol. 12, No. 1, p. 4. Springer',
     year: 2025,
@@ -228,7 +228,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub17',
     type: 'Journal',
-    authors: 'Gazit, Tali; Tager-Shafrir, Tair; Zhong, Hua-Xu; Hung, Patrick CK; Cheung, Vien',
+    authors: 'T. Gazit, T. Tager-Shafrir, H.-X. Zhong, P. C. K. Hung, V. Cheung',
     title: 'The dark side of the interface: examining the influence of different background modes on cognitive performance',
     source: 'Ergonomics, Vol. 69, No. 5, pp. 828-841. Taylor & Francis',
     year: 2026,
@@ -236,7 +236,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub19',
     type: 'Journal',
-    authors: 'Chang, Jui-Hung; Lai, Chin-Feng; Huang, Chia-Lun; Zhong, Hua-Xu',
+    authors: 'J.-H. Chang, C.-F. Lai, C.-L. Huang, H.-X. Zhong*',
     title: 'A Decade of Technological Advancements in Information Systems Frontiers (2015–2025): Emerging Trends, Dominant Topics, and Future Directions',
     source: 'Information Systems Frontiers, pp. 1-44. Springer',
     year: 2026,
@@ -247,7 +247,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub20',
     type: 'Journal',
-    authors: 'Chang, Jui-Hung; Zhong, Hua-Xu; Lai, Chin-Feng',
+    authors: 'J.-H. Chang, H.-X. Zhong, C.-F. Lai',
     title: 'Enhancing programming learning with the peer-adaptive-clustering learning approach in virtual learning environments',
     source: 'Educational technology research and development, Published online. Springer',
     year: 2026,
@@ -255,7 +255,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub21',
     type: 'Conference',
-    authors: 'Zhong, Hua-Xu; Lai, Chin-Feng; Hua, Wang-I; Chang, Jui-Hung',
+    authors: 'H.-X. Zhong, C.-F. Lai, W.-I. Hua, J.-H. Chang',
     title: 'Exploring the Impact of Mind Maps in Information Security Courses',
     source: 'Innovative Technologies and Learning. ICITL 2025. Lecture Notes in Computer Science, vol 15914, pp. 3-11. Springer, Cham.',
     year: 2025,
@@ -264,7 +264,7 @@ export const PUBLICATIONS_DATA: Publication[] = [
   {
     id: 'pub18',
     type: 'Conference',
-    authors: 'Gittens, C.L., Gittens, M., Jiang, Y., Hung, P.C.K., Wood, T., Zhong, Hua-Xu',
+    authors: 'C. L. Gittens, M. Gittens, Y. Jiang, P. C. K. Hung, T. Wood, H.-X. Zhong',
     title: 'Technological Influence on Digital Banking Adoption: A Framework and Empirical Study of the Influence of Social Robots and IVAs in a Small Island Context',
     source: 'In: Siau, K.L., Nah, F.FH. (eds) HCI in Business, Government and Organizations. HCII 2025. Lecture Notes in Computer Science, vol 15805. Springer, Cham.',
     year: 2025,
