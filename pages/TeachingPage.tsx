@@ -12,18 +12,18 @@ const TeachingPage: React.FC = () => {
   const courses = COURSES_DATA.filter((course) => isFilled(course.name));
 
   const teachingPhilosophyParagraphs = [
-    'I believe that education is not the transfer of information, but the transformation of the learner.',
-    'At the heart of my teaching is the belief that students are not empty vessels, but active agents capable of inquiry, creativity, and reflection. My role is to design spaces where students pose meaningful questions, explore real-world problems, and develop the confidence to navigate ambiguity. I draw on principles of constructivist learning, guiding students to construct knowledge through experience, collaboration, and experimentation.',
-    'I emphasize creative problem-solving over rote solutions, because I see education as preparation for complexity—not certainty. In this process, failure is not something to be avoided, but a necessary condition for growth. Design thinking, open-ended inquiry, and playful exploration are central to how I help students engage with problems that don’t have clear answers.',
-    'Yet I also recognize that students encounter barriers—whether cognitive, emotional, or situational. When human support reaches its limit, I turn to personalized learning with large language models (LLMs). These tools extend access to feedback, ideas, and scaffolding, allowing students to keep moving forward in their learning journey. For me, LLMs are not a replacement for human teaching, but a responsive support system—a bridge between learners and possibility.',
-    'Ultimately, I teach because I believe in education as a form of liberation—one that empowers individuals not just to adapt to the world, but to imagine and build better ones.',
+    'I believe education is not the transfer of information. It is the transformation of the learner.',
+    'I treat students as people who can inquire, create, and reflect, not as empty vessels. My job is to design spaces where they ask real questions, work on real problems, and get used to ambiguity. I draw on constructivist learning: students build knowledge through experience, collaboration, and experiment.',
+    'I emphasize creative problem-solving over rote answers, because I see education as preparation for complexity, not certainty. Failure is not something to avoid. It is how growth happens. Design thinking, open-ended inquiry, and playful exploration are how I help students work on problems that do not have clear answers.',
+    'Students also hit barriers, cognitive, emotional, or situational. When human support runs out, I use large language models for personalized learning. They extend access to feedback, ideas, and scaffolding so students can keep going. For me, LLMs do not replace human teaching. They are a support system between the learner and what they might do next.',
+    'I teach because I believe education can be a form of liberation. It should help people imagine and build better worlds, not only adapt to the one they have.',
   ];
 
   return (
     <Section
       title="Teaching & practice"
       eyebrow="Classroom"
-      subtitle="Fostering inquiry, creativity, and responsible use of AI."
+      subtitle="Inquiry, creativity, and careful use of AI."
       className="bg-background"
     >
       <div className="mb-14">

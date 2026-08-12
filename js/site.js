@@ -14,9 +14,8 @@
 
   if (toggle && mobile) {
     toggle.addEventListener("click", () => {
-      const open = mobile.style.display === "block";
-      mobile.style.display = open ? "none" : "block";
-      toggle.setAttribute("aria-expanded", String(!open));
+      const open = mobile.classList.toggle("is-open");
+      toggle.setAttribute("aria-expanded", String(open));
     });
   }
 

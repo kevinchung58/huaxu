@@ -40,7 +40,7 @@ const LinksPage: React.FC = () => {
     <Section
       title="Resources"
       eyebrow="Toolkit"
-      subtitle="Curated GAI and academic tools. This page lives under More so the main research story stays in front."
+      subtitle="Selected GAI and academic tools."
       className="bg-muted/40"
     >
       {linksByMainCategory.map((mainGroup) => (

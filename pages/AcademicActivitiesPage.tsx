@@ -122,7 +122,7 @@ const AcademicActivitiesPage: React.FC = () => {
       <div>
         <h3 className="mb-2 font-sans text-xl font-semibold text-primary">Talks and visits</h3>
         <p className="mb-6 max-w-2xl text-sm text-muted-fg">
-          Invited talks, oral and poster presentations, workshops, and conference attendance — listed as a CV timeline when records are added.
+          Invited talks, oral and poster presentations, workshops, and conference attendance. They will appear as a CV timeline when records are added.
         </p>
         {records.length > 0 ? (
           <div className="rounded-[var(--radius-card)] border border-border bg-card px-5 md:px-7">
@@ -134,7 +134,7 @@ const AcademicActivitiesPage: React.FC = () => {
           <div className="rounded-[var(--radius-card)] border border-dashed border-border bg-card px-6 py-12">
             <p className="font-sans font-semibold text-primary">No talks listed yet</p>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-fg">
-              This page will not invent events. When you add a title, venue, and date, they will appear here as a single timeline — not as four empty sections.
+              This page will not invent events. When you add a title, venue, and date, they will appear here as a single timeline, not as four empty sections.
             </p>
           </div>
         )}

@@ -32,24 +32,24 @@ const HomePage: React.FC = () => {
       id: 'ri1',
       name: 'Educational Technology',
       description:
-        'Leveraging innovative technologies to enhance learning experiences, instructional design, and educational outcomes.',
+        'Using new technologies to improve learning experiences, instructional design, and educational outcomes.',
     },
     {
       id: 'ri2',
       name: 'Artificial Intelligence',
-      description: 'Exploring the frontiers of AI, including machine learning, to solve complex problems.',
+      description: 'Machine learning and related methods applied to complex problems.',
     },
     {
       id: 'ri3',
       name: 'Creativity and Design Thinking',
       description:
-        'Applying design thinking methodologies and fostering creative problem-solving in education and technology development.',
+        'Design thinking and creative problem-solving in education and technology development.',
     },
     {
       id: 'ri4',
       name: 'AI in Education',
       description:
-        'Investigating how AI personalizes learning and supports intelligent tutoring and inquiry-based classrooms.',
+        'How AI can personalize learning and support tutoring and inquiry-based classrooms.',
     },
   ];
 
@@ -81,9 +81,9 @@ const HomePage: React.FC = () => {
               </h1>
               <p className="mt-4 text-xl text-white">{SITE.role}</p>
               <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-50 md:text-lg">
-                I work at the intersection of technology, education, and practical AI. My recent work focuses on
-                LLM-powered learning systems — from GAI concept-map generation to tools that foster creativity —
-                so students can inquire, not only adapt.
+                I work where technology, education, and practical AI meet. Recent projects look at
+                LLM-powered learning systems, from GAI concept-map generation to tools that support creativity,
+                so students can inquire rather than only adapt.
               </p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row md:justify-start">
                 <Link to="/research" className="btn-primary">
