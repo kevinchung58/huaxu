@@ -49,6 +49,7 @@ button::-moz-focus-inner { border: 0; padding: 0; }
 h1, h2, h3, h4 { letter-spacing: -0.02em; margin: 0; font-weight: 600; }
 p { margin: 0; }
 ul, ol { margin: 0; }
+:focus { outline: none; }
 :focus-visible { outline: 3px solid var(--navy); outline-offset: 3px; }
 
 .skip { position: absolute; left: -999px; }
@@ -159,31 +160,31 @@ main {
   flex: 1 0 auto;
 }
 
-/* Hero */
+/* Hero: academic identity block, always left-aligned */
 .hero {
   background: var(--navy);
   color: #fff;
-  padding: 4.5rem 0 3.5rem;
+  padding: 3.25rem 0 2.75rem;
   overflow: hidden;
   position: relative;
 }
 .hero-grid {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2.5rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: start;
+  align-items: start;
+  gap: 1.6rem;
 }
 .portrait {
-  width: 14rem;
-  height: 14rem;
+  width: 10.5rem;
+  height: 10.5rem;
   border-radius: 50%;
   object-fit: cover;
   border: 4px solid rgba(255,255,255,0.2);
   box-shadow: var(--shadow-lg);
-  margin-inline: auto;
-  flex-shrink: 0;
+  margin: 0;
 }
-.hero-copy { text-align: center; flex: 1; min-width: 0; width: 100%; }
+.hero-copy { text-align: left; min-width: 0; width: 100%; }
 .eyebrow {
   font-size: 0.72rem;
   font-weight: 600;
@@ -203,8 +204,8 @@ main {
 }
 .role { margin-top: 1rem; font-size: 1.25rem; }
 .lede {
-  margin: 1.25rem auto 0;
-  max-width: 42rem;
+  margin: 1.15rem 0 0;
+  max-width: 40rem;
   color: #f8fafc;
   font-size: 1.05rem;
 }
@@ -212,15 +213,15 @@ main {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-top: 2rem;
-  justify-content: center;
+  margin-top: 1.75rem;
+  justify-content: flex-start;
 }
 .social {
   display: flex;
   align-items: center;
   gap: 1.1rem;
-  margin-top: 1.5rem;
-  justify-content: center;
+  margin-top: 1.35rem;
+  justify-content: flex-start;
 }
 .social a { color: rgba(255,255,255,0.88); display: inline-flex; }
 .social svg { width: 1.5rem; height: 1.5rem; }
@@ -240,12 +241,13 @@ main {
 .stat dd { margin: 0.35rem 0 0; font-size: clamp(1.35rem, 4vw, 1.9rem); font-weight: 600; }
 
 @media (min-width: 768px) {
-  .hero { padding: 6rem 0 4.5rem; }
-  .hero-grid { flex-direction: row; align-items: center; gap: 3.5rem; }
-  .hero-copy { text-align: left; }
-  .portrait { width: 18rem; height: 18rem; margin-inline: 0; }
-  .lede { margin-inline: 0; }
-  .actions, .social { justify-content: flex-start; }
+  .hero { padding: 5.5rem 0 4.25rem; }
+  .hero-grid {
+    grid-template-columns: 17rem minmax(0, 1fr);
+    align-items: center;
+    gap: 3.25rem;
+  }
+  .portrait { width: 17rem; height: 17rem; }
 }
 
 .btn {

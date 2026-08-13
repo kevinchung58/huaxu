@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260812"
+CSS = "css/site.css?v=20260813"
 
 ICON_MAIL = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>'
 ICON_SCHOLAR = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5.242 13.769L0 9.5L12 0l12 9.5l-5.242 4.269L12 10.731l-6.758 3.038zm0 0L12 18l6.758-4.231L12 22l-6.758-4.231z" /></svg>'
@@ -147,21 +147,22 @@ def pub_card(p, n):
     if p.get("corresponding"):
         badges += '<span class="badge">Corresponding author</span>'
     title = escape(p["title"])
-    if p.get("featured"):
-        title_html = f'<button class="title-btn" type="button" {featured_attrs(p)}>{n}. {title}</button>'
+    if p.get("doi"):
+        title_html = f'<a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{n}. {title}</a>'
+        doi_line = f'<p class="doi-line">DOI: <a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{escape(p["doi"])}</a></p>'
     else:
         title_html = f"{n}. {title}"
+        doi_line = ""
     links = ""
     if p.get("featured"):
-        links += f'<button class="title-btn" type="button" {featured_attrs(p)}>View figure</button>'
-    if p.get("doi"):
-        links += f' <a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">DOI</a>'
+        links += f'<button class="text-link" type="button" {featured_attrs(p)}>View figure</button>'
     feat = " is-featured" if p.get("featured") else ""
     return f'''<article class="pub{feat} reveal" data-pub-type="{p["type"]}">
   <div class="badges">{badges}</div>
   <h4>{title_html}</h4>
   <p class="authors">{authors_html(p["authors"])}</p>
   <p class="source">{escape(p["source"])} ({p["year"]})</p>
+  {doi_line}
   <div class="meta-links">{links}</div>
 </article>'''
 
@@ -265,13 +266,20 @@ featured.sort(key=lambda p: p["year"])
 feat_html = []
 for p in featured:
     corr = '<span class="badge">Corresponding author</span>' if p.get("corresponding") else ""
-    feat_html.append(f'''<button class="featured-card reveal" type="button" {featured_attrs(p)}>
+    if p.get("doi"):
+        title_html = f'<a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{escape(p["title"])}</a>'
+        doi_line = f'<p class="doi-line">DOI: <a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{escape(p["doi"])}</a></p>'
+    else:
+        title_html = escape(p["title"])
+        doi_line = ""
+    feat_html.append(f'''<article class="featured-card reveal">
   <div class="badges"><span class="badge gold">Featured</span>{corr}</div>
-  <h4>{escape(p["title"])}</h4>
+  <h4>{title_html}</h4>
   <p class="authors">{authors_html(p["authors"])}</p>
   <p class="source">{escape(p["source"])}</p>
-  <p class="open-fig">Open figure</p>
-</button>''')
+  {doi_line}
+  <p class="meta-links"><button class="text-link" type="button" {featured_attrs(p)}>View figure</button></p>
+</article>''')
 
 proj_html = "\n".join(
     f'''<article class="card reveal">
