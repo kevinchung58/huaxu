@@ -1,0 +1,531 @@
+#!/usr/bin/env python3
+from pathlib import Path
+from html import escape
+
+ROOT = Path(__file__).resolve().parent
+CSS = "css/site.css?v=20260813c"
+
+def svg(d: str, filled: bool = False) -> str:
+    if filled:
+        return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">{d}</svg>'
+    return f'<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">{d}</svg>'
+
+ICON_MAIL = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />')
+ICON_SCHOLAR = svg('<path d="M5.242 13.769L0 9.5L12 0l12 9.5l-5.242 4.269L12 10.731l-6.758 3.038zm0 0L12 18l6.758-4.231L12 22l-6.758-4.231z" />', filled=True)
+ICON_CASE = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 .414-.336.75-.75.75h-15a.75.75 0 01-.75-.75v-4.25m16.5 0a2.25 2.25 0 00.75-1.687V8.25A2.25 2.25 0 0018.75 6h-5.379a1.5 1.5 0 01-1.06-.44L11.25 4.5H5.25A2.25 2.25 0 003 6.75v5.713c0 .651.287 1.269.75 1.687m16.5 0H3.75" />')
+ICON_MENU = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />')
+ICON_UP = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />')
+ICON_CARET = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />')
+ICON_BOOK = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />')
+ICON_USER = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />')
+ICON_CAP = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />')
+ICON_CAMERA = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />')
+ICON_USERS = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />')
+ICON_OUT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />')
+ICON_SPARK = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />')
+ICON_CAL = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />')
+ICON_BULB = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />')
+ICON_CPU = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-16.5 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />')
+ICON_PENCIL = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />')
+ICON_MONITOR = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z" />')
+ICON_PHOTO = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />')
+ICON_X = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />')
+ICON_CHAT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />')
+ICON_LEFT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />')
+ICON_RIGHT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />')
+
+def chip(icon: str) -> str:
+    return f'<span class="icon-chip" aria-hidden="true">{icon}</span>'
+
+def ico(icon: str) -> str:
+    return f'<span class="ico" aria-hidden="true">{icon}</span>'
+
+def titled(tag: str, text: str, icon: str, cls: str = "block-title reveal") -> str:
+    return f'<{tag} class="{cls}">{ico(icon)}{text}</{tag}>'
+
+
+def nav(active: str) -> str:
+    def a(href, label, key):
+        cls = "is-active" if active == key else ""
+        return f'<a href="{href}" class="{cls}">{label}</a>'
+
+    more_on = " is-active" if active in {"service", "links"} else ""
+    return f"""<a class="skip" href="#main">Skip to main content</a>
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="index.html"><strong>Hua-Xu Zhong</strong><small>PhD</small></a>
+    <nav class="nav-links" aria-label="Primary">
+      {a("index.html", "Home", "home")}
+      {a("about.html", "About", "about")}
+      {a("research.html", "Research", "research")}
+      {a("teaching.html", "Teaching", "teaching")}
+      {a("activities.html", "Activities", "activities")}
+      <div class="more">
+        <button class="more-btn{more_on}" type="button" aria-expanded="false" aria-haspopup="true">More <span class="caret" aria-hidden="true">{ICON_CARET}</span></button>
+        <div class="more-menu" role="menu">
+          {a("service.html", "Service", "service")}
+          {a("links.html", "Resources", "links")}
+        </div>
+      </div>
+    </nav>
+    <button class="menu-toggle" type="button" aria-label="Toggle menu" aria-expanded="false">{ICON_MENU}</button>
+  </div>
+  <nav class="mobile" aria-label="Mobile">
+    {a("index.html", "Home", "home")}
+    {a("about.html", "About", "about")}
+    {a("research.html", "Research", "research")}
+    {a("teaching.html", "Teaching", "teaching")}
+    {a("activities.html", "Activities", "activities")}
+    <div class="label">More</div>
+    {a("service.html", "Service", "service")}
+    {a("links.html", "Resources", "links")}
+  </nav>
+</header>"""
+
+
+FOOT = f"""<footer>
+  <div class="wrap foot">
+    <div>
+      <strong>Hua-Xu Zhong</strong> <span>PhD</span>
+      <p>Researcher in Educational Technology &amp; AI</p>
+    </div>
+    <div class="social">
+      <a href="mailto:your.email@example.com" aria-label="Email">{ICON_MAIL}</a>
+      <a href="https://scholar.google.com.tw/citations?user=JTwxPuEAAAAJ&amp;hl=zh-TW" target="_blank" rel="noopener" aria-label="Google Scholar">{ICON_SCHOLAR}</a>
+      <a href="research.html">Research</a>
+    </div>
+    <p class="copy">© 2026 Hua-Xu Zhong. All rights reserved.</p>
+  </div>
+</footer>
+<button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
+<script src="js/site.js"></script>"""
+
+
+def page(title: str, active: str, body: str, extra: str = "") -> str:
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking." />
+  <title>{escape(title)}</title>
+  <link rel="stylesheet" href="{CSS}" />
+</head>
+<body>
+{nav(active)}
+<main id="main">
+{body}
+</main>
+{FOOT}
+{extra}
+</body>
+</html>
+"""
+
+
+def authors_html(s: str) -> str:
+    return escape(s).replace("H.-X. Zhong", "<b>H.-X. Zhong</b>")
+
+
+pubs = [
+    dict(id="pub1", type="Journal", year=2021, authors="C.-F. Lai, H.-X. Zhong, P.-S. Chiu", title="Investigating the impact of a flipped programming course using the DT-CDIO approach", source="Computers & Education, Vol. 173, p. 104287. Elsevier"),
+    dict(id="pub2", type="Journal", year=2020, authors="P.-S. Huang, P.-S. Chiu, Y.-M. Huang, H.-X. Zhong, C.-F. Lai", title="Cooperative mobile learning for the investigation of natural science courses in elementary schools", source="Sustainability, Vol. 12, No. 16, p. 6606. MDPI"),
+    dict(id="pub3", type="Journal", year=2024, featured=True, authors="H.-X. Zhong, J.-H. Chang, C.-F. Lai, P.-W. Chen, S.-H. Ku, S.-Y. Chen", title="Information undergraduate and non-information undergraduate on an artificial intelligence learning platform: an artificial intelligence assessment model using PLS-SEM analysis", source="Education and Information Technologies, Vol. 29, No. 4, pp. 4371-4400. Springer"),
+    dict(id="pub4", type="Conference", year=2021, authors="H.-X. Zhong, C.-F. Lai, Y.-C. Huang, P.-H. Wu, J.-H. Chang", title="Exploring the impact of artificial intelligence learning platforms on interest in and attitudes toward learning", source="Innovative Technologies and Learning: 4th International Conference, ICITL 2021, Virtual Event, November 29–December 1, 2021, Proceedings 4, pp. 22-29. Springer"),
+    dict(id="pub5", type="Journal", year=2023, authors="H.-X. Zhong, C.-F. Lai, J.-H. Chang, P.-S. Chiu", title="Developing creative material in STEM courses using integrated engineering design based on APOS theory", source="International Journal of Technology and Design Education, Vol. 33, No. 4, pp. 1627-1651. Springer"),
+    dict(id="pub6", type="Journal", year=2021, authors="C.-F. Lai, H.-X. Zhong, P.-S. Chiu, Y.-H. Pu", title="Development and evaluation of a cloud bookcase system for mobile library", source="Library Hi Tech, Vol. 39, No. 2, pp. 380-395. Emerald Publishing Limited"),
+    dict(id="pub7", type="Journal", year=2021, authors="J.-H. Chang, H.-H. Chiang, H.-X. Zhong, Y.-K. Chou", title="Travel package recommendation based on reinforcement learning and trip guaranteed prediction", source="Journal of Internet Technology, Vol. 22, No. 6, pp. 1359-1373."),
+    dict(id="pub8", type="Journal", year=2020, authors="Y.-L. Jeng, C.-F. Lai, S.-B. Huang, P.-S. Chiu, H.-X. Zhong", title="To cultivate creativity and a maker mindset through an internet-of-things programming course", source="Frontiers in Psychology, Vol. 11, p. 546616. Frontiers Media SA"),
+    dict(id="pub9", type="Journal", year=2023, authors="J.-H. Chang, C.-J. Wang, H.-X. Zhong, P.-W. Chen, A.-J. Pan, P.-S. Chiu", title="Implementation and evaluation of the school's COVID-19 prevention website", source="Library Hi Tech, Vol. 41, No. 1, pp. 71-90. Emerald Publishing Limited"),
+    dict(id="pub10", type="Journal", year=2021, authors="H.-X. Zhong, P.-S. Chiu, C.-F. Lai", title="Effects of the use of CDIO engineering design in a flipped programming course on flow experience, cognitive load", source="Sustainability, Vol. 13, No. 3, p. 1381. MDPI"),
+    dict(id="pub11", type="Journal", year=2022, authors="C.-F. Lai, H.-X. Zhong, J.-H. Chang, P.-S. Chiu", title="Applying the DT-CDIO engineering design model in a flipped learning programming course", source="Educational technology research and development, Vol. 70, No. 3, pp. 823-847. Springer"),
+    dict(id="pub12", type="Journal", year=2022, authors="C.-J. Wang, H.-X. Zhong, P.-S. Chiu, J.-H. Chang, P.-H. Wu", title="Research on the impacts of cognitive style and computational thinking on college students in a visual artificial intelligence course", source="Frontiers in Psychology, Vol. 13, p. 864416. Frontiers Media SA"),
+    dict(id="pub13", type="Journal", year=2023, authors="P.-S. Chiu, H.-X. Zhong, C.-F. Lai", title="Investigating the effects of a programming course using flipped learning", source="Innovations in Education and Teaching International, Vol. 60, No. 4, pp. 578-590. Taylor & Francis"),
+    dict(id="pub14", type="Journal", year=2024, authors="J.-H. Chang, C.-J. Wang, H.-X. Zhong, H.-C. Weng, Y.-K. Zhou, H.-Y. Ong, C.-F. Lai", title="Artificial intelligence learning platform in a visual programming environment: exploring an artificial intelligence learning model", source="Educational technology research and development, Vol. 72, No. 2, pp. 997-1024. Springer"),
+    dict(id="pub15", type="Conference", year=2024, authors="H.-X. Zhong, C.-F. Lai, S.-H. Ku, J.-H. Chang", title="Exploring the Relationship Between Collaborative Learning Factors and Perceived Learning", source="International Conference on Innovative Technologies and Learning, pp. 167-174. Springer Nature Switzerland"),
+    dict(id="pub16", type="Journal", year=2025, authors="J. A. C. Castaneda, P.-C. Lin, P. C. K. Hung, H.-X. Zhong, H.-A. Tseng, Y.-F. Huang, R. Ahmad", title="Designing inclusive tech playful educative solutions for visually impaired learners in STEM education", source="Smart Learning Environments, Vol. 12, No. 1, p. 4. Springer"),
+    dict(id="pub17", type="Journal", year=2026, authors="T. Gazit, T. Tager-Shafrir, H.-X. Zhong, P. C. K. Hung, V. Cheung", title="The dark side of the interface: examining the influence of different background modes on cognitive performance", source="Ergonomics, Vol. 69, No. 5, pp. 828-841. Taylor & Francis"),
+    dict(id="pub19", type="Journal", year=2026, featured=True, corresponding=True, doi="10.1007/s10796-026-10779-3", authors="J.-H. Chang, C.-F. Lai, C.-L. Huang, H.-X. Zhong*", title="A Decade of Technological Advancements in Information Systems Frontiers (2015–2025): Emerging Trends, Dominant Topics, and Future Directions", source="Information Systems Frontiers, pp. 1-44. Springer"),
+    dict(id="pub20", type="Journal", year=2026, authors="J.-H. Chang, H.-X. Zhong, C.-F. Lai", title="Enhancing programming learning with the peer-adaptive-clustering learning approach in virtual learning environments", source="Educational technology research and development, Published online. Springer"),
+    dict(id="pub21", type="Conference", year=2025, doi="10.1007/978-3-031-98197-5_1", authors="H.-X. Zhong, C.-F. Lai, W.-I. Hua, J.-H. Chang", title="Exploring the Impact of Mind Maps in Information Security Courses", source="Innovative Technologies and Learning. ICITL 2025. Lecture Notes in Computer Science, vol 15914, pp. 3-11. Springer, Cham."),
+    dict(id="pub18", type="Conference", year=2025, doi="10.1007/978-3-031-92826-0_3", authors="C. L. Gittens, M. Gittens, Y. Jiang, P. C. K. Hung, T. Wood, H.-X. Zhong", title="Technological Influence on Digital Banking Adoption: A Framework and Empirical Study of the Influence of Social Robots and IVAs in a Small Island Context", source="In: Siau, K.L., Nah, F.FH. (eds) HCI in Business, Government and Organizations. HCII 2025. Lecture Notes in Computer Science, vol 15805. Springer, Cham."),
+]
+
+projects = [
+    ("Establishing a Digital Learning Platform for K-12 Maker Education Teacher Training and Developing STEAM Curricula and Assessments", "Researcher", "National Science and Technology Council (NSTC) / Ministry of Science and Technology (MOST)", "August 1, 2019 – July 31, 2022", "Establish a digital learning platform for K-12 maker education teacher training, and develop related STEAM curricula and assessments.", "Platform and curricula developed."),
+    ("Developing a STEAM Education Teacher Digital Learning Platform and Designing STEAM Curricula Based on the CDIO Engineering Education Model", "Researcher", "National Science and Technology Council (NSTC) / Ministry of Science and Technology (MOST)", "August 1, 2022 – July 31, 2024", "Develop a STEAM education teacher digital learning platform and design STEAM curricula using the CDIO model.", "Platform and curricula designed."),
+    ("Integrating CDIO Engineering Education Model with STEM Education into Programming Courses", "Researcher", "Ministry of Education", "August 1, 2020 – July 31, 2021", "Integrate the CDIO model with STEM education in programming courses.", "Integration implemented and evaluated."),
+    ("Integrating Design Thinking into Reflective Window Programming Courses Using the CDIO Engineering Education Model (Excellence Award Project)", "Researcher", "Ministry of Education", "August 1, 2021 – July 31, 2022", "Integrate design thinking into programming courses using the CDIO model.", "Project received an Excellence Award."),
+    ("Implementing Clustering Algorithms for Adaptive Learning and Peer Learning – A Case Study in Virtual Learning Spaces", "Researcher", "Ministry of Education", "August 1, 2022 – July 31, 2023", "Implement clustering algorithms for adaptive and peer learning in virtual spaces.", "Algorithms implemented and case study conducted."),
+    ("Impact of Integrating Guided Inquiry Learning with Collaborative Mind Mapping – A Case Study on Information Security Course Content", "Researcher", "Ministry of Education", "August 1, 2023 – July 31, 2024", "Study the impact of guided inquiry learning with collaborative mind mapping on information security course content.", "Impact assessed through case study."),
+    ("International Research Experience: NSTC Scholarship for Doctoral Students to Study Abroad", "Visiting Doctoral Student", "National Science and Technology Council (NSTC) Scholarship", "September 7, 2023 – April 8, 2024", "Conduct doctoral research abroad.", "Completed the study-abroad period."),
+]
+
+
+def featured_attrs(p):
+    return (
+        f'data-featured data-title="{escape(p["title"])}" '
+        f'data-authors="{escape(p["authors"])}" '
+        f'data-source="{escape(p["source"])}" '
+        f'data-doi="{p.get("doi", "")}" '
+        f'data-corresponding="{"true" if p.get("corresponding") else "false"}"'
+    )
+
+
+def pub_card(p, n):
+    badges = f'<span class="badge">{p["year"]}</span><span class="badge">{p["type"]}</span>'
+    if p.get("featured"):
+        badges += '<span class="badge gold">Featured</span>'
+    if p.get("corresponding"):
+        badges += '<span class="badge">Corresponding author</span>'
+    title = escape(p["title"])
+    if p.get("doi"):
+        title_html = f'<a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{n}. {title}</a>'
+        doi_line = f'<p class="doi-line">DOI: <a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{escape(p["doi"])}</a></p>'
+    else:
+        title_html = f"{n}. {title}"
+        doi_line = ""
+    links = ""
+    if p.get("featured"):
+        links += f'<button class="text-link" type="button" {featured_attrs(p)}>{ico(ICON_PHOTO)}View figure</button>'
+    feat = " is-featured" if p.get("featured") else ""
+    return f'''<article class="pub{feat} reveal" data-pub-type="{p["type"]}">
+  <div class="badges">{badges}</div>
+  <h4>{title_html}</h4>
+  <p class="authors">{authors_html(p["authors"])}</p>
+  <p class="source">{escape(p["source"])} ({p["year"]})</p>
+  {doi_line}
+  <div class="meta-links">{links}</div>
+</article>'''
+
+
+home = page("Hua-Xu Zhong, PhD", "home", f"""
+<section class="hero">
+  <div class="hero-art" aria-hidden="true"></div>
+  <div class="wrap">
+    <div class="hero-grid">
+      <img class="portrait" src="IMG/1.jpg" alt="Hua-Xu Zhong professional portrait" width="288" height="288" />
+      <div class="hero-copy reveal">
+        <p class="eyebrow">Educational technology · AI · design thinking</p>
+        <h1>Hua-Xu Zhong<span>鍾華栩 · PhD</span></h1>
+        <p class="role">Researcher in Educational Technology &amp; AI</p>
+        <p class="lede">I work where technology, education, and practical AI meet. Recent projects look at LLM-powered learning systems, from GAI concept-map generation to tools that support creativity, so students can inquire rather than only adapt.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="research.html">{ICON_CASE} View research</a>
+          <a class="btn btn-ghost" href="about.html">{ICON_USER} About my work</a>
+        </div>
+        <div class="social">
+          <a href="mailto:your.email@example.com" aria-label="Email">{ICON_MAIL}</a>
+          <a href="https://scholar.google.com.tw/citations?user=JTwxPuEAAAAJ&amp;hl=zh-TW" target="_blank" rel="noopener" aria-label="Google Scholar">{ICON_SCHOLAR}</a>
+        </div>
+      </div>
+    </div>
+    <dl class="stats">
+      <div class="stat reveal" style="--d:40ms"><dt>{ico(ICON_BOOK)} Publications</dt><dd>{len(pubs)}</dd></div>
+      <div class="stat reveal" style="--d:90ms"><dt>{ico(ICON_CASE)} Research projects</dt><dd>{len(projects)}</dd></div>
+      <div class="stat reveal" style="--d:140ms"><dt>{ico(ICON_CAL)} Latest papers</dt><dd>2026</dd></div>
+    </dl>
+  </div>
+</section>
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Focus</p><h2>Research interests</h2><p>Themes that run through my papers, platforms, and classroom work.</p></div>
+    <div class="grid-2">
+      <article class="card lift reveal"><div class="head-row">{chip(ICON_MONITOR)}<div><h3>Educational Technology</h3><p>Using new technologies to improve learning experiences, instructional design, and educational outcomes.</p></div></div></article>
+      <article class="card lift reveal" style="--d:70ms"><div class="head-row">{chip(ICON_CPU)}<div><h3>Artificial Intelligence</h3><p>Machine learning and related methods applied to complex problems.</p></div></div></article>
+      <article class="card lift reveal" style="--d:120ms"><div class="head-row">{chip(ICON_PENCIL)}<div><h3>Creativity and Design Thinking</h3><p>Design thinking and creative problem-solving in education and technology development.</p></div></div></article>
+      <article class="card lift reveal" style="--d:170ms"><div class="head-row">{chip(ICON_BULB)}<div><h3>AI in Education</h3><p>How AI can personalize learning and support tutoring and inquiry-based classrooms.</p></div></div></article>
+    </div>
+  </div>
+</section>
+<section class="section alt">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Path</p><h2>Education</h2></div>
+    <ol class="timeline">
+      <li class="reveal"><p class="when">2019/9 – 2024/6</p><h3>Ph.D.</h3><p class="inst">National Cheng Kung University</p><p class="when">Department of Engineering Science (Computer Science and Its Applications)</p></li>
+      <li class="reveal" style="--d:80ms"><p class="when">2018/9 – 2019/1</p><h3>Master's</h3><p class="inst">National Chiayi University</p><p class="when">Department of E-learning Design and Management</p></li>
+      <li class="reveal" style="--d:140ms"><p class="when">2014/9 – 2018/6</p><h3>Bachelor's</h3><p class="inst">National Chiayi University</p><p class="when">Department of E-learning Design and Management</p></li>
+    </ol>
+  </div>
+</section>
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Updates</p><h2>Latest news</h2></div>
+    <div class="news reveal">
+      <article><time datetime="2026-07-08"><span class="mo">JUL</span><span class="dy">08</span><span class="yr">2026</span></time><div><h3>New publication in Information Systems Frontiers</h3><p>Our paper “A Decade of Technological Advancements in Information Systems Frontiers (2015–2025): Emerging Trends, Dominant Topics, and Future Directions” has been published. Hua-Xu Zhong is the corresponding author.</p></div></article>
+      <article><time datetime="2026-06-01"><span class="mo">JUN</span><span class="dy">01</span><span class="yr">2026</span></time><div><h3>New publication in ETR&amp;D</h3><p>Our paper “Enhancing programming learning with the peer-adaptive-clustering learning approach in virtual learning environments” has been published in Educational Technology Research and Development.</p></div></article>
+      <article><time datetime="2025-03-01"><span class="mo">MAR</span><span class="dy">01</span><span class="yr">2025</span></time><div><h3>Paper accepted for HCII 2025</h3><p>Our paper “Technological Influence on Digital Banking Adoption: A Framework and Empirical Study of the Influence of Social Robots and IVAs in a Small Island Context” has been accepted for HCII 2025.</p></div></article>
+      <article><time datetime="2025-02-15"><span class="mo">FEB</span><span class="dy">15</span><span class="yr">2025</span></time><div><h3>Paper accepted in Ergonomics</h3><p>Our paper “The dark side of the interface: examining the influence of different background modes on cognitive performance” has been accepted in Ergonomics.</p></div></article>
+      <article><time datetime="2025-02-01"><span class="mo">FEB</span><span class="dy">01</span><span class="yr">2025</span></time><div><h3>Paper accepted in Smart Learning Environments</h3><p>Our paper “Designing inclusive tech playful educative solutions for visually impaired learners in STEM education” has been accepted in Smart Learning Environments.</p></div></article>
+    </div>
+  </div>
+</section>
+""")
+
+about = page("About · Hua-Xu Zhong", "about", f"""
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Statement</p><h1>About</h1><p>Academic journey and vision</p></div>
+    <div class="about-card reveal">
+      <img src="IMG/2.jpg" alt="Hua-Xu Zhong" />
+      <div class="about-copy">
+        <h2 class="with-ico">{ico(ICON_USER)}Personal academic statement</h2>
+        <p>Hua-Xu Zhong works at the meeting point of technology, education, and practical artificial intelligence. He studies what actually happens when educational technologies and AI systems are put into use.</p>
+        <p>His academic path began with an interdisciplinary undergraduate program. He came in hoping that mixed knowledge and technical integration could address real educational problems. The training widened his view, but it did not fully prepare him for the practical demands of the field. Even with a solid grasp of instructional theory and media design, he kept meeting a gap between theory and problem-solving. He tried programming as a career path, then found that his technical limits made it hard to go deeper. What stayed with him was simpler: knowledge and tools are not enough. You have to see the problem clearly, then turn theory into something you can actually do.</p>
+        <p>During his master's studies, Hua-Xu returned to a core question: Can education actually solve real problems? Courses on information literacy and media education showed him that education is not only about transmitting knowledge. It is about comprehension and changing how people think. Through work on innovation, change, and management, he encountered design thinking, which gave him a way to put creativity and technology into educational settings. That shift did not come from abstract ideals. It came from what he saw in real learning environments, where technology's accelerating effect was hard to miss. He saw how innovation and digital tools could open new opportunities for learners.</p>
+        <blockquote class="quote">“Education is no longer just a tool for meeting needs. It is a systemic force capable of accelerating change.”</blockquote>
+        <p>That insight redirected his academic path. It is why he continues to work on educational technology and learning design.</p>
+        <p>Outside of academia, Hua-Xu enjoys traveling, writing, listening to music, and playing basketball. He values every meaningful moment and refuses to waste time. He wants to build educational technology systems from his background in education, and to work seriously with large language models. He knows this era can empower people, and it can also overwhelm them. So he designs inquiry-based and exploratory learning frameworks that help students develop their potential, not only to survive the future, but to shape it. He is also a scholar who likes learning across disciplines, and he looks for ideas from other fields that can spark new work.</p>
+      </div>
+    </div>
+  </div>
+</section>
+""")
+
+j_count = sum(1 for p in pubs if p["type"] == "Journal")
+c_count = sum(1 for p in pubs if p["type"] == "Conference")
+years = sorted({p["year"] for p in pubs}, reverse=True)
+year_html = []
+for y in years:
+    items = [p for p in pubs if p["year"] == y]
+    items.sort(key=lambda p: p["title"])
+    cards = "\n".join(pub_card(p, i + 1) for i, p in enumerate(items))
+    label = "publication" if len(items) == 1 else "publications"
+    year_html.append(f'<div class="year-block" data-year="{y}"><h3>{y} <span>{len(items)} {label}</span></h3>{cards}</div>')
+
+# Featured: EIT 2024 first, then ISF 2026
+featured = [p for p in pubs if p.get("featured")]
+featured.sort(key=lambda p: p["year"])
+feat_html = []
+for p in featured:
+    corr = '<span class="badge">Corresponding author</span>' if p.get("corresponding") else ""
+    if p.get("doi"):
+        title_html = f'<a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{escape(p["title"])}</a>'
+        doi_line = f'<p class="doi-line">DOI: <a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{escape(p["doi"])}</a></p>'
+    else:
+        title_html = escape(p["title"])
+        doi_line = ""
+    feat_html.append(f'''<article class="featured-card reveal">
+  <div class="badges"><span class="badge gold">Featured</span>{corr}</div>
+  <h4>{title_html}</h4>
+  <p class="authors">{authors_html(p["authors"])}</p>
+  <p class="source">{escape(p["source"])}</p>
+  {doi_line}
+  <p class="meta-links"><button class="text-link" type="button" {featured_attrs(p)}>{ico(ICON_PHOTO)}View figure</button></p>
+</article>''')
+
+proj_html = "\n".join(
+    f'''<article class="card reveal">
+  <h3>{escape(n)}</h3>
+  <dl class="meta-dl">
+    <div><dt>Role</dt><dd>{escape(r)}</dd></div>
+    <div><dt>Funding</dt><dd>{escape(f)}</dd></div>
+    <div><dt>Period</dt><dd>{escape(pe)}</dd></div>
+    <div><dt>Goals</dt><dd>{escape(g)}</dd></div>
+    <div><dt>Outcomes</dt><dd>{escape(o)}</dd></div>
+  </dl>
+</article>'''
+    for n, r, f, pe, g, o in projects
+)
+
+research = page("Research · Hua-Xu Zhong", "research", f"""
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Output</p><h1>Research</h1><p>Publications and projects in educational technology, AI learning platforms, and design-based instruction.</p></div>
+    {titled("h2", "Publications", ICON_BOOK)}
+    <div class="filters reveal" data-filter-group>
+      <button class="chip is-on" type="button" data-filter="all">All ({len(pubs)})</button>
+      <button class="chip" type="button" data-filter="Journal">Journal ({j_count})</button>
+      <button class="chip" type="button" data-filter="Conference">Conference ({c_count})</button>
+    </div>
+    {''.join(year_html)}
+    {titled("h2", "Featured papers", ICON_SPARK, "block-title reveal spaced")}
+    <div class="featured-grid">{''.join(feat_html)}</div>
+    {titled("h2", "Research projects", ICON_CASE, "block-title reveal spaced")}
+    <h3 class="subhead reveal">Completed</h3>
+    <div class="proj-list">{proj_html}</div>
+    <div class="dashed empty reveal" style="margin-top:1.2rem">{chip(ICON_CASE)}<div><strong>No ongoing projects listed</strong><p class="when">When a new grant starts, it will appear here.</p></div></div>
+  </div>
+</section>
+""", extra=f"""
+<div class="modal" id="featured-modal" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-panel">
+    <button class="modal-close" type="button" data-close aria-label="Close">{ICON_X}</button>
+    <p class="eyebrow" style="color:var(--accent)">Featured paper</p>
+    <h3 data-modal-title></h3>
+    <p class="authors" data-modal-authors></p>
+    <p class="source" data-modal-source></p>
+    <p class="source" data-modal-note style="color:var(--accent);font-weight:600">Corresponding author: Hua-Xu Zhong</p>
+    <div class="figure-box"><strong>Figure forthcoming</strong><p class="when">The official paper figure will appear here once it is added.</p></div>
+    <p style="margin-top:1rem"><a class="btn btn-primary" data-modal-doi target="_blank" rel="noopener">Open DOI</a></p>
+  </div>
+</div>
+""")
+
+teaching = page("Teaching · Hua-Xu Zhong", "teaching", f"""
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Classroom</p><h1>Teaching &amp; practice</h1><p>Inquiry, creativity, and careful use of AI.</p></div>
+    <article class="card philosophy reveal">
+      <h2 class="with-ico">{ico(ICON_BULB)}Teaching philosophy</h2>
+      <p>I believe education is not the transfer of information. It is the transformation of the learner.</p>
+      <p>I treat students as people who can inquire, create, and reflect, not as empty vessels. My job is to design spaces where they ask real questions, work on real problems, and get used to ambiguity. I draw on constructivist learning: students build knowledge through experience, collaboration, and experiment.</p>
+      <p>I emphasize creative problem-solving over rote answers, because I see education as preparation for complexity, not certainty. Failure is not something to avoid. It is how growth happens. Design thinking, open-ended inquiry, and playful exploration are how I help students work on problems that do not have clear answers.</p>
+      <p>Students also hit barriers, cognitive, emotional, or situational. When human support runs out, I use large language models for personalized learning. They extend access to feedback, ideas, and scaffolding so students can keep going. For me, LLMs do not replace human teaching. They are a support system between the learner and what they might do next.</p>
+      <p>I teach because I believe education can be a form of liberation. It should help people imagine and build better worlds, not only adapt to the one they have.</p>
+    </article>
+    {titled("h2", "Courses taught", ICON_CAP, "block-title reveal spaced")}
+    <div class="dashed empty reveal">{chip(ICON_CAP)}<div><strong>Course list in preparation</strong><p class="when">Syllabi and semester offerings will live here when teaching appointments are listed.</p></div></div>
+  </div>
+</section>
+""")
+
+# Add photos here later: (src, alt, caption). Multiple items become a slideshow.
+GALLERY = [
+    ("IMG/3.jpg", "Academic activity", "Caption forthcoming"),
+]
+gallery_many = len(GALLERY) > 1
+gallery_slides = []
+gallery_dots = []
+for i, (src, alt, cap) in enumerate(GALLERY):
+    on = " is-on" if i == 0 else ""
+    gallery_slides.append(
+        f'<figure class="deck-slide{on}" data-slide="{i}">'
+        f'<button type="button" data-lightbox data-index="{i}" data-src="{escape(src)}" data-alt="{escape(alt)}" data-caption="{escape(cap)}">'
+        f'<img src="{escape(src)}" alt="{escape(alt)}" /></button></figure>'
+    )
+    gallery_dots.append(f'<button type="button" class="deck-dot{on}" data-go="{i}" aria-label="Photo {i + 1}"></button>')
+gallery_nav = ""
+if gallery_many:
+    gallery_nav = f'''<button class="deck-btn prev" type="button" data-deck-prev aria-label="Previous photo">{ICON_LEFT}</button>
+    <button class="deck-btn next" type="button" data-deck-next aria-label="Next photo">{ICON_RIGHT}</button>
+    <p class="deck-count"><span data-deck-n>1</span> / {len(GALLERY)}</p>'''
+gallery_dots_html = f'<div class="deck-dots">{"".join(gallery_dots)}</div>' if gallery_many else ""
+gallery_note = (
+    "When more photographs are added, they play as a slideshow. Select a photo to view it larger."
+    if not gallery_many
+    else "Use the arrows or select a photo to view it larger."
+)
+
+activities = page("Activities · Hua-Xu Zhong", "activities", f"""
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>A photo archive and a running record of talks. Captions and venues will be attached as they are confirmed.</p></div>
+    {titled("h2", "Gallery", ICON_CAMERA)}
+    <p class="when reveal" style="margin:-0.4rem 0 1rem">{gallery_note}</p>
+    <div class="deck reveal" data-deck>
+      <div class="deck-stage">
+        {''.join(gallery_slides)}
+        {gallery_nav}
+      </div>
+      <p class="deck-cap" data-deck-cap>{escape(GALLERY[0][2])}</p>
+      {gallery_dots_html}
+    </div>
+    {titled("h2", "Talks and visits", ICON_CHAT, "block-title reveal spaced")}
+    <p class="when reveal">Invited talks, presentations, workshops, and conference attendance. They will appear as a CV timeline when records are added.</p>
+    <div class="dashed empty reveal" style="margin-top:1rem">{chip(ICON_CHAT)}<div><strong>No talks listed yet</strong><p class="when">This page will not invent events. When you add a title, venue, and date, they will appear here as a single timeline.</p></div></div>
+  </div>
+</section>
+""", extra=f"""
+<div class="modal" id="lightbox">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-panel lamp">
+    <button class="modal-close on-photo" type="button" data-close aria-label="Close">{ICON_X}</button>
+    <button class="deck-btn prev on-photo" type="button" data-lamp-prev aria-label="Previous photo">{ICON_LEFT}</button>
+    <button class="deck-btn next on-photo" type="button" data-lamp-next aria-label="Next photo">{ICON_RIGHT}</button>
+    <img alt="" />
+    <div class="lamp-meta">
+      <p data-lamp-cap></p>
+      <p class="deck-count" data-lamp-count></p>
+    </div>
+  </div>
+</div>
+""")
+
+journals = [
+    "Educational Technology Research and Development (SSCI Q1)",
+    "Education and Information Technologies (SSCI Q1)",
+    "Journal of Educational Computing Research (SSCI Q1)",
+    "BMC Medical Education (SSCI Q1)",
+    "Frontiers in Psychology (SSCI Q1)",
+    "Scientific Reports (SCI Q2)",
+    "Library Hi Tech (SSCI Q2)",
+    "Journal of Computer Assisted Learning (SSCI Q1)",
+    "International Journal of STEM Education (SSCI Q1)",
+    "Journal of Control Automation and Electrical Systems (SCI)",
+]
+service = page("Service · Hua-Xu Zhong", "service", f"""
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic service</h1><p>Editorial work, reviewing, and other contributions to the field.</p></div>
+    {titled("h2", "Editorial roles", ICON_BOOK)}
+    <article class="card reveal">
+      <h3>Consulting Editor</h3>
+      <p>Educational Technology Research and Development (ETR&amp;D)</p>
+    </article>
+    {titled("h2", "Journal & conference reviewing", ICON_USERS, "block-title reveal spaced")}
+    <article class="card reveal"><ul class="review-list">{''.join(f'<li>{escape(j)}</li>' for j in journals)}</ul></article>
+  </div>
+</section>
+""")
+
+link_groups = [
+    ("Text Generation & LLM Assistance", [
+        ("", [("ChatGPT (OpenAI)", "https://chat.openai.com"), ("Gemini (Google)", "https://gemini.google.com"), ("Claude (Anthropic)", "https://claude.ai"), ("Perplexity AI", "https://www.perplexity.ai")]),
+        ("Academic and professional writing", [("Notion AI (in Notion)", "https://www.notion.so"), ("Gamma.app", "https://gamma.app"), ("Elicit.org", "https://elicit.org"), ("Grammarly", "https://www.grammarly.com")]),
+    ]),
+    ("AI Multimedia Generation", [
+        ("Image generation", [("Midjourney", "https://www.midjourney.com"), ("DALL-E 3 (OpenAI/ChatGPT Plus)", "https://chat.openai.com"), ("Stable Diffusion (model)", "https://stability.ai/stablediffusion"), ("Adobe Firefly", "https://firefly.adobe.com"), ("Canva Magic Media (in Canva)", "https://www.canva.com")]),
+        ("Video generation and editing", [("Runway Gen-2", "https://runwayml.com"), ("Pika Labs", "https://pika.art"), ("Sora (OpenAI, preview)", "https://openai.com/sora"), ("HeyGen", "https://www.heygen.com")]),
+        ("Music and audio generation", [("Suno AI", "https://suno.ai"), ("Udio AI", "https://www.udio.com"), ("ElevenLabs", "https://elevenlabs.io"), ("AIVA", "https://www.aiva.ai"), ("Soundraw.io", "https://soundraw.io")]),
+    ]),
+    ("AI in Academic Applications & Research", [
+        ("AI research tools", [("Elicit.org", "https://elicit.org"), ("Connected Papers", "https://www.connectedpapers.com"), ("ResearchRabbit", "https://www.researchrabbit.ai"), ("SciSpace", "https://scispace.com"), ("Zotero", "https://www.zotero.org"), ("Mendeley", "https://www.mendeley.com")]),
+        ("AI research and data analysis platforms", [("Google Colaboratory (Colab)", "https://colab.research.google.com"), ("Hugging Face Hub", "https://huggingface.co"), ("Kaggle", "https://www.kaggle.com")]),
+        ("AI ethics and responsible innovation", [("AI4People", "https://www.eismd.eu/project/ai4people/"), ("IEEE Ethically Aligned Design", "https://ethicsinaction.ieee.org"), ("Partnership on AI", "https://partnershiponai.org"), ("AI Now Institute", "https://ainowinstitute.org"), ("Stanford HAI", "https://hai.stanford.edu")]),
+    ]),
+    ("GAI/AI-Assisted Learning & Teaching Platforms", [
+        ("AI literacy and programming education", [("Code.org (AI and Machine Learning courses)", "https://code.org/ai"), ("Machine Learning for Kids", "https://machinelearningforkids.co.uk"), ("AI4K12.org", "https://ai4k12.org"), ("Google AI Education", "https://ai.google/education/"), ("MIT RAISE", "https://raise.mit.edu")]),
+        ("Advanced AI learning platforms", [("Coursera", "https://www.coursera.org"), ("edX", "https://www.edx.org"), ("fast.ai", "https://www.fast.ai"), ("NVIDIA Deep Learning Institute (DLI)", "https://www.nvidia.com/en-us/training/")]),
+    ]),
+]
+blocks = []
+for cat, subs in link_groups:
+    inner = []
+    for sub, items in subs:
+        if sub:
+            inner.append(f'<h3 class="subhead">{escape(sub)}</h3>')
+        cards = "".join(
+            f'<a class="card lift" href="{escape(u)}" target="_blank" rel="noopener"><h3>{escape(n)}</h3>{ico(ICON_OUT)}</a>'
+            for n, u in items
+        )
+        inner.append(f'<div class="link-grid">{cards}</div>')
+    blocks.append(f'<h2 class="cat-head reveal">{escape(cat)}</h2>' + "".join(inner))
+
+links = page("Resources · Hua-Xu Zhong", "links", f"""
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Toolkit</p><h1>Resources</h1><p>Selected GAI and academic tools.</p></div>
+    {''.join(blocks)}
+  </div>
+</section>
+""")
+
+notfound = page("Page not found · Hua-Xu Zhong", "home", """
+<section class="section"><div class="wrap" style="text-align:center">
+  <p class="eyebrow">404</p><h1>Page not found</h1>
+  <p class="when" style="margin:1rem 0 1.4rem">This address does not match a page on the site.</p>
+  <a class="btn btn-primary" href="index.html">Back to home</a>
+</div></section>
+""")
+
+(ROOT / "index.html").write_text(home, encoding="utf-8")
+(ROOT / "about.html").write_text(about, encoding="utf-8")
+(ROOT / "research.html").write_text(research, encoding="utf-8")
+(ROOT / "teaching.html").write_text(teaching, encoding="utf-8")
+(ROOT / "activities.html").write_text(activities, encoding="utf-8")
+(ROOT / "service.html").write_text(service, encoding="utf-8")
+(ROOT / "links.html").write_text(links, encoding="utf-8")
+(ROOT / "404.html").write_text(notfound, encoding="utf-8")
+print("wrote html pages")
