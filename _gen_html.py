@@ -3,13 +3,43 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260813"
+CSS = "css/site.css?v=20260813b"
 
-ICON_MAIL = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>'
-ICON_SCHOLAR = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5.242 13.769L0 9.5L12 0l12 9.5l-5.242 4.269L12 10.731l-6.758 3.038zm0 0L12 18l6.758-4.231L12 22l-6.758-4.231z" /></svg>'
-ICON_CASE = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 .414-.336.75-.75.75h-15a.75.75 0 01-.75-.75v-4.25m16.5 0a2.25 2.25 0 00.75-1.687V8.25A2.25 2.25 0 0018.75 6h-5.379a1.5 1.5 0 01-1.06-.44L11.25 4.5H5.25A2.25 2.25 0 003 6.75v5.713c0 .651.287 1.269.75 1.687m16.5 0H3.75" /></svg>'
-ICON_MENU = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>'
-ICON_UP = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>'
+def svg(d: str, filled: bool = False) -> str:
+    if filled:
+        return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">{d}</svg>'
+    return f'<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">{d}</svg>'
+
+ICON_MAIL = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />')
+ICON_SCHOLAR = svg('<path d="M5.242 13.769L0 9.5L12 0l12 9.5l-5.242 4.269L12 10.731l-6.758 3.038zm0 0L12 18l6.758-4.231L12 22l-6.758-4.231z" />', filled=True)
+ICON_CASE = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 .414-.336.75-.75.75h-15a.75.75 0 01-.75-.75v-4.25m16.5 0a2.25 2.25 0 00.75-1.687V8.25A2.25 2.25 0 0018.75 6h-5.379a1.5 1.5 0 01-1.06-.44L11.25 4.5H5.25A2.25 2.25 0 003 6.75v5.713c0 .651.287 1.269.75 1.687m16.5 0H3.75" />')
+ICON_MENU = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />')
+ICON_UP = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />')
+ICON_CARET = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />')
+ICON_BOOK = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />')
+ICON_USER = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />')
+ICON_CAP = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />')
+ICON_CAMERA = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />')
+ICON_USERS = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />')
+ICON_OUT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />')
+ICON_SPARK = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />')
+ICON_CAL = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />')
+ICON_BULB = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />')
+ICON_CPU = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-16.5 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />')
+ICON_PENCIL = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />')
+ICON_MONITOR = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z" />')
+ICON_PHOTO = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />')
+ICON_X = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />')
+ICON_CHAT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />')
+
+def chip(icon: str) -> str:
+    return f'<span class="icon-chip" aria-hidden="true">{icon}</span>'
+
+def ico(icon: str) -> str:
+    return f'<span class="ico" aria-hidden="true">{icon}</span>'
+
+def titled(tag: str, text: str, icon: str, cls: str = "block-title reveal") -> str:
+    return f'<{tag} class="{cls}">{ico(icon)}{text}</{tag}>'
 
 
 def nav(active: str) -> str:
@@ -29,7 +59,7 @@ def nav(active: str) -> str:
       {a("teaching.html", "Teaching", "teaching")}
       {a("activities.html", "Activities", "activities")}
       <div class="more">
-        <button class="more-btn{more_on}" type="button" aria-expanded="false" aria-haspopup="true">More</button>
+        <button class="more-btn{more_on}" type="button" aria-expanded="false" aria-haspopup="true">More <span class="caret" aria-hidden="true">{ICON_CARET}</span></button>
         <div class="more-menu" role="menu">
           {a("service.html", "Service", "service")}
           {a("links.html", "Resources", "links")}
@@ -155,7 +185,7 @@ def pub_card(p, n):
         doi_line = ""
     links = ""
     if p.get("featured"):
-        links += f'<button class="text-link" type="button" {featured_attrs(p)}>View figure</button>'
+        links += f'<button class="text-link" type="button" {featured_attrs(p)}>{ico(ICON_PHOTO)}View figure</button>'
     feat = " is-featured" if p.get("featured") else ""
     return f'''<article class="pub{feat} reveal" data-pub-type="{p["type"]}">
   <div class="badges">{badges}</div>
@@ -169,17 +199,18 @@ def pub_card(p, n):
 
 home = page("Hua-Xu Zhong, PhD", "home", f"""
 <section class="hero">
+  <div class="hero-art" aria-hidden="true"></div>
   <div class="wrap">
     <div class="hero-grid">
-      <img class="portrait reveal" src="IMG/1.jpg" alt="Hua-Xu Zhong professional portrait" width="288" height="288" />
-      <div class="hero-copy reveal" style="--d:80ms">
+      <img class="portrait" src="IMG/1.jpg" alt="Hua-Xu Zhong professional portrait" width="288" height="288" />
+      <div class="hero-copy reveal">
         <p class="eyebrow">Educational technology · AI · design thinking</p>
         <h1>Hua-Xu Zhong<span>鍾華栩 · PhD</span></h1>
         <p class="role">Researcher in Educational Technology &amp; AI</p>
         <p class="lede">I work where technology, education, and practical AI meet. Recent projects look at LLM-powered learning systems, from GAI concept-map generation to tools that support creativity, so students can inquire rather than only adapt.</p>
         <div class="actions">
           <a class="btn btn-primary" href="research.html">{ICON_CASE} View research</a>
-          <a class="btn btn-ghost" href="about.html">About my work</a>
+          <a class="btn btn-ghost" href="about.html">{ICON_USER} About my work</a>
         </div>
         <div class="social">
           <a href="mailto:your.email@example.com" aria-label="Email">{ICON_MAIL}</a>
@@ -188,9 +219,9 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
       </div>
     </div>
     <dl class="stats">
-      <div class="stat reveal" style="--d:40ms"><dt>Publications</dt><dd>{len(pubs)}</dd></div>
-      <div class="stat reveal" style="--d:90ms"><dt>Research projects</dt><dd>{len(projects)}</dd></div>
-      <div class="stat reveal" style="--d:140ms"><dt>Latest papers</dt><dd>2026</dd></div>
+      <div class="stat reveal" style="--d:40ms"><dt>{ico(ICON_BOOK)} Publications</dt><dd>{len(pubs)}</dd></div>
+      <div class="stat reveal" style="--d:90ms"><dt>{ico(ICON_CASE)} Research projects</dt><dd>{len(projects)}</dd></div>
+      <div class="stat reveal" style="--d:140ms"><dt>{ico(ICON_CAL)} Latest papers</dt><dd>2026</dd></div>
     </dl>
   </div>
 </section>
@@ -198,10 +229,10 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Focus</p><h2>Research interests</h2><p>Themes that run through my papers, platforms, and classroom work.</p></div>
     <div class="grid-2">
-      <article class="card lift reveal"><h3>Educational Technology</h3><p>Using new technologies to improve learning experiences, instructional design, and educational outcomes.</p></article>
-      <article class="card lift reveal" style="--d:70ms"><h3>Artificial Intelligence</h3><p>Machine learning and related methods applied to complex problems.</p></article>
-      <article class="card lift reveal" style="--d:120ms"><h3>Creativity and Design Thinking</h3><p>Design thinking and creative problem-solving in education and technology development.</p></article>
-      <article class="card lift reveal" style="--d:170ms"><h3>AI in Education</h3><p>How AI can personalize learning and support tutoring and inquiry-based classrooms.</p></article>
+      <article class="card lift reveal"><div class="head-row">{chip(ICON_MONITOR)}<div><h3>Educational Technology</h3><p>Using new technologies to improve learning experiences, instructional design, and educational outcomes.</p></div></div></article>
+      <article class="card lift reveal" style="--d:70ms"><div class="head-row">{chip(ICON_CPU)}<div><h3>Artificial Intelligence</h3><p>Machine learning and related methods applied to complex problems.</p></div></div></article>
+      <article class="card lift reveal" style="--d:120ms"><div class="head-row">{chip(ICON_PENCIL)}<div><h3>Creativity and Design Thinking</h3><p>Design thinking and creative problem-solving in education and technology development.</p></div></div></article>
+      <article class="card lift reveal" style="--d:170ms"><div class="head-row">{chip(ICON_BULB)}<div><h3>AI in Education</h3><p>How AI can personalize learning and support tutoring and inquiry-based classrooms.</p></div></div></article>
     </div>
   </div>
 </section>
@@ -229,14 +260,14 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
 </section>
 """)
 
-about = page("About · Hua-Xu Zhong", "about", """
+about = page("About · Hua-Xu Zhong", "about", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Statement</p><h1>About</h1><p>Academic journey and vision</p></div>
     <div class="about-card reveal">
       <img src="IMG/2.jpg" alt="Hua-Xu Zhong" />
       <div class="about-copy">
-        <h2>Personal academic statement</h2>
+        <h2 class="with-ico">{ico(ICON_USER)}Personal academic statement</h2>
         <p>Hua-Xu Zhong works at the meeting point of technology, education, and practical artificial intelligence. He studies what actually happens when educational technologies and AI systems are put into use.</p>
         <p>His academic path began with an interdisciplinary undergraduate program. He came in hoping that mixed knowledge and technical integration could address real educational problems. The training widened his view, but it did not fully prepare him for the practical demands of the field. Even with a solid grasp of instructional theory and media design, he kept meeting a gap between theory and problem-solving. He tried programming as a career path, then found that his technical limits made it hard to go deeper. What stayed with him was simpler: knowledge and tools are not enough. You have to see the problem clearly, then turn theory into something you can actually do.</p>
         <p>During his master's studies, Hua-Xu returned to a core question: Can education actually solve real problems? Courses on information literacy and media education showed him that education is not only about transmitting knowledge. It is about comprehension and changing how people think. Through work on innovation, change, and management, he encountered design thinking, which gave him a way to put creativity and technology into educational settings. That shift did not come from abstract ideals. It came from what he saw in real learning environments, where technology's accelerating effect was hard to miss. He saw how innovation and digital tools could open new opportunities for learners.</p>
@@ -278,7 +309,7 @@ for p in featured:
   <p class="authors">{authors_html(p["authors"])}</p>
   <p class="source">{escape(p["source"])}</p>
   {doi_line}
-  <p class="meta-links"><button class="text-link" type="button" {featured_attrs(p)}>View figure</button></p>
+  <p class="meta-links"><button class="text-link" type="button" {featured_attrs(p)}>{ico(ICON_PHOTO)}View figure</button></p>
 </article>''')
 
 proj_html = "\n".join(
@@ -299,26 +330,26 @@ research = page("Research · Hua-Xu Zhong", "research", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Output</p><h1>Research</h1><p>Publications and projects in educational technology, AI learning platforms, and design-based instruction.</p></div>
-    <h2 class="block-title reveal">Publications</h2>
+    {titled("h2", "Publications", ICON_BOOK)}
     <div class="filters reveal" data-filter-group>
       <button class="chip is-on" type="button" data-filter="all">All ({len(pubs)})</button>
       <button class="chip" type="button" data-filter="Journal">Journal ({j_count})</button>
       <button class="chip" type="button" data-filter="Conference">Conference ({c_count})</button>
     </div>
     {''.join(year_html)}
-    <h2 class="block-title reveal" style="margin-top:2.4rem">Featured papers</h2>
+    {titled("h2", "Featured papers", ICON_SPARK, "block-title reveal spaced")}
     <div class="featured-grid">{''.join(feat_html)}</div>
-    <h2 class="block-title reveal" style="margin-top:2.6rem">Research projects</h2>
+    {titled("h2", "Research projects", ICON_CASE, "block-title reveal spaced")}
     <h3 class="subhead reveal">Completed</h3>
     <div class="proj-list">{proj_html}</div>
-    <div class="dashed reveal" style="margin-top:1.2rem"><strong>No ongoing projects listed</strong><p class="when">When a new grant starts, it will appear here.</p></div>
+    <div class="dashed empty reveal" style="margin-top:1.2rem">{chip(ICON_CASE)}<div><strong>No ongoing projects listed</strong><p class="when">When a new grant starts, it will appear here.</p></div></div>
   </div>
 </section>
-""", extra="""
+""", extra=f"""
 <div class="modal" id="featured-modal" role="dialog" aria-modal="true">
   <div class="modal-backdrop" data-close></div>
   <div class="modal-panel">
-    <button class="modal-close" type="button" data-close aria-label="Close">×</button>
+    <button class="modal-close" type="button" data-close aria-label="Close">{ICON_X}</button>
     <p class="eyebrow" style="color:var(--accent)">Featured paper</p>
     <h3 data-modal-title></h3>
     <p class="authors" data-modal-authors></p>
@@ -330,29 +361,29 @@ research = page("Research · Hua-Xu Zhong", "research", f"""
 </div>
 """)
 
-teaching = page("Teaching · Hua-Xu Zhong", "teaching", """
+teaching = page("Teaching · Hua-Xu Zhong", "teaching", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Classroom</p><h1>Teaching &amp; practice</h1><p>Inquiry, creativity, and careful use of AI.</p></div>
     <article class="card philosophy reveal">
-      <h2>Teaching philosophy</h2>
+      <h2 class="with-ico">{ico(ICON_BULB)}Teaching philosophy</h2>
       <p>I believe education is not the transfer of information. It is the transformation of the learner.</p>
       <p>I treat students as people who can inquire, create, and reflect, not as empty vessels. My job is to design spaces where they ask real questions, work on real problems, and get used to ambiguity. I draw on constructivist learning: students build knowledge through experience, collaboration, and experiment.</p>
       <p>I emphasize creative problem-solving over rote answers, because I see education as preparation for complexity, not certainty. Failure is not something to avoid. It is how growth happens. Design thinking, open-ended inquiry, and playful exploration are how I help students work on problems that do not have clear answers.</p>
       <p>Students also hit barriers, cognitive, emotional, or situational. When human support runs out, I use large language models for personalized learning. They extend access to feedback, ideas, and scaffolding so students can keep going. For me, LLMs do not replace human teaching. They are a support system between the learner and what they might do next.</p>
       <p>I teach because I believe education can be a form of liberation. It should help people imagine and build better worlds, not only adapt to the one they have.</p>
     </article>
-    <h2 class="block-title reveal" style="margin-top:2rem">Courses taught</h2>
-    <div class="dashed reveal"><strong>Course list in preparation</strong><p class="when">Syllabi and semester offerings will live here when teaching appointments are listed.</p></div>
+    {titled("h2", "Courses taught", ICON_CAP, "block-title reveal spaced")}
+    <div class="dashed empty reveal">{chip(ICON_CAP)}<div><strong>Course list in preparation</strong><p class="when">Syllabi and semester offerings will live here when teaching appointments are listed.</p></div></div>
   </div>
 </section>
 """)
 
-activities = page("Activities · Hua-Xu Zhong", "activities", """
+activities = page("Activities · Hua-Xu Zhong", "activities", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>A photo archive and a running record of talks. Captions and venues will be attached as they are confirmed.</p></div>
-    <h2 class="block-title reveal">Gallery</h2>
+    {titled("h2", "Gallery", ICON_CAMERA)}
     <p class="when reveal" style="margin:-0.4rem 0 1rem">Photographs from conferences and workshops. Select a photo to view it larger.</p>
     <div class="gallery">
       <figure class="shot reveal">
@@ -362,16 +393,16 @@ activities = page("Activities · Hua-Xu Zhong", "activities", """
         <figcaption><strong>Caption forthcoming</strong><p class="when">Conference / workshop photograph</p></figcaption>
       </figure>
     </div>
-    <h2 class="block-title reveal" style="margin-top:2.4rem">Talks and visits</h2>
+    {titled("h2", "Talks and visits", ICON_CHAT, "block-title reveal spaced")}
     <p class="when reveal">Invited talks, presentations, workshops, and conference attendance. They will appear as a CV timeline when records are added.</p>
-    <div class="dashed reveal" style="margin-top:1rem"><strong>No talks listed yet</strong><p class="when">This page will not invent events. When you add a title, venue, and date, they will appear here as a single timeline.</p></div>
+    <div class="dashed empty reveal" style="margin-top:1rem">{chip(ICON_CHAT)}<div><strong>No talks listed yet</strong><p class="when">This page will not invent events. When you add a title, venue, and date, they will appear here as a single timeline.</p></div></div>
   </div>
 </section>
-""", extra="""
+""", extra=f"""
 <div class="modal" id="lightbox">
   <div class="modal-backdrop" data-close></div>
   <div class="modal-panel" style="padding:0;overflow:hidden">
-    <button class="modal-close" type="button" data-close aria-label="Close" style="color:#fff;background:rgba(16,27,57,.75);border-radius:999px">×</button>
+    <button class="modal-close on-photo" type="button" data-close aria-label="Close">{ICON_X}</button>
     <img alt="" />
     <p style="padding:0.8rem 1rem 1rem"></p>
   </div>
@@ -394,7 +425,7 @@ service = page("Service · Hua-Xu Zhong", "service", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic service</h1><p>Reviewing and other contributions to the field.</p></div>
-    <h2 class="block-title reveal">Journal &amp; conference reviewing</h2>
+    {titled("h2", "Journal & conference reviewing", ICON_USERS)}
     <article class="card reveal"><ul class="review-list">{''.join(f'<li>{escape(j)}</li>' for j in journals)}</ul></article>
   </div>
 </section>
@@ -427,7 +458,7 @@ for cat, subs in link_groups:
         if sub:
             inner.append(f'<h3 class="subhead">{escape(sub)}</h3>')
         cards = "".join(
-            f'<a class="card lift" href="{escape(u)}" target="_blank" rel="noopener"><h3>{escape(n)}</h3><span>Open</span></a>'
+            f'<a class="card lift" href="{escape(u)}" target="_blank" rel="noopener"><h3>{escape(n)}</h3>{ico(ICON_OUT)}</a>'
             for n, u in items
         )
         inner.append(f'<div class="link-grid">{cards}</div>')
