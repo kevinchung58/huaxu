@@ -631,26 +631,91 @@ main {
   text-align: center;
 }
 
-/* Gallery */
-.gallery { display: grid; gap: 1rem; }
-@media (min-width: 640px) { .gallery { grid-template-columns: 1fr 1fr; } }
-.shot {
-  margin: 0;
+/* Gallery / slideshow */
+.deck {
   background: #fff;
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: var(--shadow);
   border: 1px solid #eef0f3;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
 }
-.shot button { display: block; width: 100%; }
-.shot img {
+.deck-stage {
+  position: relative;
+  background: #0d1428;
+}
+.deck-slide {
+  display: none;
+  margin: 0;
+}
+.deck-slide.is-on { display: block; }
+.deck-slide button { display: block; width: 100%; }
+.deck-slide img {
   width: 100%;
   aspect-ratio: 16/10;
   object-fit: cover;
-  transition: transform 320ms var(--ease);
 }
-.shot:hover img { transform: scale(1.03); }
-.shot figcaption { padding: 0.8rem 1rem 1rem; }
+.deck-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  background: rgba(16,27,57,0.72);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.deck-btn svg { width: 1.2rem; height: 1.2rem; }
+.deck-btn.prev { left: 0.7rem; }
+.deck-btn.next { right: 0.7rem; }
+.deck-btn.on-photo { z-index: 2; }
+.deck-count {
+  position: absolute;
+  right: 0.8rem;
+  bottom: 0.7rem;
+  margin: 0;
+  color: #fff;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+.deck-cap { padding: 0.85rem 1rem 1rem; color: #334155; }
+.deck-dots {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  padding: 0 1rem 1rem;
+}
+.deck-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #d1d5db;
+}
+.deck-dot.is-on { background: var(--navy); }
+.modal-panel.lamp {
+  width: min(56rem, 100%);
+  padding: 0;
+  overflow: hidden;
+  background: #0d1428;
+}
+.modal-panel.lamp img {
+  width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+  background: #0d1428;
+}
+.lamp-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1rem 1rem;
+  color: #e2e8f0;
+}
+.lamp-meta .deck-count { position: static; color: #94a3b8; }
+.modal-panel.lamp .deck-btn[hidden],
+.lamp-meta .deck-count[hidden] { display: none; }
 .dashed {
   border: 1px solid #eef0f3;
   border-radius: var(--radius);

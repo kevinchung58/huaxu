@@ -1,6 +1,6 @@
-# Hua-Xu Zhong — Academic Portfolio
+# Hua-Xu Zhong
 
-Static HTML site. No build step.
+Static academic site. No build step.
 
 Live: https://kevinchung58.github.io/huaxu
 
@@ -14,10 +14,8 @@ Then visit `http://localhost:8080`.
 
 ## GitHub Pages
 
-In the repository settings, set Pages to deploy from the branch root (`/`).  
-Do **not** run `npm run build` or `gh-pages`. The HTML files at the repo root are the site.
-
-`.nojekyll` is included so GitHub Pages does not process the files.
+Set Pages to deploy from the branch root (`/`).  
+Do not run `npm run build`. The HTML files at the repo root are the site.
 
 ## Pages
 
@@ -26,7 +24,9 @@ Do **not** run `npm run build` or `gh-pages`. The HTML files at the repo root ar
 - `research.html` — Publications, featured papers, projects
 - `teaching.html` — Teaching philosophy
 - `activities.html` — Gallery and talks
-- `service.html` — Reviewing
+- `service.html` — Editorial roles and reviewing
 - `links.html` — Resources (under More)
 
 Shared assets: `css/site.css`, `js/site.js`, `IMG/`.
+
+To add gallery photographs later, append entries to `GALLERY` in `_gen_html.py` and run `python3 _gen_html.py`.

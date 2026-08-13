@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260813b"
+CSS = "css/site.css?v=20260813c"
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -31,6 +31,8 @@ ICON_MONITOR = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9 1
 ICON_PHOTO = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />')
 ICON_X = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />')
 ICON_CHAT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />')
+ICON_LEFT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />')
+ICON_RIGHT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />')
 
 def chip(icon: str) -> str:
     return f'<span class="icon-chip" aria-hidden="true">{icon}</span>'
@@ -379,19 +381,46 @@ teaching = page("Teaching · Hua-Xu Zhong", "teaching", f"""
 </section>
 """)
 
+# Add photos here later: (src, alt, caption). Multiple items become a slideshow.
+GALLERY = [
+    ("IMG/3.jpg", "Academic activity", "Caption forthcoming"),
+]
+gallery_many = len(GALLERY) > 1
+gallery_slides = []
+gallery_dots = []
+for i, (src, alt, cap) in enumerate(GALLERY):
+    on = " is-on" if i == 0 else ""
+    gallery_slides.append(
+        f'<figure class="deck-slide{on}" data-slide="{i}">'
+        f'<button type="button" data-lightbox data-index="{i}" data-src="{escape(src)}" data-alt="{escape(alt)}" data-caption="{escape(cap)}">'
+        f'<img src="{escape(src)}" alt="{escape(alt)}" /></button></figure>'
+    )
+    gallery_dots.append(f'<button type="button" class="deck-dot{on}" data-go="{i}" aria-label="Photo {i + 1}"></button>')
+gallery_nav = ""
+if gallery_many:
+    gallery_nav = f'''<button class="deck-btn prev" type="button" data-deck-prev aria-label="Previous photo">{ICON_LEFT}</button>
+    <button class="deck-btn next" type="button" data-deck-next aria-label="Next photo">{ICON_RIGHT}</button>
+    <p class="deck-count"><span data-deck-n>1</span> / {len(GALLERY)}</p>'''
+gallery_dots_html = f'<div class="deck-dots">{"".join(gallery_dots)}</div>' if gallery_many else ""
+gallery_note = (
+    "When more photographs are added, they play as a slideshow. Select a photo to view it larger."
+    if not gallery_many
+    else "Use the arrows or select a photo to view it larger."
+)
+
 activities = page("Activities · Hua-Xu Zhong", "activities", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>A photo archive and a running record of talks. Captions and venues will be attached as they are confirmed.</p></div>
     {titled("h2", "Gallery", ICON_CAMERA)}
-    <p class="when reveal" style="margin:-0.4rem 0 1rem">Photographs from conferences and workshops. Select a photo to view it larger.</p>
-    <div class="gallery">
-      <figure class="shot reveal">
-        <button type="button" data-lightbox data-src="IMG/3.jpg" data-alt="Academic activity" data-caption="Caption forthcoming">
-          <img src="IMG/3.jpg" alt="Academic activity" />
-        </button>
-        <figcaption><strong>Caption forthcoming</strong><p class="when">Conference / workshop photograph</p></figcaption>
-      </figure>
+    <p class="when reveal" style="margin:-0.4rem 0 1rem">{gallery_note}</p>
+    <div class="deck reveal" data-deck>
+      <div class="deck-stage">
+        {''.join(gallery_slides)}
+        {gallery_nav}
+      </div>
+      <p class="deck-cap" data-deck-cap>{escape(GALLERY[0][2])}</p>
+      {gallery_dots_html}
     </div>
     {titled("h2", "Talks and visits", ICON_CHAT, "block-title reveal spaced")}
     <p class="when reveal">Invited talks, presentations, workshops, and conference attendance. They will appear as a CV timeline when records are added.</p>
@@ -401,10 +430,15 @@ activities = page("Activities · Hua-Xu Zhong", "activities", f"""
 """, extra=f"""
 <div class="modal" id="lightbox">
   <div class="modal-backdrop" data-close></div>
-  <div class="modal-panel" style="padding:0;overflow:hidden">
+  <div class="modal-panel lamp">
     <button class="modal-close on-photo" type="button" data-close aria-label="Close">{ICON_X}</button>
+    <button class="deck-btn prev on-photo" type="button" data-lamp-prev aria-label="Previous photo">{ICON_LEFT}</button>
+    <button class="deck-btn next on-photo" type="button" data-lamp-next aria-label="Next photo">{ICON_RIGHT}</button>
     <img alt="" />
-    <p style="padding:0.8rem 1rem 1rem"></p>
+    <div class="lamp-meta">
+      <p data-lamp-cap></p>
+      <p class="deck-count" data-lamp-count></p>
+    </div>
   </div>
 </div>
 """)
@@ -429,9 +463,6 @@ service = page("Service · Hua-Xu Zhong", "service", f"""
     <article class="card reveal">
       <h3>Consulting Editor</h3>
       <p>Educational Technology Research and Development (ETR&amp;D)</p>
-      <p class="when">Springer / Association for Educational Communications and Technology (AECT)</p>
-      <p class="when">Listed affiliation: National Cheng Kung University, Tainan City, Taiwan</p>
-      <p class="meta-links"><a href="https://link.springer.com/journal/11423/editorial-board" target="_blank" rel="noopener">{ico(ICON_OUT)}Official board listing</a></p>
     </article>
     {titled("h2", "Journal & conference reviewing", ICON_USERS, "block-title reveal spaced")}
     <article class="card reveal"><ul class="review-list">{''.join(f'<li>{escape(j)}</li>' for j in journals)}</ul></article>

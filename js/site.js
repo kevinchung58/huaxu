@@ -105,26 +105,82 @@
     });
   }
 
-  const lightbox = document.querySelector("#lightbox");
-  if (lightbox) {
-    const img = lightbox.querySelector("img");
-    const cap = lightbox.querySelector("p");
-    document.querySelectorAll("[data-lightbox]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        img.src = btn.dataset.src;
-        img.alt = btn.dataset.alt || "";
-        cap.textContent = btn.dataset.caption || btn.dataset.alt || "";
-        lightbox.classList.add("is-open");
-        document.body.style.overflow = "hidden";
-      });
+  const slides = [...document.querySelectorAll("[data-lightbox]")];
+  let slideIndex = 0;
+
+  const showDeck = (index) => {
+    if (!slides.length) return;
+    slideIndex = (index + slides.length) % slides.length;
+    const current = slides[slideIndex];
+    document.querySelectorAll("[data-slide]").forEach((el) => {
+      el.classList.toggle("is-on", Number(el.dataset.slide) === slideIndex);
     });
+    document.querySelectorAll("[data-go]").forEach((el) => {
+      el.classList.toggle("is-on", Number(el.dataset.go) === slideIndex);
+    });
+    const cap = document.querySelector("[data-deck-cap]");
+    const num = document.querySelector("[data-deck-n]");
+    if (cap) cap.textContent = current.dataset.caption || current.dataset.alt || "";
+    if (num) num.textContent = String(slideIndex + 1);
+  };
+
+  document.querySelector("[data-deck-prev]")?.addEventListener("click", () => showDeck(slideIndex - 1));
+  document.querySelector("[data-deck-next]")?.addEventListener("click", () => showDeck(slideIndex + 1));
+  document.querySelectorAll("[data-go]").forEach((btn) => {
+    btn.addEventListener("click", () => showDeck(Number(btn.dataset.go)));
+  });
+
+  const lightbox = document.querySelector("#lightbox");
+  if (lightbox && slides.length) {
+    const img = lightbox.querySelector("img");
+    const cap = lightbox.querySelector("[data-lamp-cap]");
+    const count = lightbox.querySelector("[data-lamp-count]");
+    const prev = lightbox.querySelector("[data-lamp-prev]");
+    const next = lightbox.querySelector("[data-lamp-next]");
+    const many = slides.length > 1;
+    if (prev) prev.hidden = !many;
+    if (next) next.hidden = !many;
+    if (count) count.hidden = !many;
+
+    const paint = () => {
+      const current = slides[slideIndex];
+      img.src = current.dataset.src;
+      img.alt = current.dataset.alt || "";
+      if (cap) cap.textContent = current.dataset.caption || current.dataset.alt || "";
+      if (count) count.textContent = `${slideIndex + 1} / ${slides.length}`;
+      showDeck(slideIndex);
+    };
+    const open = (index) => {
+      showDeck(index);
+      paint();
+      lightbox.classList.add("is-open");
+      document.body.style.overflow = "hidden";
+    };
     const close = () => {
       lightbox.classList.remove("is-open");
       document.body.style.overflow = "";
     };
+    slides.forEach((btn, index) => btn.addEventListener("click", () => open(index)));
+    prev?.addEventListener("click", () => {
+      showDeck(slideIndex - 1);
+      paint();
+    });
+    next?.addEventListener("click", () => {
+      showDeck(slideIndex + 1);
+      paint();
+    });
     lightbox.querySelectorAll("[data-close]").forEach((el) => el.addEventListener("click", close));
     document.addEventListener("keydown", (event) => {
+      if (!lightbox.classList.contains("is-open")) return;
       if (event.key === "Escape") close();
+      if (many && event.key === "ArrowLeft") {
+        showDeck(slideIndex - 1);
+        paint();
+      }
+      if (many && event.key === "ArrowRight") {
+        showDeck(slideIndex + 1);
+        paint();
+      }
     });
   }
 })();
