@@ -424,8 +424,16 @@ journals = [
 service = page("Service · Hua-Xu Zhong", "service", f"""
 <section class="section">
   <div class="wrap">
-    <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic service</h1><p>Reviewing and other contributions to the field.</p></div>
-    {titled("h2", "Journal & conference reviewing", ICON_USERS)}
+    <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic service</h1><p>Editorial work, reviewing, and other contributions to the field.</p></div>
+    {titled("h2", "Editorial roles", ICON_BOOK)}
+    <article class="card reveal">
+      <h3>Consulting Editor</h3>
+      <p>Educational Technology Research and Development (ETR&amp;D)</p>
+      <p class="when">Springer / Association for Educational Communications and Technology (AECT)</p>
+      <p class="when">Listed affiliation: National Cheng Kung University, Tainan City, Taiwan</p>
+      <p class="meta-links"><a href="https://link.springer.com/journal/11423/editorial-board" target="_blank" rel="noopener">{ico(ICON_OUT)}Official board listing</a></p>
+    </article>
+    {titled("h2", "Journal & conference reviewing", ICON_USERS, "block-title reveal spaced")}
     <article class="card reveal"><ul class="review-list">{''.join(f'<li>{escape(j)}</li>' for j in journals)}</ul></article>
   </div>
 </section>
