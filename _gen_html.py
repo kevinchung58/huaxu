@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260822c"
+CSS = "css/site.css?v=20260822d"
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -53,7 +53,7 @@ def nav(active: str) -> str:
     return f"""<a class="skip" href="#main">Skip to main content</a>
 <header class="nav">
   <div class="wrap nav-inner">
-    <a class="brand" href="index.html"><strong>Hua-Xu Zhong</strong><small>PhD</small></a>
+    <a class="brand" href="index.html"><img class="brand-mark" src="IMG/mascot-icon.png" alt="" width="40" height="40" /><span class="brand-text"><strong>Hua-Xu Zhong</strong><small>PhD</small></span></a>
     <nav class="nav-links" aria-label="Primary">
       {a("index.html", "Home", "home")}
       {a("about.html", "About", "about")}
@@ -98,7 +98,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v=20260822c"></script>"""
+<script src="js/site.js?v=20260822d"></script>"""
 
 
 def page(title: str, active: str, body: str, extra: str = "") -> str:
@@ -209,7 +209,7 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
       <img class="portrait" src="IMG/1.jpg" alt="Hua-Xu Zhong professional portrait" width="288" height="288" />
       <div class="hero-copy reveal">
         <p class="eyebrow">Educational technology · AI · design thinking</p>
-        <h1>Hua-Xu Zhong<img class="mini-mascot" src="IMG/mascot-icon.png" alt="" width="64" height="64" /><span>鍾華栩 · PhD</span></h1>
+        <h1>Hua-Xu Zhong<span>鍾華栩 · PhD</span></h1>
         <p class="role">Researcher in Educational Technology &amp; AI</p>
         <p class="lede">I work where technology, education, and practical AI meet. Recent projects look at LLM-powered learning systems, from GAI concept-map generation to tools that support creativity, so students can inquire rather than only adapt.</p>
         <div class="actions">

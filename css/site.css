@@ -114,7 +114,18 @@ body::-webkit-scrollbar-thumb { background: var(--navy-soft); border-radius: 999
   justify-content: space-between;
   height: var(--nav-h);
 }
-.brand { text-decoration: none; color: #fff; line-height: 1.2; }
+.brand { text-decoration: none; color: #fff; line-height: 1.2; display: flex; align-items: center; gap: 0.62rem; }
+.brand-mark {
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(226, 164, 92, 0.45);
+  transition: transform 240ms var(--ease);
+}
+.brand:hover .brand-mark { transform: rotate(-8deg) scale(1.1); }
+.brand-text { display: block; }
 .brand strong { display: block; font-family: var(--display); font-weight: 600; font-size: 1.12rem; letter-spacing: 0.005em; }
 .brand small { color: var(--accent-bright); font-family: var(--sans); font-size: 10px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; }
 .nav-links { display: none; align-items: center; gap: 0.15rem; }
@@ -1006,20 +1017,6 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
 }
 .persona:hover .persona-hint,
 .persona.is-alt .persona-hint { opacity: 0; }
-
-/* Mini mascot beside the hero name */
-.hero h1 .mini-mascot {
-  display: inline-block;
-  width: 0.68em;
-  height: 0.68em;
-  border-radius: 50%;
-  overflow: hidden;
-  vertical-align: -0.06em;
-  margin-left: 0.24em;
-  box-shadow: 0 0 0 2px rgba(226, 164, 92, 0.5);
-  transition: transform 240ms var(--ease);
-}
-.hero h1 .mini-mascot:hover { transform: rotate(-8deg) scale(1.15); }
 
 /* ============ Motion ============ */
 .reveal {
