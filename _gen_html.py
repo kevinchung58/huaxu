@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260813c"
+CSS = "css/site.css?v=20260822a"
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
