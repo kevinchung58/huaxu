@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260822d"
+CSS = "css/site.css?v=20260822e"
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -98,7 +98,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v=20260822d"></script>"""
+<script src="js/site.js?v=20260822e"></script>"""
 
 
 def page(title: str, active: str, body: str, extra: str = "") -> str:
@@ -270,13 +270,15 @@ about = page("About · Hua-Xu Zhong", "about", f"""
     <div class="section-head reveal"><p class="eyebrow">Statement</p><h1>About</h1><p>Academic journey and vision</p></div>
     <div class="about-card reveal">
       <div class="persona" role="button" tabindex="0" aria-label="Toggle illustrated portrait">
-        <img src="IMG/2.jpg" alt="Hua-Xu Zhong" />
-        <span class="persona-alt" aria-hidden="true">
-          <img src="IMG/mascot-final.png" alt="" loading="lazy" />
-          <img class="pf pf-blink" src="IMG/mascot-blink.png" alt="" loading="lazy" />
-          <img class="pf pf-laugh" src="IMG/mascot-laugh.png" alt="" loading="lazy" />
+        <span class="persona-frame">
+          <img src="IMG/2.jpg" alt="Hua-Xu Zhong" />
+          <span class="persona-alt" aria-hidden="true">
+            <img src="IMG/mascot-final.png" alt="" loading="lazy" />
+            <img class="pf pf-blink" src="IMG/mascot-blink.png" alt="" loading="lazy" />
+            <img class="pf pf-laugh" src="IMG/mascot-laugh.png" alt="" loading="lazy" />
+          </span>
+          <span class="persona-hint" aria-hidden="true">Hover me</span>
         </span>
-        <span class="persona-hint" aria-hidden="true">Hover me</span>
       </div>
       <div class="about-copy">
         <h2 class="with-ico">{ico(ICON_USER)}Personal academic statement</h2>
