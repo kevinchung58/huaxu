@@ -61,9 +61,17 @@
         chips.forEach((c) => c.classList.remove("is-on"));
         chip.classList.add("is-on");
         const key = chip.getAttribute("data-filter");
+        let shown = 0;
         items.forEach((item) => {
           const show = key === "all" || item.getAttribute("data-pub-type") === key;
           item.hidden = !show;
+          item.classList.remove("pub-flash");
+          if (show) {
+            void item.offsetWidth;
+            item.style.setProperty("--fd", `${Math.min(shown, 8) * 40}ms`);
+            item.classList.add("pub-flash");
+            shown += 1;
+          }
         });
         years.forEach((block) => {
           const visible = [...block.querySelectorAll("[data-pub-type]")].some((el) => !el.hidden);

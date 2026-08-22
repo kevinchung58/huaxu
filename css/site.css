@@ -769,7 +769,7 @@ main {
   display: none;
   margin: 0;
 }
-.deck-slide.is-on { display: block; }
+.deck-slide.is-on { display: block; animation: fade 420ms var(--ease); }
 .deck-slide button { display: block; width: 100%; }
 .deck-slide img {
   width: 100%;
@@ -943,7 +943,7 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   transition: transform 180ms var(--ease), background 180ms var(--ease);
 }
 .to-top svg { width: 1.15rem; height: 1.15rem; }
-.to-top.is-on { display: inline-flex; }
+.to-top.is-on { display: inline-flex; animation: pop 240ms var(--ease); }
 .to-top:hover { transform: translateY(-3px); background: var(--accent-soft); }
 
 /* ============ Motion ============ */
@@ -954,6 +954,12 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   transition-delay: var(--d, 0ms);
 }
 .reveal.is-in { opacity: 1; transform: none; }
+
+/* Filter feedback: publications re-enter with a slight stagger */
+.pub-flash {
+  animation: rise-in 340ms var(--ease) backwards;
+  animation-delay: var(--fd, 0ms);
+}
 
 /* Hero copy is orchestrated by rise-in; don't double-animate it */
 .hero .reveal { opacity: 1; transform: none; transition: none; }

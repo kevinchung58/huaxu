@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260822a"
+CSS = "css/site.css?v=20260822b"
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -98,7 +98,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js"></script>"""
+<script src="js/site.js?v=20260822b"></script>"""
 
 
 def page(title: str, active: str, body: str, extra: str = "") -> str:
