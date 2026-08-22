@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260813c"
+CSS = "css/site.css?v=20260822e"
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -53,7 +53,7 @@ def nav(active: str) -> str:
     return f"""<a class="skip" href="#main">Skip to main content</a>
 <header class="nav">
   <div class="wrap nav-inner">
-    <a class="brand" href="index.html"><strong>Hua-Xu Zhong</strong><small>PhD</small></a>
+    <a class="brand" href="index.html"><img class="brand-mark" src="IMG/mascot-icon.png" alt="" width="40" height="40" /><span class="brand-text"><strong>Hua-Xu Zhong</strong><small>PhD</small></span></a>
     <nav class="nav-links" aria-label="Primary">
       {a("index.html", "Home", "home")}
       {a("about.html", "About", "about")}
@@ -98,7 +98,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js"></script>"""
+<script src="js/site.js?v=20260822e"></script>"""
 
 
 def page(title: str, active: str, body: str, extra: str = "") -> str:
@@ -109,6 +109,8 @@ def page(title: str, active: str, body: str, extra: str = "") -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking." />
   <title>{escape(title)}</title>
+  <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
+  <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
   <link rel="stylesheet" href="{CSS}" />
 </head>
 <body>
@@ -267,7 +269,17 @@ about = page("About · Hua-Xu Zhong", "about", f"""
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Statement</p><h1>About</h1><p>Academic journey and vision</p></div>
     <div class="about-card reveal">
-      <img src="IMG/2.jpg" alt="Hua-Xu Zhong" />
+      <div class="persona" role="button" tabindex="0" aria-label="Toggle illustrated portrait">
+        <span class="persona-frame">
+          <img src="IMG/2.jpg" alt="Hua-Xu Zhong" />
+          <span class="persona-alt" aria-hidden="true">
+            <img src="IMG/mascot-final.png" alt="" loading="lazy" />
+            <img class="pf pf-blink" src="IMG/mascot-blink.png" alt="" loading="lazy" />
+            <img class="pf pf-laugh" src="IMG/mascot-laugh.png" alt="" loading="lazy" />
+          </span>
+          <span class="persona-hint" aria-hidden="true">Hover me</span>
+        </span>
+      </div>
       <div class="about-copy">
         <h2 class="with-ico">{ico(ICON_USER)}Personal academic statement</h2>
         <p>Hua-Xu Zhong works at the meeting point of technology, education, and practical artificial intelligence. He studies what actually happens when educational technologies and AI systems are put into use.</p>

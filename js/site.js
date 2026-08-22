@@ -52,6 +52,17 @@
     document.querySelectorAll(".reveal").forEach((el) => el.classList.add("is-in"));
   }
 
+  document.querySelectorAll(".persona").forEach((p) => {
+    const toggle = () => p.classList.toggle("is-alt");
+    p.addEventListener("click", toggle);
+    p.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggle();
+      }
+    });
+  });
+
   document.querySelectorAll("[data-filter-group]").forEach((group) => {
     const chips = group.querySelectorAll("[data-filter]");
     const items = document.querySelectorAll("[data-pub-type]");
@@ -61,9 +72,17 @@
         chips.forEach((c) => c.classList.remove("is-on"));
         chip.classList.add("is-on");
         const key = chip.getAttribute("data-filter");
+        let shown = 0;
         items.forEach((item) => {
           const show = key === "all" || item.getAttribute("data-pub-type") === key;
           item.hidden = !show;
+          item.classList.remove("pub-flash");
+          if (show) {
+            void item.offsetWidth;
+            item.style.setProperty("--fd", `${Math.min(shown, 8) * 40}ms`);
+            item.classList.add("pub-flash");
+            shown += 1;
+          }
         });
         years.forEach((block) => {
           const visible = [...block.querySelectorAll("[data-pub-type]")].some((el) => !el.hidden);
