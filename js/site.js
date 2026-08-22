@@ -52,6 +52,17 @@
     document.querySelectorAll(".reveal").forEach((el) => el.classList.add("is-in"));
   }
 
+  document.querySelectorAll(".persona").forEach((p) => {
+    const toggle = () => p.classList.toggle("is-alt");
+    p.addEventListener("click", toggle);
+    p.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggle();
+      }
+    });
+  });
+
   document.querySelectorAll("[data-filter-group]").forEach((group) => {
     const chips = group.querySelectorAll("[data-filter]");
     const items = document.querySelectorAll("[data-pub-type]");

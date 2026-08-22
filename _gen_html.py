@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260822b"
+CSS = "css/site.css?v=20260822c"
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -98,7 +98,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v=20260822b"></script>"""
+<script src="js/site.js?v=20260822c"></script>"""
 
 
 def page(title: str, active: str, body: str, extra: str = "") -> str:
@@ -109,6 +109,8 @@ def page(title: str, active: str, body: str, extra: str = "") -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking." />
   <title>{escape(title)}</title>
+  <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
+  <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
   <link rel="stylesheet" href="{CSS}" />
 </head>
 <body>
@@ -207,7 +209,7 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
       <img class="portrait" src="IMG/1.jpg" alt="Hua-Xu Zhong professional portrait" width="288" height="288" />
       <div class="hero-copy reveal">
         <p class="eyebrow">Educational technology · AI · design thinking</p>
-        <h1>Hua-Xu Zhong<span>鍾華栩 · PhD</span></h1>
+        <h1>Hua-Xu Zhong<img class="mini-mascot" src="IMG/mascot-icon.png" alt="" width="64" height="64" /><span>鍾華栩 · PhD</span></h1>
         <p class="role">Researcher in Educational Technology &amp; AI</p>
         <p class="lede">I work where technology, education, and practical AI meet. Recent projects look at LLM-powered learning systems, from GAI concept-map generation to tools that support creativity, so students can inquire rather than only adapt.</p>
         <div class="actions">
@@ -267,7 +269,15 @@ about = page("About · Hua-Xu Zhong", "about", f"""
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Statement</p><h1>About</h1><p>Academic journey and vision</p></div>
     <div class="about-card reveal">
-      <img src="IMG/2.jpg" alt="Hua-Xu Zhong" />
+      <div class="persona" role="button" tabindex="0" aria-label="Toggle illustrated portrait">
+        <img src="IMG/2.jpg" alt="Hua-Xu Zhong" />
+        <span class="persona-alt" aria-hidden="true">
+          <img src="IMG/mascot-final.png" alt="" loading="lazy" />
+          <img class="pf pf-blink" src="IMG/mascot-blink.png" alt="" loading="lazy" />
+          <img class="pf pf-laugh" src="IMG/mascot-laugh.png" alt="" loading="lazy" />
+        </span>
+        <span class="persona-hint" aria-hidden="true">Hover me</span>
+      </div>
       <div class="about-copy">
         <h2 class="with-ico">{ico(ICON_USER)}Personal academic statement</h2>
         <p>Hua-Xu Zhong works at the meeting point of technology, education, and practical artificial intelligence. He studies what actually happens when educational technologies and AI systems are put into use.</p>

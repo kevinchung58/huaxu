@@ -946,6 +946,81 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
 .to-top.is-on { display: inline-flex; animation: pop 240ms var(--ease); }
 .to-top:hover { transform: translateY(-3px); background: var(--accent-soft); }
 
+/* ============ Persona hover swap (About) ============ */
+.persona { position: relative; display: block; height: 100%; cursor: pointer; }
+.persona > img { width: 100%; height: 100%; min-height: 18rem; object-fit: cover; object-position: center top; }
+.persona-alt {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  opacity: 0;
+  transform: scale(1.03);
+  transition: opacity 420ms var(--ease), transform 420ms var(--ease);
+  pointer-events: none;
+}
+.persona-alt img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+  object-position: center;
+  padding: 0.8rem;
+}
+.persona:hover .persona-alt,
+.persona:focus-visible .persona-alt,
+.persona.is-alt .persona-alt { opacity: 1; transform: none; }
+.persona-alt .pf { opacity: 0; }
+.persona:hover .pf-blink,
+.persona:focus-visible .pf-blink,
+.persona.is-alt .pf-blink { animation: pf-blink 4.2s step-end infinite; }
+.persona:hover .pf-laugh,
+.persona:focus-visible .pf-laugh,
+.persona.is-alt .pf-laugh { animation: pf-laugh 4.2s step-end infinite; }
+@keyframes pf-blink {
+  0%, 44% { opacity: 0; }
+  46%, 52% { opacity: 1; }
+  54%, 100% { opacity: 0; }
+}
+@keyframes pf-laugh {
+  0%, 66% { opacity: 0; }
+  68%, 90% { opacity: 1; }
+  92%, 100% { opacity: 0; }
+}
+.persona-hint {
+  position: absolute;
+  left: 0.8rem;
+  bottom: 0.8rem;
+  z-index: 1;
+  font-family: var(--sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(10, 17, 40, 0.72);
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  transition: opacity 300ms var(--ease);
+}
+.persona:hover .persona-hint,
+.persona.is-alt .persona-hint { opacity: 0; }
+
+/* Mini mascot beside the hero name */
+.hero h1 .mini-mascot {
+  display: inline-block;
+  width: 0.68em;
+  height: 0.68em;
+  border-radius: 50%;
+  overflow: hidden;
+  vertical-align: -0.06em;
+  margin-left: 0.24em;
+  box-shadow: 0 0 0 2px rgba(226, 164, 92, 0.5);
+  transition: transform 240ms var(--ease);
+}
+.hero h1 .mini-mascot:hover { transform: rotate(-8deg) scale(1.15); }
+
 /* ============ Motion ============ */
 .reveal {
   opacity: 0;
