@@ -40,7 +40,14 @@ new work inside that world unless the user asks for a redesign.
 
 ## Skills
 
-Installed under `.claude/skills/`. Load the relevant `SKILL.md` before doing the matching kind of work.
+Installed under `.claude/skills/` — **local-only, gitignored** (not tracked in this repo).
+If missing, reinstall from the sources below, then load the relevant `SKILL.md` before doing the matching kind of work.
+
+Reinstall sources:
+
+- `frontend-design`, `theme-factory` — copy from [anthropics/skills](https://github.com/anthropics/skills) `skills/<name>/`
+- `impeccable` (+ subagents in `.claude/agents/`) — `npx impeccable install` or copy `.claude/` from [pbakaus/impeccable](https://github.com/pbakaus/impeccable)
+- productivity set (`grilling`, `grill-me`, `handoff`, `teach`, `to-questionnaire`, `wait-what`, `writing-for-agents`) — copy from [mattpocock/skills](https://github.com/mattpocock/skills) `skills/productivity/<name>/`
 
 ### Design & frontend
 
