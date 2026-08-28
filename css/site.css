@@ -469,6 +469,8 @@ main {
 
 .grid-2 { display: grid; gap: 1.2rem; }
 @media (min-width: 760px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+.grid-3 { display: grid; gap: 1.2rem; }
+@media (min-width: 980px) { .grid-3 { grid-template-columns: 1fr 1fr 1fr; } }
 
 .card {
   background: var(--card);
@@ -481,6 +483,69 @@ main {
 .card.lift:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--line-strong); }
 .card h3 { font-size: 1.15rem; margin-bottom: 0.4rem; }
 .card p { color: var(--muted); font-size: 0.95rem; }
+
+/* ============ Research interest pillars ============ */
+.pillar-topics {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0.85rem 0 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.45rem;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.pillar-topics li { display: flex; align-items: baseline; gap: 0.55rem; }
+.pillar-topics li::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  transform: rotate(45deg) translateY(-1px);
+}
+.pillar-more { margin: 0.95rem 0 0; }
+.text-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+.text-arrow .ico {
+  width: 0.95rem;
+  height: 0.95rem;
+  display: inline-flex;
+  transition: transform 200ms var(--ease);
+}
+.text-arrow:hover { text-decoration: underline; text-underline-offset: 3px; }
+.text-arrow:hover .ico { transform: translateX(3px); }
+
+.pillar-sections { display: grid; gap: 1.2rem; }
+@media (min-width: 980px) { .pillar-sections { grid-template-columns: repeat(3, 1fr); } }
+.pillar-sec {
+  background: var(--gold);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.35rem;
+  scroll-margin-top: 5.5rem;
+}
+.pillar-sec h3 { font-size: 1.08rem; margin: 0 0 0.5rem; }
+.pillar-sec p { color: var(--muted); font-size: 0.93rem; }
+.pillar-keys {
+  margin: 0.75rem 0 0;
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--accent-ink);
+}
 
 /* ============ Timeline ============ */
 .timeline {

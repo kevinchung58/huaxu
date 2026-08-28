@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260822e"
+CSS = "css/site.css?v=20260823a"
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -164,6 +164,53 @@ projects = [
 ]
 
 
+# Research interest pillars — single source of truth for the home cards and the
+# anchor sections on the research page (cards link to research.html#id).
+# Written as broad agenda areas (frontier topics), not as a paper index.
+PILLARS = [
+    {
+        "id": "generative-ai-in-education",
+        "name": "Generative AI in Education",
+        "icon": ICON_SPARK,
+        "thesis": "What changes when generative AI becomes a learning partner — and how to design for inquiry, not just adaptation.",
+        "topics": ["LLM-powered learning systems", "AI agents for teaching & learning", "GAI for feedback & scaffolding", "Learner–AI interaction & interfaces"],
+        "detail": "My interest here is generative AI as a learning partner: LLM-powered learning systems and AI agents that extend access to feedback, ideas, and scaffolding, so students can keep going when human support runs out. The design question is always the same — build for inquiry, not just adaptation.",
+    },
+    {
+        "id": "creativity-design-thinking",
+        "name": "Creativity & Design Thinking",
+        "icon": ICON_PENCIL,
+        "thesis": "How people learn to think creatively, frame ill-defined problems, and design their way forward.",
+        "topics": ["Design thinking methods", "Creative problem-solving", "Teaching & learning for creativity", "AI tools for creative work"],
+        "detail": "I treat creativity and design thinking as teachable, learnable practices rather than gifts — methods for framing ill-defined problems and designing a way forward. A running question is what AI tools do to creative work: when they scaffold it, and when they quietly replace it.",
+    },
+    {
+        "id": "information-systems-management",
+        "name": "Information Systems & Management Applications",
+        "icon": ICON_CASE,
+        "thesis": "Why people and organizations accept or resist intelligent systems — and where the field is heading next.",
+        "topics": ["Technology acceptance & IS theories", "AI agents & intelligent information systems", "Emerging technologies & IS frontiers", "Quantitative IS research methods"],
+        "detail": "My information-systems interests ask why people and organizations accept or resist intelligent systems, drawing on technology acceptance research and IS theories and tracking where emerging technologies take the field next — studied with quantitative IS research methods.",
+    },
+]
+
+pillar_cards = "\n".join(
+    f'''<article class="card lift reveal"{f' style="--d:{i * 70}ms"' if i else ""}><div class="head-row">{chip(p["icon"])}<div><h3>{escape(p["name"])}</h3><p>{escape(p["thesis"])}</p></div></div>
+      <ul class="pillar-topics">{"".join(f"<li>{escape(t)}</li>" for t in p["topics"])}</ul>
+      <p class="pillar-more"><a class="text-arrow" href="research.html#{p["id"]}">Show more {ico(ICON_RIGHT)}</a></p></article>'''
+    for i, p in enumerate(PILLARS)
+)
+
+pillar_sections = "\n".join(
+    f'''<section class="pillar-sec reveal" id="{p["id"]}">
+  <h3>{escape(p["name"])}</h3>
+  <p>{escape(p["detail"])}</p>
+  <p class="pillar-keys">{" · ".join(escape(t) for t in p["topics"])}</p>
+</section>'''
+    for p in PILLARS
+)
+
+
 def featured_attrs(p):
     return (
         f'data-featured data-title="{escape(p["title"])}" '
@@ -211,7 +258,7 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
         <p class="eyebrow">Educational technology · AI · design thinking</p>
         <h1>Hua-Xu Zhong<span>鍾華栩 · PhD</span></h1>
         <p class="role">Researcher in Educational Technology &amp; AI</p>
-        <p class="lede">I work where technology, education, and practical AI meet. Recent projects look at LLM-powered learning systems, from GAI concept-map generation to tools that support creativity, so students can inquire rather than only adapt.</p>
+        <p class="lede">I work where technology, education, and practical AI meet. Recent projects look at LLM-powered learning systems and tools that support creativity, so students can inquire rather than only adapt.</p>
         <div class="actions">
           <a class="btn btn-primary" href="research.html">{ICON_CASE} View research</a>
           <a class="btn btn-ghost" href="about.html">{ICON_USER} About my work</a>
@@ -231,12 +278,9 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
 </section>
 <section class="section">
   <div class="wrap">
-    <div class="section-head reveal"><p class="eyebrow">Focus</p><h2>Research interests</h2><p>Themes that run through my papers, platforms, and classroom work.</p></div>
-    <div class="grid-2">
-      <article class="card lift reveal"><div class="head-row">{chip(ICON_MONITOR)}<div><h3>Educational Technology</h3><p>Using new technologies to improve learning experiences, instructional design, and educational outcomes.</p></div></div></article>
-      <article class="card lift reveal" style="--d:70ms"><div class="head-row">{chip(ICON_CPU)}<div><h3>Artificial Intelligence</h3><p>Machine learning and related methods applied to complex problems.</p></div></div></article>
-      <article class="card lift reveal" style="--d:120ms"><div class="head-row">{chip(ICON_PENCIL)}<div><h3>Creativity and Design Thinking</h3><p>Design thinking and creative problem-solving in education and technology development.</p></div></div></article>
-      <article class="card lift reveal" style="--d:170ms"><div class="head-row">{chip(ICON_BULB)}<div><h3>AI in Education</h3><p>How AI can personalize learning and support tutoring and inquiry-based classrooms.</p></div></div></article>
+    <div class="section-head reveal"><p class="eyebrow">Focus</p><h2>Research interests</h2><p>Three directions guiding my research agenda — from classroom learning to digital services.</p></div>
+    <div class="grid-3">
+{pillar_cards}
     </div>
   </div>
 </section>
@@ -344,7 +388,11 @@ research = page("Research · Hua-Xu Zhong", "research", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Output</p><h1>Research</h1><p>Publications and projects in educational technology, AI learning platforms, and design-based instruction.</p></div>
-    {titled("h2", "Publications", ICON_BOOK)}
+    {titled("h2", "Research interests", ICON_BULB)}
+    <div class="pillar-sections">
+{pillar_sections}
+    </div>
+    {titled("h2", "Publications", ICON_BOOK, "block-title reveal spaced")}
     <div class="filters reveal" data-filter-group>
       <button class="chip is-on" type="button" data-filter="all">All ({len(pubs)})</button>
       <button class="chip" type="button" data-filter="Journal">Journal ({j_count})</button>
