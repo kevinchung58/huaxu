@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260823a"
+CSS = "css/site.css?v=20260828a"
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -423,20 +423,77 @@ research = page("Research · Hua-Xu Zhong", "research", f"""
 </div>
 """)
 
+# Teaching principles — one chain: direction -> solution -> connection.
+PRINCIPLES = [
+    {
+        "step": "01 · Direction",
+        "name": "Independent Thinking",
+        "icon": ICON_USER,
+        "text": "Everything starts with one person alone with a problem. Independent thinking is how a direction opens: questioning what is given, sitting with ambiguity, and refusing to outsource judgment. AI can answer — deciding what is worth asking is still ours.",
+    },
+    {
+        "step": "02 · Solution",
+        "name": "Creativity",
+        "icon": ICON_BULB,
+        "text": "Creativity, to me, is an open mind — imagination not fenced in by one's own habits. Once a direction opens, creativity generates the way forward. In the GAI era I see it as the irreplaceable human contribution: machines produce answers; people produce possibilities.",
+    },
+    {
+        "step": "03 · Connection",
+        "name": "Collaboration",
+        "icon": ICON_USERS,
+        "text": "No solution travels alone. Collaboration connects the nodes — peers, mentors, tools, and AI — so an idea reaches further than one mind could. The goal is not agreement; it is a network that solves problems no single node can.",
+    },
+]
+
+principle_cards = "\n".join(
+    f'''<article class="card lift reveal"{f' style="--d:{i * 70}ms"' if i else ""}><p class="step">{escape(p["step"])}</p><div class="head-row">{chip(p["icon"])}<div><h3>{escape(p["name"])}</h3></div></div>
+      <p>{escape(p["text"])}</p></article>'''
+    for i, p in enumerate(PRINCIPLES)
+)
+
+
+# Courses — data-driven, like PILLARS/GALLERY. FUTURE (owner note, 2026-08):
+# online courses will be appended here. Each entry:
+#   {"name": ..., "level": ..., "period": ..., "desc": ..., "tags": [...], "url": ...}
+# "url" is optional — when present the course title links out (hosted online course).
+# An empty list renders the "in preparation" note instead.
+COURSES = []
+
+if COURSES:
+    course_cards = []
+    for c in COURSES:
+        if c.get("url"):
+            title = f'<a href="{escape(c["url"])}" target="_blank" rel="noopener">{escape(c["name"])} {ico(ICON_OUT)}</a>'
+        else:
+            title = escape(c["name"])
+        period = f' · {escape(c["period"])}' if c.get("period") else ""
+        tags = "".join(f'<span class="badge">{escape(t)}</span>' for t in c["tags"])
+        course_cards.append(f'''<article class="card lift reveal"><h3>{title}</h3>
+  <p class="when">{escape(c["level"])}{period}</p>
+  <p>{escape(c["desc"])}</p>
+  <div class="badges">{tags}</div></article>''')
+    courses_html = f'<div class="grid-2">{"".join(course_cards)}</div>'
+else:
+    courses_html = f'<div class="dashed empty reveal">{chip(ICON_CAP)}<div><strong>Course list in preparation</strong><p class="when">Syllabi and semester offerings will live here when teaching appointments are listed.</p></div></div>'
+
 teaching = page("Teaching · Hua-Xu Zhong", "teaching", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Classroom</p><h1>Teaching &amp; practice</h1><p>Inquiry, creativity, and careful use of AI.</p></div>
     <article class="card philosophy reveal">
       <h2 class="with-ico">{ico(ICON_BULB)}Teaching philosophy</h2>
-      <p>I believe education is not the transfer of information. It is the transformation of the learner.</p>
-      <p>I treat students as people who can inquire, create, and reflect, not as empty vessels. My job is to design spaces where they ask real questions, work on real problems, and get used to ambiguity. I draw on constructivist learning: students build knowledge through experience, collaboration, and experiment.</p>
-      <p>I emphasize creative problem-solving over rote answers, because I see education as preparation for complexity, not certainty. Failure is not something to avoid. It is how growth happens. Design thinking, open-ended inquiry, and playful exploration are how I help students work on problems that do not have clear answers.</p>
-      <p>Students also hit barriers, cognitive, emotional, or situational. When human support runs out, I use large language models for personalized learning. They extend access to feedback, ideas, and scaffolding so students can keep going. For me, LLMs do not replace human teaching. They are a support system between the learner and what they might do next.</p>
-      <p>I teach because I believe education can be a form of liberation. It should help people imagine and build better worlds, not only adapt to the one they have.</p>
+      <p>I believe education is not the transfer of information. It is the transformation of the learner. Three ideas hold my teaching together, and they work as a chain: independent thinking opens a direction, creativity finds the way forward, and collaboration carries it further.</p>
     </article>
+    <div class="grid-3 principles">
+{principle_cards}
+    </div>
+    <article class="card philosophy spaced reveal">
+      <h3 class="with-ico">{ico(ICON_SPARK)}Careful use of AI</h3>
+      <p>Students also hit barriers — cognitive, emotional, or situational. When human support runs out, I use large language models for personalized learning: they extend access to feedback, ideas, and scaffolding so students can keep going. For me, LLMs do not replace human teaching; they are a support system between the learner and what they might do next.</p>
+    </article>
+    <p class="closing-line reveal">I teach because I believe education can be a form of liberation. It should help people imagine and build better worlds, not only adapt to the one they have.</p>
     {titled("h2", "Courses taught", ICON_CAP, "block-title reveal spaced")}
-    <div class="dashed empty reveal">{chip(ICON_CAP)}<div><strong>Course list in preparation</strong><p class="when">Syllabi and semester offerings will live here when teaching appointments are listed.</p></div></div>
+    {courses_html}
   </div>
 </section>
 """)
