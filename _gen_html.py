@@ -172,9 +172,9 @@ PILLARS = [
         "id": "generative-ai-in-education",
         "name": "Generative AI in Education",
         "icon": ICON_SPARK,
-        "thesis": "What changes when generative AI becomes a learning partner — and how to design for inquiry, not just adaptation.",
-        "topics": ["LLM-powered learning systems", "AI agents for teaching & learning", "GAI for feedback & scaffolding", "Learner–AI interaction & interfaces"],
-        "detail": "My interest here is generative AI as a learning partner: LLM-powered learning systems and AI agents that extend access to feedback, ideas, and scaffolding, so students can keep going when human support runs out. The design question is always the same — build for inquiry, not just adaptation.",
+        "thesis": "How learning changes when generative AI becomes a partner in the process, and how to design it for genuine inquiry.",
+        "topics": ["LLM-powered learning systems", "AI agents for teaching & learning", "GAI for feedback & scaffolding", "Learner-AI interaction & interfaces"],
+        "detail": "My interest here is generative AI as a learning partner: LLM-powered learning systems and AI agents that extend access to feedback, ideas, and scaffolding, so students can keep going when human support runs out. Across these projects I keep returning to the same question: how do we design these systems so students keep thinking for themselves?",
     },
     {
         "id": "creativity-design-thinking",
@@ -182,15 +182,15 @@ PILLARS = [
         "icon": ICON_PENCIL,
         "thesis": "How people learn to think creatively, frame ill-defined problems, and design their way forward.",
         "topics": ["Design thinking methods", "Creative problem-solving", "Teaching & learning for creativity", "AI tools for creative work"],
-        "detail": "I treat creativity and design thinking as teachable, learnable practices rather than gifts — methods for framing ill-defined problems and designing a way forward. A running question is what AI tools do to creative work: when they scaffold it, and when they quietly replace it.",
+        "detail": "I see creativity and design thinking as practices that can be taught and learned, not as gifts. They are methods for framing ill-defined problems and designing a way forward. I also study what AI tools do to creative work: when they support it, and when they quietly take it over.",
     },
     {
         "id": "information-systems-management",
         "name": "Information Systems & Management Applications",
         "icon": ICON_CASE,
-        "thesis": "Why people and organizations accept or resist intelligent systems — and where the field is heading next.",
+        "thesis": "Why people and organizations accept or resist intelligent systems, and where the field is heading next.",
         "topics": ["Technology acceptance & IS theories", "AI agents & intelligent information systems", "Emerging technologies & IS frontiers", "Quantitative IS research methods"],
-        "detail": "My information-systems interests ask why people and organizations accept or resist intelligent systems, drawing on technology acceptance research and IS theories and tracking where emerging technologies take the field next — studied with quantitative IS research methods.",
+        "detail": "My information systems work asks why people and organizations accept or resist intelligent systems. I draw on technology acceptance research and IS theories, follow where emerging technologies take the field, and study these questions with quantitative research methods.",
     },
 ]
 
@@ -278,7 +278,7 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
 </section>
 <section class="section">
   <div class="wrap">
-    <div class="section-head reveal"><p class="eyebrow">Focus</p><h2>Research interests</h2><p>Three directions guiding my research agenda — from classroom learning to digital services.</p></div>
+    <div class="section-head reveal"><p class="eyebrow">Focus</p><h2>Research interests</h2><p>Three directions guide my research agenda, from classroom learning to digital services.</p></div>
     <div class="grid-3">
 {pillar_cards}
     </div>
@@ -429,19 +429,19 @@ PRINCIPLES = [
         "step": "01 · Direction",
         "name": "Independent Thinking",
         "icon": ICON_USER,
-        "text": "Everything starts with one person alone with a problem. Independent thinking is how a direction opens: questioning what is given, sitting with ambiguity, and refusing to outsource judgment. AI can answer — deciding what is worth asking is still ours.",
+        "text": "For me, independent thinking means staying with a problem before reaching for help: questioning what is given, tolerating ambiguity, and forming my own judgment first. AI can provide answers, but deciding which questions are worth asking remains a human responsibility.",
     },
     {
         "step": "02 · Solution",
         "name": "Creativity",
         "icon": ICON_BULB,
-        "text": "Creativity, to me, is an open mind — imagination not fenced in by one's own habits. Once a direction opens, creativity generates the way forward. In the GAI era I see it as the irreplaceable human contribution: machines produce answers; people produce possibilities.",
+        "text": "I understand creativity as an open mind, as imagination that is not fenced in by habit. Once a direction opens, creativity is what finds the way forward. I believe this matters even more in the GAI era: AI can produce answers quickly, but imagining new possibilities is still a human strength.",
     },
     {
         "step": "03 · Connection",
         "name": "Collaboration",
         "icon": ICON_USERS,
-        "text": "No solution travels alone. Collaboration connects the nodes — peers, mentors, tools, and AI — so an idea reaches further than one mind could. The goal is not agreement; it is a network that solves problems no single node can.",
+        "text": "Few problems are solved alone. Collaboration connects the people and tools around a problem, including AI, so that a good idea travels further than one person could carry it. I do not see collaboration as seeking agreement. I see it as building a network that can solve problems no single person could.",
     },
 ]
 
@@ -482,14 +482,14 @@ teaching = page("Teaching · Hua-Xu Zhong", "teaching", f"""
     <div class="section-head reveal"><p class="eyebrow">Classroom</p><h1>Teaching &amp; practice</h1><p>Inquiry, creativity, and careful use of AI.</p></div>
     <article class="card philosophy reveal">
       <h2 class="with-ico">{ico(ICON_BULB)}Teaching philosophy</h2>
-      <p>I believe education is not the transfer of information. It is the transformation of the learner. Three ideas hold my teaching together, and they work as a chain: independent thinking opens a direction, creativity finds the way forward, and collaboration carries it further.</p>
+      <p>I believe education is not the transfer of information. It is the transformation of the learner. Three ideas guide my teaching, and they connect in sequence: independent thinking opens a direction, creativity finds a way forward, and collaboration carries it further.</p>
     </article>
     <div class="grid-3 principles">
 {principle_cards}
     </div>
     <article class="card philosophy spaced reveal">
       <h3 class="with-ico">{ico(ICON_SPARK)}Careful use of AI</h3>
-      <p>Students also hit barriers — cognitive, emotional, or situational. When human support runs out, I use large language models for personalized learning: they extend access to feedback, ideas, and scaffolding so students can keep going. For me, LLMs do not replace human teaching; they are a support system between the learner and what they might do next.</p>
+      <p>Students also run into barriers, cognitive, emotional, or situational. When human support is not there at the moment a student needs it, large language models can offer personalized feedback, ideas, and scaffolding so that learning can continue. I do not see LLMs as a replacement for human teaching. I use them as a support system between the learner and their next step.</p>
     </article>
     <p class="closing-line reveal">I teach because I believe education can be a form of liberation. It should help people imagine and build better worlds, not only adapt to the one they have.</p>
     {titled("h2", "Courses taught", ICON_CAP, "block-title reveal spaced")}
