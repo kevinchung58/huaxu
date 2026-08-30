@@ -174,9 +174,9 @@ PILLARS = [
         "id": "generative-ai-in-education",
         "name": "Generative AI in Education",
         "icon": ICON_SPARK,
-        "thesis": "How learning changes when generative AI becomes a partner in the process, and how to design it for genuine inquiry.",
-        "topics": ["LLM-powered learning systems", "AI agents for teaching & learning", "GAI for feedback & scaffolding", "Learner-AI interaction & interfaces"],
-        "detail": "My interest here is generative AI as a learning partner: LLM-powered learning systems and AI agents that extend access to feedback, ideas, and scaffolding, so students can keep going when human support runs out. Across these projects I keep returning to the same question: how do we design these systems so students keep thinking for themselves?",
+        "thesis": "How to design generative AI as a partner in inquiry, and the literacies such inquiry rests on.",
+        "topics": ["LLM-powered learning systems", "AI agents for teaching & learning", "GAI for feedback & scaffolding", "Learner-AI interaction & interfaces", "AI & information literacy", "Computational thinking"],
+        "detail": "My interest here is generative AI as a learning partner: LLM-powered learning systems and AI agents that extend access to feedback, ideas, and scaffolding, so students can keep going when human support runs out. Across these projects I keep returning to the same question: how do we design these systems so students keep thinking for themselves? I also study the literacies such inquiry rests on: AI literacy, information literacy, and computational thinking, the working grammar of learning with AI.",
     },
     {
         "id": "creativity-design-thinking",
@@ -485,6 +485,7 @@ teaching = page("Teaching · Hua-Xu Zhong", "teaching", f"""
     <article class="card philosophy reveal">
       <h2 class="with-ico">{ico(ICON_BULB)}Teaching philosophy</h2>
       <p>I believe education is not the transfer of information. It is the transformation of the learner. Three ideas guide my teaching, and they connect in sequence: independent thinking opens a direction, creativity finds a way forward, and collaboration carries it further.</p>
+      <p>This chain rests on literacy: AI literacy, information literacy, and computational thinking form the working grammar that inquiry runs on in the GAI era.</p>
     </article>
     <div class="grid-3 principles">
 {principle_cards}
