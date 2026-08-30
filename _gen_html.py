@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260828b"
+CSS = "css/site.css?v=20260830a"
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -536,6 +536,89 @@ conv_rows = "\n".join(
     for r in CONVERGENCE
 )
 
+# Principle-by-principle read of the report (Section 2, eight principles).
+# Each row: what the committee says ("said") and where it lands in my work ("read").
+# Rows render as alternating media rows; only 2.7 currently uses a generated
+# illustration, the rest use typographic CSS plates (visual direction A/B, 2026-08).
+PRINCIPLE_READS = [
+    {
+        "sec": "§2.1",
+        "name": "Be humble",
+        "said": "Generative AI is barely four years old and already past a billion users. The committee states up front that no recommendation can be final on a technology moving this fast, and offers the whole report in a spirit of humility, expecting course corrections as the technology evolves.",
+        "read": "This is the right starting point for research as well. The technology changes faster than any single study, so I anchor my agenda on questions that outlive any model version, above all how students keep thinking for themselves.",
+    },
+    {
+        "sec": "§2.2",
+        "name": "Be bold",
+        "said": "Uncertainty cannot be an excuse for inaction. The committee calls for a strategic response rather than patches and duct tape, and points to genuinely new possibilities: individualized tutoring at scale, and research work that was out of reach a few years ago. Boldness matters most, the report argues, because today's students will soon shape how society uses this technology.",
+        "read": "My research agenda is my version of building instead of patching: I work on systems that try to make generative AI a better learning partner, such as feedback and scaffolding that hold up when human support runs out.",
+    },
+    {
+        "sec": "§2.3",
+        "name": "Put humanity front and center",
+        "said": "Some MIT instructors were weighing AI agents against hiring undergraduates as research assistants. The committee's answer: research on a campus is also an apprenticeship, and its seeming inefficiencies are a feature rather than a bug. It also warns that policing AI use corrodes trust on both sides, especially while detection tools remain unreliable.",
+        "read": "This principle is why my third stance treats learning as a social act. Any AI plan that saves effort by removing people from the learning process is optimizing the wrong variable.",
+    },
+    {
+        "sec": "§2.4",
+        "name": "Lean into learning",
+        "said": "The committee argues the deepest risk goes beyond cheating: many uses of AI deprive students of the chance to learn at all. It calls for a new social contract in which students understand that the process of education is productive struggle, and that its most important product is themselves, their judgment, imagination, and metacognition.",
+        "read": "This is the principle behind my first stance. A support system that removes every difficulty has failed even when the student ends with the right answer, so my design work asks where the productive struggle lives in an AI-assisted task and builds around it.",
+    },
+    {
+        "sec": "§2.5",
+        "name": "Teach with intentionality",
+        "said": "Instead of reacting to AI feature by feature, the committee recommends backward design: define what students should know, be able to do, and learn to value, then decide where AI helps and where it does not. When instructors explain why AI is allowed or limited, students are more likely to understand the learning that is being protected.",
+        "read": "Backward design is also how I think of my teaching chain: begin with the human strengths a course should build, then decide where AI belongs along the way. The report's closing advice here, always tell students why, is a practice I try to hold.",
+    },
+    {
+        "sec": "§2.6",
+        "name": "No one size fits all",
+        "said": "A poetry seminar, a proof course, and a design lab each call for a different relationship with AI, and a first-year student differs from a doctoral candidate. Instead of one campus-wide rule, the report proposes a shared framework: a common policy menu, disclosure expectations, and accountability standards, with departments choosing within it.",
+        "read": "This principle reads like a research agenda to me. What should a policy menu contain when the students of one department span very different levels of AI literacy? That question sits directly on my first pillar.",
+    },
+    {
+        "sec": "§2.7",
+        "name": "Augmentation, not automation",
+        "img": "IMG/principle-2-7.jpg",
+        "alt": "Illustration of a student at a desk drawing a pencil line that lifts off the page and rises into steps, while an abstract geometric figure steadies the desk lamp",
+        "said": "Overreliance on chatbots can erode critical thinking, memory, confidence, and mastery, and a quick answer can trigger what the report calls cognitive surrender: falling back on AI at the first hint of struggle. Borrowing the pro-worker AI argument from economists Acemoglu, Autor, and Johnson, the committee asks for pro-learner AI that expands what students can think about, learn, and solve.",
+        "read": "Pro-learner AI is the shortest accurate description of what I try to design. The test I apply is the one in my first stance: a use of AI belongs in learning when it leaves the student more capable of thinking without it.",
+    },
+    {
+        "sec": "§2.8",
+        "name": "Think beyond the classroom and the campus",
+        "said": "Drawing on Jerome Bruner's The Culture of Education, the committee frames education as a cultural practice: students learn to interpret the world, form identities, and join communities. The danger it names is a transactional mindset, assignments as outputs, peers as optional, a degree as a commodity, and this mindset will follow students into work and civic life.",
+        "read": "My collaboration principle answers the transactional student this section warns about. Fair access belongs here too: the relational education Bruner describes is what under-resourced schools lose first if AI arrives only as a private tutor for those who can pay.",
+    },
+]
+
+principle_rows = []
+for i, r in enumerate(PRINCIPLE_READS):
+    flip = " flip" if i % 2 else ""
+    if r.get("img"):
+        visual = (
+            f'<figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>'
+        )
+    else:
+        tone = " plate-paper" if i % 2 else " plate-navy"
+        visual = (
+            f'<div class="media-fig plate{tone}" aria-hidden="true">'
+            f'<span class="plate-num">{escape(r["sec"])}</span><span class="plate-rule"></span>'
+            f'<span class="plate-name">{escape(r["name"])}</span></div>'
+        )
+    principle_rows.append(
+        f'''<div class="media-row reveal{flip}">
+  {visual}
+  <div class="media-copy">
+    <h3>{escape(r["sec"])} {escape(r["name"])}</h3>
+    <p>{escape(r["said"])}</p>
+    <p class="my-read"><span class="read-tag">My read</span>{escape(r["read"])}</p>
+  </div>
+</div>'''
+    )
+principle_rows_html = "\n".join(principle_rows)
+
 position = page("Position · Hua-Xu Zhong", "position", f"""
 <section class="section">
   <div class="wrap">
@@ -544,7 +627,7 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
       <img src="IMG/position-hero.jpg" alt="Illustration of a student and an abstract AI figure as partners at a shared desk" loading="lazy" />
       <figcaption>AI as a partner in learning, not a substitute for it.</figcaption>
     </figure>
-    <p class="reveal">In August 2026, an MIT ad hoc committee published its report on AI use in teaching, learning, and research training. Reading it felt like hearing my own questions said back to me in another voice: what AI does to students' thinking, when it helps learning, and when it quietly replaces it. This page states my position, shows where the report and I converge, and lists what I want to study next.</p>
+    <p class="reveal">In August 2026, an MIT ad hoc committee published its report on AI use in teaching, learning, and research training. Reading it felt like hearing my own questions said back to me in another voice: what AI does to students' thinking, when it helps learning, and when it quietly replaces it. This page states my position, shows where the report and I converge, walks through its eight principles one by one, and lists what I want to study next.</p>
     {titled("h2", "My position", ICON_USER)}
     <ol class="stance-list reveal">
       <li><strong>AI should support learners, not replace their thinking.</strong> The best uses of AI extend feedback, ideas, and scaffolding. The risky ones let students hand off exactly the work that learning depends on.</li>
@@ -562,6 +645,11 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
       <cite>MIT Ad Hoc Committee on AI Use in Teaching, Learning, and Research Training, Report §2.7 (August 13, 2026)</cite>
     </blockquote>
     <p class="reveal">My teaching page argues the same sentence in other words. I cite the report not as a source to follow, but as evidence that this position is where careful educators are landing.</p>
+    {titled("h2", "The report, principle by principle", ICON_BOOK, "block-title reveal spaced")}
+    <p class="reveal">The report organizes its advice around eight guiding principles. Here is each one, first as the committee states it, then as it lands in my own work.</p>
+    <div class="principle-rows">
+{principle_rows_html}
+    </div>
     {titled("h2", "Beyond the report: what I want to study", ICON_BULB, "block-title reveal spaced")}
     <ol class="stance-list q-list reveal">
       <li><strong>Designing for inquiry.</strong> What does an LLM learning system look like when its first job is to protect a student's own thinking? This is the design question behind my work on feedback and scaffolding.</li>

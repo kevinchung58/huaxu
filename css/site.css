@@ -764,6 +764,68 @@ main {
 .reference-box { margin-top: 2.2rem; }
 .link-note { margin: 0.35rem 0 0; font-size: 0.78rem; }
 
+/* Principle-by-principle read: alternating media rows.
+   Visual side is either a typographic plate (default) or a generated figure. */
+.principle-rows { display: grid; gap: 2.6rem; margin: 1.5rem 0 0.5rem; }
+.media-row { display: grid; gap: 1.5rem; align-items: center; }
+.media-fig {
+  margin: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.media-fig img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.plate {
+  aspect-ratio: 4 / 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0;
+  padding: 1.8rem 2rem;
+}
+.plate-navy { background: var(--navy); color: var(--gold); }
+.plate-paper { background: var(--gold); color: var(--navy); border: 1px solid var(--line); box-shadow: none; }
+.plate-num {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+.plate-rule { width: 42px; height: 2px; background: var(--accent); margin: 0.9rem 0 0.8rem; }
+.plate-navy .plate-rule { background: var(--accent-bright); }
+.plate-name {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+.media-copy h3 { margin: 0 0 0.55rem; font-size: 1.22rem; color: var(--navy); }
+.media-copy > p:first-of-type { margin-top: 0; }
+.my-read {
+  margin-bottom: 0;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--accent);
+}
+.read-tag {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+@media (min-width: 860px) {
+  .media-row { grid-template-columns: 44% 1fr; gap: 2.6rem; }
+  .media-row.flip .media-fig { order: 2; }
+  .media-row.flip .media-copy { order: 1; }
+}
+
 /* ============ Research ============ */
 .filters { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.85rem 0 1.6rem; }
 .chip {
