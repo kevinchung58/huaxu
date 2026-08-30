@@ -538,42 +538,57 @@ conv_rows = "\n".join(
 
 # Principle-by-principle read of the report (Section 2, eight principles).
 # Each row: what the committee says ("said") and where it lands in my work ("read").
-# Rows render as alternating media rows; only 2.7 currently uses a generated
-# illustration, the rest use typographic CSS plates (visual direction A/B, 2026-08).
+# Rows render as alternating media rows. Visual direction (owner decision 2026-08):
+# all eight rows use generated illustrations (IMG/principle-2-*.jpg, one flat
+# editorial world). A typographic CSS-plate variant (.plate, .plate-navy,
+# .plate-paper) is kept in css/site.css as a fallback: drop an entry's "img"
+# key to render it as a plate again.
 PRINCIPLE_READS = [
     {
         "sec": "§2.1",
         "name": "Be humble",
+        "img": "IMG/principle-2-1.jpg",
+        "alt": "Illustration of a small student figure standing on a thin amber horizon line before an enormous abstract machine shape whose top dissolves into dotted lines",
         "said": "Generative AI is barely four years old and already past a billion users. The committee states up front that no recommendation can be final on a technology moving this fast, and offers the whole report in a spirit of humility, expecting course corrections as the technology evolves.",
         "read": "This is the right starting point for research as well. The technology changes faster than any single study, so I anchor my agenda on questions that outlive any model version, above all how students keep thinking for themselves.",
     },
     {
         "sec": "§2.2",
         "name": "Be bold",
+        "img": "IMG/principle-2-2.jpg",
+        "alt": "Illustration of a student kneeling on a cliff edge to place planks of an amber bridge across a gap, with a flag and a cheering abstract figure on the far cliff",
         "said": "Uncertainty cannot be an excuse for inaction. The committee calls for a strategic response rather than patches and duct tape, and points to genuinely new possibilities: individualized tutoring at scale, and research work that was out of reach a few years ago. Boldness matters most, the report argues, because today's students will soon shape how society uses this technology.",
         "read": "My research agenda is my version of building instead of patching: I work on systems that try to make generative AI a better learning partner, such as feedback and scaffolding that hold up when human support runs out.",
     },
     {
         "sec": "§2.3",
         "name": "Put humanity front and center",
+        "img": "IMG/principle-2-3.jpg",
+        "alt": "Illustration of students and a teacher seated in a discussion circle traced by an amber line, while two small abstract machine figures listen from outside the circle",
         "said": "Some MIT instructors were weighing AI agents against hiring undergraduates as research assistants. The committee's answer: research on a campus is also an apprenticeship, and its seeming inefficiencies are a feature rather than a bug. It also warns that policing AI use corrodes trust on both sides, especially while detection tools remain unreliable.",
         "read": "This principle is why my third stance treats learning as a social act. Any AI plan that saves effort by removing people from the learning process is optimizing the wrong variable.",
     },
     {
         "sec": "§2.4",
         "name": "Lean into learning",
+        "img": "IMG/principle-2-4.jpg",
+        "alt": "Illustration of a student climbing a steep rock wall while an abstract machine figure below belays the amber safety rope without pulling",
         "said": "The committee argues the deepest risk goes beyond cheating: many uses of AI deprive students of the chance to learn at all. It calls for a new social contract in which students understand that the process of education is productive struggle, and that its most important product is themselves, their judgment, imagination, and metacognition.",
         "read": "This is the principle behind my first stance. A support system that removes every difficulty has failed even when the student ends with the right answer, so my design work asks where the productive struggle lives in an AI-assisted task and builds around it.",
     },
     {
         "sec": "§2.5",
         "name": "Teach with intentionality",
+        "img": "IMG/principle-2-5.jpg",
+        "alt": "Illustration of an instructor sketching an amber route on a large drawing sheet, winding backward from a lighthouse-shaped goal through milestone markers to the starting point",
         "said": "Instead of reacting to AI feature by feature, the committee recommends backward design: define what students should know, be able to do, and learn to value, then decide where AI helps and where it does not. When instructors explain why AI is allowed or limited, students are more likely to understand the learning that is being protected.",
         "read": "Backward design is also how I think of my teaching chain: begin with the human strengths a course should build, then decide where AI belongs along the way. The report's closing advice here, always tell students why, is a practice I try to hold.",
     },
     {
         "sec": "§2.6",
         "name": "No one size fits all",
+        "img": "IMG/principle-2-6.jpg",
+        "alt": "Illustration of five different students walking toward five differently shaped doors along a wall, with amber light spilling from one open door",
         "said": "A poetry seminar, a proof course, and a design lab each call for a different relationship with AI, and a first-year student differs from a doctoral candidate. Instead of one campus-wide rule, the report proposes a shared framework: a common policy menu, disclosure expectations, and accountability standards, with departments choosing within it.",
         "read": "This principle reads like a research agenda to me. What should a policy menu contain when the students of one department span very different levels of AI literacy? That question sits directly on my first pillar.",
     },
@@ -588,6 +603,8 @@ PRINCIPLE_READS = [
     {
         "sec": "§2.8",
         "name": "Think beyond the classroom and the campus",
+        "img": "IMG/principle-2-8.jpg",
+        "alt": "Illustration of a schoolhouse with its side walls swung open onto a wide landscape, students walking out in pairs along a winding amber path",
         "said": "Drawing on Jerome Bruner's The Culture of Education, the committee frames education as a cultural practice: students learn to interpret the world, form identities, and join communities. The danger it names is a transactional mindset, assignments as outputs, peers as optional, a degree as a commodity, and this mindset will follow students into work and civic life.",
         "read": "My collaboration principle answers the transactional student this section warns about. Fair access belongs here too: the relational education Bruner describes is what under-resourced schools lose first if AI arrives only as a private tutor for those who can pay.",
     },
