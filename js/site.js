@@ -1,6 +1,6 @@
 (() => {
   const nav = document.querySelector(".nav");
-  const more = document.querySelector(".more");
+  const mores = document.querySelectorAll(".more");
   const toggle = document.querySelector(".menu-toggle");
   const mobile = document.querySelector(".mobile");
   const toTop = document.querySelector(".to-top");
@@ -19,18 +19,34 @@
     });
   }
 
-  if (more) {
+  mores.forEach((more) => {
     const btn = more.querySelector(".more-btn");
     btn?.addEventListener("click", (event) => {
       event.stopPropagation();
-      more.classList.toggle("is-open");
-      btn.setAttribute("aria-expanded", String(more.classList.contains("is-open")));
+      const isOpen = more.classList.toggle("is-open");
+      btn.setAttribute("aria-expanded", String(isOpen));
+      mores.forEach((other) => {
+        if (other !== more) {
+          other.classList.remove("is-open");
+          other.querySelector(".more-btn")?.setAttribute("aria-expanded", "false");
+        }
+      });
     });
-    document.addEventListener("click", () => more.classList.remove("is-open"));
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") more.classList.remove("is-open");
+  });
+  document.addEventListener("click", () => {
+    mores.forEach((more) => {
+      more.classList.remove("is-open");
+      more.querySelector(".more-btn")?.setAttribute("aria-expanded", "false");
     });
-  }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      mores.forEach((more) => {
+        more.classList.remove("is-open");
+        more.querySelector(".more-btn")?.setAttribute("aria-expanded", "false");
+      });
+    }
+  });
 
   toTop?.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 

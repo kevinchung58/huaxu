@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260830a"
+CSS = "css/site.css?v=20260830b"
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -50,6 +50,7 @@ def nav(active: str) -> str:
         return f'<a href="{href}" class="{cls}">{label}</a>'
 
     more_on = " is-active" if active in {"service", "links"} else ""
+    pos_on = " is-active" if active in {"position", "thinking"} else ""
     return f"""<a class="skip" href="#main">Skip to main content</a>
 <header class="nav">
   <div class="wrap nav-inner">
@@ -59,7 +60,13 @@ def nav(active: str) -> str:
       {a("about.html", "About", "about")}
       {a("research.html", "Research", "research")}
       {a("teaching.html", "Teaching", "teaching")}
-      {a("position.html", "Position", "position")}
+      <div class="more">
+        <button class="more-btn{pos_on}" type="button" aria-expanded="false" aria-haspopup="true">Position <span class="caret" aria-hidden="true">{ICON_CARET}</span></button>
+        <div class="more-menu" role="menu">
+          {a("position.html", "AI in education", "position")}
+          {a("thinking.html", "How I think", "thinking")}
+        </div>
+      </div>
       {a("activities.html", "Activities", "activities")}
       <div class="more">
         <button class="more-btn{more_on}" type="button" aria-expanded="false" aria-haspopup="true">More <span class="caret" aria-hidden="true">{ICON_CARET}</span></button>
@@ -76,7 +83,9 @@ def nav(active: str) -> str:
     {a("about.html", "About", "about")}
     {a("research.html", "Research", "research")}
     {a("teaching.html", "Teaching", "teaching")}
-    {a("position.html", "Position", "position")}
+    <div class="label">Position</div>
+    {a("position.html", "AI in education", "position")}
+    {a("thinking.html", "How I think", "thinking")}
     {a("activities.html", "Activities", "activities")}
     <div class="label">More</div>
     {a("service.html", "Service", "service")}
@@ -100,7 +109,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v=20260822e"></script>"""
+<script src="js/site.js?v=20260830a"></script>"""
 
 
 def page(title: str, active: str, body: str, extra: str = "") -> str:
@@ -682,6 +691,146 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
 </section>
 """)
 
+# "How I think" — the dot-grid page. A nine-panel academic re-cut of the
+# connect-the-dots comic that has circulated online since 2020 (lineage traced
+# by Language Log to an Aug 2020 Imgur post inspired by GapingVoid). Owner
+# brief (2026-08): the grid states his view on information, creativity, and
+# problem solving, and motivates why design thinking matters from here on.
+# Three acts: what machines already do (1-3), the human premium (4-6), and
+# three ways the dots betray us (7-9). All panels are generated illustrations.
+GRID_CELLS = [
+    {"num": "1", "act": "Act I", "name": "Information", "img": "IMG/grid-1-information.jpg",
+     "alt": "Dot-grid panel of fifteen scattered navy dots with no connections",
+     "cap": "Dots now arrive faster than anyone can count them. Gathering them is no longer the skill."},
+    {"num": "2", "act": "Act I", "name": "Grouping", "img": "IMG/grid-2-grouping.jpg",
+     "alt": "Dot-grid panel of dots enclosed in three dashed grouping rings, one ring drawn in amber",
+     "cap": "Sorting dots into piles is classification. Machines do it instantly."},
+    {"num": "3", "act": "Act I", "name": "Familiar paths", "img": "IMG/grid-3-familiar-paths.jpg",
+     "alt": "Dot-grid panel of dots joined by neat right-angled connection lines, one route in amber",
+     "cap": "Joining dots along known routes is what language models do best."},
+    {"num": "4", "act": "Act II", "name": "Framing", "img": "IMG/grid-4-framing.jpg",
+     "alt": "Dot-grid panel with a hand-drawn amber magnifier ring around four chosen dots",
+     "cap": "Choosing which few dots deserve attention, before any line is drawn."},
+    {"num": "5", "act": "Act II", "name": "Creativity", "img": "IMG/grid-5-creativity.jpg",
+     "alt": "Dot-grid panel of dots connected by amber lines into the silhouette of a paper plane",
+     "cap": "The same dots, connected into a shape nobody had drawn."},
+    {"num": "6", "act": "Act II", "name": "Wisdom", "img": "IMG/grid-6-wisdom.jpg",
+     "alt": "Dot-grid panel of faint grey dots with only two navy dots joined by one amber line",
+     "cap": "Two dots, one line: the discipline of the necessary connection."},
+    {"num": "7", "act": "Act III", "name": "Hallucination", "img": "IMG/grid-7-hallucination.jpg",
+     "alt": "Dot-grid panel of dots connected into a dense chaotic tangle of lines fraying off the edge",
+     "cap": "Connect everything to everything, confidently, and the field tangles into noise."},
+    {"num": "8", "act": "Act III", "name": "Imposed pattern", "img": "IMG/grid-8-imposed-pattern.jpg",
+     "alt": "Dot-grid panel of amber lines joining five dots into a large star while other dots stay unconnected",
+     "cap": "Draw the star first, then welcome whatever dots land on it."},
+    {"num": "9", "act": "Act III", "name": "Cherry-picking", "img": "IMG/grid-9-cherry-picking.jpg",
+     "alt": "Dot-grid panel with one straight amber line through three aligned dots while the remaining dots are faint hollow outlines",
+     "cap": "Three cooperative dots, one clean line, and the rest quietly fade out."},
+]
+
+grid_cells_html = "\n".join(
+    f'''<article class="dot-cell lift reveal"{f' style="--d:{i * 60}ms"' if i else ""}>
+  <figure><img src="{escape(c["img"])}" alt="{escape(c["alt"])}" loading="lazy" /></figure>
+  <div class="cell-body"><div class="badges"><span class="badge">{escape(c["act"])}</span></div>
+  <h4>{escape(c["num"])} · {escape(c["name"])}</h4><p>{escape(c["cap"])}</p></div>
+</article>'''
+    for i, c in enumerate(GRID_CELLS)
+)
+
+# NOTE (2026-08): the four scene illustrations (act-1/2/3, diverge-converge)
+# still need generating; the image-generation limit hit zero after the hero.
+# The rows temporarily point at closest-meaning grid panels. To finish, generate
+# the four scene images and swap the "img" values back to their planned paths
+# (listed in TEMP comments below), then regenerate.
+GRID_ACTS = [
+    {
+        "tag": "Act I",
+        "name": "What machines already do",
+        "img": "IMG/grid-3-familiar-paths.jpg",  # TEMP placeholder; planned: IMG/act-1.jpg
+        "alt": "Dot-grid panel of dots joined by neat right-angled connection lines, one route in amber",
+        "paras": [
+            "Read the first row as a job description for a large language model. Collecting dots is retrieval. Grouping them is classification. Joining them along familiar routes is precisely what these models do, at a scale no person can match. That is not a complaint. It is the ground we stand on.",
+            "It does quietly reprice education, though. A curriculum that spends most of its hours training students to gather, sort, and connect information is training them to compete with a machine on the machine's home field. The MIT report lands in the same place when it asks us to augment curiosity, creativity, and learning instead of automating them.",
+        ],
+    },
+    {
+        "tag": "Act II",
+        "name": "The human premium",
+        "img": "IMG/grid-5-creativity.jpg",  # TEMP placeholder; planned: IMG/act-2.jpg
+        "alt": "Dot-grid panel of dots connected by amber lines into the silhouette of a paper plane",
+        "paras": [
+            "The second row is the work that appreciates. Framing comes first: problem solving begins before any line is drawn, when someone walks up to the field and decides which few dots deserve attention, and why. Creativity is next: taking the same dots everyone has and connecting them into a shape nobody had drawn. Wisdom is the quiet one: the discipline to draw the single necessary line and leave the rest alone.",
+            "All three are trainable, and none of them is a download. They are the capacities my position page defends and my teaching chain practices: creativity as the goal, inquiry as the method, and judgment about which connections are worth making at all.",
+        ],
+    },
+    {
+        "tag": "Act III",
+        "name": "Three ways the dots betray us",
+        "img": "IMG/grid-7-hallucination.jpg",  # TEMP placeholder; planned: IMG/act-3.jpg
+        "alt": "Dot-grid panel of dots connected into a dense chaotic tangle of lines fraying off the edge",
+        "paras": [
+            "The last row is why literacy is not decoration. Hallucination is the field connected so densely, so confidently, that nothing means anything; it is the visual form of an AI answer that sounds right and is not. The imposed pattern is the star drawn first, with dots welcomed only when they land on it; it is correlation staged as cause, and it powers both conspiracy thinking and misleading charts. Cherry-picking is the clean line through three friendly dots while the rest fade to outline.",
+            "Guarding against these three is a learnable craft: checking sources, verifying before connecting, and asking which dots were left out. These habits sit in the ground layer of my map, because AI literacy and information literacy are what let the second row happen without sliding into the third.",
+        ],
+    },
+]
+
+act_rows_html = []
+for i, r in enumerate(GRID_ACTS):
+    flip = " flip" if i % 2 else ""
+    paras = "\n".join(f"    <p>{escape(p)}</p>" for p in r["paras"])
+    act_rows_html.append(
+        f'''<div class="media-row reveal{flip}">
+  <figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>
+  <div class="media-copy">
+    <p class="read-tag">{escape(r["tag"])}</p>
+    <h3>{escape(r["name"])}</h3>
+{paras}
+  </div>
+</div>'''
+    )
+act_rows_html = "\n".join(act_rows_html)
+
+thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Thinking</p><h1>Dots, shapes, and one line</h1><p>How I think about information, creativity, and problem solving in the GAI era, and the case for design thinking from here on.</p></div>
+    <figure class="pos-hero reveal">
+      <img src="IMG/thinking-hero.jpg" alt="Illustration of a student and an abstract machine figure standing before a large wall covered in scattered dots, both holding pencils" loading="lazy" />
+      <figcaption>One field of dots, nine fates.</figcaption>
+    </figure>
+    <p class="reveal">A comic has circulated online since 2020: a three by three grid about a handful of dots. Scattered dots are Information. Sorted and connected dots become Knowledge. The same dots, joined into an unexpected shape, are Creativity. Two dots with a single line between them are Wisdom. Later remixes added their own warnings, from a scribble called Madness to a pentagram called Conspiracy Theory. Nobody owns the comic. Language Log traced it to an Imgur post from August 2020, itself inspired by a GapingVoid illustration, and strangers have redrawn it ever since.</p>
+    <p class="reveal">I keep returning to it because it compresses, into doodles, how I think about information, creativity, and problem solving. This page is my academic re-cut: the same nine-panel skeleton, read in three acts. The first act describes what machines already do well. The second is the work that gains value because of that. The third is how the dots deceive us, and where literacy guards the door.</p>
+    {titled("h2", "The nine-panel grid", ICON_CAMERA, "block-title reveal spaced")}
+    <p class="reveal">One small field of dots, three acts. Each panel keeps the same cast of dots and changes only what we choose to do with them.</p>
+    <div class="dot-grid">
+{grid_cells_html}
+    </div>
+    {titled("h2", "Reading the grid", ICON_BOOK, "block-title reveal spaced")}
+    <div class="principle-rows">
+{act_rows_html}
+    </div>
+    {titled("h2", "Why design thinking, from here on", ICON_PENCIL, "block-title reveal spaced")}
+    <div class="media-row reveal">
+      <figure class="media-fig"><img src="IMG/grid-6-wisdom.jpg" alt="Dot-grid panel of faint grey dots with only two navy dots joined by one amber line" loading="lazy" /></figure> <!-- TEMP placeholder; planned: IMG/diverge-converge.jpg -->
+      <div class="media-copy">
+        <p>Both halves of the second row, making new shapes and choosing one line, are exactly the moves design thinking rehearses. The Double Diamond from the British Design Council is divergence then convergence, twice: spread across the field to understand, commit to a framed problem; spread into possible shapes, commit to a solution. Stanford's d.school teaches the same rhythm as five stages, from empathize to test, and treats visual thinking, collaboration, and iteration as working principles.</p>
+        <p>That is why I think the GAI era raises the stakes for design thinking rather than retiring it. The tools took over the connecting. What remains to teach is the framing, the shaping, and the choosing, and design thinking is the most practiced method we have for all three. It runs through my research pillar on creativity and design thinking, and it is why my teaching chain starts from independent thinking: the habit of choosing your own dots before anyone connects them for you.</p>
+        <p class="pillar-more"><a class="text-arrow" href="research.html#creativity-design-thinking">My Creativity &amp; Design Thinking pillar {ico(ICON_RIGHT)}</a></p>
+      </div>
+    </div>
+    <section class="pillar-sec reveal reference-box">
+      <h3>Sources &amp; lineage</h3>
+      <p>The dot-grid comic circulates in many redrawn versions. Language Log (2021) traces the lineage to an Imgur post of August 2020, inspired by a GapingVoid illustration. <a href="https://languagelog.ldc.upenn.edu/nll/?p=52581" target="_blank" rel="noopener">Language Log</a></p>
+      <p>Ackoff, R. L. (1989). From data to wisdom. <i>Journal of Applied Systems Analysis, 16</i>, 3-9. The data, information, knowledge, wisdom ladder that the grid redraws as dots.</p>
+      <p>Mednick, S. (1962). The associative basis of the creative process. <i>Psychological Review, 69</i>(3), 220-232. Creativity as forming new connections between distant elements.</p>
+      <p>Design Council (2004). The Double Diamond; and the Stanford d.school design thinking process. Reading: <a href="https://ixdf.org/literature/topics/design-thinking" target="_blank" rel="noopener">Interaction Design Foundation, Design thinking</a>.</p>
+      <p class="pillar-more"><a class="text-arrow" href="position.html">Continue to my position on AI in education {ico(ICON_RIGHT)}</a></p>
+    </section>
+  </div>
+</section>
+""")
+
 # Add photos here later: (src, alt, caption). Multiple items become a slideshow.
 GALLERY = [
     ("IMG/3.jpg", "Academic activity", "Caption forthcoming"),
@@ -832,6 +981,7 @@ notfound = page("Page not found · Hua-Xu Zhong", "home", """
 (ROOT / "research.html").write_text(research, encoding="utf-8")
 (ROOT / "teaching.html").write_text(teaching, encoding="utf-8")
 (ROOT / "position.html").write_text(position, encoding="utf-8")
+(ROOT / "thinking.html").write_text(thinking, encoding="utf-8")
 (ROOT / "activities.html").write_text(activities, encoding="utf-8")
 (ROOT / "service.html").write_text(service, encoding="utf-8")
 (ROOT / "links.html").write_text(links, encoding="utf-8")
