@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260828a"
+CSS = "css/site.css?v=20260828b"
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -59,6 +59,7 @@ def nav(active: str) -> str:
       {a("about.html", "About", "about")}
       {a("research.html", "Research", "research")}
       {a("teaching.html", "Teaching", "teaching")}
+      {a("position.html", "Position", "position")}
       {a("activities.html", "Activities", "activities")}
       <div class="more">
         <button class="more-btn{more_on}" type="button" aria-expanded="false" aria-haspopup="true">More <span class="caret" aria-hidden="true">{ICON_CARET}</span></button>
@@ -75,6 +76,7 @@ def nav(active: str) -> str:
     {a("about.html", "About", "about")}
     {a("research.html", "Research", "research")}
     {a("teaching.html", "Teaching", "teaching")}
+    {a("position.html", "Position", "position")}
     {a("activities.html", "Activities", "activities")}
     <div class="label">More</div>
     {a("service.html", "Service", "service")}
@@ -490,10 +492,86 @@ teaching = page("Teaching · Hua-Xu Zhong", "teaching", f"""
     <article class="card philosophy spaced reveal">
       <h3 class="with-ico">{ico(ICON_SPARK)}Careful use of AI</h3>
       <p>Students also run into barriers, cognitive, emotional, or situational. When human support is not there at the moment a student needs it, large language models can offer personalized feedback, ideas, and scaffolding so that learning can continue. I do not see LLMs as a replacement for human teaching. I use them as a support system between the learner and their next step.</p>
+      <p class="pillar-more"><a class="text-arrow" href="position.html">Read my full position {ico(ICON_RIGHT)}</a></p>
     </article>
     <p class="closing-line reveal">I teach because I believe education can be a form of liberation. It should help people imagine and build better worlds, not only adapt to the one they have.</p>
     {titled("h2", "Courses taught", ICON_CAP, "block-title reveal spaced")}
     {courses_html}
+  </div>
+</section>
+""")
+
+# Position page — my stance on generative AI in education, in conversation with
+# the MIT Ad Hoc Committee report (August 13, 2026). The convergence map pairs
+# each of my stances with the report principle it lines up with.
+MIT_REPORT_URL = "https://aiandeducation.mit.edu/report/"
+CONVERGENCE = [
+    {
+        "stance": "AI should support learners, not replace their thinking.",
+        "principle": "Augmentation, not automation",
+        "sec": "§2.7",
+        "note": "Use AI to augment curiosity, creativity, and learning instead of automating them.",
+    },
+    {
+        "stance": "Human strengths are the learning goals.",
+        "principle": "Lean into learning",
+        "sec": "§2.4",
+        "note": "Protect the productive struggle that builds judgment and metacognition.",
+    },
+    {
+        "stance": "Learning stays a social act.",
+        "principle": "Think beyond the classroom and the campus",
+        "sec": "§2.8",
+        "note": "Education is a cultural practice built on relationships AI cannot replace.",
+    },
+]
+
+conv_rows = "\n".join(
+    f'''<div class="conv-row">
+  <div class="conv-cell"><p>{escape(r["stance"])}</p></div>
+  <div class="conv-link" aria-hidden="true"></div>
+  <div class="conv-cell mit"><h4>{escape(r["principle"])} <span class="badge">{escape(r["sec"])}</span></h4><p class="when">{escape(r["note"])}</p></div>
+</div>'''
+    for r in CONVERGENCE
+)
+
+position = page("Position · Hua-Xu Zhong", "position", f"""
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Position</p><h1>AI in education: where I stand</h1><p>My position on generative AI in education, written in conversation with MIT's August 2026 report on AI use in teaching and learning.</p></div>
+    <figure class="pos-hero reveal">
+      <img src="IMG/position-hero.jpg" alt="Illustration of a student and an abstract AI figure as partners at a shared desk" loading="lazy" />
+      <figcaption>AI as a partner in learning, not a substitute for it.</figcaption>
+    </figure>
+    <p class="reveal">In August 2026, an MIT ad hoc committee published its report on AI use in teaching, learning, and research training. Reading it felt like hearing my own questions said back to me in another voice: what AI does to students' thinking, when it helps learning, and when it quietly replaces it. This page states my position, shows where the report and I converge, and lists what I want to study next.</p>
+    {titled("h2", "My position", ICON_USER)}
+    <ol class="stance-list reveal">
+      <li><strong>AI should support learners, not replace their thinking.</strong> The best uses of AI extend feedback, ideas, and scaffolding. The risky ones let students hand off exactly the work that learning depends on.</li>
+      <li><strong>Human strengths are the learning goals.</strong> When answers are cheap, creativity, judgment, and the discipline to stay with a problem become the real curriculum.</li>
+      <li><strong>Learning stays a social act.</strong> Classmates, teachers, and mentors are part of the mechanism, not the packaging. AI should connect people around problems, not isolate them with answers.</li>
+    </ol>
+    {titled("h2", "Where the MIT report converges", ICON_SPARK, "block-title reveal spaced")}
+    <figure class="conv-map reveal">
+      <figcaption>My stances on the left, the report's guiding principles on the right.</figcaption>
+{conv_rows}
+    </figure>
+    <p class="when reveal">Related threads also appear in §2.3 (put humanity front and center), §2.5 (teach with intentionality), and §2.6 (no one size fits all).</p>
+    <blockquote class="report-quote reveal">
+      <p>“AI should be used to augment and enhance curiosity, creativity, and learning, not automate them.”</p>
+      <cite>MIT Ad Hoc Committee on AI Use in Teaching, Learning, and Research Training, Report §2.7 (August 13, 2026)</cite>
+    </blockquote>
+    <p class="reveal">My teaching page argues the same sentence in other words. I cite the report not as a source to follow, but as evidence that this position is where careful educators are landing.</p>
+    {titled("h2", "Beyond the report: what I want to study", ICON_BULB, "block-title reveal spaced")}
+    <ol class="stance-list q-list reveal">
+      <li><strong>Designing for inquiry.</strong> What does an LLM learning system look like when its first job is to protect a student's own thinking? This is the design question behind my work on feedback and scaffolding.</li>
+      <li><strong>Creativity as an outcome.</strong> The report asks AI to augment curiosity and creativity. I am asking how creativity can be taught, practiced, and assessed when AI can imitate its products.</li>
+      <li><strong>Fair access to good AI.</strong> MIT can buy every student strong models. Most schools cannot. I care about designs that support learning without widening that gap.</li>
+    </ol>
+    <section class="pillar-sec reveal reference-box">
+      <h3>Reference</h3>
+      <p>MIT Ad Hoc Committee on AI Use in Teaching, Learning, and Research Training. <i>Report</i>. Massachusetts Institute of Technology, August 13, 2026.</p>
+      <p class="pillar-more"><a class="text-arrow" href="{MIT_REPORT_URL}" target="_blank" rel="noopener">Read the full report {ico(ICON_OUT)}</a></p>
+    </section>
   </div>
 </section>
 """)
@@ -588,6 +666,9 @@ service = page("Service · Hua-Xu Zhong", "service", f"""
 """)
 
 link_groups = [
+    ("Reports & Reading", [
+        ("", [("MIT Report: AI Use in Teaching, Learning, and Research Training", "https://aiandeducation.mit.edu/report/", "MIT Ad Hoc Committee, August 2026. Eight principles and campus-wide recommendations for the AI era. My Position page responds to it.")]),
+    ]),
     ("Text Generation & LLM Assistance", [
         ("", [("ChatGPT (OpenAI)", "https://chat.openai.com"), ("Gemini (Google)", "https://gemini.google.com"), ("Claude (Anthropic)", "https://claude.ai"), ("Perplexity AI", "https://www.perplexity.ai")]),
         ("Academic and professional writing", [("Notion AI (in Notion)", "https://www.notion.so"), ("Gamma.app", "https://gamma.app"), ("Elicit.org", "https://elicit.org"), ("Grammarly", "https://www.grammarly.com")]),
@@ -607,16 +688,19 @@ link_groups = [
         ("Advanced AI learning platforms", [("Coursera", "https://www.coursera.org"), ("edX", "https://www.edx.org"), ("fast.ai", "https://www.fast.ai"), ("NVIDIA Deep Learning Institute (DLI)", "https://www.nvidia.com/en-us/training/")]),
     ]),
 ]
+def link_card(item):
+    # item = (name, url) or (name, url, note) — note renders as a small annotation
+    n, u = item[0], item[1]
+    note = f'<p class="when link-note">{escape(item[2])}</p>' if len(item) > 2 else ""
+    return f'<a class="card lift" href="{escape(u)}" target="_blank" rel="noopener"><h3>{escape(n)}</h3>{ico(ICON_OUT)}{note}</a>'
+
 blocks = []
 for cat, subs in link_groups:
     inner = []
     for sub, items in subs:
         if sub:
             inner.append(f'<h3 class="subhead">{escape(sub)}</h3>')
-        cards = "".join(
-            f'<a class="card lift" href="{escape(u)}" target="_blank" rel="noopener"><h3>{escape(n)}</h3>{ico(ICON_OUT)}</a>'
-            for n, u in items
-        )
+        cards = "".join(link_card(i) for i in items)
         inner.append(f'<div class="link-grid">{cards}</div>')
     blocks.append(f'<h2 class="cat-head reveal">{escape(cat)}</h2>' + "".join(inner))
 
@@ -641,6 +725,7 @@ notfound = page("Page not found · Hua-Xu Zhong", "home", """
 (ROOT / "about.html").write_text(about, encoding="utf-8")
 (ROOT / "research.html").write_text(research, encoding="utf-8")
 (ROOT / "teaching.html").write_text(teaching, encoding="utf-8")
+(ROOT / "position.html").write_text(position, encoding="utf-8")
 (ROOT / "activities.html").write_text(activities, encoding="utf-8")
 (ROOT / "service.html").write_text(service, encoding="utf-8")
 (ROOT / "links.html").write_text(links, encoding="utf-8")

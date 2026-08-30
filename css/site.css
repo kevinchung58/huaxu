@@ -676,6 +676,94 @@ main {
   color: var(--navy);
 }
 
+/* ============ Position page ============ */
+.pos-hero {
+  margin: 1.4rem 0 1.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.pos-hero img { display: block; width: 100%; aspect-ratio: 21 / 9; object-fit: cover; }
+.pos-hero figcaption {
+  padding: 0.6rem 1.1rem;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+.stance-list { margin: 0 0 1.2rem; padding-left: 1.4rem; }
+.stance-list li { margin-bottom: 0.9rem; max-width: 46rem; }
+.stance-list li strong { color: var(--navy); }
+.stance-list li::marker { color: var(--accent); font-weight: 600; }
+
+.conv-map { margin: 0 0 0.6rem; }
+.conv-map figcaption {
+  margin-bottom: 0.9rem;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.conv-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+.conv-cell {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.05rem;
+}
+.conv-cell p { margin: 0; font-size: 0.95rem; color: var(--navy); }
+.conv-cell.mit { background: var(--gold); border-top: 2px solid var(--accent); }
+.conv-cell.mit h4 { margin: 0 0 0.3rem; font-size: 0.95rem; font-family: var(--sans); font-weight: 600; color: var(--navy); }
+.conv-cell.mit .when { margin: 0; font-size: 0.8rem; }
+.conv-link {
+  width: 2px;
+  height: 0.8rem;
+  margin: 0 auto;
+  background: var(--accent);
+}
+@media (min-width: 860px) {
+  .conv-row { grid-template-columns: 5fr auto 5fr; align-items: center; gap: 1rem; }
+  .conv-link { width: 2.4rem; height: 2px; margin: 0; position: relative; }
+  .conv-link::after {
+    content: "";
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-top: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+    transform: translateY(-50%) rotate(45deg);
+  }
+}
+.report-quote {
+  margin: 1.6rem 0 1rem;
+  padding: 1.1rem 1.3rem;
+  background: var(--gold);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.report-quote p { margin: 0; font-style: italic; font-size: 1.08rem; color: var(--navy); }
+.report-quote cite {
+  display: block;
+  margin-top: 0.7rem;
+  font-style: normal;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--accent-ink);
+}
+.reference-box { margin-top: 2.2rem; }
+.link-note { margin: 0.35rem 0 0; font-size: 0.78rem; }
+
 /* ============ Research ============ */
 .filters { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.85rem 0 1.6rem; }
 .chip {
