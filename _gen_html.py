@@ -5,6 +5,12 @@ from html import escape
 ROOT = Path(__file__).resolve().parent
 CSS = "css/site.css?v=20260830b"
 
+SITE = "https://kevinchung58.github.io/huaxu"
+DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking."
+PUBLIC_PAGES = ["index.html", "about.html", "research.html", "teaching.html",
+                "position.html", "thinking.html", "practice.html",
+                "activities.html", "service.html", "links.html"]
+
 def svg(d: str, filled: bool = False) -> str:
     if filled:
         return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">{d}</svg>'
@@ -50,7 +56,7 @@ def nav(active: str) -> str:
         return f'<a href="{href}" class="{cls}">{label}</a>'
 
     more_on = " is-active" if active in {"service", "links"} else ""
-    pos_on = " is-active" if active in {"position", "thinking"} else ""
+    pos_on = " is-active" if active in {"position", "thinking", "practice"} else ""
     return f"""<a class="skip" href="#main">Skip to main content</a>
 <header class="nav">
   <div class="wrap nav-inner">
@@ -65,6 +71,7 @@ def nav(active: str) -> str:
         <div class="more-menu" role="menu">
           {a("position.html", "AI in education", "position")}
           {a("thinking.html", "How I think", "thinking")}
+          {a("practice.html", "Report in practice", "practice")}
         </div>
       </div>
       {a("activities.html", "Activities", "activities")}
@@ -113,14 +120,30 @@ FOOT = f"""<footer>
 <script src="js/site.js?v=20260830a"></script>"""
 
 
-def page(title: str, active: str, body: str, extra: str = "") -> str:
+def page(title: str, active: str, body: str, path: str = "", extra: str = "") -> str:
+    # path defaults to "<active>.html" ("home" is index.html);
+    # 404 passes path="404" to stay unindexed.
+    path = path or ("index.html" if active == "home" else f"{active}.html")
+    if path == "404":
+        meta = '  <meta name="robots" content="noindex" />\n'
+    else:
+        canonical = f"{SITE}/{path}"
+        meta = f'''  <link rel="canonical" href="{canonical}" />
+  <meta property="og:site_name" content="Hua-Xu Zhong" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="{escape(title)}" />
+  <meta property="og:description" content="{DESC}" />
+  <meta property="og:url" content="{canonical}" />
+  <meta property="og:image" content="{SITE}/IMG/1.jpg" />
+  <meta name="twitter:card" content="summary" />
+'''
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking." />
-  <title>{escape(title)}</title>
+  <meta name="description" content="{DESC}" />
+{meta}  <title>{escape(title)}</title>
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
   <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
   <link rel="stylesheet" href="{CSS}" />
@@ -1104,7 +1127,7 @@ notfound = page("Page not found · Hua-Xu Zhong", "home", """
   <p class="when" style="margin:1rem 0 1.4rem">This address does not match a page on the site.</p>
   <a class="btn btn-primary" href="index.html">Back to home</a>
 </div></section>
-""")
+""", path="404")
 
 (ROOT / "index.html").write_text(home, encoding="utf-8")
 (ROOT / "about.html").write_text(about, encoding="utf-8")
@@ -1117,4 +1140,13 @@ notfound = page("Page not found · Hua-Xu Zhong", "home", """
 (ROOT / "service.html").write_text(service, encoding="utf-8")
 (ROOT / "links.html").write_text(links, encoding="utf-8")
 (ROOT / "404.html").write_text(notfound, encoding="utf-8")
+
+(ROOT / "robots.txt").write_text(
+    f"User-agent: *\nAllow: /\n\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")
+(ROOT / "sitemap.xml").write_text(
+    '<?xml version="1.0" encoding="UTF-8"?>\n'
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    + "".join(f"  <url><loc>{SITE}/{p}</loc><lastmod>2026-08-31</lastmod></url>\n"
+              for p in PUBLIC_PAGES)
+    + "</urlset>\n", encoding="utf-8")
 print("wrote html pages")

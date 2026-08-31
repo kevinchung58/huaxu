@@ -21,11 +21,17 @@ Do not run `npm run build`. The HTML files at the repo root are the site.
 
 - `index.html` — Home
 - `about.html` — About
-- `research.html` — Publications, featured papers, projects
+- `research.html` — Publications, featured papers, projects, research-interest pillars
 - `teaching.html` — Teaching philosophy
+- `position.html` — Position: stance on generative AI in education (under Position)
+- `thinking.html` — How I think (under Position)
+- `practice.html` — Reading of the MIT report in practice (under Position)
 - `activities.html` — Gallery and talks
 - `service.html` — Editorial roles and reviewing
 - `links.html` — Resources (under More)
+- `404.html` — Not found (noindex)
+
+`robots.txt` and `sitemap.xml` are generated too — do not hand-edit them.
 
 Shared assets: `css/site.css`, `js/site.js`, `IMG/`.
 
