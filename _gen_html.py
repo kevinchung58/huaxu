@@ -832,55 +832,71 @@ thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
 
 # Practice page — part two of the MIT report read (owner decision 2026-08: the
 # recommendations half lives on its own page, eight clusters, each with a
-# "transfer" note read from a campus without MIT's budget). Rows use the CSS
-# plate variant; swapping a row's "sec" data for an "img" key would render a
-# generated illustration instead (kept as an option).
+# "transfer" note read from a campus without MIT's budget). Rows render with
+# generated scene illustrations (owner approved 2026-08); the CSS plate variant
+# (.plate) remains as fallback: drop a row's "img" key to render its § plate.
 PRACTICE_ROWS = [
     {
         "sec": "§3.1.1-3.1.2",
         "name": "Rebuild assessment",
+        "img": "IMG/practice-1-assessment.jpg",
+        "alt": "Illustration of a student and a professor in an oral exam conversation across a small table with an open portfolio between them, a small machine figure taking notes nearby",
         "said": "Start by revisiting what each course is actually for, now that AI can complete most written assignments. The committee warns against simply AI-proofing everything: leaning on timed in-class exams narrows what a credential signals and cuts against the deep, unhurried work students should learn to value. Its alternatives are oral exams, semester portfolios, and out-of-class assignments paired with in-class conversations about them.",
         "take": "None of these needs a grant. Rebuilding one assessment is the single highest-yield move available to an individual instructor, and it is where I would start. A portfolio defended in conversation is also the cleanest answer to the question everyone asks first: how do I know the student did the work?",
     },
     {
         "sec": "§3.1.3-3.1.4",
         "name": "Projects and social learning",
+        "img": "IMG/practice-2-projects.jpg",
+        "alt": "Illustration of four students around a work table assembling a small prototype with an amber glowing component, a machine figure handing over a screw",
         "said": "Match the new assessments with more experiential, project-based learning. Because AI lowers the cost of ambitious work, a capstone class can now expect near production-quality software in one term, and architecture students can visualize and test ideas that once took weeks. And because AI is quietly dissolving study groups and office hours, the committee asks every subject to build structured, graded in-person interaction back in, with its purpose explained to students from day one.",
         "take": "The day-one explanation is the part I keep underlining. Students follow rules whose purpose they understand, and \"we work in groups because learning here is social\" is a purpose I can defend. Collaboration is the third link of my teaching chain; this section of the report treats it as load-bearing.",
     },
     {
         "sec": "§3.1.6",
         "name": "Grades, on trial",
+        "img": "IMG/practice-3-grades.jpg",
+        "alt": "Illustration of a balance scale with a medal on one pan and an open book sprouting an amber shoot on the other, outweighed, while a student watches and a machine holds the column",
         "said": "Grade maximization is itself an incentive to lean on AI, so the committee refuses grade rationing and questions the currency instead. It points to competency- and mastery-based schemes, to employers who already trust their own exercises over transcripts, and admits a thought experiment: if MIT had no grades, much of the incentive to cheat with AI would disappear.",
         "take": "I cannot abolish grades from my own classroom. What transfers is smaller but real: grade the process as well as the answer, give feedback a transcript cannot compress, and let portfolios carry weight in any course that produces visible work.",
     },
     {
         "sec": "§3.1.9",
         "name": "The detector temptation",
+        "img": "IMG/practice-4-detector.jpg",
+        "alt": "Illustration of a nervous student writing at a desk while a giant mechanical arm lowers an amber-ringed magnifying lens over the page, a small machine shrugging beside the desk",
         "said": "The committee recommends against relying on AI detectors and lockdown browsers. Detection invites an arms race with paraphrasing tools that nobody wins, and its false positives land hardest on non-native English writers and neurodivergent students. MIT's disciplinary committee does not accept detector output alone as evidence. The suggested alternatives are version histories, staged deadlines, and work developed in class.",
         "take": "This row matters twice as much where I teach, because most of my students write in English as an additional language. A tool whose known failure mode is misreading their prose as machine-made is not a neutral instrument. Process evidence beats pattern-matching, and it costs less than a surveillance license.",
     },
     {
         "sec": "§3.2.3",
         "name": "Instructors disclose too",
+        "img": "IMG/practice-5-disclosure.jpg",
+        "alt": "Illustration of a teacher openly presenting a small machine figure at a lectern to three seated students, an amber projector beam on the wall",
         "said": "Students notice immediately when instructors restrict student AI while quietly generating slides, feedback, and grading comments with it, and they read it as a double standard. The committee asks instructors to disclose their own AI use, and suggests a better channel for machine feedback: hand it to students as a revision tool rather than hiding it as the grader.",
         "take": "I hold this as a personal rule: whatever I ask students to declare, I declare first. It costs one sentence on a syllabus or a slide, and it buys the standing to have the conversation at all.",
     },
     {
         "sec": "§3.2.6",
         "name": "AI in theses, on the record",
+        "img": "IMG/practice-6-thesis.jpg",
+        "alt": "Illustration of a graduate in a mortarboard clutching a thick thesis with an amber tag pinned to its cover, while a machine figure verifies a stack of reference books",
         "said": "Every thesis should carry a statement of how AI was used in producing it. AI never appears as co-author, and the human author remains responsible for verifying everything, including citations, which language models are known to fabricate.",
         "take": "This is the recommendation closest to my daily work as a researcher. A short usage statement is a small price for a large clarity, and the fabricated-citation warning is not theoretical: any reference an AI suggests stays unverified until I have opened it.",
     },
     {
         "sec": "§3.2.4",
         "name": "AI literacy in three registers",
+        "img": "IMG/practice-7-literacy.jpg",
+        "alt": "Illustration of three pedestals holding a magnifying glass, two hands shaking, and an amber sprouting leaf, with a student and machine figure studying them",
         "said": "The report splits AI literacy into effective use (verify outputs, know a model's failure modes, recognize when not to reach for AI), responsible use (understand augmentation versus automation and disclose honestly), and ethical use (training data, bias, homogenized voice, environmental cost, authorship). It wants these woven through orientation and the whole curriculum, and cites a campus survey where about two thirds of students saw AI as central to their careers while only about a quarter felt their education was preparing them.",
         "take": "This is where the report and my research agenda overlap most cleanly. The three registers give structure to the literacy ground layer I argue for on my thinking page, and the quarter who feel prepared is the measurable version of why that layer exists. <a href=\"thinking.html\">My thinking page works this out in full</a>.",
     },
     {
         "sec": "§3.3.7",
         "name": "Fair access, priced",
+        "img": "IMG/practice-8-access.jpg",
+        "alt": "Illustration of a machine figure operating a tap dispenser and three students queuing with cups as an amber stream fills the first cup",
         "said": "Top commercial AI plans run around $200 per month, so students who can pay literally learn with stronger tools than students who cannot. MIT's answer is Parley, a model-agnostic campus platform giving every member about $30 of monthly credits and API access for coding tools. The committee concedes the amount may fall short and asks for continuing review.",
         "take": "Most campuses cannot fund a Parley. The framing still travels: unequal access is a course-design variable, not a footnote to it. An assignment that quietly assumes a $200 subscription is measuring family income. On my position page, fair access was an open question; this is the concrete version of the problem.",
     },
@@ -889,12 +905,17 @@ PRACTICE_ROWS = [
 practice_rows = []
 for i, r in enumerate(PRACTICE_ROWS):
     flip = " flip" if i % 2 else ""
-    tone = " plate-paper" if i % 2 else " plate-navy"
-    visual = (
-        f'<div class="media-fig plate{tone}" aria-hidden="true">'
-        f'<span class="plate-num">{escape(r["sec"])}</span><span class="plate-rule"></span>'
-        f'<span class="plate-name">{escape(r["name"])}</span></div>'
-    )
+    if r.get("img"):
+        visual = (
+            f'<figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>'
+        )
+    else:
+        tone = " plate-paper" if i % 2 else " plate-navy"
+        visual = (
+            f'<div class="media-fig plate{tone}" aria-hidden="true">'
+            f'<span class="plate-num">{escape(r["sec"])}</span><span class="plate-rule"></span>'
+            f'<span class="plate-name">{escape(r["name"])}</span></div>'
+        )
     said = escape(r["said"])
     take = r["take"]
     if "<a href" not in take:
