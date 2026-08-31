@@ -209,7 +209,7 @@ PILLARS = [
         "icon": ICON_SPARK,
         "thesis": "How to design generative AI as a partner in inquiry, and the literacies such inquiry rests on.",
         "topics": ["LLM-powered learning systems", "AI agents for teaching & learning", "GAI for feedback & scaffolding", "Learner-AI interaction & interfaces", "AI & information literacy", "Computational thinking"],
-        "detail": "My interest here is generative AI as a learning partner: LLM-powered learning systems and AI agents that extend access to feedback, ideas, and scaffolding, so students can keep going when human support runs out. Across these projects I keep returning to the same question: how do we design these systems so students keep thinking for themselves? I also study the literacies such inquiry rests on: AI literacy, information literacy, and computational thinking, the working grammar of learning with AI.",
+        "detail": "My interest here is generative AI as a learning partner: LLM-powered learning systems and AI agents that extend access to feedback, ideas, and scaffolding, so students can keep going when human support runs out. This is the direction I am working toward, and the question I keep returning to is how to design these systems so students keep thinking for themselves. I also study the literacies such inquiry rests on: AI literacy, information literacy, and computational thinking, the working grammar of learning with AI.",
     },
     {
         "id": "creativity-design-thinking",
@@ -217,7 +217,7 @@ PILLARS = [
         "icon": ICON_PENCIL,
         "thesis": "How people learn to think creatively, frame ill-defined problems, and design their way forward.",
         "topics": ["Design thinking methods", "Creative problem-solving", "Teaching & learning for creativity", "AI tools for creative work"],
-        "detail": "I see creativity and design thinking as practices that can be taught and learned, not as gifts. They are methods for framing ill-defined problems and designing a way forward. I also study what AI tools do to creative work: when they support it, and when they quietly take it over.",
+        "detail": "I see creativity and design thinking as practices that can be taught and learned, not as gifts. They are methods for framing ill-defined problems and designing a way forward. I also study what AI tools change in creative work: when they support it, and when the creative part of the work quietly moves from the person to the tool.",
     },
     {
         "id": "information-systems-management",
@@ -293,7 +293,7 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
         <p class="eyebrow">Educational technology · AI · design thinking</p>
         <h1>Hua-Xu Zhong<span>鍾華栩 · PhD</span></h1>
         <p class="role">Researcher in Educational Technology &amp; AI</p>
-        <p class="lede">I work where technology, education, and practical AI meet. Recent projects look at LLM-powered learning systems and tools that support creativity, so students can inquire rather than only adapt.</p>
+        <p class="lede">I work where technology, education, and practical AI meet. My current direction is LLM-powered learning systems and tools that support creativity, so students can inquire rather than only adapt.</p>
         <div class="actions">
           <a class="btn btn-primary" href="research.html">{ICON_CASE} View research</a>
           <a class="btn btn-ghost" href="about.html">{ICON_USER} About my work</a>
@@ -313,7 +313,7 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
 </section>
 <section class="section">
   <div class="wrap">
-    <div class="section-head reveal"><p class="eyebrow">Focus</p><h2>Research interests</h2><p>Three directions guide my research agenda, from classroom learning to digital services.</p></div>
+    <div class="section-head reveal"><p class="eyebrow">Focus</p><h2>Research interests</h2><p>Three directions guide my research agenda: learning, creativity, and the systems people work with.</p></div>
     <div class="grid-3">
 {pillar_cards}
     </div>
