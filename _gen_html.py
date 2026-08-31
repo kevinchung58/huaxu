@@ -86,6 +86,7 @@ def nav(active: str) -> str:
     <div class="label">Position</div>
     {a("position.html", "AI in education", "position")}
     {a("thinking.html", "How I think", "thinking")}
+    {a("practice.html", "Report in practice", "practice")}
     {a("activities.html", "Activities", "activities")}
     <div class="label">More</div>
     {a("service.html", "Service", "service")}
@@ -686,6 +687,7 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
       <h3>Reference</h3>
       <p>MIT Ad Hoc Committee on AI Use in Teaching, Learning, and Research Training. <i>Report</i>. Massachusetts Institute of Technology, August 13, 2026.</p>
       <p class="pillar-more"><a class="text-arrow" href="{MIT_REPORT_URL}" target="_blank" rel="noopener">Read the full report {ico(ICON_OUT)}</a></p>
+      <p class="pillar-more"><a class="text-arrow" href="practice.html">Part two: the recommendations, transferred to a smaller campus {ico(ICON_RIGHT)}</a></p>
     </section>
   </div>
 </section>
@@ -737,17 +739,12 @@ grid_cells_html = "\n".join(
     for i, c in enumerate(GRID_CELLS)
 )
 
-# NOTE (2026-08): the four scene illustrations (act-1/2/3, diverge-converge)
-# still need generating; the image-generation limit hit zero after the hero.
-# The rows temporarily point at closest-meaning grid panels. To finish, generate
-# the four scene images and swap the "img" values back to their planned paths
-# (listed in TEMP comments below), then regenerate.
 GRID_ACTS = [
     {
         "tag": "Act I",
         "name": "What machines already do",
-        "img": "IMG/grid-3-familiar-paths.jpg",  # TEMP placeholder; planned: IMG/act-1.jpg
-        "alt": "Dot-grid panel of dots joined by neat right-angled connection lines, one route in amber",
+        "img": "IMG/act-1.jpg",
+        "alt": "Illustration of a small abstract machine stamping identical neat dot-network cards from an amber ink pad while a student collects one",
         "paras": [
             "Read the first row as a job description for a large language model. Collecting dots is retrieval. Grouping them is classification. Joining them along familiar routes is precisely what these models do, at a scale no person can match. That is not a complaint. It is the ground we stand on.",
             "It does quietly reprice education, though. A curriculum that spends most of its hours training students to gather, sort, and connect information is training them to compete with a machine on the machine's home field. The MIT report lands in the same place when it asks us to augment curiosity, creativity, and learning instead of automating them.",
@@ -756,8 +753,8 @@ GRID_ACTS = [
     {
         "tag": "Act II",
         "name": "The human premium",
-        "img": "IMG/grid-5-creativity.jpg",  # TEMP placeholder; planned: IMG/act-2.jpg
-        "alt": "Dot-grid panel of dots connected by amber lines into the silhouette of a paper plane",
+        "img": "IMG/act-2.jpg",
+        "alt": "Illustration of a student on a ladder drawing a large amber paper-plane outline across a dotted wall while an abstract machine figure steadies the ladder",
         "paras": [
             "The second row is the work that appreciates. Framing comes first: problem solving begins before any line is drawn, when someone walks up to the field and decides which few dots deserve attention, and why. Creativity is next: taking the same dots everyone has and connecting them into a shape nobody had drawn. Wisdom is the quiet one: the discipline to draw the single necessary line and leave the rest alone.",
             "All three are trainable, and none of them is a download. They are the capacities my position page defends and my teaching chain practices: creativity as the goal, inquiry as the method, and judgment about which connections are worth making at all.",
@@ -766,11 +763,12 @@ GRID_ACTS = [
     {
         "tag": "Act III",
         "name": "Three ways the dots betray us",
-        "img": "IMG/grid-7-hallucination.jpg",  # TEMP placeholder; planned: IMG/act-3.jpg
-        "alt": "Dot-grid panel of dots connected into a dense chaotic tangle of lines fraying off the edge",
+        "img": "IMG/act-3.jpg",
+        "alt": "Illustration of a student and an abstract machine figure studying a giant tangled knot of dot connections pinned to a board, an amber caution triangle leaning at its foot",
         "paras": [
             "The last row is why literacy is not decoration. Hallucination is the field connected so densely, so confidently, that nothing means anything; it is the visual form of an AI answer that sounds right and is not. The imposed pattern is the star drawn first, with dots welcomed only when they land on it; it is correlation staged as cause, and it powers both conspiracy thinking and misleading charts. Cherry-picking is the clean line through three friendly dots while the rest fade to outline.",
             "Guarding against these three is a learnable craft: checking sources, verifying before connecting, and asking which dots were left out. These habits sit in the ground layer of my map, because AI literacy and information literacy are what let the second row happen without sliding into the third.",
+            "The MIT report gives the craft a useful structure, naming three registers of AI literacy. Effective use: verify outputs, know a model's failure modes, and recognize when not to reach for AI at all. Responsible use: understand the difference between augmenting and automating your own thinking, and disclose AI's contribution honestly. Ethical use: ask the harder questions about training data, bias, and authorship. In the campus survey the report cites, about two thirds of students saw AI as important to their careers while only about a quarter felt their education was preparing them for it. That gap, measured rather than imagined, is why the ground layer exists.",
         ],
     },
 ]
@@ -812,7 +810,7 @@ thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
     </div>
     {titled("h2", "Why design thinking, from here on", ICON_PENCIL, "block-title reveal spaced")}
     <div class="media-row reveal">
-      <figure class="media-fig"><img src="IMG/grid-6-wisdom.jpg" alt="Dot-grid panel of faint grey dots with only two navy dots joined by one amber line" loading="lazy" /></figure> <!-- TEMP placeholder; planned: IMG/diverge-converge.jpg -->
+      <figure class="media-fig"><img src="IMG/diverge-converge.jpg" alt="Illustration of an abstract machine figure pouring a jar of navy dots into a wide paper funnel held by a student, with a single amber line emerging from the funnel toward one circled target dot" loading="lazy" /></figure>
       <div class="media-copy">
         <p>Both halves of the second row, making new shapes and choosing one line, are exactly the moves design thinking rehearses. The Double Diamond from the British Design Council is divergence then convergence, twice: spread across the field to understand, commit to a framed problem; spread into possible shapes, commit to a solution. Stanford's d.school teaches the same rhythm as five stages, from empathize to test, and treats visual thinking, collaboration, and iteration as working principles.</p>
         <p>That is why I think the GAI era raises the stakes for design thinking rather than retiring it. The tools took over the connecting. What remains to teach is the framing, the shaping, and the choosing, and design thinking is the most practiced method we have for all three. It runs through my research pillar on creativity and design thinking, and it is why my teaching chain starts from independent thinking: the habit of choosing your own dots before anyone connects them for you.</p>
@@ -826,6 +824,117 @@ thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
       <p>Mednick, S. (1962). The associative basis of the creative process. <i>Psychological Review, 69</i>(3), 220-232. Creativity as forming new connections between distant elements.</p>
       <p>Design Council (2004). The Double Diamond; and the Stanford d.school design thinking process. Reading: <a href="https://ixdf.org/literature/topics/design-thinking" target="_blank" rel="noopener">Interaction Design Foundation, Design thinking</a>.</p>
       <p class="pillar-more"><a class="text-arrow" href="position.html">Continue to my position on AI in education {ico(ICON_RIGHT)}</a></p>
+      <p class="pillar-more"><a class="text-arrow" href="practice.html">Part two: the report in practice {ico(ICON_RIGHT)}</a></p>
+    </section>
+  </div>
+</section>
+""")
+
+# Practice page — part two of the MIT report read (owner decision 2026-08: the
+# recommendations half lives on its own page, eight clusters, each with a
+# "transfer" note read from a campus without MIT's budget). Rows use the CSS
+# plate variant; swapping a row's "sec" data for an "img" key would render a
+# generated illustration instead (kept as an option).
+PRACTICE_ROWS = [
+    {
+        "sec": "§3.1.1-3.1.2",
+        "name": "Rebuild assessment",
+        "said": "Start by revisiting what each course is actually for, now that AI can complete most written assignments. The committee warns against simply AI-proofing everything: leaning on timed in-class exams narrows what a credential signals and cuts against the deep, unhurried work students should learn to value. Its alternatives are oral exams, semester portfolios, and out-of-class assignments paired with in-class conversations about them.",
+        "take": "None of these needs a grant. Rebuilding one assessment is the single highest-yield move available to an individual instructor, and it is where I would start. A portfolio defended in conversation is also the cleanest answer to the question everyone asks first: how do I know the student did the work?",
+    },
+    {
+        "sec": "§3.1.3-3.1.4",
+        "name": "Projects and social learning",
+        "said": "Match the new assessments with more experiential, project-based learning. Because AI lowers the cost of ambitious work, a capstone class can now expect near production-quality software in one term, and architecture students can visualize and test ideas that once took weeks. And because AI is quietly dissolving study groups and office hours, the committee asks every subject to build structured, graded in-person interaction back in, with its purpose explained to students from day one.",
+        "take": "The day-one explanation is the part I keep underlining. Students follow rules whose purpose they understand, and \"we work in groups because learning here is social\" is a purpose I can defend. Collaboration is the third link of my teaching chain; this section of the report treats it as load-bearing.",
+    },
+    {
+        "sec": "§3.1.6",
+        "name": "Grades, on trial",
+        "said": "Grade maximization is itself an incentive to lean on AI, so the committee refuses grade rationing and questions the currency instead. It points to competency- and mastery-based schemes, to employers who already trust their own exercises over transcripts, and admits a thought experiment: if MIT had no grades, much of the incentive to cheat with AI would disappear.",
+        "take": "I cannot abolish grades from my own classroom. What transfers is smaller but real: grade the process as well as the answer, give feedback a transcript cannot compress, and let portfolios carry weight in any course that produces visible work.",
+    },
+    {
+        "sec": "§3.1.9",
+        "name": "The detector temptation",
+        "said": "The committee recommends against relying on AI detectors and lockdown browsers. Detection invites an arms race with paraphrasing tools that nobody wins, and its false positives land hardest on non-native English writers and neurodivergent students. MIT's disciplinary committee does not accept detector output alone as evidence. The suggested alternatives are version histories, staged deadlines, and work developed in class.",
+        "take": "This row matters twice as much where I teach, because most of my students write in English as an additional language. A tool whose known failure mode is misreading their prose as machine-made is not a neutral instrument. Process evidence beats pattern-matching, and it costs less than a surveillance license.",
+    },
+    {
+        "sec": "§3.2.3",
+        "name": "Instructors disclose too",
+        "said": "Students notice immediately when instructors restrict student AI while quietly generating slides, feedback, and grading comments with it, and they read it as a double standard. The committee asks instructors to disclose their own AI use, and suggests a better channel for machine feedback: hand it to students as a revision tool rather than hiding it as the grader.",
+        "take": "I hold this as a personal rule: whatever I ask students to declare, I declare first. It costs one sentence on a syllabus or a slide, and it buys the standing to have the conversation at all.",
+    },
+    {
+        "sec": "§3.2.6",
+        "name": "AI in theses, on the record",
+        "said": "Every thesis should carry a statement of how AI was used in producing it. AI never appears as co-author, and the human author remains responsible for verifying everything, including citations, which language models are known to fabricate.",
+        "take": "This is the recommendation closest to my daily work as a researcher. A short usage statement is a small price for a large clarity, and the fabricated-citation warning is not theoretical: any reference an AI suggests stays unverified until I have opened it.",
+    },
+    {
+        "sec": "§3.2.4",
+        "name": "AI literacy in three registers",
+        "said": "The report splits AI literacy into effective use (verify outputs, know a model's failure modes, recognize when not to reach for AI), responsible use (understand augmentation versus automation and disclose honestly), and ethical use (training data, bias, homogenized voice, environmental cost, authorship). It wants these woven through orientation and the whole curriculum, and cites a campus survey where about two thirds of students saw AI as central to their careers while only about a quarter felt their education was preparing them.",
+        "take": "This is where the report and my research agenda overlap most cleanly. The three registers give structure to the literacy ground layer I argue for on my thinking page, and the quarter who feel prepared is the measurable version of why that layer exists. <a href=\"thinking.html\">My thinking page works this out in full</a>.",
+    },
+    {
+        "sec": "§3.3.7",
+        "name": "Fair access, priced",
+        "said": "Top commercial AI plans run around $200 per month, so students who can pay literally learn with stronger tools than students who cannot. MIT's answer is Parley, a model-agnostic campus platform giving every member about $30 of monthly credits and API access for coding tools. The committee concedes the amount may fall short and asks for continuing review.",
+        "take": "Most campuses cannot fund a Parley. The framing still travels: unequal access is a course-design variable, not a footnote to it. An assignment that quietly assumes a $200 subscription is measuring family income. On my position page, fair access was an open question; this is the concrete version of the problem.",
+    },
+]
+
+practice_rows = []
+for i, r in enumerate(PRACTICE_ROWS):
+    flip = " flip" if i % 2 else ""
+    tone = " plate-paper" if i % 2 else " plate-navy"
+    visual = (
+        f'<div class="media-fig plate{tone}" aria-hidden="true">'
+        f'<span class="plate-num">{escape(r["sec"])}</span><span class="plate-rule"></span>'
+        f'<span class="plate-name">{escape(r["name"])}</span></div>'
+    )
+    said = escape(r["said"])
+    take = r["take"]
+    if "<a href" not in take:
+        take = escape(take)
+    else:
+        head, rest = take.split('<a href="')
+        href, tail = rest.split('">', 1)
+        link_text, tail2 = tail.split("</a>", 1)
+        take = f'{escape(head)}<a href="{escape(href)}">{escape(link_text)}</a>{escape(tail2)}'
+    practice_rows.append(
+        f'''<div class="media-row reveal{flip}">
+  {visual}
+  <div class="media-copy">
+    <h3>{escape(r["name"])} <span class="badge">{escape(r["sec"])}</span></h3>
+    <p>{said}</p>
+    <p class="my-read"><span class="read-tag">Transfer</span>{take}</p>
+  </div>
+</div>'''
+    )
+practice_rows_html = "\n".join(practice_rows)
+
+practice = page("Report in practice · Hua-Xu Zhong", "practice", f"""
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Practice</p><h1>From principles to practice</h1><p>Part two of my read of MIT's August 2026 report: its action list, read from a campus that does not have MIT's budget.</p></div>
+    <figure class="pos-hero reveal">
+      <img src="IMG/practice-hero.jpg" alt="Illustration of a student and an abstract machine figure carrying a long scroll together from a grand columned institute building toward a small plain schoolhouse" loading="lazy" />
+      <figcaption>What survives the trip from a well-funded campus to an ordinary one?</figcaption>
+    </figure>
+    <p class="reveal">My first page on the report stayed at the level of positions: the stances I hold, and the eight principles the committee set out. That was an editorial decision, and it left the longer half of the report on the table. This page covers that half: what the committee actually recommends doing, in its ten recommendation groups running from course assessment to campus infrastructure.</p>
+    <p class="reveal">I read the list with one bias declared. MIT's solutions assume MIT's resources: pilot funds, fellow programs, standing committees, and a model-agnostic platform with per-user monthly credits. Most campuses have none of these, and neither does a single instructor planning next semester. So for each group I ask a transfer question: what survives when the budget and the org chart are removed? Usually something does, and it is usually the part that was about pedagogy all along. Eight groups matter most to my context; this page takes them in turn.</p>
+    {titled("h2", "The action list, read twice", ICON_CASE, "block-title reveal spaced")}
+    <div class="principle-rows">
+{practice_rows_html}
+    </div>
+    <p class="reveal">What I have left off: the report's institutional machinery (standing committees, AI Leads, fellows, pilot funds, metrics programs), its space planning, privacy logging, and environmental audit. Those are things only an institute can do, and I have no institute to offer. What one person can do is the eight rows above.</p>
+    <section class="pillar-sec reveal reference-box">
+      <h3>Reference</h3>
+      <p>MIT Ad Hoc Committee on AI Use in Teaching, Learning, and Research Training. <i>Report</i>. Massachusetts Institute of Technology, August 13, 2026. Recommendations section §3. <a href="{MIT_REPORT_URL}" target="_blank" rel="noopener">Read the full report</a></p>
+      <p class="pillar-more"><a class="text-arrow" href="position.html">Part one: my position and the eight principles {ico(ICON_RIGHT)}</a></p>
     </section>
   </div>
 </section>
@@ -982,6 +1091,7 @@ notfound = page("Page not found · Hua-Xu Zhong", "home", """
 (ROOT / "teaching.html").write_text(teaching, encoding="utf-8")
 (ROOT / "position.html").write_text(position, encoding="utf-8")
 (ROOT / "thinking.html").write_text(thinking, encoding="utf-8")
+(ROOT / "practice.html").write_text(practice, encoding="utf-8")
 (ROOT / "activities.html").write_text(activities, encoding="utf-8")
 (ROOT / "service.html").write_text(service, encoding="utf-8")
 (ROOT / "links.html").write_text(links, encoding="utf-8")
