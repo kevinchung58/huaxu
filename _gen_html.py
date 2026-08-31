@@ -695,7 +695,7 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
       <p>“AI should be used to augment and enhance curiosity, creativity, and learning, not automate them.”</p>
       <cite>MIT Ad Hoc Committee on AI Use in Teaching, Learning, and Research Training, Report §2.7 (August 13, 2026)</cite>
     </blockquote>
-    <p class="reveal">My teaching page argues the same sentence in other words. I cite the report not as a source to follow, but as evidence that this position is where careful educators are landing.</p>
+    <p class="reveal">My teaching page argues the same sentence in other words. I cite the report not as a source to follow, but as evidence that I am not thinking about this alone.</p>
     {titled("h2", "The report, principle by principle", ICON_BOOK, "block-title reveal spaced")}
     <p class="reveal">The report organizes its advice around eight guiding principles. Here is each one, first as the committee states it, then as it lands in my own work.</p>
     <div class="principle-rows">
@@ -703,7 +703,7 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
     </div>
     {titled("h2", "Beyond the report: what I want to study", ICON_BULB, "block-title reveal spaced")}
     <ol class="stance-list q-list reveal">
-      <li><strong>Designing for inquiry.</strong> What does an LLM learning system look like when its first job is to protect a student's own thinking? This is the design question behind my work on feedback and scaffolding.</li>
+      <li><strong>Designing for inquiry.</strong> What does an LLM learning system look like when its first job is to protect a student's own thinking? I came to this question from my own view of LLMs, and from the problems I saw them create for feedback in learning. My earlier work on feedback and scaffolding is where I start. I have not built such a system yet; that is the direction.</li>
       <li><strong>Creativity as an outcome.</strong> The report asks AI to augment curiosity and creativity. I am asking how creativity can be taught, practiced, and assessed when AI can imitate its products.</li>
       <li><strong>Fair access to good AI.</strong> Access is uneven in two ways: strong models cost money, and the guidance to use them well costs more. I care about designs that support learning across that uneven ground.</li>
     </ol>
