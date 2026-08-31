@@ -898,7 +898,7 @@ PRACTICE_ROWS = [
         "img": "IMG/practice-5-disclosure.jpg",
         "alt": "Illustration of a teacher openly presenting a small machine figure at a lectern to three seated students, an amber projector beam on the wall",
         "said": "Students notice immediately when instructors restrict student AI while quietly generating slides, feedback, and grading comments with it, and they read it as a double standard. The committee asks instructors to disclose their own AI use, and suggests a better channel for machine feedback: hand it to students as a revision tool rather than hiding it as the grader.",
-        "take": "I hold this as a personal rule: whatever I ask students to declare, I declare first. It costs one sentence on a syllabus or a slide, and it buys the standing to have the conversation at all.",
+        "take": "How a university writes its disclosure policy is out of any one teacher's hands. What is worth keeping here is the symmetry inside the recommendation: whatever students are asked to declare, the people teaching them should be ready to show first.",
     },
     {
         "sec": "§3.2.6",
@@ -922,7 +922,7 @@ PRACTICE_ROWS = [
         "img": "IMG/practice-8-access.jpg",
         "alt": "Illustration of a machine figure operating a tap dispenser and three students queuing with cups as an amber stream fills the first cup",
         "said": "Top commercial AI plans run around $200 per month, so students who can pay literally learn with stronger tools than students who cannot. MIT's answer is Parley, a model-agnostic campus platform giving every member about $30 of monthly credits and API access for coding tools. The committee concedes the amount may fall short and asks for continuing review.",
-        "take": "Most campuses cannot fund a Parley. The framing still travels: unequal access is a course-design variable, not a footnote to it. An assignment that quietly assumes a $200 subscription is measuring family income. On my position page, fair access was an open question; this is the concrete version of the problem.",
+        "take": "Most campuses cannot fund a Parley. The lens still travels: access is a design variable. An assignment that assumes a $200 subscription measures family income; one that assumes fluent AI habits measures who had guidance.",
     },
 ]
 
