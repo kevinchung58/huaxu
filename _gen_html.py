@@ -727,7 +727,7 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
 GRID_CELLS = [
     {"num": "1", "act": "Act I", "name": "Information", "img": "IMG/grid-1-information.jpg",
      "alt": "Dot-grid panel of fifteen scattered navy dots with no connections",
-     "cap": "Dots now arrive faster than anyone can count them. Gathering them is no longer the skill."},
+     "cap": "Dots now arrive faster than anyone can count them. Gathering them is still a basic skill, just no longer the scarce one."},
     {"num": "2", "act": "Act I", "name": "Grouping", "img": "IMG/grid-2-grouping.jpg",
      "alt": "Dot-grid panel of dots enclosed in three dashed grouping rings, one ring drawn in amber",
      "cap": "Sorting dots into piles is classification. Machines do it instantly."},
@@ -819,7 +819,7 @@ thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
     <div class="section-head reveal"><p class="eyebrow">Thinking</p><h1>Dots, shapes, and one line</h1><p>How I think about information, creativity, and problem solving in the GAI era, and the case for design thinking from here on.</p></div>
     <figure class="pos-hero reveal">
       <img src="IMG/thinking-hero.jpg" alt="Illustration of a student and an abstract machine figure standing before a large wall covered in scattered dots, both holding pencils" loading="lazy" />
-      <figcaption>One field of dots, nine fates.</figcaption>
+      <figcaption>One field of dots, read in three acts.</figcaption>
     </figure>
     <p class="reveal">A comic has circulated online since 2020: a three by three grid about a handful of dots. Scattered dots are Information. Sorted and connected dots become Knowledge. The same dots, joined into an unexpected shape, are Creativity. Two dots with a single line between them are Wisdom. Later remixes added their own warnings, from a scribble called Madness to a pentagram called Conspiracy Theory. Nobody owns the comic. Language Log traced it to an Imgur post from August 2020, itself inspired by a GapingVoid illustration, and strangers have redrawn it ever since.</p>
     <p class="reveal">I keep returning to it because it compresses, into doodles, how I think about information, creativity, and problem solving. This page is my academic re-cut: the same nine-panel skeleton, read in three acts. The first act describes what machines already do well. The second is the work that gains value because of that. The third is how the dots deceive us, and where literacy guards the door.</p>
