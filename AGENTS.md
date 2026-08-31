@@ -52,6 +52,16 @@ Files you MAY edit directly:
 amber accents, Newsreader/Source Serif 4/Archivo). Read it before any styling change and keep
 new work inside that world unless the user asks for a redesign.
 
+**Design detector.** `.impeccable/config.json` (tracked) holds the repo-wide impeccable
+detector policy: it waives the generic SaaS/AI-template rules that fire on purpose because they
+describe this world (cream paper, amber hairline rules, navy plate shadows, editorial eyebrows,
+etc. — each documented in `DESIGN.md`). Keep `node .claude/skills/impeccable/scripts/detect.mjs
+--json css/site.css <pages...>` at **0 findings**. Fix objective defects (contrast, heading
+order, sub-11px functional text, broken/placeholder images) in code — never silence them via the
+config. Full-mode HTML/CSS parsing needs `htmlparser2 css-select css-tree domutils` installed
+under `.claude/skills/impeccable/node_modules` (gitignored); the script prints `DEGRADED` and
+undercounts if they are missing.
+
 ## Skills
 
 Installed under `.claude/skills/` — **local-only, gitignored** (not tracked in this repo; the

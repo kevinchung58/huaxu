@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260830b"
+CSS = "css/site.css?v=20260831a"
 
 SITE = "https://kevinchung58.github.io/huaxu"
 DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking."
@@ -398,7 +398,7 @@ for p in featured:
         doi_line = ""
     feat_html.append(f'''<article class="featured-card reveal">
   <div class="badges"><span class="badge gold">Featured</span>{corr}</div>
-  <h4>{title_html}</h4>
+  <h3>{title_html}</h3>
   <p class="authors">{authors_html(p["authors"])}</p>
   <p class="source">{escape(p["source"])}</p>
   {doi_line}
@@ -564,7 +564,7 @@ conv_rows = "\n".join(
     f'''<div class="conv-row">
   <div class="conv-cell"><p>{escape(r["stance"])}</p></div>
   <div class="conv-link" aria-hidden="true"></div>
-  <div class="conv-cell mit"><h4>{escape(r["principle"])} <span class="badge">{escape(r["sec"])}</span></h4><p class="when">{escape(r["note"])}</p></div>
+  <div class="conv-cell mit"><h3>{escape(r["principle"])} <span class="badge">{escape(r["sec"])}</span></h3><p class="when">{escape(r["note"])}</p></div>
 </div>'''
     for r in CONVERGENCE
 )
@@ -758,7 +758,7 @@ grid_cells_html = "\n".join(
     f'''<article class="dot-cell lift reveal"{f' style="--d:{i * 60}ms"' if i else ""}>
   <figure><img src="{escape(c["img"])}" alt="{escape(c["alt"])}" loading="lazy" /></figure>
   <div class="cell-body"><div class="badges"><span class="badge">{escape(c["act"])}</span></div>
-  <h4>{escape(c["num"])} · {escape(c["name"])}</h4><p>{escape(c["cap"])}</p></div>
+  <h3>{escape(c["num"])} · {escape(c["name"])}</h3><p>{escape(c["cap"])}</p></div>
 </article>'''
     for i, c in enumerate(GRID_CELLS)
 )
@@ -1038,7 +1038,7 @@ activities = page("Activities · Hua-Xu Zhong", "activities", f"""
     <button class="modal-close on-photo" type="button" data-close aria-label="Close">{ICON_X}</button>
     <button class="deck-btn prev on-photo" type="button" data-lamp-prev aria-label="Previous photo">{ICON_LEFT}</button>
     <button class="deck-btn next on-photo" type="button" data-lamp-next aria-label="Next photo">{ICON_RIGHT}</button>
-    <img alt="" />
+    <img alt="" aria-hidden="true" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
     <div class="lamp-meta">
       <p data-lamp-cap></p>
       <p class="deck-count" data-lamp-count></p>
