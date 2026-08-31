@@ -583,7 +583,7 @@ PRINCIPLE_READS = [
         "img": "IMG/principle-2-1.jpg",
         "alt": "Illustration of a small student figure standing on a thin amber horizon line before an enormous abstract machine shape whose top dissolves into dotted lines",
         "said": "Generative AI is barely four years old and already past a billion users. The committee states up front that no recommendation can be final on a technology moving this fast, and offers the whole report in a spirit of humility, expecting course corrections as the technology evolves.",
-        "read": "This is the right starting point for research as well. The technology changes faster than any single study, so I anchor my agenda on questions that outlive any model version, above all how students keep thinking for themselves.",
+        "read": "Humility belongs in research as much as in teaching. For me, the constant is not only to keep asking questions that outlast any model version. It is to keep independent thinking in charge. When everyone works with the same generative tools, this is the moment for your own thinking to lead the technology, not for the technology to drive your research.",
     },
     {
         "sec": "§2.2",
@@ -591,7 +591,7 @@ PRINCIPLE_READS = [
         "img": "IMG/principle-2-2.jpg",
         "alt": "Illustration of a student kneeling on a cliff edge to place planks of an amber bridge across a gap, with a flag and a cheering abstract figure on the far cliff",
         "said": "Uncertainty cannot be an excuse for inaction. The committee calls for a strategic response rather than patches and duct tape, and points to genuinely new possibilities: individualized tutoring at scale, and research work that was out of reach a few years ago. Boldness matters most, the report argues, because today's students will soon shape how society uses this technology.",
-        "read": "My research agenda is my version of building instead of patching: I work on systems that try to make generative AI a better learning partner, such as feedback and scaffolding that hold up when human support runs out.",
+        "read": "My agenda is my way of building instead of patching: helping generative AI flow naturally into education, through feedback, scaffolding, assessment, and course design that keep working when human support runs out.",
     },
     {
         "sec": "§2.3",
@@ -599,7 +599,7 @@ PRINCIPLE_READS = [
         "img": "IMG/principle-2-3.jpg",
         "alt": "Illustration of students and a teacher seated in a discussion circle traced by an amber line, while two small abstract machine figures listen from outside the circle",
         "said": "Some MIT instructors were weighing AI agents against hiring undergraduates as research assistants. The committee's answer: research on a campus is also an apprenticeship, and its seeming inefficiencies are a feature rather than a bug. It also warns that policing AI use corrodes trust on both sides, especially while detection tools remain unreliable.",
-        "read": "This principle is why my third stance treats learning as a social act. Any AI plan that saves effort by removing people from the learning process is optimizing the wrong variable.",
+        "read": "This principle meets my third stance: learning stays a social act. Behind it is a simple priority: cultivating each person's own thinking comes first. Over-reliance on AI, whether it does the thinking for a student or takes away the people a student learns with, only removes the chance for that capacity to develop.",
     },
     {
         "sec": "§2.4",
@@ -607,7 +607,7 @@ PRINCIPLE_READS = [
         "img": "IMG/principle-2-4.jpg",
         "alt": "Illustration of a student climbing a steep rock wall while an abstract machine figure below belays the amber safety rope without pulling",
         "said": "The committee argues the deepest risk goes beyond cheating: many uses of AI deprive students of the chance to learn at all. It calls for a new social contract in which students understand that the process of education is productive struggle, and that its most important product is themselves, their judgment, imagination, and metacognition.",
-        "read": "This is the principle behind my first stance. A support system that removes every difficulty has failed even when the student ends with the right answer, so my design work asks where the productive struggle lives in an AI-assisted task and builds around it.",
+        "read": "This principle sits behind my first stance, and I apply it through the goal, not a fixed rule. The first question is what the AI support is for. When the goal is the student's own capability, some of the difficulty is the learning itself, and it has to stay. Much of my design work looks for valuable human-AI interaction that produces creative work, and I am still working toward designs that know which difficulty to protect.",
     },
     {
         "sec": "§2.5",
@@ -615,7 +615,7 @@ PRINCIPLE_READS = [
         "img": "IMG/principle-2-5.jpg",
         "alt": "Illustration of an instructor sketching an amber route on a large drawing sheet, winding backward from a lighthouse-shaped goal through milestone markers to the starting point",
         "said": "Instead of reacting to AI feature by feature, the committee recommends backward design: define what students should know, be able to do, and learn to value, then decide where AI helps and where it does not. When instructors explain why AI is allowed or limited, students are more likely to understand the learning that is being protected.",
-        "read": "Backward design is also how I think of my teaching chain: begin with the human strengths a course should build, then decide where AI belongs along the way. The report's closing advice here, always tell students why, is a practice I try to hold.",
+        "read": "I think about my teaching chain in the same order: start from the human strengths a course should build, then decide where AI belongs along the way. The goal sets the direction. The tool is chosen after it.",
     },
     {
         "sec": "§2.6",
@@ -623,7 +623,7 @@ PRINCIPLE_READS = [
         "img": "IMG/principle-2-6.jpg",
         "alt": "Illustration of five different students walking toward five differently shaped doors along a wall, with amber light spilling from one open door",
         "said": "A poetry seminar, a proof course, and a design lab each call for a different relationship with AI, and a first-year student differs from a doctoral candidate. Instead of one campus-wide rule, the report proposes a shared framework: a common policy menu, disclosure expectations, and accountability standards, with departments choosing within it.",
-        "read": "This principle reads like a research agenda to me. What should a policy menu contain when the students of one department span very different levels of AI literacy? That question sits directly on my first pillar.",
+        "read": "I take this principle as a teaching question more than a rule-making one. Students in a single course can arrive with very different levels of AI literacy, and one kind of support cannot fit them all. Cultivating that literacy, and differentiating teaching around it, belongs to the literacy strand of my first research pillar.",
     },
     {
         "sec": "§2.7",
@@ -631,7 +631,7 @@ PRINCIPLE_READS = [
         "img": "IMG/principle-2-7.jpg",
         "alt": "Illustration of a student at a desk drawing a pencil line that lifts off the page and rises into steps, while an abstract geometric figure steadies the desk lamp",
         "said": "Overreliance on chatbots can erode critical thinking, memory, confidence, and mastery, and a quick answer can trigger what the report calls cognitive surrender: falling back on AI at the first hint of struggle. Borrowing the pro-worker AI argument from economists Acemoglu, Autor, and Johnson, the committee asks for pro-learner AI that expands what students can think about, learn, and solve.",
-        "read": "Pro-learner AI is the shortest accurate description of what I try to design. The test I apply is the one in my first stance: a use of AI belongs in learning when it leaves the student more capable of thinking without it.",
+        "read": "This principle is closest to what I design for: AI that is good for the learner. I hold it as a question, not a rule. In a learning task, does this use of AI leave the student's own thinking stronger when the AI is taken away? If the answer is no, the use is over-reliance, even when the output looks fine.",
     },
     {
         "sec": "§2.8",
@@ -639,7 +639,7 @@ PRINCIPLE_READS = [
         "img": "IMG/principle-2-8.jpg",
         "alt": "Illustration of a schoolhouse with its side walls swung open onto a wide landscape, students walking out in pairs along a winding amber path",
         "said": "Drawing on Jerome Bruner's The Culture of Education, the committee frames education as a cultural practice: students learn to interpret the world, form identities, and join communities. The danger it names is a transactional mindset, assignments as outputs, peers as optional, a degree as a commodity, and this mindset will follow students into work and civic life.",
-        "read": "My collaboration principle answers the transactional student this section warns about. Fair access belongs here too: the relational education Bruner describes is what under-resourced schools lose first if AI arrives only as a private tutor for those who can pay.",
+        "read": "My third stance meets this principle without conflict: learning already happens in relationships, and the transactional mindset the report warns about is what those relationships make visible. The situation is complicated and depends on context. Fair access belongs here too, in a specific sense: the gap I worry about most is not who can buy the strongest model. It is who has someone to teach them to use it well. Whether AI narrows or widens that gap depends on how it is brought into teaching.",
     },
 ]
 
@@ -704,7 +704,7 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
     <ol class="stance-list q-list reveal">
       <li><strong>Designing for inquiry.</strong> What does an LLM learning system look like when its first job is to protect a student's own thinking? This is the design question behind my work on feedback and scaffolding.</li>
       <li><strong>Creativity as an outcome.</strong> The report asks AI to augment curiosity and creativity. I am asking how creativity can be taught, practiced, and assessed when AI can imitate its products.</li>
-      <li><strong>Fair access to good AI.</strong> MIT can buy every student strong models. Most schools cannot. I care about designs that support learning without widening that gap.</li>
+      <li><strong>Fair access to good AI.</strong> Access is uneven in two ways: strong models cost money, and the guidance to use them well costs more. I care about designs that support learning across that uneven ground.</li>
     </ol>
     <section class="pillar-sec reveal reference-box">
       <h3>Reference</h3>
