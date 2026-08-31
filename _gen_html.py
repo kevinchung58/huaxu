@@ -866,7 +866,7 @@ PRACTICE_ROWS = [
         "img": "IMG/practice-1-assessment.jpg",
         "alt": "Illustration of a student and a professor in an oral exam conversation across a small table with an open portfolio between them, a small machine figure taking notes nearby",
         "said": "Start by revisiting what each course is actually for, now that AI can complete most written assignments. The committee warns against simply AI-proofing everything: leaning on timed in-class exams narrows what a credential signals and cuts against the deep, unhurried work students should learn to value. Its alternatives are oral exams, semester portfolios, and out-of-class assignments paired with in-class conversations about them.",
-        "take": "None of these needs a grant. Rebuilding one assessment is the single highest-yield move available to an individual instructor, and it is where I would start. A portfolio defended in conversation is also the cleanest answer to the question everyone asks first: how do I know the student did the work?",
+        "take": "None of these needs a grant. Rethinking assessment is where I believe the change has to begin, and any individual instructor can begin it. A portfolio defended in conversation is also the cleanest answer to the question everyone asks first: how do I know the student did the work?",
     },
     {
         "sec": "§3.1.3-3.1.4",
@@ -874,7 +874,7 @@ PRACTICE_ROWS = [
         "img": "IMG/practice-2-projects.jpg",
         "alt": "Illustration of four students around a work table assembling a small prototype with an amber glowing component, a machine figure handing over a screw",
         "said": "Match the new assessments with more experiential, project-based learning. Because AI lowers the cost of ambitious work, a capstone class can now expect near production-quality software in one term, and architecture students can visualize and test ideas that once took weeks. And because AI is quietly dissolving study groups and office hours, the committee asks every subject to build structured, graded in-person interaction back in, with its purpose explained to students from day one.",
-        "take": "The day-one explanation is the part I keep underlining. Students follow rules whose purpose they understand, and \"we work in groups because learning here is social\" is a purpose I can defend. Collaboration is the third link of my teaching chain; this section of the report treats it as load-bearing.",
+        "take": "The day-one explanation is the part I keep underlining. Students follow rules whose purpose they understand, and \"we work in groups because learning here is social\" is a purpose I can defend: collaboration is the third link of my teaching chain, and here the report gives it the same weight.",
     },
     {
         "sec": "§3.1.6",
@@ -882,7 +882,7 @@ PRACTICE_ROWS = [
         "img": "IMG/practice-3-grades.jpg",
         "alt": "Illustration of a balance scale with a medal on one pan and an open book sprouting an amber shoot on the other, outweighed, while a student watches and a machine holds the column",
         "said": "Grade maximization is itself an incentive to lean on AI, so the committee refuses grade rationing and questions the currency instead. It points to competency- and mastery-based schemes, to employers who already trust their own exercises over transcripts, and admits a thought experiment: if MIT had no grades, much of the incentive to cheat with AI would disappear.",
-        "take": "I cannot abolish grades from my own classroom. What transfers is smaller but real: grade the process as well as the answer, give feedback a transcript cannot compress, and let portfolios carry weight in any course that produces visible work.",
+        "take": "No individual teacher gets to abolish grades, so what transfers is smaller but real: grade the process as well as the answer, give feedback a transcript cannot compress, and let portfolios carry real weight wherever a course produces visible work.",
     },
     {
         "sec": "§3.1.9",
@@ -890,7 +890,7 @@ PRACTICE_ROWS = [
         "img": "IMG/practice-4-detector.jpg",
         "alt": "Illustration of a nervous student writing at a desk while a giant mechanical arm lowers an amber-ringed magnifying lens over the page, a small machine shrugging beside the desk",
         "said": "The committee recommends against relying on AI detectors and lockdown browsers. Detection invites an arms race with paraphrasing tools that nobody wins, and its false positives land hardest on non-native English writers and neurodivergent students. MIT's disciplinary committee does not accept detector output alone as evidence. The suggested alternatives are version histories, staged deadlines, and work developed in class.",
-        "take": "This row matters twice as much where I teach, because most of my students write in English as an additional language. A tool whose known failure mode is misreading their prose as machine-made is not a neutral instrument. Process evidence beats pattern-matching, and it costs less than a surveillance license.",
+        "take": "This row matters even more in Taiwan, where most students write in English as an additional language. A tool whose known failure mode is misreading their prose as machine-made is not a neutral instrument. Process evidence beats pattern-matching, and it costs less than a surveillance license.",
     },
     {
         "sec": "§3.2.3",
