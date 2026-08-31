@@ -3,7 +3,13 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260822e"
+CSS = "css/site.css?v=20260830b"
+
+SITE = "https://kevinchung58.github.io/huaxu"
+DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking."
+PUBLIC_PAGES = ["index.html", "about.html", "research.html", "teaching.html",
+                "position.html", "thinking.html", "practice.html",
+                "activities.html", "service.html", "links.html"]
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -50,6 +56,7 @@ def nav(active: str) -> str:
         return f'<a href="{href}" class="{cls}">{label}</a>'
 
     more_on = " is-active" if active in {"service", "links"} else ""
+    pos_on = " is-active" if active in {"position", "thinking", "practice"} else ""
     return f"""<a class="skip" href="#main">Skip to main content</a>
 <header class="nav">
   <div class="wrap nav-inner">
@@ -59,6 +66,14 @@ def nav(active: str) -> str:
       {a("about.html", "About", "about")}
       {a("research.html", "Research", "research")}
       {a("teaching.html", "Teaching", "teaching")}
+      <div class="more">
+        <button class="more-btn{pos_on}" type="button" aria-expanded="false" aria-haspopup="true">Position <span class="caret" aria-hidden="true">{ICON_CARET}</span></button>
+        <div class="more-menu" role="menu">
+          {a("position.html", "AI in education", "position")}
+          {a("thinking.html", "How I think", "thinking")}
+          {a("practice.html", "Report in practice", "practice")}
+        </div>
+      </div>
       {a("activities.html", "Activities", "activities")}
       <div class="more">
         <button class="more-btn{more_on}" type="button" aria-expanded="false" aria-haspopup="true">More <span class="caret" aria-hidden="true">{ICON_CARET}</span></button>
@@ -75,6 +90,10 @@ def nav(active: str) -> str:
     {a("about.html", "About", "about")}
     {a("research.html", "Research", "research")}
     {a("teaching.html", "Teaching", "teaching")}
+    <div class="label">Position</div>
+    {a("position.html", "AI in education", "position")}
+    {a("thinking.html", "How I think", "thinking")}
+    {a("practice.html", "Report in practice", "practice")}
     {a("activities.html", "Activities", "activities")}
     <div class="label">More</div>
     {a("service.html", "Service", "service")}
@@ -98,17 +117,33 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v=20260822e"></script>"""
+<script src="js/site.js?v=20260830a"></script>"""
 
 
-def page(title: str, active: str, body: str, extra: str = "") -> str:
+def page(title: str, active: str, body: str, path: str = "", extra: str = "") -> str:
+    # path defaults to "<active>.html" ("home" is index.html);
+    # 404 passes path="404" to stay unindexed.
+    path = path or ("index.html" if active == "home" else f"{active}.html")
+    if path == "404":
+        meta = '  <meta name="robots" content="noindex" />\n'
+    else:
+        canonical = f"{SITE}/{path}"
+        meta = f'''  <link rel="canonical" href="{canonical}" />
+  <meta property="og:site_name" content="Hua-Xu Zhong" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="{escape(title)}" />
+  <meta property="og:description" content="{DESC}" />
+  <meta property="og:url" content="{canonical}" />
+  <meta property="og:image" content="{SITE}/IMG/1.jpg" />
+  <meta name="twitter:card" content="summary" />
+'''
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking." />
-  <title>{escape(title)}</title>
+  <meta name="description" content="{DESC}" />
+{meta}  <title>{escape(title)}</title>
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
   <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
   <link rel="stylesheet" href="{CSS}" />
@@ -164,6 +199,53 @@ projects = [
 ]
 
 
+# Research interest pillars — single source of truth for the home cards and the
+# anchor sections on the research page (cards link to research.html#id).
+# Written as broad agenda areas (frontier topics), not as a paper index.
+PILLARS = [
+    {
+        "id": "generative-ai-in-education",
+        "name": "Generative AI in Education",
+        "icon": ICON_SPARK,
+        "thesis": "How to design generative AI as a partner in inquiry, and the literacies such inquiry rests on.",
+        "topics": ["LLM-powered learning systems", "AI agents for teaching & learning", "GAI for feedback & scaffolding", "Learner-AI interaction & interfaces", "AI & information literacy", "Computational thinking"],
+        "detail": "My interest here is generative AI as a learning partner: LLM-powered learning systems and AI agents that extend access to feedback, ideas, and scaffolding, so students can keep going when human support runs out. This is the direction I am working toward, and the question I keep returning to is how to design these systems so students keep thinking for themselves. I also study the literacies such inquiry rests on: AI literacy, information literacy, and computational thinking, the working grammar of learning with AI.",
+    },
+    {
+        "id": "creativity-design-thinking",
+        "name": "Creativity & Design Thinking",
+        "icon": ICON_PENCIL,
+        "thesis": "How people learn to think creatively, frame ill-defined problems, and design their way forward.",
+        "topics": ["Design thinking methods", "Creative problem-solving", "Teaching & learning for creativity", "AI tools for creative work"],
+        "detail": "I see creativity and design thinking as practices that can be taught and learned, not as gifts. They are methods for framing ill-defined problems and designing a way forward. I also study what AI tools change in creative work: when they support it, and when the creative part of the work quietly moves from the person to the tool.",
+    },
+    {
+        "id": "information-systems-management",
+        "name": "Information Systems & Management Applications",
+        "icon": ICON_CASE,
+        "thesis": "Why people and organizations accept or resist intelligent systems, and where the field is heading next.",
+        "topics": ["Technology acceptance & IS theories", "AI agents & intelligent information systems", "Emerging technologies & IS frontiers", "Quantitative IS research methods"],
+        "detail": "My information systems work asks why people and organizations accept or resist intelligent systems. I draw on technology acceptance research and IS theories, follow where emerging technologies take the field, and study these questions with quantitative research methods.",
+    },
+]
+
+pillar_cards = "\n".join(
+    f'''<article class="card lift reveal"{f' style="--d:{i * 70}ms"' if i else ""}><div class="head-row">{chip(p["icon"])}<div><h3>{escape(p["name"])}</h3><p>{escape(p["thesis"])}</p></div></div>
+      <ul class="pillar-topics">{"".join(f"<li>{escape(t)}</li>" for t in p["topics"])}</ul>
+      <p class="pillar-more"><a class="text-arrow" href="research.html#{p["id"]}">Show more {ico(ICON_RIGHT)}</a></p></article>'''
+    for i, p in enumerate(PILLARS)
+)
+
+pillar_sections = "\n".join(
+    f'''<section class="pillar-sec reveal" id="{p["id"]}">
+  <h3>{escape(p["name"])}</h3>
+  <p>{escape(p["detail"])}</p>
+  <p class="pillar-keys">{" · ".join(escape(t) for t in p["topics"])}</p>
+</section>'''
+    for p in PILLARS
+)
+
+
 def featured_attrs(p):
     return (
         f'data-featured data-title="{escape(p["title"])}" '
@@ -211,7 +293,7 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
         <p class="eyebrow">Educational technology · AI · design thinking</p>
         <h1>Hua-Xu Zhong<span>鍾華栩 · PhD</span></h1>
         <p class="role">Researcher in Educational Technology &amp; AI</p>
-        <p class="lede">I work where technology, education, and practical AI meet. Recent projects look at LLM-powered learning systems, from GAI concept-map generation to tools that support creativity, so students can inquire rather than only adapt.</p>
+        <p class="lede">I work where technology, education, and practical AI meet. My current direction is LLM-powered learning systems and tools that support creativity, so students can inquire rather than only adapt.</p>
         <div class="actions">
           <a class="btn btn-primary" href="research.html">{ICON_CASE} View research</a>
           <a class="btn btn-ghost" href="about.html">{ICON_USER} About my work</a>
@@ -231,12 +313,9 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
 </section>
 <section class="section">
   <div class="wrap">
-    <div class="section-head reveal"><p class="eyebrow">Focus</p><h2>Research interests</h2><p>Themes that run through my papers, platforms, and classroom work.</p></div>
-    <div class="grid-2">
-      <article class="card lift reveal"><div class="head-row">{chip(ICON_MONITOR)}<div><h3>Educational Technology</h3><p>Using new technologies to improve learning experiences, instructional design, and educational outcomes.</p></div></div></article>
-      <article class="card lift reveal" style="--d:70ms"><div class="head-row">{chip(ICON_CPU)}<div><h3>Artificial Intelligence</h3><p>Machine learning and related methods applied to complex problems.</p></div></div></article>
-      <article class="card lift reveal" style="--d:120ms"><div class="head-row">{chip(ICON_PENCIL)}<div><h3>Creativity and Design Thinking</h3><p>Design thinking and creative problem-solving in education and technology development.</p></div></div></article>
-      <article class="card lift reveal" style="--d:170ms"><div class="head-row">{chip(ICON_BULB)}<div><h3>AI in Education</h3><p>How AI can personalize learning and support tutoring and inquiry-based classrooms.</p></div></div></article>
+    <div class="section-head reveal"><p class="eyebrow">Focus</p><h2>Research interests</h2><p>Three directions guide my research agenda: learning, creativity, and the systems people work with.</p></div>
+    <div class="grid-3">
+{pillar_cards}
     </div>
   </div>
 </section>
@@ -282,12 +361,12 @@ about = page("About · Hua-Xu Zhong", "about", f"""
       </div>
       <div class="about-copy">
         <h2 class="with-ico">{ico(ICON_USER)}Personal academic statement</h2>
-        <p>Hua-Xu Zhong works at the meeting point of technology, education, and practical artificial intelligence. He studies what actually happens when educational technologies and AI systems are put into use.</p>
-        <p>His academic path began with an interdisciplinary undergraduate program. He came in hoping that mixed knowledge and technical integration could address real educational problems. The training widened his view, but it did not fully prepare him for the practical demands of the field. Even with a solid grasp of instructional theory and media design, he kept meeting a gap between theory and problem-solving. He tried programming as a career path, then found that his technical limits made it hard to go deeper. What stayed with him was simpler: knowledge and tools are not enough. You have to see the problem clearly, then turn theory into something you can actually do.</p>
-        <p>During his master's studies, Hua-Xu returned to a core question: Can education actually solve real problems? Courses on information literacy and media education showed him that education is not only about transmitting knowledge. It is about comprehension and changing how people think. Through work on innovation, change, and management, he encountered design thinking, which gave him a way to put creativity and technology into educational settings. That shift did not come from abstract ideals. It came from what he saw in real learning environments, where technology's accelerating effect was hard to miss. He saw how innovation and digital tools could open new opportunities for learners.</p>
-        <blockquote class="quote">“Education is no longer just a tool for meeting needs. It is a systemic force capable of accelerating change.”</blockquote>
-        <p>That insight redirected his academic path. It is why he continues to work on educational technology and learning design.</p>
-        <p>Outside of academia, Hua-Xu enjoys traveling, writing, listening to music, and playing basketball. He values every meaningful moment and refuses to waste time. He wants to build educational technology systems from his background in education, and to work seriously with large language models. He knows this era can empower people, and it can also overwhelm them. So he designs inquiry-based and exploratory learning frameworks that help students develop their potential, not only to survive the future, but to shape it. He is also a scholar who likes learning across disciplines, and he looks for ideas from other fields that can spark new work.</p>
+        <p>I work at the meeting point of technology, education, and practical artificial intelligence. I study what actually happens when educational technologies and AI systems are put into use.</p>
+        <p>My academic path began with an interdisciplinary undergraduate program. I came in hoping that mixed knowledge and technical integration could address real educational problems. The training widened my view, but it did not fully prepare me for the practical demands of the field. Even with a solid grasp of instructional theory and media design, I kept meeting a gap between theory and problem-solving. I tried programming as a career path, then found that my technical limits made it hard to go deeper. What stayed with me was simpler: knowledge and tools are not enough. You have to see the problem clearly, then turn theory into something you can actually do.</p>
+        <p>During my master's studies, I returned to a core question: Can education actually solve real problems? Courses on information literacy and media education showed me that education is not only about transmitting knowledge. It is about comprehension and changing how people think. Through work on innovation, change, and management, I encountered design thinking, which gave me a way to put creativity and technology into educational settings. That shift did not come from abstract ideals. It came from what I saw in real learning environments, where technology's accelerating effect was hard to miss. I saw how innovation and digital tools could open new opportunities for learners.</p>
+        <blockquote class="quote">“Education is a rainbow: it nurtures talents of every color.”</blockquote>
+        <p>That conviction redirected my academic path. It is why I continue to work on educational technology and learning design.</p>
+        <p>Outside of academia, I enjoy traveling, writing, listening to music, and playing basketball. I value every meaningful moment and refuse to waste time. I want to build educational technology systems from my background in education, and to work seriously with large language models. I know this era can empower people, and it can also overwhelm them. So my work now focuses on what LLMs and generative AI can do for learning, the direction I describe on my position page, helping students develop their potential not only to survive the future, but to shape it. I am also a scholar who likes learning across disciplines, and I look for ideas from other fields that can spark new work.</p>
       </div>
     </div>
   </div>
@@ -344,7 +423,11 @@ research = page("Research · Hua-Xu Zhong", "research", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Output</p><h1>Research</h1><p>Publications and projects in educational technology, AI learning platforms, and design-based instruction.</p></div>
-    {titled("h2", "Publications", ICON_BOOK)}
+    {titled("h2", "Research interests", ICON_BULB)}
+    <div class="pillar-sections">
+{pillar_sections}
+    </div>
+    {titled("h2", "Publications", ICON_BOOK, "block-title reveal spaced")}
     <div class="filters reveal" data-filter-group>
       <button class="chip is-on" type="button" data-filter="all">All ({len(pubs)})</button>
       <button class="chip" type="button" data-filter="Journal">Journal ({j_count})</button>
@@ -375,20 +458,529 @@ research = page("Research · Hua-Xu Zhong", "research", f"""
 </div>
 """)
 
+# Teaching principles — one chain: direction -> solution -> connection.
+PRINCIPLES = [
+    {
+        "step": "01 · Direction",
+        "name": "Independent Thinking",
+        "icon": ICON_USER,
+        "text": "For me, independent thinking means staying with a problem before reaching for help: questioning what is given, tolerating ambiguity, and forming my own judgment first. AI can provide answers, but deciding which questions are worth asking remains a human responsibility.",
+    },
+    {
+        "step": "02 · Solution",
+        "name": "Creativity",
+        "icon": ICON_BULB,
+        "text": "I understand creativity as an open mind, as imagination that is not fenced in by habit. Once a direction opens, creativity is what finds the way forward. I believe this matters even more in the GAI era: AI can produce answers quickly, but imagining new possibilities is still a human strength.",
+    },
+    {
+        "step": "03 · Connection",
+        "name": "Collaboration",
+        "icon": ICON_USERS,
+        "text": "Few problems are solved alone. Collaboration connects the people and tools around a problem, including AI, so that a good idea travels further than one person could carry it. I do not see collaboration as seeking agreement. I see it as building a network that can solve problems no single person could.",
+    },
+]
+
+principle_cards = "\n".join(
+    f'''<article class="card lift reveal"{f' style="--d:{i * 70}ms"' if i else ""}><p class="step">{escape(p["step"])}</p><div class="head-row">{chip(p["icon"])}<div><h3>{escape(p["name"])}</h3></div></div>
+      <p>{escape(p["text"])}</p></article>'''
+    for i, p in enumerate(PRINCIPLES)
+)
+
+
+# Courses — data-driven, like PILLARS/GALLERY. FUTURE (owner note, 2026-08):
+# online courses will be appended here. Each entry:
+#   {"name": ..., "level": ..., "period": ..., "desc": ..., "tags": [...], "url": ...}
+# "url" is optional — when present the course title links out (hosted online course).
+# An empty list renders the "in preparation" note instead.
+COURSES = []
+
+if COURSES:
+    course_cards = []
+    for c in COURSES:
+        if c.get("url"):
+            title = f'<a href="{escape(c["url"])}" target="_blank" rel="noopener">{escape(c["name"])} {ico(ICON_OUT)}</a>'
+        else:
+            title = escape(c["name"])
+        period = f' · {escape(c["period"])}' if c.get("period") else ""
+        tags = "".join(f'<span class="badge">{escape(t)}</span>' for t in c["tags"])
+        course_cards.append(f'''<article class="card lift reveal"><h3>{title}</h3>
+  <p class="when">{escape(c["level"])}{period}</p>
+  <p>{escape(c["desc"])}</p>
+  <div class="badges">{tags}</div></article>''')
+    courses_html = f'<div class="grid-2">{"".join(course_cards)}</div>'
+else:
+    courses_html = f'<div class="dashed empty reveal">{chip(ICON_CAP)}<div><strong>Course list in preparation</strong><p class="when">Syllabi and semester offerings will live here when teaching appointments are listed.</p></div></div>'
+
 teaching = page("Teaching · Hua-Xu Zhong", "teaching", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Classroom</p><h1>Teaching &amp; practice</h1><p>Inquiry, creativity, and careful use of AI.</p></div>
     <article class="card philosophy reveal">
       <h2 class="with-ico">{ico(ICON_BULB)}Teaching philosophy</h2>
-      <p>I believe education is not the transfer of information. It is the transformation of the learner.</p>
-      <p>I treat students as people who can inquire, create, and reflect, not as empty vessels. My job is to design spaces where they ask real questions, work on real problems, and get used to ambiguity. I draw on constructivist learning: students build knowledge through experience, collaboration, and experiment.</p>
-      <p>I emphasize creative problem-solving over rote answers, because I see education as preparation for complexity, not certainty. Failure is not something to avoid. It is how growth happens. Design thinking, open-ended inquiry, and playful exploration are how I help students work on problems that do not have clear answers.</p>
-      <p>Students also hit barriers, cognitive, emotional, or situational. When human support runs out, I use large language models for personalized learning. They extend access to feedback, ideas, and scaffolding so students can keep going. For me, LLMs do not replace human teaching. They are a support system between the learner and what they might do next.</p>
-      <p>I teach because I believe education can be a form of liberation. It should help people imagine and build better worlds, not only adapt to the one they have.</p>
+      <p>I believe education is not the transfer of information. It is the transformation of the learner. Three ideas guide my teaching, and they connect in sequence: independent thinking opens a direction, creativity finds a way forward, and collaboration carries it further.</p>
+      <p>This chain rests on literacy: AI literacy, information literacy, and computational thinking form the working grammar that inquiry runs on in the GAI era.</p>
     </article>
+    <div class="grid-3 principles">
+{principle_cards}
+    </div>
+    <article class="card philosophy spaced reveal">
+      <h3 class="with-ico">{ico(ICON_SPARK)}Careful use of AI</h3>
+      <p>Students also run into barriers, cognitive, emotional, or situational. When human support is not there at the moment a student needs it, large language models can offer personalized feedback, ideas, and scaffolding so that learning can continue. I do not see LLMs as a replacement for human teaching. I use them as a support system between the learner and their next step.</p>
+      <p class="pillar-more"><a class="text-arrow" href="position.html">Read my full position {ico(ICON_RIGHT)}</a></p>
+    </article>
+    <p class="closing-line reveal">I teach because I believe education can be a form of liberation. It should help people imagine and build better worlds, not only adapt to the one they have.</p>
     {titled("h2", "Courses taught", ICON_CAP, "block-title reveal spaced")}
-    <div class="dashed empty reveal">{chip(ICON_CAP)}<div><strong>Course list in preparation</strong><p class="when">Syllabi and semester offerings will live here when teaching appointments are listed.</p></div></div>
+    {courses_html}
+  </div>
+</section>
+""")
+
+# Position page — my stance on generative AI in education, in conversation with
+# the MIT Ad Hoc Committee report (August 13, 2026). The convergence map pairs
+# each of my stances with the report principle it lines up with.
+MIT_REPORT_URL = "https://aiandeducation.mit.edu/report/"
+CONVERGENCE = [
+    {
+        "stance": "AI should support learners, not replace their thinking.",
+        "principle": "Augmentation, not automation",
+        "sec": "§2.7",
+        "note": "Use AI to augment curiosity, creativity, and learning instead of automating them.",
+    },
+    {
+        "stance": "Human strengths are the learning goals.",
+        "principle": "Lean into learning",
+        "sec": "§2.4",
+        "note": "Protect the productive struggle that builds judgment and metacognition.",
+    },
+    {
+        "stance": "Learning stays a social act.",
+        "principle": "Think beyond the classroom and the campus",
+        "sec": "§2.8",
+        "note": "Education is a cultural practice built on relationships AI cannot replace.",
+    },
+]
+
+conv_rows = "\n".join(
+    f'''<div class="conv-row">
+  <div class="conv-cell"><p>{escape(r["stance"])}</p></div>
+  <div class="conv-link" aria-hidden="true"></div>
+  <div class="conv-cell mit"><h4>{escape(r["principle"])} <span class="badge">{escape(r["sec"])}</span></h4><p class="when">{escape(r["note"])}</p></div>
+</div>'''
+    for r in CONVERGENCE
+)
+
+# Principle-by-principle read of the report (Section 2, eight principles).
+# Each row: what the committee says ("said") and where it lands in my work ("read").
+# Rows render as alternating media rows. Visual direction (owner decision 2026-08):
+# all eight rows use generated illustrations (IMG/principle-2-*.jpg, one flat
+# editorial world). A typographic CSS-plate variant (.plate, .plate-navy,
+# .plate-paper) is kept in css/site.css as a fallback: drop an entry's "img"
+# key to render it as a plate again.
+PRINCIPLE_READS = [
+    {
+        "sec": "§2.1",
+        "name": "Be humble",
+        "img": "IMG/principle-2-1.jpg",
+        "alt": "Illustration of a small student figure standing on a thin amber horizon line before an enormous abstract machine shape whose top dissolves into dotted lines",
+        "said": "Generative AI is barely four years old and already past a billion users. The committee states up front that no recommendation can be final on a technology moving this fast, and offers the whole report in a spirit of humility, expecting course corrections as the technology evolves.",
+        "read": "Humility belongs in research as much as in teaching. For me, the constant is not only to keep asking questions that outlast any model version. It is to keep independent thinking in charge. When everyone works with the same generative tools, this is the moment for your own thinking to lead the technology, not for the technology to drive your research.",
+    },
+    {
+        "sec": "§2.2",
+        "name": "Be bold",
+        "img": "IMG/principle-2-2.jpg",
+        "alt": "Illustration of a student kneeling on a cliff edge to place planks of an amber bridge across a gap, with a flag and a cheering abstract figure on the far cliff",
+        "said": "Uncertainty cannot be an excuse for inaction. The committee calls for a strategic response rather than patches and duct tape, and points to genuinely new possibilities: individualized tutoring at scale, and research work that was out of reach a few years ago. Boldness matters most, the report argues, because today's students will soon shape how society uses this technology.",
+        "read": "My agenda is my way of building instead of patching: helping generative AI flow naturally into education, through feedback, scaffolding, assessment, and course design that keep working when human support runs out.",
+    },
+    {
+        "sec": "§2.3",
+        "name": "Put humanity front and center",
+        "img": "IMG/principle-2-3.jpg",
+        "alt": "Illustration of students and a teacher seated in a discussion circle traced by an amber line, while two small abstract machine figures listen from outside the circle",
+        "said": "Some MIT instructors were weighing AI agents against hiring undergraduates as research assistants. The committee's answer: research on a campus is also an apprenticeship, and its seeming inefficiencies are a feature rather than a bug. It also warns that policing AI use corrodes trust on both sides, especially while detection tools remain unreliable.",
+        "read": "This principle meets my third stance: learning stays a social act. Behind it is a simple priority: cultivating each person's own thinking comes first. Over-reliance on AI, whether it does the thinking for a student or takes away the people a student learns with, only removes the chance for that capacity to develop.",
+    },
+    {
+        "sec": "§2.4",
+        "name": "Lean into learning",
+        "img": "IMG/principle-2-4.jpg",
+        "alt": "Illustration of a student climbing a steep rock wall while an abstract machine figure below belays the amber safety rope without pulling",
+        "said": "The committee argues the deepest risk goes beyond cheating: many uses of AI deprive students of the chance to learn at all. It calls for a new social contract in which students understand that the process of education is productive struggle, and that its most important product is themselves, their judgment, imagination, and metacognition.",
+        "read": "This principle sits behind my first stance, and I apply it through the goal, not a fixed rule. The first question is what the AI support is for. When the goal is the student's own capability, some of the difficulty is the learning itself, and it has to stay. Much of my design work looks for valuable human-AI interaction that produces creative work, and I am still working toward designs that know which difficulty to protect.",
+    },
+    {
+        "sec": "§2.5",
+        "name": "Teach with intentionality",
+        "img": "IMG/principle-2-5.jpg",
+        "alt": "Illustration of an instructor sketching an amber route on a large drawing sheet, winding backward from a lighthouse-shaped goal through milestone markers to the starting point",
+        "said": "Instead of reacting to AI feature by feature, the committee recommends backward design: define what students should know, be able to do, and learn to value, then decide where AI helps and where it does not. When instructors explain why AI is allowed or limited, students are more likely to understand the learning that is being protected.",
+        "read": "I think about my teaching chain in the same order: start from the human strengths a course should build, then decide where AI belongs along the way. The goal sets the direction. The tool is chosen after it.",
+    },
+    {
+        "sec": "§2.6",
+        "name": "No one size fits all",
+        "img": "IMG/principle-2-6.jpg",
+        "alt": "Illustration of five different students walking toward five differently shaped doors along a wall, with amber light spilling from one open door",
+        "said": "A poetry seminar, a proof course, and a design lab each call for a different relationship with AI, and a first-year student differs from a doctoral candidate. Instead of one campus-wide rule, the report proposes a shared framework: a common policy menu, disclosure expectations, and accountability standards, with departments choosing within it.",
+        "read": "I take this principle as a teaching question more than a rule-making one. Students in a single course can arrive with very different levels of AI literacy, and one kind of support cannot fit them all. Cultivating that literacy, and differentiating teaching around it, belongs to the literacy strand of my first research pillar.",
+    },
+    {
+        "sec": "§2.7",
+        "name": "Augmentation, not automation",
+        "img": "IMG/principle-2-7.jpg",
+        "alt": "Illustration of a student at a desk drawing a pencil line that lifts off the page and rises into steps, while an abstract geometric figure steadies the desk lamp",
+        "said": "Overreliance on chatbots can erode critical thinking, memory, confidence, and mastery, and a quick answer can trigger what the report calls cognitive surrender: falling back on AI at the first hint of struggle. Borrowing the pro-worker AI argument from economists Acemoglu, Autor, and Johnson, the committee asks for pro-learner AI that expands what students can think about, learn, and solve.",
+        "read": "This principle is closest to what I design for: AI that is good for the learner. I hold it as a question, not a rule. In a learning task, does this use of AI leave the student's own thinking stronger when the AI is taken away? If the answer is no, the use is over-reliance, even when the output looks fine.",
+    },
+    {
+        "sec": "§2.8",
+        "name": "Think beyond the classroom and the campus",
+        "img": "IMG/principle-2-8.jpg",
+        "alt": "Illustration of a schoolhouse with its side walls swung open onto a wide landscape, students walking out in pairs along a winding amber path",
+        "said": "Drawing on Jerome Bruner's The Culture of Education, the committee frames education as a cultural practice: students learn to interpret the world, form identities, and join communities. The danger it names is a transactional mindset, assignments as outputs, peers as optional, a degree as a commodity, and this mindset will follow students into work and civic life.",
+        "read": "My third stance meets this principle without conflict: learning already happens in relationships, and the transactional mindset the report warns about is what those relationships make visible. The situation is complicated and depends on context. Fair access belongs here too, in a specific sense: the gap I worry about most is not who can buy the strongest model. It is who has someone to teach them to use it well. Whether AI narrows or widens that gap depends on how it is brought into teaching.",
+    },
+]
+
+principle_rows = []
+for i, r in enumerate(PRINCIPLE_READS):
+    flip = " flip" if i % 2 else ""
+    if r.get("img"):
+        visual = (
+            f'<figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>'
+        )
+    else:
+        tone = " plate-paper" if i % 2 else " plate-navy"
+        visual = (
+            f'<div class="media-fig plate{tone}" aria-hidden="true">'
+            f'<span class="plate-num">{escape(r["sec"])}</span><span class="plate-rule"></span>'
+            f'<span class="plate-name">{escape(r["name"])}</span></div>'
+        )
+    principle_rows.append(
+        f'''<div class="media-row reveal{flip}">
+  {visual}
+  <div class="media-copy">
+    <h3>{escape(r["sec"])} {escape(r["name"])}</h3>
+    <p>{escape(r["said"])}</p>
+    <p class="my-read"><span class="read-tag">My read</span>{escape(r["read"])}</p>
+  </div>
+</div>'''
+    )
+principle_rows_html = "\n".join(principle_rows)
+
+position = page("Position · Hua-Xu Zhong", "position", f"""
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Position</p><h1>AI in education: where I stand</h1><p>My position on generative AI in education, written in conversation with MIT's August 2026 report on AI use in teaching and learning.</p></div>
+    <figure class="pos-hero reveal">
+      <img src="IMG/position-hero.jpg" alt="Illustration of a student and an abstract AI figure as partners at a shared desk" loading="lazy" />
+      <figcaption>AI as a partner in learning, not a substitute for it.</figcaption>
+    </figure>
+    <p class="reveal">In August 2026, an MIT ad hoc committee published its report on AI use in teaching, learning, and research training. Its questions are the ones I keep asking: what AI does to students' thinking, when it helps learning, and when it quietly replaces it. This page states my position, shows where the report and I converge, walks through its eight principles one by one, and lists what I want to study next.</p>
+    {titled("h2", "My position", ICON_USER)}
+    <ol class="stance-list reveal">
+      <li><strong>AI should support learners, not replace their thinking.</strong> The best uses of AI extend feedback, ideas, and scaffolding. The risky ones let students hand off exactly the work that learning depends on.</li>
+      <li><strong>Human strengths are the learning goals.</strong> When answers are cheap, creativity, judgment, and the discipline to stay with a problem become the real curriculum.</li>
+      <li><strong>Learning stays a social act.</strong> Classmates, teachers, and mentors are part of the mechanism, not the packaging. AI should connect people around problems, not isolate them with answers.</li>
+      <li><strong>Literacy makes the rest possible.</strong> AI literacy, information literacy, and computational thinking are the working grammar of learning with AI. I treat that grammar as part of the curriculum, not as an optional extra.</li>
+    </ol>
+    {titled("h2", "Where the MIT report converges", ICON_SPARK, "block-title reveal spaced")}
+    <figure class="conv-map reveal">
+      <figcaption>My stances on the left, the report's guiding principles on the right.</figcaption>
+{conv_rows}
+    </figure>
+    <p class="when reveal">Related threads also appear in §2.3 (put humanity front and center), §2.5 (teach with intentionality), and §2.6 (no one size fits all).</p>
+    <blockquote class="report-quote reveal">
+      <p>“AI should be used to augment and enhance curiosity, creativity, and learning, not automate them.”</p>
+      <cite>MIT Ad Hoc Committee on AI Use in Teaching, Learning, and Research Training, Report §2.7 (August 13, 2026)</cite>
+    </blockquote>
+    <p class="reveal">My teaching page argues the same sentence in other words. I cite the report not as a source to follow, but as evidence that I am not thinking about this alone.</p>
+    {titled("h2", "The report, principle by principle", ICON_BOOK, "block-title reveal spaced")}
+    <p class="reveal">The report organizes its advice around eight guiding principles. Here is each one, first as the committee states it, then as it lands in my own work.</p>
+    <div class="principle-rows">
+{principle_rows_html}
+    </div>
+    {titled("h2", "Beyond the report: what I want to study", ICON_BULB, "block-title reveal spaced")}
+    <ol class="stance-list q-list reveal">
+      <li><strong>Designing for inquiry.</strong> What does an LLM learning system look like when its first job is to protect a student's own thinking? I came to this question from my own view of LLMs, and from the problems I saw them create for feedback in learning. My earlier work on feedback and scaffolding is where I start. I have not built such a system yet; that is the direction.</li>
+      <li><strong>Creativity as an outcome.</strong> The report asks AI to augment curiosity and creativity. I am asking how creativity can be taught, practiced, and assessed when AI can imitate its products.</li>
+      <li><strong>Fair access to good AI.</strong> Access is uneven in two ways: strong models cost money, and the guidance to use them well costs more. I care about designs that support learning across that uneven ground.</li>
+    </ol>
+    <section class="pillar-sec reveal reference-box">
+      <h3>Reference</h3>
+      <p>MIT Ad Hoc Committee on AI Use in Teaching, Learning, and Research Training. <i>Report</i>. Massachusetts Institute of Technology, August 13, 2026.</p>
+      <p class="pillar-more"><a class="text-arrow" href="{MIT_REPORT_URL}" target="_blank" rel="noopener">Read the full report {ico(ICON_OUT)}</a></p>
+      <p class="pillar-more"><a class="text-arrow" href="practice.html">Part two: the recommendations, transferred to a smaller campus {ico(ICON_RIGHT)}</a></p>
+    </section>
+  </div>
+</section>
+""")
+
+# "How I think" — the dot-grid page. A nine-panel academic re-cut of the
+# connect-the-dots comic that has circulated online since 2020 (lineage traced
+# by Language Log to an Aug 2020 Imgur post inspired by GapingVoid). Owner
+# brief (2026-08): the grid states his view on information, creativity, and
+# problem solving, and motivates why design thinking matters from here on.
+# Three acts: what machines already do (1-3), the human premium (4-6), and
+# three ways the dots betray us (7-9). All panels are generated illustrations.
+GRID_CELLS = [
+    {"num": "1", "act": "Act I", "name": "Information", "img": "IMG/grid-1-information.jpg",
+     "alt": "Dot-grid panel of fifteen scattered navy dots with no connections",
+     "cap": "Dots now arrive faster than anyone can count them. Gathering them is still a basic skill, just no longer the scarce one."},
+    {"num": "2", "act": "Act I", "name": "Grouping", "img": "IMG/grid-2-grouping.jpg",
+     "alt": "Dot-grid panel of dots enclosed in three dashed grouping rings, one ring drawn in amber",
+     "cap": "Sorting dots into piles is classification. Machines do it instantly."},
+    {"num": "3", "act": "Act I", "name": "Familiar paths", "img": "IMG/grid-3-familiar-paths.jpg",
+     "alt": "Dot-grid panel of dots joined by neat right-angled connection lines, one route in amber",
+     "cap": "Joining dots along known routes is what machines do best."},
+    {"num": "4", "act": "Act II", "name": "Framing", "img": "IMG/grid-4-framing.jpg",
+     "alt": "Dot-grid panel with a hand-drawn amber magnifier ring around four chosen dots",
+     "cap": "Choosing which few dots deserve attention, before any line is drawn."},
+    {"num": "5", "act": "Act II", "name": "Creativity", "img": "IMG/grid-5-creativity.jpg",
+     "alt": "Dot-grid panel of dots connected by amber lines into the silhouette of a paper plane",
+     "cap": "The same dots, connected into a shape nobody had drawn."},
+    {"num": "6", "act": "Act II", "name": "Wisdom", "img": "IMG/grid-6-wisdom.jpg",
+     "alt": "Dot-grid panel of faint grey dots with only two navy dots joined by one amber line",
+     "cap": "Two dots, one line: the discipline of the necessary connection."},
+    {"num": "7", "act": "Act III", "name": "Over-connection", "img": "IMG/grid-7-hallucination.jpg",
+     "alt": "Dot-grid panel of dots connected into a dense chaotic tangle of lines fraying off the edge",
+     "cap": "Connect everything to everything, confidently, and the field tangles into noise."},
+    {"num": "8", "act": "Act III", "name": "Imposed pattern", "img": "IMG/grid-8-imposed-pattern.jpg",
+     "alt": "Dot-grid panel of amber lines joining five dots into a large star while other dots stay unconnected",
+     "cap": "Draw the star first, then welcome whatever dots land on it."},
+    {"num": "9", "act": "Act III", "name": "Cherry-picking", "img": "IMG/grid-9-cherry-picking.jpg",
+     "alt": "Dot-grid panel with one straight amber line through three aligned dots while the remaining dots are faint hollow outlines",
+     "cap": "Three cooperative dots, one clean line, and the rest quietly fade out."},
+]
+
+grid_cells_html = "\n".join(
+    f'''<article class="dot-cell lift reveal"{f' style="--d:{i * 60}ms"' if i else ""}>
+  <figure><img src="{escape(c["img"])}" alt="{escape(c["alt"])}" loading="lazy" /></figure>
+  <div class="cell-body"><div class="badges"><span class="badge">{escape(c["act"])}</span></div>
+  <h4>{escape(c["num"])} · {escape(c["name"])}</h4><p>{escape(c["cap"])}</p></div>
+</article>'''
+    for i, c in enumerate(GRID_CELLS)
+)
+
+GRID_ACTS = [
+    {
+        "tag": "Act I",
+        "name": "What machines already do",
+        "img": "IMG/act-1.jpg",
+        "alt": "Illustration of a small abstract machine stamping identical neat dot-network cards from an amber ink pad while a student collects one",
+        "paras": [
+            "Read the first row as a job description for a machine. Collecting dots is retrieval. Grouping them is classification. Joining them along familiar routes is what computers have always done, and they now do it at a scale no person can match. That is not a complaint. It is the ground we stand on.",
+            "It does quietly reprice education, though. A curriculum that spends most of its hours training students to gather, sort, and connect information is training them to compete with a machine on the machine's home field. The MIT report lands in the same place when it asks us to augment curiosity, creativity, and learning instead of automating them.",
+        ],
+    },
+    {
+        "tag": "Act II",
+        "name": "The human premium",
+        "img": "IMG/act-2.jpg",
+        "alt": "Illustration of a student on a ladder drawing a large amber paper-plane outline across a dotted wall while an abstract machine figure steadies the ladder",
+        "paras": [
+            "The second row is where the human strengths are. Framing comes first: problem solving begins before any line is drawn, when someone walks up to the field and decides which few dots deserve attention, and why. Creativity is next: taking the same dots everyone has and connecting them into a shape nobody had drawn. Wisdom is the quiet one: the discipline to draw the single necessary line and leave the rest alone.",
+            "All three can be practiced, and none of them comes finished. They are the same strengths my position page defends and my teaching chain rehearses: independent thinking that chooses the dots, creativity that finds new shapes, and judgment that keeps only the necessary lines.",
+        ],
+    },
+    {
+        "tag": "Act III",
+        "name": "Three ways the dots betray us",
+        "img": "IMG/act-3.jpg",
+        "alt": "Illustration of a student and an abstract machine figure studying a giant tangled knot of dot connections pinned to a board, an amber caution triangle leaning at its foot",
+        "paras": [
+            "The last row is why literacy is not decoration. Over-connection is the field connected so densely, so confidently, that nothing means anything; a confident voice that joins everything to everything will sound sure and say nothing, whether the voice is a machine's or a person's. The imposed pattern is the star drawn first, with dots welcomed only when they land on it; it is correlation staged as cause, and it powers both conspiracy thinking and misleading charts. Cherry-picking is the clean line through three friendly dots while the rest fade to outline.",
+            "Guarding against these three is a learnable craft: checking sources, verifying before connecting, and asking which dots were left out. These habits sit in the ground layer of my map, because AI literacy and information literacy are what let the second row happen without sliding into the third.",
+            "The MIT report gives the craft a useful structure, naming three registers of AI literacy. Effective use: verify outputs, know a model's failure modes, and recognize when not to reach for AI at all. Responsible use: understand the difference between augmenting and automating your own thinking, and disclose AI's contribution honestly. Ethical use: ask the harder questions about training data, bias, and authorship.",
+        ],
+    },
+]
+
+act_rows_html = []
+for i, r in enumerate(GRID_ACTS):
+    flip = " flip" if i % 2 else ""
+    paras = "\n".join(f"    <p>{escape(p)}</p>" for p in r["paras"])
+    act_rows_html.append(
+        f'''<div class="media-row reveal{flip}">
+  <figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>
+  <div class="media-copy">
+    <p class="read-tag">{escape(r["tag"])}</p>
+    <h3>{escape(r["name"])}</h3>
+{paras}
+  </div>
+</div>'''
+    )
+act_rows_html = "\n".join(act_rows_html)
+
+thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Thinking</p><h1>Dots, shapes, and one line</h1><p>How I think about information, creativity, and problem solving in the GAI era, and the case for design thinking from here on.</p></div>
+    <figure class="pos-hero reveal">
+      <img src="IMG/thinking-hero.jpg" alt="Illustration of a student and an abstract machine figure standing before a large wall covered in scattered dots, both holding pencils" loading="lazy" />
+      <figcaption>One field of dots, read in three acts.</figcaption>
+    </figure>
+    <p class="reveal">A comic has circulated online since 2020: a three by three grid about a handful of dots. Scattered dots are Information. Sorted and connected dots become Knowledge. The same dots, joined into an unexpected shape, are Creativity. Two dots with a single line between them are Wisdom. Later remixes added their own warnings, from a scribble called Madness to a pentagram called Conspiracy Theory. Nobody owns the comic. Language Log traced it to an Imgur post from August 2020, itself inspired by a GapingVoid illustration, and strangers have redrawn it ever since.</p>
+    <p class="reveal">I keep returning to it because it compresses, into doodles, how I think about information, creativity, and problem solving. This page is my academic re-cut: the same nine-panel skeleton, read in three acts. The first act describes what machines already do well. The second is the work that gains value because of that. The third is how the dots deceive us, and where literacy guards the door.</p>
+    {titled("h2", "The nine-panel grid", ICON_CAMERA, "block-title reveal spaced")}
+    <p class="reveal">One small field of dots, three acts. Each panel keeps the same cast of dots and changes only what we choose to do with them.</p>
+    <div class="dot-grid">
+{grid_cells_html}
+    </div>
+    {titled("h2", "Reading the grid", ICON_BOOK, "block-title reveal spaced")}
+    <div class="principle-rows">
+{act_rows_html}
+    </div>
+    {titled("h2", "Why design thinking, from here on", ICON_PENCIL, "block-title reveal spaced")}
+    <div class="media-row reveal">
+      <figure class="media-fig"><img src="IMG/diverge-converge.jpg" alt="Illustration of an abstract machine figure pouring a jar of navy dots into a wide paper funnel held by a student, with a single amber line emerging from the funnel toward one circled target dot" loading="lazy" /></figure>
+      <div class="media-copy">
+        <p>Both halves of the second row, making new shapes and choosing one line, are exactly the moves design thinking rehearses. The Double Diamond from the British Design Council is divergence then convergence, twice: spread across the field to understand, commit to a framed problem; spread into possible shapes, commit to a solution. Stanford's d.school teaches the same rhythm as five stages, from empathize to test, and treats visual thinking, collaboration, and iteration as working principles.</p>
+        <p>That is why I think the GAI era raises the stakes for design thinking rather than retiring it. The tools took over the connecting. What remains to teach is the framing, the shaping, and the choosing, and design thinking is the most practiced method we have for all three. It runs through my research pillar on creativity and design thinking, and it is why my teaching chain starts from independent thinking: the habit of choosing your own dots before anyone connects them for you.</p>
+        <p class="pillar-more"><a class="text-arrow" href="research.html#creativity-design-thinking">My Creativity &amp; Design Thinking pillar {ico(ICON_RIGHT)}</a></p>
+      </div>
+    </div>
+    <section class="pillar-sec reveal reference-box">
+      <h3>Sources &amp; lineage</h3>
+      <p>The dot-grid comic circulates in many redrawn versions. Language Log (2021) traces the lineage to an Imgur post of August 2020, inspired by a GapingVoid illustration. <a href="https://languagelog.ldc.upenn.edu/nll/?p=52581" target="_blank" rel="noopener">Language Log</a></p>
+      <p>Ackoff, R. L. (1989). From data to wisdom. <i>Journal of Applied Systems Analysis, 16</i>, 3-9. The data, information, knowledge, wisdom ladder that the grid redraws as dots.</p>
+      <p>Mednick, S. (1962). The associative basis of the creative process. <i>Psychological Review, 69</i>(3), 220-232. Creativity as forming new connections between distant elements.</p>
+      <p>Design Council (2004). The Double Diamond; and the Stanford d.school design thinking process. Reading: <a href="https://ixdf.org/literature/topics/design-thinking" target="_blank" rel="noopener">Interaction Design Foundation, Design thinking</a>.</p>
+      <p class="pillar-more"><a class="text-arrow" href="position.html">Continue to my position on AI in education {ico(ICON_RIGHT)}</a></p>
+      <p class="pillar-more"><a class="text-arrow" href="practice.html">Part two: the report in practice {ico(ICON_RIGHT)}</a></p>
+    </section>
+  </div>
+</section>
+""")
+
+# Practice page — part two of the MIT report read (owner decision 2026-08: the
+# recommendations half lives on its own page, eight clusters, each with a
+# "transfer" note read from a campus without MIT's budget). Rows render with
+# generated scene illustrations (owner approved 2026-08); the CSS plate variant
+# (.plate) remains as fallback: drop a row's "img" key to render its § plate.
+PRACTICE_ROWS = [
+    {
+        "sec": "§3.1.1-3.1.2",
+        "name": "Rebuild assessment",
+        "img": "IMG/practice-1-assessment.jpg",
+        "alt": "Illustration of a student and a professor in an oral exam conversation across a small table with an open portfolio between them, a small machine figure taking notes nearby",
+        "said": "Start by revisiting what each course is actually for, now that AI can complete most written assignments. The committee warns against simply AI-proofing everything: leaning on timed in-class exams narrows what a credential signals and cuts against the deep, unhurried work students should learn to value. Its alternatives are oral exams, semester portfolios, and out-of-class assignments paired with in-class conversations about them.",
+        "take": "None of these needs a grant. Rethinking assessment is where I believe the change has to begin, and any individual instructor can begin it. A portfolio defended in conversation is also the cleanest answer to the question everyone asks first: how do I know the student did the work?",
+    },
+    {
+        "sec": "§3.1.3-3.1.4",
+        "name": "Projects and social learning",
+        "img": "IMG/practice-2-projects.jpg",
+        "alt": "Illustration of four students around a work table assembling a small prototype with an amber glowing component, a machine figure handing over a screw",
+        "said": "Match the new assessments with more experiential, project-based learning. Because AI lowers the cost of ambitious work, a capstone class can now expect near production-quality software in one term, and architecture students can visualize and test ideas that once took weeks. And because AI is quietly dissolving study groups and office hours, the committee asks every subject to build structured, graded in-person interaction back in, with its purpose explained to students from day one.",
+        "take": "The day-one explanation is the part I keep underlining. Students follow rules whose purpose they understand, and \"we work in groups because learning here is social\" is a purpose I can defend: collaboration is the third link of my teaching chain, and here the report gives it the same weight.",
+    },
+    {
+        "sec": "§3.1.6",
+        "name": "Grades, on trial",
+        "img": "IMG/practice-3-grades.jpg",
+        "alt": "Illustration of a balance scale with a medal on one pan and an open book sprouting an amber shoot on the other, outweighed, while a student watches and a machine holds the column",
+        "said": "Grade maximization is itself an incentive to lean on AI, so the committee refuses grade rationing and questions the currency instead. It points to competency- and mastery-based schemes, to employers who already trust their own exercises over transcripts, and admits a thought experiment: if MIT had no grades, much of the incentive to cheat with AI would disappear.",
+        "take": "No individual teacher gets to abolish grades, so what transfers is smaller but real: grade the process as well as the answer, give feedback a transcript cannot compress, and let portfolios carry real weight wherever a course produces visible work.",
+    },
+    {
+        "sec": "§3.1.9",
+        "name": "The detector temptation",
+        "img": "IMG/practice-4-detector.jpg",
+        "alt": "Illustration of a nervous student writing at a desk while a giant mechanical arm lowers an amber-ringed magnifying lens over the page, a small machine shrugging beside the desk",
+        "said": "The committee recommends against relying on AI detectors and lockdown browsers. Detection invites an arms race with paraphrasing tools that nobody wins, and its false positives land hardest on non-native English writers and neurodivergent students. MIT's disciplinary committee does not accept detector output alone as evidence. The suggested alternatives are version histories, staged deadlines, and work developed in class.",
+        "take": "This row matters even more in Taiwan, where most students write in English as an additional language. A tool whose known failure mode is misreading their prose as machine-made is not a neutral instrument. Process evidence beats pattern-matching, and it costs less than a surveillance license.",
+    },
+    {
+        "sec": "§3.2.3",
+        "name": "Instructors disclose too",
+        "img": "IMG/practice-5-disclosure.jpg",
+        "alt": "Illustration of a teacher openly presenting a small machine figure at a lectern to three seated students, an amber projector beam on the wall",
+        "said": "Students notice immediately when instructors restrict student AI while quietly generating slides, feedback, and grading comments with it, and they read it as a double standard. The committee asks instructors to disclose their own AI use, and suggests a better channel for machine feedback: hand it to students as a revision tool rather than hiding it as the grader.",
+        "take": "How a university writes its disclosure policy is out of any one teacher's hands. What is worth keeping here is the symmetry inside the recommendation: whatever students are asked to declare, the people teaching them should be ready to show first.",
+    },
+    {
+        "sec": "§3.2.6",
+        "name": "AI in theses, on the record",
+        "img": "IMG/practice-6-thesis.jpg",
+        "alt": "Illustration of a graduate in a mortarboard clutching a thick thesis with an amber tag pinned to its cover, while a machine figure verifies a stack of reference books",
+        "said": "Every thesis should carry a statement of how AI was used in producing it. AI never appears as co-author, and the human author remains responsible for verifying everything, including citations, which language models are known to fabricate.",
+        "take": "This recommendation sits closest to my daily work as a researcher. My line is simple: nothing in the work may invent a fact. References an AI suggests get opened and checked, claims get read against their sources, and it is the one habit I would ask of anyone I work with.",
+    },
+    {
+        "sec": "§3.2.4",
+        "name": "AI literacy in three registers",
+        "img": "IMG/practice-7-literacy.jpg",
+        "alt": "Illustration of three pedestals holding a magnifying glass, two hands shaking, and an amber sprouting leaf, with a student and machine figure studying them",
+        "said": "The report splits AI literacy into effective use (verify outputs, know a model's failure modes, recognize when not to reach for AI), responsible use (understand augmentation versus automation and disclose honestly), and ethical use (training data, bias, homogenized voice, environmental cost, authorship). It wants these woven through orientation and the whole curriculum, and cites a campus survey where about two thirds of students saw AI as central to their careers while only about a quarter felt their education was preparing them.",
+        "take": "This is where the report and my research agenda overlap most cleanly. The three registers give structure to the literacy ground layer I argue for on my thinking page, and the quarter who feel prepared is the measurable version of why that layer exists. <a href=\"thinking.html\">My thinking page works this out in full</a>.",
+    },
+    {
+        "sec": "§3.3.7",
+        "name": "Fair access, priced",
+        "img": "IMG/practice-8-access.jpg",
+        "alt": "Illustration of a machine figure operating a tap dispenser and three students queuing with cups as an amber stream fills the first cup",
+        "said": "Top commercial AI plans run around $200 per month, so students who can pay literally learn with stronger tools than students who cannot. MIT's answer is Parley, a model-agnostic campus platform giving every member about $30 of monthly credits and API access for coding tools. The committee concedes the amount may fall short and asks for continuing review.",
+        "take": "Most campuses cannot fund a Parley. The lens still travels: access is a design variable. An assignment that assumes a $200 subscription measures family income; one that assumes fluent AI habits measures who had guidance.",
+    },
+]
+
+practice_rows = []
+for i, r in enumerate(PRACTICE_ROWS):
+    flip = " flip" if i % 2 else ""
+    if r.get("img"):
+        visual = (
+            f'<figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>'
+        )
+    else:
+        tone = " plate-paper" if i % 2 else " plate-navy"
+        visual = (
+            f'<div class="media-fig plate{tone}" aria-hidden="true">'
+            f'<span class="plate-num">{escape(r["sec"])}</span><span class="plate-rule"></span>'
+            f'<span class="plate-name">{escape(r["name"])}</span></div>'
+        )
+    said = escape(r["said"])
+    take = r["take"]
+    if "<a href" not in take:
+        take = escape(take)
+    else:
+        head, rest = take.split('<a href="')
+        href, tail = rest.split('">', 1)
+        link_text, tail2 = tail.split("</a>", 1)
+        take = f'{escape(head)}<a href="{escape(href)}">{escape(link_text)}</a>{escape(tail2)}'
+    practice_rows.append(
+        f'''<div class="media-row reveal{flip}">
+  {visual}
+  <div class="media-copy">
+    <h3>{escape(r["name"])} <span class="badge">{escape(r["sec"])}</span></h3>
+    <p>{said}</p>
+    <p class="my-read"><span class="read-tag">Transfer</span>{take}</p>
+  </div>
+</div>'''
+    )
+practice_rows_html = "\n".join(practice_rows)
+
+practice = page("Report in practice · Hua-Xu Zhong", "practice", f"""
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Practice</p><h1>From principles to practice</h1><p>Part two of my read of MIT's August 2026 report: its action list, read from a campus that does not have MIT's budget.</p></div>
+    <figure class="pos-hero reveal">
+      <img src="IMG/practice-hero.jpg" alt="Illustration of a student and an abstract machine figure carrying a long scroll together from a grand columned institute building toward a small plain schoolhouse" loading="lazy" />
+      <figcaption>What survives the trip from a well-funded campus to an ordinary one?</figcaption>
+    </figure>
+    <p class="reveal">My first page on the report stayed at the level of positions: the stances I hold, and the eight principles the committee set out. That was an editorial decision, and it left the longer half of the report on the table. This page covers that half: what the committee actually recommends doing, in its ten recommendation groups running from course assessment to campus infrastructure.</p>
+    <p class="reveal">I read the list with one bias declared. MIT's solutions assume MIT's resources: pilot funds, fellow programs, standing committees, and a model-agnostic platform with per-user monthly credits. Most campuses have none of these, and neither does a single instructor planning next semester. So for each group I ask a transfer question: what survives when the budget and the org chart are removed? Usually something does, and it is usually the part that was about pedagogy all along. Eight groups matter most to my context; this page takes them in turn.</p>
+    {titled("h2", "The action list, read twice", ICON_CASE, "block-title reveal spaced")}
+    <div class="principle-rows">
+{practice_rows_html}
+    </div>
+    <p class="reveal">What I have left off: the report's institutional machinery (standing committees, AI Leads, fellows, pilot funds, metrics programs), its space planning, privacy logging, and environmental audit. Those are things only an institute can do, and I have no institute to offer. What one person can do is the eight rows above.</p>
+    <section class="pillar-sec reveal reference-box">
+      <h3>Reference</h3>
+      <p>MIT Ad Hoc Committee on AI Use in Teaching, Learning, and Research Training. <i>Report</i>. Massachusetts Institute of Technology, August 13, 2026. Recommendations section §3. <a href="{MIT_REPORT_URL}" target="_blank" rel="noopener">Read the full report</a></p>
+      <p class="pillar-more"><a class="text-arrow" href="position.html">Part one: my position and the eight principles {ico(ICON_RIGHT)}</a></p>
+    </section>
   </div>
 </section>
 """)
@@ -483,6 +1075,9 @@ service = page("Service · Hua-Xu Zhong", "service", f"""
 """)
 
 link_groups = [
+    ("Reports & Reading", [
+        ("", [("MIT Report: AI Use in Teaching, Learning, and Research Training", "https://aiandeducation.mit.edu/report/", "MIT Ad Hoc Committee, August 2026. Eight principles and campus-wide recommendations for the AI era. My Position page responds to it.")]),
+    ]),
     ("Text Generation & LLM Assistance", [
         ("", [("ChatGPT (OpenAI)", "https://chat.openai.com"), ("Gemini (Google)", "https://gemini.google.com"), ("Claude (Anthropic)", "https://claude.ai"), ("Perplexity AI", "https://www.perplexity.ai")]),
         ("Academic and professional writing", [("Notion AI (in Notion)", "https://www.notion.so"), ("Gamma.app", "https://gamma.app"), ("Elicit.org", "https://elicit.org"), ("Grammarly", "https://www.grammarly.com")]),
@@ -502,16 +1097,19 @@ link_groups = [
         ("Advanced AI learning platforms", [("Coursera", "https://www.coursera.org"), ("edX", "https://www.edx.org"), ("fast.ai", "https://www.fast.ai"), ("NVIDIA Deep Learning Institute (DLI)", "https://www.nvidia.com/en-us/training/")]),
     ]),
 ]
+def link_card(item):
+    # item = (name, url) or (name, url, note) — note renders as a small annotation
+    n, u = item[0], item[1]
+    note = f'<p class="when link-note">{escape(item[2])}</p>' if len(item) > 2 else ""
+    return f'<a class="card lift" href="{escape(u)}" target="_blank" rel="noopener"><h3>{escape(n)}</h3>{ico(ICON_OUT)}{note}</a>'
+
 blocks = []
 for cat, subs in link_groups:
     inner = []
     for sub, items in subs:
         if sub:
             inner.append(f'<h3 class="subhead">{escape(sub)}</h3>')
-        cards = "".join(
-            f'<a class="card lift" href="{escape(u)}" target="_blank" rel="noopener"><h3>{escape(n)}</h3>{ico(ICON_OUT)}</a>'
-            for n, u in items
-        )
+        cards = "".join(link_card(i) for i in items)
         inner.append(f'<div class="link-grid">{cards}</div>')
     blocks.append(f'<h2 class="cat-head reveal">{escape(cat)}</h2>' + "".join(inner))
 
@@ -530,14 +1128,26 @@ notfound = page("Page not found · Hua-Xu Zhong", "home", """
   <p class="when" style="margin:1rem 0 1.4rem">This address does not match a page on the site.</p>
   <a class="btn btn-primary" href="index.html">Back to home</a>
 </div></section>
-""")
+""", path="404")
 
 (ROOT / "index.html").write_text(home, encoding="utf-8")
 (ROOT / "about.html").write_text(about, encoding="utf-8")
 (ROOT / "research.html").write_text(research, encoding="utf-8")
 (ROOT / "teaching.html").write_text(teaching, encoding="utf-8")
+(ROOT / "position.html").write_text(position, encoding="utf-8")
+(ROOT / "thinking.html").write_text(thinking, encoding="utf-8")
+(ROOT / "practice.html").write_text(practice, encoding="utf-8")
 (ROOT / "activities.html").write_text(activities, encoding="utf-8")
 (ROOT / "service.html").write_text(service, encoding="utf-8")
 (ROOT / "links.html").write_text(links, encoding="utf-8")
 (ROOT / "404.html").write_text(notfound, encoding="utf-8")
+
+(ROOT / "robots.txt").write_text(
+    f"User-agent: *\nAllow: /\n\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")
+(ROOT / "sitemap.xml").write_text(
+    '<?xml version="1.0" encoding="UTF-8"?>\n'
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    + "".join(f"  <url><loc>{SITE}/{p}</loc><lastmod>2026-08-31</lastmod></url>\n"
+              for p in PUBLIC_PAGES)
+    + "</urlset>\n", encoding="utf-8")
 print("wrote html pages")

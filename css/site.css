@@ -469,6 +469,8 @@ main {
 
 .grid-2 { display: grid; gap: 1.2rem; }
 @media (min-width: 760px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+.grid-3 { display: grid; gap: 1.2rem; }
+@media (min-width: 980px) { .grid-3 { grid-template-columns: 1fr 1fr 1fr; } }
 
 .card {
   background: var(--card);
@@ -481,6 +483,69 @@ main {
 .card.lift:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--line-strong); }
 .card h3 { font-size: 1.15rem; margin-bottom: 0.4rem; }
 .card p { color: var(--muted); font-size: 0.95rem; }
+
+/* ============ Research interest pillars ============ */
+.pillar-topics {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0.85rem 0 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.45rem;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.pillar-topics li { display: flex; align-items: baseline; gap: 0.55rem; }
+.pillar-topics li::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  transform: rotate(45deg) translateY(-1px);
+}
+.pillar-more { margin: 0.95rem 0 0; }
+.text-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+.text-arrow .ico {
+  width: 0.95rem;
+  height: 0.95rem;
+  display: inline-flex;
+  transition: transform 200ms var(--ease);
+}
+.text-arrow:hover { text-decoration: underline; text-underline-offset: 3px; }
+.text-arrow:hover .ico { transform: translateX(3px); }
+
+.pillar-sections { display: grid; gap: 1.2rem; }
+@media (min-width: 980px) { .pillar-sections { grid-template-columns: repeat(3, 1fr); } }
+.pillar-sec {
+  background: var(--gold);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.35rem;
+  scroll-margin-top: 5.5rem;
+}
+.pillar-sec h3 { font-size: 1.08rem; margin: 0 0 0.5rem; }
+.pillar-sec p { color: var(--muted); font-size: 0.93rem; }
+.pillar-keys {
+  margin: 0.75rem 0 0;
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--accent-ink);
+}
 
 /* ============ Timeline ============ */
 .timeline {
@@ -590,6 +655,197 @@ main {
 .philosophy h3 { margin-bottom: 0.85rem; font-size: 1.5rem; }
 .philosophy p { color: #3b3a33; }
 .philosophy p + p { margin-top: 0.9rem; }
+
+/* ============ Teaching principles ============ */
+.step {
+  margin: 0 0 0.5rem;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+.philosophy.spaced { margin-top: 1.4rem; }
+.closing-line {
+  margin: 2rem auto 0;
+  max-width: 42rem;
+  text-align: center;
+  font-style: italic;
+  font-size: 1.12rem;
+  color: var(--navy);
+}
+
+/* ============ Position page ============ */
+.pos-hero {
+  margin: 1.4rem 0 1.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.pos-hero img { display: block; width: 100%; aspect-ratio: 21 / 9; object-fit: cover; }
+.pos-hero figcaption {
+  padding: 0.6rem 1.1rem;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+.stance-list { margin: 0 0 1.2rem; padding-left: 1.4rem; }
+.stance-list li { margin-bottom: 0.9rem; max-width: 46rem; }
+.stance-list li strong { color: var(--navy); }
+.stance-list li::marker { color: var(--accent); font-weight: 600; }
+
+.conv-map { margin: 0 0 0.6rem; }
+.conv-map figcaption {
+  margin-bottom: 0.9rem;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.conv-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+.conv-cell {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.05rem;
+}
+.conv-cell p { margin: 0; font-size: 0.95rem; color: var(--navy); }
+.conv-cell.mit { background: var(--gold); border-top: 2px solid var(--accent); }
+.conv-cell.mit h4 { margin: 0 0 0.3rem; font-size: 0.95rem; font-family: var(--sans); font-weight: 600; color: var(--navy); }
+.conv-cell.mit .when { margin: 0; font-size: 0.8rem; }
+.conv-link {
+  width: 2px;
+  height: 0.8rem;
+  margin: 0 auto;
+  background: var(--accent);
+}
+@media (min-width: 860px) {
+  .conv-row { grid-template-columns: 5fr auto 5fr; align-items: center; gap: 1rem; }
+  .conv-link { width: 2.4rem; height: 2px; margin: 0; position: relative; }
+  .conv-link::after {
+    content: "";
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-top: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+    transform: translateY(-50%) rotate(45deg);
+  }
+}
+.report-quote {
+  margin: 1.6rem 0 1rem;
+  padding: 1.1rem 1.3rem;
+  background: var(--gold);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.report-quote p { margin: 0; font-style: italic; font-size: 1.08rem; color: var(--navy); }
+.report-quote cite {
+  display: block;
+  margin-top: 0.7rem;
+  font-style: normal;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--accent-ink);
+}
+.reference-box { margin-top: 2.2rem; }
+.link-note { margin: 0.35rem 0 0; font-size: 0.78rem; }
+
+/* Thinking page: the nine-panel dot grid */
+.dot-grid { display: grid; grid-template-columns: 1fr; gap: 1.1rem; margin: 1.4rem 0 0.5rem; }
+.dot-cell {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.dot-cell figure { margin: 0; aspect-ratio: 1 / 1; overflow: hidden; background: var(--gold); }
+.dot-cell figure img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.dot-cell .cell-body { padding: 0.9rem 1rem 1.05rem; }
+.dot-cell .badges { margin-bottom: 0.45rem; }
+.dot-cell h4 { margin: 0 0 0.3rem; font-size: 1.02rem; color: var(--navy); }
+.dot-cell p { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.media-copy .read-tag { margin: 0 0 0.35rem; }
+@media (min-width: 700px) { .dot-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1000px) { .dot-grid { grid-template-columns: repeat(3, 1fr); } }
+
+/* Principle-by-principle read: alternating media rows.
+   Visual side is either a typographic plate (default) or a generated figure. */
+.principle-rows { display: grid; gap: 2.6rem; margin: 1.5rem 0 0.5rem; }
+.media-row { display: grid; gap: 1.5rem; align-items: center; }
+.media-fig {
+  margin: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.media-fig img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.plate {
+  aspect-ratio: 4 / 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0;
+  padding: 1.8rem 2rem;
+}
+.plate-navy { background: var(--navy); color: var(--gold); }
+.plate-paper { background: var(--gold); color: var(--navy); border: 1px solid var(--line); box-shadow: none; }
+.plate-num {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+.plate-rule { width: 42px; height: 2px; background: var(--accent); margin: 0.9rem 0 0.8rem; }
+.plate-navy .plate-rule { background: var(--accent-bright); }
+.plate-name {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+.media-copy h3 { margin: 0 0 0.55rem; font-size: 1.22rem; color: var(--navy); }
+.media-copy > p:first-of-type { margin-top: 0; }
+.my-read {
+  margin-bottom: 0;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--accent);
+}
+.read-tag {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+@media (min-width: 860px) {
+  .media-row { grid-template-columns: 44% 1fr; gap: 2.6rem; }
+  .media-row.flip .media-fig { order: 2; }
+  .media-row.flip .media-copy { order: 1; }
+}
 
 /* ============ Research ============ */
 .filters { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.85rem 0 1.6rem; }
