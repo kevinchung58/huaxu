@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260830b"
+CSS = "css/site.css?v=20260911a"
 
 SITE = "https://kevinchung58.github.io/huaxu"
 DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking."
@@ -109,7 +109,7 @@ FOOT = f"""<footer>
       <p>Researcher in Educational Technology &amp; AI</p>
     </div>
     <div class="social">
-      <a href="mailto:your.email@example.com" aria-label="Email">{ICON_MAIL}</a>
+      <a href="mailto:k43122003@gmail.com" aria-label="Email">{ICON_MAIL}</a>
       <a href="https://scholar.google.com.tw/citations?user=JTwxPuEAAAAJ&amp;hl=zh-TW" target="_blank" rel="noopener" aria-label="Google Scholar">{ICON_SCHOLAR}</a>
       <a href="research.html">Research</a>
     </div>
@@ -196,6 +196,11 @@ projects = [
     ("Implementing Clustering Algorithms for Adaptive Learning and Peer Learning – A Case Study in Virtual Learning Spaces", "Researcher", "Ministry of Education", "August 1, 2022 – July 31, 2023", "Implement clustering algorithms for adaptive and peer learning in virtual spaces.", "Algorithms implemented and case study conducted."),
     ("Impact of Integrating Guided Inquiry Learning with Collaborative Mind Mapping – A Case Study on Information Security Course Content", "Researcher", "Ministry of Education", "August 1, 2023 – July 31, 2024", "Study the impact of guided inquiry learning with collaborative mind mapping on information security course content.", "Impact assessed through case study."),
     ("International Research Experience: NSTC Scholarship for Doctoral Students to Study Abroad", "Visiting Doctoral Student", "National Science and Technology Council (NSTC) Scholarship", "September 7, 2023 – April 8, 2024", "Conduct doctoral research abroad.", "Completed the study-abroad period."),
+]
+
+# Ongoing grant(s) — rendered separately at the top of the Research projects list.
+ongoing_projects = [
+    ("Development and Application of a Generative-AI-Based Intelligent Tutoring System for Fostering Students' Practical Competence in Engineering Implementation Courses: An Effectiveness Evaluation", "Postdoctoral Research Fellow", "National Science and Technology Council (NSTC), Taiwan — Subsidy for the Recruitment of Visiting Science and Technology Personnel", "August 2025 – August 2028", "Design and evaluate a generative-AI intelligent tutoring system that scaffolds engineering practice and assesses gains in students' hands-on competence.", "In progress — system build and classroom evaluation underway."),
 ]
 
 
@@ -299,14 +304,15 @@ home = page("Hua-Xu Zhong, PhD", "home", f"""
           <a class="btn btn-ghost" href="about.html">{ICON_USER} About my work</a>
         </div>
         <div class="social">
-          <a href="mailto:your.email@example.com" aria-label="Email">{ICON_MAIL}</a>
+          <a href="mailto:k43122003@gmail.com" aria-label="Email">{ICON_MAIL}</a>
           <a href="https://scholar.google.com.tw/citations?user=JTwxPuEAAAAJ&amp;hl=zh-TW" target="_blank" rel="noopener" aria-label="Google Scholar">{ICON_SCHOLAR}</a>
         </div>
+        <p class="hero-note">Currently an NSTC postdoctoral research fellow working on generative AI for learning · open to research collaboration and international visiting opportunities.</p>
       </div>
     </div>
     <dl class="stats">
       <div class="stat reveal" style="--d:40ms"><dt>{ico(ICON_BOOK)} Publications</dt><dd>{len(pubs)}</dd></div>
-      <div class="stat reveal" style="--d:90ms"><dt>{ico(ICON_CASE)} Research projects</dt><dd>{len(projects)}</dd></div>
+      <div class="stat reveal" style="--d:90ms"><dt>{ico(ICON_CASE)} Research projects</dt><dd>{len(projects) + len(ongoing_projects)}</dd></div>
       <div class="stat reveal" style="--d:140ms"><dt>{ico(ICON_CAL)} Latest papers</dt><dd>2026</dd></div>
     </dl>
   </div>
@@ -366,7 +372,7 @@ about = page("About · Hua-Xu Zhong", "about", f"""
         <p>During my master's studies, I returned to a core question: Can education actually solve real problems? Courses on information literacy and media education showed me that education is not only about transmitting knowledge. It is about comprehension and changing how people think. Through work on innovation, change, and management, I encountered design thinking, which gave me a way to put creativity and technology into educational settings. That shift did not come from abstract ideals. It came from what I saw in real learning environments, where technology's accelerating effect was hard to miss. I saw how innovation and digital tools could open new opportunities for learners.</p>
         <blockquote class="quote">“Education is a rainbow: it nurtures talents of every color.”</blockquote>
         <p>That conviction redirected my academic path. It is why I continue to work on educational technology and learning design.</p>
-        <p>Outside of academia, I enjoy traveling, writing, listening to music, and playing basketball. I value every meaningful moment and refuse to waste time. I want to build educational technology systems from my background in education, and to work seriously with large language models. I know this era can empower people, and it can also overwhelm them. So my work now focuses on what LLMs and generative AI can do for learning, the direction I describe on my position page, helping students develop their potential not only to survive the future, but to shape it. I am also a scholar who likes learning across disciplines, and I look for ideas from other fields that can spark new work.</p>
+        <p>Outside of academia, I enjoy traveling, writing, listening to music, and playing basketball. I value every meaningful moment and refuse to waste time. I want to build educational technology systems from my background in education, and to work seriously with large language models. I know this era can empower people, and it can also overwhelm them. So my work now focuses on what LLMs and generative AI can do for learning, the direction I describe on my position page, helping students develop their potential not only to survive the future, but to shape it. Since 2025 I have held a postdoctoral research fellowship from Taiwan's National Science and Technology Council, building and evaluating a generative-AI intelligent tutoring system for engineering courses. I am also a scholar who likes learning across disciplines, and I look for ideas from other fields that can spark new work.</p>
       </div>
     </div>
   </div>
@@ -398,26 +404,28 @@ for p in featured:
         doi_line = ""
     feat_html.append(f'''<article class="featured-card reveal">
   <div class="badges"><span class="badge gold">Featured</span>{corr}</div>
-  <h4>{title_html}</h4>
+  <h3>{title_html}</h3>
   <p class="authors">{authors_html(p["authors"])}</p>
   <p class="source">{escape(p["source"])}</p>
   {doi_line}
   <p class="meta-links"><button class="text-link" type="button" {featured_attrs(p)}>{ico(ICON_PHOTO)}View figure</button></p>
 </article>''')
 
-proj_html = "\n".join(
-    f'''<article class="card reveal">
+def proj_card(p, status_label="Outcomes"):
+    n, r, f, pe, g, o = p
+    return f'''<article class="card reveal">
   <h3>{escape(n)}</h3>
   <dl class="meta-dl">
     <div><dt>Role</dt><dd>{escape(r)}</dd></div>
     <div><dt>Funding</dt><dd>{escape(f)}</dd></div>
     <div><dt>Period</dt><dd>{escape(pe)}</dd></div>
     <div><dt>Goals</dt><dd>{escape(g)}</dd></div>
-    <div><dt>Outcomes</dt><dd>{escape(o)}</dd></div>
+    <div><dt>{status_label}</dt><dd>{escape(o)}</dd></div>
   </dl>
 </article>'''
-    for n, r, f, pe, g, o in projects
-)
+
+ongoing_proj_html = "\n".join(proj_card(p, "Status") for p in ongoing_projects)
+proj_html = "\n".join(proj_card(p) for p in projects)
 
 research = page("Research · Hua-Xu Zhong", "research", f"""
 <section class="section">
@@ -437,9 +445,10 @@ research = page("Research · Hua-Xu Zhong", "research", f"""
     {titled("h2", "Featured papers", ICON_SPARK, "block-title reveal spaced")}
     <div class="featured-grid">{''.join(feat_html)}</div>
     {titled("h2", "Research projects", ICON_CASE, "block-title reveal spaced")}
-    <h3 class="subhead reveal">Completed</h3>
+    <h3 class="subhead reveal">Ongoing</h3>
+    <div class="proj-list">{ongoing_proj_html}</div>
+    <h3 class="subhead reveal" style="margin-top:2rem">Completed</h3>
     <div class="proj-list">{proj_html}</div>
-    <div class="dashed empty reveal" style="margin-top:1.2rem">{chip(ICON_CASE)}<div><strong>No ongoing projects listed</strong><p class="when">When a new grant starts, it will appear here.</p></div></div>
   </div>
 </section>
 """, extra=f"""
@@ -564,7 +573,7 @@ conv_rows = "\n".join(
     f'''<div class="conv-row">
   <div class="conv-cell"><p>{escape(r["stance"])}</p></div>
   <div class="conv-link" aria-hidden="true"></div>
-  <div class="conv-cell mit"><h4>{escape(r["principle"])} <span class="badge">{escape(r["sec"])}</span></h4><p class="when">{escape(r["note"])}</p></div>
+  <div class="conv-cell mit"><h3>{escape(r["principle"])} <span class="badge">{escape(r["sec"])}</span></h3><p class="when">{escape(r["note"])}</p></div>
 </div>'''
     for r in CONVERGENCE
 )
@@ -756,9 +765,9 @@ GRID_CELLS = [
 
 grid_cells_html = "\n".join(
     f'''<article class="dot-cell lift reveal"{f' style="--d:{i * 60}ms"' if i else ""}>
-  <figure><img src="{escape(c["img"])}" alt="{escape(c["alt"])}" loading="lazy" /></figure>
+  <figure><button type="button" class="dot-play" data-dot-open data-act="{escape(c["act"])}" data-num="{escape(c["num"])}" data-name="{escape(c["name"])}" data-cap="{escape(c["cap"])}" aria-label="Play the dot-trace game for panel {escape(c["num"])}, {escape(c["name"])}"><img src="{escape(c["img"])}" alt="{escape(c["alt"])}" loading="lazy" /><span class="dot-chip" aria-hidden="true"><span class="dot-chip-dots"><i></i><i></i><i></i></span>Trace</span></button></figure>
   <div class="cell-body"><div class="badges"><span class="badge">{escape(c["act"])}</span></div>
-  <h4>{escape(c["num"])} · {escape(c["name"])}</h4><p>{escape(c["cap"])}</p></div>
+  <h3>{escape(c["num"])} · {escape(c["name"])}</h3><p>{escape(c["cap"])}</p></div>
 </article>'''
     for i, c in enumerate(GRID_CELLS)
 )
@@ -824,7 +833,7 @@ thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
     <p class="reveal">A comic has circulated online since 2020: a three by three grid about a handful of dots. Scattered dots are Information. Sorted and connected dots become Knowledge. The same dots, joined into an unexpected shape, are Creativity. Two dots with a single line between them are Wisdom. Later remixes added their own warnings, from a scribble called Madness to a pentagram called Conspiracy Theory. Nobody owns the comic. Language Log traced it to an Imgur post from August 2020, itself inspired by a GapingVoid illustration, and strangers have redrawn it ever since.</p>
     <p class="reveal">I keep returning to it because it compresses, into doodles, how I think about information, creativity, and problem solving. This page is my academic re-cut: the same nine-panel skeleton, read in three acts. The first act describes what machines already do well. The second is the work that gains value because of that. The third is how the dots deceive us, and where literacy guards the door.</p>
     {titled("h2", "The nine-panel grid", ICON_CAMERA, "block-title reveal spaced")}
-    <p class="reveal">One small field of dots, three acts. Each panel keeps the same cast of dots and changes only what we choose to do with them.</p>
+    <p class="reveal">One small field of dots, three acts. Each panel keeps the same cast of dots and changes only what we choose to do with them. Select any panel to play it: a short path lights up across the dots, and you retrace it from memory — the longer the path, the deeper the act.</p>
     <div class="dot-grid">
 {grid_cells_html}
     </div>
@@ -852,12 +861,37 @@ thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
     </section>
   </div>
 </section>
+<div class="dot-game" data-dot-game hidden>
+  <div class="dot-game-backdrop" data-dot-close></div>
+  <div class="dot-game-panel" role="dialog" aria-modal="true" aria-labelledby="dot-game-title">
+    <div class="dot-game-head">
+      <div class="dot-game-titles"><p class="eyebrow" id="dot-game-act"></p><h3 id="dot-game-title"></h3></div>
+      <button type="button" class="dot-game-close" data-dot-close aria-label="Close the dot game"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <p class="dot-help">Watch the amber path light up across the dots, then tap the dots in the same order to retrace it.</p>
+    <div class="dot-board-wrap">
+      <svg class="dot-lines" data-dot-lines viewBox="0 0 100 100" aria-hidden="true"></svg>
+      <div class="dot-board" data-dot-board></div>
+    </div>
+    <p class="dot-status" data-dot-status role="status" aria-live="polite"></p>
+    <div class="dot-game-actions">
+      <button type="button" class="btn btn-ghost" data-dot-watch>Watch again</button>
+      <button type="button" class="btn btn-ghost" data-dot-reveal>Show me the path</button>
+      <button type="button" class="btn btn-ghost" data-dot-again hidden>New path</button>
+      <button type="button" class="btn btn-primary" data-dot-close>Done</button>
+    </div>
+    <p class="dot-cap" data-dot-cap hidden></p>
+  </div>
+</div>
 """)
 
 # Practice page — part two of the MIT report read (owner decision 2026-08: the
-# recommendations half lives on its own page, eight clusters, each with a
-# "transfer" note read from a campus without MIT's budget). Rows render with
-# generated scene illustrations (owner approved 2026-08); the CSS plate variant
+# recommendations half lives on its own page, eight clusters, each read from a
+# campus without MIT's budget. 2026-09 owner review: the per-row notes are
+# labeled "My read" and each take was confirmed or rewritten with the owner;
+# the "Fair access" row carries no note, and the former closing "What I have
+# left off" paragraph was removed). Rows render with generated scene
+# illustrations (owner approved 2026-08); the CSS plate variant
 # (.plate) remains as fallback: drop a row's "img" key to render its § plate.
 PRACTICE_ROWS = [
     {
@@ -874,7 +908,7 @@ PRACTICE_ROWS = [
         "img": "IMG/practice-2-projects.jpg",
         "alt": "Illustration of four students around a work table assembling a small prototype with an amber glowing component, a machine figure handing over a screw",
         "said": "Match the new assessments with more experiential, project-based learning. Because AI lowers the cost of ambitious work, a capstone class can now expect near production-quality software in one term, and architecture students can visualize and test ideas that once took weeks. And because AI is quietly dissolving study groups and office hours, the committee asks every subject to build structured, graded in-person interaction back in, with its purpose explained to students from day one.",
-        "take": "The day-one explanation is the part I keep underlining. Students follow rules whose purpose they understand, and \"we work in groups because learning here is social\" is a purpose I can defend: collaboration is the third link of my teaching chain, and here the report gives it the same weight.",
+        "take": "The day-one explanation is worth keeping: students follow rules whose purpose they understand, and \"we work in groups because learning here is social\" is a purpose I can defend. Collaboration is an important part of my teaching.",
     },
     {
         "sec": "§3.1.6",
@@ -890,7 +924,7 @@ PRACTICE_ROWS = [
         "img": "IMG/practice-4-detector.jpg",
         "alt": "Illustration of a nervous student writing at a desk while a giant mechanical arm lowers an amber-ringed magnifying lens over the page, a small machine shrugging beside the desk",
         "said": "The committee recommends against relying on AI detectors and lockdown browsers. Detection invites an arms race with paraphrasing tools that nobody wins, and its false positives land hardest on non-native English writers and neurodivergent students. MIT's disciplinary committee does not accept detector output alone as evidence. The suggested alternatives are version histories, staged deadlines, and work developed in class.",
-        "take": "This row matters even more in Taiwan, where most students write in English as an additional language. A tool whose known failure mode is misreading their prose as machine-made is not a neutral instrument. Process evidence beats pattern-matching, and it costs less than a surveillance license.",
+        "take": "The report itself notes that detector false positives land hardest on non-native English writers, and most students in my classrooms write in English as an additional language. But the stronger point is simpler: authentic assessment — drafts, version histories, work developed in class — produces evidence you can actually see. When that evidence exists, pattern-matching detectors are not needed.",
     },
     {
         "sec": "§3.2.3",
@@ -914,7 +948,7 @@ PRACTICE_ROWS = [
         "img": "IMG/practice-7-literacy.jpg",
         "alt": "Illustration of three pedestals holding a magnifying glass, two hands shaking, and an amber sprouting leaf, with a student and machine figure studying them",
         "said": "The report splits AI literacy into effective use (verify outputs, know a model's failure modes, recognize when not to reach for AI), responsible use (understand augmentation versus automation and disclose honestly), and ethical use (training data, bias, homogenized voice, environmental cost, authorship). It wants these woven through orientation and the whole curriculum, and cites a campus survey where about two thirds of students saw AI as central to their careers while only about a quarter felt their education was preparing them.",
-        "take": "This is where the report and my research agenda overlap most cleanly. The three registers give structure to the literacy ground layer I argue for on my thinking page, and the quarter who feel prepared is the measurable version of why that layer exists. <a href=\"thinking.html\">My thinking page works this out in full</a>.",
+        "take": "This is where the report and my research agenda overlap. The three registers give structure to the literacy ground layer I argue for on my thinking page, and the quarter who feel prepared is the measurable version of why that layer exists. <a href=\"thinking.html\">My thinking page works this out in full</a>.",
     },
     {
         "sec": "§3.3.7",
@@ -922,7 +956,7 @@ PRACTICE_ROWS = [
         "img": "IMG/practice-8-access.jpg",
         "alt": "Illustration of a machine figure operating a tap dispenser and three students queuing with cups as an amber stream fills the first cup",
         "said": "Top commercial AI plans run around $200 per month, so students who can pay literally learn with stronger tools than students who cannot. MIT's answer is Parley, a model-agnostic campus platform giving every member about $30 of monthly credits and API access for coding tools. The committee concedes the amount may fall short and asks for continuing review.",
-        "take": "Most campuses cannot fund a Parley. The lens still travels: access is a design variable. An assignment that assumes a $200 subscription measures family income; one that assumes fluent AI habits measures who had guidance.",
+        "take": "",
     },
 ]
 
@@ -942,20 +976,23 @@ for i, r in enumerate(PRACTICE_ROWS):
         )
     said = escape(r["said"])
     take = r["take"]
-    if "<a href" not in take:
-        take = escape(take)
+    if take:
+        if "<a href" not in take:
+            take = escape(take)
+        else:
+            head, rest = take.split('<a href="')
+            href, tail = rest.split('">', 1)
+            link_text, tail2 = tail.split("</a>", 1)
+            take = f'{escape(head)}<a href="{escape(href)}">{escape(link_text)}</a>{escape(tail2)}'
+        take_html = f'\n    <p class="my-read"><span class="read-tag">My read</span>{take}</p>'
     else:
-        head, rest = take.split('<a href="')
-        href, tail = rest.split('">', 1)
-        link_text, tail2 = tail.split("</a>", 1)
-        take = f'{escape(head)}<a href="{escape(href)}">{escape(link_text)}</a>{escape(tail2)}'
+        take_html = ""
     practice_rows.append(
         f'''<div class="media-row reveal{flip}">
   {visual}
   <div class="media-copy">
     <h3>{escape(r["name"])} <span class="badge">{escape(r["sec"])}</span></h3>
-    <p>{said}</p>
-    <p class="my-read"><span class="read-tag">Transfer</span>{take}</p>
+    <p>{said}</p>{take_html}
   </div>
 </div>'''
     )
@@ -970,12 +1007,11 @@ practice = page("Report in practice · Hua-Xu Zhong", "practice", f"""
       <figcaption>What survives the trip from a well-funded campus to an ordinary one?</figcaption>
     </figure>
     <p class="reveal">My first page on the report stayed at the level of positions: the stances I hold, and the eight principles the committee set out. That was an editorial decision, and it left the longer half of the report on the table. This page covers that half: what the committee actually recommends doing, in its ten recommendation groups running from course assessment to campus infrastructure.</p>
-    <p class="reveal">I read the list with one bias declared. MIT's solutions assume MIT's resources: pilot funds, fellow programs, standing committees, and a model-agnostic platform with per-user monthly credits. Most campuses have none of these, and neither does a single instructor planning next semester. So for each group I ask a transfer question: what survives when the budget and the org chart are removed? Usually something does, and it is usually the part that was about pedagogy all along. Eight groups matter most to my context; this page takes them in turn.</p>
+    <p class="reveal">I read the list with one bias declared. MIT's solutions assume MIT's resources: pilot funds, fellow programs, standing committees, and a model-agnostic platform with per-user monthly credits. Most campuses have none of these, and neither does a single instructor planning next semester. So for each group I ask the same question: what survives when the budget and the org chart are removed? Usually something does, and it is usually the part that was about pedagogy all along. Eight groups matter most to my context; this page takes them in turn.</p>
     {titled("h2", "The action list, read twice", ICON_CASE, "block-title reveal spaced")}
     <div class="principle-rows">
 {practice_rows_html}
     </div>
-    <p class="reveal">What I have left off: the report's institutional machinery (standing committees, AI Leads, fellows, pilot funds, metrics programs), its space planning, privacy logging, and environmental audit. Those are things only an institute can do, and I have no institute to offer. What one person can do is the eight rows above.</p>
     <section class="pillar-sec reveal reference-box">
       <h3>Reference</h3>
       <p>MIT Ad Hoc Committee on AI Use in Teaching, Learning, and Research Training. <i>Report</i>. Massachusetts Institute of Technology, August 13, 2026. Recommendations section §3. <a href="{MIT_REPORT_URL}" target="_blank" rel="noopener">Read the full report</a></p>
@@ -1038,7 +1074,7 @@ activities = page("Activities · Hua-Xu Zhong", "activities", f"""
     <button class="modal-close on-photo" type="button" data-close aria-label="Close">{ICON_X}</button>
     <button class="deck-btn prev on-photo" type="button" data-lamp-prev aria-label="Previous photo">{ICON_LEFT}</button>
     <button class="deck-btn next on-photo" type="button" data-lamp-next aria-label="Next photo">{ICON_RIGHT}</button>
-    <img alt="" />
+    <img alt="" aria-hidden="true" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
     <div class="lamp-meta">
       <p data-lamp-cap></p>
       <p class="deck-count" data-lamp-count></p>

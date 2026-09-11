@@ -41,16 +41,45 @@ Files you MAY edit directly:
   HTTP 403 managing Pages via API — re-enable it **manually**:
   Settings → Pages → "Deploy from a branch" → branch `master`, folder `/ (root)` → Save.
   The merge/push then triggers the `pages-build-deployment` workflow automatically.
-- **Placeholder email is known and intentional until the owner supplies a real one.** The
-  `mailto:your.email@example.com` in `_gen_html.py` (twice: page template + 404 template) is a
-  placeholder. Do NOT invent or guess an address — ask the owner for the real one, then replace
-  both occurrences and bump the `?v=` cache-buster.
+- **Contact email.** The site's contact email is `k43122003@gmail.com` (set in `_gen_html.py`;
+  hero + footer social icons — both `mailto:` occurrences). The old
+  `mailto:your.email@example.com` placeholder was replaced on 2026-08-31. If the owner changes
+  it, update every `mailto:` occurrence and bump the `?v=` cache-buster. (Ask the owner to
+  double-check the spelling once — it was supplied in a form.)
+
+## Backlog — pending owner input (2026-08)
+
+Owner will send materials later; **do not fabricate** any of this. When the asset/value lands,
+edit `_gen_html.py` (+ add the file under `IMG/` if a download), rerun `python3 _gen_html.py`,
+bump the `?v=` cache-buster, and keep the detector at 0 findings.
+
+1. **English CV / PDF download link** — owner will provide the CV file (place at repo root as
+   e.g. `HuaXu_Zhong_CV.pdf`). Add a download link in the hero actions (or About), styled with
+   the existing `.btn` system. International search committees want a one-click CV.
+2. **ORCID iD link** — owner will provide their ORCID URL/id. Add to hero + footer social icons
+   (define an ORCID inline SVG icon in `_gen_html.py`, Heroicons style), next to Scholar/email.
+3. *(Optional, no input needed — ask before doing)* Surface **corresponding-author / international
+   collaboration** more visibly on Research, since the data already exists in `pubs`.
+
+Context: owner is an NSTC postdoc (2025–2028) exploring international opportunities; these three
+help an international reviewer verify them quickly. Career actions (networking, conferences,
+applications) are the owner's own, not site tasks.
 
 ## Design system
 
 `DESIGN.md` documents the committed visual world ("the journal cover": navy plates, warm paper,
 amber accents, Newsreader/Source Serif 4/Archivo). Read it before any styling change and keep
 new work inside that world unless the user asks for a redesign.
+
+**Design detector.** `.impeccable/config.json` (tracked) holds the repo-wide impeccable
+detector policy: it waives the generic SaaS/AI-template rules that fire on purpose because they
+describe this world (cream paper, amber hairline rules, navy plate shadows, editorial eyebrows,
+etc. — each documented in `DESIGN.md`). Keep `node .claude/skills/impeccable/scripts/detect.mjs
+--json css/site.css <pages...>` at **0 findings**. Fix objective defects (contrast, heading
+order, sub-11px functional text, broken/placeholder images) in code — never silence them via the
+config. Full-mode HTML/CSS parsing needs `htmlparser2 css-select css-tree domutils` installed
+under `.claude/skills/impeccable/node_modules` (gitignored); the script prints `DEGRADED` and
+undercounts if they are missing.
 
 ## Skills
 
