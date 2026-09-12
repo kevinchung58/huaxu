@@ -1,0 +1,16 @@
+{
+  "$comment": "Impeccable detector policy for huaxu.github.io. The visual world is 'the journal cover' (see DESIGN.md): deep navy plates, warm paper, amber used as a precise instrument, editorial serif typography. The rules below are generic SaaS/AI-template heuristics whose positive hits here are intentional, committed design decisions documented in DESIGN.md — not defects. They are waived so the baseline stays clean and genuinely new issues still surface. Real, objective defects (contrast, heading hierarchy, sub-11px functional text, broken images) are fixed in code, never silenced here.",
+  "detector": {
+    "ignoreRules": [
+      "cream-palette",
+      "side-tab",
+      "border-accent-on-rounded",
+      "dark-glow",
+      "hero-eyebrow-chip",
+      "all-caps-body",
+      "cramped-padding",
+      "buried-raster",
+      "flat-type-hierarchy"
+    ]
+  }
+}
