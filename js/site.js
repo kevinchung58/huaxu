@@ -248,6 +248,32 @@
   const clearTimers = () => { timers.forEach((t) => clearTimeout(t)); timers = []; };
   const setStatus = (text) => { statusEl.textContent = text; };
   const center = (i) => ({ x: (i % SIZE) * 20 + 10, y: Math.floor(i / SIZE) * 20 + 10 });
+  // Position is the dot's only identity. The visible number badge is ::after
+  // content, which assistive tech does not reliably read, so the step order is
+  // carried in the accessible name too; "Show me the path" is therefore the
+  // screen-reader route into the game (design-detector audit 2026-09).
+  const dotLabel = (i, step, total) => {
+    const where = `row ${Math.floor(i / SIZE) + 1}, column ${(i % SIZE) + 1}`;
+    return step ? `Step ${step} of ${total}, ${where}` : `Dot at ${where}`;
+  };
+  // Everything outside the dialog is inert while it is open; the Tab trap below
+  // stays as the fallback for browsers without inert. The dialog lives inside
+  // <main>, so walk its ancestor chain and inert each level's siblings instead
+  // of assuming it is a direct child of <body>.
+  const setBackgroundInert = (on) => {
+    const toggle = (el) => {
+      if (el.tagName === "SCRIPT" || el.tagName === "STYLE") return;
+      if (on) el.setAttribute("inert", "");
+      else el.removeAttribute("inert");
+    };
+    let node = game;
+    while (node && node !== document.body) {
+      const parent = node.parentElement;
+      if (!parent) break;
+      Array.from(parent.children).forEach((sib) => { if (sib !== node) toggle(sib); });
+      node = parent;
+    }
+  };
 
   // Build the 5x5 dot field once.
   for (let i = 0; i < SIZE * SIZE; i++) {
@@ -255,7 +281,7 @@
     b.type = "button";
     b.className = "dot-cell-btn";
     b.dataset.dot = String(i);
-    b.setAttribute("aria-label", `Dot at row ${Math.floor(i / SIZE) + 1}, column ${(i % SIZE) + 1}`);
+    b.setAttribute("aria-label", dotLabel(i));
     b.innerHTML = '<span class="dot" aria-hidden="true"></span>';
     b.addEventListener("click", () => onTap(i));
     board.appendChild(b);
@@ -263,9 +289,10 @@
   }
 
   const resetBoard = () => {
-    dots.forEach((d) => {
+    dots.forEach((d, i) => {
       d.classList.remove("is-lit", "is-done", "is-wrong");
       d.removeAttribute("data-n");
+      d.setAttribute("aria-label", dotLabel(i));
       d.disabled = false;
     });
     linesSvg.innerHTML = "";
@@ -290,7 +317,12 @@
     return idx.slice(0, k);
   };
 
-  const numberPath = () => { seq.forEach((di, n) => { dots[di].dataset.n = String(n + 1); }); };
+  const numberPath = () => {
+    seq.forEach((di, n) => {
+      dots[di].dataset.n = String(n + 1);
+      dots[di].setAttribute("aria-label", dotLabel(di, n + 1, seq.length));
+    });
+  };
 
   const startInput = () => {
     phase = "input";
@@ -341,6 +373,8 @@
     if (phase !== "input") return;
     if (i === seq[progress]) {
       dots[i].classList.add("is-done");
+      // Confirm the dot is spent without spoiling the order of the ones left.
+      dots[i].setAttribute("aria-label", `${dots[i].getAttribute("aria-label")}, traced`);
       progress += 1;
       drawPath(progress - 1);
       if (progress >= seq.length) win();
@@ -372,6 +406,7 @@
     revealBtn.hidden = false;
     game.hidden = false;
     document.body.style.overflow = "hidden";
+    setBackgroundInert(true);
     game.querySelector(".dot-game-close").focus();
     watch();
   };
@@ -379,8 +414,10 @@
   const closeGame = () => {
     clearTimers();
     phase = "idle";
+    resetBoard();
     game.hidden = true;
     document.body.style.overflow = "";
+    setBackgroundInert(false);
     if (lastFocus) lastFocus.focus();
   };
 

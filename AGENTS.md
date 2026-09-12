@@ -29,7 +29,7 @@ Files you MAY edit directly:
 | `_gen_html.py` | Generator: nav, page templates, publications, gallery data. Run it after editing. |
 | `index/about/research/teaching/activities/service/links/404.html` | Generated output. Do not hand-edit. |
 | `css/site.css` | Single stylesheet, versioned via `?v=` query string |
-| `js/site.js` | Single script file |
+| `js/site.js` | Single script file — nav, reveals, gallery lightbox, and the dot-trace game (see below) |
 | `IMG/` | Portrait and gallery photos |
 | `.nojekyll` | Keeps GitHub Pages from running Jekyll — do not delete |
 
@@ -64,6 +64,22 @@ bump the `?v=` cache-buster, and keep the detector at 0 findings.
 Context: owner is an NSTC postdoc (2025–2028) exploring international opportunities; these three
 help an international reviewer verify them quickly. Career actions (networking, conferences,
 applications) are the owner's own, not site tasks.
+
+## Interactive: the dot-trace game
+
+The nine panels on `thinking.html` are a playable memory game, not a gallery — do not
+reduce it to static figures. Content lives in `GRID_CELLS` (`_gen_html.py`); all behavior
+lives in `js/site.js` (the `[data-dot-*]` block). Contract to keep intact, in that order:
+
+- Path length encodes difficulty: `PATH_LENGTH` maps Act I/II/III to 3/4/5 dots.
+- The dialog is `<main>`-nested, so `setBackgroundInert` walks the ancestor chain; the Tab
+  trap is its fallback, not the whole thing. Both must run on open *and* close.
+- Dot numbers are `::after` content, which assistive tech may not read — `data-n` and the
+  dot's `aria-label` are set together in `numberPath()`. "Show me the path" is the
+  screen-reader route into the game.
+- Playback has a `prefers-reduced-motion` branch; keep it when touching `watch()`.
+- Verify by playing panels 1, 5, and 8 (one per act) at `python3 -m http.server 8080`, and
+  keep the detector at 0 findings. No test framework — the site stays dependency-free.
 
 ## Design system
 

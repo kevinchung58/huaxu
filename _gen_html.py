@@ -117,7 +117,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v=20260830a"></script>"""
+<script src="js/site.js?v=20260912a"></script>"""
 
 
 def page(title: str, active: str, body: str, path: str = "", extra: str = "") -> str:
