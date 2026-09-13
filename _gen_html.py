@@ -750,11 +750,13 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
       <li><strong>Designing for inquiry.</strong> What does an LLM learning system look like when its first job is to protect a student's own thinking? I came to this question from my own view of LLMs, and from the problems I saw them create for feedback in learning. My earlier work on feedback and scaffolding is where I start. I have not built such a system yet; that is the direction.</li>
       <li><strong>Creativity as an outcome.</strong> The report asks AI to augment curiosity and creativity. I am asking how creativity can be taught, practiced, and assessed when AI can imitate its products.</li>
       <li><strong>Fair access to good AI.</strong> Access is uneven in two ways: strong models cost money, and the guidance to use them well costs more. I care about designs that support learning across that uneven ground.</li>
+      <li><strong>Research done inside someone else's product.</strong> Generative AI is ordinary research infrastructure now, and a hosted model is the least examinable part of it. Two things are at stake when unpublished work goes through one: the privacy of data that is not the researcher's to disclose, and the standing of an idea, because saying what you are working on is how a direction becomes available to anyone with more compute behind it. The published evidence is not that platforms take ideas; it is that researchers answer by quietly narrowing what they type, and that those with private compute carry that cost differently. I would rather measure that trade-off than assert it, and I have no data on it yet.</li>
     </ol>
     <section class="pillar-sec reveal reference-box">
       <h3>Reference</h3>
       <p>MIT Ad Hoc Committee on AI Use in Teaching, Learning, and Research Training. <i>Report</i>. Massachusetts Institute of Technology, August 13, 2026.</p>
       <p class="pillar-more"><a class="text-arrow" href="{MIT_REPORT_URL}" target="_blank" rel="noopener">Read the full report {ico(ICON_OUT)}</a></p>
+      <p>On what hosted AI tools do to disclosure: <i>Privacy Perceptions of Custom GPTs by Users and Creators</i> (CHI 2025), and <i>Understanding Privacy Norms Around LLM-Based Chatbots: A Contextual Integrity Perspective</i>. These support the behavior I describe; neither is a claim about any company's conduct.</p>
       <p class="pillar-more"><a class="text-arrow" href="practice.html">Part two: the recommendations, transferred to a smaller campus {ico(ICON_RIGHT)}</a></p>
     </section>
   </div>
@@ -920,6 +922,12 @@ thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
 </div>
 """)
 
+# 2026-09-13: the §3.2.4 "AI literacy in three registers" take was extended with the
+# research-side consequence of the report's ethical register (hosted models, training
+# data, authorship), and position.html gained a fourth "what I want to study" item. Both
+# were drafted from the owner's stated view in chat — general position, no company or
+# person named, no claim about any platform's conduct — but the wording is his to edit
+# before merge, per the existing rule that every "My read" is owner-confirmed.
 # Practice page — part two of the MIT report read (owner decision 2026-08: the
 # recommendations half lives on its own page, eight clusters, each read from a
 # campus without MIT's budget. 2026-09 owner review: the per-row notes are
@@ -983,7 +991,7 @@ PRACTICE_ROWS = [
         "img": "IMG/practice-7-literacy.jpg",
         "alt": "Illustration of three pedestals holding a magnifying glass, two hands shaking, and an amber sprouting leaf, with a student and machine figure studying them",
         "said": "The report splits AI literacy into effective use (verify outputs, know a model's failure modes, recognize when not to reach for AI), responsible use (understand augmentation versus automation and disclose honestly), and ethical use (training data, bias, homogenized voice, environmental cost, authorship). It wants these woven through orientation and the whole curriculum, and cites a campus survey where about two thirds of students saw AI as central to their careers while only about a quarter felt their education was preparing them.",
-        "take": "This is where the report and my research agenda overlap. The three registers give structure to the literacy ground layer I argue for on my thinking page, and the quarter who feel prepared is the measurable version of why that layer exists. <a href=\"thinking.html\">My thinking page works this out in full</a>.",
+        "take": "This is where the report and my research agenda overlap. The three registers give structure to the literacy ground layer I argue for on my thinking page, and the quarter who feel prepared is the measurable version of why that layer exists. I read the third register as a duty that does not stop at the classroom: research done inside a hosted model puts material that is not yet defensible, and data that is not the researcher's to expose, into a channel whose audit trail someone else holds. The capability of a tool is not the boundary of what belongs in it. <a href=\"thinking.html\">My thinking page works this out in full</a>.",
     },
     {
         "sec": "§3.3.7",
