@@ -185,17 +185,19 @@
       if (count) count.textContent = `${slideIndex + 1} / ${slides.length}`;
       showDeck(slideIndex);
     };
-    const open = (index) => {
+    let trigger = null;
+    const open = (index, from) => {
+      lightbox.classList.add("is-open");
       showDeck(index);
       paint();
-      lightbox.classList.add("is-open");
-      document.body.style.overflow = "hidden";
+      trigger = enterOverlay(lightbox, ".modal-close", from);
     };
     const close = () => {
       lightbox.classList.remove("is-open");
-      document.body.style.overflow = "";
+      leaveOverlay(lightbox, trigger);
+      trigger = null;
     };
-    slides.forEach((btn, index) => btn.addEventListener("click", () => open(index)));
+    slides.forEach((btn, index) => btn.addEventListener("click", () => open(index, btn)));
     prev?.addEventListener("click", () => {
       showDeck(slideIndex - 1);
       paint();
@@ -207,7 +209,8 @@
     lightbox.querySelectorAll("[data-close]").forEach((el) => el.addEventListener("click", close));
     document.addEventListener("keydown", (event) => {
       if (!lightbox.classList.contains("is-open")) return;
-      if (event.key === "Escape") close();
+      if (event.key === "Escape") { close(); return; }
+      trapTab(lightbox, event);
       if (many && event.key === "ArrowLeft") {
         showDeck(slideIndex - 1);
         paint();
@@ -219,6 +222,58 @@
     });
   }
 })();
+
+/* ---- Shared overlay plumbing: one modal standard for the whole site ----
+   inertOutside walks the overlay's ANCESTOR chain instead of sweeping
+   document.body.children, because an overlay can sit inside <main> (the gallery
+   lightbox is a body child; the dot game lives inside the page body). A
+   body-level sweep of a nested overlay silently leaves the whole page exposed. */
+function inertOutside(root, on) {
+  const skip = new Set(["SCRIPT", "STYLE", "NOSCRIPT"]);
+  let node = root;
+  while (node && node !== document.body) {
+    const parent = node.parentElement;
+    if (!parent) break;
+    parent.querySelectorAll(":scope > *").forEach((sib) => {
+      if (sib === node || skip.has(sib.tagName)) return;
+      if (on) sib.setAttribute("inert", "");
+      else sib.removeAttribute("inert");
+    });
+    node = parent;
+  }
+}
+
+/* Focus trap fallback for any environment without inert. */
+function trapTab(root, event) {
+  if (event.key !== "Tab") return;
+  const focusables = Array.from(
+    root.querySelectorAll("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])")
+  ).filter((el) => !el.hidden && !el.disabled && el.offsetParent !== null);
+  if (!focusables.length) return;
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+}
+
+/* Enters an overlay: locks the page, isolates everything outside it, and moves
+   focus in. The restore target is passed in by the caller rather than inferred
+   from document.activeElement, which is not the clicked control in every
+   environment. Falls back to the active element only when no caller knows. */
+function enterOverlay(root, focusSel, trigger) {
+  const restore = trigger || document.activeElement;
+  document.body.style.overflow = "hidden";
+  inertOutside(root, true);
+  const target = focusSel ? root.querySelector(focusSel) : null;
+  (target || root).focus();
+  return restore;
+}
+
+function leaveOverlay(root, trigger) {
+  inertOutside(root, false);
+  document.body.style.overflow = "";
+  if (trigger && typeof trigger.focus === "function") trigger.focus();
+}
 
 /* ---- Dot-trace game: thinking page nine-panel grid (owner decision 2026-09) ---- */
 (function () {
@@ -256,25 +311,6 @@
     const where = `row ${Math.floor(i / SIZE) + 1}, column ${(i % SIZE) + 1}`;
     return step ? `Step ${step} of ${total}, ${where}` : `Dot at ${where}`;
   };
-  // Everything outside the dialog is inert while it is open; the Tab trap below
-  // stays as the fallback for browsers without inert. The dialog lives inside
-  // <main>, so walk its ancestor chain and inert each level's siblings instead
-  // of assuming it is a direct child of <body>.
-  const setBackgroundInert = (on) => {
-    const toggle = (el) => {
-      if (el.tagName === "SCRIPT" || el.tagName === "STYLE") return;
-      if (on) el.setAttribute("inert", "");
-      else el.removeAttribute("inert");
-    };
-    let node = game;
-    while (node && node !== document.body) {
-      const parent = node.parentElement;
-      if (!parent) break;
-      Array.from(parent.children).forEach((sib) => { if (sib !== node) toggle(sib); });
-      node = parent;
-    }
-  };
-
   // Build the 5x5 dot field once.
   for (let i = 0; i < SIZE * SIZE; i++) {
     const b = document.createElement("button");
@@ -405,9 +441,7 @@
     watchBtn.hidden = false;
     revealBtn.hidden = false;
     game.hidden = false;
-    document.body.style.overflow = "hidden";
-    setBackgroundInert(true);
-    game.querySelector(".dot-game-close").focus();
+    lastFocus = enterOverlay(game, ".dot-game-close", lastFocus);
     watch();
   };
 
@@ -416,9 +450,7 @@
     phase = "idle";
     resetBoard();
     game.hidden = true;
-    document.body.style.overflow = "";
-    setBackgroundInert(false);
-    if (lastFocus) lastFocus.focus();
+    leaveOverlay(game, lastFocus);
   };
 
   document.querySelectorAll("[data-dot-open]").forEach((btn) => {
@@ -448,12 +480,6 @@
   game.querySelectorAll("[data-dot-close]").forEach((el) => el.addEventListener("click", closeGame));
   game.addEventListener("keydown", (event) => {
     if (event.key === "Escape") { closeGame(); return; }
-    if (event.key !== "Tab") return;
-    const focusables = Array.from(game.querySelectorAll("button")).filter((el) => !el.hidden && !el.disabled && el.offsetParent !== null);
-    if (!focusables.length) return;
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    trapTab(game, event);
   });
 })();

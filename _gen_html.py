@@ -11,6 +11,41 @@ PUBLIC_PAGES = ["index.html", "about.html", "research.html", "teaching.html",
                 "position.html", "thinking.html", "practice.html",
                 "activities.html", "service.html", "links.html"]
 
+import struct as _struct
+
+
+def jpeg_size(path: str):
+    """Intrinsic pixel size of a JPEG, for the width/height attributes that keep
+    the gallery deck from shifting layout. None when unparseable, so the
+    attributes are omitted rather than guessed."""
+    try:
+        d = (ROOT / path).read_bytes()
+    except OSError:
+        return None
+    if not d.startswith(b"\xff\xd8"):
+        return None
+    i = 2
+    while i + 9 < len(d):
+        if d[i] != 0xFF:
+            i += 1
+            continue
+        marker = d[i + 1]
+        if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7,
+                      0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+            h, w = _struct.unpack(">HH", d[i + 5:i + 9])
+            return w, h
+        if marker in (0x01, 0xD8) or 0xD0 <= marker <= 0xD7:
+            i += 2
+            continue
+        i += 2 + _struct.unpack(">H", d[i + 2:i + 4])[0]
+    return None
+
+
+def img_dims(path: str) -> str:
+    size = jpeg_size(path)
+    return f' width="{size[0]}" height="{size[1]}"' if size else ""
+
+
 def svg(d: str, filled: bool = False) -> str:
     if filled:
         return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">{d}</svg>'
@@ -117,7 +152,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v=20260912a"></script>"""
+<script src="js/site.js?v=20260912b"></script>"""
 
 
 def page(title: str, active: str, body: str, path: str = "", extra: str = "") -> str:
@@ -1022,8 +1057,17 @@ practice = page("Report in practice · Hua-Xu Zhong", "practice", f"""
 """)
 
 # Add photos here later: (src, alt, caption). Multiple items become a slideshow.
+# The caption is the venue / date / event line. It stays empty until the owner
+# supplies it, and an empty caption renders no caption row at all rather than a
+# "forthcoming" promise shown to visitors. The alt states only what the photo
+# shows, since that is verifiable from the file itself.
 GALLERY = [
-    ("IMG/3.jpg", "Academic activity", "Caption forthcoming"),
+    ("IMG/3.jpg",
+     "Photograph of Hua-Xu Zhong standing behind a table covered in blue cloth and "
+     "laid with prototypes: breadboards and jumper wires, a small printed robotic "
+     "arm, work gloves, and an open laptop, with a head-mounted display on a wooden "
+     "podium beside a microphone and an SDG 2 Zero Hunger sign on the wall behind",
+     ""),
 ]
 gallery_many = len(GALLERY) > 1
 gallery_slides = []
@@ -1032,8 +1076,8 @@ for i, (src, alt, cap) in enumerate(GALLERY):
     on = " is-on" if i == 0 else ""
     gallery_slides.append(
         f'<figure class="deck-slide{on}" data-slide="{i}">'
-        f'<button type="button" data-lightbox data-index="{i}" data-src="{escape(src)}" data-alt="{escape(alt)}" data-caption="{escape(cap)}">'
-        f'<img src="{escape(src)}" alt="{escape(alt)}" /></button></figure>'
+        f'<button type="button" data-lightbox data-index="{i}" data-src="{escape(src)}" data-alt="{escape(alt)}" data-caption="{escape(cap)}" aria-label="Enlarge photo">'
+        f'<img src="{escape(src)}" alt="{escape(alt)}"{img_dims(src)} loading="lazy" /></button></figure>'
     )
     gallery_dots.append(f'<button type="button" class="deck-dot{on}" data-go="{i}" aria-label="Photo {i + 1}"></button>')
 gallery_nav = ""
@@ -1043,9 +1087,9 @@ if gallery_many:
     <p class="deck-count"><span data-deck-n>1</span> / {len(GALLERY)}</p>'''
 gallery_dots_html = f'<div class="deck-dots">{"".join(gallery_dots)}</div>' if gallery_many else ""
 gallery_note = (
-    "When more photographs are added, they play as a slideshow. Select a photo to view it larger."
+    "Select a photo to view it larger."
     if not gallery_many
-    else "Use the arrows or select a photo to view it larger."
+    else "Use the arrows or the left and right keys to move between photos, or select one to view it larger."
 )
 
 activities = page("Activities · Hua-Xu Zhong", "activities", f"""
@@ -1059,7 +1103,7 @@ activities = page("Activities · Hua-Xu Zhong", "activities", f"""
         {''.join(gallery_slides)}
         {gallery_nav}
       </div>
-      <p class="deck-cap" data-deck-cap>{escape(GALLERY[0][2])}</p>
+      {f'<p class="deck-cap" data-deck-cap>{escape(GALLERY[0][2])}</p>' if GALLERY[0][2] else ""}
       {gallery_dots_html}
     </div>
     {titled("h2", "Talks and visits", ICON_CHAT, "block-title reveal spaced")}
@@ -1068,13 +1112,13 @@ activities = page("Activities · Hua-Xu Zhong", "activities", f"""
   </div>
 </section>
 """, extra=f"""
-<div class="modal" id="lightbox">
+<div class="modal" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
   <div class="modal-backdrop" data-close></div>
   <div class="modal-panel lamp">
     <button class="modal-close on-photo" type="button" data-close aria-label="Close">{ICON_X}</button>
     <button class="deck-btn prev on-photo" type="button" data-lamp-prev aria-label="Previous photo">{ICON_LEFT}</button>
     <button class="deck-btn next on-photo" type="button" data-lamp-next aria-label="Next photo">{ICON_RIGHT}</button>
-    <img alt="" aria-hidden="true" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
+    <img alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
     <div class="lamp-meta">
       <p data-lamp-cap></p>
       <p class="deck-count" data-lamp-count></p>
