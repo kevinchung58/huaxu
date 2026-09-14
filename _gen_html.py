@@ -1270,6 +1270,8 @@ def poster_attrs(src):
 
 
 def _jpeg_attrs(src, _path=None):
+    import struct
+
     path = _path or (ROOT / src)
     try:
         d = path.read_bytes()
@@ -1287,9 +1289,9 @@ def _jpeg_attrs(src, _path=None):
             i += 2
             continue
         if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):
-            h, w = _struct.unpack(">HH", d[i + 5 : i + 9])
+            h, w = struct.unpack(">HH", d[i + 5 : i + 9])
             return f'width="{w}" height="{h}"'.format(w=w, h=h)
-        i += 2 + _struct.unpack(">H", d[i + 2 : i + 4])[0]
+        i += 2 + struct.unpack(">H", d[i + 2 : i + 4])[0]
     return ""
 
 
