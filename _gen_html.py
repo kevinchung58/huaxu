@@ -1257,16 +1257,18 @@ INDENT = "\n        "
 
 
 def poster_attrs(src):
-    """Sizes come from the file through the site-wide helper. img_dims has returned a
-    tuple for some callers and an attribute string for others, so both shapes are
-    handled rather than guessed, and the attributes are simply omitted if the file
-    cannot be parsed — a missing width/height is a layout bug, a wrong one is worse."""
-    dims = img_dims(src)
-    if isinstance(dims, tuple) and dims and dims[0]:
-        return f'width="{dims[0]}" height="{dims[1]}"'
+    """Sizes come from the file the way the rest of the site does it: jpeg_size() reads the
+    JPEG header and returns None when it cannot parse, and the attributes are then omitted
+    rather than guessed. The lookup is by globals() because this page was written against a
+    helper name that does not exist in the generator, which shipped a broken build once."""
+    helper = globals().get("img_dims") or globals().get("jpeg_size")
+    dims = helper(src) if helper else None
     if isinstance(dims, str):
         return dims
+    if isinstance(dims, (tuple, list)) and dims and dims[0]:
+        return f'width="{dims[0]}" height="{dims[1]}"'
     return ""
+
 
 def room_object(o):
     style = f'--x:{o["x"]}px;--z:{o["z"]}px;--y:{o["y"]}px;--ry:{o["ry"]}deg;'
