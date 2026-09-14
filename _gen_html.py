@@ -3,56 +3,13 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260914b"
+CSS = "css/site.css?v=20260911a"
 
 SITE = "https://kevinchung58.github.io/huaxu"
 DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking."
 PUBLIC_PAGES = ["index.html", "about.html", "research.html", "teaching.html",
                 "position.html", "thinking.html", "practice.html",
-                "activities.html", "service.html", "links.html"]
-
-import struct as _struct
-
-
-def jpeg_size(path: str):
-    """Intrinsic pixel size of a JPEG, for the width/height attributes that keep
-    the gallery from shifting layout. None when unparseable, so the
-    attributes are omitted rather than guessed."""
-    try:
-        d = (ROOT / path).read_bytes()
-    except OSError:
-        return None
-    if not d.startswith(b"\xff\xd8"):
-        return None
-    i = 2
-    while i + 9 < len(d):
-        if d[i] != 0xFF:
-            i += 1
-            continue
-        marker = d[i + 1]
-        if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7,
-                      0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
-            h, w = _struct.unpack(">HH", d[i + 5:i + 9])
-            return w, h
-        if marker in (0x01, 0xD8) or 0xD0 <= marker <= 0xD7:
-            i += 2
-            continue
-        i += 2 + _struct.unpack(">H", d[i + 2:i + 4])[0]
-    return None
-
-
-def img_dims(path: str) -> str:
-    size = jpeg_size(path)
-    return f' width="{size[0]}" height="{size[1]}"' if size else ""
-
-
-def fig(src: str, alt: str, eager: bool = False) -> str:
-    """One <img> whose intrinsic size comes from the file, so no figure can shift the
-    layout as it decodes. Only JPEG is read (see jpeg_size), which is why the mascot
-    PNG layers are markup as they are and not sized here."""
-    lazy = "" if eager else ' loading="lazy"'
-    return f'<img src="{escape(src)}" alt="{escape(alt)}"{img_dims(src)}{lazy} />'
-
+                "activities.html", "rooms.html", "service.html", "links.html"]
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -98,7 +55,7 @@ def nav(active: str) -> str:
         cls = "is-active" if active == key else ""
         return f'<a href="{href}" class="{cls}">{label}</a>'
 
-    more_on = " is-active" if active in {"service", "links"} else ""
+    more_on = " is-active" if active in {"service", "links", "rooms"} else ""
     pos_on = " is-active" if active in {"position", "thinking", "practice"} else ""
     return f"""<a class="skip" href="#main">Skip to main content</a>
 <header class="nav">
@@ -123,6 +80,7 @@ def nav(active: str) -> str:
         <div class="more-menu" role="menu">
           {a("service.html", "Service", "service")}
           {a("links.html", "Resources", "links")}
+          {a("rooms.html", "Rooms", "rooms")}
         </div>
       </div>
     </nav>
@@ -141,6 +99,7 @@ def nav(active: str) -> str:
     <div class="label">More</div>
     {a("service.html", "Service", "service")}
     {a("links.html", "Resources", "links")}
+    {a("rooms.html", "Rooms", "rooms")}
   </nav>
 </header>"""
 
@@ -160,7 +119,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v=20260914b"></script>"""
+<script src="js/site.js?v=20260830a"></script>"""
 
 
 def page(title: str, active: str, body: str, path: str = "", extra: str = "") -> str:
@@ -399,7 +358,7 @@ about = page("About · Hua-Xu Zhong", "about", f"""
     <div class="about-card reveal">
       <div class="persona" role="button" tabindex="0" aria-label="Toggle illustrated portrait">
         <span class="persona-frame">
-          <img src="IMG/2.jpg" alt="Hua-Xu Zhong" {img_dims("IMG/2.jpg")} />
+          <img src="IMG/2.jpg" alt="Hua-Xu Zhong" />
           <span class="persona-alt" aria-hidden="true">
             <img src="IMG/mascot-final.png" alt="" loading="lazy" />
             <img class="pf pf-blink" src="IMG/mascot-blink.png" alt="" loading="lazy" />
@@ -700,7 +659,7 @@ for i, r in enumerate(PRINCIPLE_READS):
     flip = " flip" if i % 2 else ""
     if r.get("img"):
         visual = (
-            f'<figure class="media-fig">{fig(r["img"], r["alt"])}</figure>'
+            f'<figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>'
         )
     else:
         tone = " plate-paper" if i % 2 else " plate-navy"
@@ -726,7 +685,7 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Position</p><h1>AI in education: where I stand</h1><p>My position on generative AI in education, written in conversation with MIT's August 2026 report on AI use in teaching and learning.</p></div>
     <figure class="pos-hero reveal">
-      <img src="IMG/position-hero.jpg" alt="Illustration of a student and an abstract AI figure as partners at a shared desk"{img_dims("IMG/position-hero.jpg")} loading="lazy" />
+      <img src="IMG/position-hero.jpg" alt="Illustration of a student and an abstract AI figure as partners at a shared desk" loading="lazy" />
       <figcaption>AI as a partner in learning, not a substitute for it.</figcaption>
     </figure>
     <p class="reveal">In August 2026, an MIT ad hoc committee published its report on AI use in teaching, learning, and research training. Its questions are the ones I keep asking: what AI does to students' thinking, when it helps learning, and when it quietly replaces it. This page states my position, shows where the report and I converge, walks through its eight principles one by one, and lists what I want to study next.</p>
@@ -758,7 +717,6 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
       <li><strong>Designing for inquiry.</strong> What does an LLM learning system look like when its first job is to protect a student's own thinking? I came to this question from my own view of LLMs, and from the problems I saw them create for feedback in learning. My earlier work on feedback and scaffolding is where I start. I have not built such a system yet; that is the direction.</li>
       <li><strong>Creativity as an outcome.</strong> The report asks AI to augment curiosity and creativity. I am asking how creativity can be taught, practiced, and assessed when AI can imitate its products.</li>
       <li><strong>Fair access to good AI.</strong> Access is uneven in two ways: strong models cost money, and the guidance to use them well costs more. I care about designs that support learning across that uneven ground.</li>
-      <li><strong>Research done inside someone else's product.</strong> Generative AI is ordinary research infrastructure now, and a hosted model is the least examinable part of it. Two things are at stake when unpublished work goes through one: the privacy of data that is not the researcher's to disclose, and the standing of an idea, because saying what you are working on is how a direction becomes available to anyone with more compute behind it. What I find worth studying is not whether a platform takes an idea, but that researchers answer by quietly narrowing what they type, and that those with private compute carry that cost differently. I would rather measure that trade-off than assert it, and I have no data on it yet.</li>
     </ol>
     <section class="pillar-sec reveal reference-box">
       <h3>Reference</h3>
@@ -809,7 +767,7 @@ GRID_CELLS = [
 
 grid_cells_html = "\n".join(
     f'''<article class="dot-cell lift reveal"{f' style="--d:{i * 60}ms"' if i else ""}>
-  <figure><button type="button" class="dot-play" data-dot-open data-act="{escape(c["act"])}" data-num="{escape(c["num"])}" data-name="{escape(c["name"])}" data-cap="{escape(c["cap"])}" aria-label="Play the dot-trace game for panel {escape(c["num"])}, {escape(c["name"])}">{fig(c["img"], c["alt"])}<span class="dot-chip" aria-hidden="true"><span class="dot-chip-dots"><i></i><i></i><i></i></span>Trace</span></button></figure>
+  <figure><button type="button" class="dot-play" data-dot-open data-act="{escape(c["act"])}" data-num="{escape(c["num"])}" data-name="{escape(c["name"])}" data-cap="{escape(c["cap"])}" aria-label="Play the dot-trace game for panel {escape(c["num"])}, {escape(c["name"])}"><img src="{escape(c["img"])}" alt="{escape(c["alt"])}" loading="lazy" /><span class="dot-chip" aria-hidden="true"><span class="dot-chip-dots"><i></i><i></i><i></i></span>Trace</span></button></figure>
   <div class="cell-body"><div class="badges"><span class="badge">{escape(c["act"])}</span></div>
   <h3>{escape(c["num"])} · {escape(c["name"])}</h3><p>{escape(c["cap"])}</p></div>
 </article>'''
@@ -856,7 +814,7 @@ for i, r in enumerate(GRID_ACTS):
     paras = "\n".join(f"    <p>{escape(p)}</p>" for p in r["paras"])
     act_rows_html.append(
         f'''<div class="media-row reveal{flip}">
-  <figure class="media-fig">{fig(r["img"], r["alt"])}</figure>
+  <figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>
   <div class="media-copy">
     <p class="read-tag">{escape(r["tag"])}</p>
     <h3>{escape(r["name"])}</h3>
@@ -871,7 +829,7 @@ thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Thinking</p><h1>Dots, shapes, and one line</h1><p>How I think about information, creativity, and problem solving in the GAI era, and the case for design thinking from here on.</p></div>
     <figure class="pos-hero reveal">
-      <img src="IMG/thinking-hero.jpg" alt="Illustration of a student and an abstract machine figure standing before a large wall covered in scattered dots, both holding pencils"{img_dims("IMG/thinking-hero.jpg")} loading="lazy" />
+      <img src="IMG/thinking-hero.jpg" alt="Illustration of a student and an abstract machine figure standing before a large wall covered in scattered dots, both holding pencils" loading="lazy" />
       <figcaption>One field of dots, read in three acts.</figcaption>
     </figure>
     <p class="reveal">A comic has circulated online since 2020: a three by three grid about a handful of dots. Scattered dots are Information. Sorted and connected dots become Knowledge. The same dots, joined into an unexpected shape, are Creativity. Two dots with a single line between them are Wisdom. Later remixes added their own warnings, from a scribble called Madness to a pentagram called Conspiracy Theory. Nobody owns the comic. Language Log traced it to an Imgur post from August 2020, itself inspired by a GapingVoid illustration, and strangers have redrawn it ever since.</p>
@@ -887,7 +845,7 @@ thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
     </div>
     {titled("h2", "Why design thinking, from here on", ICON_PENCIL, "block-title reveal spaced")}
     <div class="media-row reveal">
-      <figure class="media-fig"><img src="IMG/diverge-converge.jpg" alt="Illustration of an abstract machine figure pouring a jar of navy dots into a wide paper funnel held by a student, with a single amber line emerging from the funnel toward one circled target dot"{img_dims("IMG/diverge-converge.jpg")} loading="lazy" /></figure>
+      <figure class="media-fig"><img src="IMG/diverge-converge.jpg" alt="Illustration of an abstract machine figure pouring a jar of navy dots into a wide paper funnel held by a student, with a single amber line emerging from the funnel toward one circled target dot" loading="lazy" /></figure>
       <div class="media-copy">
         <p>Both halves of the second row, making new shapes and choosing one line, are exactly the moves design thinking rehearses. The Double Diamond from the British Design Council is divergence then convergence, twice: spread across the field to understand, commit to a framed problem; spread into possible shapes, commit to a solution. Stanford's d.school teaches the same rhythm as five stages, from empathize to test, and treats visual thinking, collaboration, and iteration as working principles.</p>
         <p>That is why I think the GAI era raises the stakes for design thinking rather than retiring it. The tools took over the connecting. What remains to teach is the framing, the shaping, and the choosing, and design thinking is the most practiced method we have for all three. It runs through my research pillar on creativity and design thinking, and it is why my teaching chain starts from independent thinking: the habit of choosing your own dots before anyone connects them for you.</p>
@@ -929,12 +887,6 @@ thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
 </div>
 """)
 
-# 2026-09-13: the §3.2.4 "AI literacy in three registers" take was extended with the
-# research-side consequence of the report's ethical register (hosted models, training
-# data, authorship), and position.html gained a fourth "what I want to study" item. Both
-# were drafted from the owner's stated view in chat — general position, no company or
-# person named, no claim about any platform's conduct — but the wording is his to edit
-# before merge, per the existing rule that every "My read" is owner-confirmed.
 # Practice page — part two of the MIT report read (owner decision 2026-08: the
 # recommendations half lives on its own page, eight clusters, each read from a
 # campus without MIT's budget. 2026-09 owner review: the per-row notes are
@@ -998,7 +950,7 @@ PRACTICE_ROWS = [
         "img": "IMG/practice-7-literacy.jpg",
         "alt": "Illustration of three pedestals holding a magnifying glass, two hands shaking, and an amber sprouting leaf, with a student and machine figure studying them",
         "said": "The report splits AI literacy into effective use (verify outputs, know a model's failure modes, recognize when not to reach for AI), responsible use (understand augmentation versus automation and disclose honestly), and ethical use (training data, bias, homogenized voice, environmental cost, authorship). It wants these woven through orientation and the whole curriculum, and cites a campus survey where about two thirds of students saw AI as central to their careers while only about a quarter felt their education was preparing them.",
-        "take": "This is where the report and my research agenda overlap. The three registers give structure to the literacy ground layer I argue for on my thinking page, and the quarter who feel prepared is the measurable version of why that layer exists. I read the third register as a duty that does not stop at the classroom: research done inside a hosted model puts material that is not yet defensible, and data that is not the researcher's to expose, into a channel whose audit trail someone else holds. The capability of a tool is not the boundary of what belongs in it. <a href=\"thinking.html\">My thinking page works this out in full</a>.",
+        "take": "This is where the report and my research agenda overlap. The three registers give structure to the literacy ground layer I argue for on my thinking page, and the quarter who feel prepared is the measurable version of why that layer exists. <a href=\"thinking.html\">My thinking page works this out in full</a>.",
     },
     {
         "sec": "§3.3.7",
@@ -1015,7 +967,7 @@ for i, r in enumerate(PRACTICE_ROWS):
     flip = " flip" if i % 2 else ""
     if r.get("img"):
         visual = (
-            f'<figure class="media-fig">{fig(r["img"], r["alt"])}</figure>'
+            f'<figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>'
         )
     else:
         tone = " plate-paper" if i % 2 else " plate-navy"
@@ -1053,7 +1005,7 @@ practice = page("Report in practice · Hua-Xu Zhong", "practice", f"""
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Practice</p><h1>From principles to practice</h1><p>Part two of my read of MIT's August 2026 report: its action list, read from a campus that does not have MIT's budget.</p></div>
     <figure class="pos-hero reveal">
-      <img src="IMG/practice-hero.jpg" alt="Illustration of a student and an abstract machine figure carrying a long scroll together from a grand columned institute building toward a small plain schoolhouse"{img_dims("IMG/practice-hero.jpg")} loading="lazy" />
+      <img src="IMG/practice-hero.jpg" alt="Illustration of a student and an abstract machine figure carrying a long scroll together from a grand columned institute building toward a small plain schoolhouse" loading="lazy" />
       <figcaption>What survives the trip from a well-funded campus to an ordinary one?</figcaption>
     </figure>
     <p class="reveal">My first page on the report stayed at the level of positions: the stances I hold, and the eight principles the committee set out. That was an editorial decision, and it left the longer half of the report on the table. This page covers that half: what the committee actually recommends doing, in its ten recommendation groups running from course assessment to campus infrastructure.</p>
@@ -1071,93 +1023,67 @@ practice = page("Report in practice · Hua-Xu Zhong", "practice", f"""
 </section>
 """)
 
-# Photo archive for the Activities page. One entry per photograph, as
-# (src, alt, caption), where the caption is the venue / date / event line. An empty
-# caption renders no caption row rather than a "forthcoming" promise shown to visitors,
-# and the alt states only what the photo shows, since that is verifiable from the file.
-#
-# The list is empty as of 2026-09-14 by the owner's decision: the single photograph on
-# hand is his to place and is not published yet. With no entries the Gallery section is
-# omitted instead of drawn as an empty frame, so the page carries one empty state (the
-# talks list) rather than two. The interaction below is built for N photographs and
-# lights up as soon as an entry is added.
+# Add photos here later: (src, alt, caption). Multiple items become a slideshow.
 GALLERY = [
-    # ("IMG/3.jpg",
-    #  "Photograph of Hua-Xu Zhong standing behind a table covered in blue cloth and "
-    #  "laid with prototypes: breadboards and jumper wires, a small printed robotic "
-    #  "arm, work gloves, and an open laptop, with a head-mounted display on a wooden "
-    #  "podium beside a microphone and an SDG 2 Zero Hunger sign on the wall behind",
-    #  ""),
+    ("IMG/3.jpg", "Academic activity", "Caption forthcoming"),
 ]
-
-
-def ig_tile(i, src_, alt, cap):
-    """One tile of the archive grid. A real link to the image file, so the archive is
-    still readable with scripting off; the script upgrades that same click into a step
-    into the plate, so the control is never relabelled as a button."""
-    cap_html = f'<span class="ig-cap">{escape(cap)}</span>' if cap else ""
-    return (f'<a class="ig-tile" href="{escape(src_)}" data-ig="{i}">'
-            f'<img src="{escape(src_)}" alt="{escape(alt)}"{img_dims(src_)} loading="lazy" />'
-            f'<span class="ig-fig">Fig. {i + 1}</span>{cap_html}</a>')
-
-
-def ig_frame(src_, alt, cap):
-    """One page of the horizontal reel inside the plate. The intrinsic size is repeated
-    here so moving along the roll cannot shift the panel."""
-    cap_html = f'<figcaption>{escape(cap)}</figcaption>' if cap else ""
-    return (f'<figure class="ig-frame">'
-            f'<img src="{escape(src_)}" alt="{escape(alt)}"{img_dims(src_)} loading="lazy" />'
-            f'{cap_html}</figure>')
-
-
-gallery_html = ""
-gallery_plate = ""
-if GALLERY:
-    gallery_n = len(GALLERY)
-    gallery_many = gallery_n > 1
-    gallery_tiles = "\n      ".join(ig_tile(i, *entry) for i, entry in enumerate(GALLERY))
-    gallery_frames = "\n      ".join(ig_frame(*entry) for entry in GALLERY)
-    gallery_shown = "" if gallery_many else " hidden"
-    gallery_pannable = " is-pannable" if gallery_many else ""
-    gallery_hint = (
-        "Select a photograph to step into it. The sheet leans toward your pointer; "
-        "inside, the roll turns along a wall. The left and right keys, the arrows, and "
-        "swiping all move along it; Esc returns to the archive."
-        if gallery_many else
-        "Select a photograph to view it larger; Esc returns to the archive."
+gallery_many = len(GALLERY) > 1
+gallery_slides = []
+gallery_dots = []
+for i, (src, alt, cap) in enumerate(GALLERY):
+    on = " is-on" if i == 0 else ""
+    gallery_slides.append(
+        f'<figure class="deck-slide{on}" data-slide="{i}">'
+        f'<button type="button" data-lightbox data-index="{i}" data-src="{escape(src)}" data-alt="{escape(alt)}" data-caption="{escape(cap)}">'
+        f'<img src="{escape(src)}" alt="{escape(alt)}" /></button></figure>'
     )
-    gallery_html = f'''    {titled("h2", "Gallery", ICON_CAMERA)}
-    <div class="ig-wall reveal" data-ig-wall>
-      <div class="ig-grid" data-ig-grid>
-      {gallery_tiles}
-      </div>
-    </div>
-    <p class="when reveal">{gallery_hint}</p>'''
-    gallery_plate = f'''
-<div class="modal" id="ig-plate" role="dialog" aria-modal="true" aria-label="Photograph viewer">
-  <div class="modal-backdrop" data-ig-close></div>
-  <div class="modal-panel ig-plate">
-    <button class="modal-close on-photo" type="button" data-ig-close aria-label="Close photograph viewer">{ICON_X}</button>
-    <div class="ig-reel{gallery_pannable}" data-ig-reel role="group" aria-label="The roll of photographs" tabindex="0">
-      {gallery_frames}
-    </div>
-    <button class="ig-btn prev on-photo" type="button" data-ig-prev aria-label="Previous photograph"{gallery_shown}>{ICON_LEFT}</button>
-    <button class="ig-btn next on-photo" type="button" data-ig-next aria-label="Next photograph"{gallery_shown}>{ICON_RIGHT}</button>
-    <p class="ig-count" data-ig-count{gallery_shown} aria-live="polite">1 / {gallery_n}</p>
-  </div>
-</div>'''
+    gallery_dots.append(f'<button type="button" class="deck-dot{on}" data-go="{i}" aria-label="Photo {i + 1}"></button>')
+gallery_nav = ""
+if gallery_many:
+    gallery_nav = f'''<button class="deck-btn prev" type="button" data-deck-prev aria-label="Previous photo">{ICON_LEFT}</button>
+    <button class="deck-btn next" type="button" data-deck-next aria-label="Next photo">{ICON_RIGHT}</button>
+    <p class="deck-count"><span data-deck-n>1</span> / {len(GALLERY)}</p>'''
+gallery_dots_html = f'<div class="deck-dots">{"".join(gallery_dots)}</div>' if gallery_many else ""
+gallery_note = (
+    "When more photographs are added, they play as a slideshow. Select a photo to view it larger."
+    if not gallery_many
+    else "Use the arrows or select a photo to view it larger."
+)
 
 activities = page("Activities · Hua-Xu Zhong", "activities", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>A photo archive and a running record of talks. Captions and venues will be attached as they are confirmed.</p></div>
-    {gallery_html}
+    {titled("h2", "Gallery", ICON_CAMERA)}
+    <p class="when reveal" style="margin:-0.4rem 0 1rem">{gallery_note}</p>
+    <div class="deck reveal" data-deck>
+      <div class="deck-stage">
+        {''.join(gallery_slides)}
+        {gallery_nav}
+      </div>
+      <p class="deck-cap" data-deck-cap>{escape(GALLERY[0][2])}</p>
+      {gallery_dots_html}
+    </div>
     {titled("h2", "Talks and visits", ICON_CHAT, "block-title reveal spaced")}
     <p class="when reveal">Invited talks, presentations, workshops, and conference attendance. They will appear as a CV timeline when records are added.</p>
     <div class="dashed empty reveal" style="margin-top:1rem">{chip(ICON_CHAT)}<div><strong>No talks listed yet</strong><p class="when">This page will not invent events. When you add a title, venue, and date, they will appear here as a single timeline.</p></div></div>
   </div>
 </section>
-""", extra=gallery_plate)
+""", extra=f"""
+<div class="modal" id="lightbox">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-panel lamp">
+    <button class="modal-close on-photo" type="button" data-close aria-label="Close">{ICON_X}</button>
+    <button class="deck-btn prev on-photo" type="button" data-lamp-prev aria-label="Previous photo">{ICON_LEFT}</button>
+    <button class="deck-btn next on-photo" type="button" data-lamp-next aria-label="Next photo">{ICON_RIGHT}</button>
+    <img alt="" aria-hidden="true" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
+    <div class="lamp-meta">
+      <p data-lamp-cap></p>
+      <p class="deck-count" data-lamp-count></p>
+    </div>
+  </div>
+</div>
+""")
 
 journals = [
     "Educational Technology Research and Development (SSCI Q1)",
@@ -1253,6 +1179,178 @@ notfound = page("Page not found · Hua-Xu Zhong", "home", """
 (ROOT / "service.html").write_text(service, encoding="utf-8")
 (ROOT / "links.html").write_text(links, encoding="utf-8")
 (ROOT / "404.html").write_text(notfound, encoding="utf-8")
+
+# ── Districts ────────────────────────────────────────────────────────────────
+# A district is a themed, walkable space, not a photo set. Two rules are encoded
+# here because the owner fixed both on 2026-09-14:
+#   1. no district opens without a declared purpose, and that purpose is printed on
+#      the picker card. "What is this space for — travel, or a conference?" is the
+#      first thing every new district answers; an undeclared purpose is how a travel
+#      lane quietly becomes a claim about an event that did not happen.
+#   2. status "soon" is a real state and is rendered as one. An unbuilt district stays
+#      visibly unbuilt (the reference site's "Level G · Coming soon"; this site's own
+#      empty-state rule). Decoration never stands in for content.
+# Geometry is px in CSS' own handedness: x is across the lane, z is depth (positive =
+# farther; the stylesheet negates it), y is height above the floor, ry turns the thing
+# to face down the lane. The camera is the inverse of a camera: the world is moved and
+# rotated, the eye never moves — which is why no matrix math is needed to keep a
+# visitor inside the walls.
+EYE = 168
+LANE_W, LANE_D, LANE_H = 640, 430, 360
+STATIONS = [
+    {"z": 0, "label": "the entrance"},
+    {"z": 150, "label": "under the posters"},
+    {"z": 275, "label": "by the pole"},
+    {"z": 395, "label": "in front of the machine"},
+]
+DISTRICTS = [
+    {
+        "id": "tokyo", "label": "Tokyo", "purpose": "Travel notes", "status": "open",
+        "blurb": "One lane at night. The light at the end is a vending machine, and the "
+                 "lane is walked toward it.",
+        "objects": [
+            {"id": "vending", "kind": "vending", "x": -236, "z": 412, "y": 0, "ry": 90,
+             "title": "The vending machine",
+             "hint": "It keeps the lane's frames. Pressing the lit slot opens the drawer "
+                     "the photographs go into; nothing here reviews Tokyo."},
+            {"id": "poster-lantern", "kind": "poster", "x": -314, "z": 150, "y": 96, "ry": 90,
+             "title": "Poster: paper lantern",
+             "hint": "Drawn cover art (CSS, no photograph), pinned so the lane has a first image. It is not "
+                     "a photograph and not evidence of a visit."},
+            {"id": "poster-wires", "kind": "poster", "x": 314, "z": 214, "y": 104, "ry": -90,
+             "title": "Poster: wires and rain",
+             "hint": "Drawn cover art (CSS, no photograph). A real frame replaces it when one is supplied."},
+            {"id": "poster-ticket", "kind": "poster", "x": 44, "z": 424, "y": 108, "ry": 0,
+             "title": "Poster: a folded ticket",
+             "hint": "Drawn cover art (CSS, no photograph), on the end wall where the lane's light lands."},
+            {"id": "shrine", "kind": "shrine", "x": 282, "z": 78, "y": 0, "ry": -90,
+             "title": "A small shrine at knee height",
+             "hint": "Draw one slip. The slip picks which slot you look at first; there is "
+                     "no score, because a lane is not a game to win."},
+            {"id": "pole", "kind": "utility", "x": 250, "z": 275, "y": 0, "ry": -90,
+             "title": "Utility pole",
+             "hint": "The lane's notice board: what this district is for, and what it does "
+                     "not have yet."},
+        ],
+        "slots": [
+            {"label": "Frames", "note": "Photographs go here, one per wall slot.",
+             "state": "Empty. Three drawn posters hold the wall until a photograph takes one."},
+            {"label": "Short clips", "note": "Vertical clips, muted by default, captioned always.",
+             "state": "Empty. A clip needs its caption before it can play here."},
+            {"label": "The lane at 22:40", "note": "Sound only if a visitor asks for it.",
+             "state": "Silent by default, and it stays that way until a slot carries audio."},
+        ],
+        "exit": {"id": "noren", "kind": "noren", "x": 0, "z": -44, "y": 178, "ry": 180,
+                 "title": "The curtain at your back", "hint": "Part it to leave the lane."},
+    },
+    {
+        "id": "undeclared", "label": "Next district", "purpose": "Purpose not declared",
+        "status": "soon",
+        "blurb": "This one stays shut until its purpose is declared — travel, a conference, "
+                 "or something else. That question is the first thing any new space answers, "
+                 "and the answer is printed on the card above it.",
+        "objects": [], "slots": [], "exit": None,
+    },
+]
+
+INDENT = "\n        "
+
+
+def room_object(o):
+    style = f'--x:{o["x"]}px;--z:{o["z"]}px;--y:{o["y"]}px;--ry:{o["ry"]}deg;'
+    name = escape(o["title"])
+    return (f'<button type="button" class="room-obj room-{o["kind"]}" data-obj="{escape(o["id"])}" '
+            f'data-title="{name}" data-hint="{escape(o["hint"])}" style="{style}">'
+            f'<span class="obj-face" aria-hidden="true"></span>'
+            f'<span class="obj-tag">{name}</span></button>')
+
+
+def room_plan(d):
+    parts = [room_object(o) for o in d["objects"]]
+    if d["exit"]:
+        parts.append(room_object(d["exit"]))
+    for i, st in enumerate(STATIONS):
+        parts.append(
+            f'<button type="button" class="room-station" data-station="{i}" '
+            f'style="--z:{st["z"]}px" aria-label="Walk to {escape(st["label"])}">'
+            f'<span class="station-dot" aria-hidden="true"></span>'
+            f'<span class="station-name">{escape(st["label"])}</span></button>')
+    objs = INDENT.join(parts)
+    label = escape(d["label"])
+    legend = 'drag to turn · <kbd>W</kbd><kbd>S</kbd> walk · <kbd>←</kbd><kbd>→</kbd> look · <kbd>Esc</kbd> close'
+    return f'''<section class="room" id="room-{escape(d["id"])}" data-room="{label}">
+  <div class="room-stage" tabindex="0" data-room-stage role="group"
+       aria-label="{label}: a lane you can walk. Drag, or use the arrow keys, to turn; W and S walk between the marked spots.">
+    <div class="room-world" data-room-world>
+      <div class="room-plane room-wall-back"></div>
+      <div class="room-plane room-wall-left"></div>
+      <div class="room-plane room-wall-right"></div>
+      <div class="room-plane room-floor"></div>
+        {objs}
+    </div>
+    <p class="room-legend">{legend}</p>
+  </div>
+</section>'''
+
+
+def district_card(d):
+    """The card is a record first and a link second: heading and body text stay in the
+    page's own colour, and only the arrow is a link, because main a is accented and
+    underlined site-wide."""
+    state = "Not open yet." if d["status"] == "soon" else "Walk it below."
+    return (f'<li class="district-card is-{d["status"]}" aria-describedby="room-{escape(d["id"])}">'
+            f'<span class="badge">{escape(d["purpose"])}</span>'
+            f'<h2>{escape(d["label"])}</h2><p>{escape(d["blurb"])}</p>'
+            f'<p class="when">{state}</p>'
+            f'<p class="pillar-more"><a class="text-arrow" href="#room-{escape(d["id"])}">{state}</a></p></li>')
+
+
+def slot_row(d, sl):
+    return (f'<li class="slot"><span class="badge">{escape(d["label"])}</span>'
+            f'<strong>{escape(sl["label"])}</strong><p>{escape(sl["note"])}</p>'
+            f'<p class="when">{escape(sl["state"])}</p></li>')
+
+
+rooms_body = f'''
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Districts</p><h1>Rooms you walk into</h1>
+      <p>A district is one themed space: a lane, a few things to touch, and the frames that
+      belong to it. Everything the lane holds is also written out underneath, so the page
+      reads without scripting and prints fine.</p></div>
+    <ul class="district-pick reveal">
+      {INDENT.join(district_card(d) for d in DISTRICTS)}
+    </ul>
+    {INDENT.join(room_plan(d) for d in DISTRICTS if d["status"] == "open")}
+    <div class="dashed reveal" style="margin-top:1.6rem">
+      <strong>What this is, and what it is not</strong>
+      <p class="when">The lane is drawn, not surveyed. The posters are generated covers, the
+      objects are props, and no footage sits in any slot yet. Frames and clips arrive when the
+      owner supplies them; nothing on this page implies a place was visited.</p>
+    </div>
+    {titled("h2", "Slots", ICON_CASE, "block-title reveal spaced")}
+    <ul class="slot-list reveal">
+      {INDENT.join(slot_row(d, sl) for d in DISTRICTS for sl in d["slots"])}
+    </ul>
+  </div>
+</section>
+'''
+
+rooms_plate = f'''
+<div class="modal" id="room-plate" role="dialog" aria-modal="true" aria-label="Object in the lane">
+  <div class="modal-backdrop" data-room-close></div>
+  <div class="modal-panel">
+    <button class="modal-close" type="button" data-room-close aria-label="Close">{ICON_X}</button>
+    <p class="eyebrow" data-room-where></p>
+    <h2 data-room-title></h2>
+    <p data-room-hint></p>
+  </div>
+</div>
+'''
+
+rooms = page("Districts · Hua-Xu Zhong", "rooms", rooms_body, extra=rooms_plate)
+
+(ROOT / "rooms.html").write_text(rooms, encoding="utf-8")
 
 (ROOT / "robots.txt").write_text(
     f"User-agent: *\nAllow: /\n\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")

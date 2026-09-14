@@ -585,3 +585,138 @@ function leaveOverlay(root, trigger) {
     trapTab(game, event);
   });
 })();
+
+/* ---- Districts: the lane (rooms page) ----
+   The stage is the whole interface: drag to turn, W and S between the painted spots on
+   the floor, objects opened by click or Enter. Deliberate limits, each one a choice:
+     - the eye does not move; the world is translated and rotated instead, so no camera
+       math and no WebGL is needed for a lane with one axis of travel;
+     - yaw and pitch are clamped to ±35° and ±10°, because past that the walls stop
+       covering the viewport and the room shows its own edges;
+     - turning is drag, not Pointer Lock: the reference site does the same, and it is what
+       keeps a walkable space available on a phone.
+   Objects that only narrate themselves open the plate, which reuses the site's shared
+   overlay helpers; the curtain is a way out and the shrine is a way to choose a slot, so
+   neither opens a dialog. With scripting off, everything on the page is still readable as
+   the slot list, which is the point of keeping the list on the same page as the lane. */
+(function () {
+  const stage = document.querySelector("[data-room-stage]");
+  if (!stage) return;
+  const world = stage.querySelector("[data-room-world]");
+  const stations = Array.from(stage.querySelectorAll("[data-station]"));
+  const plate = document.getElementById("room-plate");
+  const ease = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const MAX_YAW = 35, MAX_PITCH = 10, STRAFE = 76;
+  let yaw = 0, pitch = 0, panX = 0, here = 0, opener = null;
+
+  const depthOf = (i) => Math.round(parseFloat(stations[i] ? stations[i].style.getPropertyValue("--z") : "0") || 0);
+  const apply = () => {
+    world.style.setProperty("--yaw", `${yaw.toFixed(1)}deg`);
+    world.style.setProperty("--pitch", `${pitch.toFixed(1)}deg`);
+    world.style.setProperty("--pan-x", `${panX.toFixed(0)}px`);
+    world.style.setProperty("--pan-z", `${depthOf(here)}px`);
+  };
+  const walkTo = (i) => {
+    here = Math.max(0, Math.min(stations.length - 1, i));
+    stations.forEach((el, j) => {
+      el.classList.toggle("is-here", j === here);
+      if (j === here) el.setAttribute("aria-current", "step");
+      else el.removeAttribute("aria-current");
+    });
+    apply();
+  };
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  let drag = null;
+  stage.addEventListener("pointerdown", (event) => {
+    if (event.target.closest(".room-obj, .room-station")) return;
+    drag = { x: event.clientX, y: event.clientY, yaw, pitch };
+    world.classList.add("is-dragging");
+    if (stage.setPointerCapture) stage.setPointerCapture(event.pointerId);
+  });
+  stage.addEventListener("pointermove", (event) => {
+    if (!drag) return;
+    yaw = clamp(drag.yaw + (event.clientX - drag.x) * 0.14, -MAX_YAW, MAX_YAW);
+    pitch = clamp(drag.pitch - (event.clientY - drag.y) * 0.08, -MAX_PITCH, MAX_PITCH);
+    apply();
+  });
+  const endDrag = () => {
+    if (!drag) return;
+    drag = null;
+    world.classList.remove("is-dragging");
+  };
+  stage.addEventListener("pointerup", endDrag);
+  stage.addEventListener("pointercancel", endDrag);
+
+  stage.addEventListener("keydown", (event) => {
+    if (event.altKey || event.metaKey || event.ctrlKey) return;
+    const k = event.key.toLowerCase();
+    if (k === "w" || k === "s") {
+      event.preventDefault();
+      walkTo(here + (k === "w" ? 1 : -1));
+      return;
+    }
+    if (k === "a" || k === "d") {
+      event.preventDefault();
+      panX = clamp(panX + (k === "d" ? -26 : 26), -STRAFE, STRAFE);
+    } else if (k === "arrowleft") yaw = clamp(yaw + 8, -MAX_YAW, MAX_YAW);
+    else if (k === "arrowright") yaw = clamp(yaw - 8, -MAX_YAW, MAX_YAW);
+    else if (k === "arrowup") pitch = clamp(pitch + 3, -MAX_PITCH, MAX_PITCH);
+    else if (k === "arrowdown") pitch = clamp(pitch - 3, -MAX_PITCH, MAX_PITCH);
+    else return;
+    event.preventDefault();
+    apply();
+  });
+
+  const closePlate = () => {
+    if (!plate || !plate.classList.contains("is-open")) return;
+    plate.classList.remove("is-open");
+    leaveOverlay(plate, opener);
+    opener = null;
+  };
+  const openPlate = (obj) => {
+    if (!plate) return;
+    plate.querySelector("[data-room-where]").textContent = stage.closest("[data-room]")
+      ? stage.closest("[data-room]").dataset.room
+      : "";
+    plate.querySelector("[data-room-title]").textContent = obj.dataset.title || "";
+    plate.querySelector("[data-room-hint]").textContent = obj.dataset.hint || "";
+    plate.classList.add("is-open");
+    opener = enterOverlay(plate, ".modal-close", obj);
+  };
+
+  const slots = Array.from(document.querySelectorAll(".slot"));
+  let drawn = 0;
+  Array.from(stage.querySelectorAll("[data-obj]")).forEach((obj) => {
+    obj.addEventListener("click", () => {
+      if (obj.classList.contains("room-noren")) {
+        const picker = document.querySelector(".district-pick");
+        if (picker) picker.scrollIntoView({ behavior: ease ? "smooth" : "auto", block: "start" });
+        return;
+      }
+      if (obj.classList.contains("room-shrine") && slots.length) {
+        slots.forEach((el) => el.classList.remove("is-drawn"));
+        const next = slots[drawn % slots.length];
+        drawn += 1;
+        next.classList.add("is-drawn");
+        next.scrollIntoView({ behavior: ease ? "smooth" : "auto", block: "center" });
+        return;
+      }
+      openPlate(obj);
+    });
+  });
+  stations.forEach((el, i) => el.addEventListener("click", () => walkTo(i)));
+  if (plate) {
+    Array.from(plate.querySelectorAll("[data-room-close]")).forEach((el) => el.addEventListener("click", closePlate));
+    plate.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closePlate();
+      } else if (event.key === "Tab") {
+        trapTab(plate, event);
+      }
+    });
+  }
+  walkTo(0);
+})();
+

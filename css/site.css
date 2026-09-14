@@ -1558,3 +1558,332 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   .dot-cell-btn.is-wrong, .dot-lines.is-win polyline { animation: none; }
   .dot-play img, .dot-chip, .dot-cell-btn .dot { transition: none; }
 }
+
+/* ============ Districts: a lane you walk ============ */
+/* The eye never moves: the world is translated and rotated the other way, which is the
+   whole reason this is affordable without WebGL. Movement is in screen axes rather than
+   camera-relative, because a lane has one axis of travel — turning never changes where
+   the next step lands, so keeping a visitor inside the walls needs no matrix math. */
+.room {
+  margin: 1.8rem 0 0;
+}
+.room-stage {
+  position: relative;
+  height: min(58vh, 26rem);
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, #0d1731 0%, var(--navy-deep) 60%, #060b1a 100%);
+  perspective: 720px;
+  perspective-origin: 50% 44%;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.room-stage:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.room-world {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: scale(var(--k, 1)) translate3d(var(--pan-x, 0px), 0, var(--pan-z, 0px))
+    rotateY(var(--yaw, 0deg)) rotateX(var(--pitch, 0deg));
+  transition: transform 480ms var(--ease);
+}
+.room-world.is-dragging {
+  transition: none;
+}
+.room-plane {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  backface-visibility: hidden;
+}
+.room-wall-back {
+  width: 640px;
+  height: 360px;
+  margin: -180px 0 0 -320px;
+  transform: translateZ(-430px);
+  background: linear-gradient(180deg, #182551, #0b1430);
+}
+.room-wall-left,
+.room-wall-right {
+  width: 430px;
+  height: 360px;
+  margin: -180px 0 0 -215px;
+  background: linear-gradient(90deg, #131f42, #0a1430);
+}
+.room-wall-left {
+  transform: translateX(-320px) rotateY(90deg);
+}
+.room-wall-right {
+  transform: translateX(320px) rotateY(-90deg);
+  background: linear-gradient(90deg, #0a1430, #131f42);
+}
+.room-floor {
+  width: 640px;
+  height: 430px;
+  margin: -215px 0 0 -320px;
+  transform: translateY(168px) rotateX(90deg);
+  background: repeating-linear-gradient(90deg, rgba(205, 214, 238, 0.07) 0 1px, rgba(0, 0, 0, 0) 1px 64px);
+}
+/* The one amber source in the scene is the machine, and light that comes from a place
+   lands on a surface: a spill cone with edges, widening as it reaches the visitor. */
+.room-floor::after {
+  content: "";
+  position: absolute;
+  left: 30%;
+  top: 0;
+  width: 40%;
+  height: 62%;
+  background: linear-gradient(180deg, rgba(242, 200, 142, 0.34), rgba(242, 200, 142, 0.04));
+  clip-path: polygon(41% 0, 59% 0, 100% 100%, 0 100%);
+  filter: blur(3px);
+}
+.room-obj {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--w, 100px);
+  height: var(--h, 100px);
+  margin-left: calc(var(--w, 100px) / -2);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  /* y is the height of the object's bottom above the floor line (168px below the eye). */
+  transform: translate3d(var(--x), calc(168px - var(--y, 0px) - var(--h, 100px)), calc(var(--z) * -1px))
+    rotateY(var(--ry, 0deg));
+}
+.room-obj:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 6px;
+}
+.obj-face {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+}
+.obj-tag {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.9rem 0.3rem 0.18rem;
+  background: linear-gradient(180deg, rgba(6, 11, 26, 0) 0%, rgba(6, 11, 26, 0.9) 46%);
+  border-radius: 0 0 3px 3px;
+  color: var(--muted-navy);
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+  text-align: center;
+  opacity: 0.86;
+  transition: opacity 200ms var(--ease), color 200ms var(--ease);
+}
+.room-obj:hover .obj-tag,
+.room-obj:focus-visible .obj-tag {
+  opacity: 1;
+  color: var(--accent-bright);
+}
+.room-vending {
+  --w: 96px;
+  --h: 150px;
+}
+.room-vending .obj-face {
+  background: linear-gradient(180deg, #1c2b57 0 58%, #101a38 58%);
+  box-shadow: 0 0 0 1px rgba(242, 200, 142, 0.4), 0 2.2rem 3rem -1rem rgba(242, 200, 142, 0.34);
+}
+.room-vending .obj-face::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  top: 10%;
+  width: 76%;
+  height: 34%;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(242, 200, 142, 0.9), rgba(180, 83, 9, 0.75));
+  animation: led 3.6s steps(1, end) infinite;
+}
+.room-poster {
+  --w: 132px;
+  --h: 176px;
+}
+.room-poster .obj-face {
+  background:
+    linear-gradient(180deg, rgba(11, 20, 48, 0) 0 54%, #0b1430 54% 62%, rgba(11, 20, 48, 0) 62%),
+    radial-gradient(38% 26% at 50% 30%, var(--accent) 0 62%, rgba(0, 0, 0, 0) 63%),
+    var(--gold);
+  box-shadow: 0 0 0 1px rgba(11, 20, 48, 0.35), 0 1.1rem 1.5rem -0.8rem rgba(0, 0, 0, 0.6);
+  transition: transform 300ms var(--ease);
+}
+.room-poster:hover .obj-face,
+.room-poster:focus-visible .obj-face {
+  transform: rotate3d(1, 0, 0, -7deg) translateZ(10px);
+}
+.room-shrine {
+  --w: 66px;
+  --h: 46px;
+}
+.room-shrine .obj-face {
+  background: linear-gradient(180deg, #22314f, #101a38);
+  box-shadow: 0 0 0 1px rgba(205, 214, 238, 0.28);
+}
+.room-utility {
+  --w: 16px;
+  --h: 336px;
+}
+.room-utility .obj-face {
+  background: linear-gradient(90deg, #0f1836, #1d2c52 60%, #0f1836);
+}
+.room-noren {
+  --w: 178px;
+  --h: 74px;
+}
+.room-noren .obj-face {
+  /* Panels, not a texture: hard stops rather than a repeating gradient, because the
+     floor already carries the one deliberate stripe pattern in this world. */
+  background: linear-gradient(90deg, #1b294d 0 33%, #16234a 33% 34.4%, #1b294d 34.4% 66%,
+              #16234a 66% 67.4%, #1b294d 67.4% 100%);
+  transform-origin: 50% 0;
+  animation: noren 6.4s var(--ease) infinite;
+}
+.room-station {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 132px;
+  margin-left: -66px;
+  padding: 0.16rem 0.3rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(6, 11, 26, 0.6);
+  cursor: pointer;
+  transform: translate3d(0, 128px, calc(var(--z) * -1px));
+}
+.station-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 0.34rem;
+  border-radius: 999px;
+  background: rgba(205, 214, 238, 0.55);
+  vertical-align: 1px;
+}
+.station-name {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--muted-navy);
+}
+.room-station.is-here {
+  background: rgba(242, 200, 142, 0.16);
+}
+.room-station.is-here .station-dot {
+  background: var(--accent-bright);
+}
+.room-station.is-here .station-name {
+  color: var(--accent-bright);
+}
+.room-station:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 3px;
+}
+.room-legend {
+  position: absolute;
+  left: 0.8rem;
+  bottom: 0.65rem;
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: var(--muted-navy);
+}
+.room-legend kbd {
+  padding: 0.06rem 0.3rem;
+  border: 1px solid rgba(205, 214, 238, 0.4);
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+.district-pick {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.9rem;
+  margin: 1.2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.district-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: 1.05rem 1.15rem 1.15rem;
+}
+.district-card h2 {
+  margin: 0.45rem 0 0.3rem;
+  font-size: 1.5rem;
+}
+.district-card.is-soon {
+  border-style: dashed;
+  background: none;
+}
+.slot-list {
+  display: grid;
+  gap: 0.7rem;
+  margin: 1.1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.slot {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: 0.85rem 1rem;
+}
+.slot.is-drawn {
+  border-left-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(180, 83, 9, 0.35);
+}
+@keyframes led {
+  0%, 92%, 100% { opacity: 1; }
+  94% { opacity: 0.55; }
+  96% { opacity: 0.9; }
+}
+@keyframes noren {
+  0%, 100% { transform: skewX(0deg); }
+  42% { transform: skewX(-2.4deg); }
+  70% { transform: skewX(1.4deg); }
+}
+@media (min-width: 820px) {
+  .district-pick {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .room-stage {
+    height: 46vh;
+  }
+  .room-world {
+    --k: 0.62;
+  }
+}
+@media (max-width: 430px) {
+  .room-world {
+    --k: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .room-world,
+  .room-poster .obj-face,
+  .obj-tag {
+    transition: none;
+  }
+  .room-vending .obj-face::after,
+  .room-noren .obj-face {
+    animation: none;
+  }
+}

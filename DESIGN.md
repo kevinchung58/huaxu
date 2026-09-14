@@ -80,3 +80,25 @@ still sees the archive.
 Note: the static detector's gradient contrast is conservative — it samples corner glow
 stops text never sits on; verify plate text against the *painted* navy, and prefer tuning
 the `--accent-bright` / `--muted-navy` tokens over weakening the plate.
+
+
+## Districts: the lane (rooms.html)
+
+A walkable district is the one place in this world where geometry is allowed. It stays in
+uniform: the floor and walls are navy plates, the only light is amber and it comes from one
+object (the vending machine), captions are the same `--muted`/`--muted-navy` as everywhere
+else, and the poster surfaces are drawn in CSS rather than generated as images so nothing in
+the scene can be mistaken for a photograph the owner took.
+
+Camera rule of the world: the eye never moves — `.room-world` is translated and rotated in
+the opposite direction. That is what keeps the lane free of a 3D library, and it is why
+movement is in screen axes (a lane has one axis of travel, so turning never changes where
+the next step lands).
+
+Two limits are deliberate and should not be "improved": yaw and pitch are clamped to ±35° /
+±10° because past that the walls stop covering the viewport and the room shows its own edges;
+and turning is drag, not Pointer Lock, because the site must stay usable on a phone.
+
+A district with no declared purpose cannot open — `status: "soon"` renders as such. The
+reference this was modelled on ships one built level and one honest `Coming soon`, and this
+site's rule is the same: an unbuilt space is announced, never decorated.
