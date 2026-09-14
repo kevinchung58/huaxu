@@ -102,3 +102,20 @@ and turning is drag, not Pointer Lock, because the site must stay usable on a ph
 A district with no declared purpose cannot open — `status: "soon"` renders as such. The
 reference this was modelled on ships one built level and one honest `Coming soon`, and this
 site's rule is the same: an unbuilt space is announced, never decorated.
+
+### Kinds: the two defaults a district can be
+
+`purpose` says what a space is about. `kind` says what it is allowed to assert, and there
+are exactly two, because those are the two ways this site can be wrong:
+
+| | personal | academic |
+|---|---|---|
+| generated imagery | allowed, the whole district may be drawn | allowed as cover art only, never as evidence |
+| per-frame requirement | none | venue and date, or the frame is not shown |
+| the failure it prevents | a travel lane reading as a record of attendance | decoration standing in for a fact |
+| on the page | the kind is printed on the card and on every frame row | same |
+
+Travel is a personal space; a talk, a workshop, a school visit is an academic one. A new
+district cannot be built until its kind is declared, and the card that fails to declare it
+renders as shut — `Purpose not declared`, `Not open yet` — because an honestly locked door
+is cheaper than a confidently wrong one.

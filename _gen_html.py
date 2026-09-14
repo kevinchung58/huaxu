@@ -1195,6 +1195,25 @@ notfound = page("Page not found · Hua-Xu Zhong", "home", """
 # to face down the lane. The camera is the inverse of a camera: the world is moved and
 # rotated, the eye never moves — which is why no matrix math is needed to keep a
 # visitor inside the walls.
+# Two kinds of space, and the kind is the rule set rather than the label: declaring a
+# district academic buys it citations and imposes venue/date truth on every frame;
+# declaring it personal frees it from that but forbids it from *looking* like a record.
+# A travel space that is allowed to be drawn is the point of the split — a personal
+# district may be illustration all the way down, and the UI must never let it read as
+# attendance, a visit, or evidence.
+KINDS = {
+    "personal": {
+        "label": "Personal",
+        "gate": "Drawn frames are allowed. Nothing here may read as a record of "
+                "attendance, and no frame claims a place was visited.",
+    },
+    "academic": {
+        "label": "Academic",
+        "gate": "Every frame carries a venue and a date, or it is not shown. Generated "
+                "art may not stand in for evidence here.",
+    },
+}
+
 EYE = 168
 LANE_W, LANE_D, LANE_H = 640, 430, 360
 STATIONS = [
@@ -1206,6 +1225,7 @@ STATIONS = [
 DISTRICTS = [
     {
         "id": "tokyo", "label": "Tokyo", "purpose": "Travel notes", "status": "open",
+        "kind": "personal",
         "blurb": "One lane at night. The light at the end is a vending machine, and the "
                  "lane is walked toward it.",
         "objects": [
@@ -1231,6 +1251,26 @@ DISTRICTS = [
              "title": "Utility pole",
              "hint": "The lane's notice board: what this district is for, and what it does "
                      "not have yet."},
+        ],
+        "frames": [
+            {"id": "alley", "src": "IMG/tokyo-story-alley.jpg", "x": 314, "z": 120, "y": 96, "ry": -90,
+             "title": "Frame: the lane at 22:40",
+             "alt": "Illustration of a narrow back street at night, a row of lit vending "
+                    "machines throwing amber onto wet paving, nobody in it.",
+             "caption": "A lane at night. The machine light is the only source, and the paving "
+                        "carries it.", "wall": True},
+            {"id": "platform", "src": "IMG/tokyo-story-platform.jpg", "x": -314, "z": 290, "y": 96, "ry": 90,
+             "title": "Frame: the elevated platform",
+             "alt": "Illustration of an empty elevated train platform at night with one "
+                    "hanging lamp and a plain band of a stationary train.",
+             "caption": "Nobody is waiting on this platform; the amber is a lamp rather than a "
+                        "mood filter.", "wall": True},
+            {"id": "store", "src": "IMG/tokyo-story-store.jpg", "x": -170, "z": 424, "y": 96, "ry": 0,
+             "title": "Frame: one shelf run, late",
+             "alt": "Illustration of a convenience store shelf run seen from standing height, "
+                    "products drawn as plain unbranded rectangles.",
+             "caption": "One shelf run, cropped to itself. The products are plain rectangles "
+                        "because a brand shape would be a claim about a shop.", "wall": True},
         ],
         "slots": [
             {"label": "Frames", "note": "Photographs go here, one per wall slot.",
@@ -1295,9 +1335,77 @@ def _jpeg_attrs(src, _path=None):
     return ""
 
 
+def wall_frames(d):
+    """A district's frames are objects before they are anything else: each hangs on a wall
+    at a coordinate, so walking the lane and reading the content are the same list, and a
+    frame the owner deletes from the data simply stops being on the wall."""
+    out = []
+    for n, fr in enumerate(d.get("frames", [])):
+        out.append({
+            "id": f'frame-{fr["id"]}',
+            "kind": "poster frame",
+            "x": fr["x"], "z": fr["z"], "y": fr["y"], "ry": fr["ry"],
+            "title": fr["title"], "hint": fr["caption"],
+            "img": fr["src"], "alt": fr["alt"], "frame": n,
+        })
+    return out
+
+
+def frames_section(districts):
+    """The same frames as a plain list, because a rail you can only reach by walking is a
+    rail a screen reader and a printed page cannot read."""
+    rows = []
+    for d in districts:
+        for n, fr in enumerate(d.get("frames", [])):
+            src = fr["src"]
+            rows.append(
+                f'<li class="frame-row" id="frame-{escape(d["id"])}-{escape(fr["id"])}">'
+                f'<figure class="frame-fig"><img src="{src}" alt="{escape(fr["alt"])}" '
+                f'loading="lazy" {poster_attrs(src)} />'
+                f'<figcaption>{escape(fr["caption"])}</figcaption></figure>'
+                f'<p class="when"><span class="badge">{escape(KINDS[d["kind"]]["label"])}</span>'
+                f' Generated frame {n + 1} of {len(d.get("frames", []))}.</p></li>')
+    if not rows:
+        return ""
+    head = titled("h2", "Frames in this district", ICON_CAMERA, "block-title reveal spaced")
+    note = ('<p class="when">All of them are generated illustrations. None is a photograph, '
+            'and no frame claims a place was visited.</p>')
+    return f'    {head}\n    {note}\n    <ul class="frame-list reveal">\n      {INDENT.join(rows)}\n    </ul>'
+
+
+def rooms_plate_html(districts):
+    figures = []
+    for d in districts:
+        for n, fr in enumerate(d.get("frames", [])):
+            figures.append(
+                f'<figure class="story-frame" data-story-frame="{n}" data-room="{escape(d["id"])}">'
+                f'<img src="{fr["src"]}" alt="{escape(fr["alt"])}" {poster_attrs(fr["src"])} />'
+                f'<figcaption>{escape(fr["title"])} — {escape(fr["caption"])}</figcaption></figure>')
+    reel = ""
+    if figures:
+        joined = "\n      ".join(figures)
+        reel = (
+            '\n    <div class="story-segs" data-story-segs aria-hidden="true"></div>'
+            f'\n    <div class="story-reel" data-story-reel>\n      {joined}\n    </div>'
+            f'\n    <p class="story-count" data-story-count role="status">1 of {len(figures)}</p>'
+            '\n    <p class="when">Tap the right two thirds for the next frame, the left third for '
+            'the previous one. Hold to pause.</p>')
+    return f'''<div class="modal" id="room-plate" role="dialog" aria-modal="true" aria-label="Frames in the lane">
+  <div class="modal-backdrop" data-room-close></div>
+  <div class="modal-panel">
+    <button class="modal-close" type="button" data-room-close aria-label="Close">{ICON_X}</button>
+    <p class="eyebrow" data-room-where></p>
+    <h2 data-room-title></h2>
+    <p data-room-hint></p>{reel}
+  </div>
+</div>
+'''
+
+
 def room_object(o):
     style = f'--x:{o["x"]}px;--z:{o["z"]}px;--y:{o["y"]}px;--ry:{o["ry"]}deg;'
     name = escape(o["title"])
+    frame_attr = f' data-frame="{o["frame"]}"' if "frame" in o else ""
     face = ""
     if o.get("img"):
         src = o["img"]
@@ -1305,13 +1413,13 @@ def room_object(o):
         lazy = "" if "loading=" in attrs else ' loading="lazy"'
         face = f'<img class="obj-img" src="{src}" alt=""{lazy} {attrs}>'.replace("  ", " ")
     return (f'<button type="button" class="room-obj room-{o["kind"]}" data-obj="{escape(o["id"])}" '
-            f'data-title="{name}" data-hint="{escape(o["hint"])}" style="{style}">'
+            f'data-title="{name}" data-hint="{escape(o["hint"])}" style="{style}"{frame_attr}>'
             f'<span class="obj-face" aria-hidden="true">{face}</span>'
             f'<span class="obj-tag">{name}</span></button>')
 
 
 def room_plan(d):
-    parts = [room_object(o) for o in d["objects"]]
+    parts = [room_object(o) for o in list(d["objects"]) + wall_frames(d)]
     if d["exit"]:
         parts.append(room_object(d["exit"]))
     for i, st in enumerate(STATIONS):
@@ -1341,11 +1449,17 @@ def room_plan(d):
 def district_card(d):
     """The card is a record first and a link second: heading and body text stay in the
     page's own colour, and only the arrow is a link, because main a is accented and
-    underlined site-wide."""
+    underlined site-wide. The kind is printed here as well as in the gate sentence it
+    implies, so the rule set is legible before anyone walks in."""
     state = "Not open yet." if d["status"] == "soon" else "Walk it below."
+    kind = d.get("kind")
+    badge = f'{escape(KINDS[kind]["label"])} · {escape(d["purpose"])}' if kind in KINDS else escape(d["purpose"])
+    gate = (f'<p class="rule">{escape(KINDS[kind]["gate"])}</p>' if kind in KINDS else
+            f'<p class="rule">{escape(d["blurb"])}</p>')
     return (f'<li class="district-card is-{d["status"]}" aria-describedby="room-{escape(d["id"])}">'
-            f'<span class="badge">{escape(d["purpose"])}</span>'
-            f'<h2>{escape(d["label"])}</h2><p>{escape(d["blurb"])}</p>'
+            f'<span class="badge">{badge}</span>'
+            f'<h2>{escape(d["label"])}</h2>'
+            f'{gate}'
             f'<p class="when">{state}</p>'
             f'<p class="pillar-more"><a class="text-arrow" href="#room-{escape(d["id"])}">{state}</a></p></li>')
 
@@ -1373,6 +1487,7 @@ rooms_body = f'''
       objects are props, and no footage sits in any slot yet. Frames and clips arrive when the
       owner supplies them; nothing on this page implies a place was visited.</p>
     </div>
+    {frames_section(DISTRICTS)}
     {titled("h2", "Slots", ICON_CASE, "block-title reveal spaced")}
     <ul class="slot-list reveal">
       {INDENT.join(slot_row(d, sl) for d in DISTRICTS for sl in d["slots"])}
@@ -1381,19 +1496,7 @@ rooms_body = f'''
 </section>
 '''
 
-rooms_plate = f'''
-<div class="modal" id="room-plate" role="dialog" aria-modal="true" aria-label="Object in the lane">
-  <div class="modal-backdrop" data-room-close></div>
-  <div class="modal-panel">
-    <button class="modal-close" type="button" data-room-close aria-label="Close">{ICON_X}</button>
-    <p class="eyebrow" data-room-where></p>
-    <h2 data-room-title></h2>
-    <p data-room-hint></p>
-  </div>
-</div>
-'''
-
-rooms = page("Districts · Hua-Xu Zhong", "rooms", rooms_body, extra=rooms_plate)
+rooms = page("Districts · Hua-Xu Zhong", "rooms", rooms_body, extra=rooms_plate_html([d for d in DISTRICTS if d["status"] == "open"]))
 
 (ROOT / "rooms.html").write_text(rooms, encoding="utf-8")
 

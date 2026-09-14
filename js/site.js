@@ -668,9 +668,75 @@ function leaveOverlay(root, trigger) {
     apply();
   });
 
+  /* The rail: the plate doubles as a stories player when it is opened from a frame.
+     Mechanics only, borrowed from what makes that format usable rather than from its
+     branding — segments instead of one bar, right two thirds forward and left third
+     back, hold to pause, one frame at a time, and no auto-advance under
+     prefers-reduced-motion, where the same taps still work. Nothing here marks a frame
+     as viewed, because a scholar's archive is not a queue that eats itself. */
+  const railEl = plate && plate.querySelector("[data-story-reel]");
+  const frames = railEl ? Array.from(railEl.querySelectorAll("[data-story-frame]")) : [];
+  const segRow = plate && plate.querySelector("[data-story-segs]");
+  const countEl = plate && plate.querySelector("[data-story-count]");
+  const panel = plate && plate.querySelector(".modal-panel");
+  let fi = 0, timer = null, paused = false;
+  if (railEl && frames.length && segRow) {
+    frames.forEach(() => {
+      const seg = document.createElement("span");
+      seg.className = "story-seg";
+      seg.appendChild(document.createElement("i"));
+      segRow.appendChild(seg);
+    });
+  }
+  const segs = segRow ? Array.from(segRow.children) : [];
+  const paint = () => {
+    frames.forEach((f, j) => { f.hidden = j !== fi; });
+    segs.forEach((sg, j) => {
+      sg.classList.toggle("is-done", j < fi);
+      if (sg.firstChild) sg.firstChild.style.width = j < fi ? "100%" : "0";
+    });
+    if (countEl) countEl.textContent = `${fi + 1} of ${frames.length}`;
+  };
+  const stopTimer = () => { if (timer) { clearTimeout(timer); timer = null; } };
+  const schedule = () => {
+    stopTimer();
+    if (!ease || paused || frames.length < 2) return;
+    timer = setTimeout(() => { fi = (fi + 1) % frames.length; paint(); schedule(); }, 5000);
+  };
+  const openRail = (n, trigger) => {
+    if (!railEl || !frames.length) return false;
+    fi = Math.max(0, Math.min(frames.length - 1, n));
+    plate.classList.add("is-open", "is-rail");
+    paint();
+    opener = enterOverlay(plate, ".modal-close", trigger);
+    schedule();
+    return true;
+  };
+  if (panel && frames.length) {
+    panel.addEventListener("pointerdown", (event) => {
+      if (event.target.closest("button")) return;
+      paused = true;
+      stopTimer();
+    });
+    panel.addEventListener("pointerup", (event) => {
+      if (event.target.closest("button")) return;
+      const box = panel.getBoundingClientRect();
+      if (box.width) {
+        const dx = event.clientX - box.left;
+        if (dx > box.width * 0.66) fi = (fi + 1) % frames.length;
+        else if (dx < box.width * 0.33) fi = (fi - 1 + frames.length) % frames.length;
+        paint();
+      }
+      paused = false;
+      schedule();
+    });
+  }
+
   const closePlate = () => {
     if (!plate || !plate.classList.contains("is-open")) return;
-    plate.classList.remove("is-open");
+    if (typeof stopTimer === "function") stopTimer();
+    paused = false;
+    plate.classList.remove("is-open", "is-rail");
     leaveOverlay(plate, opener);
     opener = null;
   };
@@ -702,6 +768,8 @@ function leaveOverlay(root, trigger) {
         next.scrollIntoView({ behavior: ease ? "smooth" : "auto", block: "center" });
         return;
       }
+      if (obj.dataset.frame !== undefined && openRail(Number(obj.dataset.frame), obj)) return;
+      if (obj.dataset.obj === "vending" && openRail(0, obj)) return;
       openPlate(obj);
     });
   });
@@ -714,6 +782,15 @@ function leaveOverlay(root, trigger) {
         closePlate();
       } else if (event.key === "Tab") {
         trapTab(plate, event);
+      } else if (plate.classList.contains("is-rail") && (event.key === "ArrowRight" || event.key === "ArrowLeft")) {
+        event.preventDefault();
+        fi = (fi + (event.key === "ArrowRight" ? 1 : -1) + frames.length) % frames.length;
+        paint();
+        schedule();
+      } else if (plate.classList.contains("is-rail") && event.key === " ") {
+        event.preventDefault();
+        paused = !paused;
+        if (paused) stopTimer(); else schedule();
       }
     });
   }
