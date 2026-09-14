@@ -29,7 +29,7 @@ Files you MAY edit directly:
 | `_gen_html.py` | Generator: nav, page templates, publications, gallery data. Run it after editing. |
 | `index/about/research/teaching/activities/service/links/404.html` | Generated output. Do not hand-edit. |
 | `css/site.css` | Single stylesheet, versioned via `?v=` query string |
-| `js/site.js` | Single script file — nav, reveals, gallery lightbox, and the dot-trace game (see below) |
+| `js/site.js` | Single script file — nav, reveals, the photo plate, and the dot-trace game (see below) |
 | `IMG/` | Portrait and gallery photos |
 | `.nojekyll` | Keeps GitHub Pages from running Jekyll — do not delete |
 
@@ -72,7 +72,7 @@ reduce it to static figures. Content lives in `GRID_CELLS` (`_gen_html.py`); all
 lives in `js/site.js` (the `[data-dot-*]` block). Contract to keep intact, in that order:
 
 - Path length encodes difficulty: `PATH_LENGTH` maps Act I/II/III to 3/4/5 dots.
-- The dialog is `<main>`-nested, so `setBackgroundInert` walks the ancestor chain; the Tab
+- The dialog is `<main>`-nested, so `inertOutside` walks the ancestor chain; the Tab
   trap is its fallback, not the whole thing. Both must run on open *and* close.
 - Dot numbers are `::after` content, which assistive tech may not read — `data-n` and the
   dot's `aria-label` are set together in `numberPath()`. "Show me the path" is the
@@ -80,6 +80,25 @@ lives in `js/site.js` (the `[data-dot-*]` block). Contract to keep intact, in th
 - Playback has a `prefers-reduced-motion` branch; keep it when touching `watch()`.
 - Verify by playing panels 1, 5, and 8 (one per act) at `python3 -m http.server 8080`, and
   keep the detector at 0 findings. No test framework — the site stays dependency-free.
+
+## Interactive: the photo plate
+
+The gallery on `activities.html` is a contact sheet you step into, not a static figure row
+— do not reduce it back to a thumbnail strip. Content lives in `GALLERY` (`_gen_html.py`,
+one `(src, alt, caption)` tuple per photograph); all behavior lives in `js/site.js` (the
+`[data-ig-*]` block). Contract to keep intact:
+
+- Tiles are links to the full-resolution file, never buttons; `preventDefault()` runs only
+  when there is a plate to show, so the archive survives with scripting off.
+- The zoom is a named view transition: `view-transition-name` is set on the tile image, then
+  on the plate image, then cleared. Putting it on every tile in CSS collides and the morph
+  stops with no error.
+- `GALLERY` empty omits the section rather than drawing an empty frame, and an empty caption
+  renders no caption row. Do not add a placeholder photograph or a "forthcoming" promise.
+- Sizes come from the file: `img_dims()` reads the JPEG header so neither the grid nor the
+  plate can shift, and `loading="lazy"` stays on both.
+- `inertOutside` / `trapTab` / `enterOverlay` / `leaveOverlay` are the site's shared overlay
+  plumbing; the plate and the dot game both use them. Keep them shared.
 
 ## Design system
 

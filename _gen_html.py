@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260911a"
+CSS = "css/site.css?v=20260914a"
 
 SITE = "https://kevinchung58.github.io/huaxu"
 DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking."
@@ -16,7 +16,7 @@ import struct as _struct
 
 def jpeg_size(path: str):
     """Intrinsic pixel size of a JPEG, for the width/height attributes that keep
-    the gallery deck from shifting layout. None when unparseable, so the
+    the gallery from shifting layout. None when unparseable, so the
     attributes are omitted rather than guessed."""
     try:
         d = (ROOT / path).read_bytes()
@@ -44,6 +44,14 @@ def jpeg_size(path: str):
 def img_dims(path: str) -> str:
     size = jpeg_size(path)
     return f' width="{size[0]}" height="{size[1]}"' if size else ""
+
+
+def fig(src: str, alt: str, eager: bool = False) -> str:
+    """One <img> whose intrinsic size comes from the file, so no figure can shift the
+    layout as it decodes. Only JPEG is read (see jpeg_size), which is why the mascot
+    PNG layers are markup as they are and not sized here."""
+    lazy = "" if eager else ' loading="lazy"'
+    return f'<img src="{escape(src)}" alt="{escape(alt)}"{img_dims(src)}{lazy} />'
 
 
 def svg(d: str, filled: bool = False) -> str:
@@ -152,7 +160,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v=20260912b"></script>"""
+<script src="js/site.js?v=20260914a"></script>"""
 
 
 def page(title: str, active: str, body: str, path: str = "", extra: str = "") -> str:
@@ -391,7 +399,7 @@ about = page("About · Hua-Xu Zhong", "about", f"""
     <div class="about-card reveal">
       <div class="persona" role="button" tabindex="0" aria-label="Toggle illustrated portrait">
         <span class="persona-frame">
-          <img src="IMG/2.jpg" alt="Hua-Xu Zhong" />
+          <img src="IMG/2.jpg" alt="Hua-Xu Zhong" {img_dims("IMG/2.jpg")} />
           <span class="persona-alt" aria-hidden="true">
             <img src="IMG/mascot-final.png" alt="" loading="lazy" />
             <img class="pf pf-blink" src="IMG/mascot-blink.png" alt="" loading="lazy" />
@@ -692,7 +700,7 @@ for i, r in enumerate(PRINCIPLE_READS):
     flip = " flip" if i % 2 else ""
     if r.get("img"):
         visual = (
-            f'<figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>'
+            f'<figure class="media-fig">{fig(r["img"], r["alt"])}</figure>'
         )
     else:
         tone = " plate-paper" if i % 2 else " plate-navy"
@@ -718,7 +726,7 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Position</p><h1>AI in education: where I stand</h1><p>My position on generative AI in education, written in conversation with MIT's August 2026 report on AI use in teaching and learning.</p></div>
     <figure class="pos-hero reveal">
-      <img src="IMG/position-hero.jpg" alt="Illustration of a student and an abstract AI figure as partners at a shared desk" loading="lazy" />
+      <img src="IMG/position-hero.jpg" alt="Illustration of a student and an abstract AI figure as partners at a shared desk"{img_dims("IMG/position-hero.jpg")} loading="lazy" />
       <figcaption>AI as a partner in learning, not a substitute for it.</figcaption>
     </figure>
     <p class="reveal">In August 2026, an MIT ad hoc committee published its report on AI use in teaching, learning, and research training. Its questions are the ones I keep asking: what AI does to students' thinking, when it helps learning, and when it quietly replaces it. This page states my position, shows where the report and I converge, walks through its eight principles one by one, and lists what I want to study next.</p>
@@ -750,13 +758,12 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
       <li><strong>Designing for inquiry.</strong> What does an LLM learning system look like when its first job is to protect a student's own thinking? I came to this question from my own view of LLMs, and from the problems I saw them create for feedback in learning. My earlier work on feedback and scaffolding is where I start. I have not built such a system yet; that is the direction.</li>
       <li><strong>Creativity as an outcome.</strong> The report asks AI to augment curiosity and creativity. I am asking how creativity can be taught, practiced, and assessed when AI can imitate its products.</li>
       <li><strong>Fair access to good AI.</strong> Access is uneven in two ways: strong models cost money, and the guidance to use them well costs more. I care about designs that support learning across that uneven ground.</li>
-      <li><strong>Research done inside someone else's product.</strong> Generative AI is ordinary research infrastructure now, and a hosted model is the least examinable part of it. Two things are at stake when unpublished work goes through one: the privacy of data that is not the researcher's to disclose, and the standing of an idea, because saying what you are working on is how a direction becomes available to anyone with more compute behind it. The published evidence is not that platforms take ideas; it is that researchers answer by quietly narrowing what they type, and that those with private compute carry that cost differently. I would rather measure that trade-off than assert it, and I have no data on it yet.</li>
+      <li><strong>Research done inside someone else's product.</strong> Generative AI is ordinary research infrastructure now, and a hosted model is the least examinable part of it. Two things are at stake when unpublished work goes through one: the privacy of data that is not the researcher's to disclose, and the standing of an idea, because saying what you are working on is how a direction becomes available to anyone with more compute behind it. What I find worth studying is not whether a platform takes an idea, but that researchers answer by quietly narrowing what they type, and that those with private compute carry that cost differently. I would rather measure that trade-off than assert it, and I have no data on it yet.</li>
     </ol>
     <section class="pillar-sec reveal reference-box">
       <h3>Reference</h3>
       <p>MIT Ad Hoc Committee on AI Use in Teaching, Learning, and Research Training. <i>Report</i>. Massachusetts Institute of Technology, August 13, 2026.</p>
       <p class="pillar-more"><a class="text-arrow" href="{MIT_REPORT_URL}" target="_blank" rel="noopener">Read the full report {ico(ICON_OUT)}</a></p>
-      <p>On what hosted AI tools do to disclosure: <i>Privacy Perceptions of Custom GPTs by Users and Creators</i> (CHI 2025), and <i>Understanding Privacy Norms Around LLM-Based Chatbots: A Contextual Integrity Perspective</i>. These support the behavior I describe; neither is a claim about any company's conduct.</p>
       <p class="pillar-more"><a class="text-arrow" href="practice.html">Part two: the recommendations, transferred to a smaller campus {ico(ICON_RIGHT)}</a></p>
     </section>
   </div>
@@ -802,7 +809,7 @@ GRID_CELLS = [
 
 grid_cells_html = "\n".join(
     f'''<article class="dot-cell lift reveal"{f' style="--d:{i * 60}ms"' if i else ""}>
-  <figure><button type="button" class="dot-play" data-dot-open data-act="{escape(c["act"])}" data-num="{escape(c["num"])}" data-name="{escape(c["name"])}" data-cap="{escape(c["cap"])}" aria-label="Play the dot-trace game for panel {escape(c["num"])}, {escape(c["name"])}"><img src="{escape(c["img"])}" alt="{escape(c["alt"])}" loading="lazy" /><span class="dot-chip" aria-hidden="true"><span class="dot-chip-dots"><i></i><i></i><i></i></span>Trace</span></button></figure>
+  <figure><button type="button" class="dot-play" data-dot-open data-act="{escape(c["act"])}" data-num="{escape(c["num"])}" data-name="{escape(c["name"])}" data-cap="{escape(c["cap"])}" aria-label="Play the dot-trace game for panel {escape(c["num"])}, {escape(c["name"])}">{fig(c["img"], c["alt"])}<span class="dot-chip" aria-hidden="true"><span class="dot-chip-dots"><i></i><i></i><i></i></span>Trace</span></button></figure>
   <div class="cell-body"><div class="badges"><span class="badge">{escape(c["act"])}</span></div>
   <h3>{escape(c["num"])} · {escape(c["name"])}</h3><p>{escape(c["cap"])}</p></div>
 </article>'''
@@ -849,7 +856,7 @@ for i, r in enumerate(GRID_ACTS):
     paras = "\n".join(f"    <p>{escape(p)}</p>" for p in r["paras"])
     act_rows_html.append(
         f'''<div class="media-row reveal{flip}">
-  <figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>
+  <figure class="media-fig">{fig(r["img"], r["alt"])}</figure>
   <div class="media-copy">
     <p class="read-tag">{escape(r["tag"])}</p>
     <h3>{escape(r["name"])}</h3>
@@ -864,7 +871,7 @@ thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Thinking</p><h1>Dots, shapes, and one line</h1><p>How I think about information, creativity, and problem solving in the GAI era, and the case for design thinking from here on.</p></div>
     <figure class="pos-hero reveal">
-      <img src="IMG/thinking-hero.jpg" alt="Illustration of a student and an abstract machine figure standing before a large wall covered in scattered dots, both holding pencils" loading="lazy" />
+      <img src="IMG/thinking-hero.jpg" alt="Illustration of a student and an abstract machine figure standing before a large wall covered in scattered dots, both holding pencils"{img_dims("IMG/thinking-hero.jpg")} loading="lazy" />
       <figcaption>One field of dots, read in three acts.</figcaption>
     </figure>
     <p class="reveal">A comic has circulated online since 2020: a three by three grid about a handful of dots. Scattered dots are Information. Sorted and connected dots become Knowledge. The same dots, joined into an unexpected shape, are Creativity. Two dots with a single line between them are Wisdom. Later remixes added their own warnings, from a scribble called Madness to a pentagram called Conspiracy Theory. Nobody owns the comic. Language Log traced it to an Imgur post from August 2020, itself inspired by a GapingVoid illustration, and strangers have redrawn it ever since.</p>
@@ -880,7 +887,7 @@ thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
     </div>
     {titled("h2", "Why design thinking, from here on", ICON_PENCIL, "block-title reveal spaced")}
     <div class="media-row reveal">
-      <figure class="media-fig"><img src="IMG/diverge-converge.jpg" alt="Illustration of an abstract machine figure pouring a jar of navy dots into a wide paper funnel held by a student, with a single amber line emerging from the funnel toward one circled target dot" loading="lazy" /></figure>
+      <figure class="media-fig"><img src="IMG/diverge-converge.jpg" alt="Illustration of an abstract machine figure pouring a jar of navy dots into a wide paper funnel held by a student, with a single amber line emerging from the funnel toward one circled target dot"{img_dims("IMG/diverge-converge.jpg")} loading="lazy" /></figure>
       <div class="media-copy">
         <p>Both halves of the second row, making new shapes and choosing one line, are exactly the moves design thinking rehearses. The Double Diamond from the British Design Council is divergence then convergence, twice: spread across the field to understand, commit to a framed problem; spread into possible shapes, commit to a solution. Stanford's d.school teaches the same rhythm as five stages, from empathize to test, and treats visual thinking, collaboration, and iteration as working principles.</p>
         <p>That is why I think the GAI era raises the stakes for design thinking rather than retiring it. The tools took over the connecting. What remains to teach is the framing, the shaping, and the choosing, and design thinking is the most practiced method we have for all three. It runs through my research pillar on creativity and design thinking, and it is why my teaching chain starts from independent thinking: the habit of choosing your own dots before anyone connects them for you.</p>
@@ -1008,7 +1015,7 @@ for i, r in enumerate(PRACTICE_ROWS):
     flip = " flip" if i % 2 else ""
     if r.get("img"):
         visual = (
-            f'<figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>'
+            f'<figure class="media-fig">{fig(r["img"], r["alt"])}</figure>'
         )
     else:
         tone = " plate-paper" if i % 2 else " plate-navy"
@@ -1046,7 +1053,7 @@ practice = page("Report in practice · Hua-Xu Zhong", "practice", f"""
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Practice</p><h1>From principles to practice</h1><p>Part two of my read of MIT's August 2026 report: its action list, read from a campus that does not have MIT's budget.</p></div>
     <figure class="pos-hero reveal">
-      <img src="IMG/practice-hero.jpg" alt="Illustration of a student and an abstract machine figure carrying a long scroll together from a grand columned institute building toward a small plain schoolhouse" loading="lazy" />
+      <img src="IMG/practice-hero.jpg" alt="Illustration of a student and an abstract machine figure carrying a long scroll together from a grand columned institute building toward a small plain schoolhouse"{img_dims("IMG/practice-hero.jpg")} loading="lazy" />
       <figcaption>What survives the trip from a well-funded campus to an ordinary one?</figcaption>
     </figure>
     <p class="reveal">My first page on the report stayed at the level of positions: the stances I hold, and the eight principles the committee set out. That was an editorial decision, and it left the longer half of the report on the table. This page covers that half: what the committee actually recommends doing, in its ten recommendation groups running from course assessment to campus infrastructure.</p>
@@ -1064,76 +1071,90 @@ practice = page("Report in practice · Hua-Xu Zhong", "practice", f"""
 </section>
 """)
 
-# Add photos here later: (src, alt, caption). Multiple items become a slideshow.
-# The caption is the venue / date / event line. It stays empty until the owner
-# supplies it, and an empty caption renders no caption row at all rather than a
-# "forthcoming" promise shown to visitors. The alt states only what the photo
-# shows, since that is verifiable from the file itself.
+# Photo archive for the Activities page. One entry per photograph, as
+# (src, alt, caption), where the caption is the venue / date / event line. An empty
+# caption renders no caption row rather than a "forthcoming" promise shown to visitors,
+# and the alt states only what the photo shows, since that is verifiable from the file.
+#
+# The list is empty as of 2026-09-14 by the owner's decision: the single photograph on
+# hand is his to place and is not published yet. With no entries the Gallery section is
+# omitted instead of drawn as an empty frame, so the page carries one empty state (the
+# talks list) rather than two. The interaction below is built for N photographs and
+# lights up as soon as an entry is added.
 GALLERY = [
-    ("IMG/3.jpg",
-     "Photograph of Hua-Xu Zhong standing behind a table covered in blue cloth and "
-     "laid with prototypes: breadboards and jumper wires, a small printed robotic "
-     "arm, work gloves, and an open laptop, with a head-mounted display on a wooden "
-     "podium beside a microphone and an SDG 2 Zero Hunger sign on the wall behind",
-     ""),
+    # ("IMG/3.jpg",
+    #  "Photograph of Hua-Xu Zhong standing behind a table covered in blue cloth and "
+    #  "laid with prototypes: breadboards and jumper wires, a small printed robotic "
+    #  "arm, work gloves, and an open laptop, with a head-mounted display on a wooden "
+    #  "podium beside a microphone and an SDG 2 Zero Hunger sign on the wall behind",
+    #  ""),
 ]
-gallery_many = len(GALLERY) > 1
-gallery_slides = []
-gallery_dots = []
-for i, (src, alt, cap) in enumerate(GALLERY):
-    on = " is-on" if i == 0 else ""
-    gallery_slides.append(
-        f'<figure class="deck-slide{on}" data-slide="{i}">'
-        f'<button type="button" data-lightbox data-index="{i}" data-src="{escape(src)}" data-alt="{escape(alt)}" data-caption="{escape(cap)}" aria-label="Enlarge photo">'
-        f'<img src="{escape(src)}" alt="{escape(alt)}"{img_dims(src)} loading="lazy" /></button></figure>'
+
+
+def ig_tile(i, src_, alt, cap):
+    """One tile of the archive grid. A real link to the image file, so the archive is
+    still readable with scripting off; the script upgrades that same click into a step
+    into the plate, so the control is never relabelled as a button."""
+    cap_html = f'<span class="ig-cap">{escape(cap)}</span>' if cap else ""
+    return (f'<a class="ig-tile" href="{escape(src_)}" data-ig="{i}">'
+            f'<img src="{escape(src_)}" alt="{escape(alt)}"{img_dims(src_)} loading="lazy" />'
+            f'<span class="ig-fig">Fig. {i + 1}</span>{cap_html}</a>')
+
+
+def ig_frame(src_, alt, cap):
+    """One page of the horizontal reel inside the plate. The intrinsic size is repeated
+    here so moving along the roll cannot shift the panel."""
+    cap_html = f'<figcaption>{escape(cap)}</figcaption>' if cap else ""
+    return (f'<figure class="ig-frame">'
+            f'<img src="{escape(src_)}" alt="{escape(alt)}"{img_dims(src_)} loading="lazy" />'
+            f'{cap_html}</figure>')
+
+
+gallery_html = ""
+gallery_plate = ""
+if GALLERY:
+    gallery_n = len(GALLERY)
+    gallery_many = gallery_n > 1
+    gallery_tiles = "\n      ".join(ig_tile(i, *entry) for i, entry in enumerate(GALLERY))
+    gallery_frames = "\n      ".join(ig_frame(*entry) for entry in GALLERY)
+    gallery_shown = "" if gallery_many else " hidden"
+    gallery_pannable = " is-pannable" if gallery_many else ""
+    gallery_hint = (
+        "Select a photograph to step into it. The left and right keys, the arrows, and "
+        "swiping all move along the roll; Esc returns to the archive."
+        if gallery_many else
+        "Select a photograph to view it larger; Esc returns to the archive."
     )
-    gallery_dots.append(f'<button type="button" class="deck-dot{on}" data-go="{i}" aria-label="Photo {i + 1}"></button>')
-gallery_nav = ""
-if gallery_many:
-    gallery_nav = f'''<button class="deck-btn prev" type="button" data-deck-prev aria-label="Previous photo">{ICON_LEFT}</button>
-    <button class="deck-btn next" type="button" data-deck-next aria-label="Next photo">{ICON_RIGHT}</button>
-    <p class="deck-count"><span data-deck-n>1</span> / {len(GALLERY)}</p>'''
-gallery_dots_html = f'<div class="deck-dots">{"".join(gallery_dots)}</div>' if gallery_many else ""
-gallery_note = (
-    "Select a photo to view it larger."
-    if not gallery_many
-    else "Use the arrows or the left and right keys to move between photos, or select one to view it larger."
-)
+    gallery_html = f'''    {titled("h2", "Gallery", ICON_CAMERA)}
+    <div class="ig-grid reveal" data-ig-grid>
+      {gallery_tiles}
+    </div>
+    <p class="when reveal">{gallery_hint}</p>'''
+    gallery_plate = f'''
+<div class="modal" id="ig-plate" role="dialog" aria-modal="true" aria-label="Photograph viewer">
+  <div class="modal-backdrop" data-ig-close></div>
+  <div class="modal-panel ig-plate">
+    <button class="modal-close on-photo" type="button" data-ig-close aria-label="Close photograph viewer">{ICON_X}</button>
+    <div class="ig-reel{gallery_pannable}" data-ig-reel role="group" aria-label="The roll of photographs" tabindex="0">
+      {gallery_frames}
+    </div>
+    <button class="ig-btn prev on-photo" type="button" data-ig-prev aria-label="Previous photograph"{gallery_shown}>{ICON_LEFT}</button>
+    <button class="ig-btn next on-photo" type="button" data-ig-next aria-label="Next photograph"{gallery_shown}>{ICON_RIGHT}</button>
+    <p class="ig-count" data-ig-count{gallery_shown} aria-live="polite">1 / {gallery_n}</p>
+  </div>
+</div>'''
 
 activities = page("Activities · Hua-Xu Zhong", "activities", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>A photo archive and a running record of talks. Captions and venues will be attached as they are confirmed.</p></div>
-    {titled("h2", "Gallery", ICON_CAMERA)}
-    <p class="when reveal" style="margin:-0.4rem 0 1rem">{gallery_note}</p>
-    <div class="deck reveal" data-deck>
-      <div class="deck-stage">
-        {''.join(gallery_slides)}
-        {gallery_nav}
-      </div>
-      {f'<p class="deck-cap" data-deck-cap>{escape(GALLERY[0][2])}</p>' if GALLERY[0][2] else ""}
-      {gallery_dots_html}
-    </div>
+    {gallery_html}
     {titled("h2", "Talks and visits", ICON_CHAT, "block-title reveal spaced")}
     <p class="when reveal">Invited talks, presentations, workshops, and conference attendance. They will appear as a CV timeline when records are added.</p>
     <div class="dashed empty reveal" style="margin-top:1rem">{chip(ICON_CHAT)}<div><strong>No talks listed yet</strong><p class="when">This page will not invent events. When you add a title, venue, and date, they will appear here as a single timeline.</p></div></div>
   </div>
 </section>
-""", extra=f"""
-<div class="modal" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
-  <div class="modal-backdrop" data-close></div>
-  <div class="modal-panel lamp">
-    <button class="modal-close on-photo" type="button" data-close aria-label="Close">{ICON_X}</button>
-    <button class="deck-btn prev on-photo" type="button" data-lamp-prev aria-label="Previous photo">{ICON_LEFT}</button>
-    <button class="deck-btn next on-photo" type="button" data-lamp-next aria-label="Next photo">{ICON_RIGHT}</button>
-    <img alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
-    <div class="lamp-meta">
-      <p data-lamp-cap></p>
-      <p class="deck-count" data-lamp-count></p>
-    </div>
-  </div>
-</div>
-""")
+""", extra=gallery_plate)
 
 journals = [
     "Educational Technology Research and Development (SSCI Q1)",

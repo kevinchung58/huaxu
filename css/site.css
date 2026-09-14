@@ -47,7 +47,7 @@ body {
 }
 img { max-width: 100%; display: block; }
 a { color: inherit; cursor: pointer; }
-main a:not(.btn):not(.card):not([class*="deck"]) { text-decoration-color: rgba(180, 83, 9, 0.55); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+main a:not(.btn):not(.card):not(.ig-tile) { text-decoration-color: rgba(180, 83, 9, 0.55); text-underline-offset: 3px; text-decoration-thickness: 1px; }
 main a:not(.btn):hover { text-decoration-color: var(--accent); }
 button {
   appearance: none;
@@ -1036,30 +1036,118 @@ main {
   text-align: center;
 }
 
-/* ============ Gallery / slideshow ============ */
-.deck {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  overflow: hidden;
+/* ============ Activities: the photo plate ============ */
+/* The archive is a contact sheet: square-cropped tiles in a hairline gutter, so the
+   crop frames the photograph and no card or shadow is needed. Selecting a tile steps
+   into a dark plate showing the same image full width, with the rest of the roll on
+   either side of it. Named view transition moves the image between the two boxes, so
+   no geometry is computed in the script; see js/site.js. */
+.ig-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 3px;
+  margin: 1.3rem 0 0;
+  background: var(--line);
+  border: 1px solid var(--line-strong);
 }
-.deck-stage {
+.ig-tile {
+  display: block;
   position: relative;
+  background: var(--card);
+}
+.ig-tile img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  transition: transform 700ms var(--ease), opacity 300ms var(--ease);
+}
+.ig-tile:hover img,
+.ig-tile:focus-visible img {
+  transform: scale(1.045);
+  opacity: 0.94;
+}
+.ig-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+.ig-fig {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+  padding: 0.08rem 0.4rem;
+  border-radius: 2px;
+  background: rgba(10, 17, 40, 0.72);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  transform: translateY(-0.25rem);
+  transition: opacity 220ms var(--ease), transform 220ms var(--ease);
+}
+.ig-tile:hover .ig-fig,
+.ig-tile:focus-visible .ig-fig {
+  opacity: 1;
+  transform: none;
+}
+.ig-cap {
+  display: block;
+  padding: 0.5rem 0.6rem 0.6rem;
+  color: #3b3a33;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.ig-plate {
+  width: min(56rem, 100%);
+  padding: 0;
+  border-top: 0;
+  overflow: hidden;
   background: var(--navy-deep);
 }
-.deck-slide {
-  display: none;
-  margin: 0;
-}
-.deck-slide.is-on { display: block; animation: fade 420ms var(--ease); }
-.deck-slide button { display: block; width: 100%; }
-.deck-slide img {
+.ig-plate img {
   width: 100%;
-  aspect-ratio: 16/10;
-  object-fit: cover;
+  max-height: 78vh;
+  object-fit: contain;
+  background: var(--navy-deep);
 }
-.deck-btn {
+/* The roll: one photograph per screen, snapping to center, so moving through the
+   archive is a swipe rather than a control to press. */
+.ig-reel {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+.ig-reel::-webkit-scrollbar {
+  display: none;
+}
+.ig-reel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.ig-reel.is-pannable {
+  cursor: grab;
+}
+.ig-reel.is-pannable:active {
+  cursor: grabbing;
+}
+.ig-frame {
+  flex: 0 0 100%;
+  margin: 0;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+.ig-frame figcaption {
+  padding: 0.8rem 3.4rem 1rem 1rem;
+  color: #dfe5f3;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+.ig-btn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -1072,61 +1160,54 @@ main {
   align-items: center;
   justify-content: center;
   transition: background 180ms var(--ease);
+  z-index: 2;
 }
-.deck-btn:hover { background: var(--accent); }
-.deck-btn svg { width: 1.2rem; height: 1.2rem; }
-.deck-btn.prev { left: 0.7rem; }
-.deck-btn.next { right: 0.7rem; }
-.deck-btn.on-photo { z-index: 2; }
-.deck-count {
+.ig-btn:hover {
+  background: var(--accent);
+}
+.ig-btn svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.ig-btn.prev {
+  left: 0.7rem;
+}
+.ig-btn.next {
+  right: 0.7rem;
+}
+.ig-count {
   position: absolute;
-  right: 0.8rem;
-  bottom: 0.7rem;
+  right: 1rem;
+  bottom: 0.9rem;
   margin: 0;
-  color: #fff;
+  color: #dfe5f3;
   font-family: var(--sans);
   font-size: 0.74rem;
   letter-spacing: 0.08em;
   font-variant-numeric: tabular-nums;
+  z-index: 2;
 }
-.deck-cap { padding: 0.85rem 1rem 1rem; color: #3b3a33; }
-.deck-dots {
-  display: flex;
-  gap: 0.4rem;
-  justify-content: center;
-  padding: 0 1rem 1rem;
+.ig-plate .ig-btn[hidden],
+.ig-count[hidden] {
+  display: none;
 }
-.deck-dot {
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 999px;
-  background: var(--line-strong);
-  transition: background 180ms var(--ease);
-}
-.deck-dot.is-on { background: var(--accent); }
-.modal-panel.lamp {
-  width: min(56rem, 100%);
-  padding: 0;
-  border-top: 0;
-  overflow: hidden;
-  background: var(--navy-deep);
-}
-.modal-panel.lamp img {
+::view-transition-old(ig-photo),
+::view-transition-new(ig-photo) {
   width: 100%;
-  max-height: 78vh;
-  object-fit: contain;
-  background: var(--navy-deep);
+  height: 100%;
+  animation-duration: 400ms;
+  animation-timing-function: var(--ease);
 }
-.lamp-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.8rem 1rem 1rem;
-  color: #dfe5f3;
+@media (prefers-reduced-motion: reduce) {
+  .ig-reel {
+    scroll-behavior: auto;
+  }
+  .ig-tile img,
+  .ig-fig {
+    transition: none;
+  }
 }
-.lamp-meta .deck-count { position: static; color: var(--muted-navy); }
-.modal-panel.lamp .deck-btn[hidden],
-.lamp-meta .deck-count[hidden] { display: none; }
+
 .dashed {
   border: 1px solid var(--line);
   border-radius: var(--radius);

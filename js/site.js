@@ -140,93 +140,145 @@
     });
   }
 
-  const slides = [...document.querySelectorAll("[data-lightbox]")];
-  let slideIndex = 0;
+  /* ---------- Activities: the photo plate ----------
+     Selecting a tile of the contact sheet steps into the same photograph on a dark
+     plate, with the rest of the roll on either side of it by swipe, arrow keys, or the
+     arrows. Three absences are accounted for, because this page is read on a lecture-hall
+     laptop, a phone, and sometimes with scripting off:
+       - no document.startViewTransition -> the plate opens with no morph;
+       - no scripting -> every tile is a plain link to the full-resolution file;
+       - prefers-reduced-motion -> no morph, and the roll jumps rather than easing.
+     Only one element may hold a given view-transition-name, so the name is put on the
+     image being enlarged, on the box it is arriving from and the box it arrives in, and
+     cleared once the transition settles. Entering the plate reuses the same overlay
+     conventions as the trace game below. */
+  const grid = document.querySelector("[data-ig-grid]");
+  const plate = document.getElementById("ig-plate");
+  if (grid && plate) {
+    const tiles = Array.from(grid.querySelectorAll("[data-ig]"));
+    const reel = plate.querySelector("[data-ig-reel]");
+    const frames = reel ? Array.from(reel.children) : [];
+    const count = plate.querySelector("[data-ig-count]");
+    const prev = plate.querySelector("[data-ig-prev]");
+    const next = plate.querySelector("[data-ig-next]");
+    const many = frames.length > 1;
+    const ease = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let opener = null;                  // the tile to hand focus back to
+    const named = [];
 
-  const showDeck = (index) => {
-    if (!slides.length) return;
-    slideIndex = (index + slides.length) % slides.length;
-    const current = slides[slideIndex];
-    document.querySelectorAll("[data-slide]").forEach((el) => {
-      el.classList.toggle("is-on", Number(el.dataset.slide) === slideIndex);
-    });
-    document.querySelectorAll("[data-go]").forEach((el) => {
-      el.classList.toggle("is-on", Number(el.dataset.go) === slideIndex);
-    });
-    const cap = document.querySelector("[data-deck-cap]");
-    const num = document.querySelector("[data-deck-n]");
-    if (cap) cap.textContent = current.dataset.caption || current.dataset.alt || "";
-    if (num) num.textContent = String(slideIndex + 1);
-  };
-
-  document.querySelector("[data-deck-prev]")?.addEventListener("click", () => showDeck(slideIndex - 1));
-  document.querySelector("[data-deck-next]")?.addEventListener("click", () => showDeck(slideIndex + 1));
-  document.querySelectorAll("[data-go]").forEach((btn) => {
-    btn.addEventListener("click", () => showDeck(Number(btn.dataset.go)));
-  });
-
-  const lightbox = document.querySelector("#lightbox");
-  if (lightbox && slides.length) {
-    const img = lightbox.querySelector("img");
-    const cap = lightbox.querySelector("[data-lamp-cap]");
-    const count = lightbox.querySelector("[data-lamp-count]");
-    const prev = lightbox.querySelector("[data-lamp-prev]");
-    const next = lightbox.querySelector("[data-lamp-next]");
-    const many = slides.length > 1;
-    if (prev) prev.hidden = !many;
-    if (next) next.hidden = !many;
-    if (count) count.hidden = !many;
-
+    const clamp = (i) => Math.max(0, Math.min(frames.length - 1, i));
+    const at = () => clamp(Math.round(reel.scrollLeft / (reel.clientWidth || 1)));
+    const name = (el) => {
+      named.forEach((node) => { node.style.viewTransitionName = ""; });
+      named.length = 0;
+      if (el) {
+        el.style.viewTransitionName = "ig-photo";
+        named.push(el);
+      }
+    };
     const paint = () => {
-      const current = slides[slideIndex];
-      img.src = current.dataset.src;
-      img.alt = current.dataset.alt || "";
-      if (cap) cap.textContent = current.dataset.caption || current.dataset.alt || "";
-      if (count) count.textContent = `${slideIndex + 1} / ${slides.length}`;
-      showDeck(slideIndex);
+      const i = at();
+      if (count) count.textContent = `${i + 1} / ${frames.length}`;
+      if (prev) prev.disabled = !many || i === 0;
+      if (next) next.disabled = !many || i === frames.length - 1;
     };
-    let trigger = null;
-    const open = (index, from) => {
-      lightbox.classList.add("is-open");
-      showDeck(index);
+    const glide = (i, behavior) => {
+      const left = (reel.clientWidth || 0) * clamp(i);
+      if (reel.scrollTo) reel.scrollTo({ left, behavior: behavior || (ease ? "smooth" : "auto") });
+      else reel.scrollLeft = left;
       paint();
-      trigger = enterOverlay(lightbox, ".modal-close", from);
     };
+    const morph = (apply) => {
+      if (!ease || !document.startViewTransition) {
+        apply();
+        paint();
+        name(null);        // nothing to hand to a transition, so leave no stray style
+        return;
+      }
+      const done = () => { paint(); name(null); };
+      document.startViewTransition(apply).finished.then(done, done);
+    };
+
+    tiles.forEach((tile, i) => {
+      tile.addEventListener("click", (e) => {
+        if (!frames[i]) return;         // never swallow the link without a plate to show
+        e.preventDefault();
+        name(tile.querySelector("img"));
+        morph(() => {
+          name(frames[i].querySelector("img"));
+          plate.classList.add("is-open");
+          opener = enterOverlay(plate, ".modal-close", tile);
+          // "instant", not "auto": auto would inherit scroll-behavior:smooth and slide
+          // the roll into place under the morph, which is the one motion we cannot afford.
+          glide(i, "instant");
+        });
+      });
+    });
     const close = () => {
-      lightbox.classList.remove("is-open");
-      leaveOverlay(lightbox, trigger);
-      trigger = null;
+      const i = at();
+      name(frames[i] ? frames[i].querySelector("img") : null);
+      morph(() => {
+        name(opener ? opener.querySelector("img") : null);
+        plate.classList.remove("is-open");
+        leaveOverlay(plate, opener);
+      });
     };
-    slides.forEach((btn, index) => btn.addEventListener("click", () => open(index, btn)));
-    prev?.addEventListener("click", () => {
-      showDeck(slideIndex - 1);
-      paint();
-    });
-    next?.addEventListener("click", () => {
-      showDeck(slideIndex + 1);
-      paint();
-    });
-    lightbox.querySelectorAll("[data-close]").forEach((el) => el.addEventListener("click", close));
-    document.addEventListener("keydown", (event) => {
-      if (!lightbox.classList.contains("is-open")) return;
-      if (event.key === "Escape") { close(); return; }
-      trapTab(lightbox, event);
-      if (many && event.key === "ArrowLeft") {
-        showDeck(slideIndex - 1);
-        paint();
+    Array.from(plate.querySelectorAll("[data-ig-close]")).forEach((el) => el.addEventListener("click", close));
+    if (prev) prev.addEventListener("click", () => glide(at() - 1));
+    if (next) next.addEventListener("click", () => glide(at() + 1));
+    if (reel) {
+      reel.addEventListener("scroll", paint, { passive: true });
+      reel.addEventListener("scrollend", paint);   // a swipe that stopped short snaps back
+
+      /* Drag the plate sideways. Touch already pans through the reel, so this only
+         exists for a mouse: pulling the photograph by hand is what makes the roll read
+         as an object rather than as a dialog with two buttons on it. Snapping is turned
+         off for the duration, because mandatory snap fights a drag frame by frame. */
+      let drag = null;
+      reel.addEventListener("pointerdown", (event) => {
+        if (!many || event.pointerType === "touch") return;
+        drag = { x: event.clientX, left: reel.scrollLeft };
+        reel.style.scrollSnapType = "none";
+        if (reel.setPointerCapture) reel.setPointerCapture(event.pointerId);
+      });
+      reel.addEventListener("pointermove", (event) => {
+        if (!drag) return;
+        reel.scrollLeft = drag.left - (event.clientX - drag.x);
+      });
+      const settle = () => {
+        if (!drag) return;
+        drag = null;
+        reel.style.scrollSnapType = "";
+        glide(Math.round(reel.scrollLeft / (reel.clientWidth || 1)));
+      };
+      reel.addEventListener("pointerup", settle);
+      reel.addEventListener("pointercancel", settle);
+    }
+    plate.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+        return;
       }
-      if (many && event.key === "ArrowRight") {
-        showDeck(slideIndex + 1);
-        paint();
+      if (e.key === "Tab") {
+        trapTab(plate, e);
+        return;
       }
+      if (!many) return;
+      const go = { ArrowLeft: at() - 1, ArrowRight: at() + 1, Home: 0, End: frames.length - 1 };
+      if (go[e.key] === undefined) return;
+      e.preventDefault();
+      glide(go[e.key]);
     });
+    paint();
   }
+
 })();
 
 /* ---- Shared overlay plumbing: one modal standard for the whole site ----
    inertOutside walks the overlay's ANCESTOR chain instead of sweeping
    document.body.children, because an overlay can sit inside <main> (the gallery
-   lightbox is a body child; the dot game lives inside the page body). A
+   photo plate is a body child; the dot game lives inside the page body). A
    body-level sweep of a nested overlay silently leaves the whole page exposed. */
 function inertOutside(root, on) {
   const skip = new Set(["SCRIPT", "STYLE", "NOSCRIPT"]);

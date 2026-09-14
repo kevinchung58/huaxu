@@ -9,7 +9,7 @@ precise instrument, serif-led typography.
 | Token | Value | Role |
 |---|---|---|
 | `--navy` | `#101b39` | Primary plate (hero, nav base, rules) |
-| `--navy-deep` | `#0a1128` | Darker plate depth (footer bottom, lightbox) |
+| `--navy-deep` | `#0a1128` | Darker plate depth (footer bottom, photo plate) |
 | `--navy-soft` | `#1a2b50` | Gradient partner, scrollbar thumb |
 | `--accent` | `#b45309` | Amber: buttons, markers, rules. Graphics only on paper |
 | `--accent-ink` | `#96470a` | Amber for SMALL TEXT on paper — keeps ≥4.5:1. Never lighten |
@@ -73,8 +73,10 @@ they describe this committed world, so they are waived repo-wide in
 - `flat-type-hierarchy` — the 404 page is intentionally a minimal error plate.
 
 **Never silence an objective defect here** — fix contrast, heading order, sub-11px
-functional text, and broken/placeholder images in code (the lightbox image uses a 1×1
-transparent placeholder `src` + `aria-hidden`, since JS sets its real source on open).
+functional text, and broken/placeholder images in code. The 1×1 transparent placeholder
+`src` the old lightbox used (JS set its real image on open) is gone: the photo plate
+holds one real `<img>` per photograph, so a browser or reader that never runs the script
+still sees the archive.
 Note: the static detector's gradient contrast is conservative — it samples corner glow
 stops text never sits on; verify plate text against the *painted* navy, and prefer tuning
 the `--accent-bright` / `--muted-navy` tokens over weakening the plate.
