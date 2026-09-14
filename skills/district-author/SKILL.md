@@ -98,3 +98,15 @@ the owner explicitly renegotiating the dependency rule in `AGENTS.md` — and th
 PR, not a gallery PR. When a hoist or splice of this single-file generator is involved,
 check ordering: a slice with `i > j` produces a duplicated region that still parses, passes
 `ast.parse`, and fails only at runtime.
+
+## 6. WebKit flattening — why the scene is structured this way
+
+A non-visible `overflow`, or a `filter`, on the element that declares `transform-style:
+preserve-3d` silently forces it flat in Safari and WebKit; a universal `preserve-3d` rule makes
+the scene vanish. So `preserve-3d` goes on the world wrapper only, the clip and the
+`perspective` one level up, and filters on leaves with no 3D children. Adding a second
+`preserve-3d`, or "tidying" the clip onto the wrapper, flattens the lane on iPhone with no
+finding from any tool in this repo.
+
+No iOS Safari exists in this sandbox, so mobile behaviour is **unmeasured** and must never be
+reported as proven. What needs no device is the fallback: the captioned list is always readable.

@@ -13,6 +13,13 @@ Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo 
   page and grep for the new markup and the pin. Pages already on disk make a crashing
   generator look healthy, so `python3 _gen_html.py` exiting 0 is a precondition for
   committing, not a nice-to-have.
+- WebKit flattening: a non-visible `overflow`, or a `filter`, on an element declaring
+  `transform-style: preserve-3d` forces that element flat, and a universal `preserve-3d` makes
+  the scene vanish. Here `preserve-3d` lives only on `.room-world` and `.ig-grid`, neither of
+  which has `overflow` or `filter`; the clip and `perspective` sit one level up on
+  `.room-stage`, and the scene's only `filter` is on a leaf. Never move `overflow` or `filter`
+  onto a `preserve-3d` element and never add `preserve-3d` to one that has either — it
+  flattens the 3D on iPhone, looks correct in Chrome, and produces no detector finding.
 - Authoring a district (intake, record, build rules, gate) is a skill:
   `skills/district-author/SKILL.md`. Follow it before adding a district or choosing a
   renderer for one.

@@ -119,3 +119,34 @@ Travel is a personal space; a talk, a workshop, a school visit is an academic on
 district cannot be built until its kind is declared, and the card that fails to declare it
 renders as shut — `Purpose not declared`, `Not open yet` — because an honestly locked door
 is cheaper than a confidently wrong one.
+
+#### Two WebKit flattening traps, and why this scene is built around them
+
+The research that mattered for the lane was not "which library" — it was two documented ways a
+CSS 3D scene silently renders flat in Safari and WebKit:
+
+1. `overflow` other than `visible` forces that element's `transform-style` to `flat`; the
+   reported fix is `overflow: visible !important` on the `preserve-3d` element itself, not on
+   its ancestor;
+2. a `filter` or `backdrop-filter` on the element carrying `perspective` kills `preserve-3d`
+   for its whole subtree;
+3. and a universal `* { transform-style: preserve-3d }` makes the scene vanish outright.
+
+Checked against the built stylesheet rather than hoped: `preserve-3d` is declared on exactly
+two selectors, `.room-world` (the lane) and `.ig-grid` (the Activities tilt), and neither block
+carries `overflow` or `filter`. The clip that keeps the lane inside its frame and the
+`perspective` both live one level up on `.room-stage`; the only `filter` inside the scene is
+`blur(3px)` on `.room-floor::after`, a leaf with no 3D children. A parser over the whole
+stylesheet agrees: no rule mixes `preserve-3d` with `overflow` or `filter`.
+
+So the structure is flat-safe today, and the rule for whoever edits it next is: **do not move
+`overflow` or `filter` onto a `preserve-3d` element, and do not add `preserve-3d` to a selector
+that has either.** These are not style preferences — moving the clip onto the wrapper is the
+kind of tidy-up a future agent will do, it looks perfect in Chrome, flattens the scene on every
+iPhone, and raises no detector finding.
+
+What this sandbox cannot do is measure. There is no iOS Safari here, so nested-layer behaviour
+on mobile is unverified rather than proven, and an earlier promise in SPEC §6 to research a
+maximum layer count was chasing the wrong failure mode: the documented one is flattening by
+`overflow` or `filter`, not a layer budget. What needs no measurement is the fallback — the
+captioned list is always readable.
