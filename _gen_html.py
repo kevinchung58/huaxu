@@ -1261,7 +1261,10 @@ def poster_attrs(src):
     JPEG header and returns None when it cannot parse, and the attributes are then omitted
     rather than guessed. The lookup is by globals() because this page was written against a
     helper name that does not exist in the generator, which shipped a broken build once."""
-    helper = globals().get("img_dims") or globals().get("jpeg_size")
+    # The site-wide helper is featured_attrs(), which returns the whole attribute string
+    # including the lazy hint; tuple-shaped readers are accepted too in case a poster is
+    # ever pointed at a file type it does not handle.
+    helper = globals().get("featured_attrs") or globals().get("img_dims") or globals().get("jpeg_size")
     dims = helper(src) if helper else None
     if isinstance(dims, str):
         return dims
@@ -1276,7 +1279,9 @@ def room_object(o):
     face = ""
     if o.get("img"):
         src = o["img"]
-        face = f'<img class="obj-img" src="{src}" alt="" loading="lazy" {poster_attrs(src)}>'
+        attrs = poster_attrs(src)
+        lazy = "" if "loading=" in attrs else ' loading="lazy"'
+        face = f'<img class="obj-img" src="{src}" alt=""{lazy} {attrs}>'
     return (f'<button type="button" class="room-obj room-{o["kind"]}" data-obj="{escape(o["id"])}" '
             f'data-title="{name}" data-hint="{escape(o["hint"])}" style="{style}">'
             f'<span class="obj-face" aria-hidden="true">{face}</span>'
