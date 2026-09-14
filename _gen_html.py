@@ -1257,19 +1257,39 @@ INDENT = "\n        "
 
 
 def poster_attrs(src):
-    """Sizes come from the file the way the rest of the site does it: jpeg_size() reads the
-    JPEG header and returns None when it cannot parse, and the attributes are then omitted
-    rather than guessed. The lookup is by globals() because this page was written against a
-    helper name that does not exist in the generator, which shipped a broken build once."""
-    # The site-wide helper is featured_attrs(), which returns the whole attribute string
-    # including the lazy hint; tuple-shaped readers are accepted too in case a poster is
-    # ever pointed at a file type it does not handle.
-    helper = globals().get("featured_attrs") or globals().get("img_dims") or globals().get("jpeg_size")
-    dims = helper(src) if helper else None
-    if isinstance(dims, str):
-        return dims
-    if isinstance(dims, (tuple, list)) and dims and dims[0]:
-        return f'width="{dims[0]}" height="{dims[1]}"'
+    """Intrinsic size for a poster, read from the file's own JPEG header.
+
+    This page first called helpers it had only assumed existed (img_dims, then
+    featured_attrs, which belongs to publications), and each guess shipped a crashing
+    generator, so the parsing is done here and proven by the numbers in the commit
+    message rather than by a name. If the site grows a shared sizing helper, this should
+    call it -- but only one that returns dimensions, which nothing in this file did.
+    Attributes are omitted when a header cannot be parsed: a guessed size is a worse
+    layout bug than no size."""
+    return _jpeg_attrs(src)
+
+
+def _jpeg_attrs(src, _path=None):
+    path = _path or (ROOT / src)
+    try:
+        d = path.read_bytes()
+    except OSError:
+        return ""
+    if not d.startswith(b"\xff\xd8"):
+        return ""
+    i = 2
+    while i + 9 < len(d):
+        if d[i] != 0xFF:
+            i += 1
+            continue
+        marker = d[i + 1]
+        if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+            i += 2
+            continue
+        if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):
+            h, w = _struct.unpack(">HH", d[i + 5 : i + 9])
+            return f'width="{w}" height="{h}"'.format(w=w, h=h)
+        i += 2 + _struct.unpack(">H", d[i + 2 : i + 4])[0]
     return ""
 
 
@@ -1281,7 +1301,7 @@ def room_object(o):
         src = o["img"]
         attrs = poster_attrs(src)
         lazy = "" if "loading=" in attrs else ' loading="lazy"'
-        face = f'<img class="obj-img" src="{src}" alt=""{lazy} {attrs}>'
+        face = f'<img class="obj-img" src="{src}" alt=""{lazy} {attrs}>'.replace("  ", " ")
     return (f'<button type="button" class="room-obj room-{o["kind"]}" data-obj="{escape(o["id"])}" '
             f'data-title="{name}" data-hint="{escape(o["hint"])}" style="{style}">'
             f'<span class="obj-face" aria-hidden="true">{face}</span>'
