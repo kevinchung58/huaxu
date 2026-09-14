@@ -1713,12 +1713,19 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   --h: 176px;
 }
 .room-poster .obj-face {
-  background:
-    linear-gradient(180deg, rgba(11, 20, 48, 0) 0 54%, #0b1430 54% 62%, rgba(11, 20, 48, 0) 62%),
-    radial-gradient(38% 26% at 50% 30%, var(--accent) 0 62%, rgba(0, 0, 0, 0) 63%),
-    var(--gold);
+  /* The paper is the frame now: the generated illustration is the content, and the
+     shadow is what holds it off the wall. */
+  padding: 5px 5px 22px;
+  background: var(--gold);
   box-shadow: 0 0 0 1px rgba(11, 20, 48, 0.35), 0 1.1rem 1.5rem -0.8rem rgba(0, 0, 0, 0.6);
   transition: transform 300ms var(--ease);
+}
+.obj-img {
+  display: block;
+  width: calc(100% - 10px);
+  height: calc(100% - 27px);
+  object-fit: cover;
+  border-radius: 1px;
 }
 .room-poster:hover .obj-face,
 .room-poster:focus-visible .obj-face {

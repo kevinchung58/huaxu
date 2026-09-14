@@ -1213,16 +1213,16 @@ DISTRICTS = [
              "title": "The vending machine",
              "hint": "It keeps the lane's frames. Pressing the lit slot opens the drawer "
                      "the photographs go into; nothing here reviews Tokyo."},
-            {"id": "poster-lantern", "kind": "poster", "x": -314, "z": 150, "y": 96, "ry": 90,
+            {"id": "poster-lantern", "kind": "poster", "img": "IMG/tokyo-poster-lantern.jpg", "x": -314, "z": 150, "y": 96, "ry": 90,
              "title": "Poster: paper lantern",
-             "hint": "Drawn cover art (CSS, no photograph), pinned so the lane has a first image. It is not "
+             "hint": "Generated illustration, pinned so the lane has a first image. It is not "
                      "a photograph and not evidence of a visit."},
-            {"id": "poster-wires", "kind": "poster", "x": 314, "z": 214, "y": 104, "ry": -90,
+            {"id": "poster-wires", "kind": "poster", "img": "IMG/tokyo-poster-wires.jpg", "x": 314, "z": 214, "y": 104, "ry": -90,
              "title": "Poster: wires and rain",
-             "hint": "Drawn cover art (CSS, no photograph). A real frame replaces it when one is supplied."},
-            {"id": "poster-ticket", "kind": "poster", "x": 44, "z": 424, "y": 108, "ry": 0,
+             "hint": "Generated illustration, not a photograph. A real frame replaces it when one is supplied."},
+            {"id": "poster-ticket", "kind": "poster", "img": "IMG/tokyo-poster-ticket.jpg", "x": 44, "z": 424, "y": 108, "ry": 0,
              "title": "Poster: a folded ticket",
-             "hint": "Drawn cover art (CSS, no photograph), on the end wall where the lane's light lands."},
+             "hint": "Generated illustration, on the end wall where the lane's light lands."},
             {"id": "shrine", "kind": "shrine", "x": 282, "z": 78, "y": 0, "ry": -90,
              "title": "A small shrine at knee height",
              "hint": "Draw one slip. The slip picks which slot you look at first; there is "
@@ -1256,12 +1256,28 @@ DISTRICTS = [
 INDENT = "\n        "
 
 
+def poster_attrs(src):
+    """Sizes come from the file through the site-wide helper. img_dims has returned a
+    tuple for some callers and an attribute string for others, so both shapes are
+    handled rather than guessed, and the attributes are simply omitted if the file
+    cannot be parsed — a missing width/height is a layout bug, a wrong one is worse."""
+    dims = img_dims(src)
+    if isinstance(dims, tuple) and dims and dims[0]:
+        return f'width="{dims[0]}" height="{dims[1]}"'
+    if isinstance(dims, str):
+        return dims
+    return ""
+
 def room_object(o):
     style = f'--x:{o["x"]}px;--z:{o["z"]}px;--y:{o["y"]}px;--ry:{o["ry"]}deg;'
     name = escape(o["title"])
+    face = ""
+    if o.get("img"):
+        src = o["img"]
+        face = f'<img class="obj-img" src="{src}" alt="" loading="lazy" {poster_attrs(src)}>'
     return (f'<button type="button" class="room-obj room-{o["kind"]}" data-obj="{escape(o["id"])}" '
             f'data-title="{name}" data-hint="{escape(o["hint"])}" style="{style}">'
-            f'<span class="obj-face" aria-hidden="true"></span>'
+            f'<span class="obj-face" aria-hidden="true">{face}</span>'
             f'<span class="obj-tag">{name}</span></button>')
 
 
@@ -1324,7 +1340,7 @@ rooms_body = f'''
     {INDENT.join(room_plan(d) for d in DISTRICTS if d["status"] == "open")}
     <div class="dashed reveal" style="margin-top:1.6rem">
       <strong>What this is, and what it is not</strong>
-      <p class="when">The lane is drawn, not surveyed. The posters are generated covers, the
+      <p class="when">The lane is drawn, not surveyed. The three posters are generated illustrations, the
       objects are props, and no footage sits in any slot yet. Frames and clips arrive when the
       owner supplies them; nothing on this page implies a place was visited.</p>
     </div>
