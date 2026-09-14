@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260914a"
+CSS = "css/site.css?v=20260914b"
 
 SITE = "https://kevinchung58.github.io/huaxu"
 DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking."
@@ -160,7 +160,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v=20260914a"></script>"""
+<script src="js/site.js?v=20260914b"></script>"""
 
 
 def page(title: str, active: str, body: str, path: str = "", extra: str = "") -> str:
@@ -1120,14 +1120,17 @@ if GALLERY:
     gallery_shown = "" if gallery_many else " hidden"
     gallery_pannable = " is-pannable" if gallery_many else ""
     gallery_hint = (
-        "Select a photograph to step into it. The left and right keys, the arrows, and "
-        "swiping all move along the roll; Esc returns to the archive."
+        "Select a photograph to step into it. The sheet leans toward your pointer; "
+        "inside, the roll turns along a wall. The left and right keys, the arrows, and "
+        "swiping all move along it; Esc returns to the archive."
         if gallery_many else
         "Select a photograph to view it larger; Esc returns to the archive."
     )
     gallery_html = f'''    {titled("h2", "Gallery", ICON_CAMERA)}
-    <div class="ig-grid reveal" data-ig-grid>
+    <div class="ig-wall reveal" data-ig-wall>
+      <div class="ig-grid" data-ig-grid>
       {gallery_tiles}
+      </div>
     </div>
     <p class="when reveal">{gallery_hint}</p>'''
     gallery_plate = f'''

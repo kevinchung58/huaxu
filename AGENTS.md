@@ -99,6 +99,15 @@ one `(src, alt, caption)` tuple per photograph); all behavior lives in `js/site.
   plate can shift, and `loading="lazy"` stays on both.
 - `inertOutside` / `trapTab` / `enterOverlay` / `leaveOverlay` are the site's shared overlay
   plumbing; the plate and the dot game both use them. Keep them shared.
+- Depth is **CSS transforms only**. The tilt and the angled roll are `perspective()` plus
+  `rotateY`/`translateZ`, chosen over WebGL for three measured reasons: three.js is ~149 KB
+  gzipped against the ~16 KB the whole site ships today; Pointer Lock (the `WASD` walk the
+  reference site uses) is unsupported on every iOS Safari and on Chrome for Android, so a
+  walk-through would be desktop-only; and a flat JPEG is not a space until something
+  estimates its depth, which needs a model and offline work, not a stylesheet. Keep it that
+  way unless the owner asks otherwise.
+- The frames' perspective is written **inside each frame's own transform**: a scroll container
+  flattens its children, so a `perspective` inherited from the plate would be ignored.
 
 ## Design system
 

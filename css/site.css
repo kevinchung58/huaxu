@@ -1042,7 +1042,17 @@ main {
    into a dark plate showing the same image full width, with the rest of the roll on
    either side of it. Named view transition moves the image between the two boxes, so
    no geometry is computed in the script; see js/site.js. */
+/* The sheet is a plane in a room: the wrapper owns the perspective, the grid leans
+   toward the pointer, and a hovered tile lifts out of it. Both are driven by two custom
+   properties written from js/site.js, and both are absent by construction when the
+   reader asked for reduced motion. */
+.ig-wall {
+  perspective: 1400px;
+}
 .ig-grid {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg));
+  transition: transform 420ms var(--ease);
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
   gap: 3px;
@@ -1070,6 +1080,15 @@ main {
 .ig-tile:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -3px;
+}
+.ig-tile {
+  transition: transform 320ms var(--ease), box-shadow 320ms var(--ease);
+}
+.ig-tile:hover,
+.ig-tile:focus-visible {
+  transform: translateZ(16px);
+  box-shadow: 0 1.1rem 1.6rem -0.9rem rgba(10, 17, 40, 0.4);
+  z-index: 1;
 }
 .ig-fig {
   position: absolute;
@@ -1140,6 +1159,9 @@ main {
   margin: 0;
   scroll-snap-align: center;
   scroll-snap-stop: always;
+  /* Perspective travels inside each frame's own transform: a scroll container flattens
+     its children, so a perspective inherited from the plate would be ignored here. */
+  transition: opacity 240ms var(--ease);
 }
 .ig-frame figcaption {
   padding: 0.8rem 3.4rem 1rem 1rem;
@@ -1201,6 +1223,19 @@ main {
 @media (prefers-reduced-motion: reduce) {
   .ig-reel {
     scroll-behavior: auto;
+  }
+  .ig-wall {
+    perspective: none;
+  }
+  .ig-grid,
+  .ig-tile:hover,
+  .ig-tile:focus-visible {
+    transform: none;
+    box-shadow: none;
+  }
+  .ig-frame {
+    transform: none !important;
+    opacity: 1 !important;
   }
   .ig-tile img,
   .ig-fig {

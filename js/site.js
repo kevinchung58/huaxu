@@ -154,6 +154,32 @@
      conventions as the trace game below. */
   const grid = document.querySelector("[data-ig-grid]");
   const plate = document.getElementById("ig-plate");
+
+  /* The archive sheet leans toward the pointer: enough rotation to read as an object
+     standing in a room, little enough that a caption is never tilted while being read.
+     Touch is excluded (there is no hover to answer), and so is reduced motion. */
+  const wall = document.querySelector("[data-ig-wall]");
+  if (wall && grid && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    let box = null;
+    wall.addEventListener("pointerenter", () => { box = wall.getBoundingClientRect(); });
+    wall.addEventListener("pointermove", (event) => {
+      if (event.pointerType === "touch") return;
+      if (!box) box = wall.getBoundingClientRect();
+      if (!box.width || !box.height) return;
+      const x = (event.clientX - box.left) / box.width - 0.5;
+      const y = (event.clientY - box.top) / box.height - 0.5;
+      // Signs chosen against the CSS rotation matrices, not by eye: rotateY(+) turns a
+      // surface normal toward +X, rotateX(+) toward -Y, so a positive angle on both makes
+      // the sheet face the pointer. Swapping either reads as the sheet dodging the cursor.
+      grid.style.setProperty("--ty", `${(x * 8).toFixed(2)}deg`);
+      grid.style.setProperty("--tx", `${(-y * 6).toFixed(2)}deg`);
+    });
+    const level = () => {
+      grid.style.setProperty("--ty", "0deg");
+      grid.style.setProperty("--tx", "0deg");
+    };
+    wall.addEventListener("pointerleave", level);
+  }
   if (grid && plate) {
     const tiles = Array.from(grid.querySelectorAll("[data-ig]"));
     const reel = plate.querySelector("[data-ig-reel]");
@@ -176,11 +202,35 @@
         named.push(el);
       }
     };
+    /* Angles on the roll: the frame you are on faces you, its neighbours turn away and
+       recede, so moving along the archive is turning along a wall rather than paging a
+       carousel. Written on every scroll because a touch drag is not owned by the script;
+       frames more than one and a half positions away are cleared instead of animated, so
+       the cost is per-screenful, not per-archive. */
+    const depth = ease;
+    const setDepth = () => {
+      if (!depth || !reel || !reel.clientWidth) return;
+      const shown = reel.scrollLeft / reel.clientWidth;
+      frames.forEach((frame, i) => {
+        const d = i - shown;
+        if (d < -1.6 || d > 1.6) {
+          if (frame.style.transform) {
+            frame.style.transform = "";
+            frame.style.opacity = "";
+          }
+          return;
+        }
+        const off = Math.abs(d);
+        frame.style.transform = `perspective(1100px) translateZ(${(-off * 150).toFixed(1)}px) rotateY(${(-d * 30).toFixed(1)}deg)`;
+        frame.style.opacity = (1 - off * 0.42).toFixed(2);
+      });
+    };
     const paint = () => {
       const i = at();
       if (count) count.textContent = `${i + 1} / ${frames.length}`;
       if (prev) prev.disabled = !many || i === 0;
       if (next) next.disabled = !many || i === frames.length - 1;
+      setDepth();
     };
     const glide = (i, behavior) => {
       const left = (reel.clientWidth || 0) * clamp(i);
