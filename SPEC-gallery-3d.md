@@ -202,3 +202,110 @@ room names, no building that our campus does not have.
 auto-advance, tap zones, hold-pause). If the owner also means the *ephemeral* half of
 Stories, that is a content-policy decision that contradicts `DESIGN.md`'s durable
 record — say so and I will write the expiring variant as its own spec.
+
+---
+
+# R1 outcomes (owner answered 2026-09-14) and what they change
+
+## 13. Answers, and the branches they close or open
+
+| Owner's answer | Consequence for the spec |
+|---|---|
+| "這是其中一個空間" + "我就是要各個區塊不同地區" | The unit is **not a room inside Activities** — it is a **district**. `DISTRICT` becomes the first-class record (superseding `ROOM` in §5), and there is a **picker above it**. Each district is entered and walked. `huaxu` therefore gains a second surface class: document pages *and* districts. |
+| "cv 站你可以調整或刪掉" | Recorded as: **restructuring the site's shape is pre-approved**; **deletion is not** — publications, the CV-derived copy and the report pages are factual records, so any removal is proposed item by item and confirmed. (Standing rule from `AGENTS.md`: do not invent or discard owner facts.) |
+| "所以每個空間可以使用者走路去看嗎?" | Yes — that is §15/§16: walking is the primary verb inside a district; the picker is 2D. |
+| "現在東京這邊我建議你可以先 ai 生成封面圖片或是做成裡面可交互的海報" | Authorized. **Generated art is allowed for a district's covers and posters**, labelled honestly as illustration in `alt` (the site already words generated art that way). It stays **art direction, not evidence**: no generated image may assert a fact (no fake venue signage, no fake dates). |
+| Q2: "先做占位、真片之後進" + Q5: "還沒有素材" | Build the mechanism on placeholders. Nothing in the site's public copy may imply a Tokyo trip exists until he supplies records. |
+| Q4: "我建議是有交互的動畫物品" | Every object gets an **idle animation** and a **click reaction**; the "小游戏" branch is narrowed to *animated objects whose reward is content*, and **no scoring** anywhere. |
+
+## 14. Media policy — the Google Drive question, answered with facts
+
+Short answer: **Drive is the wrong place for a player we control.** Long answer, from the
+failure modes people keep hitting:
+
+| Attempt | What actually happens |
+|---|---|
+| `<video src="https://drive.google.com/uc?export=download&id=…">` | Files over the virus-scan threshold (~25 MB) return an **HTML interstitial instead of bytes**, so the element fails to play; the `confirm=` token changes and is unreliable. |
+| `https://drive.google.com/file/d/ID/preview` in an iframe | Plays only in limited contexts; **no `Range` support → seeking is broken**, and access is **quota-limited after a number of views**. |
+| `googledrive.com/host/ID` | Dead (Google disabled public host-folder serving). |
+| Drive API `?alt=media` | Requires an API key or OAuth, and Google blocks bot-like requests; not a static-site solution. |
+| GitHub Pages + Git LFS | **Pages does not serve LFS media**; LFS files are download-only, no inline playback. |
+| YouTube / Vimeo embed | Works, but hands the visitor to a third-party player, its consent wall and its tracking — and it contradicts the stance this site already argues about hosted platforms (§ "no third-party custodians" in the owner's own position page). |
+
+Decisions:
+
+1. **Images → the repo, directly.** `IMG/districts/<id>/*`, downscaled web variants,
+   `img_dims()` reads the size from the file. No external host, no problem: an `<img>`
+   needs no range requests.
+2. **Video → the repo while it is small, and the repo's Releases when it is not.**
+   Target **10–20 s vertical, 720×1280, ≈1–3 MB per clip**, which is inside every GitHub
+   ceiling (25 MB per web upload, 100 MB per CLI push, <1 GB repo recommended, Pages soft
+   ceilings 1 GB site / 100 GB per month). Encode:
+   `ffmpeg -i in.mov -vf "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2" -c:v libx264 -crf 30 -preset veryfast -c:a aac -b:a 64k -movflags +faststart out.mp4`
+   — `+faststart` is what makes progressive playback work.
+3. If clips exceed that, publish them as **Release assets of the same repo** (served by
+   GitHub's CDN, keeps the working tree and clone light, no third party) and reference the
+   release URL from the generator.
+4. Player attributes, non-negotiable: `muted playsinline loop preload="none" poster="…"`,
+   one clip playing at a time, `controls` never removed for keyboard users, and a text
+   caption for every clip (a story without a caption is unusable to a screen reader and to
+   a muted autoplaying phone).
+
+## 15. District: Tokyo — the layout I am proposing
+
+A lane, not a plaza: narrow, ~14 m long, one axis of travel, so depth reads with few
+planes and nothing needs a skybox. `+Z` is "deeper in". Coordinates are `ITEM.at = {x, z}`
+in metres, `facing` in degrees, camera at eye height 1.6 m.
+
+```
+                       x = -2.4        x = 0 (centre path)      x = +2.4
+ z = 14  ┌────────────────────────────────────────────────────────────┐  ← noren (exit → picker)
+ z = 11  │  自動販売機 ▓▓ (only amber light)      電柱 + 自転車置場      │
+ z = 8   │  掲示板 (3 posters: cover art)         自販機反射 pool       │
+ z = 5   │  暖簾 under eave                        地蔵 / 鳥居 小祠      │
+ z = 2   │  入口階 / 自動販売機光在牆上的暈          海報牆(真照片掛這)   │
+ z = 0   └──────────────────────── 入口 ──────────────────────────────┘
+```
+
+Placement reasoning, stated so it can be argued with:
+
+- **One light source, and it is amber.** The vending machine is the district's key light;
+  everything else is a navy plate. That is `DESIGN.md`'s "amber is an instrument, never a
+  wash", and it is also the wayfinding: walk toward the light.
+- **The real photographs go on the wall at z≈2** (the entrance wall, facing the visitor on
+  the way in) — not scattered down the lane — so the archive has one honest place, and the
+  rest of the lane is *objects* the owner asked me to build.
+- **Posters at z≈8** carry the AI-generated covers (§13): three, one per sub-topic, and
+  each is an interactive surface, not a texture.
+- **The shrine/torii at z≈5 on the right** is the draw-an-omikuji object; its reward is a
+  media item, never points.
+- **The noren at z≈14 is the exit.** Parting it is the *only* way out, so leaving a
+  district is a physical act — the same idea as the reference's `E open`.
+- Sightline test used as the layout's acceptance criterion: from the entrance, the visitor
+  should be able to name all four interactive objects without moving; if they can't, the
+  lane is too deep or too cluttered.
+
+## 16. Object spec (animated, per the owner's Q4)
+
+| Object | Idle | Hover / focus | Click | Reduced motion | No JS | Acceptance |
+|---|---|---|---|---|---|---|
+| 自動販売機 vending | LED strip flickers 0.2 Hz, compressor hum via a 1 px vertical shimmer | lifts 4 mm, `--accent` outline | coil turns once, a polaroid drops into the tray, the **Stories rail opens** on that item's media | static LED, no shimmer; click opens instantly | it is a link to `#fig-n`, so the media is still reachable | after clicking, `opened` state persists in the URL fragment |
+| 掲示板 posters (×3) | paper corners lift 2° in a slow loop | the lifted corner straightens toward the pointer | uncurls to a full panel with its caption card, then the plate | no loop; scale only | the poster is an `<img>` with its caption in the list | panel never covers the walk path |
+| 暖簾 noren | cloth sways ±3° | parts slightly | **exits to the district picker** | no sway | a plain link "Leave Tokyo" | exit works from any camera angle |
+| 地蔵/小祠 shrine | incense wisp drifts | bell rope highlights | draws an omikuji → reveals **one locked media item** | wisp static; reveal immediate | link to `#locked` list section | the reward is content, verified by the caption text changing |
+| 電柱/自転車 utility pole | none | slight tilt | info card: district notes, "no people, no faces in these frames" | same | text card in the list | card never wider than the lane |
+| 反射 pool on the floor | subtle gradient shift | — | — | static | — | purely decorative: `aria-hidden`, no tab stop |
+
+Global rules for all objects: **no scoring, no sound unless the visitor turns it on, no
+auto-play of video on hover**; the camera never leaves the lane (`x ∈ [-2.4, 2.4]`,
+`z ∈ [0, 14]`); every object is reachable by keyboard in walk order (z ascending), because
+DOM order *is* walking order.
+
+## 17. What this does to the engine question
+
+The lane is ~6 planes (2 walls, floor, entrance, exit, sky omitted) plus ≤ 8 objects —
+well inside what `perspective` + `preserve-3d` handles, and the objects are DOM (so a poster
+can hold a real `<img>`, a caption, and a link, which WebGL would have to fake with a texture
+and a separate DOM overlay). **§9's rung 1 (CSS 3D) therefore covers the whole district as
+laid out above**; the research round is now about whether that stays true on iOS Safari and
+at what object count it stops being true — not about whether to import a library today.
