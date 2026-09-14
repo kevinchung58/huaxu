@@ -31,6 +31,7 @@ Files you MAY edit directly:
 | `css/site.css` | Single stylesheet, versioned via `?v=` query string |
 | `js/site.js` | Single script file — nav, reveals, the photo plate, and the dot-trace game (see below) |
 | `IMG/` | Portrait and gallery photos |
+| `SPEC-gallery-3d.md` | **Not built.** The owner-facing proposal for a walkable Activities archive, written from a first-hand read of his reference site; read it before any 3D work or any change to the dependency rule |
 | `.nojekyll` | Keeps GitHub Pages from running Jekyll — do not delete |
 
 ## Operational notes (2026-08)
