@@ -3,7 +3,8 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260911a"
+VER = "20260914e"   # one bump per changed asset pair; both tags read it
+CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
 DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking."
@@ -119,7 +120,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v=20260830a"></script>"""
+<script src="js/site.js?v={VER}"></script>"""
 
 
 def page(title: str, active: str, body: str, path: str = "", extra: str = "") -> str:
