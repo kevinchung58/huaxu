@@ -1559,151 +1559,38 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   .dot-play img, .dot-chip, .dot-cell-btn .dot { transition: none; }
 }
 
-/* ============ Districts: the objects inside a lane ============ */
-/* A <button> does not inherit font-size, so anything in a scene that forgets to state one takes
-   the UA's 13.3px Arial — inside a perspective-transformed box that is how a caption ends up
-   reading as a headline, so sizes here are stated rather than inherited. The art in these rules
-   is shared by every view of a district, because a poster is the same object whether the visitor
-   stands in front of it on the wall or reads its row in the list. */
-.room-obj {
-  font: inherit;
-  font-size: 0.78rem;
+/* ============ Districts: the objects in the lane ============ */
+/* The lane is rasterised on a canvas, so these are not painted boxes: they are the focus and touch
+   targets the renderer moves onto the screen every frame, sized to the projected quad they stand
+   for. An invisible control that can drift away from the thing it names is worse than no control at
+   all, which is why their geometry comes from the same projection that draws the wall, and why an
+   object behind you leaves the tab order instead of waiting there. Names live in the HUD and in
+   aria-label; nothing writes prose into the scene. */
+.walk-hit {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: var(--w, 100px);
-  height: var(--h, 100px);
-  margin-left: calc(var(--w, 100px) / -2);
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
   padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
-  /* y is the height of the object's bottom above the floor line (168px below the eye). */
-  transform: translate3d(var(--x), calc(168px - var(--y, 0px) - var(--h, 100px)), calc(var(--z) * -1px))
-    rotateY(var(--ry, 0deg));
+  transform-origin: 0 0;
 }
-.room-obj:focus-visible {
+.walk-hit:hover {
+  outline: 1px solid rgba(242, 200, 142, 0.5);
+  outline-offset: -1px;
+}
+.walk-hit:focus-visible {
   outline: 2px solid var(--accent-bright);
-  outline-offset: 6px;
+  outline-offset: 1px;
 }
-/* No prose inside the scene. A sentence floating at rotateY(-90deg) in a dark corridor is
-   illegible, and worse: it is the loudest thing on the page while the pictures stay quiet, so
-   the layer that carries the content loses to the layer that only labels it. Names live in the
-   line under the stage, which is also the line a screen reader already reads in order. */
-.room-obj .obj-tag {
-  display: none;
-}
-.obj-face {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: 3px;
-}
-.obj-tag {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 0.9rem 0.3rem 0.18rem;
-  background: linear-gradient(180deg, rgba(6, 11, 26, 0) 0%, rgba(6, 11, 26, 0.9) 46%);
-  border-radius: 0 0 3px 3px;
-  color: var(--muted-navy);
-  font-family: var(--sans);
-  font-size: 0.7rem;
-  line-height: 1.25;
-  letter-spacing: 0.04em;
-  text-align: center;
-  opacity: 0.86;
-  transition: opacity 200ms var(--ease), color 200ms var(--ease);
-}
-.room-obj:hover .obj-tag,
-.room-obj:focus-visible .obj-tag {
-  opacity: 1;
-  color: var(--accent-bright);
-}
-.room-vending {
-  --w: 96px;
-  --h: 150px;
-}
-.room-vending .obj-face {
-  background: linear-gradient(180deg, #1c2b57 0 58%, #101a38 58%);
-  box-shadow: 0 0 0 1px rgba(242, 200, 142, 0.4), 0 2.2rem 3rem -1rem rgba(242, 200, 142, 0.34);
-}
-.room-vending .obj-face::after {
-  content: "";
-  position: absolute;
-  left: 12%;
-  top: 10%;
-  width: 76%;
-  height: 34%;
-  border-radius: 2px;
-  background: linear-gradient(180deg, rgba(242, 200, 142, 0.9), rgba(180, 83, 9, 0.75));
-  animation: led 3.6s steps(1, end) infinite;
-}
-.room-poster {
-  --w: 132px;
-  --h: 176px;
-}
-.room-poster .obj-face {
-  /* The paper is the frame now: the generated illustration is the content, and the
-     shadow is what holds it off the wall. The old 22px bottom gutter held a caption that
-     now lives under the stage, so the print runs edge to edge. */
-  padding: 5px;
-  background: var(--gold);
-  box-shadow: 0 0 0 1px rgba(11, 20, 48, 0.35), 0 1.1rem 1.5rem -0.8rem rgba(0, 0, 0, 0.6);
-  transition: transform 300ms var(--ease);
-}
-.obj-img {
-  /* contain, not cover: a poster that is cropped to fit a slot is a poster that is being
-     used as a texture. The art already carries its own paper edge, so the gold mount is
-     not doubled. */
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #0b1430;
-  border-radius: 2px;
-}
-.room-poster.frame .obj-face {
-  padding: 0;
-  background: #0b1430;
-  box-shadow: 0 0 0 1px rgba(242, 200, 142, 0.42), 0 1.2rem 1.6rem -0.9rem rgba(0, 0, 0, 0.7);
-}
-.room-poster.frame .obj-img {
-  background: none;
-  border-radius: 0;
-}
-.room-poster:hover .obj-face,
-.room-poster:focus-visible .obj-face {
-  transform: rotate3d(1, 0, 0, -7deg) translateZ(10px);
-}
-.room-shrine {
-  --w: 66px;
-  --h: 46px;
-}
-.room-shrine .obj-face {
-  background: linear-gradient(180deg, #22314f, #101a38);
-  box-shadow: 0 0 0 1px rgba(205, 214, 238, 0.28);
-}
-.room-utility {
-  --w: 16px;
-  --h: 336px;
-}
-.room-utility .obj-face {
-  background: linear-gradient(90deg, #0f1836, #1d2c52 60%, #0f1836);
-}
-.room-noren {
-  --w: 178px;
-  --h: 74px;
-}
-.room-noren .obj-face {
-  /* Panels, not a texture: hard stops rather than a repeating gradient, because the
-     floor already carries the one deliberate stripe pattern in this world. */
-  background: linear-gradient(90deg, #1b294d 0 33%, #16234a 33% 34.4%, #1b294d 34.4% 66%,
-              #16234a 66% 67.4%, #1b294d 67.4% 100%);
-  transform-origin: 50% 0;
-  animation: noren 6.4s var(--ease) infinite;
+.walk-hit.is-reach {
+  outline: 1px solid rgba(242, 200, 142, 0.85);
+  outline-offset: -1px;
+  box-shadow: 0 0 22px rgba(242, 164, 60, 0.18), inset 0 0 0 1px rgba(242, 164, 60, 0.22);
 }
 .district-pick {
   display: grid;
@@ -1745,29 +1632,9 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   border-left-color: var(--accent);
   box-shadow: 0 0 0 1px rgba(180, 83, 9, 0.35);
 }
-@keyframes led {
-  0%, 92%, 100% { opacity: 1; }
-  94% { opacity: 0.55; }
-  96% { opacity: 0.9; }
-}
-@keyframes noren {
-  0%, 100% { transform: skewX(0deg); }
-  42% { transform: skewX(-2.4deg); }
-  70% { transform: skewX(1.4deg); }
-}
 @media (min-width: 820px) {
   .district-pick {
     grid-template-columns: 1fr 1fr;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .room-poster .obj-face,
-  .obj-tag {
-    transition: none;
-  }
-  .room-vending .obj-face::after,
-  .room-noren .obj-face {
-    animation: none;
   }
 }
 .story-segs {
@@ -1933,10 +1800,7 @@ body.shell {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  /* The clip sits on the carrier and never on the preserve-3d element: naming overflow anywhere
-     else is how WebKit silently flattens a scene back into a poster. No filter here either. */
-  perspective: var(--fov, 820px);
-  perspective-origin: 50% 50%;
+  background: #070d1c;   /* the canvas's own ground: no white flash before the first paint */
   cursor: grab;
   /* The space swallows the gesture. A page that scrolls under the thumb while you are trying to
      look around is not a place, it is a screenshot with a drag handler. */
@@ -1946,90 +1810,25 @@ body.shell {
   outline: 2px solid var(--accent-bright);
   outline-offset: -2px;
 }
-.walk-world {
+.walk-canvas {
   position: absolute;
   inset: 0;
-  transform-style: preserve-3d;
-  transform: rotateZ(var(--roll, 0deg)) rotateY(var(--yaw, 0deg)) rotateX(var(--pitch, 0deg))
-    translate3d(var(--tx, 0px), var(--ty, 0px), var(--tz, 0px));
-  will-change: transform;
+  width: 100%;
+  height: 100%;
+  display: block;
 }
-.walk-plane {
+.walk-hits {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  backface-visibility: hidden;
+  inset: 0;
 }
-/* A 420-high wall with the eye at 168 has its centre 42 above the eye: 168 - 420/2 = -42. */
-.walk-wall-far {
-  width: 640px;
-  height: 420px;
-  margin: -210px 0 0 -320px;
-  transform: translate3d(0, -42px, -1247px);
-  background: linear-gradient(180deg, #16234a 0%, #0d1731 62%, #0a1226 100%);
-}
-.walk-wall-back {
-  width: 640px;
-  height: 420px;
-  margin: -210px 0 0 -320px;
-  transform: translate3d(0, -42px, 40px) rotateY(180deg);
-  background: linear-gradient(180deg, #101a38 0%, #0a1226 70%, #060b1a 100%);
-}
-.walk-wall-left,
-.walk-wall-right {
-  width: 1247px;
-  height: 420px;
-  margin: -210px 0 0 -623px;
-}
-.walk-wall-left {
-  transform: translate3d(-320px, -42px, -623px) rotateY(90deg);
-  background: linear-gradient(90deg, #0a1226 0%, #16234a 68%, #1b2b57 100%);
-}
-.walk-wall-right {
-  transform: translate3d(320px, -42px, -623px) rotateY(-90deg);
-  background: linear-gradient(270deg, #0a1226 0%, #16234a 68%, #1b2b57 100%);
-}
-.walk-floor {
-  width: 640px;
-  height: 1247px;
-  margin: -623px 0 0 -320px;
-  transform: translate3d(0, 168px, -623px) rotateX(90deg);
-  background:
-    repeating-linear-gradient(0deg, rgba(205, 214, 238, 0.06) 0 1px, rgba(0, 0, 0, 0) 1px 96px),
-    linear-gradient(180deg, #0f1a36 0%, #0a1328 60%, #060c1c 100%);
-}
-.walk-ceiling {
-  width: 640px;
-  height: 1247px;
-  margin: -623px 0 0 -320px;
-  transform: translate3d(0, -252px, -623px) rotateX(-90deg);
-  background: linear-gradient(180deg, #05091a 0%, #0b1327 74%, #101c3c 100%);
-}
-/* Light from the machine at the end of the lane lands on a surface: a spill with edges. The blur
-   is on a leaf that has no 3D children, which is the only place this file is allowed one. */
-.walk-floor::after {
+/* The lane is drawn rather than photographed, so it is allowed one visible grain: the film on a
+   night scene that keeps flat wall panels from banding under the fog. */
+.walk-canvas::after {
   content: "";
   position: absolute;
-  left: 22%;
-  top: 76%;
-  width: 56%;
-  height: 24%;
-  background: linear-gradient(0deg, rgba(242, 200, 142, 0.3), rgba(242, 200, 142, 0.02));
-  clip-path: polygon(0 100%, 34% 0, 66% 0, 100% 100%);
-  filter: blur(6px);
-}
-/* Your own shadow, on the floor under the eye. It is the reference's YOU marker with a better
-   job: the one thing in the space that says a body is here, and looking down finds it. */
-.walk-you {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 52px;
-  height: 18px;
-  margin: -9px 0 0 -26px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(4, 8, 20, 0.72), rgba(4, 8, 20, 0));
-  transform: translate3d(var(--you-x, 0px), 167px, calc(var(--you-z, 0px) * -1px)) rotateX(90deg);
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(230, 240, 255, 0.028) 0 1px, transparent 1px 3px);
 }
 .walk-hud {
   position: absolute;
@@ -2341,18 +2140,8 @@ body.shell {
   margin-top: 0.2rem;
   font-size: 0.78rem;
 }
-/* What can be opened is legible before anything is pressed: the ring is the reach, and the thing
-   answers it by stepping off the wall. */
-.room-obj.is-reach .obj-face {
-  box-shadow: 0 0 0 2px rgba(242, 200, 142, 0.85), 0 1.2rem 1.8rem -0.9rem rgba(0, 0, 0, 0.8);
-}
-.room-obj.is-reach {
-  transform: translate3d(var(--x), calc(168px - var(--y, 0px) - var(--h, 100px)),
-      calc(var(--z) * -1px + 8px)) rotateY(var(--ry, 0deg));
-}
-.room-obj.is-here .obj-img {
-  filter: brightness(1.16);
-}
+/* What can be opened is legible before anything is pressed: the ring *is* the reach, and the
+   picture stays the renderer's own business. */
 @media (max-width: 700px) {
   .walk-stops {
     max-width: 46vw;
@@ -2363,14 +2152,13 @@ body.shell {
     font-size: 0.8rem;
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
-  .room-poster .obj-face,
-  .obj-tag {
+  /* The lane's own motion — head bob, sway, the flicker of the machine — is declined inside the
+     renderer, where those numbers live, rather than cancelled here after it has been paid for. */
+  .walk-hit:hover,
+  .walk-hit.is-reach {
     transition: none;
-  }
-  .room-vending .obj-face::after,
-  .room-noren .obj-face {
-    animation: none;
   }
 }
 

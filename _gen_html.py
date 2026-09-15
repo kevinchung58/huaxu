@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260914q"   # one bump per changed asset pair; both tags read it
+VER = "20260914r"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -1261,8 +1261,17 @@ KINDS = {
     },
 }
 
+OBJ_SIZE = {            # centimetres: the renderer draws these, the hit target wraps them
+    "vending": (96, 150), "poster": (132, 176), "shrine": (66, 46),
+    "utility": (16, 336), "noren": (150, 130), "frame": (150, 200),
+}
+
 EYE = 168                    # the eye is 1.68 m above the floor; 1 px = 1 cm throughout
 LANE_W, LANE_D, LANE_H = 640, 430, 360
+LANE_CEIL = 420             # cm, and a rendering choice rather than a record: the authored 360 is
+                            # the diagram's lane, while the space you stand in needs the extra half
+                            # metre or the bulbs hang at a walker's eyes
+LANE_BACK = 240             # how far the walls run behind you, so turning round shows a lane
 Z_SCALE = 2.9                # records are authored in the old 4.3 m lane; the space is 12.4 m
 WALK_D = round(LANE_D * Z_SCALE)
 STATIONS = [
@@ -1457,23 +1466,23 @@ def rooms_plate_html(districts):
 '''
 
 
-def room_object(o):
-    style = f'--x:{o["x"]}px;--z:{o["z"]}px;--y:{o["y"]}px;--ry:{o["ry"]}deg;'
-    name = escape(o["title"])
-    frame_attr = f' data-frame="{o["frame"]}"' if "frame" in o else ""
-    face = ""
-    if o.get("img"):
-        src = o["img"]
-        attrs = poster_attrs(src)
-        lazy = "" if "loading=" in attrs else ' loading="lazy"'
-        face = f'<img class="obj-img" src="{src}" alt=""{lazy} {attrs}>'.replace("  ", " ")
-    # The visible tag moved out of the scene, so the button's name is stated on the button:
-    # a control whose only text is display:none is a control no screen reader can read out.
-    return (f'<button type="button" class="room-obj room-{o["kind"]}" data-obj="{escape(o["id"])}" '
-            f'aria-label="{name}" data-title="{name}" data-hint="{escape(o["hint"])}" '
-            f'style="{style}"{frame_attr}>'
-            f'<span class="obj-face" aria-hidden="true">{face}</span>'
-            f'<span class="obj-tag">{name}</span></button>')
+def walk_object(o):
+    """One wall thing, expressed as a rectangle in centimetres plus whatever is painted on it.
+
+    The renderer needs geometry, the keyboard needs a stop, and the screen reader needs a name — the
+    same three numbers serve all three, so the button *is* the picture's bounding box on screen and
+    can never drift away from the thing it stands for.
+    """
+    w, h = OBJ_SIZE.get(o["kind"], (120, 160))
+    tex = o.get("img", "")
+    style = (f'--x:{o["x"]}px;--z:{o["z"]}px;--y:{o.get("y", 0)}px;--ry:{o.get("ry", 0)}deg;'
+             f'--w:{w}px;--h:{h}px')
+    frame = f' data-frame="{o["frame"]}"' if "frame" in o else ""
+    texture = f' data-tex="{escape(tex)}"' if tex else ""
+    return (f'<button type="button" class="walk-hit" data-obj="{escape(o["id"])}" '
+            f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
+            f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
+            f'style="{style}"{frame}{texture}></button>')
 
 
 def walk_html(d, drawer):
@@ -1495,7 +1504,7 @@ def walk_html(d, drawer):
     for o in objects:
         o = dict(o)
         o["z"] = round(o["z"] * Z_SCALE)
-        parts.append(room_object(o))
+        parts.append(walk_object(o))
     chips = []
     for n, st in enumerate(STATIONS):
         chips.append(
@@ -1511,19 +1520,15 @@ def walk_html(d, drawer):
             f'frame {n + 1} of {len(d.get("frames", []))}</span></li>')
     label = escape(d["label"])
     did = escape(d["id"])
-    return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}">
+    return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}"
+       data-lane-w="{LANE_W}" data-lane-d="{WALK_D}" data-lane-ceil="{LANE_CEIL}"
+       data-lane-back="{LANE_BACK}" data-eye="{EYE}">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="{label}, a lane you walk in person. Drag to turn, W A S D to walk, Shift to run,
        Space to jump, E to open what you are standing in front of, L for the list. Every frame is
        also written out in that list.">
-    <div class="walk-world" data-walk-world>
-      <div class="walk-plane walk-wall-far"></div>
-      <div class="walk-plane walk-wall-back"></div>
-      <div class="walk-plane walk-wall-left"></div>
-      <div class="walk-plane walk-wall-right"></div>
-      <div class="walk-plane walk-floor"></div>
-      <div class="walk-plane walk-ceiling"></div>
-      <span class="walk-you" data-walk-you aria-hidden="true"></span>
+    <canvas class="walk-canvas" data-walk-canvas width="16" height="9" aria-hidden="true"></canvas>
+    <div class="walk-hits" data-walk-hits>
       {INDENT.join(parts)}
     </div>
   </div>
@@ -1550,6 +1555,8 @@ def walk_html(d, drawer):
       <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
         <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open ·
         <kbd>L</kbd> list</p>
+      <p class="walk-note" data-walk-fallback hidden>Rendering the lane is unavailable in this
+        browser. {label} still reads below: every frame, its caption and its kind are in the list.</p>
       <p class="walk-note">{label} is drawn, not surveyed: the distances are the artist's, and a
         frame is a depiction of a place rather than a record of standing in it.</p>
     </div>

@@ -195,4 +195,6 @@ Reinstall sources:
    nav, no footer, no `reveal`, and its reading material lives in a drawer that ships open and is
    folded by JS. Adding a section, a `reveal` class or a navy drawer surface to that page is a
    defect, not a design choice — it either hides content from visitors without scripting or drops
-   borrowed components to 2:1 contrast.
+   borrowed components to 2:1 contrast. The scene itself is a canvas raster with no library in it;
+   its box is authored (`data-lane-w/-d/-ceil`, `data-eye`) and read by the renderer, so do not put
+   geometry back into CSS transforms or invent a second set of numbers in `js/site.js`.

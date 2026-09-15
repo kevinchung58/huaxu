@@ -133,14 +133,28 @@ Consequences that are now structural, not stylistic:
 - **No URL state.** There is no `#walk-tokyo` to open and nothing about the camera is addressable;
   `#frame-tokyo-*` still marks the row it names. A visit is not a fact worth linking.
 
-The body of the space is unchanged from the first honest version: metric units (1 px = 1 cm, eye
-at 168), acceleration and gravity integrated in one `requestAnimationFrame` that stops when nothing
-moves, head bob and roll scaled by speed, a shadow on the floor under the eye, `−`/`+` moving the
-projection plane rather than scaling it, reach decided by distance *and* facing, and no prose inside
-the scene at all. The transform is written as `--yaw/--pitch/--tx/--ty/--tz/--roll` and never as
-`style.transform`, which keeps the WebKit flattening invariants readable in one CSS block: the
-`preserve-3d` element carries no `overflow` and no `filter`, the clip and the perspective live on
-the view, and the only blur is on a leaf that has no 3D children.
+The body of the space is a hand-written raster, not a stylesheet trick. One `<canvas>` fills the
+viewport and everything on it comes from a single projection: walls split into 60 cm panels, each
+panel textured by an affine map onto a tiled pattern, quads depth-sorted and painted far-to-near,
+fog and the amber pool and the bulbs all distance functions of that same projection. There is no
+WebGL and no library — the whole site is still dependency-free, and the renderer is ~200 lines of
+this repo's own code. What that buys, and what it cannot:
+
+- The lane is closed on six sides *by construction*: the camera clips at 24 cm and the walls run past
+  the walk clamp, so turning around shows a lane instead of an edge. The box is authored (`data-lane-w`,
+  `data-lane-d`, `data-lane-ceil`, `data-eye`), so the renderer draws the room the data describes
+  rather than a room someone remembered to keep in sync.
+- Textures are patterns, not photographs, except the frames: those three JPGs are generated pictures
+  and are labelled as such, and nothing in the scene pretends to be a survey of Tokyo.
+- Wall objects are `<button>`s the renderer pins to their projected bounding box every frame. A
+  control that could drift away from the thing it names would be worse than none, and one behind you
+  leaves the tab order instead of waiting there.
+- No canvas, no black rectangle: `boot()` says so in the status line, opens the drawer and leaves the
+  whole district readable — the reference's own move, and the only honest one.
+- Motion is declined where the numbers live: no bob, no sway, no flicker under
+  `prefers-reduced-motion: reduce`, which is decided inside the integrator rather than cancelled in
+  CSS after it has been paid for.
+
 ### Kinds: the two defaults a district can be
 
 `purpose` says what a space is about. `kind` says what it is allowed to assert, and there

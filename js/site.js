@@ -611,8 +611,9 @@ function leaveOverlay(root, trigger) {
   if (!layer) return;
   const root = document.documentElement;
   const view = layer.querySelector("[data-walk-view]");
-  const world = layer.querySelector("[data-walk-world]");
-  const you = layer.querySelector("[data-walk-you]");
+  const cv = layer.querySelector("[data-walk-canvas]");
+  const g = cv && cv.getContext ? cv.getContext("2d") : null;
+  const noRaster = layer.querySelector("[data-walk-fallback]");
   const statusEl = layer.querySelector("[data-walk-status]");
   const recordEl = layer.querySelector("[data-walk-record]");
   const card = layer.querySelector("[data-walk-card]");
@@ -620,7 +621,7 @@ function leaveOverlay(root, trigger) {
   const listBtn = layer.querySelector("[data-walk-list]");
   const pad = layer.querySelector("[data-walk-pad]");
   const stops = Array.from(layer.querySelectorAll("[data-walk-stop]"));
-  const objs = Array.from(world.querySelectorAll("[data-obj]"));
+  const objs = Array.from(layer.querySelectorAll("[data-obj]"));
   const plate = document.getElementById("room-plate");
   const rows = Array.from(document.querySelectorAll(".frame-row[data-row-obj]"));
   const district = layer.dataset.walk;
@@ -635,21 +636,287 @@ function leaveOverlay(root, trigger) {
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const num = (el, prop) => parseFloat(el.style.getPropertyValue(prop)) || 0;
-  const meta = objs.map((el) => ({ el, x: num(el, "--x"), z: num(el, "--z"), y: num(el, "--y") }));
   const stopZ = stops.map((el) => num(el, "--z"));
-  const fov = () => Math.round(clamp(innerWidth * 0.72, 520, 980) * zoom);
+
+  /* ---- the raster ----
+     A canvas, one projection, a painter's algorithm. No WebGL, no library, nothing vendored: the
+     whole viewport is 3D and it is still this repo's own code, so a browser that cannot run it gets
+     the written district instead of a black rectangle. Walls are split into 60 cm panels because an
+     affine map is exact across a panel that narrow, and each panel carries a *tiling* pattern rather
+     than a photograph — nobody surveyed this alley, and a stretched stock texture would be the one
+     lie a renderer like this tells easily. Fog, the amber pool and the bulbs are all distance
+     functions of the same projection, so no depth cue can disagree with the geometry the way an
+     overlaid gradient would. What this is not: a lightmap, a raytracer, or a survey. */
+  const attr = (name, dflt) => parseFloat(layer.dataset[name]) || dflt;
+  const WALL = attr("laneW", 640) / 2, CEIL = attr("laneCeil", 420);
+  const Z_FAR = attr("laneD", 1247), Z_BACK = -attr("laneBack", 240);
+  const EYE = attr("eye", 168);
+  const SEG = 60, NEAR = 24, DPM = 2;   // panel, near plane, pattern scale: the renderer's own
+  let W = 0, H = 0, focal = 620, tilePat = null, floorPat = null;
+  const pics = new Map();
+  const loadPics = () => {
+    objs.forEach((el) => {
+      const src = el.dataset.tex;
+      if (!src || pics.has(src)) return;
+      const img = new Image();
+      img.decoding = "async";
+      img.src = src;
+      pics.set(src, img);
+    });
+  };
+  const mkTile = (paint) => {
+    const t = document.createElement("canvas");
+    t.width = 128; t.height = 128;
+    const c = t.getContext("2d");
+    if (!c) return null;
+    paint(c);
+    return g.createPattern(t, "repeat");
+  };
+  const paintWall = (c) => {
+    c.fillStyle = "#1a2338"; c.fillRect(0, 0, 128, 128);
+    c.strokeStyle = "rgba(6,10,22,.6)"; c.lineWidth = 2;
+    for (let y = 0; y <= 128; y += 32) { c.beginPath(); c.moveTo(0, y); c.lineTo(128, y); c.stroke(); }
+    c.strokeStyle = "rgba(210,222,248,.055)"; c.lineWidth = 1;
+    for (let y = 32; y <= 128; y += 32) {
+      c.beginPath(); c.moveTo(0, y - 1); c.lineTo(128, y - 1); c.stroke();
+      for (let k = 0; k < 4; k++) {
+        const x0 = (k * 37 + (y / 32) * 19) % 128;
+        c.beginPath(); c.moveTo(x0, y - 32); c.lineTo(x0, y); c.stroke();
+      }
+    }
+    for (let i = 0; i < 220; i++) {
+      c.fillStyle = `rgba(226,236,255,${((i % 5) * 0.007).toFixed(3)})`;
+      c.fillRect((i * 53) % 128, (i * 29) % 128, 2, 2);
+    }
+    c.fillStyle = "rgba(6,10,22,.5)"; c.fillRect(0, 104, 128, 24);   // the damp line at the foot
+  };
+  const paintFloor = (c) => {
+    c.fillStyle = "#101827"; c.fillRect(0, 0, 128, 128);
+    c.strokeStyle = "rgba(4,8,18,.75)"; c.lineWidth = 2;
+    c.strokeRect(-1, -1, 130, 130);
+    c.strokeStyle = "rgba(206,218,244,.05)";
+    c.beginPath(); c.moveTo(64, 0); c.lineTo(64, 128); c.stroke();
+    for (let i = 0; i < 150; i++) {
+      c.fillStyle = `rgba(190,206,238,${((i % 4) * 0.009).toFixed(3)})`;
+      c.fillRect((i * 71) % 128, (i * 43) % 128, 3, 2);
+    }
+  };
+  loadPics();
+  const size = () => {
+    if (!g) return;
+    const cw = view.clientWidth || innerWidth, ch = view.clientHeight || innerHeight;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = Math.round(Math.min(1180, Math.max(320, cw * dpr)));
+    H = Math.max(1, Math.round(W * (ch / Math.max(1, cw))));
+    cv.width = W; cv.height = H;
+    tilePat = mkTile(paintWall);
+    floorPat = mkTile(paintFloor);
+  };
+
+  const meta = objs.map((el) => ({
+    el, kind: el.dataset.obj, ry: num(el, "data-ry") || parseFloat(el.dataset.ry || 0),
+    w: parseFloat(el.dataset.w) || 100, h: parseFloat(el.dataset.h) || 140,
+    x: num(el, "--x"), z: num(el, "--z"), y: num(el, "--y"),
+    pic: el.dataset.tex ? pics.get(el.dataset.tex) : null, sx: 0, sy: 0, sw: 0, sh: 0, shown: false,
+  }));
+  const cam = () => {
+    const ry = (yaw * Math.PI) / 180, rp = ((pitch + (ease ? roll * 0.35 : 0)) * Math.PI) / 180;
+    return { x, z: depth, eye: EYE + height + bob, sy: Math.sin(ry), cy: Math.cos(ry),
+             sp: Math.sin(rp), cp: Math.cos(rp) };
+  };
+  const camPt = (C, px, py, pz) => {
+    const dx = px - C.x, dz = pz - C.z;
+    const ax = dx * C.cy - dz * C.sy, az = dx * C.sy + dz * C.cy, ay = C.eye - py;
+    return { x: ax, y: ay * C.cp - az * C.sp, z: az * C.cp + ay * C.sp };
+  };
+  const clipNear = (pts) => {
+    const out = [];
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], q = pts[(i + 1) % pts.length];
+      const pin = p.z >= NEAR, qin = q.z >= NEAR;
+      if (pin) out.push(p);
+      if (pin !== qin) {
+        const t = (NEAR - p.z) / (q.z - p.z);
+        out.push({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t, z: NEAR,
+                   u: p.u + (q.u - p.u) * t, v: p.v + (q.v - p.v) * t });
+      }
+    }
+    return out;
+  };
+  const affine = (p, uv) => {                    // three uv->screen pairs define the map
+    const [a0, b0] = uv[0], [a1, b1] = uv[1], [a2, b2] = uv[2];
+    const x0 = W * 0.5 + (focal * p[0].x) / p[0].z, y0 = H * 0.5 + (focal * p[0].y) / p[0].z;
+    const x1 = W * 0.5 + (focal * p[1].x) / p[1].z, y1 = H * 0.5 + (focal * p[1].y) / p[1].z;
+    const x2 = W * 0.5 + (focal * p[2].x) / p[2].z, y2 = H * 0.5 + (focal * p[2].y) / p[2].z;
+    const det = (a1 - a0) * (b2 - b0) - (a2 - a0) * (b1 - b0);
+    if (Math.abs(det) < 1e-6) return null;
+    const m11 = ((x1 - x0) * (b2 - b0) - (x2 - x0) * (b1 - b0)) / det;
+    const m12 = ((x2 - x0) * (a1 - a0) - (x1 - x0) * (a2 - a0)) / det;
+    const m21 = ((y1 - y0) * (b2 - b0) - (y2 - y0) * (b1 - b0)) / det;
+    const m22 = ((y2 - y0) * (a1 - a0) - (y1 - y0) * (a2 - a0)) / det;
+    return [m11, m21, m12, m22, x0 - m11 * a0 - m12 * b0, y0 - m21 * a0 - m22 * b0];
+  };
+  const quads = [];
+  const add = (C, corners, uv, mode, arg, img) => {
+    const pts = corners.map((c, i) => {
+      const o = camPt(C, c[0], c[1], c[2]);
+      o.u = uv[i * 2]; o.v = uv[i * 2 + 1];
+      return o;
+    });
+    const cp = clipNear(pts);
+    if (cp.length < 3) return null;
+    let off = 0;
+    cp.forEach((q) => {
+      const sx = W * 0.5 + (focal * q.x) / q.z, sy = H * 0.5 + (focal * q.y) / q.z;
+      if (sx > -80 && sx < W + 80 && sy > -80 && sy < H + 80) off += 1;
+    });
+    if (!off) return null;
+    let z = 0; cp.forEach((q) => { z += q.z; });
+    const quad = { z: z / cp.length, pts: cp, mode, arg, img };
+    quads.push(quad);
+    return quad;
+  };
+  const box = (C, q) => {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    q.pts.forEach((p) => {
+      const sx = W * 0.5 + (focal * p.x) / p.z, sy = H * 0.5 + (focal * p.y) / p.z;
+      x0 = Math.min(x0, sx); y0 = Math.min(y0, sy); x1 = Math.max(x1, sx); y1 = Math.max(y1, sy);
+    });
+    return [x0, y0, x1 - x0, y1 - y0];
+  };
+  const shade = (z) => clamp((z - 320) / 2350, 0, 0.94);
+  // The vending machine is the only light in the lane, so the pool is read off the prop rather than
+  // retyped: authored geometry stays the single source of where the amber comes from.
+  const lamp = meta.find((m) => m.kind === "vending") || meta[0] || { x: 0, z: 0, h: 150 };
+  const pool = (px, py, pz) => {
+    const d = Math.hypot(px - lamp.x, pz - lamp.z);
+    return clamp(1 - d / 900, 0, 1) * clamp(1 - Math.abs(py - lamp.h / 2) / CEIL, 0, 1);
+  };
+
+  const emit = (q) => {
+    const path = () => {
+      g.beginPath();
+      q.pts.forEach((p, i) => {
+        const sx = W * 0.5 + (focal * p.x) / p.z, sy = H * 0.5 + (focal * p.y) / p.z;
+        if (i) g.lineTo(sx, sy); else g.moveTo(sx, sy);
+      });
+      g.closePath();
+    };
+    path();
+    if (q.mode === "flat") g.fillStyle = q.arg; else g.fillStyle = "#131c30";
+    g.fill();
+    if (q.mode === "pat" && q.arg) {
+      const m = affine(q.pts, q.pts.map((p) => [p.u, p.v]));
+      if (m) {
+        g.save(); path(); g.clip(); g.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+        g.fillStyle = q.arg; g.fillRect(-2048, -2048, 4096, 4096); g.restore();
+      }
+    } else if (q.mode === "pic" && q.img && q.img.complete && q.img.naturalWidth) {
+      const m = affine(q.pts, q.pts.map((p) => [p.u, p.v]));
+      if (m) {
+        g.save(); path(); g.clip(); g.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+        g.drawImage(q.img, 0, 0, q.img.naturalWidth, q.img.naturalHeight); g.restore();
+      }
+    }
+    const dark = shade(q.z);
+    if (dark > 0.02) { path(); g.fillStyle = `rgba(5,9,20,${dark.toFixed(3)})`; g.fill(); }
+    const lit = q.lit || 0;
+    if (lit > 0.02) { path(); g.fillStyle = `rgba(242,164,60,${(lit * 0.2).toFixed(3)})`; g.fill(); }
+  };
 
   const draw = () => {
-    world.style.setProperty("--yaw", `${yaw.toFixed(2)}deg`);
-    world.style.setProperty("--pitch", `${pitch.toFixed(2)}deg`);
-    world.style.setProperty("--tx", `${(-x).toFixed(1)}px`);
-    world.style.setProperty("--ty", `${(height + bob).toFixed(1)}px`);
-    world.style.setProperty("--tz", `${depth.toFixed(1)}px`);
-    world.style.setProperty("--roll", `${roll.toFixed(2)}deg`);
-    view.style.setProperty("--fov", `${fov()}px`);
-    if (you) {
-      you.style.setProperty("--you-x", `${x.toFixed(0)}px`);
-      you.style.setProperty("--you-z", `${depth.toFixed(0)}px`);
+    if (!g) return;
+    // Recomputed per frame, not per resize: − / + are a field-of-view control, so the projection
+    // has to answer them, and only the surface it is drawn on belongs to the device.
+    const half = clamp(0.6 / zoom, 0.34, 0.92);
+    focal = W * 0.5 / Math.tan(half);
+    const C = cam();
+    quads.length = 0;
+    for (let z = Z_BACK; z < Z_FAR; z += SEG) {
+      const z1 = Math.min(z + SEG, Z_FAR);
+      [-1, 1].forEach((side) => {
+        const px = side * WALL;
+        const lit = pool(px, 210, (z + z1) / 2);
+        const q = add(C, [[px, 0, z], [px, 0, z1], [px, CEIL, z1], [px, CEIL, z]],
+                      [z * DPM, 0, z1 * DPM, 0, z1 * DPM, -CEIL * DPM, z * DPM, -CEIL * DPM],
+                      "pat", tilePat);
+        if (q) q.lit = lit;
+      });
+      add(C, [[-WALL, 0, z], [WALL, 0, z], [WALL, 0, z1], [-WALL, 0, z1]],
+          [z * DPM, -WALL * DPM, z * DPM, WALL * DPM, z1 * DPM, WALL * DPM, z1 * DPM, -WALL * DPM],
+          "pat", floorPat);
+      add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
+          [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#0b1322");
+    }
+    add(C, [[-WALL, 0, Z_FAR], [WALL, 0, Z_FAR], [WALL, CEIL, Z_FAR], [-WALL, CEIL, Z_FAR]],
+        [0, 0, WALL * DPM * 2, 0, WALL * DPM * 2, -CEIL * DPM * 2, 0, -CEIL * DPM * 2], "pat", tilePat);
+    add(C, [[WALL, 0, Z_BACK], [-WALL, 0, Z_BACK], [-WALL, CEIL, Z_BACK], [WALL, CEIL, Z_BACK]],
+        [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#0e1626");
+
+    meta.forEach((m) => {
+      const hw = m.w / 2;
+      const onSide = Math.abs(m.ry) > 45;
+      const corners = onSide
+        ? [[m.x, m.y, m.z - hw], [m.x, m.y, m.z + hw], [m.x, m.y + m.h, m.z + hw], [m.x, m.y + m.h, m.z - hw]]
+        : [[m.x - hw, m.y, m.z], [m.x + hw, m.y, m.z], [m.x + hw, m.y + m.h, m.z], [m.x - hw, m.y + m.h, m.z]];
+      const lit = pool(m.x, m.y + m.h / 2, m.z);
+      const face = m.pic ? "pic" : "flat";
+      const uv = m.pic
+        ? [[0, 0], [m.pic.naturalWidth || 640, 0], [m.pic.naturalWidth || 640, -(m.pic.naturalHeight || 427)], [0, -(m.pic.naturalHeight || 427)]]
+        : [[0, 0], [0, 0], [0, 0], [0, 0]];
+      const q = add(C, corners, uv.flat(), face, m.kind === "vending" ? "#f2a43c" : "#1d2842", m.pic);
+      m.shown = false;
+      if (!q) { m.el.style.visibility = "hidden"; m.el.tabIndex = -1; return; }
+      q.lit = m.kind === "vending" ? 1 : lit;
+      const b = box(C, q);
+      if (b[2] > 6 && b[3] > 6 && b[0] > -40 && b[0] < W + 40 && b[1] < H + 40 && b[1] > -40) {
+        m.el.style.visibility = "visible";
+        m.el.tabIndex = 0;
+        m.el.style.transform = `translate3d(${b[0].toFixed(1)}px, ${b[1].toFixed(1)}px, 0)`;
+        m.el.style.width = `${Math.max(8, b[2]).toFixed(1)}px`;
+        m.el.style.height = `${Math.max(8, b[3]).toFixed(1)}px`;
+        m.shown = true;
+      } else {
+        m.el.style.visibility = "hidden";
+        m.el.tabIndex = -1;
+      }
+    });
+
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = "#070d1c";
+    g.fillRect(0, 0, W, H);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    quads.sort((p, q) => q.z - p.z);
+    quads.forEach(emit);
+
+    // The bulbs and the machine are glows, not geometry: same projection, drawn afterwards, so the
+    // amber pool cannot disagree with where the machine actually is.
+    g.globalCompositeOperation = "lighter";
+    const glow = (px, py, pz, r, col) => {
+      const p = camPt(C, px, py, pz);
+      if (p.z < NEAR) return;
+      const sx = W * 0.5 + (focal * p.x) / p.z, sy = H * 0.5 + (focal * p.y) / p.z;
+      const rad = Math.max(6, (focal * r) / p.z);
+      if (sx < -rad || sx > W + rad || sy < -rad || sy > H + rad) return;
+      const grd = g.createRadialGradient(sx, sy, 0, sx, sy, rad);
+      grd.addColorStop(0, col);
+      grd.addColorStop(1, "rgba(242,164,60,0)");
+      g.fillStyle = grd;
+      g.beginPath(); g.arc(sx, sy, rad, 0, 6.2832); g.fill();
+    };
+    for (let z = 60; z < Z_FAR; z += 190) glow(0, CEIL - 26, z, 26, "rgba(255,214,150,0.5)");
+    glow(lamp.x, lamp.y + lamp.h / 2, lamp.z, 120, "rgba(255,190,96,0.55)");
+    g.globalCompositeOperation = "source-over";
+
+    // where your body actually is, on the floor: the one thing that makes a first-person view
+    // legible as a body rather than a camera
+    const sh = camPt(C, x, 2, depth + 40);
+    if (sh.z > NEAR) {
+      const sx = W * 0.5 + (focal * sh.x) / sh.z, sy = H * 0.5 + (focal * sh.y) / sh.z;
+      g.fillStyle = "rgba(3,6,14,0.5)";
+      g.beginPath();
+      g.ellipse(sx, sy, Math.max(4, focal * 26 / sh.z), Math.max(2, focal * 9 / sh.z), 0, 0, 6.2832);
+      g.fill();
     }
   };
 
@@ -775,6 +1042,20 @@ function leaveOverlay(root, trigger) {
     }
   };
   const boot = () => {
+    // A texture that arrives after the first paint would otherwise stay black until the visitor
+    // moves, so the frame it lands in is repainted on its own. Attached here, not where the images
+    // are created: that code runs before `draw` exists, and a load handler that fires early enough
+    // to matter is exactly the kind that reaches into an uninitialised binding.
+    pics.forEach((img) => { img.onload = () => { if (on && !raf) draw(); }; });
+    if (!g) {
+      // The reference names its fallback instead of hiding it: a visitor with no canvas gets the
+      // sentence and the list, not a black rectangle that looks like a broken image.
+      if (noRaster) noRaster.hidden = false;
+      say("Rendering the lane is unavailable here · the list below still reads", "");
+      if (listBtn) toggleList(true);
+      return;
+    }
+    size();
     say("Building the lane…", "");
     draw();
     // Two frames, not a timer: the status reads ready once the transform has actually painted,
@@ -855,7 +1136,9 @@ function leaveOverlay(root, trigger) {
   });
 
   view.addEventListener("pointerdown", (event) => {
-    if (event.target.closest(".room-obj")) return;
+    // A grab that starts on a wall thing is a press on a control, not a turn: the two gestures have
+    // to stay separable, or tapping the vending machine would swing the camera.
+    if (event.target.closest(".walk-hit")) return;
     down = { x: event.clientX, y: event.clientY, yaw, pitch, id: event.pointerId, moved: 0 };
     view.classList.add("is-dragging");
     if (view.setPointerCapture) view.setPointerCapture(event.pointerId);
@@ -940,7 +1223,11 @@ function leaveOverlay(root, trigger) {
   });
   root.addEventListener("keyup", (event) => { keys.delete(event.key.toLowerCase()); });
   root.addEventListener("blur", () => { keys.clear(); stick = null; });
-  window.addEventListener("resize", () => { if (on) draw(); });
+  window.addEventListener("resize", () => { if (on) { size(); draw(); } });
+  // Read-only, for the harness: a jsdom that can only assert "the picture changed" cannot tell a
+  // camera that walks from one that jitters, and the numbers that matter are already in scope here.
+  layer.__walk = { get depth() { return depth; }, get x() { return x; }, get height() { return height; },
+                   get yaw() { return yaw; }, get focal() { return focal; }, get quads() { return quads.length; } };
   if (listPanel) listPanel.classList.add("is-closed");   // scripting present: fold it, then obey
   if (listBtn) listBtn.setAttribute("aria-expanded", "false");
   draw();

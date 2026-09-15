@@ -54,26 +54,36 @@ Pointer Lock is unsupported on every iOS Safari and it hijacks the cursor.
 - A district **is** its page: `shell_page()`, viewport owned by the space, no doorway to click, no
   nav or footer, and the CV reachable by one link in the HUD. If a district becomes a figure inside
   an article, it has failed the brief regardless of how correct the geometry is.
-- The HUD carries the words; nothing writes prose into the scene (`.obj-tag` is `display:none`, and
-  the object keeps `aria-label` so hiding its text never hides its name). Reading material lives in
-  a drawer of `var(--bg)` that ships open in the HTML and is folded by JS — so the page is complete
-  without scripting, prints as a list, and never re-tints a borrowed component to stay legible.
-- Geometry is metric and shared: `EYE = 168`, `1px = 1cm`, walls at ±320 with the walk clamp at
-  290, and depth scaled once by `Z_SCALE` in the generator so the record keeps its authored
-  numbers. The box is closed on six sides and the far wall always sits beyond `MAX_D`, so no
-  visitor ever sees the edge of the world.
-- Motion is one rAF loop that stops when nothing moves; the frame writes `--yaw/--pitch/--tx/
-  --ty/--tz/--roll` and never `style.transform`. `−`/`+` change `--fov` (the perspective distance),
-  never a scale factor. Reduced motion drops bob and jump but keeps the walk.
+- The HUD carries the words; nothing writes prose into the scene — wall objects are `<button>`s
+  with no text at all, named by `aria-label`, so there is no caption to hide and no nested `alt` to
+  concatenate into the name. Reading material lives in a drawer of `var(--bg)` that ships open in
+  the HTML and is folded by JS — so the page is complete without scripting, prints as a list, and
+  never re-tints a borrowed component to stay legible.
+- Geometry is metric and **authored once**: `EYE = 168`, `1px = 1cm`, `LANE_W/2` walls with the walk
+  clamp 30 cm short of them, `LANE_CEIL` for the roof, and depth scaled by `Z_SCALE` in the generator
+  so the record keeps its authored numbers. The generator writes those onto the layer as
+  `data-lane-w/-d/-ceil/-back` and `data-eye`; the renderer reads them. Do not restate them in CSS
+  transforms or in a second set of constants — six CSS planes were a picture of a room, not a room,
+  and the owner sent that back twice.
+- The scene is a canvas raster: one projection, walls in 60 cm panels, affine-textured tiling
+  patterns, quads painted far-to-near, fog and light as distance functions of the same transform.
+  No library and no WebGL. A texture comes from `data-tex` on the object; the pattern tiles are drawn
+  at boot, because a stretched stock photo on a wall is the one lie this renderer tells easily.
+- Motion is one rAF loop that stops when nothing moves, and it writes pixels rather than styles.
+  `−`/`+` change the field of view (the focal length), never a scale factor, and never resize the
+  canvas. Reduced motion drops bob and jump but keeps the walk. With no 2D context, `boot()` says so
+  in the status line, opens the drawer and leaves the district readable — the reference's own move.
 - Keyboard verbs print only under `(hover: hover) and (pointer: fine)`; every one of them has a
   twin that a thumb can press (the pad, `Jump`, the stop chips, tapping the object itself).
 - HUD text floors at 0.76rem and every colour pair is checked against the surface it actually sits
-  on: `.when` belongs to the paper, so the walk's drawer restates its own light colour.
+  on; the drawer is the site's own paper precisely so that `.when`, `.badge` and `.slot` never have
+  to be restated for a second background.
 - Image dimensions come from the file's own JPEG header. If it cannot be parsed, omit the
   attributes — a guessed size is a worse layout bug than none.
-- `alt=""` on images inside an object, and `aria-label="{title}"` on the object button itself:
-  the tag is `display:none` inside the scene, so without the label the control has no name.
-  A nested `alt` would concatenate into that name, which is why the image stays empty.
+- The hit target an object gets is sized and placed by the renderer every frame; when the object is
+  off-screen or behind the visitor, its button takes `tabindex="-1"` and `visibility:hidden`. A focus
+  ring on an empty corner of the screen is a trap, and a tab stop for a thing you cannot see is worse
+  than one you can walk back to.
 - Generated art is labelled generated, once, above the list — not stamped on every row, which
   is the cadence the detector calls templated.
 - Reduced motion: no auto-advance, no flicker, no sway; taps and keys still work. Touch gets
