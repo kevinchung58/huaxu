@@ -15,7 +15,7 @@
   <title>Districts · Hua-Xu Zhong</title>
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
   <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
-  <link rel="stylesheet" href="css/site.css?v=20260914h" />
+  <link rel="stylesheet" href="css/site.css?v=20260914i" />
 </head>
 <body>
 <a class="skip" href="#main">Skip to main content</a>
@@ -36,12 +36,12 @@
         </div>
       </div>
       <a href="activities.html" class="">Activities</a>
+      <a href="rooms.html" class="is-active">Rooms</a>
       <div class="more">
-        <button class="more-btn is-active" type="button" aria-expanded="false" aria-haspopup="true">More <span class="caret" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg></span></button>
+        <button class="more-btn" type="button" aria-expanded="false" aria-haspopup="true">More <span class="caret" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg></span></button>
         <div class="more-menu" role="menu">
           <a href="service.html" class="">Service</a>
           <a href="links.html" class="">Resources</a>
-          <a href="rooms.html" class="is-active">Rooms</a>
         </div>
       </div>
     </nav>
@@ -93,12 +93,13 @@
         <button type="button" class="room-obj room-poster frame" data-obj="frame-scramble" data-title="Frame: the scramble at Shibuya" data-hint="The crossing from above, drawn. Empty on purpose: a crowd here would be an invented record, and this frame is not a record." style="--x:-314px;--z:290px;--y:96px;--ry:90deg;" data-frame="1"><span class="obj-face" aria-hidden="true"><img class="obj-img" src="IMG/tokyo-scramble.jpg" alt="" loading="lazy" width="896" height="1200"></span><span class="obj-tag">Frame: the scramble at Shibuya</span></button>
         <button type="button" class="room-obj room-poster frame" data-obj="frame-tower" data-title="Frame: the tower at dusk" data-hint="The lattice tower between rooftops, drawn, its own lights the only amber in the frame." style="--x:-170px;--z:424px;--y:96px;--ry:0deg;" data-frame="2"><span class="obj-face" aria-hidden="true"><img class="obj-img" src="IMG/tokyo-tower.jpg" alt="" loading="lazy" width="896" height="1200"></span><span class="obj-tag">Frame: the tower at dusk</span></button>
         <button type="button" class="room-obj room-noren" data-obj="noren" data-title="The curtain at your back" data-hint="Part it to leave the lane." style="--x:0px;--z:-44px;--y:178px;--ry:180deg;"><span class="obj-face" aria-hidden="true"></span><span class="obj-tag">The curtain at your back</span></button>
-        <button type="button" class="room-station" data-station="0" style="--z:0px" aria-label="Walk to the entrance"><span class="station-dot" aria-hidden="true"></span><span class="station-name">the entrance</span></button>
-        <button type="button" class="room-station" data-station="1" style="--z:150px" aria-label="Walk to under the posters"><span class="station-dot" aria-hidden="true"></span><span class="station-name">under the posters</span></button>
-        <button type="button" class="room-station" data-station="2" style="--z:275px" aria-label="Walk to by the pole"><span class="station-dot" aria-hidden="true"></span><span class="station-name">by the pole</span></button>
-        <button type="button" class="room-station" data-station="3" style="--z:395px" aria-label="Walk to in front of the machine"><span class="station-dot" aria-hidden="true"></span><span class="station-name">in front of the machine</span></button>
+        <button type="button" class="room-station" data-station="0" style="--z:0px;--pc:68%" aria-label="Walk to the entrance"><span class="station-dot" aria-hidden="true"></span><span class="station-name">the entrance</span></button>
+        <button type="button" class="room-station" data-station="1" style="--z:150px;--pc:46%" aria-label="Walk to under the posters"><span class="station-dot" aria-hidden="true"></span><span class="station-name">under the posters</span></button>
+        <button type="button" class="room-station" data-station="2" style="--z:275px;--pc:28%" aria-label="Walk to by the pole"><span class="station-dot" aria-hidden="true"></span><span class="station-name">by the pole</span></button>
+        <button type="button" class="room-station" data-station="3" style="--z:395px;--pc:11%" aria-label="Walk to in front of the machine"><span class="station-dot" aria-hidden="true"></span><span class="station-name">in front of the machine</span></button>
     </div>
-    <p class="room-legend">drag to turn · <kbd>W</kbd><kbd>S</kbd> walk · <kbd>←</kbd><kbd>→</kbd> look · <kbd>Esc</kbd> close</p>
+    <div class="room-plan" aria-hidden="true"><div class="plan-lane"><span class="plan-dot" style="top:68%"></span><span class="plan-dot" style="top:46%"></span><span class="plan-dot" style="top:28%"></span><span class="plan-dot" style="top:11%"></span><span class="plan-cam" data-plan-cam></span></div><span class="plan-word">plan</span></div>
+    <p class="room-legend"><span class="how">CSS 3D — four planes, one light, no WebGL</span> · drag to turn · <kbd>W</kbd><kbd>S</kbd> walk · <kbd>←</kbd><kbd>→</kbd> look · <kbd>Esc</kbd> close</p>
   </div>
 </section>
     <div class="dashed reveal" style="margin-top:1.6rem">
@@ -140,7 +141,7 @@
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg></button>
-<script src="js/site.js?v=20260914h"></script>
+<script src="js/site.js?v=20260914i"></script>
 <div class="modal" id="room-plate" role="dialog" aria-modal="true" aria-label="Frames in the lane">
   <div class="modal-backdrop" data-room-close></div>
   <div class="modal-panel">

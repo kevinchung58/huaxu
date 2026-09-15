@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260914h"   # one bump per changed asset pair; both tags read it
+VER = "20260914i"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -56,7 +56,7 @@ def nav(active: str) -> str:
         cls = "is-active" if active == key else ""
         return f'<a href="{href}" class="{cls}">{label}</a>'
 
-    more_on = " is-active" if active in {"service", "links", "rooms"} else ""
+    more_on = " is-active" if active in {"service", "links"} else ""
     pos_on = " is-active" if active in {"position", "thinking", "practice"} else ""
     return f"""<a class="skip" href="#main">Skip to main content</a>
 <header class="nav">
@@ -76,12 +76,12 @@ def nav(active: str) -> str:
         </div>
       </div>
       {a("activities.html", "Activities", "activities")}
+      {a("rooms.html", "Rooms", "rooms")}
       <div class="more">
         <button class="more-btn{more_on}" type="button" aria-expanded="false" aria-haspopup="true">More <span class="caret" aria-hidden="true">{ICON_CARET}</span></button>
         <div class="more-menu" role="menu">
           {a("service.html", "Service", "service")}
           {a("links.html", "Resources", "links")}
-          {a("rooms.html", "Rooms", "rooms")}
         </div>
       </div>
     </nav>
@@ -1055,6 +1055,7 @@ activities = page("Activities · Hua-Xu Zhong", "activities", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>A photo archive and a running record of talks. Captions and venues will be attached as they are confirmed.</p></div>
+    <p class="pillar-more"><a class="text-arrow" href="rooms.html#room-tokyo">The archive is also a place you can walk: Tokyo, three sights on the wall</a></p>
     {titled("h2", "Gallery", ICON_CAMERA)}
     <p class="when reveal" style="margin:-0.4rem 0 1rem">{gallery_note}</p>
     <div class="deck reveal" data-deck>
@@ -1430,15 +1431,24 @@ def room_plan(d):
     parts = [room_object(o) for o in list(d["objects"]) + wall_frames(d)]
     if d["exit"]:
         parts.append(room_object(d["exit"]))
+    plan_dots = []
     for i, st in enumerate(STATIONS):
+        pct = round((1 - st["z"] / LANE_D) * 62) + 6   # 6%..68% down the plan
         parts.append(
             f'<button type="button" class="room-station" data-station="{i}" '
-            f'style="--z:{st["z"]}px" aria-label="Walk to {escape(st["label"])}">'
+            f'style="--z:{st["z"]}px;--pc:{pct}%" aria-label="Walk to {escape(st["label"])}">'
             f'<span class="station-dot" aria-hidden="true"></span>'
             f'<span class="station-name">{escape(st["label"])}</span></button>')
+        plan_dots.append(f'<span class="plan-dot" style="top:{pct}%"></span>')
+    plan = (f'<div class="room-plan" aria-hidden="true">'
+            f'<div class="plan-lane">{"".join(plan_dots)}'
+            f'<span class="plan-cam" data-plan-cam></span></div>'
+            f'<span class="plan-word">plan</span></div>')
     objs = INDENT.join(parts)
     label = escape(d["label"])
-    legend = 'drag to turn · <kbd>W</kbd><kbd>S</kbd> walk · <kbd>←</kbd><kbd>→</kbd> look · <kbd>Esc</kbd> close'
+    legend = ('<span class="how">CSS 3D — four planes, one light, no WebGL</span>'
+              ' · drag to turn · <kbd>W</kbd><kbd>S</kbd> walk · <kbd>←</kbd><kbd>→</kbd> look'
+              ' · <kbd>Esc</kbd> close')
     return f'''<section class="room" id="room-{escape(d["id"])}" data-room="{label}">
   <div class="room-stage" tabindex="0" data-room-stage role="group"
        aria-label="{label}: a lane you can walk. Drag, or use the arrow keys, to turn; W and S walk between the marked spots.">
@@ -1449,6 +1459,7 @@ def room_plan(d):
       <div class="room-plane room-floor"></div>
         {objs}
     </div>
+    {plan}
     <p class="room-legend">{legend}</p>
   </div>
 </section>'''

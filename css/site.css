@@ -2015,3 +2015,62 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   color: var(--muted);
   font-size: 0.9rem;
 }
+
+/* The plan is the 3D tell and the touch affordance at once: the lane from above, one mark
+   per walk stop, and a camera wedge that turns when the visitor turns. It is decorative in
+   the accessibility tree because every stop it shows is already a real button in the lane. */
+.room-plan {
+  position: absolute;
+  right: 0.7rem;
+  top: 0.7rem;
+  width: 5.4rem;
+  padding: 0.3rem 0.3rem 0.2rem;
+  border: 1px solid rgba(205, 214, 238, 0.26);
+  border-radius: 6px;
+  background: rgba(6, 11, 26, 0.55);
+}
+.plan-lane {
+  position: relative;
+  height: 4.1rem;
+  border: 1px solid rgba(205, 214, 238, 0.3);
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(242, 200, 142, 0.14), rgba(205, 214, 238, 0.05));
+}
+.plan-dot {
+  position: absolute;
+  left: calc(50% - 2px);
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(205, 214, 238, 0.55);
+}
+.plan-cam {
+  position: absolute;
+  left: calc(50% + var(--plan-x, 0px));
+  top: var(--plan-pct, 68%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 11px solid var(--accent-bright);
+  transform: translate(-50%, -50%) rotate(var(--plan-ry, 180deg));
+  transform-origin: 50% 50%;
+  transition: top 300ms var(--ease), transform 300ms var(--ease);
+}
+.plan-word {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--muted-navy);
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+.room-legend .how {
+  color: var(--accent-bright);
+}
+@media (max-width: 700px) {
+  .room-plan {
+    width: 4.4rem;
+  }
+}

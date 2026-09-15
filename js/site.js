@@ -607,14 +607,23 @@ function leaveOverlay(root, trigger) {
   const plate = document.getElementById("room-plate");
   const ease = !matchMedia("(prefers-reduced-motion: reduce)").matches;
   const MAX_YAW = 35, MAX_PITCH = 10, STRAFE = 76;
-  let yaw = 0, pitch = 0, panX = 0, here = 0, opener = null;
+  // A dead-straight view looks like a flat picture of a corridor, which is the question the
+  // owner keeps asking; a few degrees of turn makes the perspective undeniable on arrival.
+  let yaw = -7, pitch = -3, panX = 0, here = 0, opener = null;
 
   const depthOf = (i) => Math.round(parseFloat(stations[i] ? stations[i].style.getPropertyValue("--z") : "0") || 0);
+  const plan = document.querySelector("[data-plan-cam]");
   const apply = () => {
     world.style.setProperty("--yaw", `${yaw.toFixed(1)}deg`);
     world.style.setProperty("--pitch", `${pitch.toFixed(1)}deg`);
     world.style.setProperty("--pan-x", `${panX.toFixed(0)}px`);
     world.style.setProperty("--pan-z", `${depthOf(here)}px`);
+    if (plan) {
+      plan.parentElement.style.setProperty("--plan-ry", `${(180 - yaw).toFixed(1)}deg`);
+      plan.style.setProperty("--plan-x", `${(panX * 0.14).toFixed(1)}px`);
+      const pc = stations[here] && stations[here].style.getPropertyValue("--pc");
+      if (pc) plan.style.setProperty("--plan-pct", pc);
+    }
   };
   const walkTo = (i) => {
     here = Math.max(0, Math.min(stations.length - 1, i));
