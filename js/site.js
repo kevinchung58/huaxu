@@ -673,10 +673,10 @@ function leaveOverlay(root, trigger) {
     return g.createPattern(t, "repeat");
   };
   const paintWall = (c) => {
-    c.fillStyle = "#1a2338"; c.fillRect(0, 0, 128, 128);
-    c.strokeStyle = "rgba(6,10,22,.6)"; c.lineWidth = 2;
+    c.fillStyle = "#465572"; c.fillRect(0, 0, 128, 128);
+    c.strokeStyle = "rgba(20,30,50,.6)"; c.lineWidth = 2;
     for (let y = 0; y <= 128; y += 32) { c.beginPath(); c.moveTo(0, y); c.lineTo(128, y); c.stroke(); }
-    c.strokeStyle = "rgba(210,222,248,.055)"; c.lineWidth = 1;
+    c.strokeStyle = "rgba(236,244,255,.16)"; c.lineWidth = 1;
     for (let y = 32; y <= 128; y += 32) {
       c.beginPath(); c.moveTo(0, y - 1); c.lineTo(128, y - 1); c.stroke();
       for (let k = 0; k < 4; k++) {
@@ -685,19 +685,22 @@ function leaveOverlay(root, trigger) {
       }
     }
     for (let i = 0; i < 220; i++) {
-      c.fillStyle = `rgba(226,236,255,${((i % 5) * 0.007).toFixed(3)})`;
+      c.fillStyle = `rgba(238,246,255,${((i % 5) * 0.013).toFixed(3)})`;
       c.fillRect((i * 53) % 128, (i * 29) % 128, 2, 2);
     }
-    c.fillStyle = "rgba(6,10,22,.5)"; c.fillRect(0, 104, 128, 24);   // the damp line at the foot
+    c.fillStyle = "rgba(16,24,42,.36)"; c.fillRect(0, 104, 128, 24);  // the damp line at the foot
   };
   const paintFloor = (c) => {
-    c.fillStyle = "#101827"; c.fillRect(0, 0, 128, 128);
-    c.strokeStyle = "rgba(4,8,18,.75)"; c.lineWidth = 2;
+    // Wet asphalt at night is a *reflective* surface, which is why it reads mid-tone and not black:
+    // the joints and the sheen are what tell you it is under you.
+    c.fillStyle = "#37435c"; c.fillRect(0, 0, 128, 128);
+    c.strokeStyle = "rgba(14,20,34,.62)"; c.lineWidth = 2;
     c.strokeRect(-1, -1, 130, 130);
-    c.strokeStyle = "rgba(206,218,244,.05)";
+    c.strokeStyle = "rgba(214,230,255,.11)";
     c.beginPath(); c.moveTo(64, 0); c.lineTo(64, 128); c.stroke();
+    c.fillStyle = "rgba(206,226,255,.045)"; c.fillRect(0, 0, 128, 26);
     for (let i = 0; i < 150; i++) {
-      c.fillStyle = `rgba(190,206,238,${((i % 4) * 0.009).toFixed(3)})`;
+      c.fillStyle = `rgba(240,246,255,${((i % 4) * 0.014).toFixed(3)})`;
       c.fillRect((i * 71) % 128, (i * 43) % 128, 3, 2);
     }
   };
@@ -756,6 +759,8 @@ function leaveOverlay(root, trigger) {
     const m22 = ((y2 - y0) * (a1 - a0) - (y1 - y0) * (a2 - a0)) / det;
     return [m11, m21, m12, m22, x0 - m11 * a0 - m12 * b0, y0 - m21 * a0 - m22 * b0];
   };
+  const PROP_TINT = { vending: "#f2a43c", noren: "#3d5c9a", shrine: "#8c4238",
+                      utility: "#4c5a76", poster: "#33435f", frame: "#2c3a56" };
   const quads = [];
   const add = (C, corners, uv, mode, arg, img) => {
     const pts = corners.map((c, i) => {
@@ -784,14 +789,33 @@ function leaveOverlay(root, trigger) {
     });
     return [x0, y0, x1 - x0, y1 - y0];
   };
-  const shade = (z) => clamp((z - 320) / 2350, 0, 0.94);
-  // The vending machine is the only light in the lane, so the pool is read off the prop rather than
-  // retyped: authored geometry stays the single source of where the amber comes from.
-  const lamp = meta.find((m) => m.kind === "vending") || meta[0] || { x: 0, z: 0, h: 150 };
-  const pool = (px, py, pz) => {
-    const d = Math.hypot(px - lamp.x, pz - lamp.z);
-    return clamp(1 - d / 900, 0, 1) * clamp(1 - Math.abs(py - lamp.h / 2) / CEIL, 0, 1);
+  /* Lighting, in the order a night actually works: the level the eye has adapted to, then a
+     distance-squared falloff from each source, then the air in between. The sources are the same
+     list the bulbs and the machine's glow are drawn from, so no wall can be bright where nothing is
+     shining at it. The first pass here had one lamp and a murk ceiling of 0.94, which is exactly why
+     it read as a black rectangle: an eye never adapts to 6% of a material. */
+  // Two exposures, chosen by the operating system rather than by a widget in my corner: a screen
+  // that is dim, or an eye that needs more contrast, is the visitor's own setting to change.
+  const boost = matchMedia("(prefers-contrast: more)").matches;
+  const AMBIENT = boost ? 0.6 : 0.42;   // what the lane looks like with every bulb gone
+  const FOG_MAX = boost ? 0.4 : 0.6;    // how much air may stand between you and the far wall
+  const lamp = meta.find((m) => m.kind === "vending") || meta[0] || { x: 0, y: 0, z: 0, h: 150 };
+  const lamps = [];
+  for (let z = 40; z < Z_FAR; z += 200) {
+    lamps.push({ x: 0, y: CEIL - 34, z, r: 30, tint: "rgba(255,216,158,0.42)", k: 0.5, wet: true });
+  }
+  lamps.push({ x: lamp.x, y: (lamp.y || 0) + lamp.h * 0.62, z: lamp.z, r: 130,
+               tint: "rgba(255,192,104,0.5)", k: 1.05, wet: false });
+  const lightAt = (px, py, pz) => {
+    let v = AMBIENT;
+    for (let i = 0; i < lamps.length; i++) {
+      const L = lamps[i];
+      const d2 = (px - L.x) * (px - L.x) + (pz - L.z) * (pz - L.z) + (py - L.y) * (py - L.y) * 0.4;
+      v += L.k / (1 + d2 / 44000);            // half-light at 210 cm: a bulb, not a searchlight
+    }
+    return Math.min(1.7, v);
   };
+  const haze = (z) => clamp((z - 420) / 2450, 0, 1) * FOG_MAX;
 
   const emit = (q) => {
     const path = () => {
@@ -803,7 +827,7 @@ function leaveOverlay(root, trigger) {
       g.closePath();
     };
     path();
-    if (q.mode === "flat") g.fillStyle = q.arg; else g.fillStyle = "#131c30";
+    if (q.mode === "flat") g.fillStyle = q.arg; else g.fillStyle = "#2b3a56";
     g.fill();
     if (q.mode === "pat" && q.arg) {
       const m = affine(q.pts, q.pts.map((p) => [p.u, p.v]));
@@ -818,10 +842,12 @@ function leaveOverlay(root, trigger) {
         g.drawImage(q.img, 0, 0, q.img.naturalWidth, q.img.naturalHeight); g.restore();
       }
     }
-    const dark = shade(q.z);
-    if (dark > 0.02) { path(); g.fillStyle = `rgba(5,9,20,${dark.toFixed(3)})`; g.fill(); }
-    const lit = q.lit || 0;
-    if (lit > 0.02) { path(); g.fillStyle = `rgba(242,164,60,${(lit * 0.2).toFixed(3)})`; g.fill(); }
+    // Warm where a source reaches, then the air. The murk is navy rather than black on purpose:
+    // distance should look like something you are seeing through, not like the picture ending.
+    const warm = clamp((q.lit || 0) - 0.55, 0, 1.15);
+    if (warm > 0.02) { path(); g.fillStyle = `rgba(255,228,186,${(warm * 0.24).toFixed(3)})`; g.fill(); }
+    const dark = q.air === undefined ? haze(q.z) : q.air;
+    if (dark > 0.01) { path(); g.fillStyle = `rgba(22,34,60,${dark.toFixed(3)})`; g.fill(); }
   };
 
   const draw = () => {
@@ -834,24 +860,28 @@ function leaveOverlay(root, trigger) {
     quads.length = 0;
     for (let z = Z_BACK; z < Z_FAR; z += SEG) {
       const z1 = Math.min(z + SEG, Z_FAR);
+      const zc = (z + z1) / 2;
       [-1, 1].forEach((side) => {
         const px = side * WALL;
-        const lit = pool(px, 210, (z + z1) / 2);
         const q = add(C, [[px, 0, z], [px, 0, z1], [px, CEIL, z1], [px, CEIL, z]],
                       [z * DPM, 0, z1 * DPM, 0, z1 * DPM, -CEIL * DPM, z * DPM, -CEIL * DPM],
                       "pat", tilePat);
-        if (q) q.lit = lit;
+        if (q) q.lit = lightAt(px, 210, zc);
       });
-      add(C, [[-WALL, 0, z], [WALL, 0, z], [WALL, 0, z1], [-WALL, 0, z1]],
+      const fl = add(C, [[-WALL, 0, z], [WALL, 0, z], [WALL, 0, z1], [-WALL, 0, z1]],
           [z * DPM, -WALL * DPM, z * DPM, WALL * DPM, z1 * DPM, WALL * DPM, z1 * DPM, -WALL * DPM],
           "pat", floorPat);
-      add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
-          [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#0b1322");
+      if (fl) { fl.lit = lightAt(0, 6, zc) * 1.15; fl.air = haze(fl.z) * 0.7; }
+      const cl = add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
+          [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#232f4a");
+      if (cl) cl.lit = AMBIENT * 0.8;   // out of the bulbs' reach, and it should look that way
     }
-    add(C, [[-WALL, 0, Z_FAR], [WALL, 0, Z_FAR], [WALL, CEIL, Z_FAR], [-WALL, CEIL, Z_FAR]],
+    const far = add(C, [[-WALL, 0, Z_FAR], [WALL, 0, Z_FAR], [WALL, CEIL, Z_FAR], [-WALL, CEIL, Z_FAR]],
         [0, 0, WALL * DPM * 2, 0, WALL * DPM * 2, -CEIL * DPM * 2, 0, -CEIL * DPM * 2], "pat", tilePat);
-    add(C, [[WALL, 0, Z_BACK], [-WALL, 0, Z_BACK], [-WALL, CEIL, Z_BACK], [WALL, CEIL, Z_BACK]],
-        [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#0e1626");
+    if (far) far.lit = lightAt(0, 210, Z_FAR);
+    const back = add(C, [[WALL, 0, Z_BACK], [-WALL, 0, Z_BACK], [-WALL, CEIL, Z_BACK], [WALL, CEIL, Z_BACK]],
+        [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#2a3854");
+    if (back) back.lit = lightAt(0, 210, Z_BACK);
 
     meta.forEach((m) => {
       const hw = m.w / 2;
@@ -859,15 +889,18 @@ function leaveOverlay(root, trigger) {
       const corners = onSide
         ? [[m.x, m.y, m.z - hw], [m.x, m.y, m.z + hw], [m.x, m.y + m.h, m.z + hw], [m.x, m.y + m.h, m.z - hw]]
         : [[m.x - hw, m.y, m.z], [m.x + hw, m.y, m.z], [m.x + hw, m.y + m.h, m.z], [m.x - hw, m.y + m.h, m.z]];
-      const lit = pool(m.x, m.y + m.h / 2, m.z);
+      const lit = lightAt(m.x, m.y + m.h / 2, m.z);
       const face = m.pic ? "pic" : "flat";
       const uv = m.pic
         ? [[0, 0], [m.pic.naturalWidth || 640, 0], [m.pic.naturalWidth || 640, -(m.pic.naturalHeight || 427)], [0, -(m.pic.naturalHeight || 427)]]
         : [[0, 0], [0, 0], [0, 0], [0, 0]];
-      const q = add(C, corners, uv.flat(), face, m.kind === "vending" ? "#f2a43c" : "#1d2842", m.pic);
+      const q = add(C, corners, uv.flat(), face, PROP_TINT[m.kind] || "#33435f", m.pic);
       m.shown = false;
       if (!q) { m.el.style.visibility = "hidden"; m.el.tabIndex = -1; return; }
-      q.lit = m.kind === "vending" ? 1 : lit;
+      q.lit = m.kind === "vending" ? 1.7 : lit;
+      // A hung frame is the one thing in an alley that is lit on purpose: it keeps its own contrast
+      // instead of fogging into the wall behind it, or nobody would read the photograph.
+      if (m.pic) { q.air = haze(q.z) * 0.4; q.lit = Math.max(lit, 0.72); }
       const b = box(C, q);
       if (b[2] > 6 && b[3] > 6 && b[0] > -40 && b[0] < W + 40 && b[1] < H + 40 && b[1] > -40) {
         m.el.style.visibility = "visible";
@@ -883,7 +916,7 @@ function leaveOverlay(root, trigger) {
     });
 
     g.setTransform(1, 0, 0, 1, 0, 0);
-    g.fillStyle = "#070d1c";
+    g.fillStyle = "#141e36";
     g.fillRect(0, 0, W, H);
     g.setTransform(1, 0, 0, 1, 0, 0);
     quads.sort((p, q) => q.z - p.z);
@@ -904,8 +937,26 @@ function leaveOverlay(root, trigger) {
       g.fillStyle = grd;
       g.beginPath(); g.arc(sx, sy, rad, 0, 6.2832); g.fill();
     };
-    for (let z = 60; z < Z_FAR; z += 190) glow(0, CEIL - 26, z, 26, "rgba(255,214,150,0.5)");
-    glow(lamp.x, lamp.y + lamp.h / 2, lamp.z, 120, "rgba(255,190,96,0.55)");
+    const reflect = (px, pz, r) => {
+      const p = camPt(C, px, 4, pz);
+      if (p.z < NEAR) return;
+      const sx = W * 0.5 + (focal * p.x) / p.z, sy = H * 0.5 + (focal * p.y) / p.z;
+      const rad = Math.max(8, (focal * r) / p.z);
+      g.save();
+      g.translate(sx, sy);
+      g.scale(1, 0.3);
+      const rg = g.createRadialGradient(0, 0, 0, 0, 0, rad);
+      rg.addColorStop(0, "rgba(255,214,158,0.15)");
+      rg.addColorStop(1, "rgba(255,214,158,0)");
+      g.fillStyle = rg;
+      g.beginPath(); g.arc(0, 0, rad, 0, 6.2832); g.fill();
+      g.restore();
+    };
+
+    lamps.forEach((L) => {
+      glow(L.x, L.y, L.z, L.r, L.tint);
+      if (L.wet) reflect(L.x, L.z, L.r * 3.6);     // each bulb's pool, thrown back by the asphalt
+    });
     g.globalCompositeOperation = "source-over";
 
     // where your body actually is, on the floor: the one thing that makes a first-person view

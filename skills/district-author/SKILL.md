@@ -67,7 +67,13 @@ Pointer Lock is unsupported on every iOS Safari and it hijacks the cursor.
   and the owner sent that back twice.
 - The scene is a canvas raster: one projection, walls in 60 cm panels, affine-textured tiling
   patterns, quads painted far-to-near, fog and light as distance functions of the same transform.
-  No library and no WebGL. A texture comes from `data-tex` on the object; the pattern tiles are drawn
+  No library and no WebGL.
+- Lighting is part of the model, not a coat of paint: one `AMBIENT`, one `FOG_MAX`, and every wall,
+  floor and prop lit by `lightAt()` — the falloff of the same `lamps` list the glows and the wet-floor
+  reflections are drawn from. Never brighten a surface by hand, or it glows where nothing shines.
+  Materials are mid-tone (a lit alley reads at L*20 and up, not black), exhibits keep most of their
+  own contrast under the haze, and `prefers-contrast: more` lifts the exposure. The harness asserts the
+  luminance of the materials and the ceiling of the murk, so a slide back toward dark fails loudly. A texture comes from `data-tex` on the object; the pattern tiles are drawn
   at boot, because a stretched stock photo on a wall is the one lie this renderer tells easily.
 - Motion is one rAF loop that stops when nothing moves, and it writes pixels rather than styles.
   `−`/`+` change the field of view (the focal length), never a scale factor, and never resize the

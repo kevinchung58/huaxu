@@ -1791,7 +1791,7 @@ body.shell {
 .walk {
   position: fixed;
   inset: 0;
-  background: #060b1a;
+  background: #0d1526;
 }
 .shell .modal {
   z-index: 100;   /* the rail is opened from inside the space, so it must sit above it */
@@ -1800,7 +1800,7 @@ body.shell {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: #070d1c;   /* the canvas's own ground: no white flash before the first paint */
+  background: #141e36;   /* the canvas's own ground: no white flash, and no black either */
   cursor: grab;
   /* The space swallows the gesture. A page that scrolls under the thumb while you are trying to
      look around is not a place, it is a screenshot with a drag handler. */
@@ -1846,6 +1846,28 @@ body.shell {
   font-family: var(--sans);
   font-size: 0.84rem;
   letter-spacing: 0.02em;
+}
+
+/* A scrim, not boxes. The walls are lit now, which means white-on-anywhere stopped being a plan;
+   raising the text further would only shout at the visitor. So the viewport's own edges fade to
+   navy behind the readout, the way the reference's HUD sits on its scene. */
+.walk-hud::before,
+.walk-hud::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 7rem;
+  z-index: -1;
+  pointer-events: none;
+}
+.walk-hud::before {
+  top: 0;
+  background: linear-gradient(180deg, rgba(6, 11, 26, 0.82), rgba(6, 11, 26, 0));
+}
+.walk-hud::after {
+  bottom: 0;
+  background: linear-gradient(0deg, rgba(6, 11, 26, 0.85), rgba(6, 11, 26, 0));
 }
 .walk-hud > * {
   pointer-events: auto;

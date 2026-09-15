@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260914r"   # one bump per changed asset pair; both tags read it
+VER = "20260914s"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -180,7 +180,7 @@ def shell_page(title: str, body: str, path: str) -> str:
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#060b1a" />
+  <meta name="theme-color" content="#0d1526" />
   <meta name="description" content="{DESC}" />
   <link rel="canonical" href="{canonical}" />
   <meta property="og:site_name" content="Hua-Xu Zhong" />

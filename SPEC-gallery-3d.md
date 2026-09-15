@@ -338,8 +338,9 @@ model changed and three sections above are now superseded:
   (audio, more props, level transitions). `Level G · Coming soon` has its twin in the second district
   card, which says it is not open and does not pretend otherwise.
 
-Measured, not assumed: 83 jsdom assertions pass, including the raster's own invariants (finite
+Measured, not assumed: 90 jsdom assertions pass, including the raster's own invariants (finite
 numbers only on the context, clip state balanced, textures drawn, `−`/`+` changing focal length
 without resizing the canvas, controls leaving the tab order when unoccludable). Nothing here has been
 *seen*: this sandbox has no browser, so how the alley reads — and whether it holds 60 fps on a phone
-— remains the owner's to judge.
+— remains the owner's to judge. The first build of the raster reached him as too dark to make out, which is
+what the asserted material luminances and the murk ceiling above now hold in place.

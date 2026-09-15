@@ -149,6 +149,14 @@ this repo's own code. What that buys, and what it cannot:
 - Wall objects are `<button>`s the renderer pins to their projected bounding box every frame. A
   control that could drift away from the thing it names would be worse than none, and one behind you
   leaves the tab order instead of waiting there.
+- The lane is *lit*, and that is a requirement rather than a taste: ambient at 0.42 of material,
+  concrete and wet asphalt at mid-tone, seven bulbs whose falloff is the same inverse-square the
+  glows are drawn from, and a murk ceiling of 0.6 painted in navy so distance reads as air instead of
+  the picture ending. Hung frames keep 60% of their own contrast under that haze, because a photograph
+  you cannot see has stopped being evidence. `prefers-contrast: more` gets a second exposure
+  (ambient 0.6, murk 0.4) from the operating system's own switch rather than a widget in the corner —
+  a dim laptop is the visitor's to correct, not mine to guess at. The HUD answer is a scrim that fades
+  the viewport's edges to navy, not a heavier typeface.
 - No canvas, no black rectangle: `boot()` says so in the status line, opens the drawer and leaves the
   whole district readable — the reference's own move, and the only honest one.
 - Motion is declined where the numbers live: no bob, no sway, no flicker under
