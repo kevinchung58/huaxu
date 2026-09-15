@@ -103,6 +103,33 @@ A district with no declared purpose cannot open — `status: "soon"` renders as 
 reference this was modelled on ships one built level and one honest `Coming soon`, and this
 site's rule is the same: an unbuilt space is announced, never decorated.
 
+### Interaction: one selection, two projections
+
+The lane is a **display**, the list is the **controller**, and both read the same index. Hovering
+or focusing a row in `Frames in this district` walks the camera to that row's wall position;
+walking marks the row. That symmetry is the whole interaction model, and it is what the
+reference site does: its first screen is a scannable list with one record, `WebGL is unavailable.
+The spaces list still works.` is printed when the 3D cannot load, and hovering a row highlights
+the thing in the model. The lesson the reference teaches and a walk-on-arrival design forgets is
+that the flat list is not a fallback for the 3D — it is the product, and the camera is a lens on
+it. Three consequences are load-bearing here:
+
+- **No prose inside the scene.** A caption in a `preserve-3d` box competes with the pictures for
+  the same dark space, and at an oblique yaw it stops reading as an object and starts reading as
+  a layout bug. Object names live in one line under the stage (`standing at in front of the
+  machine`, or the hovered object's name); the button keeps `aria-label`, because a control whose
+  only text was `display:none` has no accessible name at all.
+- **Every keyboard verb has a touch twin, and nothing else is advertised.** `W S` and the arrow
+  keys are printed only under `@media (hover: hover) and (pointer: fine)`; on touch the legend
+  says *drag to look · tap a frame*, plus the − / + pair and the floor-plan marks, which are the
+  same walk and zoom with a thumb. A legend listing keys on a phone says "this is not for you".
+- **The frame is cut to the lane.** `.room-stage` is `max-width: 44rem` and JS scales the world by
+  `min(1, width / 660)` times the zoom. A 640px corridor inside a 1088px stage is 40% empty
+  background, and darkness around a dark room reads as a broken image rather than as depth.
+
+Playback is entered, never ambient: a row's `Play from here` starts the rail at that frame. Stills
+do not auto-advance on their own initiative, because an archive is not a queue that eats itself.
+
 ### Kinds: the two defaults a district can be
 
 `purpose` says what a space is about. `kind` says what it is allowed to assert, and there

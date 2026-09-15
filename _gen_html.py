@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260914i"   # one bump per changed asset pair; both tags read it
+VER = "20260914k"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -1368,12 +1368,14 @@ def frames_section(districts):
         for n, fr in enumerate(d.get("frames", [])):
             src = fr["src"]
             rows.append(
-                f'<li class="frame-row" id="frame-{escape(d["id"])}-{escape(fr["id"])}">'
+                f'<li class="frame-row" id="frame-{escape(d["id"])}-{escape(fr["id"])}" '
+                f'data-row-obj="frame-{escape(fr["id"])}">'
                 f'<figure class="frame-fig"><img src="{src}" alt="{escape(fr["alt"])}" '
                 f'loading="lazy" {poster_attrs(src)} />'
                 f'<figcaption>{escape(fr["caption"])}</figcaption></figure>'
                 f'<p class="when"><span class="badge">{escape(KINDS[d["kind"]]["label"])}</span>'
-                f' Generated frame {n + 1} of {len(d.get("frames", []))}.</p></li>')
+                f' Generated frame {n + 1} of {len(d.get("frames", []))}.'
+                f' <button type="button" class="frame-play" data-play="{n}">Play from here</button></p></li>')
     if not rows:
         return ""
     head = titled("h2", "Frames in this district", ICON_CAMERA, "block-title reveal spaced")
@@ -1421,8 +1423,11 @@ def room_object(o):
         attrs = poster_attrs(src)
         lazy = "" if "loading=" in attrs else ' loading="lazy"'
         face = f'<img class="obj-img" src="{src}" alt=""{lazy} {attrs}>'.replace("  ", " ")
+    # The visible tag moved out of the scene, so the button's name is stated on the button:
+    # a control whose only text is display:none is a control no screen reader can read out.
     return (f'<button type="button" class="room-obj room-{o["kind"]}" data-obj="{escape(o["id"])}" '
-            f'data-title="{name}" data-hint="{escape(o["hint"])}" style="{style}"{frame_attr}>'
+            f'aria-label="{name}" data-title="{name}" data-hint="{escape(o["hint"])}" '
+            f'style="{style}"{frame_attr}>'
             f'<span class="obj-face" aria-hidden="true">{face}</span>'
             f'<span class="obj-tag">{name}</span></button>')
 
@@ -1439,16 +1444,22 @@ def room_plan(d):
             f'style="--z:{st["z"]}px;--pc:{pct}%" aria-label="Walk to {escape(st["label"])}">'
             f'<span class="station-dot" aria-hidden="true"></span>'
             f'<span class="station-name">{escape(st["label"])}</span></button>')
-        plan_dots.append(f'<span class="plan-dot" style="top:{pct}%"></span>')
-    plan = (f'<div class="room-plan" aria-hidden="true">'
+        plan_dots.append(
+            f'<button type="button" class="plan-dot" data-plan-to="{i}" '
+            f'style="top:{pct}%" tabindex="-1" '
+            f'aria-label="Walk to {escape(st["label"])}"></button>')
+    plan = (f'<div class="room-plan" role="group" aria-label="Plan of the lane, one mark per stop">'
             f'<div class="plan-lane">{"".join(plan_dots)}'
             f'<span class="plan-cam" data-plan-cam></span></div>'
             f'<span class="plan-word">plan</span></div>')
     objs = INDENT.join(parts)
     label = escape(d["label"])
     legend = ('<span class="how">CSS 3D — four planes, one light, no WebGL</span>'
-              ' · drag to turn · <kbd>W</kbd><kbd>S</kbd> walk · <kbd>←</kbd><kbd>→</kbd> look'
-              ' · <kbd>Esc</kbd> close')
+              '<span class="say"> · drag to look · tap a frame</span>'
+              '<span class="keys"> · <kbd>W</kbd><kbd>S</kbd> walk · <kbd>←</kbd><kbd>→</kbd> look'
+              ' · <kbd>Esc</kbd> close</span>'
+              '<span class="zoom"><button type="button" data-zoom="-1" aria-label="Step back">−</button>'
+              '<button type="button" data-zoom="1" aria-label="Lean in">+</button></span>')
     return f'''<section class="room" id="room-{escape(d["id"])}" data-room="{label}">
   <div class="room-stage" tabindex="0" data-room-stage role="group"
        aria-label="{label}: a lane you can walk. Drag, or use the arrow keys, to turn; W and S walk between the marked spots.">
@@ -1462,6 +1473,7 @@ def room_plan(d):
     {plan}
     <p class="room-legend">{legend}</p>
   </div>
+  <p class="room-here"><span data-room-here></span></p>
 </section>'''
 
 

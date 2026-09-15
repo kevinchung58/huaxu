@@ -48,12 +48,20 @@ Pointer Lock is unsupported on every iOS Safari and it hijacks the cursor.
 - Edit `_gen_html.py`, `css/site.css`, `js/site.js` only. **Never hand-edit `*.html`.**
 - One `VER` constant feeds both `?v=` tags. Never reintroduce a per-file literal: a stale
   pin ships invisible changes to every visitor with a warm cache.
-- Every frame is three surfaces from one record: a wall object, a captioned list row with an
-  anchor, and a rail figure. Counts must stay equal; assert it in the harness.
+- Every frame is three surfaces from **one** record: a wall object, a captioned list row with an
+  anchor and a `Play from here`, and a rail figure. Counts must stay equal; assert it in the
+  harness. The row and the object are wired both ways — hovering the row walks the camera,
+  walking marks the row — so the list drives the lane and the lane can be skipped entirely.
+- Nothing writes prose into the 3D scene: names go in the line under the stage. Scene elements
+  state `font: inherit` plus a size, because a `<button>` that forgets one takes the UA's
+  13.3px Arial and reads as a headline inside a transformed box.
+- The stage is sized to the lane (`max-width: 44rem`, world scaled by `min(1, w / 660) × zoom`);
+  keyboard verbs are printed only under `(hover: hover) and (pointer: fine)`.
 - Image dimensions come from the file's own JPEG header. If it cannot be parsed, omit the
   attributes — a guessed size is a worse layout bug than none.
-- `alt=""` on images inside an object: the object's visible tag is its accessible name, and
-  a nested alt concatenates into it.
+- `alt=""` on images inside an object, and `aria-label="{title}"` on the object button itself:
+  the tag is `display:none` inside the scene, so without the label the control has no name.
+  A nested `alt` would concatenate into that name, which is why the image stays empty.
 - Generated art is labelled generated, once, above the list — not stamped on every row, which
   is the cadence the detector calls templated.
 - Reduced motion: no auto-advance, no flicker, no sway; taps and keys still work. Touch gets

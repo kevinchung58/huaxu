@@ -609,10 +609,30 @@ function leaveOverlay(root, trigger) {
   const MAX_YAW = 35, MAX_PITCH = 10, STRAFE = 76;
   // A dead-straight view looks like a flat picture of a corridor, which is the question the
   // owner keeps asking; a few degrees of turn makes the perspective undeniable on arrival.
-  let yaw = -7, pitch = -3, panX = 0, here = 0, opener = null;
+  let yaw = -7, pitch = -3, panX = 0, here = 0, opener = null, zoom = 1;
 
   const depthOf = (i) => Math.round(parseFloat(stations[i] ? stations[i].style.getPropertyValue("--z") : "0") || 0);
   const plan = document.querySelector("[data-plan-cam]");
+  const rows = Array.from(document.querySelectorAll(".frame-row[data-row-obj]"));
+  const hereLine = document.querySelector("[data-room-here]");
+  const planDots = Array.from(document.querySelectorAll("[data-plan-to]"));
+  const say = () => {
+    if (!hereLine) return;
+    const name = stations[here] && stations[here].querySelector(".station-name");
+    hereLine.textContent = name ? `standing at ${name.textContent}` : "";
+  };
+  /* The corridor is 640px wide by construction. On a narrow stage the whole world is scaled down
+     rather than clipped, which is the difference between a small room and a cropped one. */
+  const fit = () => {
+    // The lane is 640px wide by construction, so a narrow stage scales the world down instead of
+    // clipping it: a small room, not a cropped one. The zoom control rides on top of that fit
+    // factor, because leaning in on a phone is a question of fit rather than of taste.
+    const fitK = stage.clientWidth ? Math.min(1, stage.clientWidth / 660) : 1;
+    world.style.setProperty("--k", (fitK * zoom).toFixed(3));
+  };
+  fit();
+  if (typeof ResizeObserver === "function") new ResizeObserver(fit).observe(stage);
+  else window.addEventListener("resize", fit);
   const apply = () => {
     world.style.setProperty("--yaw", `${yaw.toFixed(1)}deg`);
     world.style.setProperty("--pitch", `${pitch.toFixed(1)}deg`);
@@ -624,6 +644,9 @@ function leaveOverlay(root, trigger) {
       const pc = stations[here] && stations[here].style.getPropertyValue("--pc");
       if (pc) plan.style.setProperty("--plan-pct", pc);
     }
+    planDots.forEach((el, n) => el.classList.toggle("is-here", n === here));
+    rows.forEach((row) => row.classList.toggle("is-here", row.at === here));
+    say();
   };
   const walkTo = (i) => {
     here = Math.max(0, Math.min(stations.length - 1, i));
@@ -635,6 +658,15 @@ function leaveOverlay(root, trigger) {
     apply();
   };
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  /* The lane and the list are one selection: a frame in the list is a position on the wall, so a
+     deep link moves the camera instead of opening a second interface. */
+  const depthAt = (el) => Math.round(parseFloat(el.style.getPropertyValue("--z")) || 0);
+  const nearest = (z) => stations.reduce(
+    (best, el, i) => (Math.abs(depthOf(i) - z) < Math.abs(depthOf(best) - z) ? i : best), 0);
+  const focusFrame = (n) => {
+    const obj = stage.querySelector(`[data-frame="${n}"]`);
+    if (obj) walkTo(nearest(depthAt(obj)));
+  };
 
   let drag = null;
   stage.addEventListener("pointerdown", (event) => {
@@ -716,6 +748,7 @@ function leaveOverlay(root, trigger) {
     if (!railEl || !frames.length) return false;
     fi = Math.max(0, Math.min(frames.length - 1, n));
     plate.classList.add("is-open", "is-rail");
+    focusFrame(n);
     paint();
     opener = enterOverlay(plate, ".modal-close", trigger);
     schedule();
@@ -760,6 +793,26 @@ function leaveOverlay(root, trigger) {
     opener = enterOverlay(plate, ".modal-close", obj);
   };
 
+  /* One selection, two projections: a row in the list is the same record as a spot on the
+     wall, so the list drives the camera and the camera marks the list. That is also what makes
+     the lane skippable — nothing reachable in the 3D view is missing from the list. */
+  rows.forEach((row) => {
+    const obj = stage.querySelector(`[data-obj="${row.dataset.rowObj}"]`);
+    if (!obj) return;
+    row.at = nearest(depthAt(obj));
+    row.addEventListener("pointerenter", () => walkTo(row.at));
+    row.addEventListener("focusin", () => walkTo(row.at));
+    const play = row.querySelector("[data-play]");
+    if (play) play.addEventListener("click", () => openRail(Number(play.dataset.play), play));
+  });
+
+  Array.from(stage.querySelectorAll("[data-obj]")).forEach((obj) => {
+    const show = () => { if (hereLine && obj.dataset.title) hereLine.textContent = obj.dataset.title; };
+    obj.addEventListener("pointerenter", show);
+    obj.addEventListener("focus", show);
+  });
+  stage.addEventListener("pointerleave", say);
+
   const slots = Array.from(document.querySelectorAll(".slot"));
   let drawn = 0;
   Array.from(stage.querySelectorAll("[data-obj]")).forEach((obj) => {
@@ -783,6 +836,11 @@ function leaveOverlay(root, trigger) {
     });
   });
   stations.forEach((el, i) => el.addEventListener("click", () => walkTo(i)));
+  planDots.forEach((el, i) => el.addEventListener("click", () => walkTo(i)));
+  Array.from(stage.querySelectorAll("[data-zoom]")).forEach((btn) => btn.addEventListener("click", () => {
+    zoom = clamp(zoom + Number(btn.dataset.zoom) * 0.12, 0.72, 1.28);
+    fit();
+  }));
   if (plate) {
     Array.from(plate.querySelectorAll("[data-room-close]")).forEach((el) => el.addEventListener("click", closePlate));
     plate.addEventListener("keydown", (event) => {
@@ -803,6 +861,14 @@ function leaveOverlay(root, trigger) {
       }
     });
   }
+  const fromHash = () => {
+    const m = (location.hash || "").match(/^#frame-[a-z0-9]+-([a-z0-9-]+)$/i);
+    if (!m) return;
+    const obj = stage.querySelector(`[data-obj="frame-${m[1]}"]`);
+    if (obj) walkTo(nearest(depthAt(obj)));
+  };
   walkTo(0);
+  fromHash();
+  window.addEventListener("hashchange", fromHash);
 })();
 
