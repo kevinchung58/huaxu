@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260914e"   # one bump per changed asset pair; both tags read it
+VER = "20260914f"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -1207,11 +1207,15 @@ KINDS = {
         "label": "Personal",
         "gate": "Drawn frames are allowed. Nothing here may read as a record of "
                 "attendance, and no frame claims a place was visited.",
+        "cover": "The card's cover is drawn. It shows what the district is about, not what "
+                 "the owner saw.",
     },
     "academic": {
         "label": "Academic",
         "gate": "Every frame carries a venue and a date, or it is not shown. Generated "
                 "art may not stand in for evidence here.",
+        "cover": "The cover must be a record of the room, the board or the stage. A drawn "
+                 "cover would be a claim about an event.",
     },
 }
 
@@ -1227,6 +1231,9 @@ DISTRICTS = [
     {
         "id": "tokyo", "label": "Tokyo", "purpose": "Travel notes", "status": "open",
         "kind": "personal",
+        "cover": "IMG/tokyo-cover.jpg",
+        "cover_caption": "Six motifs of a city: a gate, a lantern, a tower, a crossing, a "
+                         "counter, a mountain on the skyline.",
         "blurb": "One lane at night. The light at the end is a vending machine, and the "
                  "lane is walked toward it.",
         "objects": [
@@ -1448,16 +1455,29 @@ def room_plan(d):
 
 
 def district_card(d):
-    """The card is a record first and a link second: heading and body text stay in the
-    page's own colour, and only the arrow is a link, because main a is accented and
-    underlined site-wide. The kind is printed here as well as in the gate sentence it
-    implies, so the rule set is legible before anyone walks in."""
+    """The card is a record first and a link second: heading and body text stay in the page's
+    own colour, and only the arrow is a link, because main a is accented and underlined
+    site-wide. The kind is printed here with the gate it implies, and the cover — if there is
+    one — carries the kind's cover rule as its caption, so a drawn cover can never be read as
+    a photograph the owner took."""
     state = "Not open yet." if d["status"] == "soon" else "Walk it below."
     kind = d.get("kind")
-    badge = f'{escape(KINDS[kind]["label"])} · {escape(d["purpose"])}' if kind in KINDS else escape(d["purpose"])
-    gate = (f'<p class="rule">{escape(KINDS[kind]["gate"])}</p>' if kind in KINDS else
-            f'<p class="rule">{escape(d["blurb"])}</p>')
+    meta = KINDS.get(kind, {})
+    badge = f'{escape(meta["label"])} · {escape(d["purpose"])}' if meta else escape(d["purpose"])
+    gate = f'<p class="rule">{escape(meta["gate"])}</p>' if meta else f'<p class="rule">{escape(d["blurb"])}</p>'
+    cover = ""
+    src = d.get("cover")
+    if src and (ROOT / src).exists():
+        caption = d.get("cover_caption", "")
+        cover = (f'<figure class="district-cover"><img src="{escape(src)}" alt="" loading="lazy" '
+                 f'{poster_attrs(src)} />'
+                 f'<figcaption>{escape(caption)} {escape(meta.get("cover", ""))}</figcaption></figure>')
+    elif src:
+        # a cover named in the data but missing on disk must not draw a broken image, and
+        # must not be papered over either: the empty card is the true state
+        cover = '<p class="when">No cover image is available for this district.</p>'
     return (f'<li class="district-card is-{d["status"]}" aria-describedby="room-{escape(d["id"])}">'
+            f'{cover}'
             f'<span class="badge">{badge}</span>'
             f'<h2>{escape(d["label"])}</h2>'
             f'{gate}'
