@@ -909,6 +909,14 @@ function leaveOverlay(root, trigger) {
     if (plate && plate.classList.contains("is-open")) return;      // the rail owns its own keys
     const k = event.key.toLowerCase();
     if (event.altKey || event.metaKey || event.ctrlKey) return;
+    // The space is the thing being driven, so it takes keys — but only while nobody is reading or
+    // holding a control: keys must not steal Space from a focused button (that is how a keyboard
+    // user activates things), and the open drawer is a document to be read, not a HUD to walk in.
+    const busy = (card && !card.hidden) || (listPanel && !listPanel.classList.contains("is-closed"));
+    const onControl = document.activeElement && document.activeElement.closest(".walk-tools, .walk-stops, .walk-list, .walk-card");
+    if (busy && k !== "escape" && k !== "l") return;   // folding must survive folding: L closes what
+                                                          // L opened, or the drawer becomes a cage
+    if (onControl && (k === " " || k === "enter" || k === "spacebar")) return;
     if (k === "escape") {
       // Esc folds the overlays away and never ejects anybody: the page is the space, so there is
       // nothing underneath to fall back to. The link in the corner is the way out.
