@@ -103,32 +103,56 @@ A district with no declared purpose cannot open — `status: "soon"` renders as 
 reference this was modelled on ships one built level and one honest `Coming soon`, and this
 site's rule is the same: an unbuilt space is announced, never decorated.
 
-### Interaction: one selection, two projections
+### The space is the interface; the page is its door
 
-The lane is a **display**, the list is the **controller**, and both read the same index. Hovering
-or focusing a row in `Frames in this district` walks the camera to that row's wall position;
-walking marks the row. That symmetry is the whole interaction model, and it is what the
-reference site does: its first screen is a scannable list with one record, `WebGL is unavailable.
-The spaces list still works.` is printed when the 3D cannot load, and hovering a row highlights
-the thing in the model. The lesson the reference teaches and a walk-on-arrival design forgets is
-that the flat list is not a fallback for the 3D — it is the product, and the camera is a lens on
-it. Three consequences are load-bearing here:
+A district is not a figure inside an article. `rooms.html` is a doorway — cards, kind, cover, the
+written-out list — and `Enter Tokyo` hands the whole viewport to the lane, with every control
+floating on it as a head-up display. That is the reference site's arrangement, read carefully
+rather than imitated: its first screen *is* the building, and its level chips, `YOU` marker,
+`−`/`+`, `Jump` button, `W A S D walk · Space jump · Drag to turn · E open` legend and
+`Level 1 ready.` status line are all overlays on a view that fills the screen. A walkable space
+offered any other way is a diagram of a place, and a diagram does not answer "go in and walk like
+a person".
 
-- **No prose inside the scene.** A caption in a `preserve-3d` box competes with the pictures for
-  the same dark space, and at an oblique yaw it stops reading as an object and starts reading as
-  a layout bug. Object names live in one line under the stage (`standing at in front of the
-  machine`, or the hovered object's name); the button keeps `aria-label`, because a control whose
-  only text was `display:none` has no accessible name at all.
-- **Every keyboard verb has a touch twin, and nothing else is advertised.** `W S` and the arrow
-  keys are printed only under `@media (hover: hover) and (pointer: fine)`; on touch the legend
-  says *drag to look · tap a frame*, plus the − / + pair and the floor-plan marks, which are the
-  same walk and zoom with a thumb. A legend listing keys on a phone says "this is not for you".
-- **The frame is cut to the lane.** `.room-stage` is `max-width: 44rem` and JS scales the world by
-  `min(1, width / 660)` times the zoom. A 640px corridor inside a 1088px stage is 40% empty
-  background, and darkness around a dark room reads as a broken image rather than as depth.
+What that costs, and what pays for it:
 
-Playback is entered, never ambient: a row's `Play from here` starts the rail at that frame. Stills
-do not auto-advance on their own initiative, because an archive is not a queue that eats itself.
+- **The body is simulated, cheaply.** One `requestAnimationFrame` while something moves — never a
+  permanent loop — with exponential acceleration (a person speeds up and settles), a run on
+  `Shift`, a 0.45 m jump under 2400 cm/s² of gravity, head bob and a half-degree of roll scaled
+  by speed, and a shadow on the floor under the eye so that looking down finds a body. Units are
+  metric: 1 px = 1 cm, eye at 168, 235 cm/s at foot. `prefers-reduced-motion` removes the bob and
+  the jump and leaves the walk, because the nausea fix is the sway, not the ability to arrive.
+- **The transform is written as custom properties, never as `style.transform`.** JS sets
+  `--yaw/--pitch/--tx/--ty/--tz/--roll` on `.walk-world` and CSS composes them. That keeps the
+  WebKit flattening invariants checkable by reading one block, and keeps the order of operations
+  (`rotateZ` → `rotateY` → `rotateX` → `translate3d`) in one place instead of split across two
+  languages.
+- **`−`/`+` change the field of view (`--fov`, the perspective distance), not a scale.** Scaling
+  a corridor in and out is a zoomed photograph; moving the projection plane is stepping closer.
+  The base value also tracks the viewport width, which is what keeps a 640px-wide lane legible on
+  a phone without a second layout.
+- **Words live in the HUD, not in the scene.** `.obj-tag` is `display:none` inside the box and the
+  names print in the status line — `standing at the machine · 1.8 m ahead`, which is the reference's
+  `Men's and women's toilets · Level 1 · Unit 1 corner` pattern. A caption floating at
+  `rotateY(-90deg)` in a dark corridor is the single reason a 3D view reads as broken.
+- **What can be opened is decided by where you stand and where you look.** Nearest object within
+  1.9 m and roughly in front → an amber ring on its edge and the verb in the record line. `E`,
+  Enter, or a tap opens it: a wall frame plays in the rail, a prop answers in a card. The noren
+  behind you is the way out, and `Esc` walks you out — except while the rail is open, where it
+  closes the frame and leaves you in the lane (the rail's handler stops propagation for exactly
+  that reason).
+- **The list is still the same selection.** `The list` opens a drawer over the space; choosing an
+  entry glides the camera there. Below the door, each frame is a row with an anchor, and a
+  `Play from here` that starts the rail at that frame; `#walk-tokyo` opens the lane for whoever
+  you sent the link to, and `#frame-tokyo-sensoji` marks the row. Camera position is deliberately
+  *not* in the URL: the visit is not state to be shared.
+- **Nothing behind the space stays interactive.** `html.is-walking` hides the nav and the footer,
+  locks the page scroll, and `inert`s the document body's other regions, so a screen reader and
+  Tab do not wander through a page that is visually covered. `touch-action: none` on the view —
+  the drag *is* the look, and a page that scrolls under the thumb is a screenshot with a handler.
+- **The HUD never goes small to look technical.** Text floors at 0.76rem (12.2px); the drawer's
+  meta row states its own light colour because `.when` is the *paper's* warm secondary and reads at
+  2.6:1 on navy. Contrast and functional size are fixed in code, never waived in policy.
 
 ### Kinds: the two defaults a district can be
 

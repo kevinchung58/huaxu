@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260914k"   # one bump per changed asset pair; both tags read it
+VER = "20260914n"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -1055,7 +1055,7 @@ activities = page("Activities · Hua-Xu Zhong", "activities", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>A photo archive and a running record of talks. Captions and venues will be attached as they are confirmed.</p></div>
-    <p class="pillar-more"><a class="text-arrow" href="rooms.html#room-tokyo">The archive is also a place you can walk: Tokyo, three sights on the wall</a></p>
+    <p class="pillar-more"><a class="text-arrow" href="rooms.html#walk-tokyo">The archive is also a place: enter Tokyo and walk to the three sights</a></p>
     {titled("h2", "Gallery", ICON_CAMERA)}
     <p class="when reveal" style="margin:-0.4rem 0 1rem">{gallery_note}</p>
     <div class="deck reveal" data-deck>
@@ -1220,8 +1220,10 @@ KINDS = {
     },
 }
 
-EYE = 168
+EYE = 168                    # the eye is 1.68 m above the floor; 1 px = 1 cm throughout
 LANE_W, LANE_D, LANE_H = 640, 430, 360
+Z_SCALE = 2.9                # records are authored in the old 4.3 m lane; the space is 12.4 m
+WALK_D = round(LANE_D * Z_SCALE)
 STATIONS = [
     {"z": 0, "label": "the entrance"},
     {"z": 150, "label": "under the posters"},
@@ -1379,8 +1381,9 @@ def frames_section(districts):
     if not rows:
         return ""
     head = titled("h2", "Frames in this district", ICON_CAMERA, "block-title reveal spaced")
-    note = ('<p class="when">Each is a drawn depiction of a named place. None is a '
-            'photograph, and none records that the owner stood there.</p>')
+    note = ('<p class="when">Each is a drawn depiction of a named place, hung on a wall at the '
+            'distance printed beside it. None is a photograph, and none records that the owner '
+            'stood there.</p>')
     return f'    {head}\n    {note}\n    <ul class="frame-list reveal">\n      {INDENT.join(rows)}\n    </ul>'
 
 
@@ -1432,49 +1435,100 @@ def room_object(o):
             f'<span class="obj-tag">{name}</span></button>')
 
 
-def room_plan(d):
-    parts = [room_object(o) for o in list(d["objects"]) + wall_frames(d)]
+def walk_html(d):
+    """The whole viewport is the space, and everything else is a head-up display on top of it.
+
+    That is not a style preference. The reference site loads into the building: its level chips,
+    its `YOU` marker, its `W A S D walk · Space jump · Drag to turn · E open` and its
+    `Level 1 ready.` all float over a view that owns the screen. A district offered any other way
+    is a diagram of a place rather than a place, which is what the lane is for. So the page a
+    visitor reads is the doorway, and `Enter` gives the viewport to the lane.
+
+    Geometry: 1 px = 1 cm, the eye at EYE, and a closed box — four walls, a floor, a ceiling — so
+    that turning around always shows the space instead of its edge. Objects keep their authored
+    coordinates and are pushed down the lane by Z_SCALE, which is a rendering constant and not a
+    fact about the record.
+    """
+    objects = list(d["objects"]) + wall_frames(d)
     if d["exit"]:
-        parts.append(room_object(d["exit"]))
-    plan_dots = []
-    for i, st in enumerate(STATIONS):
-        pct = round((1 - st["z"] / LANE_D) * 62) + 6   # 6%..68% down the plan
-        parts.append(
-            f'<button type="button" class="room-station" data-station="{i}" '
-            f'style="--z:{st["z"]}px;--pc:{pct}%" aria-label="Walk to {escape(st["label"])}">'
-            f'<span class="station-dot" aria-hidden="true"></span>'
-            f'<span class="station-name">{escape(st["label"])}</span></button>')
-        plan_dots.append(
-            f'<button type="button" class="plan-dot" data-plan-to="{i}" '
-            f'style="top:{pct}%" tabindex="-1" '
-            f'aria-label="Walk to {escape(st["label"])}"></button>')
-    plan = (f'<div class="room-plan" role="group" aria-label="Plan of the lane, one mark per stop">'
-            f'<div class="plan-lane">{"".join(plan_dots)}'
-            f'<span class="plan-cam" data-plan-cam></span></div>'
-            f'<span class="plan-word">plan</span></div>')
-    objs = INDENT.join(parts)
+        objects.append(d["exit"])
+    parts = []
+    for o in objects:
+        o = dict(o)
+        o["z"] = round(o["z"] * Z_SCALE)
+        parts.append(room_object(o))
+    chips = []
+    for n, st in enumerate(STATIONS):
+        chips.append(
+            f'<button type="button" class="walk-stop" data-walk-stop="{n}" '
+            f'style="--z:{round(st["z"] * Z_SCALE)}px"><span>{escape(st["label"])}</span></button>')
+    links = []
+    for n, fr in enumerate(d.get("frames", [])):
+        side = "left" if fr["x"] < 0 else ("right" if fr["x"] > 0 else "end")
+        depth = fr["z"] * Z_SCALE / 100
+        links.append(
+            f'<li><button type="button" data-walk-to="{round(fr["z"] * Z_SCALE)}">'
+            f'{escape(fr["title"])}</button> <span class="when">{side} wall, {depth:.1f} m in · '
+            f'frame {n + 1} of {len(d.get("frames", []))}</span></li>')
     label = escape(d["label"])
-    legend = ('<span class="how">CSS 3D — four planes, one light, no WebGL</span>'
-              '<span class="say"> · drag to look · tap a frame</span>'
-              '<span class="keys"> · <kbd>W</kbd><kbd>S</kbd> walk · <kbd>←</kbd><kbd>→</kbd> look'
-              ' · <kbd>Esc</kbd> close</span>'
-              '<span class="zoom"><button type="button" data-zoom="-1" aria-label="Step back">−</button>'
-              '<button type="button" data-zoom="1" aria-label="Lean in">+</button></span>')
-    return f'''<section class="room" id="room-{escape(d["id"])}" data-room="{label}">
-  <div class="room-stage" tabindex="0" data-room-stage role="group"
-       aria-label="{label}: a lane you can walk. Drag, or use the arrow keys, to turn; W and S walk between the marked spots.">
-    <div class="room-world" data-room-world>
-      <div class="room-plane room-wall-back"></div>
-      <div class="room-plane room-wall-left"></div>
-      <div class="room-plane room-wall-right"></div>
-      <div class="room-plane room-floor"></div>
-        {objs}
+    did = escape(d["id"])
+    return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}">
+  <div class="walk-view" tabindex="0" data-walk-view role="application"
+       aria-label="{label}, a lane you walk in person. Drag to turn, W A S D to walk, Space to
+       jump, E to open what you are standing in front of, Esc to leave. The frames are also
+       written out on the page.">
+    <div class="walk-world" data-walk-world>
+      <div class="walk-plane walk-wall-far"></div>
+      <div class="walk-plane walk-wall-back"></div>
+      <div class="walk-plane walk-wall-left"></div>
+      <div class="walk-plane walk-wall-right"></div>
+      <div class="walk-plane walk-floor"></div>
+      <div class="walk-plane walk-ceiling"></div>
+      <span class="walk-you" data-walk-you aria-hidden="true"></span>
+      {INDENT.join(parts)}
     </div>
-    {plan}
-    <p class="room-legend">{legend}</p>
   </div>
-  <p class="room-here"><span data-room-here></span></p>
-</section>'''
+  <div class="walk-hud">
+    <div class="walk-top">
+      <div>
+        <p class="walk-eyebrow">{label} · one lane, drawn</p>
+        <div class="walk-stops" role="group" aria-label="Stops in this lane">{"".join(chips)}</div>
+      </div>
+      <div>
+        <p class="walk-status" data-walk-status role="status">Building the lane…</p>
+        <p class="walk-record" data-walk-record></p>
+      </div>
+    </div>
+    <div class="walk-bottom">
+      <div class="walk-tools">
+      <span class="walk-fov"><button type="button" data-walk-fov="-1" aria-label="Wider view">−</button
+      ><button type="button" data-walk-fov="1" aria-label="Narrower view">+</button></span>
+      <button type="button" class="walk-jump" data-walk-jump>Jump</button>
+      <button type="button" data-walk-list aria-expanded="false" aria-controls="walk-list-{did}">The list</button>
+      <button type="button" data-walk-leave>Leave the lane</button>
+    </div>
+      <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
+        <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open ·
+        <kbd>Esc</kbd> leave</p>
+      <p class="walk-note">{label} is drawn, not surveyed: the distances are the artist's, and a
+        frame is a depiction of a place rather than a record of standing in it.</p>
+    </div>
+  </div>
+  <div class="walk-pad" data-walk-pad aria-hidden="true"><span class="walk-knob"></span></div>
+  <div class="walk-card" data-walk-card hidden>
+    <p class="eyebrow" data-walk-where></p>
+    <h2 data-walk-title></h2>
+    <p data-walk-hint></p>
+    <button type="button" class="modal-close" data-walk-card-close aria-label="Close">{ICON_X}</button>
+  </div>
+  <aside class="walk-list" id="walk-list-{did}" data-walk-listpanel hidden>
+    <p class="eyebrow">The same wall, written out</p>
+    <ul>{"".join(links)}</ul>
+    <p class="when">Choosing one walks you to it. With scripting off this list is the page: the
+      frames, their captions and their kind are all in the document.</p>
+  </aside>
+</div>
+"""
 
 
 def district_card(d):
@@ -1483,7 +1537,7 @@ def district_card(d):
     site-wide. The kind is printed here with the gate it implies, and the cover — if there is
     one — carries the kind's cover rule as its caption, so a drawn cover can never be read as
     a photograph the owner took."""
-    state = "Not open yet." if d["status"] == "soon" else "Walk it below."
+    state = "Not open yet." if d["status"] == "soon" else "Enter " + d["label"]
     kind = d.get("kind")
     meta = KINDS.get(kind, {})
     badge = f'{escape(meta["label"])} · {escape(d["purpose"])}' if meta else escape(d["purpose"])
@@ -1505,7 +1559,8 @@ def district_card(d):
             f'<h2>{escape(d["label"])}</h2>'
             f'{gate}'
             f'<p class="when">{state}</p>'
-            f'<p class="pillar-more"><a class="text-arrow" href="#room-{escape(d["id"])}">{state}</a></p></li>')
+            f'<p class="pillar-more"><button type="button" class="walk-enter" '
+            f'data-walk-enter="{escape(d["id"])}">{escape(state)}</button></p></li>')
 
 
 def slot_row(d, sl):
@@ -1518,13 +1573,13 @@ rooms_body = f'''
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Districts</p><h1>Rooms you walk into</h1>
-      <p>A district is one themed space: a lane, a few things to touch, and the frames that
-      belong to it. Everything the lane holds is also written out underneath, so the page
-      reads without scripting and prints fine.</p></div>
+      <p>A district is one space you go into. The whole screen becomes the lane, the light at
+      the end is where you are heading, and the frames hang on the walls at a distance you can
+      walk. Enter it — or read the same frames written out below, because a list is what a space
+      is made of when a screen cannot be a place.</p></div>
     <ul class="district-pick reveal">
       {INDENT.join(district_card(d) for d in DISTRICTS)}
     </ul>
-    {INDENT.join(room_plan(d) for d in DISTRICTS if d["status"] == "open")}
     <div class="dashed reveal" style="margin-top:1.6rem">
       <strong>What this is, and what it is not</strong>
       <p class="when">The lane is drawn, not surveyed. The wall holds drawn covers and three drawn sights —
@@ -1541,7 +1596,10 @@ rooms_body = f'''
 </section>
 '''
 
-rooms = page("Districts · Hua-Xu Zhong", "rooms", rooms_body, extra=rooms_plate_html([d for d in DISTRICTS if d["status"] == "open"]))
+open_districts = [d for d in DISTRICTS if d["status"] == "open"]
+rooms = page("Districts · Hua-Xu Zhong", "rooms", rooms_body,
+             extra=rooms_plate_html(open_districts)
+                   + "\n" + "\n".join(walk_html(d) for d in open_districts))
 
 (ROOT / "rooms.html").write_text(rooms, encoding="utf-8")
 

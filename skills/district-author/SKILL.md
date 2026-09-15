@@ -50,13 +50,22 @@ Pointer Lock is unsupported on every iOS Safari and it hijacks the cursor.
   pin ships invisible changes to every visitor with a warm cache.
 - Every frame is three surfaces from **one** record: a wall object, a captioned list row with an
   anchor and a `Play from here`, and a rail figure. Counts must stay equal; assert it in the
-  harness. The row and the object are wired both ways — hovering the row walks the camera,
-  walking marks the row — so the list drives the lane and the lane can be skipped entirely.
-- Nothing writes prose into the 3D scene: names go in the line under the stage. Scene elements
-  state `font: inherit` plus a size, because a `<button>` that forgets one takes the UA's
-  13.3px Arial and reads as a headline inside a transformed box.
-- The stage is sized to the lane (`max-width: 44rem`, world scaled by `min(1, w / 660) × zoom`);
-  keyboard verbs are printed only under `(hover: hover) and (pointer: fine)`.
+  harness.
+- A district is entered full-screen, not embedded: `.walk` is `display:none` until pressed, the
+  page behind it gets `inert`, and leaving restores focus to the door that opened it. The HUD
+  carries the words; nothing writes prose into the scene (`.obj-tag` is `display:none`, and the
+  object keeps `aria-label` so hiding its text never hides its name).
+- Geometry is metric and shared: `EYE = 168`, `1px = 1cm`, walls at ±320 with the walk clamp at
+  290, and depth scaled once by `Z_SCALE` in the generator so the record keeps its authored
+  numbers. The box is closed on six sides and the far wall always sits beyond `MAX_D`, so no
+  visitor ever sees the edge of the world.
+- Motion is one rAF loop that stops when nothing moves; the frame writes `--yaw/--pitch/--tx/
+  --ty/--tz/--roll` and never `style.transform`. `−`/`+` change `--fov` (the perspective distance),
+  never a scale factor. Reduced motion drops bob and jump but keeps the walk.
+- Keyboard verbs print only under `(hover: hover) and (pointer: fine)`; every one of them has a
+  twin that a thumb can press (the pad, `Jump`, the stop chips, tapping the object itself).
+- HUD text floors at 0.76rem and every colour pair is checked against the surface it actually sits
+  on: `.when` belongs to the paper, so the walk's drawer restates its own light colour.
 - Image dimensions come from the file's own JPEG header. If it cannot be parsed, omit the
   attributes — a guessed size is a worse layout bug than none.
 - `alt=""` on images inside an object, and `aria-label="{title}"` on the object button itself:

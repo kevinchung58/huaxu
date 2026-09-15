@@ -586,141 +586,358 @@ function leaveOverlay(root, trigger) {
   });
 })();
 
-/* ---- Districts: the lane (rooms page) ----
-   The stage is the whole interface: drag to turn, W and S between the painted spots on
-   the floor, objects opened by click or Enter. Deliberate limits, each one a choice:
-     - the eye does not move; the world is translated and rotated instead, so no camera
-       math and no WebGL is needed for a lane with one axis of travel;
-     - yaw and pitch are clamped to ±35° and ±10°, because past that the walls stop
-       covering the viewport and the room shows its own edges;
-     - turning is drag, not Pointer Lock: the reference site does the same, and it is what
-       keeps a walkable space available on a phone.
-   Objects that only narrate themselves open the plate, which reuses the site's shared
-   overlay helpers; the curtain is a way out and the shrine is a way to choose a slot, so
-   neither opens a dialog. With scripting off, everything on the page is still readable as
-   the slot list, which is the point of keeping the list on the same page as the lane. */
+/* ---- Districts: the walk (rooms page) ----
+   The lane owns the viewport. That is the reference site's arrangement and it is the whole
+   brief: entering a district has to read as standing in a place, not as looking at a figure set
+   inside an article. Its level chips, its YOU marker, its `W A S D walk · Space jump · Drag to
+   turn · E open` and its `Level 1 ready.` all float over a view that fills the screen, and every
+   one of those verbs has a touch twin (`Jump` sits there as a button for exactly that reason).
+
+   Deliberate limits, each one a trade rather than an oversight:
+     - the eye does not move; the world is dragged the other way, so a corridor with one axis of
+       travel needs no matrix math, no render library and no WebGL — and 0 KB of dependency;
+     - yaw is free and pitch is clamped to ±35°, because past that the eye leaves the box and the
+       visitor sees the ceiling edge instead of a lane;
+     - turning is drag, never Pointer Lock: the reference does the same, and lock is unsupported on
+       every iOS Safari, which would make the space unreachable on a phone;
+     - 1 px = 1 cm, and the numbers are walking numbers: eye at 168, 235 cm/s at foot, 411 cm/s
+       at a run, a 0.45 m jump under 2400 cm/s² of gravity;
+     - the space is closed on six sides, so turning around shows the lane rather than its edge.
+   What is not here: a lightmap, a physics engine, occlusion, or a claim that this is a survey.
+   Frames are hung on the wall and are opened where you stand in front of them, which is the only
+   reason the 3D exists at all — a picture you cannot walk up to does not need a corridor. */
 (function () {
-  const stage = document.querySelector("[data-room-stage]");
-  if (!stage) return;
-  const world = stage.querySelector("[data-room-world]");
-  const stations = Array.from(stage.querySelectorAll("[data-station]"));
+  const layer = document.querySelector("[data-walk]");
+  const enters = Array.from(document.querySelectorAll("[data-walk-enter]"));
+  if (!layer || !enters.length) return;
+  const root = document.documentElement;
+  const view = layer.querySelector("[data-walk-view]");
+  const world = layer.querySelector("[data-walk-world]");
+  const you = layer.querySelector("[data-walk-you]");
+  const statusEl = layer.querySelector("[data-walk-status]");
+  const recordEl = layer.querySelector("[data-walk-record]");
+  const card = layer.querySelector("[data-walk-card]");
+  const listPanel = layer.querySelector("[data-walk-listpanel]");
+  const listBtn = layer.querySelector("[data-walk-list]");
+  const pad = layer.querySelector("[data-walk-pad]");
+  const stops = Array.from(layer.querySelectorAll("[data-walk-stop]"));
+  const objs = Array.from(world.querySelectorAll("[data-obj]"));
   const plate = document.getElementById("room-plate");
-  const ease = !matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const MAX_YAW = 35, MAX_PITCH = 10, STRAFE = 76;
-  // A dead-straight view looks like a flat picture of a corridor, which is the question the
-  // owner keeps asking; a few degrees of turn makes the perspective undeniable on arrival.
-  let yaw = -7, pitch = -3, panX = 0, here = 0, opener = null, zoom = 1;
-
-  const depthOf = (i) => Math.round(parseFloat(stations[i] ? stations[i].style.getPropertyValue("--z") : "0") || 0);
-  const plan = document.querySelector("[data-plan-cam]");
   const rows = Array.from(document.querySelectorAll(".frame-row[data-row-obj]"));
-  const hereLine = document.querySelector("[data-room-here]");
-  const planDots = Array.from(document.querySelectorAll("[data-plan-to]"));
-  const say = () => {
-    if (!hereLine) return;
-    const name = stations[here] && stations[here].querySelector(".station-name");
-    hereLine.textContent = name ? `standing at ${name.textContent}` : "";
-  };
-  /* The corridor is 640px wide by construction. On a narrow stage the whole world is scaled down
-     rather than clipped, which is the difference between a small room and a cropped one. */
-  const fit = () => {
-    // The lane is 640px wide by construction, so a narrow stage scales the world down instead of
-    // clipping it: a small room, not a cropped one. The zoom control rides on top of that fit
-    // factor, because leaning in on a phone is a question of fit rather than of taste.
-    const fitK = stage.clientWidth ? Math.min(1, stage.clientWidth / 660) : 1;
-    world.style.setProperty("--k", (fitK * zoom).toFixed(3));
-  };
-  fit();
-  if (typeof ResizeObserver === "function") new ResizeObserver(fit).observe(stage);
-  else window.addEventListener("resize", fit);
-  const apply = () => {
-    world.style.setProperty("--yaw", `${yaw.toFixed(1)}deg`);
-    world.style.setProperty("--pitch", `${pitch.toFixed(1)}deg`);
-    world.style.setProperty("--pan-x", `${panX.toFixed(0)}px`);
-    world.style.setProperty("--pan-z", `${depthOf(here)}px`);
-    if (plan) {
-      plan.parentElement.style.setProperty("--plan-ry", `${(180 - yaw).toFixed(1)}deg`);
-      plan.style.setProperty("--plan-x", `${(panX * 0.14).toFixed(1)}px`);
-      const pc = stations[here] && stations[here].style.getPropertyValue("--pc");
-      if (pc) plan.style.setProperty("--plan-pct", pc);
-    }
-    planDots.forEach((el, n) => el.classList.toggle("is-here", n === here));
-    rows.forEach((row) => row.classList.toggle("is-here", row.at === here));
-    say();
-  };
-  const walkTo = (i) => {
-    here = Math.max(0, Math.min(stations.length - 1, i));
-    stations.forEach((el, j) => {
-      el.classList.toggle("is-here", j === here);
-      if (j === here) el.setAttribute("aria-current", "step");
-      else el.removeAttribute("aria-current");
-    });
-    apply();
-  };
+  const district = layer.dataset.walk;
+  const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const ease = !reduce();   // one test, shared by the walk's motion and the rail's hold-to-pause
+
+  const HALF = 290, MIN_D = -30, MAX_D = 1200, REACH = 190, MAX_PITCH = 35;
+  const SPEED = 235, RUN = 1.75, ACCEL = 11, GRAV = 2400, JUMP = 465;
+  let on = false, zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
+  let vx = 0, vd = 0, phase = 0, bob = 0, roll = 0, raf = 0, last = 0, here = -1, reach = null;
+  let opener = null, gliding = null, keys = new Set(), stick = null, down = null;
+
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-  /* The lane and the list are one selection: a frame in the list is a position on the wall, so a
-     deep link moves the camera instead of opening a second interface. */
-  const depthAt = (el) => Math.round(parseFloat(el.style.getPropertyValue("--z")) || 0);
-  const nearest = (z) => stations.reduce(
-    (best, el, i) => (Math.abs(depthOf(i) - z) < Math.abs(depthOf(best) - z) ? i : best), 0);
-  const focusFrame = (n) => {
-    const obj = stage.querySelector(`[data-frame="${n}"]`);
-    if (obj) walkTo(nearest(depthAt(obj)));
-  };
+  const num = (el, prop) => parseFloat(el.style.getPropertyValue(prop)) || 0;
+  const meta = objs.map((el) => ({ el, x: num(el, "--x"), z: num(el, "--z"), y: num(el, "--y") }));
+  const stopZ = stops.map((el) => num(el, "--z"));
+  const fov = () => Math.round(clamp(innerWidth * 0.72, 520, 980) * zoom);
 
-  let drag = null;
-  stage.addEventListener("pointerdown", (event) => {
-    if (event.target.closest(".room-obj, .room-station")) return;
-    drag = { x: event.clientX, y: event.clientY, yaw, pitch };
-    world.classList.add("is-dragging");
-    if (stage.setPointerCapture) stage.setPointerCapture(event.pointerId);
-  });
-  stage.addEventListener("pointermove", (event) => {
-    if (!drag) return;
-    yaw = clamp(drag.yaw + (event.clientX - drag.x) * 0.14, -MAX_YAW, MAX_YAW);
-    pitch = clamp(drag.pitch - (event.clientY - drag.y) * 0.08, -MAX_PITCH, MAX_PITCH);
-    apply();
-  });
-  const endDrag = () => {
-    if (!drag) return;
-    drag = null;
-    world.classList.remove("is-dragging");
-  };
-  stage.addEventListener("pointerup", endDrag);
-  stage.addEventListener("pointercancel", endDrag);
-
-  stage.addEventListener("keydown", (event) => {
-    if (event.altKey || event.metaKey || event.ctrlKey) return;
-    const k = event.key.toLowerCase();
-    if (k === "w" || k === "s") {
-      event.preventDefault();
-      walkTo(here + (k === "w" ? 1 : -1));
-      return;
+  const draw = () => {
+    world.style.setProperty("--yaw", `${yaw.toFixed(2)}deg`);
+    world.style.setProperty("--pitch", `${pitch.toFixed(2)}deg`);
+    world.style.setProperty("--tx", `${(-x).toFixed(1)}px`);
+    world.style.setProperty("--ty", `${(height + bob).toFixed(1)}px`);
+    world.style.setProperty("--tz", `${depth.toFixed(1)}px`);
+    world.style.setProperty("--roll", `${roll.toFixed(2)}deg`);
+    view.style.setProperty("--fov", `${fov()}px`);
+    if (you) {
+      you.style.setProperty("--you-x", `${x.toFixed(0)}px`);
+      you.style.setProperty("--you-z", `${depth.toFixed(0)}px`);
     }
-    if (k === "a" || k === "d") {
-      event.preventDefault();
-      panX = clamp(panX + (k === "d" ? -26 : 26), -STRAFE, STRAFE);
-    } else if (k === "arrowleft") yaw = clamp(yaw + 8, -MAX_YAW, MAX_YAW);
-    else if (k === "arrowright") yaw = clamp(yaw - 8, -MAX_YAW, MAX_YAW);
-    else if (k === "arrowup") pitch = clamp(pitch + 3, -MAX_PITCH, MAX_PITCH);
-    else if (k === "arrowdown") pitch = clamp(pitch - 3, -MAX_PITCH, MAX_PITCH);
-    else return;
+  };
+
+  const say = (status, record) => {
+    if (status && statusEl) statusEl.textContent = status;
+    if (record !== undefined && recordEl) recordEl.textContent = record;
+  };
+  const metres = (v) => `${(Math.abs(v) / 100).toFixed(1)} m`;
+
+  const markStops = () => {
+    let best = -1, far = Infinity;
+    stopZ.forEach((z, i) => {
+      const d = Math.abs(z - depth);
+      if (d < far) { far = d; best = i; }
+    });
+    if (best === here) return;
+    here = best;
+    stops.forEach((el, i) => el.classList.toggle("is-here", i === here));
+    if (here >= 0 && far < 240) say(`${labels[here]} · ${metres(depth)} in`, "");
+  };
+  const labels = stops.map((el) => (el.textContent || "").trim());
+
+  /* The reach: what you can open is decided by where you stand and where you look, so the scene
+     answers before anything is pressed, and `E` is never a guess. */
+  const a = () => (yaw * Math.PI) / 180;
+  const checkReach = () => {
+    const fx = Math.sin(a()), fd = Math.cos(a());
+    let best = null, bestD = REACH;
+    meta.forEach((m) => {
+      const dx = m.x - x, dd = m.z - depth;
+      const dist = Math.hypot(dx, dd);
+      if (dist > bestD) return;
+      const facing = dist < 4 ? 1 : (dx * fx + dd * fd) / dist;
+      if (facing < 0.35) return;
+      best = m; bestD = dist;
+    });
+    if (best && best.el === (reach && reach.el)) { reach = best; return; }
+    if (reach) reach.el.classList.remove("is-reach");
+    reach = best;
+    if (!best) { markStops(); return; }
+    best.el.classList.add("is-reach");
+    const title = best.el.dataset.title || "";
+    say(`${title} · ${metres(best.z - depth)} ahead`,
+        best.el.dataset.frame === undefined ? "Press E to look closer." : "Press E to open the frame.");
+  };
+
+  const tick = (t) => {
+    raf = 0;
+    const dt = last ? Math.min(0.05, (t - last) / 1000) : 0.016;
+    last = t;
+    if (gliding) {
+      const to = gliding.to;
+      const step = (to - depth) * Math.min(1, dt * 6.5);
+      depth += step;
+      x += (gliding.x - x) * Math.min(1, dt * 6.5);
+      if (Math.abs(to - depth) < 1.2) { depth = to; x = gliding.x; gliding = null; }
+    } else {
+      let mx = stick ? stick.x : 0, md = stick ? -stick.y : 0;
+      if (keys.has("w") || keys.has("arrowup")) md += 1;
+      if (keys.has("s") || keys.has("arrowdown")) md -= 1;
+      if (keys.has("a")) mx -= 1;
+      if (keys.has("d")) mx += 1;
+      const len = Math.hypot(mx, md) || 1;
+      const r = keys.has("shift") ? RUN : 1;
+      const ang = a();
+      const wishX = ((Math.sin(ang) * md + Math.cos(ang) * mx) / len) * SPEED * r;
+      const wishD = ((Math.cos(ang) * md - Math.sin(ang) * mx) / len) * SPEED * r;
+      const k = 1 - Math.exp(-ACCEL * dt);
+      vx += (wishX - vx) * k;
+      vd += (wishD - vd) * k;
+      x = clamp(x + vx * dt, -HALF, HALF);
+      depth = clamp(depth + vd * dt, MIN_D, MAX_D);
+      if (x === -HALF || x === HALF) vx = 0;
+      if (depth === MIN_D || depth === MAX_D) vd = 0;
+    }
+    if (height > 0 || vy !== 0) {
+      vy -= GRAV * dt;
+      height = Math.max(0, height + vy * dt);
+      if (height === 0) vy = 0;
+    }
+    const speed = Math.hypot(vx, vd);
+    if (!reduce()) {
+      phase += (speed / 46) * dt * 6;
+      const amp = Math.min(1, speed / SPEED);
+      bob = Math.sin(phase) * 2.1 * amp;
+      roll = Math.sin(phase * 0.5) * 0.34 * amp;
+    } else { bob = 0; roll = 0; }
+    draw();
+    checkReach();
+    // Keep asking for frames while anything is still moving — including straight up, because a
+    // jump with no horizontal speed would otherwise freeze in mid-air.
+    if (on && (speed > 4 || gliding || height > 0 || vy !== 0)) loop();
+  };
+  const loop = () => { if (!raf) raf = requestAnimationFrame(tick); };
+
+  const jump = () => {
+    if (height > 0.5 || reduce()) return;
+    vy = JUMP;
+    loop();
+  };
+
+  const glideTo = (z, targetX) => {
+    gliding = { to: clamp(z, MIN_D, MAX_D), x: targetX === undefined ? x : targetX };
+    vx = 0; vd = 0;
+    loop();
+  };
+
+  /* --- opening the viewport, and closing it --- */
+  const open = (trigger) => {
+    on = true;
+    opener = trigger || null;
+    layer.classList.add("is-open");
+    root.classList.add("is-walking");
+    Array.from(document.querySelectorAll("main, .nav, footer")).forEach((el) => { el.inert = true; });
+    say("Building the lane…", "");
+    depth = 60; x = 0; yaw = -4; pitch = -2; height = 0; vy = 0; here = -1;
+    draw();
+    view.focus({ preventScroll: true });
+    if (history.replaceState) history.replaceState(null, "", `#walk-${layer.dataset.walkId}`);
+    // Two frames, not a timer: the status reads ready once the transform has actually painted,
+    // which is the same courtesy the reference pays with its "Level 1 ready."
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      say(`${district} ready · ${metres(MAX_D - depth)} of lane ahead`, "");
+      markStops();
+    }));
+    loop();
+  };
+  const close = () => {
+    on = false;
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0; last = 0; keys.clear(); stick = null; gliding = null;
+    layer.classList.remove("is-open");
+    root.classList.remove("is-walking");
+    Array.from(document.querySelectorAll("main, .nav, footer")).forEach((el) => { el.inert = false; });
+    if (plate && plate.classList.contains("is-open")) closeRail();
+    hideCard();
+    if (listPanel) { listPanel.hidden = true; if (listBtn) listBtn.setAttribute("aria-expanded", "false"); }
+    if (history.replaceState) history.replaceState(null, "", location.pathname + location.search);
+    if (opener) opener.focus({ preventScroll: true });
+  };
+
+  const hideCard = () => {
+    if (!card) return;
+    card.hidden = true;
+  };
+  const showCard = (m) => {
+    if (!card) return;
+    const where = card.querySelector("[data-walk-where]");
+    const title = card.querySelector("[data-walk-title]");
+    const hint = card.querySelector("[data-walk-hint]");
+    if (where) where.textContent = `${district} · ${metres(m.z)} in`;
+    if (title) title.textContent = m.el.dataset.title || "";
+    if (hint) hint.textContent = m.el.dataset.hint || "";
+    card.hidden = false;
+    const btn = card.querySelector("[data-walk-card-close]");
+    if (btn) btn.focus({ preventScroll: true });
+  };
+
+  const act = (m) => {
+    if (!m) return;
+    if (m.el.classList.contains("room-noren")) { close(); return; }
+    if (m.el.dataset.frame !== undefined && openRail(Number(m.el.dataset.frame), m.el)) return;
+    if (m.el.dataset.obj === "vending" && openRail(0, m.el)) return;
+    showCard(m);
+  };
+  const nearestOf = (el) => meta.find((m) => m.el === el);
+  const atFrame = (n) => {
+    const m = meta.find((it) => it.el.dataset.frame === String(n));
+    if (m) glideTo(m.z - 120, m.x * 0.45);
+  };
+
+  /* --- input: every verb has both a key and a finger --- */
+  enters.forEach((btn) => btn.addEventListener("click", () => open(btn)));
+  const leave = layer.querySelector("[data-walk-leave]");
+  if (leave) leave.addEventListener("click", close);
+  stops.forEach((el, i) => el.addEventListener("click", () => { glideTo(stopZ[i]); }));
+  Array.from(layer.querySelectorAll("[data-walk-to]")).forEach((btn) => btn.addEventListener("click", () => {
+    glideTo(parseFloat(btn.getAttribute("data-walk-to")) || 0);
+    if (listPanel) { listPanel.hidden = true; if (listBtn) listBtn.setAttribute("aria-expanded", "false"); }
+  }));
+  if (listBtn && listPanel) {
+    listBtn.addEventListener("click", () => {
+      listPanel.hidden = !listPanel.hidden;
+      listBtn.setAttribute("aria-expanded", listPanel.hidden ? "false" : "true");
+    });
+  }
+  const jumpBtn = layer.querySelector("[data-walk-jump]");
+  if (jumpBtn) jumpBtn.addEventListener("click", jump);
+  Array.from(layer.querySelectorAll("[data-walk-fov]")).forEach((btn) => btn.addEventListener("click", () => {
+    zoom = clamp(zoom + Number(btn.dataset.walkFov) * 0.12, 0.72, 1.34);
+    draw();
+  }));
+  if (card) {
+    const btn = card.querySelector("[data-walk-card-close]");
+    if (btn) btn.addEventListener("click", () => { hideCard(); view.focus({ preventScroll: true }); });
+  }
+  objs.forEach((el) => el.addEventListener("click", (event) => {
     event.preventDefault();
-    apply();
+    act(nearestOf(el));
+  }));
+  rows.forEach((row) => {
+    const play = row.querySelector("[data-play]");
+    if (play) play.addEventListener("click", () => openRail(Number(play.dataset.play), play));
   });
 
-  /* The rail: the plate doubles as a stories player when it is opened from a frame.
-     Mechanics only, borrowed from what makes that format usable rather than from its
-     branding — segments instead of one bar, right two thirds forward and left third
-     back, hold to pause, one frame at a time, and no auto-advance under
-     prefers-reduced-motion, where the same taps still work. Nothing here marks a frame
-     as viewed, because a scholar's archive is not a queue that eats itself. */
+  view.addEventListener("pointerdown", (event) => {
+    if (event.target.closest(".room-obj")) return;
+    down = { x: event.clientX, y: event.clientY, yaw, pitch, id: event.pointerId, moved: 0 };
+    view.classList.add("is-dragging");
+    if (view.setPointerCapture) view.setPointerCapture(event.pointerId);
+  });
+  view.addEventListener("pointermove", (event) => {
+    if (!down || event.pointerId !== down.id) return;
+    const dx = event.clientX - down.x, dy = event.clientY - down.y;
+    down.moved = Math.max(down.moved, Math.abs(dx) + Math.abs(dy));
+    yaw = down.yaw + dx * 0.14;                       // yaw is free: the box is closed behind you
+    pitch = clamp(down.pitch - dy * 0.1, -MAX_PITCH, MAX_PITCH);
+    gliding = null;
+    draw();
+    checkReach();
+  });
+  const up = () => { down = null; view.classList.remove("is-dragging"); };
+  view.addEventListener("pointerup", up);
+  view.addEventListener("pointercancel", up);
+  view.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    zoom = clamp(zoom + (event.deltaY > 0 ? 0.08 : -0.08), 0.72, 1.34);
+    draw();
+  }, { passive: false });
+
+  if (pad) {
+    const knob = pad.querySelector(".walk-knob");
+    const set = (event) => {
+      const box = pad.getBoundingClientRect();
+      const r = box.width / 2 || 1;
+      const nx = clamp((event.clientX - box.left - r) / r, -1, 1);
+      const ny = clamp((event.clientY - box.top - r) / r, -1, 1);
+      stick = { x: nx, y: ny };
+      if (knob) knob.style.transform = `translate(${(nx * r * 0.55).toFixed(1)}px, ${(ny * r * 0.55).toFixed(1)}px)`;
+    };
+    pad.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      pad.setPointerCapture(event.pointerId);
+      set(event);
+      loop();
+    });
+    pad.addEventListener("pointermove", (event) => { if (stick) set(event); });
+    const off = () => {
+      stick = null;
+      if (knob) knob.style.transform = "";
+    };
+    pad.addEventListener("pointerup", off);
+    pad.addEventListener("pointercancel", off);
+  }
+
+  root.addEventListener("keydown", (event) => {
+    if (!on) return;
+    if (plate && plate.classList.contains("is-open")) return;      // the rail owns its own keys
+    const k = event.key.toLowerCase();
+    if (event.altKey || event.metaKey || event.ctrlKey) return;
+    if (k === "escape") { event.preventDefault(); if (card && !card.hidden) hideCard(); else if (listPanel && !listPanel.hidden) { listPanel.hidden = true; listBtn.setAttribute("aria-expanded", "false"); } else close(); return; }
+    if (k === "e") { event.preventDefault(); act(reach); return; }
+    if (k === " ") { event.preventDefault(); jump(); return; }
+    if (k === "enter" && document.activeElement === view && reach) { event.preventDefault(); act(reach); return; }
+    if (["w", "a", "s", "d", "shift", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) {
+      event.preventDefault();
+      if (k === "arrowleft") yaw -= 7;
+      else if (k === "arrowright") yaw += 7;
+      else keys.add(k);
+      gliding = null;
+      loop();
+    }
+  });
+  root.addEventListener("keyup", (event) => { keys.delete(event.key.toLowerCase()); });
+  root.addEventListener("blur", () => { keys.clear(); stick = null; });
+  window.addEventListener("resize", () => { if (on) draw(); });
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  const hash = (location.hash || "").match(/^#walk-([a-z0-9-]+)$/i);
+  if (hash && hash[1] === layer.dataset.walkId) open(enters[0]);
+  draw();
+
   const railEl = plate && plate.querySelector("[data-story-reel]");
   const frames = railEl ? Array.from(railEl.querySelectorAll("[data-story-frame]")) : [];
   const segRow = plate && plate.querySelector("[data-story-segs]");
   const countEl = plate && plate.querySelector("[data-story-count]");
   const panel = plate && plate.querySelector(".modal-panel");
-  let fi = 0, timer = null, paused = false;
+  let fi = 0, timer = null, paused = false, railOpener = null;
   if (railEl && frames.length && segRow) {
     frames.forEach(() => {
       const seg = document.createElement("span");
@@ -730,8 +947,20 @@ function leaveOverlay(root, trigger) {
     });
   }
   const segs = segRow ? Array.from(segRow.children) : [];
+  const headEl = plate && plate.querySelector("[data-room-title]");
+  const whereEl = plate && plate.querySelector("[data-room-where]");
+  const hintEl = plate && plate.querySelector("[data-room-hint]");
   const paint = () => {
     frames.forEach((f, j) => { f.hidden = j !== fi; });
+    // The rail's heading follows the frame rather than the click, because the dialog is read as
+    // a record: what it says has to be what is on screen at that moment.
+    const cap = frames[fi] && frames[fi].querySelector("figcaption");
+    if (cap) {
+      const [t, h] = (cap.textContent || "").split(" — ");
+      if (headEl) headEl.textContent = (t || "").trim();
+      if (hintEl) hintEl.textContent = (h || "").trim();
+      if (whereEl) whereEl.textContent = `${district} · frame ${fi + 1} of ${frames.length}`;
+    }
     segs.forEach((sg, j) => {
       sg.classList.toggle("is-done", j < fi);
       if (sg.firstChild) sg.firstChild.style.width = j < fi ? "100%" : "0";
@@ -748,11 +977,21 @@ function leaveOverlay(root, trigger) {
     if (!railEl || !frames.length) return false;
     fi = Math.max(0, Math.min(frames.length - 1, n));
     plate.classList.add("is-open", "is-rail");
-    focusFrame(n);
+    /* Standing in front of the frame while it plays is the point: the dialog is not a second place
+       to look, it is the same wall at reading distance. */
+    atFrame(n);
     paint();
-    opener = enterOverlay(plate, ".modal-close", trigger);
+    railOpener = enterOverlay(plate, ".modal-close", trigger);
     schedule();
     return true;
+  };
+  const closeRail = () => {
+    if (!plate || !plate.classList.contains("is-open")) return;
+    stopTimer();
+    paused = false;
+    plate.classList.remove("is-open", "is-rail");
+    leaveOverlay(plate, railOpener);
+    railOpener = null;
   };
   if (panel && frames.length) {
     panel.addEventListener("pointerdown", (event) => {
@@ -774,79 +1013,14 @@ function leaveOverlay(root, trigger) {
     });
   }
 
-  const closePlate = () => {
-    if (!plate || !plate.classList.contains("is-open")) return;
-    if (typeof stopTimer === "function") stopTimer();
-    paused = false;
-    plate.classList.remove("is-open", "is-rail");
-    leaveOverlay(plate, opener);
-    opener = null;
-  };
-  const openPlate = (obj) => {
-    if (!plate) return;
-    plate.querySelector("[data-room-where]").textContent = stage.closest("[data-room]")
-      ? stage.closest("[data-room]").dataset.room
-      : "";
-    plate.querySelector("[data-room-title]").textContent = obj.dataset.title || "";
-    plate.querySelector("[data-room-hint]").textContent = obj.dataset.hint || "";
-    plate.classList.add("is-open");
-    opener = enterOverlay(plate, ".modal-close", obj);
-  };
 
-  /* One selection, two projections: a row in the list is the same record as a spot on the
-     wall, so the list drives the camera and the camera marks the list. That is also what makes
-     the lane skippable — nothing reachable in the 3D view is missing from the list. */
-  rows.forEach((row) => {
-    const obj = stage.querySelector(`[data-obj="${row.dataset.rowObj}"]`);
-    if (!obj) return;
-    row.at = nearest(depthAt(obj));
-    row.addEventListener("pointerenter", () => walkTo(row.at));
-    row.addEventListener("focusin", () => walkTo(row.at));
-    const play = row.querySelector("[data-play]");
-    if (play) play.addEventListener("click", () => openRail(Number(play.dataset.play), play));
-  });
-
-  Array.from(stage.querySelectorAll("[data-obj]")).forEach((obj) => {
-    const show = () => { if (hereLine && obj.dataset.title) hereLine.textContent = obj.dataset.title; };
-    obj.addEventListener("pointerenter", show);
-    obj.addEventListener("focus", show);
-  });
-  stage.addEventListener("pointerleave", say);
-
-  const slots = Array.from(document.querySelectorAll(".slot"));
-  let drawn = 0;
-  Array.from(stage.querySelectorAll("[data-obj]")).forEach((obj) => {
-    obj.addEventListener("click", () => {
-      if (obj.classList.contains("room-noren")) {
-        const picker = document.querySelector(".district-pick");
-        if (picker) picker.scrollIntoView({ behavior: ease ? "smooth" : "auto", block: "start" });
-        return;
-      }
-      if (obj.classList.contains("room-shrine") && slots.length) {
-        slots.forEach((el) => el.classList.remove("is-drawn"));
-        const next = slots[drawn % slots.length];
-        drawn += 1;
-        next.classList.add("is-drawn");
-        next.scrollIntoView({ behavior: ease ? "smooth" : "auto", block: "center" });
-        return;
-      }
-      if (obj.dataset.frame !== undefined && openRail(Number(obj.dataset.frame), obj)) return;
-      if (obj.dataset.obj === "vending" && openRail(0, obj)) return;
-      openPlate(obj);
-    });
-  });
-  stations.forEach((el, i) => el.addEventListener("click", () => walkTo(i)));
-  planDots.forEach((el, i) => el.addEventListener("click", () => walkTo(i)));
-  Array.from(stage.querySelectorAll("[data-zoom]")).forEach((btn) => btn.addEventListener("click", () => {
-    zoom = clamp(zoom + Number(btn.dataset.zoom) * 0.12, 0.72, 1.28);
-    fit();
-  }));
   if (plate) {
-    Array.from(plate.querySelectorAll("[data-room-close]")).forEach((el) => el.addEventListener("click", closePlate));
+    Array.from(plate.querySelectorAll("[data-room-close]")).forEach((el) => el.addEventListener("click", closeRail));
     plate.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        closePlate();
+        event.stopPropagation();   // leaving the frame is not leaving the lane: the walk's own
+        closeRail();               // Esc handler sits on an ancestor and must not also fire
       } else if (event.key === "Tab") {
         trapTab(plate, event);
       } else if (plate.classList.contains("is-rail") && (event.key === "ArrowRight" || event.key === "ArrowLeft")) {
@@ -861,14 +1035,5 @@ function leaveOverlay(root, trigger) {
       }
     });
   }
-  const fromHash = () => {
-    const m = (location.hash || "").match(/^#frame-[a-z0-9]+-([a-z0-9-]+)$/i);
-    if (!m) return;
-    const obj = stage.querySelector(`[data-obj="frame-${m[1]}"]`);
-    if (obj) walkTo(nearest(depthAt(obj)));
-  };
-  walkTo(0);
-  fromHash();
-  window.addEventListener("hashchange", fromHash);
+  draw();
 })();
-

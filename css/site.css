@@ -1559,98 +1559,12 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   .dot-play img, .dot-chip, .dot-cell-btn .dot { transition: none; }
 }
 
-/* ============ Districts: a lane you walk ============ */
-/* The eye never moves: the world is translated and rotated the other way, which is the
-   whole reason this is affordable without WebGL. Movement is in screen axes rather than
-   camera-relative, because a lane has one axis of travel — turning never changes where
-   the next step lands, so keeping a visitor inside the walls needs no matrix math. */
-.room {
-  margin: 1.8rem 0 0;
-}
-.room-stage {
-  position: relative;
-  /* 21rem = 336px: the half-height equals the eye height (168px), so the floor reaches the
-     bottom edge of the frame at the near plane instead of leaving a bare band under it.
-     Do not grow this past LANE_H/2 above the eye or the scene starts showing its own edges. */
-  height: min(48vh, 21rem);
-  /* A 640px corridor inside a 1088px stage is 40% empty background, and an empty band around a
-     dark room reads as a broken image, not as depth. The window is cut to the size of the lane. */
-  max-width: 44rem;
-  margin-inline: auto;
-  overflow: hidden;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: linear-gradient(180deg, #0d1731 0%, var(--navy-deep) 60%, #060b1a 100%);
-  perspective: 720px;
-  perspective-origin: 50% 44%;
-  cursor: grab;
-  touch-action: pan-y;
-}
-.room-stage:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.room-world {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-  transform: scale(var(--k, 1)) translate3d(var(--pan-x, 0px), 0, var(--pan-z, 0px))
-    rotateY(var(--yaw, 0deg)) rotateX(var(--pitch, 0deg));
-  transition: transform 480ms var(--ease);
-}
-.room-world.is-dragging {
-  transition: none;
-}
-.room-plane {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  backface-visibility: hidden;
-}
-.room-wall-back {
-  width: 640px;
-  height: 360px;
-  margin: -180px 0 0 -320px;
-  transform: translateZ(-430px);
-  background: linear-gradient(180deg, #182551, #0b1430);
-}
-.room-wall-left,
-.room-wall-right {
-  width: 430px;
-  height: 360px;
-  margin: -180px 0 0 -215px;
-  background: linear-gradient(90deg, #131f42, #0a1430);
-}
-.room-wall-left {
-  transform: translateX(-320px) rotateY(90deg);
-}
-.room-wall-right {
-  transform: translateX(320px) rotateY(-90deg);
-  background: linear-gradient(90deg, #0a1430, #131f42);
-}
-.room-floor {
-  width: 640px;
-  height: 430px;
-  margin: -215px 0 0 -320px;
-  transform: translateY(168px) rotateX(90deg);
-  background: repeating-linear-gradient(90deg, rgba(205, 214, 238, 0.07) 0 1px, rgba(0, 0, 0, 0) 1px 64px);
-}
-/* The one amber source in the scene is the machine, and light that comes from a place
-   lands on a surface: a spill cone with edges, widening as it reaches the visitor. */
-.room-floor::after {
-  content: "";
-  position: absolute;
-  left: 30%;
-  top: 0;
-  width: 40%;
-  height: 62%;
-  background: linear-gradient(180deg, rgba(242, 200, 142, 0.34), rgba(242, 200, 142, 0.04));
-  clip-path: polygon(41% 0, 59% 0, 100% 100%, 0 100%);
-  filter: blur(3px);
-}
-/* A <button> does not inherit font-size, so anything in the scene that forgot to state one
-   comes out at the UA's 13.3px Arial — inside a perspective-transformed box that is how a
-   caption ends up reading as a headline. Sizes in the scene are stated, never inherited. */
+/* ============ Districts: the objects inside a lane ============ */
+/* A <button> does not inherit font-size, so anything in a scene that forgets to state one takes
+   the UA's 13.3px Arial — inside a perspective-transformed box that is how a caption ends up
+   reading as a headline, so sizes here are stated rather than inherited. The art in these rules
+   is shared by every view of a district, because a poster is the same object whether the visitor
+   stands in front of it on the wall or reads its row in the list. */
 .room-obj {
   font: inherit;
   font-size: 0.78rem;
@@ -1791,65 +1705,6 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   transform-origin: 50% 0;
   animation: noren 6.4s var(--ease) infinite;
 }
-.room-station {
-  font: inherit;
-  font-size: 0.78rem;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 132px;
-  margin-left: -66px;
-  padding: 0.16rem 0.3rem;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(6, 11, 26, 0.6);
-  cursor: pointer;
-  transform: translate3d(0, 128px, calc(var(--z) * -1px));
-}
-.station-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 0.34rem;
-  border-radius: 999px;
-  background: rgba(205, 214, 238, 0.55);
-  vertical-align: 1px;
-}
-.station-name {
-  font-family: var(--sans);
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  color: var(--muted-navy);
-}
-.room-station.is-here {
-  background: rgba(242, 200, 142, 0.16);
-}
-.room-station.is-here .station-dot {
-  background: var(--accent-bright);
-}
-.room-station.is-here .station-name {
-  color: var(--accent-bright);
-}
-.room-station:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: 3px;
-}
-.room-legend {
-  position: absolute;
-  left: 0.8rem;
-  bottom: 0.65rem;
-  margin: 0;
-  font-family: var(--sans);
-  font-size: 0.7rem;
-  letter-spacing: 0.05em;
-  color: var(--muted-navy);
-}
-.room-legend kbd {
-  padding: 0.06rem 0.3rem;
-  border: 1px solid rgba(205, 214, 238, 0.4);
-  border-radius: 3px;
-  font-size: 0.7rem;
-}
 .district-pick {
   display: grid;
   grid-template-columns: 1fr;
@@ -1905,21 +1760,7 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
     grid-template-columns: 1fr 1fr;
   }
 }
-@media (max-width: 700px) {
-  .room-stage {
-    height: 46vh;
-  }
-  .room-world {
-    --k: 0.62;
-  }
-}
-@media (max-width: 430px) {
-  .room-world {
-    --k: 0.5;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
-  .room-world,
   .room-poster .obj-face,
   .obj-tag {
     transition: none;
@@ -1929,7 +1770,6 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
     animation: none;
   }
 }
-
 .story-segs {
   display: flex;
   gap: 4px;
@@ -2062,120 +1902,409 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   font-size: 0.9rem;
 }
 
-/* The plan is the 3D tell and the touch affordance at once: the lane from above, one mark
-   per walk stop, and a camera wedge that turns when the visitor turns. It is decorative in
-   the accessibility tree because every stop it shows is already a real button in the lane. */
-.room-plan {
-  position: absolute;
-  right: 0.7rem;
-  top: 0.7rem;
-  width: 5.4rem;
-  padding: 0.3rem 0.3rem 0.2rem;
-  border: 1px solid rgba(205, 214, 238, 0.26);
-  border-radius: 6px;
-  background: rgba(6, 11, 26, 0.55);
+/* ============ Districts: the walk ============ */
+/* The lane owns the viewport and every control is a head-up display floating on it. That is the
+   reference site's arrangement, and it is the only one that answers the brief: entering a space
+   has to read as standing in it, not as looking at a figure set inside an article. The world is
+   translated and rotated the other way instead of an eye being moved, so a corridor with one
+   axis of travel needs no render loop, no matrix library and no WebGL.
+   The geometry is metric — 1 px = 1 cm, the eye 168 above the floor, the box 640 wide, 1247
+   deep, 420 high — and it is closed on six sides, because turning around must show the space
+   rather than its edge. */
+html.is-walking {
+  overflow: hidden;
 }
-.plan-lane {
-  position: relative;
-  height: 4.1rem;
-  border: 1px solid rgba(205, 214, 238, 0.3);
-  border-radius: 2px;
-  background: linear-gradient(180deg, rgba(242, 200, 142, 0.14), rgba(205, 214, 238, 0.05));
+html.is-walking .nav,
+html.is-walking footer {
+  display: none;
 }
-/* The plan is not a picture of the lane, it is the lane's scrubber: a mark you can press.
-   Buttons are used instead of decorative spans for exactly that reason, and the ring is the
-   only place the walk has a control that works with a thumb. */
-.plan-dot {
-  padding: 0;
-  border: 0;
-  cursor: pointer;
-  position: absolute;
-  left: calc(50% - 2px);
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  background: rgba(205, 214, 238, 0.55);
+.walk {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  background: #060b1a;
 }
-.plan-dot.is-here {
-  background: var(--accent-bright);
-  box-shadow: 0 0 0 3px rgba(242, 200, 142, 0.22);
-}
-.plan-dot:focus-visible {
-  outline: 1px solid var(--accent-bright);
-  outline-offset: 3px;
-}
-.plan-cam {
-  position: absolute;
-  left: calc(50% + var(--plan-x, 0px));
-  top: var(--plan-pct, 68%);
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-bottom: 11px solid var(--accent-bright);
-  transform: translate(-50%, -50%) rotate(var(--plan-ry, 180deg));
-  transform-origin: 50% 50%;
-  transition: top 300ms var(--ease), transform 300ms var(--ease);
-}
-.plan-word {
+.walk.is-open {
   display: block;
-  margin-top: 0.2rem;
+}
+.walk-view {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* The clip sits on the carrier and never on the preserve-3d element: naming overflow anywhere
+     else is how WebKit silently flattens a scene back into a poster. No filter here either. */
+  perspective: var(--fov, 820px);
+  perspective-origin: 50% 50%;
+  cursor: grab;
+  /* The space swallows the gesture. A page that scrolls under the thumb while you are trying to
+     look around is not a place, it is a screenshot with a drag handler. */
+  touch-action: none;
+}
+.walk-view:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: -2px;
+}
+.walk-world {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateZ(var(--roll, 0deg)) rotateY(var(--yaw, 0deg)) rotateX(var(--pitch, 0deg))
+    translate3d(var(--tx, 0px), var(--ty, 0px), var(--tz, 0px));
+  will-change: transform;
+}
+.walk-plane {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  backface-visibility: hidden;
+}
+/* A 420-high wall with the eye at 168 has its centre 42 above the eye: 168 - 420/2 = -42. */
+.walk-wall-far {
+  width: 640px;
+  height: 420px;
+  margin: -210px 0 0 -320px;
+  transform: translate3d(0, -42px, -1247px);
+  background: linear-gradient(180deg, #16234a 0%, #0d1731 62%, #0a1226 100%);
+}
+.walk-wall-back {
+  width: 640px;
+  height: 420px;
+  margin: -210px 0 0 -320px;
+  transform: translate3d(0, -42px, 40px) rotateY(180deg);
+  background: linear-gradient(180deg, #101a38 0%, #0a1226 70%, #060b1a 100%);
+}
+.walk-wall-left,
+.walk-wall-right {
+  width: 1247px;
+  height: 420px;
+  margin: -210px 0 0 -623px;
+}
+.walk-wall-left {
+  transform: translate3d(-320px, -42px, -623px) rotateY(90deg);
+  background: linear-gradient(90deg, #0a1226 0%, #16234a 68%, #1b2b57 100%);
+}
+.walk-wall-right {
+  transform: translate3d(320px, -42px, -623px) rotateY(-90deg);
+  background: linear-gradient(270deg, #0a1226 0%, #16234a 68%, #1b2b57 100%);
+}
+.walk-floor {
+  width: 640px;
+  height: 1247px;
+  margin: -623px 0 0 -320px;
+  transform: translate3d(0, 168px, -623px) rotateX(90deg);
+  background:
+    repeating-linear-gradient(0deg, rgba(205, 214, 238, 0.06) 0 1px, rgba(0, 0, 0, 0) 1px 96px),
+    linear-gradient(180deg, #0f1a36 0%, #0a1328 60%, #060c1c 100%);
+}
+.walk-ceiling {
+  width: 640px;
+  height: 1247px;
+  margin: -623px 0 0 -320px;
+  transform: translate3d(0, -252px, -623px) rotateX(-90deg);
+  background: linear-gradient(180deg, #05091a 0%, #0b1327 74%, #101c3c 100%);
+}
+/* Light from the machine at the end of the lane lands on a surface: a spill with edges. The blur
+   is on a leaf that has no 3D children, which is the only place this file is allowed one. */
+.walk-floor::after {
+  content: "";
+  position: absolute;
+  left: 22%;
+  top: 76%;
+  width: 56%;
+  height: 24%;
+  background: linear-gradient(0deg, rgba(242, 200, 142, 0.3), rgba(242, 200, 142, 0.02));
+  clip-path: polygon(0 100%, 34% 0, 66% 0, 100% 100%);
+  filter: blur(6px);
+}
+/* Your own shadow, on the floor under the eye. It is the reference's YOU marker with a better
+   job: the one thing in the space that says a body is here, and looking down finds it. */
+.walk-you {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52px;
+  height: 18px;
+  margin: -9px 0 0 -26px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(4, 8, 20, 0.72), rgba(4, 8, 20, 0));
+  transform: translate3d(var(--you-x, 0px), 167px, calc(var(--you-z, 0px) * -1px)) rotateX(90deg);
+}
+.walk-hud {
+  position: absolute;
+  inset: 0;
+  padding: 0.85rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.6rem;
+  pointer-events: none;
   color: var(--muted-navy);
   font-family: var(--sans);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-align: center;
+  font-size: 0.84rem;
+  letter-spacing: 0.02em;
 }
-/* The lane's own chrome is a legend and two buttons, nothing else: the zoom pair is the
-   reference site's − / + and it is the one control that helps equally on every screen size. */
-.room-legend .zoom {
-  margin-left: 0.5rem;
+.walk-hud > * {
+  pointer-events: auto;
 }
-.room-legend .zoom button {
-  width: 1.35rem;
-  height: 1.35rem;
-  padding: 0;
-  border: 1px solid rgba(205, 214, 238, 0.4);
-  border-radius: 4px;
-  background: rgba(6, 11, 26, 0.5);
+.walk-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.walk-eyebrow {
+  margin: 0 0 0.3rem;
+  color: var(--gold);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.walk-stops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  max-width: 58vw;
+}
+.walk-stop {
+  padding: 0.22rem 0.6rem;
+  border: 1px solid rgba(205, 214, 238, 0.3);
+  border-radius: 999px;
+  background: rgba(6, 11, 26, 0.55);
   color: var(--muted-navy);
   font: inherit;
-  font-size: 0.85rem;
-  line-height: 1;
+  font-size: 0.8rem;
   cursor: pointer;
 }
-.room-legend .zoom button:hover,
-.room-legend .zoom button:focus-visible {
+.walk-stop:hover,
+.walk-stop:focus-visible,
+.walk-stop.is-here {
+  border-color: var(--accent-bright);
+  color: var(--accent-bright);
+  background: rgba(242, 200, 142, 0.14);
+}
+.walk-status {
+  margin: 0;
+  color: var(--accent-bright);
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: right;
+}
+.walk-record {
+  margin: 0.2rem 0 0;
+  color: var(--muted-navy);
+  font-size: 0.78rem;
+  text-align: right;
+}
+.walk-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.walk-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+.walk-tools button,
+.walk-fov button {
+  padding: 0.3rem 0.62rem;
+  border: 1px solid rgba(205, 214, 238, 0.34);
+  border-radius: 6px;
+  background: rgba(6, 11, 26, 0.6);
+  color: var(--muted-navy);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.walk-tools button:hover,
+.walk-tools button:focus-visible,
+.walk-fov button:hover,
+.walk-fov button:focus-visible {
   border-color: var(--accent-bright);
   color: var(--accent-bright);
 }
-/* The keyboard verbs are printed only where a keyboard exists. A legend that lists keys on a
-   phone is a legend that says "this is not for you". */
-.room-legend .keys {
+.walk-fov {
+  display: inline-flex;
+  gap: 2px;
+}
+.walk-fov button {
+  width: 1.7rem;
+  padding: 0.26rem 0;
+  text-align: center;
+}
+.walk-keys {
+  margin: 0;
+  font-size: 0.78rem;
+  text-align: center;
+  opacity: 0.86;
+}
+.walk-keys kbd {
+  padding: 0.06rem 0.3rem;
+  border: 1px solid rgba(205, 214, 238, 0.4);
+  border-radius: 3px;
+  font-size: 0.76rem;
+}
+.walk-note {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  text-align: right;
+  opacity: 0.7;
+}
+/* Keys are printed where a keyboard exists. A touch device gets the pad and the buttons it can
+   actually press, because a legend of keys on a phone says "this is not for you". */
+.walk-keys,
+.walk-note {
   display: none;
 }
 @media (hover: hover) and (pointer: fine) {
-  .room-legend .keys {
-    display: inline;
+  .walk-keys,
+  .walk-note {
+    display: block;
   }
 }
-.room-here {
-  margin: 0.42rem 0 0;
-  color: var(--muted);
-  font-family: var(--sans);
-  font-size: 0.78rem;
-  letter-spacing: 0.02em;
-  text-align: center;
+.walk-pad {
+  position: absolute;
+  left: 0.9rem;
+  bottom: 3.4rem;
+  width: 6.2rem;
+  height: 6.2rem;
+  border: 1px solid rgba(205, 214, 238, 0.28);
+  border-radius: 50%;
+  background: rgba(6, 11, 26, 0.45);
+  touch-action: none;
+  display: none;
 }
-.room-here [data-room-here] {
-  color: var(--accent);
-  font-weight: 600;
+.walk-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2.2rem;
+  height: 2.2rem;
+  margin: -1.1rem 0 0 -1.1rem;
+  border-radius: 50%;
+  background: rgba(242, 200, 142, 0.5);
 }
-.room-legend .how {
+@media (pointer: coarse) {
+  .walk-pad {
+    display: block;
+  }
+}
+.walk-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(30rem, calc(100vw - 2rem));
+  transform: translate(-50%, -50%);
+  padding: 1.2rem 1.3rem 1.3rem;
+  border: 1px solid rgba(205, 214, 238, 0.24);
+  border-radius: 0.7rem;
+  background: rgba(11, 20, 48, 0.94);
+  color: var(--paper);
+  box-shadow: var(--shadow-lg);
+}
+.walk-card h2 {
+  margin: 0.2rem 0 0.4rem;
+  font-size: 1.32rem;
+}
+.walk-card p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+.walk-card .eyebrow {
   color: var(--accent-bright);
 }
+.walk-list {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: min(26rem, 90vw);
+  height: 100%;
+  padding: 1.1rem 1.2rem 1.4rem;
+  overflow: auto;
+  background: rgba(8, 14, 34, 0.96);
+  border-left: 1px solid rgba(205, 214, 238, 0.2);
+  color: var(--muted-navy);
+}
+.walk-list .eyebrow {
+  margin: 0 0 0.6rem;
+  color: var(--gold);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.walk-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
+}
+.walk-list li {
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(205, 214, 238, 0.14);
+}
+.walk-list button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--paper);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(242, 200, 142, 0.5);
+  text-underline-offset: 3px;
+}
+.walk-list button:hover,
+.walk-list button:focus-visible {
+  color: var(--accent-bright);
+}
+.walk-list .when {
+  display: block;
+  margin-top: 0.2rem;
+  /* .when is the paper's warm secondary; on the drawer's navy it is 2.6:1 and unreadable, so the
+     HUD states its own muted colour rather than inheriting one that belongs to another surface. */
+  color: rgba(205, 214, 238, 0.78);
+  font-size: 0.78rem;
+}
+/* What can be opened is legible before anything is pressed: the ring is the reach, and the thing
+   answers it by stepping off the wall. */
+.room-obj.is-reach .obj-face {
+  box-shadow: 0 0 0 2px rgba(242, 200, 142, 0.85), 0 1.2rem 1.8rem -0.9rem rgba(0, 0, 0, 0.8);
+}
+.room-obj.is-reach {
+  transform: translate3d(var(--x), calc(168px - var(--y, 0px) - var(--h, 100px)),
+      calc(var(--z) * -1px + 8px)) rotateY(var(--ry, 0deg));
+}
+.room-obj.is-here .obj-img {
+  filter: brightness(1.16);
+}
 @media (max-width: 700px) {
-  .room-plan {
-    width: 4.4rem;
+  .walk-stops {
+    max-width: 46vw;
+  }
+  /* The HUD does not shrink its text on a phone: the phone is the one place a smudge of 11px
+     amber is unreadable in sunlight. */
+  .walk-hud {
+    font-size: 0.8rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .room-poster .obj-face,
+  .obj-tag {
+    transition: none;
+  }
+  .room-vending .obj-face::after,
+  .room-noren .obj-face {
+    animation: none;
   }
 }
