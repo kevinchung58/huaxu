@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260914n"   # one bump per changed asset pair; both tags read it
+VER = "20260914p"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -158,6 +158,46 @@ def page(title: str, active: str, body: str, path: str = "", extra: str = "") ->
 </main>
 {FOOT}
 {extra}
+</body>
+</html>
+"""
+
+
+def shell_page(title: str, body: str, path: str) -> str:
+    """A page that is not an article: no masthead, no footer, no prose stacked under the view.
+
+    A walkable space is an application, and the reference proves the point by refusing to be a
+    webpage at all — one route, the viewport belongs to the building, and everything else is an
+    overlay you can dismiss. Keeping the site's nav and a column of sections around the lane would
+    have produced exactly what the owner rejected: a picture of a place inside a page about it.
+    The doorway back to the CV is one link in the head-up display, and the content that used to
+    be sections now lives in the drawer, where it is still in the document, still printable, and
+    still the whole page when scripting is off.
+    """
+    canonical = f"{SITE}/{path}"
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#060b1a" />
+  <meta name="description" content="{DESC}" />
+  <link rel="canonical" href="{canonical}" />
+  <meta property="og:site_name" content="Hua-Xu Zhong" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="{escape(title)}" />
+  <meta property="og:description" content="{DESC}" />
+  <meta property="og:url" content="{canonical}" />
+  <meta property="og:image" content="{SITE}/IMG/1.jpg" />
+  <meta name="twitter:card" content="summary" />
+  <title>{escape(title)}</title>
+  <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
+  <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
+  <link rel="stylesheet" href="{CSS}" />
+</head>
+<body class="shell">
+{body}
+<script src="js/site.js?v={VER}"></script>
 </body>
 </html>
 """
@@ -1055,7 +1095,8 @@ activities = page("Activities · Hua-Xu Zhong", "activities", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>A photo archive and a running record of talks. Captions and venues will be attached as they are confirmed.</p></div>
-    <p class="pillar-more"><a class="text-arrow" href="rooms.html#walk-tokyo">The archive is also a place: enter Tokyo and walk to the three sights</a></p>
+    <p class="pillar-more"><a class="text-arrow" href="rooms.html">The archive is also a place: Tokyo, "
+              "walked at first person — three sights on the wall</a></p>
     {titled("h2", "Gallery", ICON_CAMERA)}
     <p class="when reveal" style="margin:-0.4rem 0 1rem">{gallery_note}</p>
     <div class="deck reveal" data-deck>
@@ -1380,11 +1421,11 @@ def frames_section(districts):
                 f' <button type="button" class="frame-play" data-play="{n}">Play from here</button></p></li>')
     if not rows:
         return ""
-    head = titled("h2", "Frames in this district", ICON_CAMERA, "block-title reveal spaced")
+    head = titled("h2", "Frames in this district", ICON_CAMERA, "block-title spaced")
     note = ('<p class="when">Each is a drawn depiction of a named place, hung on a wall at the '
             'distance printed beside it. None is a photograph, and none records that the owner '
             'stood there.</p>')
-    return f'    {head}\n    {note}\n    <ul class="frame-list reveal">\n      {INDENT.join(rows)}\n    </ul>'
+    return f'    {head}\n    {note}\n    <ul class="frame-list">\n      {INDENT.join(rows)}\n    </ul>'
 
 
 def rooms_plate_html(districts):
@@ -1435,19 +1476,17 @@ def room_object(o):
             f'<span class="obj-tag">{name}</span></button>')
 
 
-def walk_html(d):
-    """The whole viewport is the space, and everything else is a head-up display on top of it.
+def walk_html(d, drawer):
+    """The whole viewport is the space; every control is a head-up display floating on it.
 
-    That is not a style preference. The reference site loads into the building: its level chips,
-    its `YOU` marker, its `W A S D walk · Space jump · Drag to turn · E open` and its
-    `Level 1 ready.` all float over a view that owns the screen. A district offered any other way
-    is a diagram of a place rather than a place, which is what the lane is for. So the page a
-    visitor reads is the doorway, and `Enter` gives the viewport to the lane.
+    That is the reference's arrangement, read as an architecture rather than as a style: one route,
+    the building owns the screen, the picker and the reading live in overlays that appear on
+    request. So there is no doorway to click through any more — arriving at this page *is*
+    entering, and the CV is a link away in the corner rather than a frame around it.
 
-    Geometry: 1 px = 1 cm, the eye at EYE, and a closed box — four walls, a floor, a ceiling — so
-    that turning around always shows the space instead of its edge. Objects keep their authored
-    coordinates and are pushed down the lane by Z_SCALE, which is a rendering constant and not a
-    fact about the record.
+    Geometry: 1 px = 1 cm, the eye at EYE, and a box closed on six sides so that turning around
+    always shows the space instead of its edge. Objects keep their authored coordinates and are
+    pushed down the lane by Z_SCALE, which is a rendering constant and not a fact about the record.
     """
     objects = list(d["objects"]) + wall_frames(d)
     if d["exit"]:
@@ -1474,9 +1513,9 @@ def walk_html(d):
     did = escape(d["id"])
     return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
-       aria-label="{label}, a lane you walk in person. Drag to turn, W A S D to walk, Space to
-       jump, E to open what you are standing in front of, Esc to leave. The frames are also
-       written out on the page.">
+       aria-label="{label}, a lane you walk in person. Drag to turn, W A S D to walk, Shift to run,
+       Space to jump, E to open what you are standing in front of, L for the list. Every frame is
+       also written out in that list.">
     <div class="walk-world" data-walk-world>
       <div class="walk-plane walk-wall-far"></div>
       <div class="walk-plane walk-wall-back"></div>
@@ -1490,26 +1529,27 @@ def walk_html(d):
   </div>
   <div class="walk-hud">
     <div class="walk-top">
-      <div>
+      <div class="walk-pick">
+        <a class="walk-home" href="index.html">{ICON_LEFT}Hua-Xu Zhong</a>
         <p class="walk-eyebrow">{label} · one lane, drawn</p>
         <div class="walk-stops" role="group" aria-label="Stops in this lane">{"".join(chips)}</div>
       </div>
-      <div>
+      <div class="walk-read">
         <p class="walk-status" data-walk-status role="status">Building the lane…</p>
         <p class="walk-record" data-walk-record></p>
       </div>
     </div>
     <div class="walk-bottom">
       <div class="walk-tools">
-      <span class="walk-fov"><button type="button" data-walk-fov="-1" aria-label="Wider view">−</button
-      ><button type="button" data-walk-fov="1" aria-label="Narrower view">+</button></span>
-      <button type="button" class="walk-jump" data-walk-jump>Jump</button>
-      <button type="button" data-walk-list aria-expanded="false" aria-controls="walk-list-{did}">The list</button>
-      <button type="button" data-walk-leave>Leave the lane</button>
-    </div>
+        <span class="walk-fov"><button type="button" data-walk-fov="-1" aria-label="Wider view">−</button
+        ><button type="button" data-walk-fov="1" aria-label="Narrower view">+</button></span>
+        <button type="button" class="walk-jump" data-walk-jump>Jump</button>
+        <button type="button" data-walk-list aria-expanded="false" aria-controls="walk-list-{did}">The list
+        </button>
+      </div>
       <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
         <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open ·
-        <kbd>Esc</kbd> leave</p>
+        <kbd>L</kbd> list</p>
       <p class="walk-note">{label} is drawn, not surveyed: the distances are the artist's, and a
         frame is a depiction of a place rather than a record of standing in it.</p>
     </div>
@@ -1521,11 +1561,15 @@ def walk_html(d):
     <p data-walk-hint></p>
     <button type="button" class="modal-close" data-walk-card-close aria-label="Close">{ICON_X}</button>
   </div>
-  <aside class="walk-list" id="walk-list-{did}" data-walk-listpanel hidden>
-    <p class="eyebrow">The same wall, written out</p>
-    <ul>{"".join(links)}</ul>
-    <p class="when">Choosing one walks you to it. With scripting off this list is the page: the
-      frames, their captions and their kind are all in the document.</p>
+  <aside class="walk-list" id="walk-list-{did}" data-walk-listpanel aria-label="{label}, written out">
+    <button type="button" class="walk-drawer-close" data-walk-list-close aria-label="Close the list">
+      {ICON_X}</button>
+    <p class="eyebrow">The lane, written out</p>
+    <ul class="walk-districts">
+      {INDENT.join(district_card(x) for x in DISTRICTS)}
+    </ul>
+{drawer}
+    <ul class="walk-links">{"".join(links)}</ul>
   </aside>
 </div>
 """
@@ -1537,7 +1581,7 @@ def district_card(d):
     site-wide. The kind is printed here with the gate it implies, and the cover — if there is
     one — carries the kind's cover rule as its caption, so a drawn cover can never be read as
     a photograph the owner took."""
-    state = "Not open yet." if d["status"] == "soon" else "Enter " + d["label"]
+    state = "Not open yet." if d["status"] == "soon" else "You are standing in it."
     kind = d.get("kind")
     meta = KINDS.get(kind, {})
     badge = f'{escape(meta["label"])} · {escape(d["purpose"])}' if meta else escape(d["purpose"])
@@ -1559,8 +1603,7 @@ def district_card(d):
             f'<h2>{escape(d["label"])}</h2>'
             f'{gate}'
             f'<p class="when">{state}</p>'
-            f'<p class="pillar-more"><button type="button" class="walk-enter" '
-            f'data-walk-enter="{escape(d["id"])}">{escape(state)}</button></p></li>')
+            f'<p class="pillar-more"><span class="when">{escape(state)}</span></p></li>')
 
 
 def slot_row(d, sl):
@@ -1569,37 +1612,26 @@ def slot_row(d, sl):
             f'<p class="when">{escape(sl["state"])}</p></li>')
 
 
-rooms_body = f'''
-<section class="section">
-  <div class="wrap">
-    <div class="section-head reveal"><p class="eyebrow">Districts</p><h1>Rooms you walk into</h1>
-      <p>A district is one space you go into. The whole screen becomes the lane, the light at
-      the end is where you are heading, and the frames hang on the walls at a distance you can
-      walk. Enter it — or read the same frames written out below, because a list is what a space
-      is made of when a screen cannot be a place.</p></div>
-    <ul class="district-pick reveal">
-      {INDENT.join(district_card(d) for d in DISTRICTS)}
-    </ul>
-    <div class="dashed reveal" style="margin-top:1.6rem">
-      <strong>What this is, and what it is not</strong>
-      <p class="when">The lane is drawn, not surveyed. The wall holds drawn covers and three drawn sights —
-      the temple gate at Asakusa, the crossing at Shibuya, the tower at dusk — and the objects are
-      props; no footage sits in any slot yet. Frames and clips arrive when the
-      owner supplies them; nothing on this page implies a place was visited.</p>
-    </div>
-    {frames_section(DISTRICTS)}
-    {titled("h2", "Slots", ICON_CASE, "block-title reveal spaced")}
-    <ul class="slot-list reveal">
-      {INDENT.join(slot_row(d, sl) for d in DISTRICTS for sl in d["slots"])}
-    </ul>
-  </div>
-</section>
-'''
-
 open_districts = [d for d in DISTRICTS if d["status"] == "open"]
-rooms = page("Districts · Hua-Xu Zhong", "rooms", rooms_body,
-             extra=rooms_plate_html(open_districts)
-                   + "\n" + "\n".join(walk_html(d) for d in open_districts))
+
+# The district content, assembled for the drawer rather than for an article: the same builders the
+# rest of the site uses, minus the scroll-in state, because a head-up display does not scroll and
+# because reveal-on-scroll hides everything when scripting is off.
+drawer_inner = "\n    ".join(x for x in [
+    frames_section(open_districts),
+    titled("h2", "Slots", ICON_CASE, "block-title spaced"),
+    '<ul class="slot-list">\n      '
+    + INDENT.join(slot_row(d, sl) for d in open_districts for sl in d["slots"])
+    + "\n    </ul>",
+    '<p class="when">The lane is drawn, not surveyed. The wall holds drawn covers and three drawn '
+    'sights — the temple gate at Asakusa, the crossing at Shibuya, the tower at dusk — and the '
+    'objects are props; no footage sits in any slot yet. Frames and clips arrive when the owner '
+    'supplies them, and nothing here implies a place was visited.</p>',
+] if x)
+
+walk_pages = "\n".join(walk_html(d, drawer_inner) for d in open_districts)
+rooms = shell_page("Tokyo · Districts · Hua-Xu Zhong",
+                   walk_pages + "\n" + rooms_plate_html(open_districts), "rooms.html")
 
 (ROOT / "rooms.html").write_text(rooms, encoding="utf-8")
 

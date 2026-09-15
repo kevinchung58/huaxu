@@ -1911,22 +1911,23 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
    The geometry is metric — 1 px = 1 cm, the eye 168 above the floor, the box 640 wide, 1247
    deep, 420 high — and it is closed on six sides, because turning around must show the space
    rather than its edge. */
-html.is-walking {
+/* The shell: this page is not an article, so it does not wear one. No masthead, no footer, no
+   column of prose under the view — arriving is entering, and the CV is one link in the corner.
+   That is the reference's architecture, not its decoration: a walkable space is an application. */
+body.shell {
+  margin: 0;
+  min-height: 100dvh;
   overflow: hidden;
-}
-html.is-walking .nav,
-html.is-walking footer {
-  display: none;
+  background: #060b1a;
+  color: var(--muted-navy);
 }
 .walk {
   position: fixed;
   inset: 0;
-  z-index: 90;
-  display: none;
   background: #060b1a;
 }
-.walk.is-open {
-  display: block;
+.shell .modal {
+  z-index: 100;   /* the rail is opened from inside the space, so it must sit above it */
 }
 .walk-view {
   position: absolute;
@@ -2033,7 +2034,10 @@ html.is-walking footer {
 .walk-hud {
   position: absolute;
   inset: 0;
-  padding: 0.85rem 0.95rem;
+  /* The notch and the home bar belong to the device, so the HUD keeps them clear by asking for
+     them rather than guessing a number. */
+  padding: calc(0.85rem + env(safe-area-inset-top)) calc(0.95rem + env(safe-area-inset-right))
+    calc(0.85rem + env(safe-area-inset-bottom)) calc(0.95rem + env(safe-area-inset-left));
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -2052,6 +2056,25 @@ html.is-walking footer {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+}
+.walk-pick,
+.walk-read {
+  display: grid;
+  gap: 0.3rem;
+}
+.walk-home {
+  justify-self: start;
+  color: var(--muted-navy);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  opacity: 0.8;
+}
+.walk-home:hover,
+.walk-home:focus-visible {
+  color: var(--accent-bright);
+  opacity: 1;
 }
 .walk-eyebrow {
   margin: 0 0 0.3rem;
@@ -2221,20 +2244,25 @@ html.is-walking footer {
   color: var(--accent-bright);
 }
 .walk-list {
+  transition: transform 320ms var(--ease), visibility 320ms var(--ease);
   position: absolute;
   right: 0;
   top: 0;
-  width: min(26rem, 90vw);
+  width: min(30rem, 92vw);
   height: 100%;
-  padding: 1.1rem 1.2rem 1.4rem;
+  padding: 1.2rem 1.25rem 1.6rem;
   overflow: auto;
-  background: rgba(8, 14, 34, 0.96);
-  border-left: 1px solid rgba(205, 214, 238, 0.2);
-  color: var(--muted-navy);
+  /* paper, not a second night: the reading material is the same material the rest of the site is
+     made of, which is also why nothing inside it has to be re-tinted to stay legible */
+  background: var(--bg);
+  border-left: 1px solid var(--line-strong);
+  color: var(--ink);
 }
 .walk-list .eyebrow {
   margin: 0 0 0.6rem;
-  color: var(--gold);
+  /* --accent at this size on cream is 4.46:1, so the eyebrow takes the ink-weighted amber that
+     the site already uses for small type on paper */
+  color: var(--accent-ink);
   font-size: 0.76rem;
   font-weight: 600;
   letter-spacing: 0.2em;
@@ -2255,7 +2283,7 @@ html.is-walking footer {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--paper);
+  color: var(--ink);
   font: inherit;
   font-weight: 600;
   text-align: left;
@@ -2266,14 +2294,51 @@ html.is-walking footer {
 }
 .walk-list button:hover,
 .walk-list button:focus-visible {
-  color: var(--accent-bright);
+  color: var(--accent-ink);
+}
+.walk-list.is-closed {
+  visibility: hidden;
+  transform: translateX(101%);
+}
+.walk-list .block-title {
+  color: var(--navy);
+}
+.walk-districts,
+.walk-links {
+  margin: 0.8rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.7rem;
+}
+.walk-districts {
+  grid-template-columns: 1fr;
+}
+.walk-links li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+.walk-drawer-close {
+  position: absolute;
+  right: 0.7rem;
+  top: 0.7rem;
+  padding: 0.3rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+}
+.walk-drawer-close:hover,
+.walk-drawer-close:focus-visible {
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
 }
 .walk-list .when {
   display: block;
   margin-top: 0.2rem;
-  /* .when is the paper's warm secondary; on the drawer's navy it is 2.6:1 and unreadable, so the
-     HUD states its own muted colour rather than inheriting one that belongs to another surface. */
-  color: rgba(205, 214, 238, 0.78);
   font-size: 0.78rem;
 }
 /* What can be opened is legible before anything is pressed: the ring is the reach, and the thing
@@ -2306,5 +2371,32 @@ html.is-walking footer {
   .room-vending .obj-face::after,
   .room-noren .obj-face {
     animation: none;
+  }
+}
+
+@media print {
+  body.shell {
+    overflow: visible;
+    background: #fff;
+    color: #14203f;
+  }
+  .walk-view,
+  .walk-hud,
+  .walk-pad,
+  .walk-card {
+    display: none;
+  }
+  .walk-list,
+  .walk-list.is-closed {
+    position: static;
+    visibility: visible;
+    transform: none;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    border: 0;
+  }
+  .walk-drawer-close {
+    display: none;
   }
 }

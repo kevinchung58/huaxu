@@ -51,10 +51,13 @@ Pointer Lock is unsupported on every iOS Safari and it hijacks the cursor.
 - Every frame is three surfaces from **one** record: a wall object, a captioned list row with an
   anchor and a `Play from here`, and a rail figure. Counts must stay equal; assert it in the
   harness.
-- A district is entered full-screen, not embedded: `.walk` is `display:none` until pressed, the
-  page behind it gets `inert`, and leaving restores focus to the door that opened it. The HUD
-  carries the words; nothing writes prose into the scene (`.obj-tag` is `display:none`, and the
-  object keeps `aria-label` so hiding its text never hides its name).
+- A district **is** its page: `shell_page()`, viewport owned by the space, no doorway to click, no
+  nav or footer, and the CV reachable by one link in the HUD. If a district becomes a figure inside
+  an article, it has failed the brief regardless of how correct the geometry is.
+- The HUD carries the words; nothing writes prose into the scene (`.obj-tag` is `display:none`, and
+  the object keeps `aria-label` so hiding its text never hides its name). Reading material lives in
+  a drawer of `var(--bg)` that ships open in the HTML and is folded by JS — so the page is complete
+  without scripting, prints as a list, and never re-tints a borrowed component to stay legible.
 - Geometry is metric and shared: `EYE = 168`, `1px = 1cm`, walls at ±320 with the walk clamp at
   290, and depth scaled once by `Z_SCALE` in the generator so the record keeps its authored
   numbers. The box is closed on six sides and the far wall always sits beyond `MAX_D`, so no

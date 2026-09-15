@@ -190,3 +190,9 @@ Reinstall sources:
 - Preserve accessibility features already present: skip link, `aria-*` attributes, semantic landmarks.
 - Inline SVG icons (Heroicons-style paths) are defined in `_gen_html.py`; add new icons there.
 - Commit generated HTML together with the `_gen_html.py` change that produced it.
+
+5. **`rooms.html` is a shell, not an article.** It is the only page built by `shell_page()`: no
+   nav, no footer, no `reveal`, and its reading material lives in a drawer that ships open and is
+   folded by JS. Adding a section, a `reveal` class or a navy drawer surface to that page is a
+   defect, not a design choice — it either hides content from visitors without scripting or drops
+   borrowed components to 2:1 contrast.

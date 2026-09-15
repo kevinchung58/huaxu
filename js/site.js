@@ -608,8 +608,7 @@ function leaveOverlay(root, trigger) {
    reason the 3D exists at all — a picture you cannot walk up to does not need a corridor. */
 (function () {
   const layer = document.querySelector("[data-walk]");
-  const enters = Array.from(document.querySelectorAll("[data-walk-enter]"));
-  if (!layer || !enters.length) return;
+  if (!layer) return;
   const root = document.documentElement;
   const view = layer.querySelector("[data-walk-view]");
   const world = layer.querySelector("[data-walk-world]");
@@ -630,9 +629,9 @@ function leaveOverlay(root, trigger) {
 
   const HALF = 290, MIN_D = -30, MAX_D = 1200, REACH = 190, MAX_PITCH = 35;
   const SPEED = 235, RUN = 1.75, ACCEL = 11, GRAV = 2400, JUMP = 465;
-  let on = false, zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
+  let on = true, zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
   let vx = 0, vd = 0, phase = 0, bob = 0, roll = 0, raf = 0, last = 0, here = -1, reach = null;
-  let opener = null, gliding = null, keys = new Set(), stick = null, down = null;
+  let gliding = null, keys = new Set(), stick = null, down = null;
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const num = (el, prop) => parseFloat(el.style.getPropertyValue(prop)) || 0;
@@ -758,18 +757,26 @@ function leaveOverlay(root, trigger) {
     loop();
   };
 
-  /* --- opening the viewport, and closing it --- */
-  const open = (trigger) => {
-    on = true;
-    opener = trigger || null;
-    layer.classList.add("is-open");
-    root.classList.add("is-walking");
-    Array.from(document.querySelectorAll("main, .nav, footer")).forEach((el) => { el.inert = true; });
+  /* --- arriving, and the overlays that fold away ---
+     There is no door to open any more: the page is the space, so boot only sets the first frame
+     and says so once it has actually painted. Nothing here hides the site behind a modal or
+     rewrites the URL — the list the visitor can read is part of this page, not a fallback
+     stashed under it, and a space you have to be granted entry to is still a webpage. */
+  const toggleList = (open) => {
+    if (!listPanel) return;
+    const want = open === undefined ? listPanel.classList.contains("is-closed") : !!open;
+    listPanel.classList.toggle("is-closed", !want);
+    if (listBtn) listBtn.setAttribute("aria-expanded", want ? "true" : "false");
+    if (want) {
+      const first = listPanel.querySelector("button, a");
+      if (first) first.focus({ preventScroll: true });
+    } else if (listBtn) {
+      listBtn.focus({ preventScroll: true });
+    }
+  };
+  const boot = () => {
     say("Building the lane…", "");
-    depth = 60; x = 0; yaw = -4; pitch = -2; height = 0; vy = 0; here = -1;
     draw();
-    view.focus({ preventScroll: true });
-    if (history.replaceState) history.replaceState(null, "", `#walk-${layer.dataset.walkId}`);
     // Two frames, not a timer: the status reads ready once the transform has actually painted,
     // which is the same courtesy the reference pays with its "Level 1 ready."
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -778,18 +785,13 @@ function leaveOverlay(root, trigger) {
     }));
     loop();
   };
-  const close = () => {
+  const fold = () => {
     on = false;
     if (raf) cancelAnimationFrame(raf);
     raf = 0; last = 0; keys.clear(); stick = null; gliding = null;
-    layer.classList.remove("is-open");
-    root.classList.remove("is-walking");
-    Array.from(document.querySelectorAll("main, .nav, footer")).forEach((el) => { el.inert = false; });
     if (plate && plate.classList.contains("is-open")) closeRail();
     hideCard();
-    if (listPanel) { listPanel.hidden = true; if (listBtn) listBtn.setAttribute("aria-expanded", "false"); }
-    if (history.replaceState) history.replaceState(null, "", location.pathname + location.search);
-    if (opener) opener.focus({ preventScroll: true });
+    toggleList(false);
   };
 
   const hideCard = () => {
@@ -811,7 +813,9 @@ function leaveOverlay(root, trigger) {
 
   const act = (m) => {
     if (!m) return;
-    if (m.el.classList.contains("room-noren")) { close(); return; }
+    // The curtain at your back is the way out of the space and into the CV. It is a real link in
+    // the data, not a decorative prop, so it navigates rather than closing a dialog.
+    if (m.el.classList.contains("room-noren")) { window.location.assign("index.html"); return; }
     if (m.el.dataset.frame !== undefined && openRail(Number(m.el.dataset.frame), m.el)) return;
     if (m.el.dataset.obj === "vending" && openRail(0, m.el)) return;
     showCard(m);
@@ -823,20 +827,14 @@ function leaveOverlay(root, trigger) {
   };
 
   /* --- input: every verb has both a key and a finger --- */
-  enters.forEach((btn) => btn.addEventListener("click", () => open(btn)));
-  const leave = layer.querySelector("[data-walk-leave]");
-  if (leave) leave.addEventListener("click", close);
+  const drawerClose = layer.querySelector("[data-walk-list-close]");
+  if (drawerClose) drawerClose.addEventListener("click", () => toggleList(false));
   stops.forEach((el, i) => el.addEventListener("click", () => { glideTo(stopZ[i]); }));
   Array.from(layer.querySelectorAll("[data-walk-to]")).forEach((btn) => btn.addEventListener("click", () => {
     glideTo(parseFloat(btn.getAttribute("data-walk-to")) || 0);
-    if (listPanel) { listPanel.hidden = true; if (listBtn) listBtn.setAttribute("aria-expanded", "false"); }
+    toggleList(false);
   }));
-  if (listBtn && listPanel) {
-    listBtn.addEventListener("click", () => {
-      listPanel.hidden = !listPanel.hidden;
-      listBtn.setAttribute("aria-expanded", listPanel.hidden ? "false" : "true");
-    });
-  }
+  if (listBtn) listBtn.addEventListener("click", () => toggleList());
   const jumpBtn = layer.querySelector("[data-walk-jump]");
   if (jumpBtn) jumpBtn.addEventListener("click", jump);
   Array.from(layer.querySelectorAll("[data-walk-fov]")).forEach((btn) => btn.addEventListener("click", () => {
@@ -911,7 +909,15 @@ function leaveOverlay(root, trigger) {
     if (plate && plate.classList.contains("is-open")) return;      // the rail owns its own keys
     const k = event.key.toLowerCase();
     if (event.altKey || event.metaKey || event.ctrlKey) return;
-    if (k === "escape") { event.preventDefault(); if (card && !card.hidden) hideCard(); else if (listPanel && !listPanel.hidden) { listPanel.hidden = true; listBtn.setAttribute("aria-expanded", "false"); } else close(); return; }
+    if (k === "escape") {
+      // Esc folds the overlays away and never ejects anybody: the page is the space, so there is
+      // nothing underneath to fall back to. The link in the corner is the way out.
+      event.preventDefault();
+      if (card && !card.hidden) hideCard();
+      else if (listPanel && !listPanel.classList.contains("is-closed")) toggleList(false);
+      return;
+    }
+    if (k === "l") { event.preventDefault(); toggleList(); return; }
     if (k === "e") { event.preventDefault(); act(reach); return; }
     if (k === " ") { event.preventDefault(); jump(); return; }
     if (k === "enter" && document.activeElement === view && reach) { event.preventDefault(); act(reach); return; }
@@ -927,10 +933,10 @@ function leaveOverlay(root, trigger) {
   root.addEventListener("keyup", (event) => { keys.delete(event.key.toLowerCase()); });
   root.addEventListener("blur", () => { keys.clear(); stick = null; });
   window.addEventListener("resize", () => { if (on) draw(); });
-  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
-  const hash = (location.hash || "").match(/^#walk-([a-z0-9-]+)$/i);
-  if (hash && hash[1] === layer.dataset.walkId) open(enters[0]);
+  if (listPanel) listPanel.classList.add("is-closed");   // scripting present: fold it, then obey
+  if (listBtn) listBtn.setAttribute("aria-expanded", "false");
   draw();
+  boot();
 
   const railEl = plate && plate.querySelector("[data-story-reel]");
   const frames = railEl ? Array.from(railEl.querySelectorAll("[data-story-frame]")) : [];
