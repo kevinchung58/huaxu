@@ -1569,7 +1569,10 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
 }
 .room-stage {
   position: relative;
-  height: min(58vh, 26rem);
+  /* 21rem = 336px: the half-height equals the eye height (168px), so the floor reaches the
+     bottom edge of the frame at the near plane instead of leaving a bare band under it.
+     Do not grow this past LANE_H/2 above the eye or the scene starts showing its own edges. */
+  height: min(48vh, 21rem);
   overflow: hidden;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
