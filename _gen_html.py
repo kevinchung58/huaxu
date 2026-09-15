@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260914f"   # one bump per changed asset pair; both tags read it
+VER = "20260914g"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -1232,8 +1232,8 @@ DISTRICTS = [
         "id": "tokyo", "label": "Tokyo", "purpose": "Travel notes", "status": "open",
         "kind": "personal",
         "cover": "IMG/tokyo-cover.jpg",
-        "cover_caption": "Six motifs of a city: a gate, a lantern, a tower, a crossing, a "
-                         "counter, a mountain on the skyline.",
+        "cover_caption": "The district in one sheet: a gate lantern, a scramble, a tower, "
+                         "a counter, a mountain on the skyline.",
         "blurb": "One lane at night. The light at the end is a vending machine, and the "
                  "lane is walked toward it.",
         "objects": [
@@ -1261,28 +1261,28 @@ DISTRICTS = [
                      "not have yet."},
         ],
         "frames": [
-            {"id": "alley", "src": "IMG/tokyo-story-alley.jpg", "x": 314, "z": 120, "y": 96, "ry": -90,
-             "title": "Frame: the lane at 22:40",
-             "alt": "Illustration of a narrow back street at night, a row of lit vending "
-                    "machines throwing amber onto wet paving, nobody in it.",
-             "caption": "A lane at night. The machine light is the only source, and the paving "
-                        "carries it.", "wall": True},
-            {"id": "platform", "src": "IMG/tokyo-story-platform.jpg", "x": -314, "z": 290, "y": 96, "ry": 90,
-             "title": "Frame: the elevated platform",
-             "alt": "Illustration of an empty elevated train platform at night with one "
-                    "hanging lamp and a plain band of a stationary train.",
-             "caption": "Nobody is waiting on this platform; the amber is a lamp rather than a "
-                        "mood filter.", "wall": True},
-            {"id": "store", "src": "IMG/tokyo-story-store.jpg", "x": -170, "z": 424, "y": 96, "ry": 0,
-             "title": "Frame: one shelf run, late",
-             "alt": "Illustration of a convenience store shelf run seen from standing height, "
-                    "products drawn as plain unbranded rectangles.",
-             "caption": "One shelf run, cropped to itself. The products are plain rectangles "
-                        "because a brand shape would be a claim about a shop.", "wall": True},
+            {"id": "sensoji", "src": "IMG/tokyo-sensoji.jpg", "x": 314, "z": 120, "y": 96, "ry": -90,
+             "title": "Frame: the gate at Asakusa",
+             "alt": "Illustration of a temple gate with a giant hanging lantern and a row of "
+                    "closed shopfronts, empty of people.",
+             "caption": "The gate lantern and a closed shopfront row, drawn. Asakusa as the "
+                        "subject of a picture, not as proof that anyone stood in it."},
+            {"id": "scramble", "src": "IMG/tokyo-scramble.jpg", "x": -314, "z": 290, "y": 96, "ry": 90,
+             "title": "Frame: the scramble at Shibuya",
+             "alt": "Illustration of a wide pedestrian scramble crossing seen from above at "
+                    "night, stripes radiating, no people and no cars.",
+             "caption": "The crossing from above, drawn. Empty on purpose: a crowd here would "
+                        "be an invented record, and this frame is not a record."},
+            {"id": "tower", "src": "IMG/tokyo-tower.jpg", "x": -170, "z": 424, "y": 96, "ry": 0,
+             "title": "Frame: the tower at dusk",
+             "alt": "Illustration of a lattice radio tower at dusk seen between low rooftops, "
+                    "small lights along its frame.",
+             "caption": "The lattice tower between rooftops, drawn, its own lights the only "
+                        "amber in the frame."},
         ],
         "slots": [
             {"label": "Frames", "note": "Photographs go here, one per wall slot.",
-             "state": "Empty. Three drawn posters hold the wall until a photograph takes one."},
+             "state": "Three drawn sights hold the wall now; a photograph still replaces its slot."},
             {"label": "Short clips", "note": "Vertical clips, muted by default, captioned always.",
              "state": "Empty. A clip needs its caption before it can play here."},
             {"label": "The lane at 22:40", "note": "Sound only if a visitor asks for it.",
@@ -1376,8 +1376,8 @@ def frames_section(districts):
     if not rows:
         return ""
     head = titled("h2", "Frames in this district", ICON_CAMERA, "block-title reveal spaced")
-    note = ('<p class="when">All of them are generated illustrations. None is a photograph, '
-            'and no frame claims a place was visited.</p>')
+    note = ('<p class="when">Each is a drawn depiction of a named place. None is a '
+            'photograph, and none records that the owner stood there.</p>')
     return f'    {head}\n    {note}\n    <ul class="frame-list reveal">\n      {INDENT.join(rows)}\n    </ul>'
 
 
@@ -1504,8 +1504,9 @@ rooms_body = f'''
     {INDENT.join(room_plan(d) for d in DISTRICTS if d["status"] == "open")}
     <div class="dashed reveal" style="margin-top:1.6rem">
       <strong>What this is, and what it is not</strong>
-      <p class="when">The lane is drawn, not surveyed. The three posters are generated illustrations, the
-      objects are props, and no footage sits in any slot yet. Frames and clips arrive when the
+      <p class="when">The lane is drawn, not surveyed. The wall holds drawn covers and three drawn sights —
+      the temple gate at Asakusa, the crossing at Shibuya, the tower at dusk — and the objects are
+      props; no footage sits in any slot yet. Frames and clips arrive when the
       owner supplies them; nothing on this page implies a place was visited.</p>
     </div>
     {frames_section(DISTRICTS)}
