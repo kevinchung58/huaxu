@@ -9,7 +9,7 @@ precise instrument, serif-led typography.
 | Token | Value | Role |
 |---|---|---|
 | `--navy` | `#101b39` | Primary plate (hero, nav base, rules) |
-| `--navy-deep` | `#0a1128` | Darker plate depth (footer bottom, lightbox) |
+| `--navy-deep` | `#0a1128` | Darker plate depth (footer bottom, photo plate) |
 | `--navy-soft` | `#1a2b50` | Gradient partner, scrollbar thumb |
 | `--accent` | `#b45309` | Amber: buttons, markers, rules. Graphics only on paper |
 | `--accent-ink` | `#96470a` | Amber for SMALL TEXT on paper — keeps ≥4.5:1. Never lighten |
@@ -73,8 +73,80 @@ they describe this committed world, so they are waived repo-wide in
 - `flat-type-hierarchy` — the 404 page is intentionally a minimal error plate.
 
 **Never silence an objective defect here** — fix contrast, heading order, sub-11px
-functional text, and broken/placeholder images in code (the lightbox image uses a 1×1
-transparent placeholder `src` + `aria-hidden`, since JS sets its real source on open).
+functional text, and broken/placeholder images in code. The 1×1 transparent placeholder
+`src` the old lightbox used (JS set its real image on open) is gone: the photo plate
+holds one real `<img>` per photograph, so a browser or reader that never runs the script
+still sees the archive.
 Note: the static detector's gradient contrast is conservative — it samples corner glow
 stops text never sits on; verify plate text against the *painted* navy, and prefer tuning
 the `--accent-bright` / `--muted-navy` tokens over weakening the plate.
+
+
+## Districts: the lane (rooms.html)
+
+A walkable district is the one place in this world where geometry is allowed. It stays in
+uniform: the floor and walls are navy plates, the only light is amber and it comes from one
+object (the vending machine), captions are the same `--muted`/`--muted-navy` as everywhere
+else, and the poster surfaces are drawn in CSS rather than generated as images so nothing in
+the scene can be mistaken for a photograph the owner took.
+
+Camera rule of the world: the eye never moves — `.room-world` is translated and rotated in
+the opposite direction. That is what keeps the lane free of a 3D library, and it is why
+movement is in screen axes (a lane has one axis of travel, so turning never changes where
+the next step lands).
+
+Two limits are deliberate and should not be "improved": yaw and pitch are clamped to ±35° /
+±10° because past that the walls stop covering the viewport and the room shows its own edges;
+and turning is drag, not Pointer Lock, because the site must stay usable on a phone.
+
+A district with no declared purpose cannot open — `status: "soon"` renders as such. The
+reference this was modelled on ships one built level and one honest `Coming soon`, and this
+site's rule is the same: an unbuilt space is announced, never decorated.
+
+### Kinds: the two defaults a district can be
+
+`purpose` says what a space is about. `kind` says what it is allowed to assert, and there
+are exactly two, because those are the two ways this site can be wrong:
+
+| | personal | academic |
+|---|---|---|
+| generated imagery | allowed, the whole district may be drawn | allowed as cover art only, never as evidence |
+| per-frame requirement | none | venue and date, or the frame is not shown |
+| the failure it prevents | a travel lane reading as a record of attendance | decoration standing in for a fact |
+| on the page | the kind is printed on the card and on every frame row | same |
+
+Travel is a personal space; a talk, a workshop, a school visit is an academic one. A new
+district cannot be built until its kind is declared, and the card that fails to declare it
+renders as shut — `Purpose not declared`, `Not open yet` — because an honestly locked door
+is cheaper than a confidently wrong one.
+
+#### Two WebKit flattening traps, and why this scene is built around them
+
+The research that mattered for the lane was not "which library" — it was two documented ways a
+CSS 3D scene silently renders flat in Safari and WebKit:
+
+1. `overflow` other than `visible` forces that element's `transform-style` to `flat`; the
+   reported fix is `overflow: visible !important` on the `preserve-3d` element itself, not on
+   its ancestor;
+2. a `filter` or `backdrop-filter` on the element carrying `perspective` kills `preserve-3d`
+   for its whole subtree;
+3. and a universal `* { transform-style: preserve-3d }` makes the scene vanish outright.
+
+Checked against the built stylesheet rather than hoped: `preserve-3d` is declared on exactly
+two selectors, `.room-world` (the lane) and `.ig-grid` (the Activities tilt), and neither block
+carries `overflow` or `filter`. The clip that keeps the lane inside its frame and the
+`perspective` both live one level up on `.room-stage`; the only `filter` inside the scene is
+`blur(3px)` on `.room-floor::after`, a leaf with no 3D children. A parser over the whole
+stylesheet agrees: no rule mixes `preserve-3d` with `overflow` or `filter`.
+
+So the structure is flat-safe today, and the rule for whoever edits it next is: **do not move
+`overflow` or `filter` onto a `preserve-3d` element, and do not add `preserve-3d` to a selector
+that has either.** These are not style preferences — moving the clip onto the wrapper is the
+kind of tidy-up a future agent will do, it looks perfect in Chrome, flattens the scene on every
+iPhone, and raises no detector finding.
+
+What this sandbox cannot do is measure. There is no iOS Safari here, so nested-layer behaviour
+on mobile is unverified rather than proven, and an earlier promise in SPEC §6 to research a
+maximum layer count was chasing the wrong failure mode: the documented one is flattening by
+`overflow` or `filter`, not a layer budget. What needs no measurement is the fallback — the
+captioned list is always readable.

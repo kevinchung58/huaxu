@@ -3,13 +3,14 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260911a"
+VER = "20260914h"   # one bump per changed asset pair; both tags read it
+CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
 DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking."
 PUBLIC_PAGES = ["index.html", "about.html", "research.html", "teaching.html",
                 "position.html", "thinking.html", "practice.html",
-                "activities.html", "service.html", "links.html"]
+                "activities.html", "rooms.html", "service.html", "links.html"]
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -55,7 +56,7 @@ def nav(active: str) -> str:
         cls = "is-active" if active == key else ""
         return f'<a href="{href}" class="{cls}">{label}</a>'
 
-    more_on = " is-active" if active in {"service", "links"} else ""
+    more_on = " is-active" if active in {"service", "links", "rooms"} else ""
     pos_on = " is-active" if active in {"position", "thinking", "practice"} else ""
     return f"""<a class="skip" href="#main">Skip to main content</a>
 <header class="nav">
@@ -80,6 +81,7 @@ def nav(active: str) -> str:
         <div class="more-menu" role="menu">
           {a("service.html", "Service", "service")}
           {a("links.html", "Resources", "links")}
+          {a("rooms.html", "Rooms", "rooms")}
         </div>
       </div>
     </nav>
@@ -98,6 +100,7 @@ def nav(active: str) -> str:
     <div class="label">More</div>
     {a("service.html", "Service", "service")}
     {a("links.html", "Resources", "links")}
+    {a("rooms.html", "Rooms", "rooms")}
   </nav>
 </header>"""
 
@@ -117,7 +120,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v=20260830a"></script>"""
+<script src="js/site.js?v={VER}"></script>"""
 
 
 def page(title: str, active: str, body: str, path: str = "", extra: str = "") -> str:
@@ -1177,6 +1180,347 @@ notfound = page("Page not found · Hua-Xu Zhong", "home", """
 (ROOT / "service.html").write_text(service, encoding="utf-8")
 (ROOT / "links.html").write_text(links, encoding="utf-8")
 (ROOT / "404.html").write_text(notfound, encoding="utf-8")
+
+# ── Districts ────────────────────────────────────────────────────────────────
+# A district is a themed, walkable space, not a photo set. Two rules are encoded
+# here because the owner fixed both on 2026-09-14:
+#   1. no district opens without a declared purpose, and that purpose is printed on
+#      the picker card. "What is this space for — travel, or a conference?" is the
+#      first thing every new district answers; an undeclared purpose is how a travel
+#      lane quietly becomes a claim about an event that did not happen.
+#   2. status "soon" is a real state and is rendered as one. An unbuilt district stays
+#      visibly unbuilt (the reference site's "Level G · Coming soon"; this site's own
+#      empty-state rule). Decoration never stands in for content.
+# Geometry is px in CSS' own handedness: x is across the lane, z is depth (positive =
+# farther; the stylesheet negates it), y is height above the floor, ry turns the thing
+# to face down the lane. The camera is the inverse of a camera: the world is moved and
+# rotated, the eye never moves — which is why no matrix math is needed to keep a
+# visitor inside the walls.
+# Two kinds of space, and the kind is the rule set rather than the label: declaring a
+# district academic buys it citations and imposes venue/date truth on every frame;
+# declaring it personal frees it from that but forbids it from *looking* like a record.
+# A travel space that is allowed to be drawn is the point of the split — a personal
+# district may be illustration all the way down, and the UI must never let it read as
+# attendance, a visit, or evidence.
+KINDS = {
+    "personal": {
+        "label": "Personal",
+        "gate": "Drawn frames are allowed. Nothing here may read as a record of "
+                "attendance, and no frame claims a place was visited.",
+        "cover": "The card's cover is drawn. It shows what the district is about, not what "
+                 "the owner saw.",
+    },
+    "academic": {
+        "label": "Academic",
+        "gate": "Every frame carries a venue and a date, or it is not shown. Generated "
+                "art may not stand in for evidence here.",
+        "cover": "The cover must be a record of the room, the board or the stage. A drawn "
+                 "cover would be a claim about an event.",
+    },
+}
+
+EYE = 168
+LANE_W, LANE_D, LANE_H = 640, 430, 360
+STATIONS = [
+    {"z": 0, "label": "the entrance"},
+    {"z": 150, "label": "under the posters"},
+    {"z": 275, "label": "by the pole"},
+    {"z": 395, "label": "in front of the machine"},
+]
+DISTRICTS = [
+    {
+        "id": "tokyo", "label": "Tokyo", "purpose": "Travel notes", "status": "open",
+        "kind": "personal",
+        "cover": "IMG/tokyo-cover.jpg",
+        "cover_caption": "The district in one sheet: a gate lantern, a scramble, a tower, "
+                         "a counter, a mountain on the skyline.",
+        "blurb": "One lane at night. The light at the end is a vending machine, and the "
+                 "lane is walked toward it.",
+        "objects": [
+            {"id": "vending", "kind": "vending", "x": -236, "z": 412, "y": 0, "ry": 90,
+             "title": "The vending machine",
+             "hint": "It keeps the lane's frames. Pressing the lit slot opens the drawer "
+                     "the photographs go into; nothing here reviews Tokyo."},
+            {"id": "poster-lantern", "kind": "poster", "img": "IMG/tokyo-poster-lantern.jpg", "x": -314, "z": 150, "y": 96, "ry": 90,
+             "title": "Poster: paper lantern",
+             "hint": "Generated illustration, pinned so the lane has a first image. It is not "
+                     "a photograph and not evidence of a visit."},
+            {"id": "poster-wires", "kind": "poster", "img": "IMG/tokyo-poster-wires.jpg", "x": 314, "z": 214, "y": 104, "ry": -90,
+             "title": "Poster: wires and rain",
+             "hint": "Generated illustration, not a photograph. A real frame replaces it when one is supplied."},
+            {"id": "poster-ticket", "kind": "poster", "img": "IMG/tokyo-poster-ticket.jpg", "x": 44, "z": 424, "y": 108, "ry": 0,
+             "title": "Poster: a folded ticket",
+             "hint": "Generated illustration, on the end wall where the lane's light lands."},
+            {"id": "shrine", "kind": "shrine", "x": 282, "z": 78, "y": 0, "ry": -90,
+             "title": "A small shrine at knee height",
+             "hint": "Draw one slip. The slip picks which slot you look at first; there is "
+                     "no score, because a lane is not a game to win."},
+            {"id": "pole", "kind": "utility", "x": 250, "z": 275, "y": 0, "ry": -90,
+             "title": "Utility pole",
+             "hint": "The lane's notice board: what this district is for, and what it does "
+                     "not have yet."},
+        ],
+        "frames": [
+            {"id": "sensoji", "src": "IMG/tokyo-sensoji.jpg", "x": 314, "z": 120, "y": 96, "ry": -90,
+             "title": "Frame: the gate at Asakusa",
+             "alt": "Illustration of a temple gate with a giant hanging lantern and a row of "
+                    "closed shopfronts, empty of people.",
+             "caption": "The gate lantern and a closed shopfront row, drawn. Asakusa as the "
+                        "subject of a picture, not as proof that anyone stood in it."},
+            {"id": "scramble", "src": "IMG/tokyo-scramble.jpg", "x": -314, "z": 290, "y": 96, "ry": 90,
+             "title": "Frame: the scramble at Shibuya",
+             "alt": "Illustration of a wide pedestrian scramble crossing seen from above at "
+                    "night, stripes radiating, no people and no cars.",
+             "caption": "The crossing from above, drawn. Empty on purpose: a crowd here would "
+                        "be an invented record, and this frame is not a record."},
+            {"id": "tower", "src": "IMG/tokyo-tower.jpg", "x": -170, "z": 424, "y": 96, "ry": 0,
+             "title": "Frame: the tower at dusk",
+             "alt": "Illustration of a lattice radio tower at dusk seen between low rooftops, "
+                    "small lights along its frame.",
+             "caption": "The lattice tower between rooftops, drawn, its own lights the only "
+                        "amber in the frame."},
+        ],
+        "slots": [
+            {"label": "Frames", "note": "Photographs go here, one per wall slot.",
+             "state": "Three drawn sights hold the wall now; a photograph still replaces its slot."},
+            {"label": "Short clips", "note": "Vertical clips, muted by default, captioned always.",
+             "state": "Empty. A clip needs its caption before it can play here."},
+            {"label": "The lane at 22:40", "note": "Sound only if a visitor asks for it.",
+             "state": "Silent by default, and it stays that way until a slot carries audio."},
+        ],
+        "exit": {"id": "noren", "kind": "noren", "x": 0, "z": -44, "y": 178, "ry": 180,
+                 "title": "The curtain at your back", "hint": "Part it to leave the lane."},
+    },
+    {
+        "id": "undeclared", "label": "Next district", "purpose": "Purpose not declared",
+        "status": "soon",
+        "blurb": "This one stays shut until its purpose is declared — travel, a conference, "
+                 "or something else. That question is the first thing any new space answers, "
+                 "and the answer is printed on the card above it.",
+        "objects": [], "slots": [], "exit": None,
+    },
+]
+
+INDENT = "\n        "
+
+
+def poster_attrs(src):
+    """Intrinsic size for a poster, read from the file's own JPEG header.
+
+    This page first called helpers it had only assumed existed (img_dims, then
+    featured_attrs, which belongs to publications), and each guess shipped a crashing
+    generator, so the parsing is done here and proven by the numbers in the commit
+    message rather than by a name. If the site grows a shared sizing helper, this should
+    call it -- but only one that returns dimensions, which nothing in this file did.
+    Attributes are omitted when a header cannot be parsed: a guessed size is a worse
+    layout bug than no size."""
+    return _jpeg_attrs(src)
+
+
+def _jpeg_attrs(src, _path=None):
+    import struct
+
+    path = _path or (ROOT / src)
+    try:
+        d = path.read_bytes()
+    except OSError:
+        return ""
+    if not d.startswith(b"\xff\xd8"):
+        return ""
+    i = 2
+    while i + 9 < len(d):
+        if d[i] != 0xFF:
+            i += 1
+            continue
+        marker = d[i + 1]
+        if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+            i += 2
+            continue
+        if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):
+            h, w = struct.unpack(">HH", d[i + 5 : i + 9])
+            return f'width="{w}" height="{h}"'.format(w=w, h=h)
+        i += 2 + struct.unpack(">H", d[i + 2 : i + 4])[0]
+    return ""
+
+
+def wall_frames(d):
+    """A district's frames are objects before they are anything else: each hangs on a wall
+    at a coordinate, so walking the lane and reading the content are the same list, and a
+    frame the owner deletes from the data simply stops being on the wall."""
+    out = []
+    for n, fr in enumerate(d.get("frames", [])):
+        out.append({
+            "id": f'frame-{fr["id"]}',
+            "kind": "poster frame",
+            "x": fr["x"], "z": fr["z"], "y": fr["y"], "ry": fr["ry"],
+            "title": fr["title"], "hint": fr["caption"],
+            "img": fr["src"], "alt": fr["alt"], "frame": n,
+        })
+    return out
+
+
+def frames_section(districts):
+    """The same frames as a plain list, because a rail you can only reach by walking is a
+    rail a screen reader and a printed page cannot read."""
+    rows = []
+    for d in districts:
+        for n, fr in enumerate(d.get("frames", [])):
+            src = fr["src"]
+            rows.append(
+                f'<li class="frame-row" id="frame-{escape(d["id"])}-{escape(fr["id"])}">'
+                f'<figure class="frame-fig"><img src="{src}" alt="{escape(fr["alt"])}" '
+                f'loading="lazy" {poster_attrs(src)} />'
+                f'<figcaption>{escape(fr["caption"])}</figcaption></figure>'
+                f'<p class="when"><span class="badge">{escape(KINDS[d["kind"]]["label"])}</span>'
+                f' Generated frame {n + 1} of {len(d.get("frames", []))}.</p></li>')
+    if not rows:
+        return ""
+    head = titled("h2", "Frames in this district", ICON_CAMERA, "block-title reveal spaced")
+    note = ('<p class="when">Each is a drawn depiction of a named place. None is a '
+            'photograph, and none records that the owner stood there.</p>')
+    return f'    {head}\n    {note}\n    <ul class="frame-list reveal">\n      {INDENT.join(rows)}\n    </ul>'
+
+
+def rooms_plate_html(districts):
+    figures = []
+    for d in districts:
+        for n, fr in enumerate(d.get("frames", [])):
+            figures.append(
+                f'<figure class="story-frame" data-story-frame="{n}" data-room="{escape(d["id"])}">'
+                f'<img src="{fr["src"]}" alt="{escape(fr["alt"])}" {poster_attrs(fr["src"])} />'
+                f'<figcaption>{escape(fr["title"])} — {escape(fr["caption"])}</figcaption></figure>')
+    reel = ""
+    if figures:
+        joined = "\n      ".join(figures)
+        reel = (
+            '\n    <div class="story-segs" data-story-segs aria-hidden="true"></div>'
+            f'\n    <div class="story-reel" data-story-reel>\n      {joined}\n    </div>'
+            f'\n    <p class="story-count" data-story-count role="status">1 of {len(figures)}</p>'
+            '\n    <p class="when">Tap the right two thirds for the next frame, the left third for '
+            'the previous one. Hold to pause.</p>')
+    return f'''<div class="modal" id="room-plate" role="dialog" aria-modal="true" aria-label="Frames in the lane">
+  <div class="modal-backdrop" data-room-close></div>
+  <div class="modal-panel">
+    <button class="modal-close" type="button" data-room-close aria-label="Close">{ICON_X}</button>
+    <p class="eyebrow" data-room-where></p>
+    <h2 data-room-title></h2>
+    <p data-room-hint></p>{reel}
+  </div>
+</div>
+'''
+
+
+def room_object(o):
+    style = f'--x:{o["x"]}px;--z:{o["z"]}px;--y:{o["y"]}px;--ry:{o["ry"]}deg;'
+    name = escape(o["title"])
+    frame_attr = f' data-frame="{o["frame"]}"' if "frame" in o else ""
+    face = ""
+    if o.get("img"):
+        src = o["img"]
+        attrs = poster_attrs(src)
+        lazy = "" if "loading=" in attrs else ' loading="lazy"'
+        face = f'<img class="obj-img" src="{src}" alt=""{lazy} {attrs}>'.replace("  ", " ")
+    return (f'<button type="button" class="room-obj room-{o["kind"]}" data-obj="{escape(o["id"])}" '
+            f'data-title="{name}" data-hint="{escape(o["hint"])}" style="{style}"{frame_attr}>'
+            f'<span class="obj-face" aria-hidden="true">{face}</span>'
+            f'<span class="obj-tag">{name}</span></button>')
+
+
+def room_plan(d):
+    parts = [room_object(o) for o in list(d["objects"]) + wall_frames(d)]
+    if d["exit"]:
+        parts.append(room_object(d["exit"]))
+    for i, st in enumerate(STATIONS):
+        parts.append(
+            f'<button type="button" class="room-station" data-station="{i}" '
+            f'style="--z:{st["z"]}px" aria-label="Walk to {escape(st["label"])}">'
+            f'<span class="station-dot" aria-hidden="true"></span>'
+            f'<span class="station-name">{escape(st["label"])}</span></button>')
+    objs = INDENT.join(parts)
+    label = escape(d["label"])
+    legend = 'drag to turn · <kbd>W</kbd><kbd>S</kbd> walk · <kbd>←</kbd><kbd>→</kbd> look · <kbd>Esc</kbd> close'
+    return f'''<section class="room" id="room-{escape(d["id"])}" data-room="{label}">
+  <div class="room-stage" tabindex="0" data-room-stage role="group"
+       aria-label="{label}: a lane you can walk. Drag, or use the arrow keys, to turn; W and S walk between the marked spots.">
+    <div class="room-world" data-room-world>
+      <div class="room-plane room-wall-back"></div>
+      <div class="room-plane room-wall-left"></div>
+      <div class="room-plane room-wall-right"></div>
+      <div class="room-plane room-floor"></div>
+        {objs}
+    </div>
+    <p class="room-legend">{legend}</p>
+  </div>
+</section>'''
+
+
+def district_card(d):
+    """The card is a record first and a link second: heading and body text stay in the page's
+    own colour, and only the arrow is a link, because main a is accented and underlined
+    site-wide. The kind is printed here with the gate it implies, and the cover — if there is
+    one — carries the kind's cover rule as its caption, so a drawn cover can never be read as
+    a photograph the owner took."""
+    state = "Not open yet." if d["status"] == "soon" else "Walk it below."
+    kind = d.get("kind")
+    meta = KINDS.get(kind, {})
+    badge = f'{escape(meta["label"])} · {escape(d["purpose"])}' if meta else escape(d["purpose"])
+    gate = f'<p class="rule">{escape(meta["gate"])}</p>' if meta else f'<p class="rule">{escape(d["blurb"])}</p>'
+    cover = ""
+    src = d.get("cover")
+    if src and (ROOT / src).exists():
+        caption = d.get("cover_caption", "")
+        cover = (f'<figure class="district-cover"><img src="{escape(src)}" alt="" loading="lazy" '
+                 f'{poster_attrs(src)} />'
+                 f'<figcaption>{escape(caption)} {escape(meta.get("cover", ""))}</figcaption></figure>')
+    elif src:
+        # a cover named in the data but missing on disk must not draw a broken image, and
+        # must not be papered over either: the empty card is the true state
+        cover = '<p class="when">No cover image is available for this district.</p>'
+    return (f'<li class="district-card is-{d["status"]}" aria-describedby="room-{escape(d["id"])}">'
+            f'{cover}'
+            f'<span class="badge">{badge}</span>'
+            f'<h2>{escape(d["label"])}</h2>'
+            f'{gate}'
+            f'<p class="when">{state}</p>'
+            f'<p class="pillar-more"><a class="text-arrow" href="#room-{escape(d["id"])}">{state}</a></p></li>')
+
+
+def slot_row(d, sl):
+    return (f'<li class="slot"><span class="badge">{escape(d["label"])}</span>'
+            f'<strong>{escape(sl["label"])}</strong><p>{escape(sl["note"])}</p>'
+            f'<p class="when">{escape(sl["state"])}</p></li>')
+
+
+rooms_body = f'''
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal"><p class="eyebrow">Districts</p><h1>Rooms you walk into</h1>
+      <p>A district is one themed space: a lane, a few things to touch, and the frames that
+      belong to it. Everything the lane holds is also written out underneath, so the page
+      reads without scripting and prints fine.</p></div>
+    <ul class="district-pick reveal">
+      {INDENT.join(district_card(d) for d in DISTRICTS)}
+    </ul>
+    {INDENT.join(room_plan(d) for d in DISTRICTS if d["status"] == "open")}
+    <div class="dashed reveal" style="margin-top:1.6rem">
+      <strong>What this is, and what it is not</strong>
+      <p class="when">The lane is drawn, not surveyed. The wall holds drawn covers and three drawn sights —
+      the temple gate at Asakusa, the crossing at Shibuya, the tower at dusk — and the objects are
+      props; no footage sits in any slot yet. Frames and clips arrive when the
+      owner supplies them; nothing on this page implies a place was visited.</p>
+    </div>
+    {frames_section(DISTRICTS)}
+    {titled("h2", "Slots", ICON_CASE, "block-title reveal spaced")}
+    <ul class="slot-list reveal">
+      {INDENT.join(slot_row(d, sl) for d in DISTRICTS for sl in d["slots"])}
+    </ul>
+  </div>
+</section>
+'''
+
+rooms = page("Districts · Hua-Xu Zhong", "rooms", rooms_body, extra=rooms_plate_html([d for d in DISTRICTS if d["status"] == "open"]))
+
+(ROOT / "rooms.html").write_text(rooms, encoding="utf-8")
 
 (ROOT / "robots.txt").write_text(
     f"User-agent: *\nAllow: /\n\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")

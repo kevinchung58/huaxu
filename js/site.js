@@ -140,85 +140,242 @@
     });
   }
 
-  const slides = [...document.querySelectorAll("[data-lightbox]")];
-  let slideIndex = 0;
+  /* ---------- Activities: the photo plate ----------
+     Selecting a tile of the contact sheet steps into the same photograph on a dark
+     plate, with the rest of the roll on either side of it by swipe, arrow keys, or the
+     arrows. Three absences are accounted for, because this page is read on a lecture-hall
+     laptop, a phone, and sometimes with scripting off:
+       - no document.startViewTransition -> the plate opens with no morph;
+       - no scripting -> every tile is a plain link to the full-resolution file;
+       - prefers-reduced-motion -> no morph, and the roll jumps rather than easing.
+     Only one element may hold a given view-transition-name, so the name is put on the
+     image being enlarged, on the box it is arriving from and the box it arrives in, and
+     cleared once the transition settles. Entering the plate reuses the same overlay
+     conventions as the trace game below. */
+  const grid = document.querySelector("[data-ig-grid]");
+  const plate = document.getElementById("ig-plate");
 
-  const showDeck = (index) => {
-    if (!slides.length) return;
-    slideIndex = (index + slides.length) % slides.length;
-    const current = slides[slideIndex];
-    document.querySelectorAll("[data-slide]").forEach((el) => {
-      el.classList.toggle("is-on", Number(el.dataset.slide) === slideIndex);
+  /* The archive sheet leans toward the pointer: enough rotation to read as an object
+     standing in a room, little enough that a caption is never tilted while being read.
+     Touch is excluded (there is no hover to answer), and so is reduced motion. */
+  const wall = document.querySelector("[data-ig-wall]");
+  if (wall && grid && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    let box = null;
+    wall.addEventListener("pointerenter", () => { box = wall.getBoundingClientRect(); });
+    wall.addEventListener("pointermove", (event) => {
+      if (event.pointerType === "touch") return;
+      if (!box) box = wall.getBoundingClientRect();
+      if (!box.width || !box.height) return;
+      const x = (event.clientX - box.left) / box.width - 0.5;
+      const y = (event.clientY - box.top) / box.height - 0.5;
+      // Signs chosen against the CSS rotation matrices, not by eye: rotateY(+) turns a
+      // surface normal toward +X, rotateX(+) toward -Y, so a positive angle on both makes
+      // the sheet face the pointer. Swapping either reads as the sheet dodging the cursor.
+      grid.style.setProperty("--ty", `${(x * 8).toFixed(2)}deg`);
+      grid.style.setProperty("--tx", `${(-y * 6).toFixed(2)}deg`);
     });
-    document.querySelectorAll("[data-go]").forEach((el) => {
-      el.classList.toggle("is-on", Number(el.dataset.go) === slideIndex);
-    });
-    const cap = document.querySelector("[data-deck-cap]");
-    const num = document.querySelector("[data-deck-n]");
-    if (cap) cap.textContent = current.dataset.caption || current.dataset.alt || "";
-    if (num) num.textContent = String(slideIndex + 1);
-  };
-
-  document.querySelector("[data-deck-prev]")?.addEventListener("click", () => showDeck(slideIndex - 1));
-  document.querySelector("[data-deck-next]")?.addEventListener("click", () => showDeck(slideIndex + 1));
-  document.querySelectorAll("[data-go]").forEach((btn) => {
-    btn.addEventListener("click", () => showDeck(Number(btn.dataset.go)));
-  });
-
-  const lightbox = document.querySelector("#lightbox");
-  if (lightbox && slides.length) {
-    const img = lightbox.querySelector("img");
-    const cap = lightbox.querySelector("[data-lamp-cap]");
-    const count = lightbox.querySelector("[data-lamp-count]");
-    const prev = lightbox.querySelector("[data-lamp-prev]");
-    const next = lightbox.querySelector("[data-lamp-next]");
-    const many = slides.length > 1;
-    if (prev) prev.hidden = !many;
-    if (next) next.hidden = !many;
-    if (count) count.hidden = !many;
-
-    const paint = () => {
-      const current = slides[slideIndex];
-      img.src = current.dataset.src;
-      img.alt = current.dataset.alt || "";
-      if (cap) cap.textContent = current.dataset.caption || current.dataset.alt || "";
-      if (count) count.textContent = `${slideIndex + 1} / ${slides.length}`;
-      showDeck(slideIndex);
+    const level = () => {
+      grid.style.setProperty("--ty", "0deg");
+      grid.style.setProperty("--tx", "0deg");
     };
-    const open = (index) => {
-      showDeck(index);
-      paint();
-      lightbox.classList.add("is-open");
-      document.body.style.overflow = "hidden";
-    };
-    const close = () => {
-      lightbox.classList.remove("is-open");
-      document.body.style.overflow = "";
-    };
-    slides.forEach((btn, index) => btn.addEventListener("click", () => open(index)));
-    prev?.addEventListener("click", () => {
-      showDeck(slideIndex - 1);
-      paint();
-    });
-    next?.addEventListener("click", () => {
-      showDeck(slideIndex + 1);
-      paint();
-    });
-    lightbox.querySelectorAll("[data-close]").forEach((el) => el.addEventListener("click", close));
-    document.addEventListener("keydown", (event) => {
-      if (!lightbox.classList.contains("is-open")) return;
-      if (event.key === "Escape") close();
-      if (many && event.key === "ArrowLeft") {
-        showDeck(slideIndex - 1);
-        paint();
-      }
-      if (many && event.key === "ArrowRight") {
-        showDeck(slideIndex + 1);
-        paint();
-      }
-    });
+    wall.addEventListener("pointerleave", level);
   }
+  if (grid && plate) {
+    const tiles = Array.from(grid.querySelectorAll("[data-ig]"));
+    const reel = plate.querySelector("[data-ig-reel]");
+    const frames = reel ? Array.from(reel.children) : [];
+    const count = plate.querySelector("[data-ig-count]");
+    const prev = plate.querySelector("[data-ig-prev]");
+    const next = plate.querySelector("[data-ig-next]");
+    const many = frames.length > 1;
+    const ease = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let opener = null;                  // the tile to hand focus back to
+    const named = [];
+
+    const clamp = (i) => Math.max(0, Math.min(frames.length - 1, i));
+    const at = () => clamp(Math.round(reel.scrollLeft / (reel.clientWidth || 1)));
+    const name = (el) => {
+      named.forEach((node) => { node.style.viewTransitionName = ""; });
+      named.length = 0;
+      if (el) {
+        el.style.viewTransitionName = "ig-photo";
+        named.push(el);
+      }
+    };
+    /* Angles on the roll: the frame you are on faces you, its neighbours turn away and
+       recede, so moving along the archive is turning along a wall rather than paging a
+       carousel. Written on every scroll because a touch drag is not owned by the script;
+       frames more than one and a half positions away are cleared instead of animated, so
+       the cost is per-screenful, not per-archive. */
+    const depth = ease;
+    const setDepth = () => {
+      if (!depth || !reel || !reel.clientWidth) return;
+      const shown = reel.scrollLeft / reel.clientWidth;
+      frames.forEach((frame, i) => {
+        const d = i - shown;
+        if (d < -1.6 || d > 1.6) {
+          if (frame.style.transform) {
+            frame.style.transform = "";
+            frame.style.opacity = "";
+          }
+          return;
+        }
+        const off = Math.abs(d);
+        frame.style.transform = `perspective(1100px) translateZ(${(-off * 150).toFixed(1)}px) rotateY(${(-d * 30).toFixed(1)}deg)`;
+        frame.style.opacity = (1 - off * 0.42).toFixed(2);
+      });
+    };
+    const paint = () => {
+      const i = at();
+      if (count) count.textContent = `${i + 1} / ${frames.length}`;
+      if (prev) prev.disabled = !many || i === 0;
+      if (next) next.disabled = !many || i === frames.length - 1;
+      setDepth();
+    };
+    const glide = (i, behavior) => {
+      const left = (reel.clientWidth || 0) * clamp(i);
+      if (reel.scrollTo) reel.scrollTo({ left, behavior: behavior || (ease ? "smooth" : "auto") });
+      else reel.scrollLeft = left;
+      paint();
+    };
+    const morph = (apply) => {
+      if (!ease || !document.startViewTransition) {
+        apply();
+        paint();
+        name(null);        // nothing to hand to a transition, so leave no stray style
+        return;
+      }
+      const done = () => { paint(); name(null); };
+      document.startViewTransition(apply).finished.then(done, done);
+    };
+
+    tiles.forEach((tile, i) => {
+      tile.addEventListener("click", (e) => {
+        if (!frames[i]) return;         // never swallow the link without a plate to show
+        e.preventDefault();
+        name(tile.querySelector("img"));
+        morph(() => {
+          name(frames[i].querySelector("img"));
+          plate.classList.add("is-open");
+          opener = enterOverlay(plate, ".modal-close", tile);
+          // "instant", not "auto": auto would inherit scroll-behavior:smooth and slide
+          // the roll into place under the morph, which is the one motion we cannot afford.
+          glide(i, "instant");
+        });
+      });
+    });
+    const close = () => {
+      const i = at();
+      name(frames[i] ? frames[i].querySelector("img") : null);
+      morph(() => {
+        name(opener ? opener.querySelector("img") : null);
+        plate.classList.remove("is-open");
+        leaveOverlay(plate, opener);
+      });
+    };
+    Array.from(plate.querySelectorAll("[data-ig-close]")).forEach((el) => el.addEventListener("click", close));
+    if (prev) prev.addEventListener("click", () => glide(at() - 1));
+    if (next) next.addEventListener("click", () => glide(at() + 1));
+    if (reel) {
+      reel.addEventListener("scroll", paint, { passive: true });
+      reel.addEventListener("scrollend", paint);   // a swipe that stopped short snaps back
+
+      /* Drag the plate sideways. Touch already pans through the reel, so this only
+         exists for a mouse: pulling the photograph by hand is what makes the roll read
+         as an object rather than as a dialog with two buttons on it. Snapping is turned
+         off for the duration, because mandatory snap fights a drag frame by frame. */
+      let drag = null;
+      reel.addEventListener("pointerdown", (event) => {
+        if (!many || event.pointerType === "touch") return;
+        drag = { x: event.clientX, left: reel.scrollLeft };
+        reel.style.scrollSnapType = "none";
+        if (reel.setPointerCapture) reel.setPointerCapture(event.pointerId);
+      });
+      reel.addEventListener("pointermove", (event) => {
+        if (!drag) return;
+        reel.scrollLeft = drag.left - (event.clientX - drag.x);
+      });
+      const settle = () => {
+        if (!drag) return;
+        drag = null;
+        reel.style.scrollSnapType = "";
+        glide(Math.round(reel.scrollLeft / (reel.clientWidth || 1)));
+      };
+      reel.addEventListener("pointerup", settle);
+      reel.addEventListener("pointercancel", settle);
+    }
+    plate.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+        return;
+      }
+      if (e.key === "Tab") {
+        trapTab(plate, e);
+        return;
+      }
+      if (!many) return;
+      const go = { ArrowLeft: at() - 1, ArrowRight: at() + 1, Home: 0, End: frames.length - 1 };
+      if (go[e.key] === undefined) return;
+      e.preventDefault();
+      glide(go[e.key]);
+    });
+    paint();
+  }
+
 })();
+
+/* ---- Shared overlay plumbing: one modal standard for the whole site ----
+   inertOutside walks the overlay's ANCESTOR chain instead of sweeping
+   document.body.children, because an overlay can sit inside <main> (the gallery
+   photo plate is a body child; the dot game lives inside the page body). A
+   body-level sweep of a nested overlay silently leaves the whole page exposed. */
+function inertOutside(root, on) {
+  const skip = new Set(["SCRIPT", "STYLE", "NOSCRIPT"]);
+  let node = root;
+  while (node && node !== document.body) {
+    const parent = node.parentElement;
+    if (!parent) break;
+    parent.querySelectorAll(":scope > *").forEach((sib) => {
+      if (sib === node || skip.has(sib.tagName)) return;
+      if (on) sib.setAttribute("inert", "");
+      else sib.removeAttribute("inert");
+    });
+    node = parent;
+  }
+}
+
+/* Focus trap fallback for any environment without inert. */
+function trapTab(root, event) {
+  if (event.key !== "Tab") return;
+  const focusables = Array.from(
+    root.querySelectorAll("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])")
+  ).filter((el) => !el.hidden && !el.disabled && el.offsetParent !== null);
+  if (!focusables.length) return;
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+}
+
+/* Enters an overlay: locks the page, isolates everything outside it, and moves
+   focus in. The restore target is passed in by the caller rather than inferred
+   from document.activeElement, which is not the clicked control in every
+   environment. Falls back to the active element only when no caller knows. */
+function enterOverlay(root, focusSel, trigger) {
+  const restore = trigger || document.activeElement;
+  document.body.style.overflow = "hidden";
+  inertOutside(root, true);
+  const target = focusSel ? root.querySelector(focusSel) : null;
+  (target || root).focus();
+  return restore;
+}
+
+function leaveOverlay(root, trigger) {
+  inertOutside(root, false);
+  document.body.style.overflow = "";
+  if (trigger && typeof trigger.focus === "function") trigger.focus();
+}
 
 /* ---- Dot-trace game: thinking page nine-panel grid (owner decision 2026-09) ---- */
 (function () {
@@ -248,14 +405,21 @@
   const clearTimers = () => { timers.forEach((t) => clearTimeout(t)); timers = []; };
   const setStatus = (text) => { statusEl.textContent = text; };
   const center = (i) => ({ x: (i % SIZE) * 20 + 10, y: Math.floor(i / SIZE) * 20 + 10 });
-
+  // Position is the dot's only identity. The visible number badge is ::after
+  // content, which assistive tech does not reliably read, so the step order is
+  // carried in the accessible name too; "Show me the path" is therefore the
+  // screen-reader route into the game (design-detector audit 2026-09).
+  const dotLabel = (i, step, total) => {
+    const where = `row ${Math.floor(i / SIZE) + 1}, column ${(i % SIZE) + 1}`;
+    return step ? `Step ${step} of ${total}, ${where}` : `Dot at ${where}`;
+  };
   // Build the 5x5 dot field once.
   for (let i = 0; i < SIZE * SIZE; i++) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "dot-cell-btn";
     b.dataset.dot = String(i);
-    b.setAttribute("aria-label", `Dot at row ${Math.floor(i / SIZE) + 1}, column ${(i % SIZE) + 1}`);
+    b.setAttribute("aria-label", dotLabel(i));
     b.innerHTML = '<span class="dot" aria-hidden="true"></span>';
     b.addEventListener("click", () => onTap(i));
     board.appendChild(b);
@@ -263,9 +427,10 @@
   }
 
   const resetBoard = () => {
-    dots.forEach((d) => {
+    dots.forEach((d, i) => {
       d.classList.remove("is-lit", "is-done", "is-wrong");
       d.removeAttribute("data-n");
+      d.setAttribute("aria-label", dotLabel(i));
       d.disabled = false;
     });
     linesSvg.innerHTML = "";
@@ -290,7 +455,12 @@
     return idx.slice(0, k);
   };
 
-  const numberPath = () => { seq.forEach((di, n) => { dots[di].dataset.n = String(n + 1); }); };
+  const numberPath = () => {
+    seq.forEach((di, n) => {
+      dots[di].dataset.n = String(n + 1);
+      dots[di].setAttribute("aria-label", dotLabel(di, n + 1, seq.length));
+    });
+  };
 
   const startInput = () => {
     phase = "input";
@@ -341,6 +511,8 @@
     if (phase !== "input") return;
     if (i === seq[progress]) {
       dots[i].classList.add("is-done");
+      // Confirm the dot is spent without spoiling the order of the ones left.
+      dots[i].setAttribute("aria-label", `${dots[i].getAttribute("aria-label")}, traced`);
       progress += 1;
       drawPath(progress - 1);
       if (progress >= seq.length) win();
@@ -371,17 +543,16 @@
     watchBtn.hidden = false;
     revealBtn.hidden = false;
     game.hidden = false;
-    document.body.style.overflow = "hidden";
-    game.querySelector(".dot-game-close").focus();
+    lastFocus = enterOverlay(game, ".dot-game-close", lastFocus);
     watch();
   };
 
   const closeGame = () => {
     clearTimers();
     phase = "idle";
+    resetBoard();
     game.hidden = true;
-    document.body.style.overflow = "";
-    if (lastFocus) lastFocus.focus();
+    leaveOverlay(game, lastFocus);
   };
 
   document.querySelectorAll("[data-dot-open]").forEach((btn) => {
@@ -411,12 +582,218 @@
   game.querySelectorAll("[data-dot-close]").forEach((el) => el.addEventListener("click", closeGame));
   game.addEventListener("keydown", (event) => {
     if (event.key === "Escape") { closeGame(); return; }
-    if (event.key !== "Tab") return;
-    const focusables = Array.from(game.querySelectorAll("button")).filter((el) => !el.hidden && !el.disabled && el.offsetParent !== null);
-    if (!focusables.length) return;
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    trapTab(game, event);
   });
 })();
+
+/* ---- Districts: the lane (rooms page) ----
+   The stage is the whole interface: drag to turn, W and S between the painted spots on
+   the floor, objects opened by click or Enter. Deliberate limits, each one a choice:
+     - the eye does not move; the world is translated and rotated instead, so no camera
+       math and no WebGL is needed for a lane with one axis of travel;
+     - yaw and pitch are clamped to ±35° and ±10°, because past that the walls stop
+       covering the viewport and the room shows its own edges;
+     - turning is drag, not Pointer Lock: the reference site does the same, and it is what
+       keeps a walkable space available on a phone.
+   Objects that only narrate themselves open the plate, which reuses the site's shared
+   overlay helpers; the curtain is a way out and the shrine is a way to choose a slot, so
+   neither opens a dialog. With scripting off, everything on the page is still readable as
+   the slot list, which is the point of keeping the list on the same page as the lane. */
+(function () {
+  const stage = document.querySelector("[data-room-stage]");
+  if (!stage) return;
+  const world = stage.querySelector("[data-room-world]");
+  const stations = Array.from(stage.querySelectorAll("[data-station]"));
+  const plate = document.getElementById("room-plate");
+  const ease = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const MAX_YAW = 35, MAX_PITCH = 10, STRAFE = 76;
+  let yaw = 0, pitch = 0, panX = 0, here = 0, opener = null;
+
+  const depthOf = (i) => Math.round(parseFloat(stations[i] ? stations[i].style.getPropertyValue("--z") : "0") || 0);
+  const apply = () => {
+    world.style.setProperty("--yaw", `${yaw.toFixed(1)}deg`);
+    world.style.setProperty("--pitch", `${pitch.toFixed(1)}deg`);
+    world.style.setProperty("--pan-x", `${panX.toFixed(0)}px`);
+    world.style.setProperty("--pan-z", `${depthOf(here)}px`);
+  };
+  const walkTo = (i) => {
+    here = Math.max(0, Math.min(stations.length - 1, i));
+    stations.forEach((el, j) => {
+      el.classList.toggle("is-here", j === here);
+      if (j === here) el.setAttribute("aria-current", "step");
+      else el.removeAttribute("aria-current");
+    });
+    apply();
+  };
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  let drag = null;
+  stage.addEventListener("pointerdown", (event) => {
+    if (event.target.closest(".room-obj, .room-station")) return;
+    drag = { x: event.clientX, y: event.clientY, yaw, pitch };
+    world.classList.add("is-dragging");
+    if (stage.setPointerCapture) stage.setPointerCapture(event.pointerId);
+  });
+  stage.addEventListener("pointermove", (event) => {
+    if (!drag) return;
+    yaw = clamp(drag.yaw + (event.clientX - drag.x) * 0.14, -MAX_YAW, MAX_YAW);
+    pitch = clamp(drag.pitch - (event.clientY - drag.y) * 0.08, -MAX_PITCH, MAX_PITCH);
+    apply();
+  });
+  const endDrag = () => {
+    if (!drag) return;
+    drag = null;
+    world.classList.remove("is-dragging");
+  };
+  stage.addEventListener("pointerup", endDrag);
+  stage.addEventListener("pointercancel", endDrag);
+
+  stage.addEventListener("keydown", (event) => {
+    if (event.altKey || event.metaKey || event.ctrlKey) return;
+    const k = event.key.toLowerCase();
+    if (k === "w" || k === "s") {
+      event.preventDefault();
+      walkTo(here + (k === "w" ? 1 : -1));
+      return;
+    }
+    if (k === "a" || k === "d") {
+      event.preventDefault();
+      panX = clamp(panX + (k === "d" ? -26 : 26), -STRAFE, STRAFE);
+    } else if (k === "arrowleft") yaw = clamp(yaw + 8, -MAX_YAW, MAX_YAW);
+    else if (k === "arrowright") yaw = clamp(yaw - 8, -MAX_YAW, MAX_YAW);
+    else if (k === "arrowup") pitch = clamp(pitch + 3, -MAX_PITCH, MAX_PITCH);
+    else if (k === "arrowdown") pitch = clamp(pitch - 3, -MAX_PITCH, MAX_PITCH);
+    else return;
+    event.preventDefault();
+    apply();
+  });
+
+  /* The rail: the plate doubles as a stories player when it is opened from a frame.
+     Mechanics only, borrowed from what makes that format usable rather than from its
+     branding — segments instead of one bar, right two thirds forward and left third
+     back, hold to pause, one frame at a time, and no auto-advance under
+     prefers-reduced-motion, where the same taps still work. Nothing here marks a frame
+     as viewed, because a scholar's archive is not a queue that eats itself. */
+  const railEl = plate && plate.querySelector("[data-story-reel]");
+  const frames = railEl ? Array.from(railEl.querySelectorAll("[data-story-frame]")) : [];
+  const segRow = plate && plate.querySelector("[data-story-segs]");
+  const countEl = plate && plate.querySelector("[data-story-count]");
+  const panel = plate && plate.querySelector(".modal-panel");
+  let fi = 0, timer = null, paused = false;
+  if (railEl && frames.length && segRow) {
+    frames.forEach(() => {
+      const seg = document.createElement("span");
+      seg.className = "story-seg";
+      seg.appendChild(document.createElement("i"));
+      segRow.appendChild(seg);
+    });
+  }
+  const segs = segRow ? Array.from(segRow.children) : [];
+  const paint = () => {
+    frames.forEach((f, j) => { f.hidden = j !== fi; });
+    segs.forEach((sg, j) => {
+      sg.classList.toggle("is-done", j < fi);
+      if (sg.firstChild) sg.firstChild.style.width = j < fi ? "100%" : "0";
+    });
+    if (countEl) countEl.textContent = `${fi + 1} of ${frames.length}`;
+  };
+  const stopTimer = () => { if (timer) { clearTimeout(timer); timer = null; } };
+  const schedule = () => {
+    stopTimer();
+    if (!ease || paused || frames.length < 2) return;
+    timer = setTimeout(() => { fi = (fi + 1) % frames.length; paint(); schedule(); }, 5000);
+  };
+  const openRail = (n, trigger) => {
+    if (!railEl || !frames.length) return false;
+    fi = Math.max(0, Math.min(frames.length - 1, n));
+    plate.classList.add("is-open", "is-rail");
+    paint();
+    opener = enterOverlay(plate, ".modal-close", trigger);
+    schedule();
+    return true;
+  };
+  if (panel && frames.length) {
+    panel.addEventListener("pointerdown", (event) => {
+      if (event.target.closest("button")) return;
+      paused = true;
+      stopTimer();
+    });
+    panel.addEventListener("pointerup", (event) => {
+      if (event.target.closest("button")) return;
+      const box = panel.getBoundingClientRect();
+      if (box.width) {
+        const dx = event.clientX - box.left;
+        if (dx > box.width * 0.66) fi = (fi + 1) % frames.length;
+        else if (dx < box.width * 0.33) fi = (fi - 1 + frames.length) % frames.length;
+        paint();
+      }
+      paused = false;
+      schedule();
+    });
+  }
+
+  const closePlate = () => {
+    if (!plate || !plate.classList.contains("is-open")) return;
+    if (typeof stopTimer === "function") stopTimer();
+    paused = false;
+    plate.classList.remove("is-open", "is-rail");
+    leaveOverlay(plate, opener);
+    opener = null;
+  };
+  const openPlate = (obj) => {
+    if (!plate) return;
+    plate.querySelector("[data-room-where]").textContent = stage.closest("[data-room]")
+      ? stage.closest("[data-room]").dataset.room
+      : "";
+    plate.querySelector("[data-room-title]").textContent = obj.dataset.title || "";
+    plate.querySelector("[data-room-hint]").textContent = obj.dataset.hint || "";
+    plate.classList.add("is-open");
+    opener = enterOverlay(plate, ".modal-close", obj);
+  };
+
+  const slots = Array.from(document.querySelectorAll(".slot"));
+  let drawn = 0;
+  Array.from(stage.querySelectorAll("[data-obj]")).forEach((obj) => {
+    obj.addEventListener("click", () => {
+      if (obj.classList.contains("room-noren")) {
+        const picker = document.querySelector(".district-pick");
+        if (picker) picker.scrollIntoView({ behavior: ease ? "smooth" : "auto", block: "start" });
+        return;
+      }
+      if (obj.classList.contains("room-shrine") && slots.length) {
+        slots.forEach((el) => el.classList.remove("is-drawn"));
+        const next = slots[drawn % slots.length];
+        drawn += 1;
+        next.classList.add("is-drawn");
+        next.scrollIntoView({ behavior: ease ? "smooth" : "auto", block: "center" });
+        return;
+      }
+      if (obj.dataset.frame !== undefined && openRail(Number(obj.dataset.frame), obj)) return;
+      if (obj.dataset.obj === "vending" && openRail(0, obj)) return;
+      openPlate(obj);
+    });
+  });
+  stations.forEach((el, i) => el.addEventListener("click", () => walkTo(i)));
+  if (plate) {
+    Array.from(plate.querySelectorAll("[data-room-close]")).forEach((el) => el.addEventListener("click", closePlate));
+    plate.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closePlate();
+      } else if (event.key === "Tab") {
+        trapTab(plate, event);
+      } else if (plate.classList.contains("is-rail") && (event.key === "ArrowRight" || event.key === "ArrowLeft")) {
+        event.preventDefault();
+        fi = (fi + (event.key === "ArrowRight" ? 1 : -1) + frames.length) % frames.length;
+        paint();
+        schedule();
+      } else if (plate.classList.contains("is-rail") && event.key === " ") {
+        event.preventDefault();
+        paused = !paused;
+        if (paused) stopTimer(); else schedule();
+      }
+    });
+  }
+  walkTo(0);
+})();
+
