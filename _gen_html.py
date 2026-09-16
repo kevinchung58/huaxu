@@ -5,7 +5,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260915b"   # one bump per changed asset pair; both tags read it
+VER = "20260916a"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -1476,6 +1476,9 @@ OBJ_SIZE = {
     "ac": (86, 30, 36), "crate": (62, 46, 52), "bin": (68, 86, 68),
     "pipe": (16, 300, 16), "awning": (170, 12, 110), "sign": (120, 40, 10),
     "ledge": (430, 12, 60),
+    "front": (170, 300, 40), "booth": (110, 215, 110), "bikes": (150, 102, 55),
+    "planter": (104, 50, 46), "cones": (74, 70, 34), "mailbox": (52, 74, 36),
+    "signA": (70, 86, 52), "banner": (56, 150, 6),
 }
 
 EYE = 168                    # the eye is 1.68 m above the floor; 1 px = 1 cm throughout
@@ -1495,7 +1498,8 @@ STATIONS = [
 DISTRICTS = [
     {
         "id": "tokyo", "label": "Tokyo",
-        "purpose": "A compound, walked: alley, crossing, tower, mountain", "status": "open",
+        "purpose": "A Tokyo lane, dressed: shutters, lanterns, a crossing at its end",
+        "status": "open",
         "kind": "personal",
         "cover": "IMG/tokyo-cover.jpg",
         "cover_caption": "The district in one sheet: a gate lantern, a scramble, a tower, "
@@ -1572,6 +1576,43 @@ DISTRICTS = [
              "hint": "The crossing, the tower and the mountain beyond are drawn at the size a "
                      "picture of them shows, not surveyed: 1 px is 1 cm in here, and a mountain does "
                      "not fit. Nothing out there is a record of anybody standing in it."},
+            {"id": "front-a", "kind": "front", "x": -316, "z": 62, "y": 0, "ry": 90,
+             "glow": [{"r": 190, "k": 0.85, "tint": "rgba(255,166,86,0.42)", "dy": 150}],
+             "title": "A closed front with its light still on",
+             "hint": "Shutter down, interior light still running: the one hour of a lane where a room "
+                     "is still warm and nobody is in it. Drawn, and nothing is for sale here."},
+            {"id": "booth", "kind": "booth", "x": 246, "z": 85, "y": 0, "ry": -90,
+             "glow": [{"r": 120, "k": 0.6, "tint": "rgba(214,232,255,0.34)", "dy": 160}],
+             "title": "A telephone box",
+             "hint": "Empty, and it holds no message: a district does not get to leave a note from "
+                     "somebody. Glass is drawn as glass here, which means you can see the far side."},
+            {"id": "bikes", "kind": "bikes", "x": -250, "z": 179, "y": 0, "ry": 0,
+             "title": "Two bicycles, leaned against the wall",
+             "hint": "Drawn bicycles. Nobody is claimed as their owner, and nothing is said about why "
+                     "they are there — a lane has bicycles in it, that is all this asserts."},
+            {"id": "planters", "kind": "planter", "x": 236, "z": 148, "y": 0, "ry": -90,
+             "title": "Two planters by a closed front",
+             "hint": "Set dressing with something growing in it, because an alley with only grey in it "
+                     "is a drawing of an alley rather than one."},
+            {"id": "cones", "kind": "cones", "x": -120, "z": 82, "y": 0, "ry": 0,
+             "title": "A pair of cones, stored rather than working",
+             "hint": "Nothing is being repaired here. They are stacked where they were left, which is "
+                     "the only reason they are in the scene."},
+            {"id": "mailbox", "kind": "mailbox", "x": 314, "z": 262, "y": 0, "ry": -90,
+             "title": "A post box at the corner",
+             "hint": "Red, boxy, at a corner: the shape that says Tokyo louder than any signage could, "
+                     "and it carries no lettering because none is ours to invent."},
+            {"id": "board-a", "kind": "signA", "x": -236, "z": 300, "y": 0, "ry": 0,
+             "title": "A folding board, blank",
+             "hint": "The one prop that could have carried a menu or a price and does not: invented "
+                     "lettering would be a claim about a shop that does not exist."},
+            {"id": "banner-left", "kind": "banner", "x": -316, "z": 221, "y": 232, "ry": 90,
+             "title": "A cloth banner, hanging still",
+             "hint": "Drawn as cloth so it has a fold and a weight. No text on it, same reason as the "
+                     "board."},
+            {"id": "banner-right", "kind": "banner", "x": 316, "z": 372, "y": 244, "ry": -90,
+             "title": "A second banner, further down",
+             "hint": "Two of them is what a lane has; three would be a set design."},
             {"id": "bin-2", "kind": "bin", "x": -262, "z": 356, "y": 0, "ry": 90,
              "title": "The far bin",
              "hint": "The last thing before the light at the end of the lane."},
@@ -1588,6 +1629,53 @@ DISTRICTS = [
                    "tint": "rgba(146,178,255,0.26)"}],
         # The arcade's rhythm overhead: where a beam crosses the ceiling, in scene centimetres.
         "beams": [220, 520, 820, 1120],
+        # What the walls are made of. This is the street's own kit, band by band: rolling shutters over
+        # closed fronts, glazed tile up to hand height where a shopfront was glazed, painted plaster
+        # above, corrugated patching where a wall has been opened and closed again, a plank hoarding
+        # where a building is being worked on. Side -1 is the left wall, 1 the right, 0 the end wall;
+        # the extents are scene centimetres, and the renderer tiles each band into the same 60 cm panels
+        # as the wall behind it so an affine map stays exact.
+        "surfaces": [
+            {"side": -1, "z0": -240, "z1": 60, "y0": 0, "y1": 420, "kind": "plaster"},
+            {"side": -1, "z0": 60, "z1": 300, "y0": 0, "y1": 300, "kind": "shutter"},
+            {"side": -1, "z0": 60, "z1": 300, "y0": 300, "y1": 420, "kind": "corrugated"},
+            {"side": -1, "z0": 300, "z1": 470, "y0": 0, "y1": 130, "kind": "dado"},
+            {"side": -1, "z0": 300, "z1": 470, "y0": 130, "y1": 420, "kind": "brick"},
+            {"side": -1, "z0": 470, "z1": 760, "y0": 0, "y1": 290, "kind": "shutter"},
+            {"side": -1, "z0": 470, "z1": 760, "y0": 290, "y1": 420, "kind": "plaster"},
+            {"side": -1, "z0": 760, "z1": 1010, "y0": 0, "y1": 420, "kind": "hoarding"},
+            {"side": -1, "z0": 1010, "z1": 1247, "y0": 0, "y1": 120, "kind": "dado"},
+            {"side": -1, "z0": 1010, "z1": 1247, "y0": 120, "y1": 420, "kind": "brick"},
+            {"side": 1, "z0": -240, "z1": 40, "y0": 0, "y1": 420, "kind": "brick"},
+            {"side": 1, "z0": 40, "z1": 190, "y0": 0, "y1": 300, "kind": "shutter"},
+            {"side": 1, "z0": 40, "z1": 190, "y0": 300, "y1": 420, "kind": "plaster"},
+            {"side": 1, "z0": 190, "z1": 470, "y0": 0, "y1": 140, "kind": "dado"},
+            {"side": 1, "z0": 190, "z1": 470, "y0": 140, "y1": 420, "kind": "plaster"},
+            {"side": 1, "z0": 470, "z1": 660, "y0": 0, "y1": 420, "kind": "hoarding"},
+            {"side": 1, "z0": 660, "z1": 900, "y0": 0, "y1": 290, "kind": "shutter"},
+            {"side": 1, "z0": 660, "z1": 900, "y0": 290, "y1": 420, "kind": "corrugated"},
+            {"side": 1, "z0": 900, "z1": 1247, "y0": 0, "y1": 130, "kind": "dado"},
+            {"side": 1, "z0": 900, "z1": 1247, "y0": 130, "y1": 420, "kind": "brick"},
+        ],
+        # And on the ground: the tactile guide path that runs beside the walls in a real lane, a painted
+        # gutter line, two grates, a manhole, and one wet patch that holds the machine's light.
+        "marks": [
+            {"kind": "tactile", "x0": -300, "x1": -272, "z0": -240, "z1": 1247},
+            {"kind": "tactile", "x0": 272, "x1": 300, "z0": -240, "z1": 1247},
+            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 1230, "z1": 1244},
+            {"kind": "grate", "x0": -118, "x1": -42, "z0": 148, "z1": 168},
+            {"kind": "grate", "x0": 60, "x1": 136, "z0": 700, "z1": 720},
+            {"kind": "manhole", "x0": -40, "x1": 40, "z0": 430, "z1": 510},
+            {"kind": "wet", "x0": -316, "x1": -60, "z0": 980, "z1": 1240},
+        ],
+        # Paper lanterns, hung where a wire already crosses the lane: each one is a light source with a
+        # body, which is the only way the room can be lit by something you can also point at.
+        "lanterns": [
+            {"x": -120, "y": 268, "z": 150, "r": 27},
+            {"x": 40, "y": 252, "z": 150, "r": 31},
+            {"x": 210, "y": 262, "z": 560, "r": 26},
+            {"x": -170, "y": 272, "z": 900, "r": 29},
+        ],
         # The window cut in the end wall, and what you see through it. These are NOT record depths and
         # are not multiplied by Z_SCALE: nothing here is hung from a record, and the far plane is
         # authored so a picture of Tokyo reads at the scale a picture shows it at. Mount Fuji is not
@@ -1750,18 +1838,27 @@ def walk_islands(d, placed):
             lights.append({"x": 0, "y": ceiling, "z": round(lamp * Z_SCALE), "r": 30})
         else:                       # authored whole: x, y, r, k, tint; z is still a record depth
             lights.append(dict(lamp, z=round(lamp["z"] * Z_SCALE)))
-    for o in placed:
-        for g in o.get("glow", []):
-            _w, h, _dep = OBJ_SIZE.get(o["kind"], (120, 160, 12))
-            lights.append({"x": o["x"], "y": o.get("y", 0) + h - 18, "z": o["z"],
-                           "r": g["r"], "k": g["k"], "bulb": False})
     wires = [{"a": list(w["a"][:2]) + [round(w["a"][2] * Z_SCALE)],
               "b": list(w["b"][:2]) + [round(w["b"][2] * Z_SCALE)], "sag": w["sag"]}
              for w in d.get("wires", [])]
     # Scene geometry travels as authored numbers only: the lights, the cables, the arcade, the
     # aperture, the far plane. An empty island is omitted rather than emitted as `[]`.
+    # Lanterns are lights, so they join the light island rather than becoming a decoration the
+    # lighting does not know about. `dy` lets a prop's glow sit where the fitting actually is.
+    for o in placed:
+        for g in o.get("glow", []):
+            w, h, _dep = OBJ_SIZE.get(o["kind"], (120, 160, 12))
+            lights.append({"x": o["x"], "y": o.get("y", 0) + g.get("dy", h - 18), "z": o["z"],
+                           "r": g["r"], "k": g["k"], "bulb": False,
+                           **({"tint": g["tint"]} if "tint" in g else {})})
+    for L in d.get("lanterns", []):
+        # The authored radius is the paper; how far the light reaches is a multiple of it. A glow with
+        # no body is a smudge, so `size` and `h` travel with it and the renderer draws what it is told.
+        lights.append(dict(L, r=max(96, L["r"] * 3.4), size=L["r"], h=L["y"] + round(L["r"] * 1.15),
+                           k=0.72, bulb=False, tint="rgba(255,158,86,0.52)", body="lantern"))
     islands = [("data-walk-lights", lights), ("data-walk-wires", wires),
-               ("data-walk-beams", d.get("beams", []))]
+               ("data-walk-beams", d.get("beams", [])),
+               ("data-walk-surfaces", d.get("surfaces", [])), ("data-walk-marks", d.get("marks", []))]
     if d.get("vista"):
         islands.append(("data-walk-vista", d["vista"]))
     if d.get("backdrop"):
@@ -1827,8 +1924,14 @@ def walk_html(d, drawer):
             f'frame {n + 1} of {len(d.get("frames", []))}</span></li>')
     label = escape(d["label"])
     did = escape(d["id"])
-    # What a screen reader is told the space is, in the same breath as the controls: the sightline is
-    # the reason to walk to the end of it, so it belongs in the description and not only in the pixels.
+    # What a screen reader is told the space is, in the same breath as the controls. The room's own
+    # cladding is what you are walking through and the sightline is only where it ends, so the space is
+    # described first and the view second; both halves are conditional on the data, because a district
+    # with no aperture must not promise one and a district with no cladding must not claim a material.
+    clad = (" The lane is dressed as a street: shutters, glazed tile, plaster and hoarding on its walls, "
+            "paper lanterns hung on the wires above it, a tactile guide path along both kerbs, and a post "
+            "box, bicycles and a blank board standing against the fronts. Nothing on any of it carries a "
+            "word." if d.get("surfaces") else "")
     sight = (" At its far end the lane opens onto a drawn compound: a crossing below it, a tower, and "
              "a mountain beyond. Nothing out there is a record of anybody standing in it."
              if d.get("vista") else "")
@@ -1836,7 +1939,7 @@ def walk_html(d, drawer):
        data-lane-w="{LANE_W}" data-lane-d="{WALK_D}" data-lane-ceil="{LANE_CEIL}"
        data-lane-back="{LANE_BACK}" data-eye="{EYE}">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
-       aria-label="{label}, a lane you walk in person.{sight} Drag to turn, W A S D to walk, Shift to run,
+       aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
        Space to jump, E to open what you are standing in front of, L for the list. Every frame is
        also written out in that list.">
     <canvas class="walk-canvas" data-walk-canvas width="16" height="9" aria-hidden="true"></canvas>

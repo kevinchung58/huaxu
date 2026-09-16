@@ -109,7 +109,7 @@ Run in this order and stop on the first failure:
 python3 _gen_html.py; echo "exit=$?"          # exit 0 or nothing else counts
 md5sum *.html > /tmp/a && python3 _gen_html.py >/dev/null && md5sum *.html > /tmp/b
 diff -q /tmp/a /tmp/b                          # the generator must be idempotent
-node .verify/verify-walk.mjs           # 72 assertions, run from the repo root
+node .verify/verify-walk.mjs           # 101 assertions, run from the repo root
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 curl -s http://127.0.0.1:8080/<page>.html | grep -o 'site\.\(css\|js\)?v=[0-9a-z]*' | sort -u
 curl -s http://127.0.0.1:8080/<page>.html | grep -c '<new marker you just added>'
@@ -159,14 +159,27 @@ multiplied by `Z_SCALE`, while the *space* — an arcade beam, an aperture in a 
 through it — is authored in scene centimetres and is not scaled at all, because it is not a record of
 anything. A prop is
 authored as a solid (`OBJ_SIZE` gives width, height and depth; depth is what lets you walk behind it
-and what wraps the hit box around the thing you can see), and light is authored as data — the two JSON
-islands `data-walk-lights` and `data-walk-wires`. The renderer draws the bulbs it is told about and
+and what wraps the hit box around the thing you can see), and light is authored as data — `data-walk-lights`
+and `data-walk-wires`, plus the scene-centimetre islands `data-walk-surfaces` (what each wall is clad
+in, band by band), `data-walk-marks` (what is painted or let into the ground), `data-walk-beams`,
+`data-walk-vista` and `data-walk-backdrop`. The renderer draws the bulbs it is told about and
 derives exactly one glow from a prop's own position, because that light has to come from the machine.
 Adding a lamp in `js/site.js` to "fix" a dark wall is the failure mode this prevents: it produces a
 scene that looks lit and a dataset that says otherwise.
 
-No iOS Safari exists in this sandbox, so mobile behaviour is **unmeasured** and must never be
-reported as proven. What needs no device is the fallback: the captioned list is always readable.
+**Atmosphere is a property of the space, not of the view.** A lane is dressed by what its walls are clad
+in, what is on its ground, and what hangs over you — so those three are data, and the renderer only knows
+how to *paint* a material: `shutter`, `dado`, `brick`, `corrugated`, `hoarding`, `plaster`, `tactile`,
+`grate`, `wet`, `lantern`. Each is one 128 px tile painted in code, mapped across the same 60 cm panel
+the wall already uses — which is why no band may be drawn as one stretched quad, and why a panel whose
+cladding tiles its whole height (0 to `CEIL`) skips the wall's own tiling instead of wearing it twice
+(`cladCovers` in `drawRoom`). A lantern is a *light* (`body: "lantern"`, `bulb: false`, with `size` and
+`h` authored next to it), so no corner of the lane is bright because a gradient said so. And nothing here
+carries lettering: the renderer never calls `fillText`, a board that could have held a menu is emitted
+blank with the reason in its card, and a photograph of somebody's real front is not an available material
+in this project.
 
 No iOS Safari exists in this sandbox, so mobile behaviour is **unmeasured** and must never be
-reported as proven. What needs no device is the fallback: the captioned list is always readable.
+reported as proven. What needs no device is the fallback: the captioned list is always readable. The
+per-frame draw cost is measurable here and is asserted — `ctx.fills`, and that no textured quad covers
+more than its own uv extent; what it looks like on a phone is not.

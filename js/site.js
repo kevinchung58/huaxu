@@ -660,6 +660,9 @@ function leaveOverlay(root, trigger) {
   const EYE = attr("eye", 168);
   const SEG = 60, NEAR = 24, DPM = 2;   // panel, near plane, pattern scale: the renderer's own
   let W = 0, H = 0, focal = 620, tilePat = null, floorPat = null, winPat = null;
+  // One lookup for every cladding the walls and the ground can be wearing; a kind with no entry falls
+  // back to the wall's own tiles, which is the honest default for a surface nobody specified.
+  const PATS = {};
   const pics = new Map();
   const loadPics = () => {
     objs.forEach((el) => {
@@ -711,6 +714,91 @@ function leaveOverlay(root, trigger) {
       c.fillRect((i * 71) % 128, (i * 43) % 128, 3, 2);
     }
   };
+  const paintShutter = (c) => {
+    // A rolling shutter is horizontal ribs plus a bottom rail and a padlock hasp: nothing else, and
+    // specifically no shop name, because a name would be a claim about a shop that does not exist.
+    c.fillStyle = "#4d5f5a"; c.fillRect(0, 0, 128, 128);
+    for (let y = 0; y < 128; y += 8) {
+      c.fillStyle = "rgba(10,18,30,0.5)"; c.fillRect(0, y + 6, 128, 2);
+      c.fillStyle = "rgba(212,228,240,0.10)"; c.fillRect(0, y, 128, 1);
+    }
+    c.fillStyle = "#3c4a47"; c.fillRect(0, 96, 128, 32);
+    c.fillStyle = "rgba(9,14,26,0.75)"; c.fillRect(56, 104, 16, 12);
+    c.fillStyle = "rgba(226,236,246,0.5)"; c.fillRect(60, 108, 8, 3);
+  };
+  const paintDado = (c) => {
+    c.fillStyle = "#3f5170"; c.fillRect(0, 0, 128, 128);
+    c.strokeStyle = "rgba(12,20,36,0.55)"; c.lineWidth = 2;
+    for (let y = 0; y <= 128; y += 32) { c.beginPath(); c.moveTo(0, y); c.lineTo(128, y); c.stroke(); }
+    for (let y = 0; y < 128; y += 32) {
+      for (let k = 0; k < 4; k++) {
+        const x = k * 32 + (y / 32 % 2 ? 16 : 0);
+        c.strokeRect(x, y, 32, 32);
+        c.fillStyle = "rgba(214,232,255,0.07)"; c.fillRect(x + 3, y + 3, 11, 4);   // the glaze line
+      }
+    }
+  };
+  const paintBrick = (c) => {
+    c.fillStyle = "#4a4038"; c.fillRect(0, 0, 128, 128);
+    for (let r = 0; r < 8; r++) {
+      const y = r * 16;
+      for (let k = -1; k < 5; k++) {
+        const x = k * 32 + (r % 2 ? 16 : 0);
+        c.fillStyle = `rgb(${72 + (r * 7 + k * 11) % 18},${56 + (r * 5 + k * 7) % 14},${50 + (r * 3 + k) % 12})`;
+        c.fillRect(x + 1, y + 1, 30, 14);
+      }
+    }
+  };
+  const paintCorrugated = (c) => {
+    c.fillStyle = "#586474"; c.fillRect(0, 0, 128, 128);
+    for (let x = 0; x < 128; x += 12) {
+      c.fillStyle = "rgba(9,15,26,0.42)"; c.fillRect(x + 8, 0, 4, 128);
+      c.fillStyle = "rgba(224,236,248,0.14)"; c.fillRect(x, 0, 3, 128);
+    }
+    c.fillStyle = "rgba(9,15,26,0.4)"; c.fillRect(0, 0, 128, 5); c.fillRect(0, 123, 128, 5);
+  };
+  const paintHoarding = (c) => {
+    // Plywood over an opening, with the seam and the screw line: the most common wall a lane has.
+    c.fillStyle = "#6b5a41"; c.fillRect(0, 0, 128, 128);
+    c.fillStyle = "rgba(20,14,8,0.5)"; c.fillRect(62, 0, 4, 128);
+    c.strokeStyle = "rgba(240,226,196,0.09)"; c.lineWidth = 1;
+    for (let y = 8; y < 128; y += 16) { c.beginPath(); c.moveTo(0, y); c.lineTo(128, y); c.stroke(); }
+    c.fillStyle = "rgba(16,20,28,0.6)";
+    for (const [sx, sy] of [[10, 12], [50, 12], [76, 12], [118, 12], [10, 116], [118, 116]]) c.fillRect(sx, sy, 3, 3);
+  };
+  const paintTactile = (c) => {
+    // The yellow guide path, its truncated domes in a grid: this is the detail that tells a pedestrian
+    // lane is a *street* rather than a corridor, and it is the last thing an alley gets before it is
+    // rendered as a floor plane.
+    c.fillStyle = "#b08a2a"; c.fillRect(0, 0, 128, 128);
+    for (let r = 0; r < 4; r++) {
+      for (let k = 0; k < 4; k++) {
+        const x = k * 32 + 16, y = r * 32 + 16;
+        c.fillStyle = "rgba(255,222,128,0.85)"; c.beginPath(); c.arc(x, y, 8, 0, 6.2832); c.fill();
+        c.fillStyle = "rgba(96,72,18,0.55)"; c.beginPath(); c.arc(x + 2, y + 3, 6, 0, 6.2832); c.fill();
+        c.fillStyle = "rgba(255,236,176,0.9)"; c.beginPath(); c.arc(x - 2, y - 3, 3, 0, 6.2832); c.fill();
+      }
+    }
+    c.strokeStyle = "rgba(60,44,10,0.6)"; c.lineWidth = 2; c.strokeRect(1, 1, 126, 126);
+  };
+  const paintGrate = (c) => {
+    c.fillStyle = "#242c3a"; c.fillRect(0, 0, 128, 128);
+    c.fillStyle = "#0d1420";
+    for (let x = 8; x < 128; x += 18) c.fillRect(x, 6, 8, 116);
+    c.strokeStyle = "rgba(196,210,228,0.22)"; c.lineWidth = 3; c.strokeRect(2, 2, 124, 124);
+  };
+  const paintLantern = (c) => {
+    // One tile is mapped across the whole body, so the tile's seam is the lantern's top and bottom: the
+    // white rims are painted straddling row zero and land on both ends for free. The ribs are a period
+    // of the tile rather than a count, which is what keeps them horizontal at every depth.
+    c.fillStyle = "#b0402e"; c.fillRect(0, 0, 128, 128);
+    c.fillStyle = "rgba(238,230,212,0.92)"; c.fillRect(0, 120, 128, 8); c.fillRect(0, 0, 128, 8);
+    for (let y = 20; y < 120; y += 16) {
+      c.fillStyle = "rgba(52,18,14,0.5)"; c.fillRect(0, y, 128, 2);
+      c.fillStyle = "rgba(255,206,150,0.15)"; c.fillRect(0, y - 6, 128, 4);
+    }
+    c.fillStyle = "rgba(12,10,16,0.42)"; c.fillRect(0, 56, 128, 3);
+  };
   const paintWindows = (c) => {
     // Windows are a pattern, like the tiles and the asphalt: a photographed facade would be the one
     // lie available for free here, because it would carry somebody's actual street. Which cells are
@@ -739,6 +827,15 @@ function leaveOverlay(root, trigger) {
     tilePat = mkTile(paintWall);
     floorPat = mkTile(paintFloor);
     winPat = mkTile(paintWindows);
+    PATS.shutter = mkTile(paintShutter);
+    PATS.dado = mkTile(paintDado);
+    PATS.brick = mkTile(paintBrick);
+    PATS.corrugated = mkTile(paintCorrugated);
+    PATS.hoarding = mkTile(paintHoarding);
+    PATS.plaster = tilePat;
+    PATS.tactile = mkTile(paintTactile);
+    PATS.grate = mkTile(paintGrate);
+    PATS.lantern = mkTile(paintLantern);
   };
 
   const readIsland = (sel) => {
@@ -756,6 +853,8 @@ function leaveOverlay(root, trigger) {
   const beams = readIsland("[data-walk-beams]");
   const vista = (readIsland("[data-walk-vista]")[0]) || null;
   const bd = (readIsland("[data-walk-backdrop]")[0]) || null;
+  const surfaces = readIsland("[data-walk-surfaces]");
+  const marks = readIsland("[data-walk-marks]");
   const cam = () => {
     const ry = (yaw * Math.PI) / 180, rp = ((pitch + (ease ? roll * 0.35 : 0)) * Math.PI) / 180;
     return { x, z: depth, eye: EYE + height + bob, sy: Math.sin(ry), cy: Math.cos(ry),
@@ -797,10 +896,14 @@ function leaveOverlay(root, trigger) {
                       utility: "#4c5a76", poster: "#33435f", frame: "#2c3a56",
                       ac: "#6d7a90", crate: "#7a6248", bin: "#3f5a4a", bollard: "#8a8676",
                       steps: "#565f74", pipe: "#5c6a80", awning: "#8a3f3a", sign: "#2b3a56",
-                      drain: "#111a2c" };
+                      drain: "#111a2c", booth: "#8b9ab0", bikes: "#39435a", planter: "#6e5540",
+                      cones: "#c96a34", mailbox: "#9c3b33", signA: "#c8c2b2", banner: "#8f3a3a",
+                      front: "#2c3a56", ledge: "#6b7890" };
   // How far a kind is a solid. A picture on a wall is a plane and must not be given a thickness it
   // cannot have; everything else in a lane has three visible faces or it is a decal, not an object.
   const SHAPE = { vending: "box", shrine: "box", utility: "box", ac: "box", crate: "box",
+                  booth: "glass", bikes: "bikes", planter: "planter", cones: "cones",
+                  mailbox: "box", signA: "aboard", banner: "cloth", front: "front",
                   bin: "box", bollard: "box", steps: "box", pipe: "box", awning: "box",
                   sign: "box", drain: "plate", noren: "cloth", poster: "plane", frame: "plane" };
   const mix = (hex, k) => {
@@ -873,6 +976,9 @@ function leaveOverlay(root, trigger) {
     x: L.x, y: L.y, z: L.z, r: L.r || 30, k: L.k === undefined ? 0.5 : L.k,
     tint: L.tint || (L.bulb === false ? "rgba(255,192,104,0.5)" : "rgba(255,216,158,0.42)"),
     wet: L.bulb !== false,
+    // Sources with something hanging from the wire: a bulb is a dot of light, a lantern is a body you
+    // can walk under. Which lights have a body is decided by the district, not by the renderer.
+    body: L.body || null, size: L.size || 0, h: L.h || 0,
   }));
   const lightAt = (px, py, pz) => {
     let v = AMBIENT;
@@ -895,15 +1001,29 @@ function leaveOverlay(root, trigger) {
       g.closePath();
     };
     path();
-    if (q.mode === "flat") g.fillStyle = q.arg; else g.fillStyle = "#2b3a56";
-    g.fill();
+    /* A textured quad is one fill, not two.
+
+       Every tile in this lane is painted opaque — the wall's own, the asphalt, the shutters — so the
+       flat colour that used to go down first was invisible work, and the pattern used to be filled
+       over 4096² units and clipped back, which costs the same whether the quad is a 60 cm panel or a
+       speck. The uv extent of the quad covers it exactly, and if the affine fit fails the flat colour
+       is still what you see. */
+    let fitted = false;
     if (q.mode === "pat" && q.arg) {
       const m = affine(q.pts, q.pts.map((p) => [p.u, p.v]));
       if (m) {
+        const us = q.pts.map((p) => p.u), vs = q.pts.map((p) => p.v);
+        const u0 = Math.min.apply(null, us), u1 = Math.max.apply(null, us);
+        const v0 = Math.min.apply(null, vs), v1 = Math.max.apply(null, vs);
         g.save(); path(); g.clip(); g.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
-        g.fillStyle = q.arg; g.fillRect(-2048, -2048, 4096, 4096); g.restore();
+        g.fillStyle = q.arg;
+        g.fillRect(u0 - 1, v0 - 1, u1 - u0 + 2, v1 - v0 + 2);
+        g.restore();
+        fitted = true;
       }
-    } else if (q.mode === "pic" && q.img && q.img.complete && q.img.naturalWidth) {
+    }
+    if (!fitted) { g.fillStyle = q.mode === "flat" ? q.arg : "#2b3a56"; g.fill(); }
+    if (!fitted && q.mode === "pic" && q.img && q.img.complete && q.img.naturalWidth) {
       const m = affine(q.pts, q.pts.map((p) => [p.u, p.v]));
       if (m) {
         g.save(); path(); g.clip(); g.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
@@ -916,6 +1036,49 @@ function leaveOverlay(root, trigger) {
     if (warm > 0.02) { path(); g.fillStyle = `rgba(255,228,186,${(warm * 0.24).toFixed(3)})`; g.fill(); }
     const dark = q.air === undefined ? haze(q.z) : q.air;
     if (dark > 0.01) { path(); g.fillStyle = `rgba(22,34,60,${dark.toFixed(3)})`; g.fill(); }
+  };
+
+  const drawMarks = (C) => {
+    // The ground's own kit: the tactile guide path along each wall, a painted gutter line at the
+    // threshold, grates, one manhole, and a wet patch that is only worth drawing because something
+    // above it is bright enough to be seen in it.
+    marks.forEach((mk) => {
+      const pat = PATS[mk.kind];
+      if (mk.kind === "manhole") {
+        const cx = (mk.x0 + mk.x1) / 2, cz = (mk.z0 + mk.z1) / 2, r = (mk.x1 - mk.x0) / 2;
+        const ring = (rad, col) => {
+          const pts = [];
+          for (let i = 0; i < 8; i++) {
+            const a0 = (i / 8) * 6.2832;
+            pts.push([cx + Math.cos(a0) * rad, 1, cz + Math.sin(a0) * rad * 0.8]);
+          }
+          const q = add(C, pts, ZERO8.slice(0, 16), "flat", col);
+          if (q) { q.lit = lightAt(cx, 2, cz); q.air = haze(q.z) * 0.7; }
+        };
+        ring(r, "#2b3648");
+        ring(r * 0.78, "#1a2330");
+        return;
+      }
+      if (mk.kind === "wet") {
+        const q = add(C, [[mk.x0, 1, mk.z0], [mk.x1, 1, mk.z0], [mk.x1, 1, mk.z1], [mk.x0, 1, mk.z1]],
+                      ZERO8, "flat", "rgba(150,182,224,0.10)");
+        if (q) { q.air = 0; q.lit = 0.2; }
+        return;
+      }
+      const long = (mk.z1 - mk.z0) > SEG;
+      const steps = long ? Math.ceil((mk.z1 - mk.z0) / SEG) : 1;
+      for (let i = 0; i < steps; i++) {
+        const z0 = mk.z0 + (i / steps) * (mk.z1 - mk.z0);
+        const z1 = mk.z0 + ((i + 1) / steps) * (mk.z1 - mk.z0);
+        const q = add(C, [[mk.x0, 1, z0], [mk.x1, 1, z0], [mk.x1, 1, z1], [mk.x0, 1, z1]],
+            [z0 * DPM * 2, mk.x0 * DPM * 2, z0 * DPM * 2, mk.x1 * DPM * 2,
+             z1 * DPM * 2, mk.x1 * DPM * 2, z1 * DPM * 2, mk.x0 * DPM * 2], "pat", pat);
+        if (q) {
+          q.lit = lightAt((mk.x0 + mk.x1) / 2, 4, (z0 + z1) / 2) * (mk.kind === "gutter" ? 0.8 : 1.05);
+          q.air = haze(q.z) * 0.7;
+        }
+      }
+    });
   };
 
   const drawFar = (C) => {
@@ -1032,10 +1195,24 @@ function leaveOverlay(root, trigger) {
     focal = W * 0.5 / Math.tan(half);
     const C = cam();
     quads.length = 0;
+    // Whether the authored bands tile a panel's whole height: if they do, the wall's own tiling is
+    // not painted at all, because the cladding will be. Anything less than full coverage keeps it, so
+    // a half-dressed wall shows plaster behind the shutter rather than the void.
+    const cladCovers = (side, z0, z1) => {
+      const rows = surfaces.filter((sc) => sc.side === side && sc.z0 < z1 && sc.z1 > z0).sort((a, b) => a.y0 - b.y0);
+      let y = 0;
+      for (const r of rows) {
+        if (r.y0 > y + 0.01) break;
+        if (r.y1 > y) y = r.y1;
+        if (y >= CEIL) return true;
+      }
+      return y >= CEIL;
+    };
     for (let z = Z_BACK; z < Z_FAR; z += SEG) {
       const z1 = Math.min(z + SEG, Z_FAR);
       const zc = (z + z1) / 2;
       [-1, 1].forEach((side) => {
+        if (surfaces.length && cladCovers(side, z, z1)) return;
         const px = side * WALL;
         const q = add(C, [[px, 0, z], [px, 0, z1], [px, CEIL, z1], [px, CEIL, z]],
                       [z * DPM, 0, z1 * DPM, 0, z1 * DPM, -CEIL * DPM, z * DPM, -CEIL * DPM],
@@ -1079,6 +1256,43 @@ function leaveOverlay(root, trigger) {
     } else {
       wallPiece(-WALL, 0, WALL, CEIL, lightAt(0, 210, Z_FAR));
     }
+    /* Cladding, panel by panel.
+
+       A band of shutter is drawn as the same 60 cm slices as the wall behind it, because an affine
+       texture map is only exact across a panel that narrow — a single stretched quad over four metres
+       of corrugated sheet would bend the ribs where the wall bends them differently, and that
+       mismatch is exactly what makes a scene read as a decal. Two centimetres off the wall keeps the
+       depth sort deciding in the cladding's favour without a visible offset, so there is no z-fight
+       and nothing to polygon-offset. */
+    surfaces.forEach((sc) => {
+      const px = sc.side * (WALL - 2);
+      const from = Math.max(sc.z0, Z_BACK), to = Math.min(sc.z1, Z_FAR);
+      const pat = PATS[sc.kind] || tilePat;
+      for (let z = Math.floor(from / SEG) * SEG; z < to; z += SEG) {
+        const z0 = Math.max(z, from), z1 = Math.min(z + SEG, to);
+        if (z1 - z0 < 1) continue;
+        const q = add(C, [[px, sc.y0, z0], [px, sc.y0, z1], [px, sc.y1, z1], [px, sc.y1, z0]],
+            [z0 * DPM, -sc.y0 * DPM, z1 * DPM, -sc.y0 * DPM, z1 * DPM, -sc.y1 * DPM, z0 * DPM, -sc.y1 * DPM],
+            "pat", pat);
+        if (q) {
+          q.lit = lightAt(px, (sc.y0 + sc.y1) / 2, (z0 + z1) / 2) * (sc.kind === "shutter" ? 1.12 : 1);
+          // A shutter is metal and catches the light; plywood and brick mostly do not.
+          if (sc.kind === "hoarding") q.lit *= 0.86;
+        }
+      }
+    });
+    drawMarks(C);
+    lamps.forEach((L) => {
+      if (L.body !== "lantern" || L.z < Z_BACK - 40 || L.z > Z_FAR + 40) return;
+      // Two planes crossed like a plus: from any yaw one is nearly edge on and the other carries the
+      // silhouette. It is the cheapest thing that still reads as a volume, and it costs no trig.
+      const R = L.size || 24, hh = R * 1.25, UV = [0, 0, 128, 0, 128, -128, 0, -128];
+      [[L.x - R, L.z, L.x + R, L.z], [L.x, L.z - R, L.x, L.z + R]].forEach(([ax, az, bx, bz]) => {
+        const q = add(C, [[ax, L.y - hh, az], [bx, L.y - hh, bz], [bx, L.y + hh, bz], [ax, L.y + hh, az]],
+                      UV, "pat", PATS.lantern);
+        if (q) { q.lit = 1.5; q.air = haze(q.z) * 0.5; }
+      });
+    });
     if (bd) drawFar(C);
     const back = add(C, [[WALL, 0, Z_BACK], [-WALL, 0, Z_BACK], [-WALL, CEIL, Z_BACK], [WALL, CEIL, Z_BACK]],
         [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#2a3854");
@@ -1130,6 +1344,103 @@ function leaveOverlay(root, trigger) {
                       [m.x + a0, m.y + m.h, m.z]], ZERO8, "flat", mix(base, i % 2 ? -0.1 : 0.06));
           if (q) { q.lit = lit + 0.2; drawn.push(q); }
         }
+      } else if (shape === "front") {
+        // A closed front with a light still burning behind it: the recess, its jambs, the transom, and
+        // nothing else. Every point goes through `P`, which takes the wall's own axes — a front on a
+        // side wall runs along z and one on the end wall along x, so a face built from either one
+        // outright is wrong the moment the other is authored.
+        const along = Math.abs(m.ry) > 45;
+        const dir = m.x < 0 ? 1 : -1;                 // into the lane, whichever wall this is
+        const half = m.w / 2, ins = m.d, head = m.h * 0.84;
+        const P = (u, v, y) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
+        const Q = (pts, col, l, air) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); }
+        };
+        // A lit front is never lit to the floor: the bottom of a closed front is shade, and the band of
+        // light is above the shutter, where the interior lamp actually hangs.
+        Q([P(-half, ins, 0), P(half, ins, 0), P(half, ins, m.h), P(-half, ins, m.h)], mix(base, -0.14), lit);
+        Q([P(-half, ins, head), P(half, ins, head), P(half, ins, m.h), P(-half, ins, m.h)], "#f0c98a", 1.6, 0.05);
+        Q([P(-half, 0, 0), P(-half, 0, head), P(-half, ins, head), P(-half, ins, 0)], mix("#4d5f5a", -0.3), lit * 0.6);
+        Q([P(half, 0, 0), P(half, 0, head), P(half, ins, head), P(half, ins, 0)], mix("#4d5f5a", -0.3), lit * 0.6);
+        Q([P(-half, 0, head), P(-half, ins, head), P(-half, ins, m.h), P(-half, 0, m.h)], mix("#4d5f5a", -0.06), lit * 0.8);
+        Q([P(half, 0, head), P(half, ins, head), P(half, ins, m.h), P(half, 0, m.h)], mix("#4d5f5a", -0.06), lit * 0.8);
+      } else if (shape === "glass") {
+        // A box you can see through: the frame first, then the panes at a fraction of the alpha an
+        // opaque face would use, so the far side of the lane stays legible behind it. Painting glass
+        // as a solid is the one way a booth reads as a cabinet.
+        facesOf(m).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const q = add(C, f.p, ZERO8, "flat", "rgba(186,214,240,0.20)");
+          if (q) { q.lit = lit; drawn.push(q); }
+        });
+        const top = add(C, [[m.x - m.w / 2, m.y + m.h, m.z - m.d / 2], [m.x + m.w / 2, m.y + m.h, m.z - m.d / 2],
+                            [m.x + m.w / 2, m.y + m.h, m.z + m.d / 2], [m.x - m.w / 2, m.y + m.h, m.z + m.d / 2]],
+                        ZERO8, "flat", mix("#5f6c80", 0.1));
+        if (top) { top.lit = lit * 1.2; drawn.push(top); }
+      } else if (shape === "bikes") {
+        const along = Math.abs(m.ry) > 45;
+        for (let b = 0; b < 2; b++) {
+          const off = b ? m.w * 0.28 : -m.w * 0.22;
+          const zc = along ? m.z + off : m.z;
+          const xc = along ? m.x : m.x + off;
+          const r = 33;
+          for (const [sx, label] of [[-42, "w"], [42, "w"]]) {
+            const pts = [];
+            for (let i = 0; i < 8; i++) {
+              const a0 = (i / 8) * 6.2832;
+              pts.push(along ? [xc, m.y + r + Math.sin(a0) * r, zc + sx + Math.cos(a0) * r * 0.35]
+                             : [xc + sx + Math.cos(a0) * r * 0.35, m.y + r + Math.sin(a0) * r, zc]);
+            }
+            const q = add(C, pts, ZERO8.slice(0, 16), "flat", "#141d2e");
+            if (q) { q.lit = lit * 0.8; drawn.push(q); }
+          }
+          const frame = add(C, along
+              ? [[xc, m.y + 26, zc - 30], [xc, m.y + 26, zc + 30], [xc, m.y + 72, zc + 24], [xc, m.y + 72, zc - 24]]
+              : [[xc - 30, m.y + 26, zc], [xc + 30, m.y + 26, zc], [xc + 24, m.y + 72, zc], [xc - 24, m.y + 72, zc]],
+              ZERO8, "flat", mix(base, 0.22));
+          if (frame) { frame.lit = lit; drawn.push(frame); }
+        }
+      } else if (shape === "planter") {
+        facesOf(m).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
+          if (q) { q.lit = lit; drawn.push(q); }
+        });
+        // what grows in it, three leaves deep: a lane with only grey in it is a drawing of a lane
+        for (let i = 0; i < 3; i++) {
+          const q = add(C, [[m.x - 26 + i * 22, m.y + m.h, m.z - 14 + i * 9],
+                            [m.x - 4 + i * 22, m.y + m.h, m.z + 16 - i * 8],
+                            [m.x + 8 + i * 16, m.y + m.h + 34 - i * 7, m.z + 4],
+                            [m.x - 18 + i * 16, m.y + m.h + 26 - i * 6, m.z - 6]],
+                        ZERO8, "flat", i % 2 ? "#3f5b3a" : "#4a6a41");
+          if (q) { q.lit = lit * 0.9; drawn.push(q); }
+        }
+      } else if (shape === "cones") {
+        for (let i = 0; i < 2; i++) {
+          const cx = m.x + (i ? 20 : -20), cz = m.z + (i ? 8 : -6);
+          const q = add(C, [[cx - 17, m.y, cz], [cx + 17, m.y, cz], [cx + 5, m.y + m.h, cz],
+                            [cx - 5, m.y + m.h, cz]], ZERO8, "flat", mix(base, 0.1));
+          if (q) { q.lit = lit; drawn.push(q); }
+          const band = add(C, [[cx - 12, m.y + 34, cz - 1], [cx + 12, m.y + 34, cz - 1],
+                               [cx + 9, m.y + 46, cz - 1], [cx - 9, m.y + 46, cz - 1]],
+                           ZERO8, "flat", "#e6eaf0");
+          if (band) { band.lit = lit * 1.3; drawn.push(band); }
+        }
+      } else if (shape === "aboard") {
+        // A folding board: two faces at an angle, both blank, and the shadow they cast on each other.
+        const q0 = add(C, [[m.x - m.w / 2, m.y, m.z - m.d / 2], [m.x + m.w / 2, m.y, m.z - m.d / 2],
+                           [m.x + m.w / 2 - 6, m.y + m.h, m.z + 4], [m.x - m.w / 2 + 6, m.y + m.h, m.z + 4]],
+                       ZERO8, "flat", mix(base, 0.12));
+        if (q0) { q0.lit = lit; drawn.push(q0); }
+        const q1 = add(C, [[m.x + m.w / 2, m.y, m.z + m.d / 2], [m.x - m.w / 2, m.y, m.z + m.d / 2],
+                           [m.x - m.w / 2 + 6, m.y + m.h, m.z - 4], [m.x + m.w / 2 - 6, m.y + m.h, m.z - 4]],
+                       ZERO8, "flat", mix(base, -0.28));
+        if (q1) { q1.lit = lit * 0.7; drawn.push(q1); }
       } else if (shape === "plate") {
         const q = add(C, [[m.x - m.w / 2, m.y + 1, m.z - m.d / 2], [m.x + m.w / 2, m.y + 1, m.z - m.d / 2],
                           [m.x + m.w / 2, m.y + 1, m.z + m.d / 2], [m.x - m.w / 2, m.y + 1, m.z + m.d / 2]],
@@ -1217,6 +1528,17 @@ function leaveOverlay(root, trigger) {
         g.beginPath(); g.arc(sx, sy, Math.max(1.5, (focal * 9) / p.z), 0, 6.2832); g.fill();
       }
     });
+    // A wet patch holds whatever is standing above it, which is the only reason the patch is in the
+    // data: a puddle that reflects nothing is a grey rectangle. The bulbs already throw their own pool
+    // from the loop above; this is for the sources that are not bulbs — a machine, a closed front with
+    // its light on — and it can only be done here because the marks say where the ground is wet.
+    marks.forEach((mk) => {
+      if (mk.kind !== "wet") return;
+      lamps.forEach((L) => {
+        if (L.wet || L.x < mk.x0 || L.x > mk.x1 || L.z < mk.z0 || L.z > mk.z1) return;
+        reflect(L.x, L.z, L.r * 2.2);
+      });
+    });
     g.globalCompositeOperation = "source-over";
     g.strokeStyle = "rgba(9,15,28,0.9)";
     g.lineWidth = clamp(focal / 520, 1, 3.5);
@@ -1234,7 +1556,12 @@ function leaveOverlay(root, trigger) {
       if (open) g.stroke();
     };
     wires.forEach((wd) => strand(wd.a, wd.b, wd.sag || 40));
-    lamps.forEach((L) => { if (L.wet) strand([L.x, CEIL, L.z], [L.x, L.y + 6, L.z], 0); });
+    // Anything with a body is tied to the wire above it, at the height the data gave it rather than a
+    // constant: a lantern at 2.6 m and a bulb at 2.7 m do not hang the same length.
+    lamps.forEach((L) => {
+      if (L.wet) strand([L.x, CEIL, L.z], [L.x, L.y + 6, L.z], 0);
+      if (L.body === "lantern") strand([L.x, CEIL, L.z], [L.x, L.h || (L.y + 14), L.z], 0);
+    });
 
     // where your body actually is, on the floor: the one thing that makes a first-person view
     // legible as a body rather than a camera

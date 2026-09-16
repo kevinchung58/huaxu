@@ -431,3 +431,64 @@ Still unmeasured, and it is the owner's to judge: whether the alley-plus-compoun
 a glance, and whether the far plane survives a phone at 60 fps. The numbers say the scene paints (1277
 fills, 132 oversized far quads, 21 textures, balanced save/restore, no non-finite value, murk capped at
 0.187); nothing here says what it looks like.
+
+## 20. The room itself, dressed (2026-09-16)
+
+The correction that produced this round was not a request for more scenery in the frame: 「我說的是空間
+裡面可以幫我佈置類似東京的氣氛嗎?我指的是空間」. A window onto a crossing is a *view* of Tokyo; he had
+asked for the space to be dressed as one. So the atmosphere moved from the far plane into the walls, the
+ground and the air overhead, and the aperture stayed only as what the room looks out onto.
+
+**What is in the space now.** Twenty wall bands, side by side and stacked to the ceiling: rolling
+shutters over closed fronts, glazed tile up to hand height where a front was glazed, painted plaster
+above, corrugated patching where a wall has been opened and shut again, a plank hoarding where a
+building is being worked on, brick where none of that happened. Seven ground marks: a tactile guide path
+along both walls for the lane's whole length, a painted gutter line at the threshold, two grates, one
+manhole, one wet patch at the vending end. Four paper lanterns on the wire runs that were already there.
+Nine props against those walls — a lit-but-closed front, a telephone box, two bicycles, two planters, a
+pair of cones, a post box, a blank folding board, two cloth banners. The room's purpose line says what it
+is: *A Tokyo lane, dressed: shutters, lanterns, a crossing at its end.*
+
+**The two coordinate systems bit once already.** A prop's depth is a record centimetre and goes through
+`Z_SCALE`; a band, a mark and a lantern hang in the space and are scene centimetres. The first pass
+authored the street kit in scene centimetres and put the post box at world 2204 — nearly a kilometre past
+the end wall, invisible from anywhere in the lane and unreachable from every station. Every new prop
+placed against a band has to convert; the harness asserts the bounds on both kinds so the mistake cannot
+come back quietly.
+
+**Cladding is the wall's surface, not a second layer.** Each band is tiled into the same 60 cm panels the
+lane already uses, because an affine texture fit is only exact across a patch that narrow, and emitted at
+`WALL − 2` so the depth sort always paints it after the base wall instead of leaving the decision to a
+tie between two coplanar quads. Where a side's bands tile a panel's whole height, `cladCovers` skips that
+panel's own tiling: the wall is not painted under a shutter that already covers it. Any panel left short
+of `CEIL` keeps its base tiling, so a half-dressed wall shows plaster behind the shutters rather than the
+void — the fallback is deliberate, and it is what makes the coverage assertion worth keeping.
+
+**A textured quad is now one fill, not two.** Every tile in this lane is painted opaque, so the flat
+colour that used to go down first was invisible work, and the pattern itself used to be filled over
+4096² units and clipped back. A quad's own uv extent covers it exactly. Measured per repaint with the
+recorder: 1 560 fills before this round, 3 391 with the dressing naively overlaid, 2 639 after both
+fixes — while the number of oversized clipped fills went from 1 554 to 0. That last figure is the one
+that matters on a phone, and it is a draw-call count, not a frame time.
+
+**One harness assertion was measuring the wrong thing.** `ctx.huge > 0`, sold as "the far plane is drawn,
+and only a bounds test keeps it", had been passing for several rounds because `huge` counted every
+pattern overlay's oversized `fillRect` — every textured quad in the lane, not the far plane. It is
+replaced by two claims that can actually fail: nothing is projected off the ends of the earth
+(`ptsMax < 60000`, which is what the bounds test buys), and no texture covers more than its own quad.
+The rule this leaves behind is that a proxy which cannot fail is not an assertion, even when it is green.
+
+**What the honesty cost.** The shutters carry no shop names, the banners carry no text, the folding board
+is blank with its reason in the card, and the post box says so too: a name or a menu would be a claim
+about a shop that does not exist. The renderer never calls `fillText` at any depth, and the harness
+asserts both halves of that — no lettering drawn, no material image loaded. The dressing is drawn from
+code, so the lane can be re-clad by editing data and nothing about it depends on a photograph of
+somebody's actual street.
+
+Still the owner's to judge, and unmeasured here: whether a lane clad like this reads as Tokyo at a glance
+once you are inside it, and what the extra thousand fills per repaint do to a phone. 101 assertions in
+`.verify/verify-walk.mjs`, all green, say only what the room is made of. One last thing the data has to
+pay for: the wet patch at the vending end is not a texture, it is a *surface* — the renderer looks for
+sources inside its extent that are not bulbs and throws them back, so the machine's light is seen in the
+ground the way it is seen on the wall. A puddle that reflects nothing is a grey rectangle, and that is
+the exact thing this round is not allowed to become.

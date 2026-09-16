@@ -124,6 +124,11 @@ intact:
   `[data-ig-grid]` in DOM order and the frames are emitted in that same order; `verify-walk.mjs`
   asserts the two lists agree. `#room-plate` (the lane) and `#ig-plate` (the album) are different
   viewers for different surfaces and must not be merged or duplicated.
+- **The space wears the atmosphere; the view only frames it.** Wall materials, ground markings and
+  hanging lights are emitted as scene-centimetre islands (`data-walk-surfaces`, `data-walk-marks`, the
+  lantern entries in `data-walk-lights`) and painted from tiles the renderer draws in code. Nothing may
+  be lit by a source the data does not name, nothing may be dressed with a photograph of somebody's real
+  street, and no surface carries invented lettering — the blank folding board is that assertion.
 - **No watched state.** `放進限時動態只是做相簿用`: this is an album, not a story. Nothing may be
   marked seen, nothing expires, and `1 / n` is a position, not a countdown.
 - Sizes come from the file: `poster_attrs()` reads the JPEG header so neither the grid nor the
