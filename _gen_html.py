@@ -5,7 +5,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260916c"   # one bump per changed asset pair; both tags read it
+VER = "20260916d"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -45,6 +45,13 @@ ICON_CHAT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.
 ICON_FOV_OUT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />')
 ICON_FOV_IN = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3.75 9.75 9 4.5m6 10.5l5.25-5.25L15 4.5" />')
 ICON_LEFT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />')
+# An arrow walking out of a frame: heroicons' own leave glyph, from the same 1.5-stroke family as the
+# rest of the set. A bare chevron next to the owner's name did not read as an exit to the person who
+# built the room, so the shape has to say "leave" on its own — that is the whole affordance budget.
+ICON_EXIT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 '
+                '13.5 3h-7.5A2.25 2.25 0 0 0 3.75 5.25v13.5A2.25 2.25 0 0 0 6 21h7.5a2.25 2.25 0 0 0 '
+                '2.25-2.25V15" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12H3'
+                'm0 0 3.75-3.75M3 12l3.75 3.75" />')
 ICON_RIGHT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />')
 
 def chip(icon: str) -> str:
@@ -1791,7 +1798,8 @@ DISTRICTS = [
              "state": "Silent by default, and it stays that way until a slot carries audio."},
         ],
         "exit": {"id": "noren", "kind": "noren", "x": 0, "z": -44, "y": 178, "ry": 180,
-                 "title": "The curtain at your back", "hint": "Part it to leave the lane."},
+                 "title": "The curtain at your back", "hint": "Part it to leave the lane.",
+                 "leave": "index.html"},
     },
     {
         "id": "undeclared", "label": "Next district", "purpose": "Purpose not declared",
@@ -1932,6 +1940,9 @@ def walk_object(o):
     style = (f'--x:{o["x"]}px;--z:{o["z"]}px;--y:{o.get("y", 0)}px;--ry:{o.get("ry", 0)}deg;'
              f'--w:{w}px;--h:{h}px;--d:{dep}px')
     frame = f' data-frame="{o["frame"]}"' if "frame" in o else ""
+    # The one prop that is not scenery: the record says where it goes and the renderer obeys, so the
+    # curtain leaving the lane is a link in the data, not a special case in the script.
+    leave = f' data-leave="{escape(o["leave"])}"' if o.get("leave") else ""
     texture = f' data-tex="{escape(tex)}"' if tex else ""
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
@@ -1945,7 +1956,7 @@ def walk_object(o):
     return (f'<button type="button" class="walk-hit" data-obj="{escape(o["id"])}" '
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
-            f'data-d="{dep}" style="{style}"{frame}{texture}{states}></button>')
+            f'data-d="{dep}" style="{style}"{frame}{texture}{states}{leave}></button>')
 
 
 def walk_html(d, drawer):
@@ -2015,7 +2026,7 @@ def walk_html(d, drawer):
   <div class="walk-hud">
     <div class="walk-top">
       <div class="walk-pick">
-        <a class="walk-icon" href="index.html" aria-label="Hua-Xu Zhong">{ICON_LEFT}</a>
+        <a class="walk-icon walk-exit" href="index.html" data-walk-exit aria-label="Leave the lane">{ICON_EXIT}</a>
         <div class="walk-stops" role="group" aria-label="Stops in this lane">{"".join(chips)}</div>
       </div>
       <div class="walk-read">
@@ -2046,7 +2057,10 @@ def walk_html(d, drawer):
     <div class="walk-aside" data-walk-aside hidden>
       <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
         <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open a thing ·
-        <kbd>L</kbd> the list · <kbd>I</kbd> this note</p>
+        <kbd>L</kbd> the list · <kbd>I</kbd> this note · <kbd>Esc</kbd> close, then leave</p>
+      <p class="walk-note">With a finger: drag to turn, tap the wall in front of you to open it, tap
+        again to put it down. Three ways out — the arrow in the corner, the curtain at the mouth of the
+        lane, and a second <kbd>Esc</kbd> once nothing is open any more.</p>
       <p class="walk-note" data-walk-fallback hidden>Rendering the lane is unavailable in this
         browser. {label} still reads in the list: every frame, its caption and its kind are written
         there, and the ticks above stand for those frames' depths.</p>

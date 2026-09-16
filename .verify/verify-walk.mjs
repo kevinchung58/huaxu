@@ -15,7 +15,7 @@ const html = rooms;
 
 const ctx = {
   frame: [], fills: 0, strokes: 0, imgs: 0, saves: 0, restores: 0, bad: 0, frames: 0,
-  darkMax: 0, warm: 0, huge: 0, ptsMax: 0, text: 0, colours: new Set(), counts: new Map(),
+  darkMax: 0, warm: 0, huge: 0, ptsMax: 0, text: 0, colours: new Set(), counts: new Map(), navs: [],
 };
 function recorder() {
   const fin = (a) => { for (const v of a) if (typeof v === "number" && !Number.isFinite(v)) ctx.bad++; };
@@ -60,9 +60,14 @@ const out = [];
 const ok = (n, c, e = "") => out.push(`${c ? "PASS" : "FAIL"}  ${n}${e ? "  — " + e : ""}`);
 
 function boot(markup, url) {
-  const { JSDOM } = globalThis.__JSDOM;
+  const { JSDOM, VirtualConsole } = globalThis.__JSDOM;
+  // jsdom refuses to navigate, which is the one thing a walk-through of the exit needs to be heard
+  // about: an attempted navigation lands here instead of on a console the owner has to read.
+  const vc = new VirtualConsole();
+  vc.on("jsdomError", (e) => ctx.navs.push(String((e && e.message) || e)));
+  vc.forwardTo(console, { omitJSDOMErrors: true });   // this jsdom renamed it; the errors stay here
   const dom = new JSDOM(markup.replace(/<script[^>]*src=[^>]*><\/script>/g, ""), {
-    runScripts: "dangerously", pretendToBeVisual: true, url,
+    runScripts: "dangerously", pretendToBeVisual: true, url, virtualConsole: vc,
   });
   const w = dom.window;
   w.HTMLElement.prototype.scrollIntoView = function () {};
@@ -292,6 +297,7 @@ const stopAt = (z) => stops.reduce((best, el) =>
   Math.abs(parseFloat(el.style.getPropertyValue("--z")) - z) <
   Math.abs(parseFloat(best.style.getPropertyValue("--z")) - z) ? el : best, stops[0]);
 const status = () => q("[data-walk-status]").textContent.trim();
+const title0 = () => (qa(".walk-hit.is-reach")[0] || {}).dataset?.obj || "nothing";
 const body = () => q("[data-walk]").__walk;
 
 await hold("w", 500);
@@ -388,6 +394,85 @@ click(q("[data-walk-card-close]"));
 await sleep(40);
 ok("an interactive thing says so without a word: the reach ring is dashed for a prop you can use",
    /\.walk-hit\[data-states\]/.test(css));
+
+/* Three failures a DOM without layout cannot see, and the owner could: the head-up display's rows were
+   ceilings of invisible glass over the top and bottom of the scene (where the lanterns and the shutters
+   are), a far prop's press box was as small as the few pixels it covered, and the curtain that reads
+   "part it to leave the lane" opened a card instead of leaving. jsdom passed all three for a week. */
+const noren = q('[data-obj="noren"]');
+ok("the way out is authored in the record, and the chrome reads the same link",
+   noren.dataset.leave === "index.html"
+     && q("[data-walk-exit]").getAttribute("href") === noren.dataset.leave);
+const navs = () => ctx.navs.filter((m) => /navigation/.test(m)).length;
+click(noren);
+ok("and parting the curtain leaves the lane, instead of describing the exit",
+   navs() === 1, JSON.stringify(ctx.navs.slice(-1)));
+click(booth);
+await sleep(60);
+key("Escape");
+ok("Esc folds what is open before it folds the space", card.hidden && navs() === 1,
+   `card hidden=${card.hidden} navs=${navs()}`);
+key("Escape");
+ok("and with nothing left to unfold, Esc is the door", navs() === 2, JSON.stringify(ctx.navs.slice(-2)));
+const boxes = qa(".walk-hit").filter((e) => e.style.visibility === "visible");
+ok("every visible press box is a fingertip, whatever the object's pixel size is",
+   boxes.length > 3 && boxes.every((e) => parseFloat(e.style.width) >= 44 && parseFloat(e.style.height) >= 44),
+   `${boxes.length} boxes, narrowest ${Math.min(...boxes.map((e) => parseFloat(e.style.width)))}px`);
+ok("and the nearer thing wins where two boxes overlap",
+   boxes.every((e) => e.style.zIndex !== "")
+     && /m\.el\.style\.zIndex = String\(1200 - Math\.min\(1100/.test(js),
+   `z ${Math.min(...boxes.map((e) => +e.style.zIndex))}–${Math.max(...boxes.map((e) => +e.style.zIndex))}`);
+ok("the ring stays on the silhouette, not on the grown box",
+   /\.walk-hit::after \{[^}]*inset: var\(--pady, 0px\) var\(--padx, 0px\)/.test(css)
+     && !/\.walk-hit:hover \{/.test(css));
+ok("the head-up display's rows are layout, not targets",
+   /\.walk-hud > \* \{[^}]*pointer-events: none/.test(css)
+     && /\.walk-hud \.walk-icon,\n\.walk-hud \.walk-stop \{\n  pointer-events: auto/.test(css)
+     && !/\.walk-(top|bottom|pick|read|tools|stops) \{[^}]*pointer-events: auto/.test(css));
+ok("and the one control that must never be hunted for is louder than the tools",
+   q("[data-walk-exit]").classList.contains("walk-exit")
+     && /\.walk-exit \{[^}]*min-width: 2\.7rem/.test(css) && !/class="walk-icon"[^>]*href="index/.test(html));
+
+/* The finger's verb. `E` is a keyboard and a phone has none, so a tap that never became a look has to
+   press what is in front of you; and a look that *was* a drag must not press anything at all. */
+const stage = q("[data-walk-view]");
+const ptr = (type, dx = 0, dy = 0) => stage.dispatchEvent(
+  new w.PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, clientX: 500 + dx, clientY: 400 + dy }));
+const closePlate = async () => { if (!card.hidden) click(q("[data-walk-card-close]")); await sleep(40); };
+await closePlate();
+ok("nothing is open before the finger tries", card.hidden);
+ptr("pointerdown");
+ptr("pointerup");
+await sleep(50);
+ok("a tap on the scene presses the thing you are standing in front of",
+   !card.hidden && qa(".walk-hit.is-reach").length === 1, `${title0()} / ${q("[data-walk-title]").textContent}`);
+await closePlate();
+const yawBefore = body().yaw;
+ptr("pointerdown");
+ptr("pointermove", 60, 0);
+ptr("pointerup");
+await sleep(50);
+ok("a drag turns the head and presses nothing",
+   card.hidden && Math.abs(body().yaw - yawBefore) > 3, `Δyaw ${(body().yaw - yawBefore).toFixed(1)}°`);
+ptr("pointerdown");
+ptr("pointerup");
+await sleep(50);
+ok("and the tap the drag refused now opens the plate", !card.hidden);
+ptr("pointerdown");
+ptr("pointerup");
+await sleep(50);
+ok("tapping the scene again puts the plate back down, so the finger has both directions", card.hidden);
+ptr("pointerdown");
+ptr("pointercancel");
+await sleep(50);
+ok("a grab the system cancels is not counted as a press", card.hidden);
+ok("the chrome's press areas are bigger than its glyphs, since the glyphs are the drawing",
+   /\.walk-icon,\n\.walk-stop \{\n  position: relative;\n\}/.test(css)
+     && /\.walk-icon::before,\n\.walk-stop::before \{[^}]*inset: -8px -4px/.test(css)
+     && /\.walk-tools \{[^}]*gap: 0\.5rem/.test(css));
+ok("and the enlarged box never loses its focus state, because the ring moved with it",
+   /\.walk-hit:focus-visible::after \{[^}]*border-color: var\(--accent-bright\)/.test(css)
+     && !/\.walk-hit:focus-visible \{\n  outline: 2px/.test(css));
 
 const tower = q('[data-obj="frame-tower"]');
 ok("the moved frame keeps its own plate link", tower && tower.dataset.frame === "2");

@@ -109,7 +109,7 @@ Run in this order and stop on the first failure:
 python3 _gen_html.py; echo "exit=$?"          # exit 0 or nothing else counts
 md5sum *.html > /tmp/a && python3 _gen_html.py >/dev/null && md5sum *.html > /tmp/b
 diff -q /tmp/a /tmp/b                          # the generator must be idempotent
-node .verify/verify-walk.mjs           # 130 assertions, run from the repo root
+node .verify/verify-walk.mjs           # 147 assertions, run from the repo root
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 curl -s http://127.0.0.1:8080/<page>.html | grep -o 'site\.\(css\|js\)?v=[0-9a-z]*' | sort -u
 curl -s http://127.0.0.1:8080/<page>.html | grep -c '<new marker you just added>'
@@ -225,3 +225,31 @@ The `say` line is the only text a state may own, and it is spoken from the card.
 Two traps this round earned: an idle repaint must run the tick (a glide started while the lane was resting
 otherwise stops mid-lane), and anything the frame computes has to be asked before `checkReach`'s early
 returns, or the highlight goes stale behind an object that happens to be in front of you.
+
+## 9. Exits, press areas, and the ceiling on what a test can prove
+
+A district is a place you can be *in*, so it needs three things named in the record before it is finished:
+a way in (the page is the space — there is no door to open), a way to do something (the `states` of §8),
+and **a way out**. The exit is authored the same way as a state: put `"leave": "index.html"` on the prop
+that is the doorway and the renderer navigates when it is pressed; `data-walk-exit` in the chrome points at
+the same destination so key, finger and record cannot disagree. `Esc` closes a plate, then the list, and
+only then leaves. A control whose `data-hint` says "part it to leave" while it opens a card instead is
+severity 4 — it is a lie about the room, and it happened here.
+
+Three rules that exist because a real person could not use the page:
+
+- **Rows are layout, not targets.** Anything with `inset: 0` that hands `pointer-events: auto` to full-width
+  children turns the top and bottom of a viewport into glass over the scene. Opt the rows out and the
+  controls in (`.walk-hud .walk-icon, .walk-hud .walk-stop { pointer-events: auto }`).
+- **A press area is not a drawing.** Press boxes have a 44 px floor (`HIT` in the walk), and `--padx/--pady`
+  pull the visible ring back onto the projected silhouette so the enlargement stays invisible. The chrome
+  grows by padding (`::before`, `inset: -8px -4px`) with the row gap widened to match, so pads meet but do
+  not overlap — an overlap would let document order decide what a click means.
+- **Every verb needs a finger.** A key with no touch route is not a verb. `E` became: a `pointerup` that
+  travelled less than 8 px is a press on whatever the reach found, and the same tap closes what it opened.
+
+`.verify/verify-walk.mjs` asserts all of the above as *structure* because jsdom cannot hit-test: it has no
+layout, no paint order, and it dispatches a click on whatever element it is handed. That is why the gate has
+a second half — `.verify/browser-check.py`, Playwright, `elementFromPoint` at each press box's own centre,
+plus console errors. Run it wherever a browser can be downloaded; in a sandbox whose CDN resets TLS, say so
+out loud instead of reporting a look as proven.

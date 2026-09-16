@@ -571,3 +571,48 @@ each stop lives in the card, which is where sentences are allowed. The initial s
 `data-state="0"` so what a thing is at is part of the document, not only of memory. 130 assertions, the cost
 probe at `{"bad":0,"huge":0}`, the detector `[]`. Still the owner's eyes to judge: whether the swing reads as
 wind or as a clock, and whether a dashed ring is discoverable enough to press without being told.
+
+## 23. The room had no door, and the floor was glass (2026-09-16)
+
+*Asked: 「這裡面3D環境交互有點問題。然後我要跳出去也出不去 沒有明顯的出去點」 — and 「你想清楚要不要去調研相關 skills…然後你自己全面都做好」. So the three packs were installed and read, the lane was
+evaluated against them, and every finding that could be fixed in code was fixed in code.*
+
+**The installed references, and what each one changed.** `Owl-Listener/designer-skills` (111 SKILL.md
+across nine plugins), `julianoczkowski/designer-skills` (the design-process flow: requirements → brief →
+IA → tokens → tasks → generation → review), and `anthropics/skills › webapp-testing`. Three of their files
+moved this page: `interaction-design/fitts-law` ("target size is the interactive area, not the visual
+icon"; 44 px for touch), `visual-critique/critique-affordance` ("elements that are interactive but look
+static", "focus rings suppressed with no replacement", and *a control that describes an exit instead of
+being one*), and `prototyping-testing/heuristic-evaluation` (severity 4 = "catastrophe, must fix before
+release"). `webapp-testing` is the reason the harness grew a sibling: its whole argument is that a page
+must be opened, clicked and read for console errors, not only parsed.
+
+**The four findings, in severity order.** (1) *Catastrophe*: pressing the noren — the prop the record
+calls `exit`, whose own hint reads "Part it to leave the lane" — opened a card and went nowhere. The
+navigation was gated on `classList.contains("room-noren")`, a class deleted with the CSS-3D room two
+rounds ago, so the only in-world door was a description of a door. The record now carries `data-leave` and
+the renderer obeys the record. (2) *Catastrophe, and invisible to every test ever written here*: the head-up
+display is `inset: 0` with `.walk-hud > * { pointer-events: auto }`, and its children are *full-width flex
+rows* — so two horizontal bands of glass covered the top and bottom of the viewport, and the lanterns are
+high, the shutters and the post box are low. Rows are layout, not targets: they take `pointer-events: none`
+and the controls opt back in. (3) *Major*: `E` was the only verb for opening a thing, so on a phone the lane
+was inert; a `pointerup` that travelled under 8 px is now a press on whatever the reach has found, and the
+same tap puts the plate down again. (4) *Minor*: a prop 30 m down the lane projected to a box of a few
+pixels — press boxes now have a 44 px floor, with `--padx/--pady` pulling the *ring* back onto the
+silhouette so the drawing is untouched, and `zIndex` follows depth so the nearer object wins where boxes
+overlap; the chrome's icon and tick controls got the same treatment through padding, not a bigger glyph.
+The exit itself is now the loudest thing in the HUD — an arrow leaving a frame, `min-width: 2.7rem`, warm
+edge — and `Esc` unwinds one level (card, then list) before it becomes the door.
+
+**Why the suite could not see any of this, and what was done about it.** jsdom has no layout, no paint
+order and no hit-testing; it dispatches a click on the element you name, so a click that a browser would
+hand to the overlay above it still opened a card in the test. That is a ceiling on the *kind* of claim a
+jsdom harness can make, and it was not closed by writing more assertions — it was closed by admitting a
+second tool: `.verify/browser-check.py` (Playwright, written from scratch here rather than as a wrapper
+around somebody else's helper, so every claim in it is readable) asserts `elementFromPoint` at each press
+box's centre, that no box is under 44 px, that clicking lands, that the corner arrow navigates, and that
+the console stays clean. It cannot run in this sandbox: the Chromium CDN resets TLS and `apt` has no
+browser (both are recorded failures, not guesses), so **look, hit-testing and frame rate stay the owner's
+to verify** — with the command to do it now in the file's docstring. 147 jsdom assertions, cost
+`2 926 fills / bad 0 / huge 0`, detector `[]`.
+

@@ -629,6 +629,9 @@ function leaveOverlay(root, trigger) {
   const pad = layer.querySelector("[data-walk-pad]");
   const stops = Array.from(layer.querySelectorAll("[data-walk-stop]"));
   const objs = Array.from(layer.querySelectorAll("[data-obj]"));
+  // The chrome's way out and the curtain's destination are the same link, read once: the key, the finger
+  // and the record must not be able to disagree about where leaving goes.
+  const exitLink = layer.querySelector("[data-walk-exit]");
   const plate = document.getElementById("room-plate");
   const rows = Array.from(document.querySelectorAll(".frame-row[data-row-obj]"));
   const district = layer.dataset.walk;
@@ -636,6 +639,10 @@ function leaveOverlay(root, trigger) {
   const ease = !reduce();   // one test, shared by the walk's motion and the rail's hold-to-pause
 
   const HALF = 290, MIN_D = -30, MAX_D = 1200, REACH = 190, MAX_PITCH = 35;
+  // The smallest thing a hand can be asked to press. A lantern 30 m down the lane projects to a few
+  // pixels of wall, and a wall of a few pixels is not a control; the ring stays on the silhouette and
+  // only the press area grows, so the lane keeps its drawing while the finger keeps its target.
+  const HIT = 44;
   const SPEED = 235, RUN = 1.75, ACCEL = 11, GRAV = 2400, JUMP = 465;
   let zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
   let vx = 0, vd = 0, phase = 0, bob = 0, roll = 0, raf = 0, last = 0, here = -1, reach = null;
@@ -1604,18 +1611,29 @@ function leaveOverlay(root, trigger) {
       if (!drawn.length) { m.el.style.visibility = "hidden"; m.el.tabIndex = -1; return; }
       const q = drawn[0];
       const b = box(C, q);
+      let minz = q.z;
       drawn.slice(1).forEach((other) => {          // the control wraps the object, not one face of it
         const o = box(C, other);
         b[0] = Math.min(b[0], o[0]); b[1] = Math.min(b[1], o[1]);
         b[2] = Math.max(b[2], o[0] + o[2]); b[3] = Math.max(b[3], o[1] + o[3]);
+        minz = Math.min(minz, other.z);
       });
       b[2] -= b[0]; b[3] -= b[1];
       if (b[2] > 6 && b[3] > 6 && b[0] > -40 && b[0] < W + 40 && b[1] < H + 40 && b[1] > -40) {
         m.el.style.visibility = "visible";
         m.el.tabIndex = 0;
-        m.el.style.transform = `translate3d(${b[0].toFixed(1)}px, ${b[1].toFixed(1)}px, 0)`;
-        m.el.style.width = `${Math.max(8, b[2]).toFixed(1)}px`;
-        m.el.style.height = `${Math.max(8, b[3]).toFixed(1)}px`;
+        // Two things a hand needs and a picture does not: a press floor, and paint order that follows
+        // depth. The box grows to HIT while `--padx/--pady` pull the ring back onto the silhouette, and
+        // of two overlapping boxes the nearer one wins the press. In a DOM without layout these are
+        // invisible to each other, which is how a click could land on the wall behind a shutter.
+        const w = Math.max(HIT, b[2]), h = Math.max(HIT, b[3]);
+        m.el.style.setProperty("--padx", `${((w - b[2]) / 2).toFixed(1)}px`);
+        m.el.style.setProperty("--pady", `${((h - b[3]) / 2).toFixed(1)}px`);
+        m.el.style.transform = `translate3d(${(b[0] - (w - b[2]) / 2).toFixed(1)}px, `
+          + `${(b[1] - (h - b[3]) / 2).toFixed(1)}px, 0)`;
+        m.el.style.width = `${w.toFixed(1)}px`;
+        m.el.style.height = `${h.toFixed(1)}px`;
+        m.el.style.zIndex = String(1200 - Math.min(1100, Math.max(0, Math.round(minz / 4))));
         m.shown = true;
       } else {
         m.el.style.visibility = "hidden";
@@ -2002,9 +2020,12 @@ function leaveOverlay(root, trigger) {
 
   const act = (m) => {
     if (!m) return;
-    // The curtain at your back is the way out of the space and into the CV. It is a real link in
-    // the data, not a decorative prop, so it navigates rather than closing a dialog.
-    if (m.el.classList.contains("room-noren")) { window.location.assign("index.html"); return; }
+    // The curtain at your back is the way out of the space and into the rest of the site, and the
+    // record says so: `data-leave` is authored on the prop, so the renderer obeys rather than knowing
+    // an id. Pressing it used to open a card that read "part it to leave the lane" and did nothing,
+    // which is the worst kind of dead end — a control that describes an exit instead of being one.
+    const leave = m.el.dataset.leave;
+    if (leave) { window.location.assign(leave); return; }
     if (m.el.dataset.frame !== undefined && openRail(Number(m.el.dataset.frame), m.el)) return;
     if (m.el.dataset.obj === "vending" && openRail(0, m.el)) return;
     // A thing with stops is opened by being *used*: the shutter goes up, the flap swings, and the card
@@ -2064,9 +2085,20 @@ function leaveOverlay(root, trigger) {
     draw();
     checkReach();
   });
-  const up = () => { down = null; view.classList.remove("is-dragging"); };
+  const release = () => { down = null; view.classList.remove("is-dragging"); };
+  /* A tap that never became a look is a press. `E` has a key and no finger, so on a phone every wall
+     thing was pressable and none of them could be pressed — which is what "the interaction is off"
+     reported. A tap with a card open closes it instead, because the same finger that opened something
+     should be able to put it down. */
+  const up = () => {
+    const tap = !!down && down.moved < 8;
+    release();
+    if (!tap) return;
+    if (card && !card.hidden) { hideCard(); return; }
+    if (reach) act(reach);
+  };
   view.addEventListener("pointerup", up);
-  view.addEventListener("pointercancel", up);
+  view.addEventListener("pointercancel", release);
   view.addEventListener("wheel", (event) => {
     event.preventDefault();
     zoom = clamp(zoom + (event.deltaY > 0 ? 0.08 : -0.08), 0.72, 1.34);
@@ -2112,11 +2144,14 @@ function leaveOverlay(root, trigger) {
                                                           // opened, or a folded interface is a cage
     if (onControl && (k === " " || k === "enter" || k === "spacebar")) return;
     if (k === "escape") {
-      // Esc folds the overlays away and never ejects anybody: the page is the space, so there is
-      // nothing underneath to fall back to. The link in the corner is the way out.
+      // Esc unwinds one level and only then leaves: a card in front of you is closed, the written lane
+      // is folded away, and with nothing left to unfold the key walks you out of the space. An immersive
+      // view with no keyboard exit is a trap, and "there is a link somewhere in the corner" is a hint,
+      // not an exit.
       event.preventDefault();
-      if (card && !card.hidden) hideCard();
-      else if (listPanel && !listPanel.classList.contains("is-closed")) toggleList(false);
+      if (card && !card.hidden) { hideCard(); return; }
+      if (listPanel && !listPanel.classList.contains("is-closed")) { toggleList(false); return; }
+      if (exitLink) window.location.assign(exitLink.getAttribute("href"));
       return;
     }
     if (k === "l") { event.preventDefault(); toggleList(); return; }

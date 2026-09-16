@@ -53,6 +53,18 @@ Files you MAY edit directly:
 | `SPEC-gallery-3d.md` | **Not built.** The owner-facing proposal for a walkable Activities archive, written from a first-hand read of his reference site; read it before any 3D work or any change to the dependency rule |
 | `.nojekyll` | Keeps GitHub Pages from running Jekyll — do not delete |
 
+## Reference packs the design work leans on
+
+Three third-party skill packs inform the display work and are **not** vendored here (no `package.json`,
+no committed `node_modules`, same rule as every other dependency): `Owl-Listener/designer-skills`
+(111 skills: research, systems, IA, UI, interaction, prototyping and testing, ops, visual critique),
+`julianoczkowski/designer-skills` (the process flow: requirements → brief → information architecture →
+tokens → tasks → generation → review), and `anthropics/skills` (notably `webapp-testing`). A sandbox that
+wipes `.claude/` should re-fetch them with `git clone --depth 1 <repo>` and read only the SKILL.md files
+that match the complaint being chased — a heuristic evaluation, an affordance critique, Fitts's law —
+rather than loading a hundred files. Their conclusions that reached this code are written into
+`SPEC-gallery-3d.md` §23 with the severity each one was rated.
+
 ## Operational notes (2026-08)
 
 - **GitHub Pages can silently turn off.** On 2026-08-23 the live site returned GitHub's
@@ -126,6 +138,13 @@ intact:
   body, the cord, the glow and its reflection), and the idle pump drives the tick rather than a bare
   repaint so a glide finishes even while the lane is resting. Do not answer "where are the interactive
   things?" with a tooltip or a label on the display.
+- **A room needs a way out, and a target needs an area.** The exit is authored (`"leave"` on the doorway
+  prop → `data-leave`; `data-walk-exit` in the chrome reads the same href) and `Esc` unwinds the plate,
+  then the list, then leaves. Press areas have a 44 px floor while the visible ring keeps the object's own
+  silhouette (`--padx/--pady`), HUD rows are `pointer-events: none` with the controls opting back in, and a
+  tap that did not become a drag is a press. These are not polish: an invisible overlay and a class deleted
+  two rounds ago made the lane unclickable and the exit a description of an exit, and 130 jsdom assertions
+  passed it — because jsdom has no hit-testing. Anything about landing a click is `.verify/browser-check.py`'s.
 - **One roll per page.** The plate is addressed by index, so the tiles are flattened across every
   `[data-ig-grid]` in DOM order and the frames are emitted in that same order; `verify-walk.mjs`
   asserts the two lists agree. `#room-plate` (the lane) and `#ig-plate` (the album) are different
