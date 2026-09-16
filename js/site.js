@@ -766,6 +766,17 @@ function leaveOverlay(root, trigger) {
     c.fillStyle = "rgba(16,20,28,0.6)";
     for (const [sx, sy] of [[10, 12], [50, 12], [76, 12], [118, 12], [10, 116], [118, 116]]) c.fillRect(sx, sy, 3, 3);
   };
+  const paintKerb = (c) => {
+    // The face of a kerb is concrete, its lip catches whatever the lanterns are doing, and the stain
+    // of the gutter runs along the bottom of it. Three lines, and it stops being a painted stripe.
+    c.fillStyle = "#4e5b74"; c.fillRect(0, 0, 128, 128);
+    c.fillStyle = "rgba(232,240,252,0.34)"; c.fillRect(0, 0, 128, 7);
+    c.fillStyle = "rgba(9,15,28,0.5)"; c.fillRect(0, 108, 128, 20);
+    for (let i = 0; i < 40; i++) {
+      c.fillStyle = `rgba(12,20,34,${((i % 4) * 0.05 + 0.05).toFixed(2)})`;
+      c.fillRect((i * 37) % 128, (i * 61) % 100 + 10, 3, 2);
+    }
+  };
   const paintTactile = (c) => {
     // The yellow guide path, its truncated domes in a grid: this is the detail that tells a pedestrian
     // lane is a *street* rather than a corridor, and it is the last thing an alley gets before it is
@@ -834,6 +845,7 @@ function leaveOverlay(root, trigger) {
     PATS.hoarding = mkTile(paintHoarding);
     PATS.plaster = tilePat;
     PATS.tactile = mkTile(paintTactile);
+    PATS.kerb = mkTile(paintKerb);
     PATS.grate = mkTile(paintGrate);
     PATS.lantern = mkTile(paintLantern);
   };
@@ -848,6 +860,12 @@ function leaveOverlay(root, trigger) {
     w: parseFloat(el.dataset.w) || 100, h: parseFloat(el.dataset.h) || 140,
     d: parseFloat(el.dataset.d) || 12, x: num(el, "--x"), z: num(el, "--z"), y: num(el, "--y"),
     pic: el.dataset.tex ? pics.get(el.dataset.tex) : null, sx: 0, sy: 0, sw: 0, sh: 0, shown: false,
+    // A prop with `data-states` can be done to; the count of stops is authored, and the index lives
+    // here rather than in the scene graph so that the card, the light and the picture read one value.
+    states: (() => {
+      if (!el.dataset.states) return null;
+      try { return JSON.parse(el.dataset.states); } catch (e) { return null; }
+    })(), st: 0,
   }));
   const wires = readIsland("[data-walk-wires]");
   const beams = readIsland("[data-walk-beams]");
@@ -898,12 +916,12 @@ function leaveOverlay(root, trigger) {
                       steps: "#565f74", pipe: "#5c6a80", awning: "#8a3f3a", sign: "#2b3a56",
                       drain: "#111a2c", booth: "#8b9ab0", bikes: "#39435a", planter: "#6e5540",
                       cones: "#c96a34", mailbox: "#9c3b33", signA: "#c8c2b2", banner: "#8f3a3a",
-                      front: "#2c3a56", ledge: "#6b7890" };
+                      front: "#2c3a56", ledge: "#6b7890", pane: "#6f7d92", window: "#6f7d92" };
   // How far a kind is a solid. A picture on a wall is a plane and must not be given a thickness it
   // cannot have; everything else in a lane has three visible faces or it is a decal, not an object.
   const SHAPE = { vending: "box", shrine: "box", utility: "box", ac: "box", crate: "box",
                   booth: "glass", bikes: "bikes", planter: "planter", cones: "cones",
-                  mailbox: "box", signA: "aboard", banner: "cloth", front: "front",
+                  mailbox: "flap", signA: "aboard", banner: "cloth", front: "front", pane: "pane",
                   bin: "box", bollard: "box", steps: "box", pipe: "box", awning: "box",
                   sign: "box", drain: "plate", noren: "cloth", poster: "plane", frame: "plane" };
   const mix = (hex, k) => {
@@ -979,7 +997,13 @@ function leaveOverlay(root, trigger) {
     // Sources with something hanging from the wire: a bulb is a dot of light, a lantern is a body you
     // can walk under. Which lights have a body is decided by the district, not by the renderer.
     body: L.body || null, size: L.size || 0, h: L.h || 0,
+    of: L.of || null, k0: L.k === undefined ? 0.5 : L.k,
+    swing: L.swing || 0, period: L.period || 4, phase: L.phase || 0,
   }));
+  // Time, sampled once per frame: a lantern that swings on a clock of its own while everything else
+  // uses another is how a scene starts to shimmer.
+  let T = 0;
+  const swayOf = (L) => (!L.swing || reduce() ? 0 : Math.sin(T * 6.28319 / L.period + L.phase) * L.swing);
   const lightAt = (px, py, pz) => {
     let v = AMBIENT;
     for (let i = 0; i < lamps.length; i++) {
@@ -1057,6 +1081,25 @@ function leaveOverlay(root, trigger) {
         };
         ring(r, "#2b3648");
         ring(r * 0.78, "#1a2330");
+        return;
+      }
+      if (mk.kind === "kerb") {
+        // Only the face is drawn. The top of a six centimetre kerb is the thing you stand on rather
+        // than the thing you look at, and giving it its own quad would be 50 more depth-sorted
+        // rectangles to disagree with the bins and crates that sit on it.
+        const px = mk.x0 < 0 ? mk.x1 : mk.x0;
+        // Half the wall's resolution is enough here, and it is worth saying why: the kerb's tile has
+        // no joint lines to keep honest, so the only error a wider panel makes is a soft bend in the
+        // lip — against 50 more depth-sorted quads for a six centimetre band.
+        const step = SEG * 2;
+        for (let z = Math.floor(mk.z0 / step) * step; z < mk.z1; z += step) {
+          const za = Math.max(z, mk.z0), zb = Math.min(z + step, mk.z1);
+          if (zb - za < 1) continue;
+          const q = add(C, [[px, 0, za], [px, 0, zb], [px, mk.y1, zb], [px, mk.y1, za]],
+              [za * DPM, 0, zb * DPM, 0, zb * DPM, -mk.y1 * DPM, za * DPM, -mk.y1 * DPM],
+              "pat", PATS.kerb);
+          if (q) { q.lit = lightAt(px, 3, (za + zb) / 2) * 1.18; q.air = haze(q.z) * 0.7; }
+        }
         return;
       }
       if (mk.kind === "wet") {
@@ -1188,6 +1231,7 @@ function leaveOverlay(root, trigger) {
   };
 
   const draw = () => {
+    T = (window.performance && performance.now ? performance.now() : Date.now()) / 1000;
     if (!g) return;
     // Recomputed per frame, not per resize: − / + are a field-of-view control, so the projection
     // has to answer them, and only the surface it is drawn on belongs to the device.
@@ -1275,7 +1319,10 @@ function leaveOverlay(root, trigger) {
             [z0 * DPM, -sc.y0 * DPM, z1 * DPM, -sc.y0 * DPM, z1 * DPM, -sc.y1 * DPM, z0 * DPM, -sc.y1 * DPM],
             "pat", pat);
         if (q) {
-          q.lit = lightAt(px, (sc.y0 + sc.y1) / 2, (z0 + z1) / 2) * (sc.kind === "shutter" ? 1.12 : 1);
+          // `tone` is authored dirt: a band can be brighter or duller than the material it is cut from,
+          // which is what a wall that has been patched and repainted once actually looks like.
+          q.lit = lightAt(px, (sc.y0 + sc.y1) / 2, (z0 + z1) / 2)
+                  * (sc.kind === "shutter" ? 1.12 : 1) * (sc.tone === undefined ? 1 : sc.tone);
           // A shutter is metal and catches the light; plywood and brick mostly do not.
           if (sc.kind === "hoarding") q.lit *= 0.86;
         }
@@ -1284,12 +1331,13 @@ function leaveOverlay(root, trigger) {
     drawMarks(C);
     lamps.forEach((L) => {
       if (L.body !== "lantern" || L.z < Z_BACK - 40 || L.z > Z_FAR + 40) return;
+      const dx = swayOf(L);
       // Two planes crossed like a plus: from any yaw one is nearly edge on and the other carries the
       // silhouette. It is the cheapest thing that still reads as a volume, and it costs no trig.
       const R = L.size || 24, hh = R * 1.25, UV = [0, 0, 128, 0, 128, -128, 0, -128];
       [[L.x - R, L.z, L.x + R, L.z], [L.x, L.z - R, L.x, L.z + R]].forEach(([ax, az, bx, bz]) => {
-        const q = add(C, [[ax, L.y - hh, az], [bx, L.y - hh, bz], [bx, L.y + hh, bz], [ax, L.y + hh, az]],
-                      UV, "pat", PATS.lantern);
+        const q = add(C, [[ax + dx, L.y - hh, az], [bx + dx, L.y - hh, bz], [bx + dx, L.y + hh, bz],
+                          [ax + dx, L.y + hh, az]], UV, "pat", PATS.lantern);
         if (q) { q.lit = 1.5; q.air = haze(q.z) * 0.5; }
       });
     });
@@ -1321,6 +1369,7 @@ function leaveOverlay(root, trigger) {
         : [[0, 0], [0, 0], [0, 0], [0, 0]];
       const base = PROP_TINT[m.kind] || "#33435f";
       const shape = SHAPE[m.kind] || "plane";
+      const S = m.states ? (m.states[m.st] || m.states[0]) : null;
       const drawn = [];
       if (shape === "box") {
         // Only the faces turned toward the eye are painted, and each carries its own tint: that is
@@ -1357,10 +1406,24 @@ function leaveOverlay(root, trigger) {
           const q = add(C, pts, ZERO8, "flat", col);
           if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); }
         };
-        // A lit front is never lit to the floor: the bottom of a closed front is shade, and the band of
-        // light is above the shutter, where the interior lamp actually hangs.
+        // The interior: dark at the floor, lit above where the lamp hangs, and the whole thing brighter
+        // the further the shutter is up — the light is the same record the ground pool is read from.
+        const up = S && S.shut !== undefined ? S.shut : 0;
         Q([P(-half, ins, 0), P(half, ins, 0), P(half, ins, m.h), P(-half, ins, m.h)], mix(base, -0.14), lit);
-        Q([P(-half, ins, head), P(half, ins, head), P(half, ins, m.h), P(-half, ins, m.h)], "#f0c98a", 1.6, 0.05);
+        Q([P(-half, ins, 0), P(half, ins, 0), P(half, ins, head * (0.34 + up * 0.66)),
+           P(-half, ins, head * (0.34 + up * 0.66))], "#e8b87a", 0.7 + up * 1.15, 0.05);
+        Q([P(-half, ins, head), P(half, ins, head), P(half, ins, m.h), P(-half, ins, m.h)], "#f0c98a",
+          1.35 + up * 0.5, 0.05);
+        // The blade itself, rolled up by `shut`: patterned with the same tile as the cladding, because
+        // it is the same shutter, in a recess instead of on a wall.
+        const bot = head * (1 - up * 0.95);
+        if (head - bot > 2) {
+          const blade = add(C, [P(-half, 8, bot), P(half, 8, bot), P(half, 8, head), P(-half, 8, head)],
+              [m.z * DPM - half * DPM, -bot * DPM, m.z * DPM + half * DPM, -bot * DPM,
+               m.z * DPM + half * DPM, -head * DPM, m.z * DPM - half * DPM, -head * DPM],
+              "pat", PATS.shutter);
+          if (blade) { blade.lit = lit * 1.15; drawn.push(blade); }
+        }
         Q([P(-half, 0, 0), P(-half, 0, head), P(-half, ins, head), P(-half, ins, 0)], mix("#4d5f5a", -0.3), lit * 0.6);
         Q([P(half, 0, 0), P(half, 0, head), P(half, ins, head), P(half, ins, 0)], mix("#4d5f5a", -0.3), lit * 0.6);
         Q([P(-half, 0, head), P(-half, ins, head), P(-half, ins, m.h), P(-half, 0, m.h)], mix("#4d5f5a", -0.06), lit * 0.8);
@@ -1380,6 +1443,82 @@ function leaveOverlay(root, trigger) {
                             [m.x + m.w / 2, m.y + m.h, m.z + m.d / 2], [m.x - m.w / 2, m.y + m.h, m.z + m.d / 2]],
                         ZERO8, "flat", mix("#5f6c80", 0.1));
         if (top) { top.lit = lit * 1.2; drawn.push(top); }
+        // The door slides across its own opening rather than swinging: a hinge needs a second axis to
+        // look right, and a painter engine with one depth sort gives a wrong answer the moment a
+        // rectangle turns. Slid, it still reads as a door, and it never has to be occlusion-tested.
+        const open = S && S.door ? S.door : 0;
+        if (open > 0) {
+          const dw = m.w * 0.46;
+          const q = add(C, [[m.x - dw + open * dw * 1.9, m.y, m.z - m.d / 2 - 1],
+                            [m.x + dw + open * dw * 1.9, m.y, m.z - m.d / 2 - 1],
+                            [m.x + dw + open * dw * 1.9, m.y + m.h * 0.94, m.z - m.d / 2 - 1],
+                            [m.x - dw + open * dw * 1.9, m.y + m.h * 0.94, m.z - m.d / 2 - 1]],
+                        ZERO8, "flat", "rgba(150,186,218,0.28)");
+          if (q) { q.lit = lit * 1.25; drawn.push(q); }
+          const rail = add(C, [[m.x - dw + open * dw * 1.9, m.y, m.z - m.d / 2 - 2],
+                              [m.x + dw + open * dw * 1.9, m.y, m.z - m.d / 2 - 2],
+                              [m.x + dw + open * dw * 1.9, m.y + 6, m.z - m.d / 2 - 2],
+                              [m.x - dw + open * dw * 1.9, m.y + 6, m.z - m.d / 2 - 2]],
+                          ZERO8, "flat", "#7d8ba2");
+          if (rail) { rail.lit = lit; drawn.push(rail); }
+        }
+      } else if (shape === "flap") {
+        // A box, and a lid on its front: shut it is a rectangle, open it is a rectangle with a dark
+        // mouth and a plate standing up behind it at an angle. Two quads decide the whole difference.
+        facesOf(m).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
+          if (q) { q.lit = lit; drawn.push(q); }
+        });
+        const open = S && S.flap ? S.flap > 0.5 : false;
+        const fx = m.x + (m.x < 0 ? m.d / 2 : -m.d / 2);
+        const mouth = add(C, [[fx, m.y + m.h * 0.42, m.z - m.w * 0.3], [fx, m.y + m.h * 0.42, m.z + m.w * 0.3],
+                             [fx, m.y + m.h * 0.86, m.z + m.w * 0.3], [fx, m.y + m.h * 0.86, m.z - m.w * 0.3]],
+                         ZERO8, "flat", open ? "#0a1120" : mix(base, -0.34));
+        if (mouth) { mouth.lit = lit * (open ? 0.2 : 1); drawn.push(mouth); }
+        if (open) {
+          const lip = add(C, [[fx, m.y + m.h * 0.86, m.z - m.w * 0.3], [fx, m.y + m.h * 0.86, m.z + m.w * 0.3],
+                             [fx + (m.x < 0 ? -18 : 18), m.y + m.h * 1.2, m.z + m.w * 0.3],
+                             [fx + (m.x < 0 ? -18 : 18), m.y + m.h * 1.2, m.z - m.w * 0.3]],
+                            ZERO8, "flat", mix(base, 0.16));
+          if (lip) { lip.lit = lit * 1.2; drawn.push(lip); }
+        }
+      } else if (shape === "pane") {
+        // A window at the height a lane sees a room at. The frame and sill are solid; behind the glass
+        // is one lit plane and the edge of a curtain. Nothing is drawn further into that room than the
+        // light that gets out of it, because a furnished interior would be inventing somebody's home.
+        const along = Math.abs(m.ry) > 45;
+        const dir = m.x < 0 ? 1 : -1;
+        const half = m.w / 2, ins = m.d, slide = S && S.slide ? S.slide : 0;
+        const y0 = m.y, y1 = m.y + m.h;
+        const P = (u, v, y) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
+        const Q = (pts, col, l, air) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); }
+        };
+        Q([P(-half, ins, y0), P(half, ins, y0), P(half, ins, y1), P(-half, ins, y1)],
+          "#e2b377", 1.3 + slide * 0.5, 0.06);
+        // The two panes, and the sash that slides: travelled all the way, the left one covers the
+        // right one, which is what a window of this age does rather than folding away anywhere.
+        const off = slide * half;
+        [[-half + off, off], [0, half]].forEach(([ua, ub]) => {
+          if (ub - ua < 2) return;
+          const q = add(C, [P(ua, 7, y0 + 3), P(ub, 7, y0 + 3), P(ub, 7, y1 - 3), P(ua, 7, y1 - 3)],
+                        ZERO8, "flat", "rgba(196,222,246,0.16)");
+          if (q) { q.lit = lit * 1.15; drawn.push(q); }
+        });
+        [[-half - 7, -half + 3], [half - 3, half + 7]].forEach(([ua, ub]) => {
+          Q([P(ua, 0, y0 - 4), P(ub, 0, y0 - 4), P(ub, 0, y1 + 4), P(ua, 0, y1 + 4)], mix(base, -0.16), lit);
+        });
+        Q([P(-half - 7, 0, y1), P(half + 7, 0, y1), P(half + 7, 12, y1 + 7), P(-half - 7, 12, y1 + 7)],
+          mix(base, 0.08), lit * 1.1);
+        Q([P(-half - 7, 0, y0 - 8), P(half + 7, 0, y0 - 8), P(half + 7, 0, y0), P(-half - 7, 0, y0)],
+          mix(base, -0.06), lit * 0.95);
+        const cu = -half + off * 0.4;
+        Q([P(cu, ins - 4, y0 + m.h * 0.16), P(cu + m.w * 0.3, ins - 4, y0 + m.h * 0.16),
+           P(cu + m.w * 0.3, ins - 4, y1), P(cu, ins - 4, y1)], "#8d5a52", lit * 0.85);
       } else if (shape === "bikes") {
         const along = Math.abs(m.ry) > 45;
         for (let b = 0; b < 2; b++) {
@@ -1437,10 +1576,14 @@ function leaveOverlay(root, trigger) {
                            [m.x + m.w / 2 - 6, m.y + m.h, m.z + 4], [m.x - m.w / 2 + 6, m.y + m.h, m.z + 4]],
                        ZERO8, "flat", mix(base, 0.12));
         if (q0) { q0.lit = lit; drawn.push(q0); }
+        // Turning the board over is a swap of which face catches the light, and nothing else: it stays
+        // blank on both sides, because that is the whole point of the object.
+        const flip = S && S.flip ? 1 : 0;
         const q1 = add(C, [[m.x + m.w / 2, m.y, m.z + m.d / 2], [m.x - m.w / 2, m.y, m.z + m.d / 2],
                            [m.x - m.w / 2 + 6, m.y + m.h, m.z - 4], [m.x + m.w / 2 - 6, m.y + m.h, m.z - 4]],
-                       ZERO8, "flat", mix(base, -0.28));
-        if (q1) { q1.lit = lit * 0.7; drawn.push(q1); }
+                       ZERO8, "flat", mix(base, flip ? 0.12 : -0.28));
+        if (q1) { q1.lit = lit * (flip ? 1.05 : 0.7); drawn.push(q1); }
+        if (flip && q0) q0.lit = lit * 0.62;
       } else if (shape === "plate") {
         const q = add(C, [[m.x - m.w / 2, m.y + 1, m.z - m.d / 2], [m.x + m.w / 2, m.y + 1, m.z - m.d / 2],
                           [m.x + m.w / 2, m.y + 1, m.z + m.d / 2], [m.x - m.w / 2, m.y + 1, m.z + m.d / 2]],
@@ -1519,8 +1662,9 @@ function leaveOverlay(root, trigger) {
     };
 
     lamps.forEach((L) => {
-      glow(L.x, L.y, L.z, L.r, L.tint);
-      if (L.wet) reflect(L.x, L.z, L.r * 3.6);     // each bulb's pool, thrown back by the asphalt
+      const dx = swayOf(L);
+      glow(L.x + dx, L.y, L.z, L.r, L.tint);
+      if (L.wet) reflect(L.x + dx, L.z, L.r * 3.6);   // each bulb's pool, thrown back by the asphalt
       const p = camPt(C, L.x, L.y, L.z);
       if (p.z > NEAR) {                            // the bulb itself, so the glow has a body
         const sx = W * 0.5 + (focal * p.x) / p.z, sy = H * 0.5 + (focal * p.y) / p.z;
@@ -1559,8 +1703,30 @@ function leaveOverlay(root, trigger) {
     // Anything with a body is tied to the wire above it, at the height the data gave it rather than a
     // constant: a lantern at 2.6 m and a bulb at 2.7 m do not hang the same length.
     lamps.forEach((L) => {
-      if (L.wet) strand([L.x, CEIL, L.z], [L.x, L.y + 6, L.z], 0);
-      if (L.body === "lantern") strand([L.x, CEIL, L.z], [L.x, L.h || (L.y + 14), L.z], 0);
+      const dx = swayOf(L);
+      if (L.wet) strand([L.x, CEIL, L.z], [L.x + dx * 0.4, L.y + 6, L.z], 0);
+      // A cord is drawn from the wire to where the paper actually is, so the swing is visible in the
+      // line that holds it and not only in the lamp.
+      if (L.body === "lantern") strand([L.x, CEIL, L.z], [L.x + dx, L.h || (L.y + 14), L.z], 0);
+    });
+    // What the lanterns put into the air: a shallow cone from the paper down to the ground it lights,
+    // in the same composite as the glow and by the same projection as everything else. It is four
+    // quads for the whole lane, and it is the difference between four bright dots and four lamps.
+    lamps.forEach((L) => {
+      if (L.body !== "lantern") return;
+      const dx = swayOf(L), R = L.size || 24;
+      const top = camPt(C, L.x + dx, L.y - R, L.z), bot = camPt(C, L.x + dx * 1.5, 2, L.z);
+      if (top.z < NEAR || bot.z < NEAR) return;
+      const ax = W * 0.5 + (focal * top.x) / top.z, ay = H * 0.5 + (focal * top.y) / top.z;
+      const bx = W * 0.5 + (focal * bot.x) / bot.z, by = H * 0.5 + (focal * bot.y) / bot.z;
+      const wa = (focal * R * 0.85) / top.z, wb = (focal * R * 2.9) / bot.z;
+      const gr = g.createLinearGradient(ax, ay, bx, by);
+      gr.addColorStop(0, "rgba(255,198,128,0.15)");
+      gr.addColorStop(1, "rgba(255,168,96,0)");
+      g.beginPath();
+      g.moveTo(ax - wa, ay); g.lineTo(ax + wa, ay); g.lineTo(bx + wb, by); g.lineTo(bx - wb, by);
+      g.closePath();
+      g.fillStyle = gr; g.fill();
     });
 
     // where your body actually is, on the floor: the one thing that makes a first-person view
@@ -1607,6 +1773,10 @@ function leaveOverlay(root, trigger) {
   const a = () => (yaw * Math.PI) / 180;
   const checkReach = () => {
     const fx = Math.sin(a()), fd = Math.cos(a());
+    // Which frame you are standing at is asked on every frame, not only when the reach changes. Three
+    // returns below end this function early, and a station highlight that went stale because a shrine
+    // happened to be in front of you would be the kind of lie the rail tells without meaning to.
+    markStops();
     let best = null, bestD = REACH;
     meta.forEach((m) => {
       const dx = m.x - x, dd = m.z - depth;
@@ -1619,7 +1789,7 @@ function leaveOverlay(root, trigger) {
     if (best && best.el === (reach && reach.el)) { reach = best; return; }
     if (reach) reach.el.classList.remove("is-reach");
     reach = best;
-    if (!best) { layer.classList.remove("has-reach"); markStops(); return; }
+    if (!best) { layer.classList.remove("has-reach"); return; }
     best.el.classList.add("is-reach");
     // One non-verbal signal for the whole display: the note button carries a dot while there is
     // something to read about what is in front of you.
@@ -1677,8 +1847,36 @@ function leaveOverlay(root, trigger) {
     // "pause while an overlay is open" step: the loop is already driven by motion, so an open plate
     // costs nothing to animate, and the keys are held by the guards in the handler below.
     if (speed > 4 || gliding || height > 0 || vy !== 0) loop();
+    else startPulse();          // standing still is when the lane needs to keep breathing
   };
-  const loop = () => { if (!raf) raf = requestAnimationFrame(tick); };
+  // Asking for a real frame hands the pumping over to rAF, so the idle pulse is cancelled here rather
+  // than at each call site: one owner for the two pumps, and never both at once.
+  const loop = () => { stopPulse(); if (!raf) raf = requestAnimationFrame(tick); };
+
+  /* An idle repaint, at eleven frames a second rather than sixty.
+
+     The lamp cords swing and the machine flickers whether or not you are moving, and a scene that only
+     animates while it is being driven looks like a screenshot the moment you stop. The budget is
+     deliberate: a walking frame costs 2 926 fills, so an idle tick is roughly one in six of the work
+     of a moving one, it stops when the page scrolls away or the plate is open, and `prefers-reduced-motion`
+     turns it off at the source instead of cancelling it after it has been paid for. */
+  let pulse = 0, inView = true;
+  const stopPulse = () => { if (pulse) { clearTimeout(pulse); pulse = 0; } };
+  const startPulse = () => {
+    stopPulse();
+    if (reduce() || !inView || (plate && plate.classList.contains("is-open"))) return;
+    // The nudge calls the *tick*, and the tick decides what happens next — rAF if the body is moving,
+    // another nudge if it is not. A bare repaint would look the same while standing still but would
+    // strand a glide halfway down the lane, and a walker frozen between two frames is worse than a
+    // lane that did not breathe.
+    pulse = setTimeout(() => { pulse = 0; tick(performance.now()); }, 90);
+  };
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver((es) => {
+      inView = es.some((e) => e.isIntersecting);
+      if (inView) startPulse(); else stopPulse();
+    }, { threshold: 0.01 }).observe(layer);
+  }
 
   const jump = () => {
     if (height > 0.5 || reduce()) return;
@@ -1729,6 +1927,7 @@ function leaveOverlay(root, trigger) {
     draw();
     // Two frames, not a timer: the status reads ready once the transform has actually painted,
     // which is the same courtesy the reference pays with its "Level 1 ready."
+    startPulse();
     requestAnimationFrame(() => requestAnimationFrame(() => {
       say(`${district} ready · ${metres(MAX_D - depth)} of lane ahead`, "");
       markStops();
@@ -1752,8 +1951,9 @@ function leaveOverlay(root, trigger) {
     card.dataset.mode = "prop";
     if (asideEl) asideEl.hidden = true;      // the lane's own note is not this prop's business
     if (where) where.textContent = `${district} · ${metres(m.z)} in`;
+    const st = m.states ? (m.states[m.st] || null) : null;
     if (title) title.textContent = m.el.dataset.title || "";
-    if (hint) hint.textContent = m.el.dataset.hint || "";
+    if (hint) hint.textContent = st ? st.say : (m.el.dataset.hint || "");
     if (liveEl) liveEl.textContent = statusEl ? statusEl.textContent : "";
     card.hidden = false;
     if (infoBtn) infoBtn.setAttribute("aria-expanded", "false");
@@ -1790,6 +1990,16 @@ function leaveOverlay(root, trigger) {
     if (card.hidden || card.dataset.mode !== "space") showSpace(); else hideCard();
   });
 
+  const lampOf = new Map();
+  lamps.forEach((L) => { if (L.of) lampOf.set(L.of, (lampOf.get(L.of) || []).concat([L])); });
+  const setState = (m, i) => {
+    m.st = i;
+    m.el.dataset.state = String(i);
+    m.el.setAttribute("aria-label", `${m.el.dataset.title}${m.states[i].say ? ` — ${m.states[i].say}` : ""}`);
+    const g = m.states[i];
+    (lampOf.get(m.kind) || []).forEach((L) => { L.k = L.k0 * (g.k === undefined ? 1 : g.k); });
+  };
+
   const act = (m) => {
     if (!m) return;
     // The curtain at your back is the way out of the space and into the CV. It is a real link in
@@ -1797,6 +2007,9 @@ function leaveOverlay(root, trigger) {
     if (m.el.classList.contains("room-noren")) { window.location.assign("index.html"); return; }
     if (m.el.dataset.frame !== undefined && openRail(Number(m.el.dataset.frame), m.el)) return;
     if (m.el.dataset.obj === "vending" && openRail(0, m.el)) return;
+    // A thing with stops is opened by being *used*: the shutter goes up, the flap swings, and the card
+    // says what the lane looks like now. Pressing it again takes it to the next stop.
+    if (m.states && m.states.length > 1) { setState(m, (m.st + 1) % m.states.length); draw(); }
     showCard(m);
   };
   const nearestOf = (el) => meta.find((m) => m.el === el);

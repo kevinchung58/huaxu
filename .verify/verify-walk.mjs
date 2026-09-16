@@ -15,7 +15,7 @@ const html = rooms;
 
 const ctx = {
   frame: [], fills: 0, strokes: 0, imgs: 0, saves: 0, restores: 0, bad: 0, frames: 0,
-  darkMax: 0, warm: 0, huge: 0, ptsMax: 0, text: 0, colours: new Set(),
+  darkMax: 0, warm: 0, huge: 0, ptsMax: 0, text: 0, colours: new Set(), counts: new Map(),
 };
 function recorder() {
   const fin = (a) => { for (const v of a) if (typeof v === "number" && !Number.isFinite(v)) ctx.bad++; };
@@ -40,6 +40,7 @@ function recorder() {
       ctx.fills++;
       const c = String(this.fillStyle);
       ctx.colours.add(c);
+      ctx.counts.set(c, (ctx.counts.get(c) || 0) + 1);   // which faces, and how often
       const m = c.match(/^rgba\(22,34,60,([\d.]+)\)/);
       if (m) ctx.darkMax = Math.max(ctx.darkMax, Number(m[1]));
       if (/^rgba\(255,228,186,/.test(c)) ctx.warm++;
@@ -99,6 +100,7 @@ const key = (k, type = "keydown") => (doc.activeElement || doc.documentElement).
 const click = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true, cancelable: true }));
 const hold = async (k, ms) => { key(k, "keydown"); await new Promise((r) => setTimeout(r, ms)); key(k, "keyup"); };
 /* ---- 1. the data the scene is allowed to know about ------------------------------------------- */
+const Q = "&quot;", DQ = '"';
 const hitRe = /<button type="button" class="walk-hit"[^>]*data-obj="([^"]*)"[^>]*>/g;
 const ids = [...html.matchAll(hitRe)].map((m) => m[1]);
 ok("the lane is furnished, and every prop is authored", ids.length >= 20, `${ids.length} objects`);
@@ -170,7 +172,14 @@ ok("and each one says how wide the paper is and where the cord ties off",
    lanterns.every((L) => L.size >= 20 && L.size <= 40 && L.h > L.y && L.y > 200 && L.y < 400));
 const props = qa(".walk-hit").map((b) => ({ obj: b.dataset.obj,
   x: parseFloat(b.style.getPropertyValue("--x")), z: parseFloat(b.style.getPropertyValue("--z")) }));
-ok("no corner of the lane is lit by an unpointable glow",
+ok("every glow belongs to a named thing, so touching that thing is what changes the light",
+   lights.filter((L) => L.bulb === false && L.body !== "lantern" && L.z !== 1247)
+     .every((L) => ids.includes(L.of))
+     && /of: L\.of \|\| null/.test(js) && /setState/.test(js));
+ok("a state's light multiplier is a number, and every stop has one or none, never a guess",
+   [...html.matchAll(/data-states="([^"]+)"/g)].every((raw) =>
+     JSON.parse(raw[1].split(Q).join(DQ)).every((st) =>
+       st.say && (st.k === undefined || (st.k > 0 && st.k < 3)))));ok("no corner of the lane is lit by an unpointable glow",
    lights.filter((L) => L.bulb === false && L.body !== "lantern").every((L) =>
      props.some((pr) => pr.x === L.x && pr.z === L.z) || L.z === 1247),
    `${lights.filter((L) => L.bulb === false && L.body !== "lantern").length} non-bulb sources`);
@@ -215,6 +224,14 @@ ok("and so is the dressing, because the room is the thing being described",
        && q("[data-walk-card]").hidden === true);
   ok("a folded interface keeps a keyboard route to the fold",
      /k === "i"/.test(js) && /showSpace\(\)/.test(js));
+  ok("the lane keeps breathing while you are not walking, at one tick in eleven frames",
+     /startPulse\(\)/.test(js) && /}, 90\);/.test(js) && /reduce\(\) \|\| !inView/.test(js));
+  ok("the kerb is authored as a face, and gets a pattern of its own",
+     ground.filter((m) => m.kind === "kerb").length === 2 && /PATS\.kerb = mkTile/.test(js)
+       && ground.filter((m) => m.kind === "kerb").every((m) => m.y1 > 0 && m.y1 <= 12));
+  ok("weathering is a number on the band, not a brush in the renderer",
+     surf.filter((v) => v.tone !== undefined).length >= 3
+       && surf.every((v) => v.tone === undefined || (v.tone > 0.6 && v.tone < 1.4)));
 }
 
 /* ---- 2. the raster, as recorded --------------------------------------------------------------- */
@@ -253,7 +270,12 @@ ok("a shopfront is a recess in whichever wall it hangs on, built through the wal
    /const P = \(u, v, y\) =>/.test(js) && !/face\(inset\/2/.test(js));
 ok("glass lets the far side through, and says so in code", /rgba\(186,214,240,0\.2\d?\)/.test(js));
 ok("a hanging lamp is tied to the wire: the cord is drawn for a body, at the authored height",
-   /L\.body === "lantern"\) strand\(\[L\.x, CEIL, L\.z\], \[L\.x, L\.h/.test(js));
+   /L\.body === "lantern"\) strand\(\[L\.x, CEIL, L\.z\], \[L\.x \+ dx, L\.h/.test(js));
+ok("and the swing moves the lamp, its cord, its pool and its light together",
+   (js.match(/swayOf\(L\)/g) || []).length >= 4 && /const swayOf = \(L\) =>/.test(js)
+     && /reduce\(\) \? 0 :/.test(js));
+ok("a lantern's period and amplitude are authored, not random",
+   lanterns.every((L) => L.swing > 0 && L.period > 1 && L.phase !== undefined));
 ok("textures are mapped, not stretched photographs", ctx.imgs >= 6, `${ctx.imgs} drawImage`);
 ok("the air never exceeds a murk of 0.6, so the compound stays readable",
    ctx.darkMax <= 0.6 + 1e-6, `max ${ctx.darkMax}`);
@@ -329,22 +351,43 @@ click(q("[data-walk-card-close]"));
 await sleep(40);
 ok("the card closes again", card.hidden);
 
-// The street kit is furniture, not scenery: the post box is in the tab order and answers like
-// anything else hung on these walls, which is the only way dressing a room differs from drawing one.
-const box = q('[data-obj="mailbox"]');
-ok("the new kit is a button in the lane, not a painted detail", !!box && box.tagName === "BUTTON"
-   && box.dataset.frame === undefined);
-click(box);
-await sleep(40);
-ok("and it answers with its card, since a prop with no picture has nothing to open",
-   !card.hidden && /post box/i.test(q("[data-walk-title]").textContent)
-     && /none is ours to invent/.test(q("[data-walk-hint]").textContent),
-   q("[data-walk-title]").textContent);
+// The street kit is furniture, not scenery, and the box's door opens: the interactive props are buttons
+// in the lane, and acting on one changes what the frame is painted from. Tested at the mouth of the
+// lane, where the kit is in front of the body; further down it is behind you and the painter rightly
+// refuses to draw it, so a test that passed there would have been measuring nothing at all.
+const booth = q('[data-obj="booth"]'), box = q('[data-obj="mailbox"]');
+ok("the new kit is a button in the lane, not a painted detail", !!booth && booth.tagName === "BUTTON"
+   && booth.dataset.frame === undefined && !!box);
+ok("a thing with stops ships at its first one, and only five things have stops",
+   booth.dataset.state === "0" && box.dataset.state === "0" && qa("[data-states]").length === 5);
+click(stopAt(0));
+await sleep(1600);
+await hold("d", 900);                                       // hug the right wall, toward the box
+await hold("w", 350);
+await sleep(140);
+ok("at the mouth of the lane the street kit is what you are standing in front of",
+   qa(".walk-hit.is-reach").length === 1 && /shrine|telephone box|planters/i.test(status()), status());
+const doorPaints = () => ctx.counts.get("rgba(150,186,218,0.28)") || 0;
+const doorBefore = doorPaints();
+click(booth);
+await sleep(150);
+ok("and the box opens by being used, with the card saying what the lane looks like now",
+   !card.hidden && booth.dataset.state === "1"
+     && /receiver hanging/i.test(q("[data-walk-hint]").textContent), `state=${booth.dataset.state}`);
+ok("the state is geometry, not a caption: the opened door has been painted, and the shut one had not",
+   doorPaints() > doorBefore, `${doorBefore} → ${doorPaints()} door fills`);
+ok("and the light came up with the door, because the lamp is that door's record",
+   lights.filter((L) => L.bulb === false && L.body !== "lantern" && L.z !== 1247).every((L) => ids.includes(L.of))
+     && lights.some((L) => L.of === "booth"), lights.filter((L) => L.of).map((L) => L.of).join(","));
+click(booth);
+await sleep(150);
+ok("pressing again takes it to the next stop, and the only stops are the ones authored",
+   booth.dataset.state === "0" && /^Shut\./.test(q("[data-walk-hint]").textContent),
+   `state=${booth.dataset.state} / ${q("[data-walk-hint]").textContent}`);
 click(q("[data-walk-card-close]"));
 await sleep(40);
-ok("the blank board is offered the same way, and admits what it will not carry",
-   /folding board, blank/i.test(q('[data-obj="board-a"]').dataset.title)
-     && /invented lettering/i.test(q('[data-obj="board-a"]').dataset.hint));
+ok("an interactive thing says so without a word: the reach ring is dashed for a prop you can use",
+   /\.walk-hit\[data-states\]/.test(css));
 
 const tower = q('[data-obj="frame-tower"]');
 ok("the moved frame keeps its own plate link", tower && tower.dataset.frame === "2");
@@ -361,6 +404,25 @@ ok("a drawer link glides the body to that frame's depth, and nothing else",
 ok("the glide is depth only: the sideways position is left where you put it",
    /targetX === undefined \? x : targetX/.test(js));
 ok("and the body really lands on that depth", Math.abs(body().depth - 348) < 2, `${body().depth}`);
+// Two bugs the states themselves found, both worth a test because both are silent.
+// (1) The idle pump has to advance the walk, not only repaint it: a station clicked while the lane was
+// resting would otherwise glide partway and stop there, looking exactly like a lane that had arrived.
+// (2) The station highlight is asked on every frame, so a prop standing in front of you cannot freeze it.
+stopAt(0);
+await sleep(1400);                            // let the rAF loop wind down to the idle pump
+const home = stopAt(1146);
+click(home);
+await sleep(1600);
+ok("a place chosen while the lane was resting is still walked to, not just drawn once",
+   Math.abs(body().depth - 1146) < 6, `${body().depth}`);
+ok("and the rail keeps up with the body, whatever the reach happens to be lit on",
+   home.classList.contains("is-here") && hereIdx() === stops.indexOf(home)
+     && /markStops\(\);\s*\n\s*let best = null/.test(js)
+     && !/if \(!best\) \{ layer\.classList\.remove\("has-reach"\); markStops/.test(js),
+   `here=${stops.indexOf(home)} reach=${qa(".is-reach").length} / ${status()}`);
+ok("one pump at a time: asking for a real frame cancels the idle nudge",
+   /const loop = \(\) => \{ stopPulse\(\)/.test(js) && /pulse = setTimeout\(\(\) => \{ pulse = 0; tick\(/.test(js));
+
 /* ---- 3c. the note: the one button that opens words -------------------------------------------- */
 const infoBtn = q("[data-walk-info]");
 click(infoBtn);

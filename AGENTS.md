@@ -120,6 +120,12 @@ intact:
   indistinguishable from one that never had it. A `record` image is not shown until it has a
   caption with a venue and a date — do not add a placeholder photograph or a "forthcoming"
   promise to make a block look full.
+- **A state is geometry.** Props that can be used carry `states` in the district record and their light
+  is addressed by `of: "<prop id>"`, so a stop changes a quad and a brightness, never only a caption;
+  nothing in the space is animated by a clock of its own (`T` is sampled once per frame and read by the
+  body, the cord, the glow and its reflection), and the idle pump drives the tick rather than a bare
+  repaint so a glide finishes even while the lane is resting. Do not answer "where are the interactive
+  things?" with a tooltip or a label on the display.
 - **One roll per page.** The plate is addressed by index, so the tiles are flattened across every
   `[data-ig-grid]` in DOM order and the frames are emitted in that same order; `verify-walk.mjs`
   asserts the two lists agree. `#room-plate` (the lane) and `#ig-plate` (the album) are different

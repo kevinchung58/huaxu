@@ -2167,13 +2167,19 @@ body.shell {
   border-color: var(--accent-ink);
   color: var(--accent-ink);
 }
+.walk-hit[data-states].is-reach {
+  border-style: dashed;
+  border-width: 2px;
+}
 .walk-list .when {
   display: block;
   margin-top: 0.2rem;
   font-size: 0.78rem;
 }
 /* What can be opened is legible before anything is pressed: the ring *is* the reach, and the
-   picture stays the renderer's own business. */
+   picture stays the renderer's own business. A dashed ring is the other verb — a thing you can do
+   something to, rather than a thing you can look at — which is the whole difference expressed
+   without a word on the screen. */
 @media (max-width: 700px) {
   .walk-stops {
     max-width: 46vw;

@@ -5,7 +5,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260916b"   # one bump per changed asset pair; both tags read it
+VER = "20260916c"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -1484,7 +1484,7 @@ OBJ_SIZE = {
     "ledge": (430, 12, 60),
     "front": (170, 300, 40), "booth": (110, 215, 110), "bikes": (150, 102, 55),
     "planter": (104, 50, 46), "cones": (74, 70, 34), "mailbox": (52, 74, 36),
-    "signA": (70, 86, 52), "banner": (56, 150, 6),
+    "signA": (70, 86, 52), "banner": (56, 150, 6), "pane": (120, 86, 22),
 }
 
 EYE = 168                    # the eye is 1.68 m above the floor; 1 px = 1 cm throughout
@@ -1584,11 +1584,28 @@ DISTRICTS = [
                      "not fit. Nothing out there is a record of anybody standing in it."},
             {"id": "front-a", "kind": "front", "x": -316, "z": 62, "y": 0, "ry": 90,
              "glow": [{"r": 190, "k": 0.85, "tint": "rgba(255,166,86,0.42)", "dy": 150}],
+             # Three stops for a shutter, and the light is coupled to them: the spill into the lane is
+             # the same number the interior's brightness is. Pressing it changes what the room looks
+             # like, not only what the card says.
+             "states": [
+                 {"say": "Shutter down. The front is closed and the light stays behind the steel.",
+                  "shut": 0.0, "k": 0.55},
+                 {"say": "Half up: enough to see the counter, not enough to be served.", "shut": 0.55,
+                  "k": 1.0},
+                 {"say": "Fully up. The room is open, warm, and empty; nobody is behind it.",
+                  "shut": 1.0, "k": 1.35},
+             ],
              "title": "A closed front with its light still on",
              "hint": "Shutter down, interior light still running: the one hour of a lane where a room "
                      "is still warm and nobody is in it. Drawn, and nothing is for sale here."},
             {"id": "booth", "kind": "booth", "x": 246, "z": 85, "y": 0, "ry": -90,
              "glow": [{"r": 120, "k": 0.6, "tint": "rgba(214,232,255,0.34)", "dy": 160}],
+             "states": [
+                 {"say": "Shut. The light inside comes on when the door moves, and goes when it does "
+                         "not.", "door": 0.0, "k": 0.5},
+                 {"say": "Open. Empty, with the receiver hanging — this is a drawn box, so it holds no "
+                         "somebody's call.", "door": 1.0, "k": 1.3},
+             ],
              "title": "A telephone box",
              "hint": "Empty, and it holds no message: a district does not get to leave a note from "
                      "somebody. Glass is drawn as glass here, which means you can see the far side."},
@@ -1605,10 +1622,20 @@ DISTRICTS = [
              "hint": "Nothing is being repaired here. They are stacked where they were left, which is "
                      "the only reason they are in the scene."},
             {"id": "mailbox", "kind": "mailbox", "x": 314, "z": 262, "y": 0, "ry": -90,
+             "states": [
+                 {"say": "Shut.", "flap": 0.0},
+                 {"say": "The flap is open and the box is empty. It is a shape in a lane, not a way to "
+                         "reach anybody.", "flap": 1.0},
+             ],
              "title": "A post box at the corner",
              "hint": "Red, boxy, at a corner: the shape that says Tokyo louder than any signage could, "
                      "and it carries no lettering because none is ours to invent."},
             {"id": "board-a", "kind": "signA", "x": -236, "z": 300, "y": 0, "ry": 0,
+             "states": [
+                 {"say": "Blank. This face would carry a menu.", "flip": 0.0},
+                 {"say": "Turned over, and blank again: both faces of a board like this are the shop's "
+                         "to write on, and the shop is not real.", "flip": 1.0},
+             ],
              "title": "A folding board, blank",
              "hint": "The one prop that could have carried a menu or a price and does not: invented "
                      "lettering would be a claim about a shop that does not exist."},
@@ -1619,6 +1646,16 @@ DISTRICTS = [
             {"id": "banner-right", "kind": "banner", "x": 316, "z": 372, "y": 244, "ry": -90,
              "title": "A second banner, further down",
              "hint": "Two of them is what a lane has; three would be a set design."},
+            {"id": "window-a", "kind": "pane", "x": 316, "z": 338, "y": 186, "ry": -90,
+             "glow": [{"r": 150, "k": 0.5, "tint": "rgba(255,196,124,0.34)", "dy": 40}],
+             "title": "A window on the brick",
+             "hint": "Somebody's room, at the height a lane sees it at: the sill, the sash, the curtain "
+                     "edge. Nothing behind it is drawn further than the light that comes out.",
+             "states": [
+                 {"say": "Shut, and lit. The room is a brightness in a frame.", "slide": 0.0, "k": 0.9},
+                 {"say": "Opened a hand's width: the air of the room comes into the lane, and the light "
+                         "with it.", "slide": 1.0, "k": 1.45},
+             ]},
             {"id": "bin-2", "kind": "bin", "x": -262, "z": 356, "y": 0, "ry": 90,
              "title": "The far bin",
              "hint": "The last thing before the light at the end of the lane."},
@@ -1648,8 +1685,8 @@ DISTRICTS = [
             {"side": -1, "z0": 300, "z1": 470, "y0": 0, "y1": 130, "kind": "dado"},
             {"side": -1, "z0": 300, "z1": 470, "y0": 130, "y1": 420, "kind": "brick"},
             {"side": -1, "z0": 470, "z1": 760, "y0": 0, "y1": 290, "kind": "shutter"},
-            {"side": -1, "z0": 470, "z1": 760, "y0": 290, "y1": 420, "kind": "plaster"},
-            {"side": -1, "z0": 760, "z1": 1010, "y0": 0, "y1": 420, "kind": "hoarding"},
+            {"side": -1, "z0": 470, "z1": 760, "y0": 290, "y1": 420, "kind": "plaster", "tone": 1.12},
+            {"side": -1, "z0": 760, "z1": 1010, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.86},
             {"side": -1, "z0": 1010, "z1": 1247, "y0": 0, "y1": 120, "kind": "dado"},
             {"side": -1, "z0": 1010, "z1": 1247, "y0": 120, "y1": 420, "kind": "brick"},
             {"side": 1, "z0": -240, "z1": 40, "y0": 0, "y1": 420, "kind": "brick"},
@@ -1657,10 +1694,10 @@ DISTRICTS = [
             {"side": 1, "z0": 40, "z1": 190, "y0": 300, "y1": 420, "kind": "plaster"},
             {"side": 1, "z0": 190, "z1": 470, "y0": 0, "y1": 140, "kind": "dado"},
             {"side": 1, "z0": 190, "z1": 470, "y0": 140, "y1": 420, "kind": "plaster"},
-            {"side": 1, "z0": 470, "z1": 660, "y0": 0, "y1": 420, "kind": "hoarding"},
+            {"side": 1, "z0": 470, "z1": 660, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.92},
             {"side": 1, "z0": 660, "z1": 900, "y0": 0, "y1": 290, "kind": "shutter"},
             {"side": 1, "z0": 660, "z1": 900, "y0": 290, "y1": 420, "kind": "corrugated"},
-            {"side": 1, "z0": 900, "z1": 1247, "y0": 0, "y1": 130, "kind": "dado"},
+            {"side": 1, "z0": 900, "z1": 1247, "y0": 0, "y1": 130, "kind": "dado", "tone": 1.08},
             {"side": 1, "z0": 900, "z1": 1247, "y0": 130, "y1": 420, "kind": "brick"},
         ],
         # And on the ground: the tactile guide path that runs beside the walls in a real lane, a painted
@@ -1673,14 +1710,23 @@ DISTRICTS = [
             {"kind": "grate", "x0": 60, "x1": 136, "z0": 700, "z1": 720},
             {"kind": "manhole", "x0": -40, "x1": 40, "z0": 430, "z1": 510},
             {"kind": "wet", "x0": -316, "x1": -60, "z0": 980, "z1": 1240},
+            # The kerb: a six centimetre riser where the floor meets the wall, on both sides, so the
+            # lane has a line at its base that light can fall along. Only the face is drawn — the top
+            # of a 46 cm kerb is what you stand on, not what you look at.
+            {"kind": "kerb", "x0": -318, "x1": -272, "z0": -240, "z1": 1247, "y1": 6},
+            {"kind": "kerb", "x0": 272, "x1": 318, "z0": -240, "z1": 1247, "y1": 6},
         ],
         # Paper lanterns, hung where a wire already crosses the lane: each one is a light source with a
         # body, which is the only way the room can be lit by something you can also point at.
+        # Each lantern hangs from a wire, so it has a period and an amplitude: the swing is authored
+        # here rather than taken from a random number, because a lane that moves differently on every
+        # reload is not a drawn place, it is a screensaver. `swing` is centimetres at the foot of the
+        # cord; the light moves with the paper, so the walls brighten and dim where the lamp is.
         "lanterns": [
-            {"x": -120, "y": 268, "z": 150, "r": 27},
-            {"x": 40, "y": 252, "z": 150, "r": 31},
-            {"x": 210, "y": 262, "z": 560, "r": 26},
-            {"x": -170, "y": 272, "z": 900, "r": 29},
+            {"x": -120, "y": 268, "z": 150, "r": 27, "swing": 3.2, "period": 3.1, "phase": 0.0},
+            {"x": 40, "y": 252, "z": 150, "r": 31, "swing": 2.6, "period": 3.9, "phase": 1.7},
+            {"x": 210, "y": 262, "z": 560, "r": 26, "swing": 3.6, "period": 4.4, "phase": 0.9},
+            {"x": -170, "y": 272, "z": 900, "r": 29, "swing": 2.2, "period": 3.4, "phase": 2.6},
         ],
         # The window cut in the end wall, and what you see through it. These are NOT record depths and
         # are not multiplied by Z_SCALE: nothing here is hung from a record, and the far plane is
@@ -1855,7 +1901,7 @@ def walk_islands(d, placed):
         for g in o.get("glow", []):
             w, h, _dep = OBJ_SIZE.get(o["kind"], (120, 160, 12))
             lights.append({"x": o["x"], "y": o.get("y", 0) + g.get("dy", h - 18), "z": o["z"],
-                           "r": g["r"], "k": g["k"], "bulb": False,
+                           "r": g["r"], "k": g["k"], "bulb": False, "of": o["id"],
                            **({"tint": g["tint"]} if "tint" in g else {})})
     for L in d.get("lanterns", []):
         # The authored radius is the paper; how far the light reaches is a multiple of it. A glow with
@@ -1887,10 +1933,19 @@ def walk_object(o):
              f'--w:{w}px;--h:{h}px;--d:{dep}px')
     frame = f' data-frame="{o["frame"]}"' if "frame" in o else ""
     texture = f' data-tex="{escape(tex)}"' if tex else ""
+    # `data-states` is the whole interaction contract, in the document rather than in the script: a
+    # prop can be done-to only as far as the district said, and the count of stops is the count of
+    # presses before it comes round again.
+    states = ""
+    if o.get("states"):
+        # The index ships in the document, not only in memory: what stop a thing is at is part of the
+        # page's state, and a reader who never presses anything still gets told where it starts.
+        states = (f' data-states="{escape(json.dumps(o["states"], ensure_ascii=False))}"'
+                  f' data-state="{o.get("state", 0)}"')
     return (f'<button type="button" class="walk-hit" data-obj="{escape(o["id"])}" '
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
-            f'data-d="{dep}" style="{style}"{frame}{texture}></button>')
+            f'data-d="{dep}" style="{style}"{frame}{texture}{states}></button>')
 
 
 def walk_html(d, drawer):

@@ -532,3 +532,42 @@ so the stub now defers by a macrotask and records the error: reintroducing `on` 
 Still the owner's to judge: whether four icons and a dot are discoverable enough without a legend on
 screen. What is measured here is that the display contains no text — 115 assertions, all green,
 including that every tile on the album wall is a bare photograph whose claims are read inside the plate.
+
+## 22. Things that answer (2026-09-16)
+
+*Asked: 「你這個3D空間可以在做好看一點嗎?我說的交互物品呢?」 The lane had surfaces to look at and nothing that
+answered. Reading a wall is not interaction, and a caption that appears over it is not either.*
+
+**A state is geometry.** Five props carry `states` in the record — the shutter on `front-a` (three stops:
+open, half, shut), the telephone box door, the post box's flap, the notice board turned over, and the
+window pane that was added so the right-hand wall had something to pull. Each stop is one authored word:
+`shut`, `door`, `flap`, `slide`, `flip` — and the painter reads that number every frame, so the same quad
+list that draws the wall draws the difference. `verify-walk.mjs` asserts it from the recorder rather than
+from a screenshot: opening the box paints a face colour that no frame in that run had painted before, which
+is the only proof available that the state reached the geometry and did not stop in the card.
+
+**The light belongs to the thing.** A stop carries `k` as well, and the prop's own lamp is found by
+`of: "<prop id>"`, so pulling a shutter down dims the light that shutter is made of (`L.k = L.k0 * g.k`).
+This is the rule that keeps a lit window from becoming decoration: no glow exists in the record that is not
+some object's bulb, and the harness fails if a prop glow names a record that has no object.
+
+**Everything that hangs, hangs.** The lanterns carry `swing`, `period`, `phase`; one clock `T`, sampled in
+`draw()`, moves the paper, the cord, the glow and its wet reflection together. Four call sites reading one
+number is why the reflection stays under the lamp it belongs to — the previous round animated the paper and
+left the cord behind, which is what a scene of separately-ticking parts looks like.
+
+**The lane keeps breathing.** An idle pump at 90 ms runs the *tick*, not a bare repaint, and `loop()`
+cancels it so exactly one pump is ever live. It was written for the swing, and it caught two things on the
+way in: a station clicked while the lane was resting used to glide partway and stop there, and the station
+highlight is now asked on every frame instead of only when the reach changes — a prop standing in front of
+you used to freeze the rail on a lie. Both are silent bugs of exactly the kind no screenshot shows.
+
+**Tone is authored too.** Four surfaces carry `tone`, folded into `q.lit` where the shading is computed, and
+`kerb` is a new pattern — a riser tiled at 2× the wall's 60 cm `SEG`, because a kerb that small would be
+more joints than stone. The room costs 2 926 fills in one depth pass against a budget of 3 200.
+
+**Nothing says so in words.** A prop with stops gets a dashed ring while it is in reach; the `say` line for
+each stop lives in the card, which is where sentences are allowed. The initial stop is emitted as
+`data-state="0"` so what a thing is at is part of the document, not only of memory. 130 assertions, the cost
+probe at `{"bad":0,"huge":0}`, the detector `[]`. Still the owner's eyes to judge: whether the swing reads as
+wind or as a clock, and whether a dashed ring is discoverable enough to press without being told.

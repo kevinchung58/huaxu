@@ -109,7 +109,7 @@ Run in this order and stop on the first failure:
 python3 _gen_html.py; echo "exit=$?"          # exit 0 or nothing else counts
 md5sum *.html > /tmp/a && python3 _gen_html.py >/dev/null && md5sum *.html > /tmp/b
 diff -q /tmp/a /tmp/b                          # the generator must be idempotent
-node .verify/verify-walk.mjs           # 115 assertions, run from the repo root
+node .verify/verify-walk.mjs           # 130 assertions, run from the repo root
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 curl -s http://127.0.0.1:8080/<page>.html | grep -o 'site\.\(css\|js\)?v=[0-9a-z]*' | sort -u
 curl -s http://127.0.0.1:8080/<page>.html | grep -c '<new marker you just added>'
@@ -198,3 +198,30 @@ station rail is a row of ticks whose heights come from each stop's authored dept
 button carries a dot while something in front of you has a card. `verify-walk.mjs` walks every node in
 the HUD and fails on its *own* text, so a wrapper above a live region is not an excuse.
 
+## 8. States: what a prop is made of when it is used
+
+A room you can only look at is a photograph with a walk cycle. Dressing a block means leaving things that
+answer, and an answer has to be a change in the geometry — the owner's words for the failure mode are
+"介面" and "說明": if pressing a thing only opens a card that *describes* it, what was interactive was the
+caption, not the room.
+
+Author it in the record, on the prop:
+
+- `"states": [{"say": …, "k": …, "shut": …}, …]` — one entry per stop, and one geometry field on each stop
+  (`shut`, `door`, `flap`, `slide`, `flip` are what the painter knows today; a new field means a new branch
+  in the prop's shape, and the shape has to keep working with no states at all).
+- `"state": 0` optionally, for where it starts; the generator emits both `data-states` and `data-state`, so
+  the stop a thing is at belongs to the document.
+- `"swing"/"period"/"phase"` on a lantern, and `"tone"` on a surface whose material the shading should not
+  flatten to one grey. Both are read by the same frame clock as the states, which is what keeps a cord, a
+  body, a glow and its reflection moving together.
+- The light that a state changes is `"of": "<prop id>"` on that light, and `k` on the stop multiplies it. A
+  glow with no `of` is a lamp on a wall; a glow with `of` is the thing's own light, and the harness will not
+  accept an `of` that names no record.
+
+The `say` line is the only text a state may own, and it is spoken from the card. Nothing on the display says
+"press me" in words — a prop with `states` gets the dashed reach ring and that is the whole vocabulary.
+
+Two traps this round earned: an idle repaint must run the tick (a glide started while the lane was resting
+otherwise stops mid-lane), and anything the frame computes has to be asked before `checkReach`'s early
+returns, or the highlight goes stale behind an object that happens to be in front of you.
