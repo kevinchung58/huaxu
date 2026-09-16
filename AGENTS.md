@@ -145,10 +145,11 @@ intact:
   tap that did not become a drag is a press. These are not polish: an invisible overlay and a class deleted
   two rounds ago made the lane unclickable and the exit a description of an exit, and 130 jsdom assertions
   passed it — because jsdom has no hit-testing. Anything about landing a click is `.verify/browser-check.py`'s.
-- **A story is the screen, and one mouse button is a gesture.** `#room-plate.is-rail` is full-format
-  (100dvh panel, centred 9/16 column, `object-fit: contain`, the ground a blurred copy of the current
-  frame's own file, duplicate headings visually hidden) while `#ig-plate` stays a card because a roll is a
-  different format — do not "unify" them. Every pointer gesture in the site ignores
+- **A story is the screen, and one mouse button is a gesture.** Both plates are full-format
+  (`100dvh`, no radius, no shadow, no `pop`, media `contain`ed, duplicate headings visually hidden) and
+  the grounds differ on purpose: a story (`#room-plate.is-rail`) fills the remainder with a blurred copy
+  of its own frame, a post (`#ig-plate`) sits on a plain field. Do not "unify" the grounds, and do not
+  strip the plate's own dark `background` — a caption's contrast is measured against it. Every pointer gesture in the site ignores
   `event.button !== 0`, `contextmenu` is refused only while a drag is live, and `auxclick` is blocked for
   the middle button alone so the tiles keep working as links.
 - **One roll per page.** The plate is addressed by index, so the tiles are flattened across every

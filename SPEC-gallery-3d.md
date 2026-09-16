@@ -650,11 +650,17 @@ the thumb-stick, the rail's hold, and the album's pan alike — and `contextmenu
 turn is in progress*, so "Save image as" still works over a photograph. `auxclick` is blocked for the
 middle button alone: blocking the left one would break the tiles, which are links on purpose.
 
-**What stayed a card, and why.** The album's own viewer (`#ig-plate`) is deliberately not full-bleed: it
-is a roll — one photograph per screen with a perspective tilt, whose argument is that it reads as an
-object you pull sideways rather than a dialog with two buttons on it. A story and a roll are two formats;
-the lane's rail is the story. If the album was the one meant, the same shell applies and the reel keeps
-its snap. 159 assertions, `[]` from the detector, cost `2 926 fills / bad 0 / huge 0`. Hit-testing,
+**Both viewers are the screen now, with two different grounds.** The album's `#ig-plate` got the same
+shell (`100dvh`, no radius, no shadow, no `pop`, the photograph `contain`ed, the reel free to keep its
+per-frame perspective — and `min-height: 0`, because a grid item that cannot shrink pushes its caption off
+the screen) but **not** the blur: a story pads itself with a blurred copy of the frame, a post opens on a
+plain dark field, and that difference is the platform's, not a taste. On a phone the album's round buttons
+become the left and right edges of the screen and stay invisible until asked for, because a 2.4rem disc
+floating mid-frame covers the photograph it exists to reveal. Two rules were deleted with the card-era
+styling and one was put back the same turn: `.ig-plate` keeps `background: var(--navy-deep)`, because the
+caption's contrast is a claim about the element it is painted on rather than about a state, and removing
+it made the static reader report `#dfe5f3` on paper at 1.2:1 — which is the detector being right about a
+thing no browser would have shown until someone printed the page. 164 assertions, `[]` from the detector, cost `2 926 fills / bad 0 / huge 0`. Hit-testing,
 `dvh` on an iPhone in a real hand, and the look of the blurred ground are still the owner's to judge —
 and `.verify/browser-check.py` is where a browser can check them.
 

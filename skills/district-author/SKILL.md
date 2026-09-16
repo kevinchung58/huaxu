@@ -109,7 +109,7 @@ Run in this order and stop on the first failure:
 python3 _gen_html.py; echo "exit=$?"          # exit 0 or nothing else counts
 md5sum *.html > /tmp/a && python3 _gen_html.py >/dev/null && md5sum *.html > /tmp/b
 diff -q /tmp/a /tmp/b                          # the generator must be idempotent
-node .verify/verify-walk.mjs           # 159 assertions, run from the repo root
+node .verify/verify-walk.mjs           # 164 assertions, run from the repo root
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 curl -s http://127.0.0.1:8080/<page>.html | grep -o 'site\.\(css\|js\)?v=[0-9a-z]*' | sort -u
 curl -s http://127.0.0.1:8080/<page>.html | grep -c '<new marker you just added>'
@@ -267,8 +267,12 @@ frame by `paint()`. Never crop a landscape file to look portrait, and never add 
 
 Anything the reader is already reading in the tree is hidden rather than deleted: the dialog's `h2` and
 hint become visually hidden, because a second copy of the caption painted over the photograph is a card's
-habit. If a plate is a *roll* (the album's `#ig-plate`, tilted and snapped), leave it a card — the two
-formats are different on purpose.
+habit. Every plate in this site is full-screen now; what differs is the **ground** — a story (`#room-plate`
+in rail mode) fills the remainder with a blurred copy of the current frame, a post viewer (`#ig-plate`)
+uses a plain field, and a reel keeps its per-frame perspective with `min-height: 0` so the caption cannot
+be pushed off the screen. Keep a dark `background` on the plate element itself even when an open state
+paints over it: a caption's contrast is measured against the element it is written on, and a static reader
+will (correctly) flag light-on-paper the moment that declaration disappears.
 
 Progress and pausing share one number: a bar fills with `transform: scaleX` in a keyframe whose duration is
 `var(--rail-hold)`, and the advance timer reads that same custom property through `getComputedStyle`;
@@ -278,4 +282,9 @@ holding the frame adds a class that sets `animation-play-state: paused`. Do not 
 starts with `if (event.button !== 0) return;` — the turn, the stick, a hold, a pan. Refuse `contextmenu`
 only while a drag is live (a menu mid-drag strands a `is-dragging` class and leaves the cursor grabbing),
 and refuse `auxclick` for the middle button alone: tiles are links and a blocked left click would kill
-them. This is not politeness — it is what the owner called 手感.
+them. This is not politeness — it is what the owner called 手感. On a phone, prefer the edge of the screen
+to a floating disc: `opacity: 0` until hover or focus, `width: 34%`, and no `border-radius`.
+
+`.verify/` keeps only the three files that are run again — `verify-walk.mjs`, `cost-probe.mjs`,
+`browser-check.py`. One-shot patch scripts get deleted as soon as their anchors are consumed: a script
+that can only fail twice is a trap for whoever reads the folder next.

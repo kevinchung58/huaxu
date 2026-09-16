@@ -566,6 +566,22 @@ ok("and the rail keeps up with the body, whatever the reach happens to be lit on
 ok("one pump at a time: asking for a real frame cancels the idle nudge",
    /const loop = \(\) => \{ stopPulse\(\)/.test(js) && /pulse = setTimeout\(\(\) => \{ pulse = 0; tick\(/.test(js));
 
+/* Two formats, two grounds — asserted so the difference stays a decision instead of drifting back into an
+   accident. The lane's rail is a story: 9:16, blurred with its own pixels. The album is a post viewer:
+   full-screen, plain field, nothing invented about the photograph's ratio. */
+ok("the album's viewer is the screen too, and it is not a card any more",
+   /#ig-plate\.is-open \.ig-plate \{[^}]*min-height: 100dvh[^}]*border-radius: 0[^}]*background: none[^}]*box-shadow: none[\s\S]{0,60}animation: none/.test(css));
+ok("its photographs are contained, never cropped to fill the frame",
+   /#ig-plate\.is-open \.ig-frame img \{[^}]*object-fit: contain/.test(css)
+     && !/#ig-plate\.is-open \.ig-frame img \{[^}]*object-fit: cover/.test(css));
+ok("and a story gets a blurred ground while a post gets a plain one — the difference is in the code",
+   /#room-plate\.is-rail \.modal-panel::before \{[\s\S]*filter: blur\(2\.6rem\)/.test(css)
+     && !/#ig-plate\.is-open \.ig-plate::before/.test(css));
+ok("on a phone the album's controls become the edges of the screen and hide themselves",
+   /@media \(max-width: 34rem\) \{[\s\S]*?#ig-plate\.is-open \.ig-btn \{\n    top: 0;[\s\S]*?width: 34%;[\s\S]*?opacity: 0/.test(css));
+ok("the plate still owns a dark ground, because that is what its caption is measured against",
+   /\.ig-plate \{\n  background: var\(--navy-deep\);\n\}/.test(css));
+
 /* ---- 3c. the note: the one button that opens words -------------------------------------------- */
 const infoBtn = q("[data-walk-info]");
 click(infoBtn);

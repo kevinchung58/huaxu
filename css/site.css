@@ -1092,19 +1092,93 @@ main {
 }
 /* The wall is the photographs: no index chip, no caption line under a tile. A plate's claims are read
    inside the plate, which is the only surface in this project you have to arrive at. */
+/* The plate's own ground. `is-open` lets the backdrop's field show through, but a caption's contrast is a
+   claim about the element it is written on rather than about a state, and a static reader (correctly) refuses
+   light text with no dark pair to sit on. One declaration, and it is the reason the pair is honest. */
 .ig-plate {
-  width: min(56rem, 100%);
+  background: var(--navy-deep);
+}
+
+/* The album's viewer: full-screen, and deliberately *not* blurred. Instagram pads a story with a blurred
+   copy of the frame and shows a post on a plain dark field — two formats, two grounds — so the lane's rail
+   gets the blur (§24) and the archive gets the field. What is the same is the frame: no radius, no shadow,
+   no `pop`, no card that the screen is merely holding, and the photograph keeps its own ratio. */
+#ig-plate.is-open {
   padding: 0;
-  border-top: 0;
-  overflow: hidden;
-  background: var(--navy-deep);
+  align-items: stretch;
 }
-.ig-plate img {
+#ig-plate.is-open .modal-backdrop {
+  background: #05080f;
+  animation: none;
+}
+#ig-plate.is-open .ig-plate {
   width: 100%;
-  max-height: 78vh;
-  object-fit: contain;
-  background: var(--navy-deep);
+  max-width: none;
+  height: 100%;
+  min-height: 100dvh;
+  max-height: none;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 0;
+  padding: max(2.6rem, env(safe-area-inset-top)) 0 max(1rem, env(safe-area-inset-bottom));
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: hidden;
+  animation: none;
 }
+#ig-plate.is-open .ig-reel {
+  align-self: center;
+  /* `min-height: 0` because a grid item refuses to shrink below its content by default, and a reel that
+     cannot shrink pushes its caption off the screen. The perspective stays on each frame's own transform:
+     a scroll container flattens inherited 3D, which is why it was written there in the first place. */
+  min-height: 0;
+  height: calc(100dvh - 9rem);
+}
+#ig-plate.is-open .ig-frame {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  height: 100%;
+}
+#ig-plate.is-open .ig-frame img {
+  width: auto;
+  max-width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: contain;
+  background: none;
+}
+#ig-plate.is-open .ig-frame figcaption {
+  padding: 0.9rem 1.1rem 0;
+  text-align: center;
+}
+#ig-plate.is-open .ig-count {
+  bottom: max(0.7rem, env(safe-area-inset-bottom));
+  color: rgba(233, 237, 248, 0.62);
+}
+#ig-plate.is-open .ig-btn {
+  background: rgba(5, 8, 15, 0.55);
+}
+@media (max-width: 34rem) {
+  /* On a phone the edge is the target, and the control disappears until it is asked for: a 2.4rem disc
+     floating over the middle of a photograph covers the thing it exists to reveal. */
+  #ig-plate.is-open .ig-btn {
+    top: 0;
+    bottom: 0;
+    width: 34%;
+    height: auto;
+    transform: none;
+    border-radius: 0;
+    background: none;
+    opacity: 0;
+  }
+  #ig-plate.is-open .ig-btn:focus-visible,
+  #ig-plate.is-open .ig-btn:hover {
+    opacity: 1;
+    background: rgba(5, 8, 15, 0.5);
+  }
+}
+
 /* The roll: one photograph per screen, snapping to center, so moving through the
    archive is a swipe rather than a control to press. */
 .ig-reel {
