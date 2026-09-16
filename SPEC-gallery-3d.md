@@ -616,3 +616,45 @@ browser (both are recorded failures, not guesses), so **look, hit-testing and fr
 to verify** — with the command to do it now in the file's docstring. 147 jsdom assertions, cost
 `2 926 fills / bad 0 / huge 0`, detector `[]`.
 
+## 24. A story fills the screen, and only one button is a gesture (2026-09-16)
+
+*Asked: 「你現實動態應該要真實全版型 你在看那網頁怎麼做的。還有你可能要注意右鍵左鍵會不會觸發既有的滑鼠? 這會影響手感?」 Both halves were real: the rail was a card that the screen was holding, and every
+mouse button was being read as a gesture.*
+
+**The format, copied and not improvised.** Instagram's story canvas is 9:16 (1080×1920) and only that
+ratio fills the screen; a square or landscape upload keeps its own proportions and the remainder is filled
+with a **blurred copy of the same file**, while the platform's own chrome lives in roughly the top and
+bottom 250 px of that canvas. So `#room-plate.is-rail` is now: the panel is the viewport (`100dvh`,
+no radius, no shadow, no `pop` — a screen does not scale in), a centred `9/16` column sized
+`min(100%, calc((100dvh - 7.5rem) * 9 / 16))`, the photograph `object-fit: contain` inside it (never
+cropped to pretend a 1089×1365 file is portrait), the ground `::before` painted from that frame's own
+`url()` with `filter: blur(2.6rem) brightness(0.5)` — a leaf, so the WebKit flattening rules that guard
+`.room-world` and `.ig-grid` are untouched — and the caption as a scrim band at the bottom of the column.
+The panel's own `h2` and hint go visually hidden rather than being deleted: they are the dialog's name
+and description, and a second copy of the caption over the photograph is what a card does, not a story.
+No new file entered `IMG/`, because the fill is the same bytes the frame already loaded.
+
+**The bar is the clock, so the clock is one number.** `.story-seg i` fills by `transform: scaleX` inside
+`@keyframes segfill` whose duration is `var(--rail-hold, 5s)` — the same property the advance timer reads
+through `getComputedStyle`, so a bar cannot finish before its frame does — and holding the frame adds
+`is-held`, which sets `animation-play-state: paused`: a progress bar that keeps filling while the story is
+held is a lie about what is happening. `prefers-reduced-motion` refuses the timer at the source, and the
+current bar is simply full. `width` is never animated, because that is a layout transition and the
+detector names it.
+
+**Which mouse buttons mean what.** `pointerdown` fires for every button, so a right-drag turned the head
+and a middle-drag started the browser's autoscroll widget inside a scene that had just captured the
+pointer; worse, a context menu arriving mid-turn left `is-dragging` on the layer, so the cursor kept
+grabbing after the button was released. Now the primary button is the only gesture — in the lane's turn,
+the thumb-stick, the rail's hold, and the album's pan alike — and `contextmenu` is refused *only while a
+turn is in progress*, so "Save image as" still works over a photograph. `auxclick` is blocked for the
+middle button alone: blocking the left one would break the tiles, which are links on purpose.
+
+**What stayed a card, and why.** The album's own viewer (`#ig-plate`) is deliberately not full-bleed: it
+is a roll — one photograph per screen with a perspective tilt, whose argument is that it reads as an
+object you pull sideways rather than a dialog with two buttons on it. A story and a roll are two formats;
+the lane's rail is the story. If the album was the one meant, the same shell applies and the reel keeps
+its snap. 159 assertions, `[]` from the detector, cost `2 926 fills / bad 0 / huge 0`. Hit-testing,
+`dvh` on an iPhone in a real hand, and the look of the blurred ground are still the owner's to judge —
+and `.verify/browser-check.py` is where a browser can check them.
+

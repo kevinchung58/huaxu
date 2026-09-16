@@ -109,7 +109,7 @@ Run in this order and stop on the first failure:
 python3 _gen_html.py; echo "exit=$?"          # exit 0 or nothing else counts
 md5sum *.html > /tmp/a && python3 _gen_html.py >/dev/null && md5sum *.html > /tmp/b
 diff -q /tmp/a /tmp/b                          # the generator must be idempotent
-node .verify/verify-walk.mjs           # 147 assertions, run from the repo root
+node .verify/verify-walk.mjs           # 159 assertions, run from the repo root
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 curl -s http://127.0.0.1:8080/<page>.html | grep -o 'site\.\(css\|js\)?v=[0-9a-z]*' | sort -u
 curl -s http://127.0.0.1:8080/<page>.html | grep -c '<new marker you just added>'
@@ -253,3 +253,29 @@ layout, no paint order, and it dispatches a click on whatever element it is hand
 a second half — `.verify/browser-check.py`, Playwright, `elementFromPoint` at each press box's own centre,
 plus console errors. Run it wherever a browser can be downloaded; in a sandbox whose CDN resets TLS, say so
 out loud instead of reporting a look as proven.
+
+## 10. A story fills the screen; one mouse button is a gesture
+
+When a district's frames are shown as 動態, build the story's real format rather than a card with a picture
+in it. The platform's own numbers are the specification: 9:16 (1080×1920) is the only ratio that fills the
+screen, media that is not 9:16 keeps its proportions and gets the remainder filled by a **blurred copy of
+the same file**, and the top and bottom ~250 px are where its chrome lives — so captions go in the middle
+band. In this site that is `#room-plate.is-rail`: the panel is `100dvh` with no radius, shadow or `pop`;
+the column is `min(100%, calc((100dvh - 7.5rem) * 9 / 16))` with the image `object-fit: contain`; the
+ground is `.modal-panel::before { background-image: var(--fill); filter: blur(...) }` set from the current
+frame by `paint()`. Never crop a landscape file to look portrait, and never add a fill image to `IMG/`.
+
+Anything the reader is already reading in the tree is hidden rather than deleted: the dialog's `h2` and
+hint become visually hidden, because a second copy of the caption painted over the photograph is a card's
+habit. If a plate is a *roll* (the album's `#ig-plate`, tilted and snapped), leave it a card — the two
+formats are different on purpose.
+
+Progress and pausing share one number: a bar fills with `transform: scaleX` in a keyframe whose duration is
+`var(--rail-hold)`, and the advance timer reads that same custom property through `getComputedStyle`;
+holding the frame adds a class that sets `animation-play-state: paused`. Do not animate `width`.
+
+**Buttons.** `pointerdown` fires for the right and middle buttons as well, so every gesture in a district
+starts with `if (event.button !== 0) return;` — the turn, the stick, a hold, a pan. Refuse `contextmenu`
+only while a drag is live (a menu mid-drag strands a `is-dragging` class and leaves the cursor grabbing),
+and refuse `auxclick` for the middle button alone: tiles are links and a blocked left click would kill
+them. This is not politeness — it is what the owner called 手感.

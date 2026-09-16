@@ -335,6 +335,38 @@ ok("the plate opens at the frame you were standing in front of, and carries the 
    qa("[data-story-frame]").length === 3
    && q("[data-story-count]").textContent.trim() === `${Number(inReach[0].dataset.frame) + 1} of 3`,
    q("[data-story-count]").textContent);
+const panel0 = plate.querySelector(".modal-panel");
+const segEls = qa(".story-seg");
+const nowIdx = Number(inReach[0].dataset.frame);
+ok("a story's bars are one per frame, and the current one is the bar that fills",
+   segEls.length === 3 && segEls[nowIdx].classList.contains("is-now")
+     && segEls.every((sg) => !sg.firstChild.getAttribute("style")),
+   segEls.map((sg) => sg.className.replace("story-seg", "·") || "pending").join(" "));
+ok("the ground behind the story is the frame's own pixels, so the screen changes with the frame",
+   /url\("IMG\//.test(panel0.style.getPropertyValue("--fill")),
+   panel0.style.getPropertyValue("--fill").slice(0, 40));
+ok("全版型: the rail is the screen, not a card that the screen holds",
+   /#room-plate\.is-rail \.modal-panel \{[^}]*min-height: 100dvh[^}]*border-radius: 0/.test(css)
+     && /--col: min\(100%, calc\(\(100dvh - 7\.5rem\) \* 9 \/ 16\)\)/.test(css)
+     && !/#room-plate\.is-rail \.modal-panel \{[^}]*box-shadow: var/.test(css));
+ok("the photograph keeps its own ratio inside the column — contain, never a crop",
+   /#room-plate\.is-rail \.story-frame img \{[^}]*object-fit: contain/.test(css));
+ok("and the panel's duplicate words are hidden from the eye, kept for the tree",
+   /#room-plate\.is-rail \.modal-panel > h2,[\s\S]{0,200}clip-path: inset\(50%\)/.test(css));
+ok("no bar is filled by layout, and one clock drives both the bar and the timer",
+   !/\.story-seg i \{[^}]*transition: width/.test(css)
+     && /\.story-seg i \{[\s\S]*?transform: scaleX\(0\)/.test(css)
+     && /\["--rail-hold"\]/.test(js) && /schedule\(\); \}, HOLD\);/.test(js));
+const heldWas = plate.classList.contains("is-held");
+panel0.dispatchEvent(new w.MouseEvent("pointerdown", { bubbles: true, cancelable: true, button: 2, clientX: 400, clientY: 400 }));
+ok("a right button is not a hold — the story keeps playing while the menu does its own thing",
+   !plate.classList.contains("is-held") && heldWas === false);
+panel0.dispatchEvent(new w.MouseEvent("pointerdown", { bubbles: true, cancelable: true, button: 0, clientX: 400, clientY: 400 }));
+ok("a left press holds the frame and freezes its bar where it stands", plate.classList.contains("is-held")
+   && /#room-plate\.is-rail\.is-held \.story-seg\.is-now i \{\n  animation-play-state: paused/.test(css));
+panel0.dispatchEvent(new w.MouseEvent("pointerup", { bubbles: true, cancelable: true, button: 0, clientX: 400, clientY: 400 }));
+ok("and letting go resumes", !plate.classList.contains("is-held"));
+
 click(plate.querySelector("[data-room-close]"));
 await sleep(60);
 ok("closing hands focus back to the thing on the wall that opened it",
@@ -466,6 +498,32 @@ ptr("pointerdown");
 ptr("pointercancel");
 await sleep(50);
 ok("a grab the system cancels is not counted as a press", card.hidden);
+const ptrB = (type, button, dx = 0, dy = 0) => stage.dispatchEvent(
+  new w.MouseEvent(type, { bubbles: true, cancelable: true, pointerId: 7, button, clientX: 500 + dx, clientY: 400 + dy }));
+const yawRight = body().yaw;
+ptrB("pointerdown", 2);
+ptrB("pointermove", 2, 80, 0);
+ptrB("pointerup", 2);
+await sleep(50);
+ok("the right button does not turn the head, and does not press either",
+   Math.abs(body().yaw - yawRight) < 0.001 && card.hidden && !q("[data-walk]").classList.contains("is-dragging"),
+   `Δyaw ${(body().yaw - yawRight).toFixed(2)}°`);
+const menuDrag = new w.MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+const menuIdle = new w.MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+ptr("pointerdown");
+stage.dispatchEvent(menuDrag);
+ptr("pointerup");
+stage.dispatchEvent(menuIdle);
+await sleep(40);
+ok("a context menu is refused only while a turn is in progress, never on its own",
+   menuDrag.defaultPrevented && !menuIdle.defaultPrevented);
+const middle = new w.MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 });
+const auxLeft = new w.MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 0 });
+stage.dispatchEvent(middle);
+stage.dispatchEvent(auxLeft);
+ok("the middle button's scroll widget is refused over the scene, and no other click is",
+   middle.defaultPrevented && !auxLeft.defaultPrevented);
+
 ok("the chrome's press areas are bigger than its glyphs, since the glyphs are the drawing",
    /\.walk-icon,\n\.walk-stop \{\n  position: relative;\n\}/.test(css)
      && /\.walk-icon::before,\n\.walk-stop::before \{[^}]*inset: -8px -4px/.test(css)

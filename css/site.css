@@ -1621,6 +1621,116 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
     grid-template-columns: 1fr 1fr;
   }
 }
+/* 全版型: a story's frame is the screen, so the rail stops being a card.
+
+   The format is copied from the platform rather than invented here. Instagram lays a story on a 9:16
+   canvas (1080×1920) that fills the viewport; media that is not 9:16 keeps its own proportions and the
+   remainder is filled with a blurred copy of the same file, and its own chrome lives in the top and
+   bottom 250 px of that canvas — so the words here sit inside the middle band, and nothing is cropped to
+   pretend the photograph is portrait. The blur is the frame's own pixels, so no new file enters the repo. */
+#room-plate.is-rail {
+  padding: 0;
+  align-items: stretch;
+}
+#room-plate.is-rail .modal-backdrop {
+  background: #05080f;
+  animation: none;
+}
+#room-plate.is-rail .modal-panel {
+  --col: min(100%, calc((100dvh - 7.5rem) * 9 / 16));
+  --rail-hold: 5s;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 0.5rem;
+  padding: max(1.15rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: hidden;
+  /* `pop` is a card's motion: a screen does not scale in. */
+  animation: none;
+}
+/* The ground: this frame's own pixels, blurred and oversized so the blur's edge is never visible. A
+   leaf, so it does not touch the flattening rules that guard the 3D layers. */
+#room-plate.is-rail .modal-panel::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  z-index: -1;
+  background-image: var(--fill, none);
+  background-size: cover;
+  background-position: center;
+  filter: blur(2.6rem) saturate(1.15) brightness(0.5);
+  transform: scale(1.12);
+  pointer-events: none;
+}
+/* In story mode the panel's own heading and hint are the dialog's accessible name and description, not
+   a second copy of the caption: the words stay in the tree and leave the picture. */
+#room-plate.is-rail .modal-panel > .eyebrow,
+#room-plate.is-rail .modal-panel > h2,
+#room-plate.is-rail .modal-panel > [data-room-hint] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+#room-plate.is-rail .story-reel {
+  width: var(--col);
+  height: 100%;
+  align-self: stretch;
+  margin: 0;
+}
+#room-plate.is-rail .story-frame {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  text-align: left;
+}
+#room-plate.is-rail .story-frame img {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: none;
+  object-fit: contain;
+  border-radius: 0;
+  box-shadow: none;
+}
+#room-plate.is-rail .story-frame figcaption {
+  margin: 0;
+  max-width: none;
+  width: 100%;
+  padding: 1.6rem 0.2rem 0.2rem;
+  background: linear-gradient(180deg, rgba(5, 8, 15, 0), rgba(5, 8, 15, 0.86) 62%);
+  color: #e9edf8;
+  font-size: 0.94rem;
+}
+#room-plate.is-rail .story-segs {
+  width: var(--col);
+  margin: 0 auto;
+}
+#room-plate.is-rail .story-count,
+#room-plate.is-rail .modal-panel > .when {
+  width: var(--col);
+  margin-inline: auto;
+  color: rgba(233, 237, 248, 0.62);
+  text-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Nothing advances on a timer at all when motion is refused, so the bar that is "current" is simply
+     full and the fill animation is not paid for. */
+  #room-plate.is-rail .story-seg.is-now i {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
 .story-segs {
   display: flex;
   gap: 4px;
@@ -1635,12 +1745,32 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
 }
 .story-seg i {
   display: block;
-  width: 0;
+  width: 100%;
   height: 100%;
   background: var(--accent);
+  /* The fill is a scaleX, not a width, for the same reason the lane's ticks are: a bar that grows by
+     layout reflows the row sixty times, and the detector names that cost. */
+  transform-origin: left center;
+  transform: scaleX(0);
 }
 .story-seg.is-done i {
-  width: 100%;
+  transform: scaleX(1);
+}
+.story-seg.is-now i {
+  animation: segfill var(--rail-hold, 5s) linear forwards;
+}
+/* Holding the frame pauses the timer, and the bar stops where it stands — a progress bar that keeps
+   filling while the story is held is a lie about what is happening. */
+#room-plate.is-rail.is-held .story-seg.is-now i {
+  animation-play-state: paused;
+}
+@keyframes segfill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 .story-reel {
   position: relative;

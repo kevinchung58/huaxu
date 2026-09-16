@@ -293,7 +293,7 @@
          off for the duration, because mandatory snap fights a drag frame by frame. */
       let drag = null;
       reel.addEventListener("pointerdown", (event) => {
-        if (!many || event.pointerType === "touch") return;
+        if (!many || event.pointerType === "touch" || event.button !== 0) return;
         drag = { x: event.clientX, left: reel.scrollLeft };
         reel.style.scrollSnapType = "none";
         if (reel.setPointerCapture) reel.setPointerCapture(event.pointerId);
@@ -2069,7 +2069,10 @@ function leaveOverlay(root, trigger) {
 
   view.addEventListener("pointerdown", (event) => {
     // A grab that starts on a wall thing is a press on a control, not a turn: the two gestures have
-    // to stay separable, or tapping the vending machine would swing the camera.
+    // to stay separable, or tapping the vending machine would swing the camera. And only the primary
+    // button turns the head — pointerdown fires for the right and middle buttons too, and a scroll
+    // widget or a context menu arriving mid-swing is the difference between a camera and a fight.
+    if (event.button !== 0) return;
     if (event.target.closest(".walk-hit")) return;
     down = { x: event.clientX, y: event.clientY, yaw, pitch, id: event.pointerId, moved: 0 };
     view.classList.add("is-dragging");
@@ -2099,6 +2102,10 @@ function leaveOverlay(root, trigger) {
   };
   view.addEventListener("pointerup", up);
   view.addEventListener("pointercancel", release);
+  // A menu opened over a drag would strand `is-dragging` on the layer and leave the cursor grabbing
+  // forever, so the only right-click that is refused is the one that arrives while a turn is live.
+  view.addEventListener("contextmenu", (event) => { if (down) event.preventDefault(); });
+  view.addEventListener("auxclick", (event) => { if (event.button === 1) event.preventDefault(); });
   view.addEventListener("wheel", (event) => {
     event.preventDefault();
     zoom = clamp(zoom + (event.deltaY > 0 ? 0.08 : -0.08), 0.72, 1.34);
@@ -2116,6 +2123,7 @@ function leaveOverlay(root, trigger) {
       if (knob) knob.style.transform = `translate(${(nx * r * 0.55).toFixed(1)}px, ${(ny * r * 0.55).toFixed(1)}px)`;
     };
     pad.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;      // the stick answers a thumb and a left button, nothing else
       event.preventDefault();
       pad.setPointerCapture(event.pointerId);
       set(event);
@@ -2198,6 +2206,10 @@ function leaveOverlay(root, trigger) {
   const countEl = plate && plate.querySelector("[data-story-count]");
   const panel = plate && plate.querySelector(".modal-panel");
   let fi = 0, timer = null, paused = false, railOpener = null;
+  /* One number, not two: the bar's fill duration and the advance timer are the same wait, and a drift
+     between them is a progress bar that finishes before the frame does. If the custom property cannot be
+     read, the authored 5s is the fallback rather than a guess at a different length. */
+  const HOLD = ((parseFloat(getComputedStyle(panel || document.body)["--rail-hold"]) || 5) * 1000);
   if (railEl && frames.length && segRow) {
     frames.forEach(() => {
       const seg = document.createElement("span");
@@ -2223,15 +2235,21 @@ function leaveOverlay(root, trigger) {
     }
     segs.forEach((sg, j) => {
       sg.classList.toggle("is-done", j < fi);
-      if (sg.firstChild) sg.firstChild.style.width = j < fi ? "100%" : "0";
+      sg.classList.toggle("is-now", j === fi);
     });
+    // The full-format ground is the frame's own pixels, so the screen behind the story changes with the
+    // story; `url(...)` of an already-loaded file costs one decode and no bytes.
+    if (panel) {
+      const src = frames[fi] && frames[fi].querySelector("img");
+      panel.style.setProperty("--fill", src && src.getAttribute("src") ? `url("${src.getAttribute("src")}")` : "none");
+    }
     if (countEl) countEl.textContent = `${fi + 1} of ${frames.length}`;
   };
   const stopTimer = () => { if (timer) { clearTimeout(timer); timer = null; } };
   const schedule = () => {
     stopTimer();
     if (!ease || paused || frames.length < 2) return;
-    timer = setTimeout(() => { fi = (fi + 1) % frames.length; paint(); schedule(); }, 5000);
+    timer = setTimeout(() => { fi = (fi + 1) % frames.length; paint(); schedule(); }, HOLD);
   };
   const openRail = (n, trigger) => {
     if (!railEl || !frames.length) return false;
@@ -2255,12 +2273,16 @@ function leaveOverlay(root, trigger) {
   };
   if (panel && frames.length) {
     panel.addEventListener("pointerdown", (event) => {
-      if (event.target.closest("button")) return;
+      // A right or middle button is not a hold. The reel's own pan and the lane's turn are guarded the
+      // same way: `pointerdown` fires for every button, and a gesture the owner did not mean turns into
+      // a camera swing with a system menu on top of it.
+      if (event.button !== 0 || event.target.closest("button")) return;
       paused = true;
+      plate.classList.add("is-held");
       stopTimer();
     });
     panel.addEventListener("pointerup", (event) => {
-      if (event.target.closest("button")) return;
+      if (event.button !== 0 || event.target.closest("button")) return;
       const box = panel.getBoundingClientRect();
       if (box.width) {
         const dx = event.clientX - box.left;
@@ -2269,6 +2291,7 @@ function leaveOverlay(root, trigger) {
         paint();
       }
       paused = false;
+      plate.classList.remove("is-held");
       schedule();
     });
   }
@@ -2291,6 +2314,7 @@ function leaveOverlay(root, trigger) {
       } else if (plate.classList.contains("is-rail") && event.key === " ") {
         event.preventDefault();
         paused = !paused;
+        plate.classList.toggle("is-held", paused);
         if (paused) stopTimer(); else schedule();
       }
     });
