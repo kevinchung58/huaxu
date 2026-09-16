@@ -28,3 +28,6 @@ dist-ssr
 
 # Agent skills (installed locally, not tracked)
 .claude/
+# harness-only: npm packages for the jsdom/verification tooling, never shipped
+package.json
+package-lock.json

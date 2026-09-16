@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
+import json
+from fnmatch import fnmatch
 from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-CSS = "css/site.css?v=20260911a"
+VER = "20260916f"   # one bump per changed asset pair; both tags read it
+CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
 DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking."
 PUBLIC_PAGES = ["index.html", "about.html", "research.html", "teaching.html",
                 "position.html", "thinking.html", "practice.html",
-                "activities.html", "service.html", "links.html"]
+                "activities.html", "rooms.html", "service.html", "links.html"]
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -37,7 +40,18 @@ ICON_MONITOR = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9 1
 ICON_PHOTO = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />')
 ICON_X = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />')
 ICON_CHAT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />')
+# The two view controls. Chevrons rather than the minus and plus the reference uses, because this page
+# is not allowed a single character on its display: `−` is a glyph, and a glyph is text to a test.
+ICON_FOV_OUT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />')
+ICON_FOV_IN = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3.75 9.75 9 4.5m6 10.5l5.25-5.25L15 4.5" />')
 ICON_LEFT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />')
+# An arrow walking out of a frame: heroicons' own leave glyph, from the same 1.5-stroke family as the
+# rest of the set. A bare chevron next to the owner's name did not read as an exit to the person who
+# built the room, so the shape has to say "leave" on its own — that is the whole affordance budget.
+ICON_EXIT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 '
+                '13.5 3h-7.5A2.25 2.25 0 0 0 3.75 5.25v13.5A2.25 2.25 0 0 0 6 21h7.5a2.25 2.25 0 0 0 '
+                '2.25-2.25V15" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12H3'
+                'm0 0 3.75-3.75M3 12l3.75 3.75" />')
 ICON_RIGHT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />')
 
 def chip(icon: str) -> str:
@@ -75,6 +89,7 @@ def nav(active: str) -> str:
         </div>
       </div>
       {a("activities.html", "Activities", "activities")}
+      {a("rooms.html", "Rooms", "rooms")}
       <div class="more">
         <button class="more-btn{more_on}" type="button" aria-expanded="false" aria-haspopup="true">More <span class="caret" aria-hidden="true">{ICON_CARET}</span></button>
         <div class="more-menu" role="menu">
@@ -98,6 +113,7 @@ def nav(active: str) -> str:
     <div class="label">More</div>
     {a("service.html", "Service", "service")}
     {a("links.html", "Resources", "links")}
+    {a("rooms.html", "Rooms", "rooms")}
   </nav>
 </header>"""
 
@@ -117,7 +133,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v=20260830a"></script>"""
+<script src="js/site.js?v={VER}"></script>"""
 
 
 def page(title: str, active: str, body: str, path: str = "", extra: str = "") -> str:
@@ -155,6 +171,46 @@ def page(title: str, active: str, body: str, path: str = "", extra: str = "") ->
 </main>
 {FOOT}
 {extra}
+</body>
+</html>
+"""
+
+
+def shell_page(title: str, body: str, path: str) -> str:
+    """A page that is not an article: no masthead, no footer, no prose stacked under the view.
+
+    A walkable space is an application, and the reference proves the point by refusing to be a
+    webpage at all — one route, the viewport belongs to the building, and everything else is an
+    overlay you can dismiss. Keeping the site's nav and a column of sections around the lane would
+    have produced exactly what the owner rejected: a picture of a place inside a page about it.
+    The doorway back to the CV is one link in the head-up display, and the content that used to
+    be sections now lives in the drawer, where it is still in the document, still printable, and
+    still the whole page when scripting is off.
+    """
+    canonical = f"{SITE}/{path}"
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d1526" />
+  <meta name="description" content="{DESC}" />
+  <link rel="canonical" href="{canonical}" />
+  <meta property="og:site_name" content="Hua-Xu Zhong" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="{escape(title)}" />
+  <meta property="og:description" content="{DESC}" />
+  <meta property="og:url" content="{canonical}" />
+  <meta property="og:image" content="{SITE}/IMG/1.jpg" />
+  <meta name="twitter:card" content="summary" />
+  <title>{escape(title)}</title>
+  <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
+  <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
+  <link rel="stylesheet" href="{CSS}" />
+</head>
+<body class="shell">
+{body}
+<script src="js/site.js?v={VER}"></script>
 </body>
 </html>
 """
@@ -1021,67 +1077,273 @@ practice = page("Report in practice · Hua-Xu Zhong", "practice", f"""
 </section>
 """)
 
-# Add photos here later: (src, alt, caption). Multiple items become a slideshow.
-GALLERY = [
-    ("IMG/3.jpg", "Academic activity", "Caption forthcoming"),
-]
-gallery_many = len(GALLERY) > 1
-gallery_slides = []
-gallery_dots = []
-for i, (src, alt, cap) in enumerate(GALLERY):
-    on = " is-on" if i == 0 else ""
-    gallery_slides.append(
-        f'<figure class="deck-slide{on}" data-slide="{i}">'
-        f'<button type="button" data-lightbox data-index="{i}" data-src="{escape(src)}" data-alt="{escape(alt)}" data-caption="{escape(cap)}">'
-        f'<img src="{escape(src)}" alt="{escape(alt)}" /></button></figure>'
-    )
-    gallery_dots.append(f'<button type="button" class="deck-dot{on}" data-go="{i}" aria-label="Photo {i + 1}"></button>')
-gallery_nav = ""
-if gallery_many:
-    gallery_nav = f'''<button class="deck-btn prev" type="button" data-deck-prev aria-label="Previous photo">{ICON_LEFT}</button>
-    <button class="deck-btn next" type="button" data-deck-next aria-label="Next photo">{ICON_RIGHT}</button>
-    <p class="deck-count"><span data-deck-n>1</span> / {len(GALLERY)}</p>'''
-gallery_dots_html = f'<div class="deck-dots">{"".join(gallery_dots)}</div>' if gallery_many else ""
-gallery_note = (
-    "When more photographs are added, they play as a slideshow. Select a photo to view it larger."
-    if not gallery_many
-    else "Use the arrows or select a photo to view it larger."
-)
+INDENT = "\n        "
 
+
+def poster_attrs(src):
+    """Intrinsic size for a poster, read from the file's own JPEG header.
+
+    This page first called helpers it had only assumed existed (img_dims, then
+    featured_attrs, which belongs to publications), and each guess shipped a crashing
+    generator, so the parsing is done here and proven by the numbers in the commit
+    message rather than by a name. If the site grows a shared sizing helper, this should
+    call it -- but only one that returns dimensions, which nothing in this file did.
+    Attributes are omitted when a header cannot be parsed: a guessed size is a worse
+    layout bug than no size."""
+    return _jpeg_attrs(src)
+
+
+def _jpeg_attrs(src, _path=None):
+    import struct
+
+    path = _path or (ROOT / src)
+    try:
+        d = path.read_bytes()
+    except OSError:
+        return ""
+    if not d.startswith(b"\xff\xd8"):
+        return ""
+    i = 2
+    while i + 9 < len(d):
+        if d[i] != 0xFF:
+            i += 1
+            continue
+        marker = d[i + 1]
+        if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+            i += 2
+            continue
+        if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):
+            h, w = struct.unpack(">HH", d[i + 5 : i + 9])
+            return f'width="{w}" height="{h}"'.format(w=w, h=h)
+        i += 2 + struct.unpack(">H", d[i + 2 : i + 4])[0]
+    return ""
+
+# ---------------------------------------------------------------------------
+# The image registry: which block every raster belongs to, and what it is allowed to claim.
+#
+# A space may not open without a declared purpose, and a photograph on a site is a claim in exactly
+# the same way. So IMG/ is not a folder to pick from. Each file is classified by rule: a file that
+# matches no rule stops the build, and a rule that matches nothing is an error too, because a
+# partition nobody is using is a partition that has already drifted. The kind decides what is
+# allowed to be shown: a `record` needs a venue and a date, a `generated` plate is labelled
+# generated wherever it appears, and a `figure` stays inline in the argument that cites it instead of
+# being slid into an album.
+IMG_RULES = [
+    ("1.jpg", "portrait", "identity"), ("2.jpg", "portrait", "identity"),
+    ("tokyo-", "field-notes", "generated"),
+    ("act-", "classroom", "record"),
+    ("practice-", "figures", "figure"), ("principle-", "figures", "figure"),
+    ("grid-", "figures", "figure"), ("diverge-", "figures", "figure"),
+    ("mascot-", "interface", "art"), ("*-hero.jpg", "interface", "hero"),
+]
+# Held back by name, with the reason printed instead of the file quietly dropped.
+UNFILED = {"3.jpg": "the owner asked that this one stay out until it has a caption"}
+
+BLOCKS = [
+    {"id": "portrait", "label": "Portrait", "kind": "identity",
+     "purpose": "The face the site is written in, used as the portrait and the share card.",
+     "note": "Not album material. A person's portrait is not one more picture to swipe through, so "
+             "these two files are never hung on a wall that pretends to be a travel archive."},
+    {"id": "field-notes", "label": "Field notes", "kind": "personal",
+     "purpose": "Travel, drawn rather than documented.",
+     "note": "Generated plates from the walkable districts. None of it is a record of attendance, "
+             "and none of it is captioned as one."},
+    {"id": "classroom", "label": "Classroom and projects", "kind": "academic",
+     "purpose": "Teaching and student work, shown with its venue and date or not at all.",
+     "note": "Filed but not open. A frame without a date does not go up on this wall, and nothing "
+             "here has been given a date yet."},
+    {"id": "figures", "label": "Figures and diagrams", "kind": "figure",
+     "purpose": "Argument, not atmosphere.",
+     "note": "Deliberately outside the album: they stay inline on the pages that cite them, because "
+             "a slideshow of the site's own diagrams would be decoration."},
+    {"id": "interface", "label": "Interface art", "kind": "art",
+     "purpose": "The mascot, and the drawn covers each page opens with.",
+     "note": "Parts of the interface rather than pictures of anywhere, so they are not in the "
+             "album either."},
+    {"id": "unfiled", "label": "Unfiled", "kind": "unknown",
+     "purpose": "Held back until somebody says what it is.",
+     "note": "Nothing is shown from here. An image with no block is a claim with no source."},
+]
+
+IMG_FILES = sorted(
+    f.name for f in (ROOT / "IMG").iterdir() if f.suffix.lower() in (".jpg", ".jpeg", ".png"))
+
+
+def _matches(pattern, name):
+    """A rule matches a filename prefix, or a glob when it is written with a `*`.
+
+    Prefix matching is the default because most blocks are named that way (`practice-`), and a glob is
+    there for the ones that are not: the page heroes are suffixed, and `startswith("-hero.")` would
+    have matched nothing while still looking like a rule, which is the failure this registry exists to
+    prevent. So the matcher is shared with the stale-rule check below, and a rule cannot quietly stop
+    applying.
+    """
+    if "*" in pattern:
+        return fnmatch(name, pattern)
+    return name.startswith(pattern)
+
+
+def _classify(name):
+    if name in UNFILED:
+        return ("unfiled", "held")
+    for prefix, block_id, kind in IMG_RULES:
+        if _matches(prefix, name):
+            return (block_id, kind)
+    raise SystemExit(
+        f"_gen_html.py: IMG/{name} is in no block. Add it to IMG_RULES, or to UNFILED with a "
+        f"reason — the archive does not get to be unsorted.")
+
+
+REGISTRY = {name: _classify(name) for name in IMG_FILES}
+_stale = [pre for pre, _b, _k in IMG_RULES if not any(_matches(pre, n) for n in IMG_FILES)]
+if _stale:
+    raise SystemExit(f"_gen_html.py: IMG_RULES match nothing: {', '.join(_stale)}")
+
+# A `record` image may only be shown with a venue and a date. This is the table that holds them, and
+# it is empty until the owner writes it, which is what shuts the classroom block.
+CAPTIONS = {}
+
+
+def block_files(block, shown=True):
+    """The files in one block, in name order; for academic material, only those that may be shown."""
+    names = [n for n in IMG_FILES if REGISTRY[n][0] == block]
+    if not shown:
+        return names
+    keep = []
+    for n in names:
+        kind = REGISTRY[n][1]
+        if kind == "held":
+            continue
+        if kind == "record" and n not in CAPTIONS:
+            continue
+        keep.append(n)
+    return keep
+
+
+def album_item(name, block):
+    """One raster, described once, then used by both the wall and the roll.
+
+    The tile and its plate are the same record, so the caption is written here and appears in both.
+    The alternative is two texts that drift.
+    """
+    stem = name.rsplit(".", 1)[0]
+    meta = CAPTIONS.get(name, {})
+    title = meta.get("title", stem.replace("-", " ").replace("_", " ").capitalize())
+    fallback = ("Filed under " + title.lower() + "; no caption was written for it, so none is "
+                "invented here.")
+    return {"src": "IMG/" + name, "name": name, "title": title,
+            "alt": meta.get("alt", title), "caption": meta.get("caption", fallback),
+            "block": block, "kind": REGISTRY[name][1]}
+
+
+ALBUM = {b["id"]: [album_item(n, b["id"]) for n in block_files(b["id"])] for b in BLOCKS}
+HELD = {b["id"]: [n for n in block_files(b["id"], shown=False)
+                  if n not in [x["name"] for x in ALBUM[b["id"]]]] for b in BLOCKS}
+# Which blocks are hung on the album wall. `figures`, `interface` and `portrait` are deliberately not
+# here: they belong inline in the arguments that cite them, and a portrait is not one more plate to
+# swipe past. A block with nothing to show still gets its heading and its reason, because an
+# archive that quietly omits a shelf is indistinguishable from one that never had it.
+ALBUM_BLOCKS = [b for b in BLOCKS if b["id"] in ("field-notes", "classroom")]
+
+
+def _plate_for(items):
+    """The roll: one plate, containing the same items the wall shows, in the same order.
+
+    The order is the whole contract, because the roll is addressed by index: a tile and a frame that
+    disagree about position would send a visitor to the wrong photograph. So both are built in one
+    pass here, and `verify-walk.mjs` asserts the two counts agree rather than trusting the loop.
+    """
+    tiles, frames = [], []
+    for it in items:
+        n = len(frames)
+        attrs = poster_attrs(it["src"])
+        ident = f"ig-{it['block']}-{n}"
+        tag = "generated plate" if it["kind"] == "generated" else it["kind"]
+        label = f"{it['title']} \u00b7 {BLOCK_LABEL[it['block']]} \u00b7 {tag}"
+        # The wall is the photographs and nothing else. What a plate may claim — its block, and that it
+        # is generated rather than taken — is said inside it, where you have to arrive to read it.
+        tiles.append(
+            f'<a class="ig-tile" href="#{ident}" data-ig '
+            f'aria-label="{escape(label)}: open in the roll">'
+            f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} loading="lazy" /></a>')
+        frames.append(
+            f'<figure class="ig-frame" id="{ident}">'
+            f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} />'
+            f'<figcaption>{escape(it["title"])} - {escape(it["caption"])}'
+            f'<span class="when">{escape(label)}</span></figcaption></figure>')
+    if not frames:
+        return tiles, ""
+    nav = ""
+    if len(frames) > 1:
+        nav = (
+            '\n    <button class="ig-btn prev" type="button" data-ig-prev aria-label="Previous plate">'
+            f'{ICON_LEFT}</button>'
+            '\n    <button class="ig-btn next" type="button" data-ig-next aria-label="Next plate">'
+            f'{ICON_RIGHT}</button>')
+    plate = (
+        '<div class="modal" id="ig-plate" role="dialog" aria-modal="true" aria-label="The album, '
+        'plate by plate">'
+        '\n  <div class="modal-backdrop" data-ig-close></div>'
+        '\n  <div class="modal-panel ig-plate">'
+        '\n    <button class="modal-close" type="button" data-ig-close aria-label="Close the album">'
+        f'{ICON_X}</button>'
+        '\n    <div class="ig-reel" data-ig-reel>\n      ' + "\n      ".join(frames) +
+        '\n    </div>' + nav +
+        f'\n    <p class="ig-count" data-ig-count role="status">1 / {len(frames)}</p>'
+        '\n  </div>'
+        '\n</div>\n')
+    return tiles, plate
+
+
+BLOCK_LABEL = {b["id"]: b["label"] for b in BLOCKS}
+ALBUM_ITEMS = [it for b in ALBUM_BLOCKS for it in ALBUM[b["id"]]]
+album_tiles, gallery_plate = _plate_for(ALBUM_ITEMS)
+_tiles_by_block = {b["id"]: [] for b in ALBUM_BLOCKS}
+for it, tile in zip(ALBUM_ITEMS, album_tiles):
+    _tiles_by_block[it["block"]].append(tile)
+
+
+def gallery_html():
+    """One wall per block: the grid if there is anything to hang, the reason if there is not."""
+    out = []
+    for b in ALBUM_BLOCKS:
+        tiles = _tiles_by_block[b["id"]]
+        held = HELD[b["id"]]
+        state = f'{len(tiles)} shown'
+        if held:
+            state += ' · ' + str(len(held)) + ' held for want of a caption'
+        head = (f'<h3>{escape(b["label"])}</h3>'
+                f'<p class="when">{escape(b["purpose"])} <span class="badge">{escape(b["kind"])}</span>'
+                f' {escape(state)}</p>')
+        inner = (f'<div class="ig-grid" data-ig-grid>{" ".join(tiles)}</div>' if tiles else
+                 f'<div class="dashed empty">{chip(ICON_CAMERA)}<div><strong>Nothing in this block '
+                 f'yet</strong><p class="when">{escape(b["note"])}</p></div></div>')
+        out.append(f'    <div class="block-head reveal">{head}</div>\n'
+                   f'    <p class="when reveal">{escape(b["note"])}</p>\n'
+                   f'    <div class="ig-wall" data-ig-wall>\n      {inner}\n    </div>')
+    return "\n".join(out)
+
+
+gallery_wall = gallery_html()
 activities = page("Activities · Hua-Xu Zhong", "activities", f"""
 <section class="section">
   <div class="wrap">
-    <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>A photo archive and a running record of talks. Captions and venues will be attached as they are confirmed.</p></div>
-    {titled("h2", "Gallery", ICON_CAMERA)}
-    <p class="when reveal" style="margin:-0.4rem 0 1rem">{gallery_note}</p>
-    <div class="deck reveal" data-deck>
-      <div class="deck-stage">
-        {''.join(gallery_slides)}
-        {gallery_nav}
-      </div>
-      <p class="deck-cap" data-deck-cap>{escape(GALLERY[0][2])}</p>
-      {gallery_dots_html}
-    </div>
+    <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>The archive of what has been shown, and a running record of talks. Captions and venues are attached as they are confirmed, and an image without one is filed but not hung.</p></div>
+    <p class="pillar-more"><a class="text-arrow" href="rooms.html">The archive is also a place: Tokyo, "
+              "walked at first person — three sights on the wall</a></p>
+    {titled("h2", "The album", ICON_CAMERA)}
+    <p class="when reveal" style="margin:-0.4rem 0 1rem">Plates hung on a wall, read the way the
+      album is read on a phone: pick one and the roll opens at it, sideways, and nothing expires when
+      it has been seen. Which block an image belongs to, and what it is allowed to claim, is declared
+      in the generator rather than sorted afterwards.</p>
+{gallery_wall}
     {titled("h2", "Talks and visits", ICON_CHAT, "block-title reveal spaced")}
     <p class="when reveal">Invited talks, presentations, workshops, and conference attendance. They will appear as a CV timeline when records are added.</p>
     <div class="dashed empty reveal" style="margin-top:1rem">{chip(ICON_CHAT)}<div><strong>No talks listed yet</strong><p class="when">This page will not invent events. When you add a title, venue, and date, they will appear here as a single timeline.</p></div></div>
   </div>
 </section>
 """, extra=f"""
-<div class="modal" id="lightbox">
-  <div class="modal-backdrop" data-close></div>
-  <div class="modal-panel lamp">
-    <button class="modal-close on-photo" type="button" data-close aria-label="Close">{ICON_X}</button>
-    <button class="deck-btn prev on-photo" type="button" data-lamp-prev aria-label="Previous photo">{ICON_LEFT}</button>
-    <button class="deck-btn next on-photo" type="button" data-lamp-next aria-label="Next photo">{ICON_RIGHT}</button>
-    <img alt="" aria-hidden="true" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />
-    <div class="lamp-meta">
-      <p data-lamp-cap></p>
-      <p class="deck-count" data-lamp-count></p>
-    </div>
-  </div>
-</div>
-""")
+{gallery_plate}""")
 
 journals = [
     "Educational Technology Research and Development (SSCI Q1)",
@@ -1177,6 +1439,709 @@ notfound = page("Page not found · Hua-Xu Zhong", "home", """
 (ROOT / "service.html").write_text(service, encoding="utf-8")
 (ROOT / "links.html").write_text(links, encoding="utf-8")
 (ROOT / "404.html").write_text(notfound, encoding="utf-8")
+
+# ── Districts ────────────────────────────────────────────────────────────────
+# A district is a themed, walkable space, not a photo set. Two rules are encoded
+# here because the owner fixed both on 2026-09-14:
+#   1. no district opens without a declared purpose, and that purpose is printed on
+#      the picker card. "What is this space for — travel, or a conference?" is the
+#      first thing every new district answers; an undeclared purpose is how a travel
+#      lane quietly becomes a claim about an event that did not happen.
+#   2. status "soon" is a real state and is rendered as one. An unbuilt district stays
+#      visibly unbuilt (the reference site's "Level G · Coming soon"; this site's own
+#      empty-state rule). Decoration never stands in for content.
+# Geometry is px in CSS' own handedness: x is across the lane, z is depth (positive =
+# farther; the stylesheet negates it), y is height above the floor, ry turns the thing
+# to face down the lane. The camera is the inverse of a camera: the world is moved and
+# rotated, the eye never moves — which is why no matrix math is needed to keep a
+# visitor inside the walls.
+# Two kinds of space, and the kind is the rule set rather than the label: declaring a
+# district academic buys it citations and imposes venue/date truth on every frame;
+# declaring it personal frees it from that but forbids it from *looking* like a record.
+# A travel space that is allowed to be drawn is the point of the split — a personal
+# district may be illustration all the way down, and the UI must never let it read as
+# attendance, a visit, or evidence.
+KINDS = {
+    "personal": {
+        "label": "Personal",
+        "gate": "Drawn frames are allowed. Nothing here may read as a record of "
+                "attendance, and no frame claims a place was visited.",
+        "cover": "The card's cover is drawn. It shows what the district is about, not what "
+                 "the owner saw.",
+    },
+    "academic": {
+        "label": "Academic",
+        "gate": "Every frame carries a venue and a date, or it is not shown. Generated "
+                "art may not stand in for evidence here.",
+        "cover": "The cover must be a record of the room, the board or the stage. A drawn "
+                 "cover would be a claim about an event.",
+    },
+}
+
+# Centimetres, and three of them per kind: width, height, depth. Depth is what turns a prop from a
+# decal into a solid — the renderer can then draw its top and its return, you can walk behind it, and
+# the hit box wraps the same volume the picture shows, so the thing you can open is the thing you can
+# see. Anything not listed falls back to a plausible box, which is the honest default for dressing.
+OBJ_SIZE = {
+    "vending": (96, 150, 52), "poster": (132, 176, 3), "poster frame": (120, 160, 20),
+    "shrine": (66, 46, 44), "utility": (20, 336, 20), "noren": (150, 130, 6),
+    "bollard": (16, 62, 16), "steps": (150, 44, 110), "drain": (70, 4, 96),
+    "ac": (86, 30, 36), "crate": (62, 46, 52), "bin": (68, 86, 68),
+    "pipe": (16, 300, 16), "awning": (170, 12, 110), "sign": (120, 40, 10),
+    "ledge": (430, 12, 60),
+    "front": (170, 300, 40), "booth": (110, 215, 110), "bikes": (150, 102, 55),
+    "planter": (104, 50, 46), "cones": (74, 70, 34), "mailbox": (52, 74, 36),
+    "signA": (70, 86, 52), "banner": (56, 150, 6), "pane": (120, 86, 22),
+}
+
+EYE = 168                    # the eye is 1.68 m above the floor; 1 px = 1 cm throughout
+LANE_W, LANE_D, LANE_H = 640, 430, 360
+LANE_CEIL = 420             # cm, and a rendering choice rather than a record: the authored 360 is
+                            # the diagram's lane, while the space you stand in needs the extra half
+                            # metre or the bulbs hang at a walker's eyes
+LANE_BACK = 240             # how far the walls run behind you, so turning round shows a lane
+Z_SCALE = 2.9                # records are authored in the old 4.3 m lane; the space is 12.4 m
+WALK_D = round(LANE_D * Z_SCALE)
+STATIONS = [
+    {"z": 0, "label": "the entrance"},
+    {"z": 150, "label": "under the posters"},
+    {"z": 275, "label": "by the pole"},
+    {"z": 395, "label": "in front of the machine"},
+]
+DISTRICTS = [
+    {
+        "id": "tokyo", "label": "Tokyo",
+        "purpose": "A Tokyo lane, dressed: shutters, lanterns, a crossing at its end",
+        "status": "open",
+        "kind": "personal",
+        "cover": "IMG/tokyo-cover.jpg",
+        "cover_caption": "The district in one sheet: a gate lantern, a scramble, a tower, "
+                         "a counter, a mountain on the skyline.",
+        "blurb": "One lane at night. The light at the end is a vending machine, and the "
+                 "lane is walked toward it.",
+        # Set dressing, and the rule that governs it: an object is here so the lane has an edge, a
+        # rhythm, something to walk round — never so the page can imply a fact. Anything that would
+        # speak about Tokyo (a shop name, a sign's lettering) is deliberately left blank instead.
+        "objects": [
+            {"id": "vending", "kind": "vending", "x": -294, "z": 412, "y": 0, "ry": 90,
+             "glow": [{"r": 130, "k": 1.05}],
+             "title": "The vending machine",
+             "hint": "It keeps the lane's frames. Pressing the lit slot opens the drawer "
+                     "the photographs go into; nothing here reviews Tokyo."},
+            {"id": "bollard", "kind": "bollard", "x": -150, "z": 12, "y": 0, "ry": 0,
+             "title": "A bollard at the mouth of the lane",
+             "hint": "Set dressing, drawn rather than surveyed: it is here so the entrance has "
+                     "an edge. Nothing to open."},
+            {"id": "steps", "kind": "steps", "x": 296, "z": 26, "y": 0, "ry": -90,
+             "title": "Two steps up to a door that is not there yet",
+             "hint": "Drawn. A district gets its doorway when there is a room on the other side "
+                     "of it, and there is not one yet."},
+            {"id": "shrine", "kind": "shrine", "x": 296, "z": 36, "y": 42, "ry": -90,
+             "title": "A small shrine at knee height",
+             "hint": "Draw one slip. The slip picks which slot you look at first; there is "
+                     "no score, because a lane is not a game to win."},
+            {"id": "drain", "kind": "drain", "x": -80, "z": 54, "y": 0, "ry": 0,
+             "title": "A drain in the asphalt",
+             "hint": "It is the one thing on the floor that knows the lane is wet."},
+            {"id": "ac-left", "kind": "ac", "x": -302, "z": 66, "y": 250, "ry": 90,
+             "title": "An air-conditioning unit, high on the left wall",
+             "hint": "Drawn, and humming about as loudly as anything at this hour is allowed to."},
+            {"id": "crate", "kind": "crate", "x": -244, "z": 96, "y": 0, "ry": 0,
+             "title": "A crate pushed against the wall",
+             "hint": "Set dressing. Go round it: it is 62 cm wide and the lane is 6.4 m."},
+            {"id": "bin", "kind": "bin", "x": 268, "z": 108, "y": 0, "ry": -90,
+             "title": "A bin, lid shut",
+             "hint": "Nothing is in it, and nothing will be: a district does not get to imply "
+                     "what somebody threw away."},
+            {"id": "poster-lantern", "kind": "poster", "img": "IMG/tokyo-poster-lantern.jpg", "x": -310, "z": 150, "y": 96, "ry": 90,
+             "title": "Poster: paper lantern",
+             "hint": "Generated illustration, pinned so the lane has a first image. It is not "
+                     "a photograph and not evidence of a visit."},
+            {"id": "poster-wires", "kind": "poster", "img": "IMG/tokyo-poster-wires.jpg", "x": 310, "z": 214, "y": 104, "ry": -90,
+             "title": "Poster: wires and rain",
+             "hint": "Generated illustration, not a photograph. A real frame replaces it when one is supplied."},
+            {"id": "poster-ticket", "kind": "poster", "img": "IMG/tokyo-poster-ticket.jpg", "x": -310, "z": 392, "y": 108, "ry": 90,
+             "title": "Poster: a folded ticket",
+             "hint": "Generated illustration, on the end wall where the lane's light lands."},
+            {"id": "pipe", "kind": "pipe", "x": 308, "z": 170, "y": 0, "ry": -90,
+             "title": "A drainpipe down the right wall",
+             "hint": "The lane's other vertical: the one thing here that runs the whole height."},
+            {"id": "awning", "kind": "awning", "x": 292, "z": 200, "y": 214, "ry": -90,
+             "title": "An awning over a shuttered front",
+             "hint": "Drawn at 12 degrees so it sheds onto the lane. There is no shop behind it; "
+                     "the shutter is the wall."},
+            {"id": "sign", "kind": "sign", "x": -302, "z": 206, "y": 258, "ry": 90,
+             "title": "A sign board with no lettering on it",
+             "hint": "Deliberately blank: invented signage would be the one prop in this lane "
+                     "that pretends to say something about Tokyo."},
+            {"id": "pole", "kind": "utility", "x": 292, "z": 275, "y": 0, "ry": -90,
+             "title": "Utility pole",
+             "hint": "The lane's notice board: what this district is for, and what it does "
+                     "not have yet."},
+            {"id": "crates-2", "kind": "crate", "x": 250, "z": 300, "y": 0, "ry": -90,
+             "title": "Two crates, one on top",
+             "hint": "Set dressing with a shadow under it, which is the whole reason it is here."},
+            {"id": "ac-right", "kind": "ac", "x": 302, "z": 336, "y": 262, "ry": -90,
+             "title": "A second unit, higher up",
+             "hint": "Alleys are mostly this: plant bolted to a wall at a height nobody chose."},
+            {"id": "ledge", "kind": "ledge", "x": 0, "z": 426, "y": 96, "ry": 0,
+             "title": "The lookout rail at the window",
+             "hint": "The crossing, the tower and the mountain beyond are drawn at the size a "
+                     "picture of them shows, not surveyed: 1 px is 1 cm in here, and a mountain does "
+                     "not fit. Nothing out there is a record of anybody standing in it."},
+            {"id": "front-a", "kind": "front", "x": -316, "z": 62, "y": 0, "ry": 90,
+             "glow": [{"r": 190, "k": 0.85, "tint": "rgba(255,166,86,0.42)", "dy": 150}],
+             # Three stops for a shutter, and the light is coupled to them: the spill into the lane is
+             # the same number the interior's brightness is. Pressing it changes what the room looks
+             # like, not only what the card says.
+             "states": [
+                 {"say": "Shutter down. The front is closed and the light stays behind the steel.",
+                  "shut": 0.0, "k": 0.55},
+                 {"say": "Half up: enough to see the counter, not enough to be served.", "shut": 0.55,
+                  "k": 1.0},
+                 {"say": "Fully up. The room is open, warm, and empty; nobody is behind it.",
+                  "shut": 1.0, "k": 1.35},
+             ],
+             "title": "A closed front with its light still on",
+             "hint": "Shutter down, interior light still running: the one hour of a lane where a room "
+                     "is still warm and nobody is in it. Drawn, and nothing is for sale here."},
+            {"id": "booth", "kind": "booth", "x": 246, "z": 85, "y": 0, "ry": -90,
+             "glow": [{"r": 120, "k": 0.6, "tint": "rgba(214,232,255,0.34)", "dy": 160}],
+             "states": [
+                 {"say": "Shut. The light inside comes on when the door moves, and goes when it does "
+                         "not.", "door": 0.0, "k": 0.5},
+                 {"say": "Open. Empty, with the receiver hanging — this is a drawn box, so it holds no "
+                         "somebody's call.", "door": 1.0, "k": 1.3},
+             ],
+             "title": "A telephone box",
+             "hint": "Empty, and it holds no message: a district does not get to leave a note from "
+                     "somebody. Glass is drawn as glass here, which means you can see the far side."},
+            {"id": "bikes", "kind": "bikes", "x": -250, "z": 179, "y": 0, "ry": 0,
+             "title": "Two bicycles, leaned against the wall",
+             "hint": "Drawn bicycles. Nobody is claimed as their owner, and nothing is said about why "
+                     "they are there — a lane has bicycles in it, that is all this asserts."},
+            {"id": "planters", "kind": "planter", "x": 236, "z": 148, "y": 0, "ry": -90,
+             "title": "Two planters by a closed front",
+             "hint": "Set dressing with something growing in it, because an alley with only grey in it "
+                     "is a drawing of an alley rather than one."},
+            {"id": "cones", "kind": "cones", "x": -120, "z": 82, "y": 0, "ry": 0,
+             "title": "A pair of cones, stored rather than working",
+             "hint": "Nothing is being repaired here. They are stacked where they were left, which is "
+                     "the only reason they are in the scene."},
+            {"id": "mailbox", "kind": "mailbox", "x": 314, "z": 262, "y": 0, "ry": -90,
+             "states": [
+                 {"say": "Shut.", "flap": 0.0},
+                 {"say": "The flap is open and the box is empty. It is a shape in a lane, not a way to "
+                         "reach anybody.", "flap": 1.0},
+             ],
+             "title": "A post box at the corner",
+             "hint": "Red, boxy, at a corner: the shape that says Tokyo louder than any signage could, "
+                     "and it carries no lettering because none is ours to invent."},
+            {"id": "board-a", "kind": "signA", "x": -236, "z": 300, "y": 0, "ry": 0,
+             "states": [
+                 {"say": "Blank. This face would carry a menu.", "flip": 0.0},
+                 {"say": "Turned over, and blank again: both faces of a board like this are the shop's "
+                         "to write on, and the shop is not real.", "flip": 1.0},
+             ],
+             "title": "A folding board, blank",
+             "hint": "The one prop that could have carried a menu or a price and does not: invented "
+                     "lettering would be a claim about a shop that does not exist."},
+            {"id": "banner-left", "kind": "banner", "x": -316, "z": 221, "y": 232, "ry": 90,
+             "title": "A cloth banner, hanging still",
+             "hint": "Drawn as cloth so it has a fold and a weight. No text on it, same reason as the "
+                     "board."},
+            {"id": "banner-right", "kind": "banner", "x": 316, "z": 372, "y": 244, "ry": -90,
+             "title": "A second banner, further down",
+             "hint": "Two of them is what a lane has; three would be a set design."},
+            {"id": "window-a", "kind": "pane", "x": 316, "z": 338, "y": 186, "ry": -90,
+             "glow": [{"r": 150, "k": 0.5, "tint": "rgba(255,196,124,0.34)", "dy": 40}],
+             "title": "A window on the brick",
+             "hint": "Somebody's room, at the height a lane sees it at: the sill, the sash, the curtain "
+                     "edge. Nothing behind it is drawn further than the light that comes out.",
+             "states": [
+                 {"say": "Shut, and lit. The room is a brightness in a frame.", "slide": 0.0, "k": 0.9},
+                 {"say": "Opened a hand's width: the air of the room comes into the lane, and the light "
+                         "with it.", "slide": 1.0, "k": 1.45},
+             ]},
+            {"id": "bin-2", "kind": "bin", "x": -262, "z": 356, "y": 0, "ry": 90,
+             "title": "The far bin",
+             "hint": "The last thing before the light at the end of the lane."},
+        ],
+        # Where the light comes from and what carries it. A row of bulbs down the centre of the lane,
+        # plus the machine's own glow, which is derived from the prop rather than placed by the
+        # renderer. Depths are record centimetres like every other record; heights are real.
+        # A bare number is a bulb on the ceiling line at that record depth; a dict is authored whole.
+        # The last one is not a bulb at all: it is the city's own bounce coming in through the window,
+        # which is why the end of the lane is the brightest part of it, and why it draws no glass and
+        # throws no pool on the asphalt.
+        "lamps": [20, 120, 220, 320, 402,
+                  {"z": 430, "y": 240, "x": 0, "r": 900, "k": 0.55, "bulb": False,
+                   "tint": "rgba(146,178,255,0.26)"}],
+        # The arcade's rhythm overhead: where a beam crosses the ceiling, in scene centimetres.
+        "beams": [220, 520, 820, 1120],
+        # What the walls are made of. This is the street's own kit, band by band: rolling shutters over
+        # closed fronts, glazed tile up to hand height where a shopfront was glazed, painted plaster
+        # above, corrugated patching where a wall has been opened and closed again, a plank hoarding
+        # where a building is being worked on. Side -1 is the left wall, 1 the right, 0 the end wall;
+        # the extents are scene centimetres, and the renderer tiles each band into the same 60 cm panels
+        # as the wall behind it so an affine map stays exact.
+        "surfaces": [
+            {"side": -1, "z0": -240, "z1": 60, "y0": 0, "y1": 420, "kind": "plaster"},
+            {"side": -1, "z0": 60, "z1": 300, "y0": 0, "y1": 300, "kind": "shutter"},
+            {"side": -1, "z0": 60, "z1": 300, "y0": 300, "y1": 420, "kind": "corrugated"},
+            {"side": -1, "z0": 300, "z1": 470, "y0": 0, "y1": 130, "kind": "dado"},
+            {"side": -1, "z0": 300, "z1": 470, "y0": 130, "y1": 420, "kind": "brick"},
+            {"side": -1, "z0": 470, "z1": 760, "y0": 0, "y1": 290, "kind": "shutter"},
+            {"side": -1, "z0": 470, "z1": 760, "y0": 290, "y1": 420, "kind": "plaster", "tone": 1.12},
+            {"side": -1, "z0": 760, "z1": 1010, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.86},
+            {"side": -1, "z0": 1010, "z1": 1247, "y0": 0, "y1": 120, "kind": "dado"},
+            {"side": -1, "z0": 1010, "z1": 1247, "y0": 120, "y1": 420, "kind": "brick"},
+            {"side": 1, "z0": -240, "z1": 40, "y0": 0, "y1": 420, "kind": "brick"},
+            {"side": 1, "z0": 40, "z1": 190, "y0": 0, "y1": 300, "kind": "shutter"},
+            {"side": 1, "z0": 40, "z1": 190, "y0": 300, "y1": 420, "kind": "plaster"},
+            {"side": 1, "z0": 190, "z1": 470, "y0": 0, "y1": 140, "kind": "dado"},
+            {"side": 1, "z0": 190, "z1": 470, "y0": 140, "y1": 420, "kind": "plaster"},
+            {"side": 1, "z0": 470, "z1": 660, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.92},
+            {"side": 1, "z0": 660, "z1": 900, "y0": 0, "y1": 290, "kind": "shutter"},
+            {"side": 1, "z0": 660, "z1": 900, "y0": 290, "y1": 420, "kind": "corrugated"},
+            {"side": 1, "z0": 900, "z1": 1247, "y0": 0, "y1": 130, "kind": "dado", "tone": 1.08},
+            {"side": 1, "z0": 900, "z1": 1247, "y0": 130, "y1": 420, "kind": "brick"},
+        ],
+        # And on the ground: the tactile guide path that runs beside the walls in a real lane, a painted
+        # gutter line, two grates, a manhole, and one wet patch that holds the machine's light.
+        "marks": [
+            {"kind": "tactile", "x0": -300, "x1": -272, "z0": -240, "z1": 1247},
+            {"kind": "tactile", "x0": 272, "x1": 300, "z0": -240, "z1": 1247},
+            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 1230, "z1": 1244},
+            {"kind": "grate", "x0": -118, "x1": -42, "z0": 148, "z1": 168},
+            {"kind": "grate", "x0": 60, "x1": 136, "z0": 700, "z1": 720},
+            {"kind": "manhole", "x0": -40, "x1": 40, "z0": 430, "z1": 510},
+            {"kind": "wet", "x0": -316, "x1": -60, "z0": 980, "z1": 1240},
+            # The kerb: a six centimetre riser where the floor meets the wall, on both sides, so the
+            # lane has a line at its base that light can fall along. Only the face is drawn — the top
+            # of a 46 cm kerb is what you stand on, not what you look at.
+            {"kind": "kerb", "x0": -318, "x1": -272, "z0": -240, "z1": 1247, "y1": 6},
+            {"kind": "kerb", "x0": 272, "x1": 318, "z0": -240, "z1": 1247, "y1": 6},
+        ],
+        # Paper lanterns, hung where a wire already crosses the lane: each one is a light source with a
+        # body, which is the only way the room can be lit by something you can also point at.
+        # Each lantern hangs from a wire, so it has a period and an amplitude: the swing is authored
+        # here rather than taken from a random number, because a lane that moves differently on every
+        # reload is not a drawn place, it is a screensaver. `swing` is centimetres at the foot of the
+        # cord; the light moves with the paper, so the walls brighten and dim where the lamp is.
+        "lanterns": [
+            {"x": -120, "y": 268, "z": 150, "r": 27, "swing": 3.2, "period": 3.1, "phase": 0.0},
+            {"x": 40, "y": 252, "z": 150, "r": 31, "swing": 2.6, "period": 3.9, "phase": 1.7},
+            {"x": 210, "y": 262, "z": 560, "r": 26, "swing": 3.6, "period": 4.4, "phase": 0.9},
+            {"x": -170, "y": 272, "z": 900, "r": 29, "swing": 2.2, "period": 3.4, "phase": 2.6},
+        ],
+        # The window cut in the end wall, and what you see through it. These are NOT record depths and
+        # are not multiplied by Z_SCALE: nothing here is hung from a record, and the far plane is
+        # authored so a picture of Tokyo reads at the scale a picture shows it at. Mount Fuji is not
+        # 900 m away, and the page does not pretend it is.
+        "vista": {"x": 0, "y0": 108, "y1": 336, "w": 470},
+        "backdrop": {
+            "plaza": {"y": -260, "z0": 1240, "z1": 12000, "half": 3600},
+            "crossing": {"y": -260, "z0": 2100, "z1": 3600, "x0": -1150, "x1": 1150,
+                         "stripes": 9, "width": 96, "diagonals": True},
+            "city": [
+                {"x": -2200, "z": 2900, "w": 900, "h": 900, "win": 0.65},
+                {"x": 2300, "z": 3100, "w": 800, "h": 1100, "win": 0.6},
+                {"x": -1500, "z": 4200, "w": 1300, "h": 1500, "win": 0.5},
+                {"x": -450, "z": 4600, "w": 1500, "h": 2300, "win": 0.42},
+                {"x": 900, "z": 4100, "w": 1100, "h": 1200, "win": 0.6},
+                {"x": 2100, "z": 4800, "w": 1400, "h": 2900, "win": 0.34},
+                {"x": -2900, "z": 5400, "w": 1800, "h": 2600, "win": 0.4},
+                {"x": 3400, "z": 5600, "w": 1600, "h": 1800, "win": 0.5},
+            ],
+            "tower": {"x": 1500, "z": 12000, "half": 520, "top": 4200,
+                      "decks": [1500, 2600], "mast": 4700},
+            "mountain": {"x": -18000, "z": 90000, "base": -260, "top": 14000,
+                         "half": 30000, "crown": 5200, "snow": 0.3},
+            "sky": [{"y0": -260, "y1": 1400, "c": "#3a4666", "glow": 0.62},
+                    {"y0": 1400, "y1": 4200, "c": "#26314d"},
+                    {"y0": 4200, "y1": 40000, "c": "#141e36"}],
+        },
+        # Cables, in the same units, strung wall to wall and to the pole they are bolted on to.
+        "wires": [
+            {"a": [-320, 336, 60], "b": [320, 352, 60], "sag": 46},
+            {"a": [-320, 330, 182], "b": [292, 300, 275], "sag": 38},
+            {"a": [-320, 344, 300], "b": [320, 330, 300], "sag": 52},
+            {"a": [-320, 352, 404], "b": [320, 340, 404], "sag": 30},
+        ],
+        "frames": [
+            {"id": "sensoji", "src": "IMG/tokyo-sensoji.jpg", "x": 314, "z": 120, "y": 96, "ry": -90,
+             "title": "Frame: the gate at Asakusa",
+             "alt": "Illustration of a temple gate with a giant hanging lantern and a row of "
+                    "closed shopfronts, empty of people.",
+             "caption": "The gate lantern and a closed shopfront row, drawn. Asakusa as the "
+                        "subject of a picture, not as proof that anyone stood in it."},
+            {"id": "scramble", "src": "IMG/tokyo-scramble.jpg", "x": -314, "z": 290, "y": 96, "ry": 90,
+             "title": "Frame: the scramble at Shibuya",
+             "alt": "Illustration of a wide pedestrian scramble crossing seen from above at "
+                    "night, stripes radiating, no people and no cars.",
+             "caption": "The crossing from above, drawn. Empty on purpose: a crowd here would "
+                        "be an invented record, and this frame is not a record."},
+            {"id": "tower", "src": "IMG/tokyo-tower.jpg", "x": 314, "z": 380, "y": 96, "ry": -90,
+             "title": "Frame: the tower at dusk",
+             "alt": "Illustration of a lattice radio tower at dusk seen between low rooftops, "
+                    "small lights along its frame.",
+             "caption": "The lattice tower between rooftops, drawn, its own lights the only "
+                        "amber in the frame."},
+        ],
+        "slots": [
+            {"label": "Frames", "note": "Photographs go here, one per wall slot.",
+             "state": "Three drawn sights hold the wall now; a photograph still replaces its slot."},
+            {"label": "Short clips", "note": "Vertical clips, muted by default, captioned always.",
+             "state": "Empty. A clip needs its caption before it can play here."},
+            {"label": "The lane at 22:40", "note": "Sound only if a visitor asks for it.",
+             "state": "Silent by default, and it stays that way until a slot carries audio."},
+        ],
+        "exit": {"id": "noren", "kind": "noren", "x": 0, "z": -44, "y": 178, "ry": 180,
+                 "title": "The curtain at your back", "hint": "Part it to leave the lane.",
+                 "leave": "index.html"},
+    },
+    {
+        "id": "undeclared", "label": "Next district", "purpose": "Purpose not declared",
+        "status": "soon",
+        "blurb": "This one stays shut until its purpose is declared — travel, a conference, "
+                 "or something else. That question is the first thing any new space answers, "
+                 "and the answer is printed on the card above it.",
+        "objects": [], "slots": [], "exit": None,
+    },
+]
+
+def wall_frames(d):
+    """A district's frames are objects before they are anything else: each hangs on a wall
+    at a coordinate, so walking the lane and reading the content are the same list, and a
+    frame the owner deletes from the data simply stops being on the wall."""
+    out = []
+    for n, fr in enumerate(d.get("frames", [])):
+        out.append({
+            "id": f'frame-{fr["id"]}',
+            "kind": "poster frame",
+            "x": fr["x"], "z": fr["z"], "y": fr["y"], "ry": fr["ry"],
+            "title": fr["title"], "hint": fr["caption"],
+            "img": fr["src"], "alt": fr["alt"], "frame": n,
+        })
+    return out
+
+
+def frames_section(districts):
+    """The same frames as a plain list, because a rail you can only reach by walking is a
+    rail a screen reader and a printed page cannot read."""
+    rows = []
+    for d in districts:
+        for n, fr in enumerate(d.get("frames", [])):
+            src = fr["src"]
+            rows.append(
+                f'<li class="frame-row" id="frame-{escape(d["id"])}-{escape(fr["id"])}" '
+                f'data-row-obj="frame-{escape(fr["id"])}">'
+                f'<figure class="frame-fig"><img src="{src}" alt="{escape(fr["alt"])}" '
+                f'loading="lazy" {poster_attrs(src)} />'
+                f'<figcaption>{escape(fr["caption"])}</figcaption></figure>'
+                f'<p class="when"><span class="badge">{escape(KINDS[d["kind"]]["label"])}</span>'
+                f' Generated frame {n + 1} of {len(d.get("frames", []))}.'
+                f' <button type="button" class="frame-play" data-play="{n}">Play from here</button></p></li>')
+    if not rows:
+        return ""
+    head = titled("h2", "Frames in this district", ICON_CAMERA, "block-title spaced")
+    note = ('<p class="when">Each is a drawn depiction of a named place, hung on a wall at the '
+            'distance printed beside it. None is a photograph, and none records that the owner '
+            'stood there.</p>')
+    return f'    {head}\n    {note}\n    <ul class="frame-list">\n      {INDENT.join(rows)}\n    </ul>'
+
+
+def rooms_plate_html(districts):
+    figures = []
+    for d in districts:
+        for n, fr in enumerate(d.get("frames", [])):
+            figures.append(
+                f'<figure class="story-frame" data-story-frame="{n}" data-room="{escape(d["id"])}">'
+                f'<img src="{fr["src"]}" alt="{escape(fr["alt"])}" {poster_attrs(fr["src"])} />'
+                f'<figcaption>{escape(fr["title"])} — {escape(fr["caption"])}</figcaption></figure>')
+    reel = ""
+    if figures:
+        joined = "\n      ".join(figures)
+        reel = (
+            '\n    <div class="story-segs" data-story-segs aria-hidden="true"></div>'
+            f'\n    <div class="story-reel" data-story-reel>\n      {joined}\n    </div>'
+            f'\n    <p class="story-count" data-story-count role="status">1 of {len(figures)}</p>'
+            '\n    <p class="when">Tap the right two thirds for the next frame, the left third for '
+            'the previous one. Hold to pause.</p>')
+    return f'''<div class="modal" id="room-plate" role="dialog" aria-modal="true" aria-label="Frames in the lane">
+  <div class="modal-backdrop" data-room-close></div>
+  <div class="modal-panel">
+    <button class="modal-close" type="button" data-room-close aria-label="Close">{ICON_X}</button>
+    <p class="eyebrow" data-room-where></p>
+    <h2 data-room-title></h2>
+    <p data-room-hint></p>{reel}
+  </div>
+</div>
+'''
+
+
+def walk_islands(d, placed):
+    """The bulbs and the cables, as data, so the renderer cannot contradict a light nobody chose.
+
+    Two JSON islands sit inside the hit layer: where the lamps are, and where the cables run. They are
+    islands rather than drawing code because a scene lit by a guess reads as a flat wall the moment you
+    turn towards it. Every bulb here is a depth authored by the district; the one derivation is the
+    vending machine's glow, which rides on the prop because that is where that light would come from.
+
+    Depths are record centimetres and go through Z_SCALE like any other record. Heights are real.
+    """
+    ceiling = LANE_CEIL - 34
+    lights = []
+    for lamp in d.get("lamps", []):
+        if isinstance(lamp, (int, float)):
+            lights.append({"x": 0, "y": ceiling, "z": round(lamp * Z_SCALE), "r": 30})
+        else:                       # authored whole: x, y, r, k, tint; z is still a record depth
+            lights.append(dict(lamp, z=round(lamp["z"] * Z_SCALE)))
+    wires = [{"a": list(w["a"][:2]) + [round(w["a"][2] * Z_SCALE)],
+              "b": list(w["b"][:2]) + [round(w["b"][2] * Z_SCALE)], "sag": w["sag"]}
+             for w in d.get("wires", [])]
+    # Scene geometry travels as authored numbers only: the lights, the cables, the arcade, the
+    # aperture, the far plane. An empty island is omitted rather than emitted as `[]`.
+    # Lanterns are lights, so they join the light island rather than becoming a decoration the
+    # lighting does not know about. `dy` lets a prop's glow sit where the fitting actually is.
+    for o in placed:
+        for g in o.get("glow", []):
+            w, h, _dep = OBJ_SIZE.get(o["kind"], (120, 160, 12))
+            lights.append({"x": o["x"], "y": o.get("y", 0) + g.get("dy", h - 18), "z": o["z"],
+                           "r": g["r"], "k": g["k"], "bulb": False, "of": o["id"],
+                           **({"tint": g["tint"]} if "tint" in g else {})})
+    for L in d.get("lanterns", []):
+        # The authored radius is the paper; how far the light reaches is a multiple of it. A glow with
+        # no body is a smudge, so `size` and `h` travel with it and the renderer draws what it is told.
+        lights.append(dict(L, r=max(96, L["r"] * 3.4), size=L["r"], h=L["y"] + round(L["r"] * 1.15),
+                           k=0.72, bulb=False, tint="rgba(255,158,86,0.52)", body="lantern"))
+    islands = [("data-walk-lights", lights), ("data-walk-wires", wires),
+               ("data-walk-beams", d.get("beams", [])),
+               ("data-walk-surfaces", d.get("surfaces", [])), ("data-walk-marks", d.get("marks", []))]
+    if d.get("vista"):
+        islands.append(("data-walk-vista", d["vista"]))
+    if d.get("backdrop"):
+        islands.append(("data-walk-backdrop", d["backdrop"]))
+    return "\n      ".join(
+        f'<script type="application/json" {name}>{json.dumps(data)}</script>'
+        for name, data in islands if data)
+
+
+def walk_object(o):
+    """One wall thing, expressed as a rectangle in centimetres plus whatever is painted on it.
+
+    The renderer needs geometry, the keyboard needs a stop, and the screen reader needs a name — the
+    same three numbers serve all three, so the button *is* the picture's bounding box on screen and
+    can never drift away from the thing it stands for.
+    """
+    w, h, dep = OBJ_SIZE.get(o["kind"], (120, 160, 12))
+    tex = o.get("img", "")
+    style = (f'--x:{o["x"]}px;--z:{o["z"]}px;--y:{o.get("y", 0)}px;--ry:{o.get("ry", 0)}deg;'
+             f'--w:{w}px;--h:{h}px;--d:{dep}px')
+    frame = f' data-frame="{o["frame"]}"' if "frame" in o else ""
+    # The one prop that is not scenery: the record says where it goes and the renderer obeys, so the
+    # curtain leaving the lane is a link in the data, not a special case in the script.
+    leave = f' data-leave="{escape(o["leave"])}"' if o.get("leave") else ""
+    texture = f' data-tex="{escape(tex)}"' if tex else ""
+    # `data-states` is the whole interaction contract, in the document rather than in the script: a
+    # prop can be done-to only as far as the district said, and the count of stops is the count of
+    # presses before it comes round again.
+    states = ""
+    if o.get("states"):
+        # The index ships in the document, not only in memory: what stop a thing is at is part of the
+        # page's state, and a reader who never presses anything still gets told where it starts.
+        states = (f' data-states="{escape(json.dumps(o["states"], ensure_ascii=False))}"'
+                  f' data-state="{o.get("state", 0)}"')
+    return (f'<button type="button" class="walk-hit" data-obj="{escape(o["id"])}" '
+            f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
+            f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
+            f'data-d="{dep}" style="{style}"{frame}{texture}{states}{leave}></button>')
+
+
+def walk_html(d, drawer):
+    """The whole viewport is the space; every control is a head-up display floating on it.
+
+    That is the reference's arrangement, read as an architecture rather than as a style: one route,
+    the building owns the screen, the picker and the reading live in overlays that appear on
+    request. So there is no doorway to click through any more — arriving at this page *is*
+    entering, and the CV is a link away in the corner rather than a frame around it.
+
+    Geometry: 1 px = 1 cm, the eye at EYE, and a box closed on six sides so that turning around
+    always shows the space instead of its edge. Objects keep their authored coordinates and are
+    pushed down the lane by Z_SCALE, which is a rendering constant and not a fact about the record.
+    """
+    objects = list(d["objects"]) + wall_frames(d)
+    if d["exit"]:
+        objects.append(d["exit"])
+    parts = []
+    placed = []
+    for o in objects:
+        o = dict(o)
+        o["z"] = round(o["z"] * Z_SCALE)
+        placed.append(o)
+        parts.append(walk_object(o))
+    chips = []
+    for n, st in enumerate(STATIONS):
+        # A tick, not a caption: where the words go is the card, and the accessible name is what a
+        # screen reader gets without anything being painted over the space.
+        chips.append(
+            f'<button type="button" class="walk-stop" data-walk-stop="{n}" '
+            f'style="--z:{round(st["z"] * Z_SCALE)}px;--p:{st["z"] * Z_SCALE / WALK_D:.3f}" '
+            f'aria-label="{escape(st["label"])}, {round(st["z"] * Z_SCALE)} cm in"></button>')
+    links = []
+    for n, fr in enumerate(d.get("frames", [])):
+        side = "left" if fr["x"] < 0 else ("right" if fr["x"] > 0 else "end")
+        depth = fr["z"] * Z_SCALE / 100
+        links.append(
+            f'<li><button type="button" data-walk-to="{round(fr["z"] * Z_SCALE)}">'
+            f'{escape(fr["title"])}</button> <span class="when">{side} wall, {depth:.1f} m in · '
+            f'frame {n + 1} of {len(d.get("frames", []))}</span></li>')
+    label = escape(d["label"])
+    did = escape(d["id"])
+    # What a screen reader is told the space is, in the same breath as the controls. The room's own
+    # cladding is what you are walking through and the sightline is only where it ends, so the space is
+    # described first and the view second; both halves are conditional on the data, because a district
+    # with no aperture must not promise one and a district with no cladding must not claim a material.
+    clad = (" The lane is dressed as a street: shutters, glazed tile, plaster and hoarding on its walls, "
+            "paper lanterns hung on the wires above it, a tactile guide path along both kerbs, and a post "
+            "box, bicycles and a blank board standing against the fronts. Nothing on any of it carries a "
+            "word." if d.get("surfaces") else "")
+    sight = (" At its far end the lane opens onto a drawn compound: a crossing below it, a tower, and "
+             "a mountain beyond. Nothing out there is a record of anybody standing in it."
+             if d.get("vista") else "")
+    return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}"
+       data-lane-w="{LANE_W}" data-lane-d="{WALK_D}" data-lane-ceil="{LANE_CEIL}"
+       data-lane-back="{LANE_BACK}" data-eye="{EYE}">
+  <div class="walk-view" tabindex="0" data-walk-view role="application"
+       aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
+       Space to jump, E to open what you are standing in front of, L for the list, I for this note.
+       Nothing is written over the space: every sentence is behind a button.">
+    <canvas class="walk-canvas" data-walk-canvas width="16" height="9" aria-hidden="true"></canvas>
+    <div class="walk-hits" data-walk-hits>
+      {INDENT.join(parts)}
+      {walk_islands(d, placed)}
+    </div>
+  </div>
+  <div class="walk-hud">
+    <div class="walk-top">
+      <div class="walk-pick">
+        <a class="walk-icon walk-exit" href="index.html" data-walk-exit aria-label="Leave the lane">{ICON_EXIT}</a>
+        <div class="walk-stops" role="group" aria-label="Stops in this lane">{"".join(chips)}</div>
+      </div>
+      <div class="walk-read">
+        <p class="sr-only" data-walk-status role="status">Building the lane…</p>
+        <p class="sr-only" data-walk-record aria-live="polite"></p>
+      </div>
+    </div>
+    <div class="walk-bottom">
+      <div class="walk-tools">
+        <span class="walk-fov"><button type="button" class="walk-icon" data-walk-fov="-1"
+          aria-label="Wider view">{ICON_FOV_OUT}</button
+        ><button type="button" class="walk-icon" data-walk-fov="1"
+          aria-label="Narrower view">{ICON_FOV_IN}</button></span>
+        <button type="button" class="walk-icon walk-jump" data-walk-jump aria-label="Jump">{ICON_UP}</button>
+        <button type="button" class="walk-icon walk-info" data-walk-info aria-expanded="false"
+          aria-controls="walk-card-{did}" aria-label="What this lane is, and how to move in it">{ICON_CHAT}</button>
+        <button type="button" class="walk-icon" data-walk-list aria-expanded="false"
+          aria-controls="walk-list-{did}" aria-label="The lane, written out">{ICON_BOOK}</button>
+      </div>
+    </div>
+  </div>
+  <div class="walk-pad" data-walk-pad aria-hidden="true"><span class="walk-knob"></span></div>
+  <div class="walk-card" id="walk-card-{did}" data-walk-card data-mode="prop" hidden>
+    <p class="eyebrow" data-walk-where></p>
+    <h2 data-walk-title></h2>
+    <p data-walk-hint></p>
+    <p class="when" data-walk-live></p>
+    <div class="walk-aside" data-walk-aside hidden>
+      <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
+        <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open a thing ·
+        <kbd>L</kbd> the list · <kbd>I</kbd> this note · <kbd>Esc</kbd> close, then leave</p>
+      <p class="walk-note">With a finger: drag to turn, tap the wall in front of you to open it, tap
+        again to put it down. Three ways out — the arrow in the corner, the curtain at the mouth of the
+        lane, and a second <kbd>Esc</kbd> once nothing is open any more.</p>
+      <p class="walk-note" data-walk-fallback hidden>Rendering the lane is unavailable in this
+        browser. {label} still reads in the list: every frame, its caption and its kind are written
+        there, and the ticks above stand for those frames' depths.</p>
+      <p class="walk-note">{label} is drawn, not surveyed: the distances are the artist's, and a
+        frame is a depiction of a place rather than a record of standing in it.</p>
+    </div>
+    <button type="button" class="modal-close" data-walk-card-close aria-label="Close">{ICON_X}</button>
+  </div>
+  <aside class="walk-list" id="walk-list-{did}" data-walk-listpanel aria-label="{label}, written out">
+    <button type="button" class="walk-drawer-close" data-walk-list-close aria-label="Close the list">
+      {ICON_X}</button>
+    <p class="eyebrow">The lane, written out</p>
+    <ul class="walk-districts">
+      {INDENT.join(district_card(x) for x in DISTRICTS)}
+    </ul>
+{drawer}
+    <ul class="walk-links">{"".join(links)}</ul>
+  </aside>
+</div>
+"""
+
+
+def district_card(d):
+    """The card is a record first and a link second: heading and body text stay in the page's
+    own colour, and only the arrow is a link, because main a is accented and underlined
+    site-wide. The kind is printed here with the gate it implies, and the cover — if there is
+    one — carries the kind's cover rule as its caption, so a drawn cover can never be read as
+    a photograph the owner took."""
+    state = "Not open yet." if d["status"] == "soon" else "You are standing in it."
+    kind = d.get("kind")
+    meta = KINDS.get(kind, {})
+    badge = f'{escape(meta["label"])} · {escape(d["purpose"])}' if meta else escape(d["purpose"])
+    gate = f'<p class="rule">{escape(meta["gate"])}</p>' if meta else f'<p class="rule">{escape(d["blurb"])}</p>'
+    cover = ""
+    src = d.get("cover")
+    if src and (ROOT / src).exists():
+        caption = d.get("cover_caption", "")
+        cover = (f'<figure class="district-cover"><img src="{escape(src)}" alt="" loading="lazy" '
+                 f'{poster_attrs(src)} />'
+                 f'<figcaption>{escape(caption)} {escape(meta.get("cover", ""))}</figcaption></figure>')
+    elif src:
+        # a cover named in the data but missing on disk must not draw a broken image, and
+        # must not be papered over either: the empty card is the true state
+        cover = '<p class="when">No cover image is available for this district.</p>'
+    return (f'<li class="district-card is-{d["status"]}" aria-describedby="room-{escape(d["id"])}">'
+            f'{cover}'
+            f'<span class="badge">{badge}</span>'
+            f'<h2>{escape(d["label"])}</h2>'
+            f'{gate}'
+            f'<p class="when">{state}</p>'
+            f'<p class="pillar-more"><span class="when">{escape(state)}</span></p></li>')
+
+
+def slot_row(d, sl):
+    return (f'<li class="slot"><span class="badge">{escape(d["label"])}</span>'
+            f'<strong>{escape(sl["label"])}</strong><p>{escape(sl["note"])}</p>'
+            f'<p class="when">{escape(sl["state"])}</p></li>')
+
+
+open_districts = [d for d in DISTRICTS if d["status"] == "open"]
+
+# The district content, assembled for the drawer rather than for an article: the same builders the
+# rest of the site uses, minus the scroll-in state, because a head-up display does not scroll and
+# because reveal-on-scroll hides everything when scripting is off.
+drawer_inner = "\n    ".join(x for x in [
+    frames_section(open_districts),
+    titled("h2", "Slots", ICON_CASE, "block-title spaced"),
+    '<ul class="slot-list">\n      '
+    + INDENT.join(slot_row(d, sl) for d in open_districts for sl in d["slots"])
+    + "\n    </ul>",
+    '<p class="when">The lane is drawn, not surveyed. The wall holds drawn covers and three drawn '
+    'sights — the temple gate at Asakusa, the crossing at Shibuya, the tower at dusk — and the '
+    'objects are props; no footage sits in any slot yet. Frames and clips arrive when the owner '
+    'supplies them, and nothing here implies a place was visited.</p>',
+] if x)
+
+walk_pages = "\n".join(walk_html(d, drawer_inner) for d in open_districts)
+rooms = shell_page("Tokyo · Districts · Hua-Xu Zhong",
+                   walk_pages + "\n" + rooms_plate_html(open_districts), "rooms.html")
+
+(ROOT / "rooms.html").write_text(rooms, encoding="utf-8")
 
 (ROOT / "robots.txt").write_text(
     f"User-agent: *\nAllow: /\n\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")

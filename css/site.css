@@ -47,7 +47,7 @@ body {
 }
 img { max-width: 100%; display: block; }
 a { color: inherit; cursor: pointer; }
-main a:not(.btn):not(.card):not([class*="deck"]) { text-decoration-color: rgba(180, 83, 9, 0.55); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+main a:not(.btn):not(.card):not(.ig-tile) { text-decoration-color: rgba(180, 83, 9, 0.55); text-underline-offset: 3px; text-decoration-thickness: 1px; }
 main a:not(.btn):hover { text-decoration-color: var(--accent); }
 button {
   appearance: none;
@@ -1036,30 +1036,187 @@ main {
   text-align: center;
 }
 
-/* ============ Gallery / slideshow ============ */
-.deck {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  overflow: hidden;
+/* ============ Activities: the photo plate ============ */
+/* The archive is a contact sheet: square-cropped tiles in a hairline gutter, so the
+   crop frames the photograph and no card or shadow is needed. Selecting a tile steps
+   into a dark plate showing the same image full width, with the rest of the roll on
+   either side of it. Named view transition moves the image between the two boxes, so
+   no geometry is computed in the script; see js/site.js. */
+/* The sheet is a plane in a room: the wrapper owns the perspective, the grid leans
+   toward the pointer, and a hovered tile lifts out of it. Both are driven by two custom
+   properties written from js/site.js, and both are absent by construction when the
+   reader asked for reduced motion. */
+.ig-wall {
+  perspective: 1400px;
 }
-.deck-stage {
+.ig-grid {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg));
+  transition: transform 420ms var(--ease);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 3px;
+  margin: 1.3rem 0 0;
+  background: var(--line);
+  border: 1px solid var(--line-strong);
+}
+.ig-tile {
+  display: block;
   position: relative;
+  background: var(--card);
+}
+.ig-tile img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  transition: transform 700ms var(--ease), opacity 300ms var(--ease);
+}
+.ig-tile:hover img,
+.ig-tile:focus-visible img {
+  transform: scale(1.045);
+  opacity: 0.94;
+}
+.ig-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+.ig-tile {
+  transition: transform 320ms var(--ease), box-shadow 320ms var(--ease);
+}
+.ig-tile:hover,
+.ig-tile:focus-visible {
+  transform: translateZ(16px);
+  box-shadow: 0 1.1rem 1.6rem -0.9rem rgba(10, 17, 40, 0.4);
+  z-index: 1;
+}
+/* The wall is the photographs: no index chip, no caption line under a tile. A plate's claims are read
+   inside the plate, which is the only surface in this project you have to arrive at. */
+/* The plate's own ground. `is-open` lets the backdrop's field show through, but a caption's contrast is a
+   claim about the element it is written on rather than about a state, and a static reader (correctly) refuses
+   light text with no dark pair to sit on. One declaration, and it is the reason the pair is honest. */
+.ig-plate {
   background: var(--navy-deep);
 }
-.deck-slide {
-  display: none;
-  margin: 0;
+
+/* The album's viewer: full-screen, and deliberately *not* blurred. Instagram pads a story with a blurred
+   copy of the frame and shows a post on a plain dark field — two formats, two grounds — so the lane's rail
+   gets the blur (§24) and the archive gets the field. What is the same is the frame: no radius, no shadow,
+   no `pop`, no card that the screen is merely holding, and the photograph keeps its own ratio. */
+#ig-plate.is-open {
+  padding: 0;
+  align-items: stretch;
 }
-.deck-slide.is-on { display: block; animation: fade 420ms var(--ease); }
-.deck-slide button { display: block; width: 100%; }
-.deck-slide img {
+#ig-plate.is-open .modal-backdrop {
+  background: #05080f;
+  animation: none;
+}
+#ig-plate.is-open .ig-plate {
   width: 100%;
-  aspect-ratio: 16/10;
-  object-fit: cover;
+  max-width: none;
+  height: 100%;
+  min-height: 100dvh;
+  max-height: none;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 0;
+  padding: max(2.6rem, env(safe-area-inset-top)) 0 max(1rem, env(safe-area-inset-bottom));
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: hidden;
+  animation: none;
 }
-.deck-btn {
+#ig-plate.is-open .ig-reel {
+  align-self: center;
+  /* `min-height: 0` because a grid item refuses to shrink below its content by default, and a reel that
+     cannot shrink pushes its caption off the screen. The perspective stays on each frame's own transform:
+     a scroll container flattens inherited 3D, which is why it was written there in the first place. */
+  min-height: 0;
+  height: calc(100dvh - 9rem);
+}
+#ig-plate.is-open .ig-frame {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  height: 100%;
+}
+#ig-plate.is-open .ig-frame img {
+  width: auto;
+  max-width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: contain;
+  background: none;
+}
+#ig-plate.is-open .ig-frame figcaption {
+  padding: 0.9rem 1.1rem 0;
+  text-align: center;
+}
+#ig-plate.is-open .ig-count {
+  bottom: max(0.7rem, env(safe-area-inset-bottom));
+  color: rgba(233, 237, 248, 0.62);
+}
+#ig-plate.is-open .ig-btn {
+  background: rgba(5, 8, 15, 0.55);
+}
+@media (max-width: 34rem) {
+  /* On a phone the edge is the target, and the control disappears until it is asked for: a 2.4rem disc
+     floating over the middle of a photograph covers the thing it exists to reveal. */
+  #ig-plate.is-open .ig-btn {
+    top: 0;
+    bottom: 0;
+    width: 34%;
+    height: auto;
+    transform: none;
+    border-radius: 0;
+    background: none;
+    opacity: 0;
+  }
+  #ig-plate.is-open .ig-btn:focus-visible,
+  #ig-plate.is-open .ig-btn:hover {
+    opacity: 1;
+    background: rgba(5, 8, 15, 0.5);
+  }
+}
+
+/* The roll: one photograph per screen, snapping to center, so moving through the
+   archive is a swipe rather than a control to press. */
+.ig-reel {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+.ig-reel::-webkit-scrollbar {
+  display: none;
+}
+.ig-reel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.ig-reel.is-pannable {
+  cursor: grab;
+}
+.ig-reel.is-pannable:active {
+  cursor: grabbing;
+}
+.ig-frame {
+  flex: 0 0 100%;
+  margin: 0;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  /* Perspective travels inside each frame's own transform: a scroll container flattens
+     its children, so a perspective inherited from the plate would be ignored here. */
+  transition: opacity 240ms var(--ease);
+}
+.ig-frame figcaption {
+  padding: 0.8rem 3.4rem 1rem 1rem;
+  color: #dfe5f3;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+.ig-btn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -1072,61 +1229,66 @@ main {
   align-items: center;
   justify-content: center;
   transition: background 180ms var(--ease);
+  z-index: 2;
 }
-.deck-btn:hover { background: var(--accent); }
-.deck-btn svg { width: 1.2rem; height: 1.2rem; }
-.deck-btn.prev { left: 0.7rem; }
-.deck-btn.next { right: 0.7rem; }
-.deck-btn.on-photo { z-index: 2; }
-.deck-count {
+.ig-btn:hover {
+  background: var(--accent);
+}
+.ig-btn svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.ig-btn.prev {
+  left: 0.7rem;
+}
+.ig-btn.next {
+  right: 0.7rem;
+}
+.ig-count {
   position: absolute;
-  right: 0.8rem;
-  bottom: 0.7rem;
+  right: 1rem;
+  bottom: 0.9rem;
   margin: 0;
-  color: #fff;
+  color: #dfe5f3;
   font-family: var(--sans);
   font-size: 0.74rem;
   letter-spacing: 0.08em;
   font-variant-numeric: tabular-nums;
+  z-index: 2;
 }
-.deck-cap { padding: 0.85rem 1rem 1rem; color: #3b3a33; }
-.deck-dots {
-  display: flex;
-  gap: 0.4rem;
-  justify-content: center;
-  padding: 0 1rem 1rem;
+.ig-plate .ig-btn[hidden],
+.ig-count[hidden] {
+  display: none;
 }
-.deck-dot {
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 999px;
-  background: var(--line-strong);
-  transition: background 180ms var(--ease);
-}
-.deck-dot.is-on { background: var(--accent); }
-.modal-panel.lamp {
-  width: min(56rem, 100%);
-  padding: 0;
-  border-top: 0;
-  overflow: hidden;
-  background: var(--navy-deep);
-}
-.modal-panel.lamp img {
+::view-transition-old(ig-photo),
+::view-transition-new(ig-photo) {
   width: 100%;
-  max-height: 78vh;
-  object-fit: contain;
-  background: var(--navy-deep);
+  height: 100%;
+  animation-duration: 400ms;
+  animation-timing-function: var(--ease);
 }
-.lamp-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.8rem 1rem 1rem;
-  color: #dfe5f3;
+@media (prefers-reduced-motion: reduce) {
+  .ig-reel {
+    scroll-behavior: auto;
+  }
+  .ig-wall {
+    perspective: none;
+  }
+  .ig-grid,
+  .ig-tile:hover,
+  .ig-tile:focus-visible {
+    transform: none;
+    box-shadow: none;
+  }
+  .ig-frame {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  .ig-tile img {
+    transition: none;
+  }
 }
-.lamp-meta .deck-count { position: static; color: var(--muted-navy); }
-.modal-panel.lamp .deck-btn[hidden],
-.lamp-meta .deck-count[hidden] { display: none; }
+
 .dashed {
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -1441,4 +1603,883 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
 @media (prefers-reduced-motion: reduce) {
   .dot-cell-btn.is-wrong, .dot-lines.is-win polyline { animation: none; }
   .dot-play img, .dot-chip, .dot-cell-btn .dot { transition: none; }
+}
+
+/* ============ Districts: the objects in the lane ============ */
+/* The lane is rasterised on a canvas, so these are not painted boxes: they are the focus and touch
+   targets the renderer moves onto the screen every frame, sized to the projected quad they stand
+   for. An invisible control that can drift away from the thing it names is worse than no control at
+   all, which is why their geometry comes from the same projection that draws the wall, and why an
+   object behind you leaves the tab order instead of waiting there. Names live in the HUD and in
+   aria-label; nothing writes prose into the scene. */
+.walk-hit {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transform-origin: 0 0;
+}
+.walk-hit::after {
+  /* The press box is allowed to be bigger than the thing: `--padx/--pady` are emitted by the same pass
+     that places the box, so the ring keeps the silhouette while the finger gets 44 px. */
+  content: "";
+  position: absolute;
+  inset: var(--pady, 0px) var(--padx, 0px);
+  border: 1px solid transparent;
+  border-radius: 2px;
+  pointer-events: none;
+  transition: border-color 200ms var(--ease), box-shadow 200ms var(--ease);
+}
+.walk-hit:hover::after {
+  border-color: rgba(242, 200, 142, 0.5);
+}
+.walk-hit:focus-visible {
+  outline: none;
+}
+.walk-hit:focus-visible::after {
+  border-color: var(--accent-bright);
+  border-width: 2px;
+}
+.walk-hit.is-reach::after {
+  border-color: rgba(242, 200, 142, 0.85);
+  box-shadow: 0 0 22px rgba(242, 164, 60, 0.18), inset 0 0 0 1px rgba(242, 164, 60, 0.22);
+}
+.district-pick {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.9rem;
+  margin: 1.2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.district-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: 1.05rem 1.15rem 1.15rem;
+}
+.district-card h2 {
+  margin: 0.45rem 0 0.3rem;
+  font-size: 1.5rem;
+}
+.district-card.is-soon {
+  border-style: dashed;
+  background: none;
+}
+.slot-list {
+  display: grid;
+  gap: 0.7rem;
+  margin: 1.1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.slot {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: 0.85rem 1rem;
+}
+.slot.is-drawn {
+  border-left-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(180, 83, 9, 0.35);
+}
+@media (min-width: 820px) {
+  .district-pick {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+/* 全版型: a story's frame is the screen, so the rail stops being a card.
+
+   The format is copied from the platform rather than invented here. Instagram lays a story on a 9:16
+   canvas (1080×1920) that fills the viewport; media that is not 9:16 keeps its own proportions and the
+   remainder is filled with a blurred copy of the same file, and its own chrome lives in the top and
+   bottom 250 px of that canvas — so the words here sit inside the middle band, and nothing is cropped to
+   pretend the photograph is portrait. The blur is the frame's own pixels, so no new file enters the repo. */
+#room-plate.is-rail {
+  padding: 0;
+  align-items: stretch;
+}
+#room-plate.is-rail .modal-backdrop {
+  background: #05080f;
+  animation: none;
+}
+#room-plate.is-rail .modal-panel {
+  --col: min(100%, calc((100dvh - 7.5rem) * 9 / 16));
+  --rail-hold: 5s;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 0.5rem;
+  padding: max(1.15rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: hidden;
+  /* `pop` is a card's motion: a screen does not scale in. */
+  animation: none;
+}
+/* The ground: this frame's own pixels, blurred and oversized so the blur's edge is never visible. A
+   leaf, so it does not touch the flattening rules that guard the 3D layers. */
+#room-plate.is-rail .modal-panel::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  z-index: -1;
+  background-image: var(--fill, none);
+  background-size: cover;
+  background-position: center;
+  filter: blur(2.6rem) saturate(1.15) brightness(0.5);
+  transform: scale(1.12);
+  pointer-events: none;
+}
+/* In story mode the panel's own heading and hint are the dialog's accessible name and description, not
+   a second copy of the caption: the words stay in the tree and leave the picture. */
+#room-plate.is-rail .modal-panel > .eyebrow,
+#room-plate.is-rail .modal-panel > h2,
+#room-plate.is-rail .modal-panel > [data-room-hint] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+#room-plate.is-rail .story-reel {
+  width: var(--col);
+  height: 100%;
+  align-self: stretch;
+  margin: 0;
+}
+#room-plate.is-rail .story-frame {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  text-align: left;
+}
+#room-plate.is-rail .story-frame img {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: none;
+  object-fit: contain;
+  border-radius: 0;
+  box-shadow: none;
+}
+#room-plate.is-rail .story-frame figcaption {
+  margin: 0;
+  max-width: none;
+  width: 100%;
+  padding: 1.6rem 0.2rem 0.2rem;
+  background: linear-gradient(180deg, rgba(5, 8, 15, 0), rgba(5, 8, 15, 0.86) 62%);
+  color: #e9edf8;
+  font-size: 0.94rem;
+}
+#room-plate.is-rail .story-segs {
+  width: var(--col);
+  margin: 0 auto;
+}
+#room-plate.is-rail .story-count,
+#room-plate.is-rail .modal-panel > .when {
+  width: var(--col);
+  margin-inline: auto;
+  color: rgba(233, 237, 248, 0.62);
+  text-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Nothing advances on a timer at all when motion is refused, so the bar that is "current" is simply
+     full and the fill animation is not paid for. */
+  #room-plate.is-rail .story-seg.is-now i {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
+.story-segs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 0.7rem;
+}
+.story-seg {
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(11, 20, 48, 0.16);
+  overflow: hidden;
+}
+.story-seg i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  /* The fill is a scaleX, not a width, for the same reason the lane's ticks are: a bar that grows by
+     layout reflows the row sixty times, and the detector names that cost. */
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+.story-seg.is-done i {
+  transform: scaleX(1);
+}
+.story-seg.is-now i {
+  animation: segfill var(--rail-hold, 5s) linear forwards;
+}
+/* Holding the frame pauses the timer, and the bar stops where it stands — a progress bar that keeps
+   filling while the story is held is a lie about what is happening. */
+#room-plate.is-rail.is-held .story-seg.is-now i {
+  animation-play-state: paused;
+}
+@keyframes segfill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.story-reel {
+  position: relative;
+  margin: 0 0 0.4rem;
+}
+.story-frame {
+  margin: 0;
+  text-align: center;
+}
+.story-frame img {
+  width: auto;
+  max-width: 100%;
+  max-height: min(56vh, 29rem);
+  border-radius: var(--radius);
+  box-shadow: 0 1.4rem 2.2rem -1rem rgba(11, 20, 48, 0.5);
+}
+.story-frame figcaption {
+  margin: 0.6rem auto 0;
+  max-width: 34ch;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.story-count {
+  margin: 0.2rem 0 0.5rem;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+}
+#room-plate.is-rail .modal-panel {
+  max-width: min(36rem, 92vw);
+}
+.frame-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 1.1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+/* Hovering a row turns the camera, because the list is the controller and the lane is a
+   display of the same selection. The amber edge is "you are standing here", and it is a state
+   the lane can set as well as the list can read. */
+.frame-row {
+  position: relative;
+  transition: border-color 220ms var(--ease), background 220ms var(--ease);
+}
+.frame-row.is-here {
+  border-color: rgba(242, 200, 142, 0.6);
+  background: rgba(242, 200, 142, 0.05);
+}
+.frame-play {
+  margin-left: 0.3rem;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.frame-play:hover,
+.frame-play:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.frame-row {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: 0.9rem 1rem 1rem;
+}
+.frame-row:target {
+  border-color: var(--accent);
+}
+.frame-fig img {
+  border-radius: 2px;
+  box-shadow: 0 1rem 1.6rem -1rem rgba(11, 20, 48, 0.45);
+}
+.district-card .rule {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.frame-fig figcaption {
+  margin-top: 0.55rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+@media (min-width: 900px) {
+  .frame-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.district-cover {
+  margin: 0 0 0.9rem;
+}
+.district-cover img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  box-shadow: 0 1.2rem 1.9rem -1.1rem rgba(11, 20, 48, 0.55);
+}
+.district-cover figcaption {
+  margin-top: 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ============ Districts: the walk ============ */
+/* The lane owns the viewport and every control is a head-up display floating on it. That is the
+   reference site's arrangement, and it is the only one that answers the brief: entering a space
+   has to read as standing in it, not as looking at a figure set inside an article. The world is
+   translated and rotated the other way instead of an eye being moved, so a corridor with one
+   axis of travel needs no render loop, no matrix library and no WebGL.
+   The geometry is metric — 1 px = 1 cm, the eye 168 above the floor, the box 640 wide, 1247
+   deep, 420 high — and it is closed on six sides, because turning around must show the space
+   rather than its edge. */
+/* The shell: this page is not an article, so it does not wear one. No masthead, no footer, no
+   column of prose under the view — arriving is entering, and the CV is one link in the corner.
+   That is the reference's architecture, not its decoration: a walkable space is an application. */
+body.shell {
+  margin: 0;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #060b1a;
+  color: var(--muted-navy);
+}
+.walk {
+  position: fixed;
+  inset: 0;
+  background: #0d1526;
+}
+.shell .modal {
+  z-index: 100;   /* the rail is opened from inside the space, so it must sit above it */
+}
+.walk-view {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #141e36;   /* the canvas's own ground: no white flash, and no black either */
+  cursor: grab;
+  /* The space swallows the gesture. A page that scrolls under the thumb while you are trying to
+     look around is not a place, it is a screenshot with a drag handler. */
+  touch-action: none;
+}
+.walk-view:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: -2px;
+}
+.walk-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.walk-hits {
+  position: absolute;
+  inset: 0;
+}
+/* The lane is drawn rather than photographed, so it is allowed one visible grain: the film on a
+   night scene that keeps flat wall panels from banding under the fog. */
+/* No overlay on the canvas: a screen-fixed stripe over a scene that moves reads as a
+   screen door rather than as grain, and `::after` does not apply to a replaced element, so the one
+   time it was tried it never painted. Texture belongs in the raster, where it can be seen. */
+/* Read by a screen reader, painted for nobody: an interface that is not allowed to wear words still
+   has to announce what it is doing, and hiding a live region from both is how you trade an eyesight
+   problem for a screen-reader one. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Icon chrome, and nothing else: the whole head-up display is buttons this wide.
+
+   The hit area is a square even though the glyph inside is smaller, because a 14 px target on a phone
+   is not a target. */
+.walk-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 1px solid rgba(205, 214, 238, 0.34);
+  border-radius: 6px;
+  background: rgba(6, 11, 26, 0.6);
+  color: var(--muted-navy);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+.walk-icon:hover,
+.walk-icon:focus-visible {
+  border-color: var(--accent-bright);
+  color: var(--accent-bright);
+}
+.walk-icon:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+.walk-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+/* Fitts's law applied to the chrome rather than to the picture: the glyph stays 1.9rem and the press
+   area grows past it, because expanding the hit area rather than the drawing is the difference between
+   a control a thumb finds and one it has to aim at. The rows' gaps are set to 0.5rem so the pads meet
+   without overlapping — an overlap would hand the press to whichever chip the document order likes. */
+.walk-icon,
+.walk-stop {
+  position: relative;
+}
+.walk-icon::before,
+.walk-stop::before {
+  content: "";
+  position: absolute;
+  inset: -8px -4px;
+}
+/* Leaving is not a tool among tools. The lane is a whole viewport with no page underneath it, so the
+   one control that must never be discovered by hunting gets the larger plate, the warmer edge, and the
+   glyph of an arrow going out of a frame — no word, and no guessing. */
+.walk-exit {
+  width: auto;
+  min-width: 2.7rem;
+  height: 2.25rem;
+  padding: 0 0.6rem;
+  border-color: rgba(242, 200, 142, 0.55);
+  background: rgba(6, 11, 26, 0.8);
+  color: var(--gold);
+}
+.walk-exit svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.walk-exit:hover,
+.walk-exit:focus-visible {
+  background: rgba(242, 164, 60, 0.16);
+}
+
+.walk-hud {
+  inset: 0;
+  /* The notch and the home bar belong to the device, so the HUD keeps them clear by asking for
+     them rather than guessing a number. */
+  padding: calc(0.85rem + env(safe-area-inset-top)) calc(0.95rem + env(safe-area-inset-right))
+    calc(0.85rem + env(safe-area-inset-bottom)) calc(0.95rem + env(safe-area-inset-left));
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.6rem;
+  pointer-events: none;
+  /* The colour is for the icons — every glyph inherits `currentColor` — and there is no type on this
+     layer any more, so no font size is declared for it. */
+  color: var(--muted-navy);
+}
+
+/* A scrim, not boxes. There is no readout left to brighten, but the icons still sit on the viewport's
+   edges, and the edges are where a phone puts its notch and its home bar — so the fade stays for them,
+   and for the day the lane is bright enough to swallow a 1 px border. */
+.walk-hud::before,
+.walk-hud::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 7rem;
+  z-index: -1;
+  pointer-events: none;
+}
+.walk-hud::before {
+  top: 0;
+  background: linear-gradient(180deg, rgba(6, 11, 26, 0.82), rgba(6, 11, 26, 0));
+}
+.walk-hud::after {
+  bottom: 0;
+  background: linear-gradient(0deg, rgba(6, 11, 26, 0.85), rgba(6, 11, 26, 0));
+}
+.walk-hud > * {
+  /* Rows are layout, not targets. `.walk-hud` is `inset: 0` and its children are full-width flex boxes,
+     so inheriting `pointer-events: auto` turned the top band and the bottom band into two strips of
+     invisible ceiling across the whole viewport — and the lanterns are high, the shutters are low, and
+     everything worth pressing is in one of those two bands. The controls themselves opt back in below.
+     A DOM that never hit-tests cannot see this, which is how it survived a suite of 130 assertions. */
+  pointer-events: none;
+}
+.walk-hud .walk-icon,
+.walk-hud .walk-stop {
+  pointer-events: auto;
+}
+.walk-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.walk-pick,
+.walk-read {
+  display: grid;
+  gap: 0.3rem;
+}
+.walk-pick {
+  align-items: center;
+}
+/* The station rail as the lane's own ruler. Each tick's height is the depth it is standing at, from the
+   data, so the row of them reads as the distance you are walking instead of as a row of words; the one
+   you are at is the bright one. Nothing here is decoration — the profile is the geography. */
+.walk-stops {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  max-width: 58vw;
+  padding-bottom: 0.15rem;
+}
+.walk-stop {
+  width: 1.5rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  cursor: pointer;
+  display: grid;
+  place-items: end center;
+}
+.walk-stop::after {
+  content: "";
+  display: block;
+  width: 2px;
+  height: calc(0.42rem + var(--p, 0) * 0.86rem);
+  transform-origin: bottom center;
+  background: rgba(205, 214, 238, 0.5);
+  /* The growth is a scaleY, not another height: a tick's height is authored data and must not be
+     animated through layout, and a rail of twelve reflowing boxes is exactly the cost the detector
+     names. */
+  transition: background 200ms var(--ease), transform 200ms var(--ease);
+}
+.walk-stop:hover,
+.walk-stop:focus-visible {
+  outline: 1px solid var(--accent-bright);
+  outline-offset: 1px;
+}
+.walk-stop:hover::after,
+.walk-stop:focus-visible::after {
+  background: var(--accent-bright);
+  transform: scaleY(1.35);
+}
+.walk-stop.is-here::after {
+  background: var(--gold);
+  box-shadow: 0 0 0 1px rgba(6, 11, 26, 0.8);
+}
+.walk-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.walk-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.walk-fov {
+  display: inline-flex;
+  gap: 2px;
+}
+.walk-fov button {
+  width: 1.7rem;
+  padding: 0.26rem 0;
+  text-align: center;
+}
+/* The one signal the display is allowed to give on its own: while something in front of you has a
+   card to read, the note button carries a dot. No caption, no arrow, no word. */
+.walk-info {
+  position: relative;
+}
+.walk-info::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 1px rgba(6, 11, 26, 0.85);
+  opacity: 0;
+  transform: scale(0.55);
+  transition: opacity 180ms var(--ease), transform 180ms var(--ease);
+}
+.walk.has-reach .walk-info::after {
+  opacity: 1;
+  transform: none;
+}
+.walk-keys {
+  margin: 0;
+  font-size: 0.78rem;
+  opacity: 0.86;
+}
+.walk-keys kbd {
+  padding: 0.06rem 0.3rem;
+  border: 1px solid rgba(205, 214, 238, 0.4);
+  border-radius: 3px;
+  font-size: 0.76rem;
+}
+.walk-note {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  text-align: right;
+  opacity: 0.7;
+}
+/* Keys are printed where a keyboard exists. A touch device gets the pad and the buttons it can
+   actually press, because a legend of keys on a phone says "this is not for you". */
+.walk-keys,
+.walk-note {
+  display: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .walk-keys,
+  .walk-note {
+    display: block;
+  }
+}
+.walk-pad {
+  position: absolute;
+  left: 0.9rem;
+  bottom: 3.4rem;
+  width: 6.2rem;
+  height: 6.2rem;
+  border: 1px solid rgba(205, 214, 238, 0.28);
+  border-radius: 50%;
+  background: rgba(6, 11, 26, 0.45);
+  touch-action: none;
+  display: none;
+}
+.walk-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2.2rem;
+  height: 2.2rem;
+  margin: -1.1rem 0 0 -1.1rem;
+  border-radius: 50%;
+  background: rgba(242, 200, 142, 0.5);
+}
+@media (pointer: coarse) {
+  .walk-pad {
+    display: block;
+  }
+}
+.walk-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(30rem, calc(100vw - 2rem));
+  transform: translate(-50%, -50%);
+  padding: 1.2rem 1.3rem 1.3rem;
+  border: 1px solid rgba(205, 214, 238, 0.24);
+  border-radius: 0.7rem;
+  background: rgba(11, 20, 48, 0.94);
+  color: var(--paper);
+  box-shadow: var(--shadow-lg);
+}
+.walk-card h2 {
+  margin: 0.2rem 0 0.4rem;
+  font-size: 1.32rem;
+}
+.walk-card p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+.walk-card .eyebrow {
+  color: var(--accent-bright);
+}
+.walk-list {
+  transition: transform 320ms var(--ease), visibility 320ms var(--ease);
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: min(30rem, 92vw);
+  height: 100%;
+  padding: 1.2rem 1.25rem 1.6rem;
+  overflow: auto;
+  /* paper, not a second night: the reading material is the same material the rest of the site is
+     made of, which is also why nothing inside it has to be re-tinted to stay legible */
+  background: var(--bg);
+  border-left: 1px solid var(--line-strong);
+  color: var(--ink);
+}
+.walk-list .eyebrow {
+  margin: 0 0 0.6rem;
+  /* --accent at this size on cream is 4.46:1, so the eyebrow takes the ink-weighted amber that
+     the site already uses for small type on paper */
+  color: var(--accent-ink);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.walk-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
+}
+.walk-list li {
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(205, 214, 238, 0.14);
+}
+.walk-list button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(242, 200, 142, 0.5);
+  text-underline-offset: 3px;
+}
+.walk-list button:hover,
+.walk-list button:focus-visible {
+  color: var(--accent-ink);
+}
+.walk-list.is-closed {
+  visibility: hidden;
+  transform: translateX(101%);
+}
+.walk-list .block-title {
+  color: var(--navy);
+}
+.walk-districts,
+.walk-links {
+  margin: 0.8rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.7rem;
+}
+.walk-districts {
+  grid-template-columns: 1fr;
+}
+.walk-links li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+.walk-drawer-close {
+  position: absolute;
+  right: 0.7rem;
+  top: 0.7rem;
+  padding: 0.3rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+}
+.walk-drawer-close:hover,
+.walk-drawer-close:focus-visible {
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
+}
+.walk-hit[data-states].is-reach::after {
+  border-style: dashed;
+  border-width: 2px;
+}
+.walk-list .when {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+}
+/* What can be opened is legible before anything is pressed: the ring *is* the reach, and the
+   picture stays the renderer's own business. A dashed ring is the other verb — a thing you can do
+   something to, rather than a thing you can look at — which is the whole difference expressed
+   without a word on the screen. */
+@media (max-width: 700px) {
+  .walk-stops {
+    max-width: 46vw;
+  }
+  /* Nothing here scales text down for a phone any more, because the display carries no text to
+     shrink: the only sizes that matter on a small screen are the tick's hit area and the icon's,
+     and both are already squares rather than type. */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The lane's own motion — head bob, sway, the flicker of the machine — is declined inside the
+     renderer, where those numbers live, rather than cancelled here after it has been paid for. */
+  .walk-hit:hover,
+  .walk-hit.is-reach {
+    transition: none;
+  }
+}
+
+@media print {
+  body.shell {
+    overflow: visible;
+    background: #fff;
+    color: #14203f;
+  }
+  .walk-view,
+  .walk-hud,
+  .walk-pad,
+  .walk-card {
+    display: none;
+  }
+  .walk-list,
+  .walk-list.is-closed {
+    position: static;
+    visibility: visible;
+    transform: none;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    border: 0;
+  }
+  .walk-drawer-close {
+    display: none;
+  }
 }
