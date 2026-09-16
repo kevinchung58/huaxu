@@ -16,7 +16,7 @@
   <title>Tokyo · Districts · Hua-Xu Zhong</title>
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
   <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
-  <link rel="stylesheet" href="css/site.css?v=20260916a" />
+  <link rel="stylesheet" href="css/site.css?v=20260916b" />
 </head>
 <body class="shell">
 <div class="walk" id="walk-tokyo" data-walk="Tokyo" data-walk-id="tokyo"
@@ -24,8 +24,8 @@
        data-lane-back="240" data-eye="168">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="Tokyo, a lane you walk in person. The lane is dressed as a street: shutters, glazed tile, plaster and hoarding on its walls, paper lanterns hung on the wires above it, a tactile guide path along both kerbs, and a post box, bicycles and a blank board standing against the fronts. Nothing on any of it carries a word. At its far end the lane opens onto a drawn compound: a crossing below it, a tower, and a mountain beyond. Nothing out there is a record of anybody standing in it. Drag to turn, W A S D to walk, Shift to run,
-       Space to jump, E to open what you are standing in front of, L for the list. Every frame is
-       also written out in that list.">
+       Space to jump, E to open what you are standing in front of, L for the list, I for this note.
+       Nothing is written over the space: every sentence is behind a button.">
     <canvas class="walk-canvas" data-walk-canvas width="16" height="9" aria-hidden="true"></canvas>
     <div class="walk-hits" data-walk-hits>
       <button type="button" class="walk-hit" data-obj="vending" aria-label="The vending machine" data-title="The vending machine" data-hint="It keeps the lane&#x27;s frames. Pressing the lit slot opens the drawer the photographs go into; nothing here reviews Tokyo." data-ry="90" data-w="96" data-h="150" data-d="52" style="--x:-294px;--z:1195px;--y:0px;--ry:90deg;--w:96px;--h:150px;--d:52px"></button>
@@ -72,37 +72,44 @@
   <div class="walk-hud">
     <div class="walk-top">
       <div class="walk-pick">
-        <a class="walk-home" href="index.html"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>Hua-Xu Zhong</a>
-        <p class="walk-eyebrow">Tokyo · one lane, drawn</p>
-        <div class="walk-stops" role="group" aria-label="Stops in this lane"><button type="button" class="walk-stop" data-walk-stop="0" style="--z:0px"><span>the entrance</span></button><button type="button" class="walk-stop" data-walk-stop="1" style="--z:435px"><span>under the posters</span></button><button type="button" class="walk-stop" data-walk-stop="2" style="--z:798px"><span>by the pole</span></button><button type="button" class="walk-stop" data-walk-stop="3" style="--z:1146px"><span>in front of the machine</span></button></div>
+        <a class="walk-icon" href="index.html" aria-label="Hua-Xu Zhong"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg></a>
+        <div class="walk-stops" role="group" aria-label="Stops in this lane"><button type="button" class="walk-stop" data-walk-stop="0" style="--z:0px;--p:0.000" aria-label="the entrance, 0 cm in"></button><button type="button" class="walk-stop" data-walk-stop="1" style="--z:435px;--p:0.349" aria-label="under the posters, 435 cm in"></button><button type="button" class="walk-stop" data-walk-stop="2" style="--z:798px;--p:0.640" aria-label="by the pole, 798 cm in"></button><button type="button" class="walk-stop" data-walk-stop="3" style="--z:1146px;--p:0.919" aria-label="in front of the machine, 1146 cm in"></button></div>
       </div>
       <div class="walk-read">
-        <p class="walk-status" data-walk-status role="status">Building the lane…</p>
-        <p class="walk-record" data-walk-record></p>
+        <p class="sr-only" data-walk-status role="status">Building the lane…</p>
+        <p class="sr-only" data-walk-record aria-live="polite"></p>
       </div>
     </div>
     <div class="walk-bottom">
       <div class="walk-tools">
-        <span class="walk-fov"><button type="button" data-walk-fov="-1" aria-label="Wider view">−</button
-        ><button type="button" data-walk-fov="1" aria-label="Narrower view">+</button></span>
-        <button type="button" class="walk-jump" data-walk-jump>Jump</button>
-        <button type="button" data-walk-list aria-expanded="false" aria-controls="walk-list-tokyo">The list
-        </button>
+        <span class="walk-fov"><button type="button" class="walk-icon" data-walk-fov="-1"
+          aria-label="Wider view"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button
+        ><button type="button" class="walk-icon" data-walk-fov="1"
+          aria-label="Narrower view"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3.75 9.75 9 4.5m6 10.5l5.25-5.25L15 4.5" /></svg></button></span>
+        <button type="button" class="walk-icon walk-jump" data-walk-jump aria-label="Jump"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg></button>
+        <button type="button" class="walk-icon walk-info" data-walk-info aria-expanded="false"
+          aria-controls="walk-card-tokyo" aria-label="What this lane is, and how to move in it"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg></button>
+        <button type="button" class="walk-icon" data-walk-list aria-expanded="false"
+          aria-controls="walk-list-tokyo" aria-label="The lane, written out"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg></button>
       </div>
-      <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
-        <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open ·
-        <kbd>L</kbd> list</p>
-      <p class="walk-note" data-walk-fallback hidden>Rendering the lane is unavailable in this
-        browser. Tokyo still reads below: every frame, its caption and its kind are in the list.</p>
-      <p class="walk-note">Tokyo is drawn, not surveyed: the distances are the artist's, and a
-        frame is a depiction of a place rather than a record of standing in it.</p>
     </div>
   </div>
   <div class="walk-pad" data-walk-pad aria-hidden="true"><span class="walk-knob"></span></div>
-  <div class="walk-card" data-walk-card hidden>
+  <div class="walk-card" id="walk-card-tokyo" data-walk-card data-mode="prop" hidden>
     <p class="eyebrow" data-walk-where></p>
     <h2 data-walk-title></h2>
     <p data-walk-hint></p>
+    <p class="when" data-walk-live></p>
+    <div class="walk-aside" data-walk-aside hidden>
+      <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
+        <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open a thing ·
+        <kbd>L</kbd> the list · <kbd>I</kbd> this note</p>
+      <p class="walk-note" data-walk-fallback hidden>Rendering the lane is unavailable in this
+        browser. Tokyo still reads in the list: every frame, its caption and its kind are written
+        there, and the ticks above stand for those frames' depths.</p>
+      <p class="walk-note">Tokyo is drawn, not surveyed: the distances are the artist's, and a
+        frame is a depiction of a place rather than a record of standing in it.</p>
+    </div>
     <button type="button" class="modal-close" data-walk-card-close aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
   </div>
   <aside class="walk-list" id="walk-list-tokyo" data-walk-listpanel aria-label="Tokyo, written out">
@@ -149,6 +156,6 @@
   </div>
 </div>
 
-<script src="js/site.js?v=20260916a"></script>
+<script src="js/site.js?v=20260916b"></script>
 </body>
 </html>

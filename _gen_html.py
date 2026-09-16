@@ -5,7 +5,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260916a"   # one bump per changed asset pair; both tags read it
+VER = "20260916b"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -40,6 +40,10 @@ ICON_MONITOR = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9 1
 ICON_PHOTO = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />')
 ICON_X = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />')
 ICON_CHAT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />')
+# The two view controls. Chevrons rather than the minus and plus the reference uses, because this page
+# is not allowed a single character on its display: `−` is a glyph, and a glyph is text to a test.
+ICON_FOV_OUT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />')
+ICON_FOV_IN = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3.75 9.75 9 4.5m6 10.5l5.25-5.25L15 4.5" />')
 ICON_LEFT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />')
 ICON_RIGHT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />')
 
@@ -1249,15 +1253,17 @@ def _plate_for(items):
         ident = f"ig-{it['block']}-{n}"
         tag = "generated plate" if it["kind"] == "generated" else it["kind"]
         label = f"{it['title']} \u00b7 {BLOCK_LABEL[it['block']]} \u00b7 {tag}"
+        # The wall is the photographs and nothing else. What a plate may claim — its block, and that it
+        # is generated rather than taken — is said inside it, where you have to arrive to read it.
         tiles.append(
-            f'<a class="ig-tile" href="#{ident}" data-ig aria-label="{escape(it["title"])}: open in the roll">'
-            f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} loading="lazy" />'
-            f'<span class="ig-fig" aria-hidden="true">{n + 1:02d}</span>'
-            f'<span class="ig-cap">{escape(label)}</span></a>')
+            f'<a class="ig-tile" href="#{ident}" data-ig '
+            f'aria-label="{escape(label)}: open in the roll">'
+            f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} loading="lazy" /></a>')
         frames.append(
             f'<figure class="ig-frame" id="{ident}">'
             f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} />'
-            f'<figcaption>{escape(it["title"])} - {escape(it["caption"])}</figcaption></figure>')
+            f'<figcaption>{escape(it["title"])} - {escape(it["caption"])}'
+            f'<span class="when">{escape(label)}</span></figcaption></figure>')
     if not frames:
         return tiles, ""
     nav = ""
@@ -1911,9 +1917,12 @@ def walk_html(d, drawer):
         parts.append(walk_object(o))
     chips = []
     for n, st in enumerate(STATIONS):
+        # A tick, not a caption: where the words go is the card, and the accessible name is what a
+        # screen reader gets without anything being painted over the space.
         chips.append(
             f'<button type="button" class="walk-stop" data-walk-stop="{n}" '
-            f'style="--z:{round(st["z"] * Z_SCALE)}px"><span>{escape(st["label"])}</span></button>')
+            f'style="--z:{round(st["z"] * Z_SCALE)}px;--p:{st["z"] * Z_SCALE / WALK_D:.3f}" '
+            f'aria-label="{escape(st["label"])}, {round(st["z"] * Z_SCALE)} cm in"></button>')
     links = []
     for n, fr in enumerate(d.get("frames", [])):
         side = "left" if fr["x"] < 0 else ("right" if fr["x"] > 0 else "end")
@@ -1940,8 +1949,8 @@ def walk_html(d, drawer):
        data-lane-back="{LANE_BACK}" data-eye="{EYE}">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
-       Space to jump, E to open what you are standing in front of, L for the list. Every frame is
-       also written out in that list.">
+       Space to jump, E to open what you are standing in front of, L for the list, I for this note.
+       Nothing is written over the space: every sentence is behind a button.">
     <canvas class="walk-canvas" data-walk-canvas width="16" height="9" aria-hidden="true"></canvas>
     <div class="walk-hits" data-walk-hits>
       {INDENT.join(parts)}
@@ -1951,37 +1960,44 @@ def walk_html(d, drawer):
   <div class="walk-hud">
     <div class="walk-top">
       <div class="walk-pick">
-        <a class="walk-home" href="index.html">{ICON_LEFT}Hua-Xu Zhong</a>
-        <p class="walk-eyebrow">{label} · one lane, drawn</p>
+        <a class="walk-icon" href="index.html" aria-label="Hua-Xu Zhong">{ICON_LEFT}</a>
         <div class="walk-stops" role="group" aria-label="Stops in this lane">{"".join(chips)}</div>
       </div>
       <div class="walk-read">
-        <p class="walk-status" data-walk-status role="status">Building the lane…</p>
-        <p class="walk-record" data-walk-record></p>
+        <p class="sr-only" data-walk-status role="status">Building the lane…</p>
+        <p class="sr-only" data-walk-record aria-live="polite"></p>
       </div>
     </div>
     <div class="walk-bottom">
       <div class="walk-tools">
-        <span class="walk-fov"><button type="button" data-walk-fov="-1" aria-label="Wider view">−</button
-        ><button type="button" data-walk-fov="1" aria-label="Narrower view">+</button></span>
-        <button type="button" class="walk-jump" data-walk-jump>Jump</button>
-        <button type="button" data-walk-list aria-expanded="false" aria-controls="walk-list-{did}">The list
-        </button>
+        <span class="walk-fov"><button type="button" class="walk-icon" data-walk-fov="-1"
+          aria-label="Wider view">{ICON_FOV_OUT}</button
+        ><button type="button" class="walk-icon" data-walk-fov="1"
+          aria-label="Narrower view">{ICON_FOV_IN}</button></span>
+        <button type="button" class="walk-icon walk-jump" data-walk-jump aria-label="Jump">{ICON_UP}</button>
+        <button type="button" class="walk-icon walk-info" data-walk-info aria-expanded="false"
+          aria-controls="walk-card-{did}" aria-label="What this lane is, and how to move in it">{ICON_CHAT}</button>
+        <button type="button" class="walk-icon" data-walk-list aria-expanded="false"
+          aria-controls="walk-list-{did}" aria-label="The lane, written out">{ICON_BOOK}</button>
       </div>
-      <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
-        <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open ·
-        <kbd>L</kbd> list</p>
-      <p class="walk-note" data-walk-fallback hidden>Rendering the lane is unavailable in this
-        browser. {label} still reads below: every frame, its caption and its kind are in the list.</p>
-      <p class="walk-note">{label} is drawn, not surveyed: the distances are the artist's, and a
-        frame is a depiction of a place rather than a record of standing in it.</p>
     </div>
   </div>
   <div class="walk-pad" data-walk-pad aria-hidden="true"><span class="walk-knob"></span></div>
-  <div class="walk-card" data-walk-card hidden>
+  <div class="walk-card" id="walk-card-{did}" data-walk-card data-mode="prop" hidden>
     <p class="eyebrow" data-walk-where></p>
     <h2 data-walk-title></h2>
     <p data-walk-hint></p>
+    <p class="when" data-walk-live></p>
+    <div class="walk-aside" data-walk-aside hidden>
+      <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
+        <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open a thing ·
+        <kbd>L</kbd> the list · <kbd>I</kbd> this note</p>
+      <p class="walk-note" data-walk-fallback hidden>Rendering the lane is unavailable in this
+        browser. {label} still reads in the list: every frame, its caption and its kind are written
+        there, and the ticks above stand for those frames' depths.</p>
+      <p class="walk-note">{label} is drawn, not surveyed: the distances are the artist's, and a
+        frame is a depiction of a place rather than a record of standing in it.</p>
+    </div>
     <button type="button" class="modal-close" data-walk-card-close aria-label="Close">{ICON_X}</button>
   </div>
   <aside class="walk-list" id="walk-list-{did}" data-walk-listpanel aria-label="{label}, written out">

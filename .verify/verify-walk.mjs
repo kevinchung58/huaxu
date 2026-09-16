@@ -75,7 +75,13 @@ function boot(markup, url) {
   w.HTMLCanvasElement.prototype.getContext = function () { return this.__c || (this.__c = recorder()); };
   w.Image = class {
     constructor() { this.naturalWidth = 640; this.naturalHeight = 427; }
-    set src(v) { this._s = v; if (this.onload) this.onload(); }
+    set src(v) {
+      this._s = v;
+      // Late, like a real fetch. A synchronous load fires during construction, before `boot()` has
+      // attached its handler, which is how a reference to state deleted two rounds ago survived every
+      // test ever written for this page.
+      setTimeout(() => { try { if (this.onload) this.onload(); } catch (e) { ctx.loadError = String(e && e.message); } }, 5);
+    }
     get src() { return this._s; }
     get complete() { return !!this._s; }
   };
@@ -180,12 +186,45 @@ ok("the sightline is in the accessible description, not only in pixels",
 ok("and so is the dressing, because the room is the thing being described",
    /dressed as a street/.test(html) && /Nothing on any of it carries a word/.test(html));
 
+/* ---- 1b. the display, which may not wear a word ----------------------------------------------- */
+{
+  const hud = q(".walk-hud");
+  const spoken = (el) => el.classList.contains("sr-only") || !!el.closest(".sr-only") || !!el.closest("[hidden]");
+  // Only a node's *own* text counts: a wrapper above a live region inherits its sentence, and the
+  // wrapper is not what is painted over the space.
+  const ownText = (el) => Array.from(el.childNodes).filter((n) => n.nodeType === 3)
+    .map((n) => n.textContent.trim()).join(" ").trim();
+  const words = [...hud.querySelectorAll("*")].filter((el) => !spoken(el) && ownText(el));
+  ok("nothing painted over the space is a sentence, a label, or even a glyph",
+     words.length === 0, words.map((e) => `${e.tagName}.${e.className}:${e.textContent.trim()}`).join(" "));
+  ok("the live regions are still there to be heard, and only to be heard",
+     q("[data-walk-status]").classList.contains("sr-only")
+       && q("[data-walk-record]").classList.contains("sr-only")
+       && q("[data-walk-status]").getAttribute("role") === "status");
+  ok("the station rail is a ruler of ticks: named, positioned, and silent",
+     qa(".walk-stop").every((b) => !b.textContent.trim()
+       && /cm in$/.test(b.getAttribute("aria-label") || "")
+       && /--p:[\d.]+/.test(b.getAttribute("style") || "")));
+  ok("and the profile is data, not a look: each tick's height comes from its own depth",
+     /height: calc\(0\.42rem \+ var\(--p, 0\)/.test(css));
+  ok("every control on the display is an icon button with an accessible name",
+     qa(".walk-hud button, .walk-hud a").every((el) => (el.getAttribute("aria-label") || "").length > 3
+       && !el.textContent.trim()));
+  ok("the prose that used to sit there is emitted inside the card it now hides in",
+     /data-walk-aside/.test(html) && /drag to turn/.test(q("[data-walk-aside]").textContent)
+       && q("[data-walk-card]").hidden === true);
+  ok("a folded interface keeps a keyboard route to the fold",
+     /k === "i"/.test(js) && /showSpace\(\)/.test(js));
+}
+
 /* ---- 2. the raster, as recorded --------------------------------------------------------------- */
 ok("the raster ran at all", ctx.fills > 0, `${ctx.fills} fills after boot`);
 const before = ctx.fills;
 q("[data-walk-view]").dispatchEvent(new w.Event("pointerdown", { bubbles: true }));
 await sleep(30);
 ok("no non-finite number ever reaches the context", ctx.bad === 0, `${ctx.bad}`);
+ok("a texture arriving after boot repaints the lane, and throws nothing",
+   ctx.loadError === undefined, ctx.loadError || "");
 ok("every save is matched by a restore", ctx.saves === ctx.restores, `${ctx.saves}/${ctx.restores}`);
 ok("the far plane stays a plane: nothing is projected off the ends of the earth",
    ctx.ptsMax > 0 && ctx.ptsMax < 60000, `widest coordinate ${Math.round(ctx.ptsMax)}`);
@@ -251,6 +290,9 @@ click(stopAt(798));
 await sleep(400);
 ok("standing at the frame's own depth brings it into reach",
    /Frame: the scramble at Shibuya/.test(status()), status());
+ok("the reach is announced with a dot on the note button, never with a caption",
+   q("[data-walk]").classList.contains("has-reach")
+     && /\.walk\.has-reach \.walk-info::after/.test(css));
 const inReach = qa(".walk-hit.is-reach");
 ok("exactly one thing is offered at a time", inReach.length === 1, `${inReach.length} in reach`);
 ok("and it is the frame, which promises the plate",
@@ -319,6 +361,20 @@ ok("a drawer link glides the body to that frame's depth, and nothing else",
 ok("the glide is depth only: the sideways position is left where you put it",
    /targetX === undefined \? x : targetX/.test(js));
 ok("and the body really lands on that depth", Math.abs(body().depth - 348) < 2, `${body().depth}`);
+/* ---- 3c. the note: the one button that opens words -------------------------------------------- */
+const infoBtn = q("[data-walk-info]");
+click(infoBtn);
+ok("the note button opens the space's own words, and only then",
+   !card.hidden && card.dataset.mode === "space" && /drawn, not surveyed/.test(card.textContent)
+     && infoBtn.getAttribute("aria-expanded") === "true");
+ok("the card is the same surface a prop uses, so nothing new had to be invented for the fold",
+   !!q("[data-walk-title]").textContent);
+key("i");
+ok("I closes it again, and the display goes back to being silent",
+   card.hidden && infoBtn.getAttribute("aria-expanded") === "false");
+ok("the announced status stays in step with what the card would show",
+   /m in|ready|ahead/.test(q("[data-walk-status]").textContent), q("[data-walk-status]").textContent);
+
 /* ---- 4. the drawer, the list, the honest empty states ----------------------------------------- */
 const listBtn = q("[data-walk-list]");
 const drawer = q("[data-walk-listpanel]");
@@ -359,8 +415,12 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   ok("the roll holds exactly what the wall shows", tiles.length === frames.length, `${tiles.length}/${frames.length}`);
   ok("a tile addresses its own plate, in the same order",
      tiles.every((t, i) => t.getAttribute("href") === `#${frames[i].id}`));
-  ok("every tile names its block and admits it is generated",
-     tiles.every((t) => /Field notes · generated plate/.test(t.querySelector(".ig-cap").textContent)));
+  ok("the wall is photographs: no caption, no index chip, not one character on a tile",
+     tiles.every((t) => !(t.textContent || "").trim() && !t.querySelector(".ig-cap, .ig-fig"))
+       && !/\.ig-cap|\.ig-fig/.test(css));
+  ok("and the claims a tile used to wear are now said where you have to arrive to read them",
+     tiles.every((t) => /Field notes · generated plate/.test(t.getAttribute("aria-label") || ""))
+       && frames.every((f) => /Field notes · generated plate/.test(f.querySelector("figcaption").textContent)));
   ok("a held block is shown as held, with a count and a reason",
      /Classroom and projects/.test(act) && /3 held for want of a caption/.test(act)
      && /Nothing in this block yet/.test(act));

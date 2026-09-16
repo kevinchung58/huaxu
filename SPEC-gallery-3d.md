@@ -492,3 +492,43 @@ pay for: the wet patch at the vending end is not a texture, it is a *surface* �
 sources inside its extent that are not bulbs and throws them back, so the machine's light is seen in the
 ground the way it is seen on the wall. A puddle that reflects nothing is a grey rectangle, and that is
 the exact thing this round is not allowed to become.
+
+## 21. The display wears no words (2026-09-16)
+
+「介面上不應該有任何文字,應該要摺疊進按鈕,可以點擊進去看說明」 — nothing on the interface may be text;
+whatever has words folds into a button you click to read. Applied to the in-space chrome, and to the
+album wall, which was wearing a caption and an index chip on every tile.
+
+**What the head-up display is now.** An icon back to the CV, a ruler of ticks for the stations, four
+icon buttons (jump, note, list, and the two view chevrons), and a dot. Every sentence that used to sit
+there — the eyebrow line, the status readout, the record line, the key legend, the disclaimer, the
+fallback note — is emitted *inside* the card, which is closed until you open it. The card has two modes:
+`prop` for what you are standing in front of, `space` for the lane's own note, and the note button's `I`
+key is what makes the fold reachable without a mouse.
+
+**Announced is not the same as painted, and dropping the first would be the wrong lesson.** The status
+and record lines survive as `.sr-only` live regions (`role="status"`, `aria-live="polite"`): a visitor
+who cannot see the lane still hears it. The harness asserts the difference rather than trusting the
+class name — it walks every element in `.walk-hud` and fails if any node's *own* text is non-empty, so
+a wrapper above a live region does not count and a label painted on a button does.
+
+**The ticks are the lane, not a control strip.** Each one's height is `calc(0.42rem + var(--p, 0) *
+0.86rem)` with `--p` emitted from that station's authored depth, so the row reads as the distance you are
+walking and the one you are at is simply the bright one. No words, no numbers, and nothing decorative:
+the profile is the geography, which is the test a chrome element has to pass on this page.
+
+**Glyphs count.** `−` and `+` for the view controls were replaced by two chevrons from the site's own
+icon set, because "no text" that makes an exception for a typographic minus is a rule the next change
+will lose. The assertion that fails on a `−` is the reason the rule can be kept.
+
+**What the fold exposed, twice.** `labels` had been scraped out of the station buttons' text content;
+with the text folded away, the announced status would have gone quiet, so it reads `aria-label` now.
+And a texture's `onload` still reached for `on` — the flag deleted with `fold()` two rounds ago — which
+no test had caught because the harness's stub `Image` fired its load handler synchronously during
+construction, before `boot()` ever attached one. A load that lands late is the only case that matters,
+so the stub now defers by a macrotask and records the error: reintroducing `on` turns the suite red
+(114/115), which is the check that the fix is real.
+
+Still the owner's to judge: whether four icons and a dot are discoverable enough without a legend on
+screen. What is measured here is that the display contains no text — 115 assertions, all green,
+including that every tile on the album wall is a bare photograph whose claims are read inside the plate.

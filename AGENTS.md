@@ -124,6 +124,12 @@ intact:
   `[data-ig-grid]` in DOM order and the frames are emitted in that same order; `verify-walk.mjs`
   asserts the two lists agree. `#room-plate` (the lane) and `#ig-plate` (the album) are different
   viewers for different surfaces and must not be merged or duplicated.
+- **The head-up display wears no words.** Everything textual in the lane's chrome is folded into an
+  icon button that opens `data-walk-card`; the status and record lines remain only as `.sr-only` live
+  regions, the station rail is ticks whose heights come from each stop's authored `--p` depth, and even
+  the view controls are glyphs of the site's own icon set rather than `−`/`+`. `verify-walk.mjs` asserts
+  that no node in `.walk-hud` has text of its own — do not "improve" discoverability by putting a label
+  back on the space.
 - **The space wears the atmosphere; the view only frames it.** Wall materials, ground markings and
   hanging lights are emitted as scene-centimetre islands (`data-walk-surfaces`, `data-walk-marks`, the
   lantern entries in `data-walk-lights`) and painted from tiles the renderer draws in code. Nothing may

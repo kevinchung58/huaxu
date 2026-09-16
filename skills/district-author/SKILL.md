@@ -109,7 +109,7 @@ Run in this order and stop on the first failure:
 python3 _gen_html.py; echo "exit=$?"          # exit 0 or nothing else counts
 md5sum *.html > /tmp/a && python3 _gen_html.py >/dev/null && md5sum *.html > /tmp/b
 diff -q /tmp/a /tmp/b                          # the generator must be idempotent
-node .verify/verify-walk.mjs           # 101 assertions, run from the repo root
+node .verify/verify-walk.mjs           # 115 assertions, run from the repo root
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 curl -s http://127.0.0.1:8080/<page>.html | grep -o 'site\.\(css\|js\)?v=[0-9a-z]*' | sort -u
 curl -s http://127.0.0.1:8080/<page>.html | grep -c '<new marker you just added>'
@@ -183,3 +183,18 @@ No iOS Safari exists in this sandbox, so mobile behaviour is **unmeasured** and 
 reported as proven. What needs no device is the fallback: the captioned list is always readable. The
 per-frame draw cost is measurable here and is asserted — `ctx.fills`, and that no textured quad covers
 more than its own uv extent; what it looks like on a phone is not.
+
+## 7. The display wears no words
+
+Nothing in `.walk-hud` may be text — not a caption, not a station label, not a `−` glyph. Anything with
+a sentence is a button that opens a card, and the card carries both modes: what you are standing in
+front of, and the lane's own note (legend, disclaimer, fallback sentence). Live regions stay in the
+document as `.sr-only`, because *announced* and *painted* are different claims and only the second one
+is forbidden. The album wall follows the same rule: tiles are photographs, and what a plate may claim is
+read inside the plate.
+
+When a control has to say something non-verbally, say it with the geometry the data already has: the
+station rail is a row of ticks whose heights come from each stop's authored depth (`--p`), and the note
+button carries a dot while something in front of you has a card. `verify-walk.mjs` walks every node in
+the HUD and fails on its *own* text, so a wrapper above a live region is not an excuse.
+

@@ -1575,9 +1575,15 @@ function leaveOverlay(root, trigger) {
     }
   };
 
+  const liveEl = layer.querySelector("[data-walk-live]");
   const say = (status, record) => {
     if (status && statusEl) statusEl.textContent = status;
     if (record !== undefined && recordEl) recordEl.textContent = record;
+    // The card is where the sentence can be read, so it is kept in step with the announced one while
+    // it is open: a line that goes stale behind a click is worse than no line at all.
+    if (liveEl && card && !card.hidden) {
+      liveEl.textContent = [status, record].filter(Boolean).join(" ") || "Nothing is in front of you.";
+    }
   };
   const metres = (v) => `${(Math.abs(v) / 100).toFixed(1)} m`;
 
@@ -1592,7 +1598,9 @@ function leaveOverlay(root, trigger) {
     stops.forEach((el, i) => el.classList.toggle("is-here", i === here));
     if (here >= 0 && far < 240) say(`${labels[here]} · ${metres(depth)} in`, "");
   };
-  const labels = stops.map((el) => (el.textContent || "").trim());
+  // The chip's name lives in `aria-label` now, because nothing is written on the display any more;
+  // splitting it is the whole difference between an announced status and a painted one.
+  const labels = stops.map((el) => (el.getAttribute("aria-label") || "").split(",")[0].trim());
 
   /* The reach: what you can open is decided by where you stand and where you look, so the scene
      answers before anything is pressed, and `E` is never a guess. */
@@ -1611,8 +1619,11 @@ function leaveOverlay(root, trigger) {
     if (best && best.el === (reach && reach.el)) { reach = best; return; }
     if (reach) reach.el.classList.remove("is-reach");
     reach = best;
-    if (!best) { markStops(); return; }
+    if (!best) { layer.classList.remove("has-reach"); markStops(); return; }
     best.el.classList.add("is-reach");
+    // One non-verbal signal for the whole display: the note button carries a dot while there is
+    // something to read about what is in front of you.
+    layer.classList.add("has-reach");
     const title = best.el.dataset.title || "";
     say(`${title} · ${metres(best.z - depth)} ahead`,
         best.el.dataset.frame === undefined ? "Press E to look closer." : "Press E to open the frame.");
@@ -1703,12 +1714,13 @@ function leaveOverlay(root, trigger) {
     // moves, so the frame it lands in is repainted on its own. Attached here, not where the images
     // are created: that code runs before `draw` exists, and a load handler that fires early enough
     // to matter is exactly the kind that reaches into an uninitialised binding.
-    pics.forEach((img) => { img.onload = () => { if (on && !raf) draw(); }; });
+    pics.forEach((img) => { img.onload = () => { if (!raf) draw(); }; });
     if (!g) {
       // The reference names its fallback instead of hiding it: a visitor with no canvas gets the
       // sentence and the list, not a black rectangle that looks like a broken image.
       if (noRaster) noRaster.hidden = false;
-      say("Rendering the lane is unavailable here · the list below still reads", "");
+      say("Rendering the lane is unavailable here · the list still reads", "");
+      showSpace();
       if (listBtn) toggleList(true);
       return;
     }
@@ -1723,22 +1735,60 @@ function leaveOverlay(root, trigger) {
     }));
     loop();
   };
+  const infoBtn = layer.querySelector("[data-walk-info]");
+  const asideEl = card && card.querySelector("[data-walk-aside]");
   const hideCard = () => {
     if (!card) return;
     card.hidden = true;
+    if (card.dataset.mode !== "prop") card.dataset.mode = "prop";
+    if (asideEl) asideEl.hidden = true;
+    if (infoBtn) infoBtn.setAttribute("aria-expanded", "false");
   };
   const showCard = (m) => {
     if (!card) return;
     const where = card.querySelector("[data-walk-where]");
     const title = card.querySelector("[data-walk-title]");
     const hint = card.querySelector("[data-walk-hint]");
+    card.dataset.mode = "prop";
+    if (asideEl) asideEl.hidden = true;      // the lane's own note is not this prop's business
     if (where) where.textContent = `${district} · ${metres(m.z)} in`;
     if (title) title.textContent = m.el.dataset.title || "";
     if (hint) hint.textContent = m.el.dataset.hint || "";
+    if (liveEl) liveEl.textContent = statusEl ? statusEl.textContent : "";
     card.hidden = false;
+    if (infoBtn) infoBtn.setAttribute("aria-expanded", "false");
     const btn = card.querySelector("[data-walk-card-close]");
     if (btn) btn.focus({ preventScroll: true });
   };
+  /* The space's own text — the legend, the disclaimer, the fallback sentence — is written into the
+     page inside a card that is closed until you ask for it. Nothing in the head-up display is a
+     sentence; the icons are the only chrome, and this is the one button that opens prose. */
+  const showSpace = () => {
+    if (!card) return;
+    card.dataset.mode = "space";
+    if (asideEl) asideEl.hidden = false;
+    const where = card.querySelector("[data-walk-where]");
+    const title = card.querySelector("[data-walk-title]");
+    const hint = card.querySelector("[data-walk-hint]");
+    const thing = reach ? (reach.el.dataset.title || "") : "";
+    if (where) where.textContent = `${district} · one lane, drawn`;
+    if (title) title.textContent = thing ? `${thing} · ${metres(reach.z - depth)} ahead`
+                                          : "How to be in the lane";
+    if (hint) hint.textContent = thing
+      ? "Its own card holds the reason a thing like this is in the space: press E, or open the list for "
+        + "everything at once."
+      : "Nothing here is labelled and nothing is named: the shutters carry no shop, the board is blank, "
+        + "because a name would be a claim about a place that is drawn rather than found.";
+    if (liveEl) liveEl.textContent = statusEl ? statusEl.textContent : "";
+    card.hidden = false;
+    if (infoBtn) infoBtn.setAttribute("aria-expanded", "true");
+    const btn = card.querySelector("[data-walk-card-close]");
+    if (btn) btn.focus({ preventScroll: true });
+  };
+  if (infoBtn) infoBtn.addEventListener("click", () => {
+    if (!card) return;
+    if (card.hidden || card.dataset.mode !== "space") showSpace(); else hideCard();
+  });
 
   const act = (m) => {
     if (!m) return;
@@ -1844,8 +1894,9 @@ function leaveOverlay(root, trigger) {
     // user activates things), and the open drawer is a document to be read, not a HUD to walk in.
     const busy = (card && !card.hidden) || (listPanel && !listPanel.classList.contains("is-closed"));
     const onControl = document.activeElement && document.activeElement.closest(".walk-tools, .walk-stops, .walk-list, .walk-card");
-    if (busy && k !== "escape" && k !== "l") return;   // folding must survive folding: L closes what
-                                                          // L opened, or the drawer becomes a cage
+    if (busy && k !== "escape" && k !== "l" && k !== "i") return;   // folding must survive folding: L
+                                                          // closes what L opened and I closes what I
+                                                          // opened, or a folded interface is a cage
     if (onControl && (k === " " || k === "enter" || k === "spacebar")) return;
     if (k === "escape") {
       // Esc folds the overlays away and never ejects anybody: the page is the space, so there is
@@ -1856,6 +1907,19 @@ function leaveOverlay(root, trigger) {
       return;
     }
     if (k === "l") { event.preventDefault(); toggleList(); return; }
+    // The note button's key. A folded interface still needs a keyboard route to the fold, or the
+    // prose becomes something only a mouse can ask for.
+    if (k === "i") {
+      event.preventDefault();
+      if (!card) return;
+      if (card.hidden) {
+        // The list is a document already being read; a note does not stack on top of it.
+        if (listPanel && !listPanel.classList.contains("is-closed")) return;
+        showSpace();
+      } else if (card.dataset.mode === "space") hideCard();
+      else showSpace();     // a prop's card is replaced by the lane's note, not buried under it
+      return;
+    }
     if (k === "e") { event.preventDefault(); act(reach); return; }
     if (k === " ") { event.preventDefault(); jump(); return; }
     if (k === "enter" && document.activeElement === view && reach) { event.preventDefault(); act(reach); return; }
