@@ -338,9 +338,96 @@ model changed and three sections above are now superseded:
   (audio, more props, level transitions). `Level G · Coming soon` has its twin in the second district
   card, which says it is not open and does not pretend otherwise.
 
-Measured, not assumed: 90 jsdom assertions pass, including the raster's own invariants (finite
+Measured, not assumed: 75 jsdom assertions pass, including the raster's own invariants (finite
 numbers only on the context, clip state balanced, textures drawn, `−`/`+` changing focal length
 without resizing the canvas, controls leaving the tab order when unoccludable). Nothing here has been
 *seen*: this sandbox has no browser, so how the alley reads — and whether it holds 60 fps on a phone
 — remains the owner's to judge. The first build of the raster reached him as too dark to make out, which is
 what the asserted material luminances and the murk ceiling above now hold in place.
+
+## §18 — The partition, the album, and what "the environment" meant
+
+Three things were settled here, all of them by decision rather than by preference.
+
+**`IMG/` became a registry.** A space may not open without a declared purpose, and a photograph on a
+site is a claim in the same sense, so every raster is assigned to a block by rule in `_gen_html.py`
+(`IMG_RULES`) and each block carries a kind: `field-notes` (personal; generated plates, labelled as
+generated wherever they appear), `classroom` (academic; shown only with a venue and a date, which is
+why it hangs nothing today — three files are filed and held, and the count is printed), `figures`
+(argument, which stays inline where it is cited), `interface` (mascot and page covers), `portrait`
+(the face the site is written in, which is never album material), and `unfiled` (`IMG/3.jpg`, held by
+name because the owner asked, with the reason printed instead of the file quietly dropped). A file
+that matches no rule and a rule that matches no file both stop the build with a non-zero exit, so the
+partition cannot rot as the folder grows. Nine files matched nothing on the first run — that is the
+gate working, not a regression.
+
+**The album is emitted on the reading surface.** `.ig-*` was already styled and `#ig-plate` was
+already written, but nothing produced the markup: what shipped in its place was a `data-deck` gallery
+with **no CSS and no JS at all**, so the arrows, the dots and the lightbox were inert and the design
+the owner had approved was invisible. The deck is deleted and the registry feeds the album: one
+`[data-ig-wall]` per block, one roll for the page, tiles addressed by index into frames built in the
+same pass. `#room-plate` stays the in-space viewer — it has to be operable with your body in the scene
+and it carries the segment timeline — so there are two viewers for two surfaces and never two for one.
+Per the owner's ruling, this is an album and not a story: nothing expires, nothing is marked seen.
+
+**The lane is furnished, and the furniture is data.** 22 objects, each authored as a solid (width,
+height, depth in `OBJ_SIZE`), so props occlude, you can walk behind them, and the hit box wraps the
+volume the picture shows. Lighting is data too — `data-walk-lights` and `data-walk-wires` — and the
+renderer may not invent a lamp: five bulbs down the ceiling axis, one glow derived from the vending
+machine's own position because that is where that light comes from. The `.walk-canvas::after` "film
+grain" was deleted: `::after` does not apply to a replaced element, so it had never painted, and the
+detector waiver that justified it was removed in the same commit rather than left behind as a rumour.
+
+Honest ledger: the generator half of this round was momentarily lost when the sandbox moved `HEAD`
+and a `git checkout -- _gen_html.py` pulled an older copy; it was rebuilt from the shipped page and
+proved by regenerating to a byte-identical `rooms.html`. Still unmeasured, as ever, is how any of it
+*looks* — there is no browser in this sandbox, and the alley's readability on a phone remains the
+owner's call.
+
+## §19 — Tokyo as a compound: the end of the lane is a window
+
+The owner's ask was to furnish the *place*, not the camera: 「這房間你能佈置像是東京的綜合體嗎?像是十
+字路口、東京鐵塔、富士山」. The answer is an aperture, not more decals.
+
+**The composition.** The end wall is cut with a 4.70 m × 2.28 m opening at sill height 108 cm. Through
+it, from a plaza two and a half metres below the lane's floor: a scramble crossing (nine bands across,
+nine along, so the ground reads as somewhere people converge rather than a single zebra), eight block
+fronts with lit windows, the tower in three banded sections with two decks and a mast, and Mount Fuji
+behind all of it under three bands of sky whose only glow is the horizon — light pollution, which is
+what a night sky over a city actually looks like. Overhead inside the lane, four arcade beams give the
+ceiling a rhythm, so the alley reads as the side of a building rather than an empty box.
+
+**Why the compound is seen and not entered.** `MAX_D` is 1200 and the wall is at 1247: the window is a
+view, not a hole out of the world. One route, and you cannot walk off the edge of it — which is also
+what keeps the reach test, the tab order and the focus return working unchanged. Widening the walkable
+volume would need a collider that is not a box, and everything in §R2's accessibility story would have
+to be re-proven for a sightline.
+
+**Two coordinate systems, and the rule that keeps them apart.** Objects hung from records keep record
+centimetres and are multiplied by `Z_SCALE`. The space itself — aperture, beams, and everything past
+the wall — is authored in scene centimetres and is *never* scaled, because it is not a record of
+anything. They are emitted as three more islands (`data-walk-vista`, `-beams`, `-backdrop`) beside the
+lights and the cables, and the renderer's rule stands: it may not invent a position. The far plane is
+authored at the scale a *picture* of Tokyo shows rather than 1:1 — a mountain does not fit in a space
+12 m long — and the page says so where you would lean on it: the lookout rail's card carries the
+sentence, and no invented lettering appears anywhere in the view.
+
+**The bounce is a light source.** The seventh lamp is the city's own light coming in through the window
+(`k: 0.55`, `bulb: false`, tint `rgba(146,178,255,0.26)`, r 900): it makes the end of the lane the
+brightest part of it, which is what a sightline is for. `bulb: false` also means no glass is drawn and
+no pool is thrown on the asphalt, because there is no bulb there.
+
+**Two renderer invariants this taught.** A far plane must be culled by its bounds, not by its corners —
+the sky covers the view precisely by being larger than it, so every corner lands off-screen and a corner
+test erases the whole backdrop. And depth-sorted painting does the masking for free: the wall pieces
+are nearer, so they are painted after, and no clip path, second canvas, or library is involved.
+
+**Found on the way, by the harness rather than by eye:** `fold()` — the pause-the-walk helper — was
+defined and never called, and the `on` flag it set was write-free, so the walk carried dead state for
+several rounds. Both are gone, with the reason written where `fold()` was: the loop is already driven by
+motion, so an open plate costs nothing to animate, and the key guards in the handler cover the overlays.
+
+Still unmeasured, and it is the owner's to judge: whether the alley-plus-compound reads as one place at
+a glance, and whether the far plane survives a phone at 60 fps. The numbers say the scene paints (1277
+fills, 132 oversized far quads, 21 textures, balanced save/restore, no non-finite value, murk capped at
+0.187); nothing here says what it looks like.

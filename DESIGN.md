@@ -52,7 +52,7 @@ precise instrument, serif-led typography.
 
 1. Edit `css/site.css` only; bump the `?v=` cache-buster in `_gen_html.py` (line ~6) and rerun `python3 _gen_html.py`.
 2. Verify contrast on new text/surface pairs (≥4.5:1 small text, ≥3:1 large).
-3. Run the detector: `node .claude/skills/impeccable/scripts/detect.mjs --json css/site.css index.html` — keep it at 0 findings.
+3. Run the detector: `node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)` — keep it at 0 findings (`impeccable@4.1.0` from npm, installed without `--save`; never commit a `package.json`).
 
 ## Detector policy (`.impeccable/config.json`)
 

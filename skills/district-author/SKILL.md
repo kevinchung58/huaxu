@@ -109,8 +109,8 @@ Run in this order and stop on the first failure:
 python3 _gen_html.py; echo "exit=$?"          # exit 0 or nothing else counts
 md5sum *.html > /tmp/a && python3 _gen_html.py >/dev/null && md5sum *.html > /tmp/b
 diff -q /tmp/a /tmp/b                          # the generator must be idempotent
-cd .claude/scratch && node verify-rooms.mjs   # 37 assertions incl. clamps, focus, inert
-node .claude/skills/impeccable/scripts/detect.mjs --json css/site.css $(ls *.html)
+node .verify/verify-walk.mjs           # 72 assertions, run from the repo root
+node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 curl -s http://127.0.0.1:8080/<page>.html | grep -o 'site\.\(css\|js\)?v=[0-9a-z]*' | sort -u
 curl -s http://127.0.0.1:8080/<page>.html | grep -c '<new marker you just added>'
 ```
@@ -120,29 +120,53 @@ while the browser was being handed stale cache-busted assets, and it shipped thr
 where `python3 _gen_html.py` raised `NameError` while the already-generated pages made the
 build look healthy. Grep the artefact the browser fetches.
 
-`.claude/` is gitignored and the sandbox wipes it between turns: reinstall the impeccable
-skill (`skill-v4.1.3`, prefix `.agent/skills/impeccable`, then
-`npm install --no-save htmlparser2 css-select css-tree domutils`) and `jsdom` before
-trusting either result. If the tooling is gone, say so in the commit message instead of
-quietly downgrading to grep.
+`.claude/` and `node_modules/` are gitignored and the sandbox wipes them between turns — it wipes
+`.claude/` reliably, which is why the harness lives in `.verify/` (also gitignored, but it has
+survived). The sandbox can also move `HEAD` under you, which is how a `git checkout -- _gen_html.py` once silently replaced the
+generator with an older commit's copy. `npm install --no-save jsdom impeccable@4.1.0` restores both
+tools (`impeccable install` cannot reach its bundle from here), and nothing may leave a
+`package.json` behind in the repo. If the tooling is gone, say so in the commit message instead of
+quietly downgrading to grep, and check `git rev-parse HEAD` before trusting any diff — a re-cloned
+sandbox has dropped this session's commits twice, and the only thing that survived was the working
+tree, so commit early and often even while the remote is unreachable.
 
 ## 5. Refusals
 
-No invented venues, dates, captions, attendees, or visited places. No student or bystander
+No invented venues, dates, captions, attendees, or visited places. Drawn set dressing (a crate, a
+bollard, a blank sign) is authorised art direction and says so in its own hint; a caption never does.
+An image may not reach a page before it reaches `IMG_RULES`. No student or bystander
 faces presented as content. No vendored library, no WebGL, no npm tooling committed without
 the owner explicitly renegotiating the dependency rule in `AGENTS.md` — and that is its own
 PR, not a gallery PR. When a hoist or splice of this single-file generator is involved,
 check ordering: a slice with `i > j` produces a duplicated region that still parses, passes
-`ast.parse`, and fails only at runtime.
+`ast.parse`, and fails only at runtime. And patch a file by applying, writing, then re-grepping the
+written file — an assert that runs after an in-memory mutation loses the whole round when it fires
+late, which has now happened four times.
 
-## 6. WebKit flattening — why the scene is structured this way
+## 6. What is a solid, and what is a plate
 
-A non-visible `overflow`, or a `filter`, on the element that declares `transform-style:
-preserve-3d` silently forces it flat in Safari and WebKit; a universal `preserve-3d` rule makes
-the scene vanish. So `preserve-3d` goes on the world wrapper only, the clip and the
-`perspective` one level up, and filters on leaves with no 3D children. Adding a second
-`preserve-3d`, or "tidying" the clip onto the wrapper, flattens the lane on iPhone with no
-finding from any tool in this repo.
+The lane is **one canvas raster**, so it cannot be assembled out of separately transformed surfaces —
+that was the earlier architecture and it is gone. What remains 3D in CSS is the album wall and the
+plate, and there WebKit still bites: a non-visible `overflow`, or a `filter`, on the element that
+declares `transform-style: preserve-3d` silently forces it flat, and a universal `preserve-3d` rule
+makes the whole thing vanish. So `preserve-3d` goes on `.ig-grid` only, the `perspective` one level up
+on `.ig-wall`, and the frames' depth **inside each frame's own transform**, because a scroll container
+flattens its children.
+
+Inside the raster, the equivalent rule is that nothing may be invented by the renderer, and there are
+two coordinate systems that must never be mixed: a *record* is authored in record centimetres and
+multiplied by `Z_SCALE`, while the *space* — an arcade beam, an aperture in a wall, the far plane seen
+through it — is authored in scene centimetres and is not scaled at all, because it is not a record of
+anything. A prop is
+authored as a solid (`OBJ_SIZE` gives width, height and depth; depth is what lets you walk behind it
+and what wraps the hit box around the thing you can see), and light is authored as data — the two JSON
+islands `data-walk-lights` and `data-walk-wires`. The renderer draws the bulbs it is told about and
+derives exactly one glow from a prop's own position, because that light has to come from the machine.
+Adding a lamp in `js/site.js` to "fix" a dark wall is the failure mode this prevents: it produces a
+scene that looks lit and a dataset that says otherwise.
+
+No iOS Safari exists in this sandbox, so mobile behaviour is **unmeasured** and must never be
+reported as proven. What needs no device is the fallback: the captioned list is always readable.
 
 No iOS Safari exists in this sandbox, so mobile behaviour is **unmeasured** and must never be
 reported as proven. What needs no device is the fallback: the captioned list is always readable.

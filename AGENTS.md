@@ -103,20 +103,31 @@ lives in `js/site.js` (the `[data-dot-*]` block). Contract to keep intact, in th
 
 ## Interactive: the photo plate
 
-The gallery on `activities.html` is a contact sheet you step into, not a static figure row
-— do not reduce it back to a thumbnail strip. Content lives in `GALLERY` (`_gen_html.py`,
-one `(src, alt, caption)` tuple per photograph); all behavior lives in `js/site.js` (the
-`[data-ig-*]` block). Contract to keep intact:
+The album on `activities.html` is a wall of plates you step into, not a static figure row — do
+not reduce it back to a thumbnail strip, and do not reinstate the `data-deck` markup that used to
+ship there: it had no CSS and no JS at all, which is how this section came to describe a feature
+that did not exist. Content comes from the image registry (`IMG_RULES` / `ALBUM` in
+`_gen_html.py`); all behavior lives in `js/site.js` (the `[data-ig-*]` block). Contract to keep
+intact:
 
 - Tiles are links to the full-resolution file, never buttons; `preventDefault()` runs only
   when there is a plate to show, so the archive survives with scripting off.
 - The zoom is a named view transition: `view-transition-name` is set on the tile image, then
   on the plate image, then cleared. Putting it on every tile in CSS collides and the morph
   stops with no error.
-- `GALLERY` empty omits the section rather than drawing an empty frame, and an empty caption
-  renders no caption row. Do not add a placeholder photograph or a "forthcoming" promise.
-- Sizes come from the file: `img_dims()` reads the JPEG header so neither the grid nor the
-  plate can shift, and `loading="lazy"` stays on both.
+- A block with nothing to hang keeps its heading and its reason (`Nothing in this block yet`
+  plus the count of what is held), because an archive that silently omits a shelf is
+  indistinguishable from one that never had it. A `record` image is not shown until it has a
+  caption with a venue and a date — do not add a placeholder photograph or a "forthcoming"
+  promise to make a block look full.
+- **One roll per page.** The plate is addressed by index, so the tiles are flattened across every
+  `[data-ig-grid]` in DOM order and the frames are emitted in that same order; `verify-walk.mjs`
+  asserts the two lists agree. `#room-plate` (the lane) and `#ig-plate` (the album) are different
+  viewers for different surfaces and must not be merged or duplicated.
+- **No watched state.** `放進限時動態只是做相簿用`: this is an album, not a story. Nothing may be
+  marked seen, nothing expires, and `1 / n` is a position, not a countdown.
+- Sizes come from the file: `poster_attrs()` reads the JPEG header so neither the grid nor the
+  plate can shift, and `loading="lazy"` stays on the tiles.
 - `inertOutside` / `trapTab` / `enterOverlay` / `leaveOverlay` are the site's shared overlay
   plumbing; the plate and the dot game both use them. Keep them shared.
 - Depth is **CSS transforms only**. The tilt and the angled roll are `perspective()` plus
@@ -138,12 +149,19 @@ new work inside that world unless the user asks for a redesign.
 **Design detector.** `.impeccable/config.json` (tracked) holds the repo-wide impeccable
 detector policy: it waives the generic SaaS/AI-template rules that fire on purpose because they
 describe this world (cream paper, amber hairline rules, navy plate shadows, editorial eyebrows,
-etc. — each documented in `DESIGN.md`). Keep `node .claude/skills/impeccable/scripts/detect.mjs
---json css/site.css <pages...>` at **0 findings**. Fix objective defects (contrast, heading
-order, sub-11px functional text, broken/placeholder images) in code — never silence them via the
-config. Full-mode HTML/CSS parsing needs `htmlparser2 css-select css-tree domutils` installed
-under `.claude/skills/impeccable/node_modules` (gitignored); the script prints `DEGRADED` and
-undercounts if they are missing.
+etc. — each documented in `DESIGN.md`). Run it over the stylesheet and every page and keep it at **0 findings**:
+
+```bash
+node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
+```
+
+Fix objective defects (contrast, heading order, sub-11px functional text, broken/placeholder
+images) in code — never silence them via the config. The tool comes from `impeccable@4.1.0` on npm,
+installed **without** `--save` so no `package.json` enters the repo: `impeccable install` cannot
+fetch its bundle from this sandbox (TLS), so `npm i -D impeccable@4.1.0` is the working path, and
+`node_modules/` is gitignored either way. A rule disappears from the baseline only when the thing
+that caused it is deleted — the waiver for `repeating-stripes-gradient` was removed together with
+the `.walk-canvas::after` overlay it described, not left behind as a rumour of a defect.
 
 ## Skills
 
@@ -191,10 +209,19 @@ Reinstall sources:
 - Inline SVG icons (Heroicons-style paths) are defined in `_gen_html.py`; add new icons there.
 - Commit generated HTML together with the `_gen_html.py` change that produced it.
 
-5. **`rooms.html` is a shell, not an article.** It is the only page built by `shell_page()`: no
-   nav, no footer, no `reveal`, and its reading material lives in a drawer that ships open and is
-   folded by JS. Adding a section, a `reveal` class or a navy drawer surface to that page is a
-   defect, not a design choice — it either hides content from visitors without scripting or drops
-   borrowed components to 2:1 contrast. The scene itself is a canvas raster with no library in it;
-   its box is authored (`data-lane-w/-d/-ceil`, `data-eye`) and read by the renderer, so do not put
-   geometry back into CSS transforms or invent a second set of numbers in `js/site.js`.
+- **`IMG/` is a registry, not a folder.** Every raster is assigned to a block by `IMG_RULES` in
+    `_gen_html.py`, and the block's kind decides what the image may claim: `record` needs a venue and
+    a date before it is shown, `generated` is labelled generated wherever it appears, `figure` stays
+    inline with the argument that cites it, and `unfiled` is held by name with the reason printed. A
+    file that matches no rule and a rule that matches no file both stop the build with a non-zero
+    exit, so the partition cannot rot. Do not add an image to a page before adding it to the
+    registry, and do not classify a new block as `personal` or `academic` without writing down what
+    it is for — the same rule that governs a district governs the picture of one.
+
+- **`rooms.html` is a shell, not an article.** It is the only page built by `shell_page()`: no
+    nav, no footer, no `reveal`, and its reading material lives in a drawer that ships open and is
+    folded by JS. Adding a section, a `reveal` class or a navy drawer surface to that page is a
+    defect, not a design choice — it either hides content from visitors without scripting or drops
+    borrowed components to 2:1 contrast. The scene itself is a canvas raster with no library in it;
+    its box is authored (`data-lane-w/-d/-ceil`, `data-eye`) and read by the renderer, so do not put
+    geometry back into CSS transforms or invent a second set of numbers in `js/site.js`.

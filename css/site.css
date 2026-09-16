@@ -1823,13 +1823,9 @@ body.shell {
 }
 /* The lane is drawn rather than photographed, so it is allowed one visible grain: the film on a
    night scene that keeps flat wall panels from banding under the fog. */
-.walk-canvas::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgba(230, 240, 255, 0.028) 0 1px, transparent 1px 3px);
-}
+/* No overlay on the canvas: a screen-fixed stripe over a scene that moves reads as a
+   screen door rather than as grain, and `::after` does not apply to a replaced element, so the one
+   time it was tried it never painted. Texture belongs in the raster, where it can be seen. */
 .walk-hud {
   position: absolute;
   inset: 0;
