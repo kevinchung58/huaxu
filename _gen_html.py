@@ -5,7 +5,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260923a"   # one bump per changed asset pair; both tags read it
+VER = "20260923b"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -1492,6 +1492,8 @@ OBJ_SIZE = {
     "front": (170, 300, 40), "booth": (110, 215, 110), "bikes": (150, 102, 55),
     "planter": (104, 50, 46), "cones": (74, 70, 34), "mailbox": (52, 74, 36),
     "signA": (70, 86, 52), "banner": (56, 150, 6), "pane": (120, 86, 22),
+    "mirror": (78, 78, 24), "ladder": (36, 268, 48), "hydrant": (32, 94, 30),
+    "recycle": (58, 72, 52), "meter": (46, 58, 24), "camera": (28, 24, 34),
 }
 
 EYE = 168                    # the eye is 1.68 m above the floor; 1 px = 1 cm throughout
@@ -1502,10 +1504,15 @@ LANE_CEIL = 420             # cm, and a rendering choice rather than a record: t
 LANE_BACK = 240             # how far the walls run behind you, so turning round shows a lane
 Z_SCALE = 2.9                # records are authored in the old 4.3 m lane; the space is 12.4 m
 WALK_D = round(LANE_D * Z_SCALE)
+# Stations are places, and a place is where something is: the mouth with its mirror and meter, the
+# posters, the lit front halfway down, the pole and its crates, and the machine at the end. Five, not
+# four, because the lane now has furniture the whole way down it and a stop that names a thing you can
+# walk to is worth more than a stop that divides the distance evenly.
 STATIONS = [
     {"z": 0, "label": "the entrance"},
     {"z": 150, "label": "under the posters"},
     {"z": 275, "label": "by the pole"},
+    {"z": 350, "label": "by the lit window"},
     {"z": 395, "label": "in front of the machine"},
 ]
 DISTRICTS = [
@@ -1540,6 +1547,28 @@ DISTRICTS = [
              "title": "A small shrine at knee height",
              "hint": "Draw one slip. The slip picks which slot you look at first; there is "
                      "no score, because a lane is not a game to win."},
+            {"id": "mirror", "kind": "mirror", "x": -308, "z": 14, "y": 236, "ry": 90,
+             # The only object in the lane that turns. `turn` swings the disc on its bracket, so a press
+             # changes the geometry — and what you can see down the lane does not change at all, because
+             # there is nothing behind the glass to show.
+             "states": [
+                 {"say": "Aimed down the lane, the way it was hung.", "turn": 0.0},
+                 {"say": "Turned to the wall. A mirror is aimed by whoever put it up, and this one "
+                         "has nothing to show either way: it is drawn glass, not silvered.",
+                  "turn": 1.0},
+             ],
+             "title": "A convex mirror on a bracket",
+             "hint": "At the mouth of every lane like this, aimed at the corner you cannot see. Drawn, "
+                     "not silvered: there is no reflection in it, because a mirror that invented one "
+                     "would be the renderer making something up."},
+            {"id": "meter", "kind": "meter", "x": 312, "z": 10, "y": 148, "ry": -90,
+             "title": "A meter box and its conduit",
+             "hint": "Bolted where the supply comes in, with its conduit running up to the wire. It "
+                     "reads nothing, because it is drawn: no reading of anybody's is in this lane."},
+            {"id": "hydrant", "kind": "hydrant", "x": 288, "z": 44, "y": 0, "ry": -90,
+             "title": "A standpipe at the kerb",
+             "hint": "Short, red and unmistakable at thirty metres, which is the whole test for "
+                     "dressing. Nothing is claimed about water, or about anybody's fire."},
             {"id": "drain", "kind": "drain", "x": -80, "z": 54, "y": 0, "ry": 0,
              "title": "A drain in the asphalt",
              "hint": "It is the one thing on the floor that knows the lane is wet."},
@@ -1566,6 +1595,36 @@ DISTRICTS = [
             {"id": "pipe", "kind": "pipe", "x": 308, "z": 170, "y": 0, "ry": -90,
              "title": "A drainpipe down the right wall",
              "hint": "The lane's other vertical: the one thing here that runs the whole height."},
+            {"id": "ladder", "kind": "ladder", "x": -300, "z": 165, "y": 0, "ry": 90,
+             "title": "A ladder left against the wall",
+             "hint": "Leaning, not resting: `d` is how far its feet stand out from the wall. It is the "
+                     "one prop here that is pure silhouette, which is exactly why it belongs."},
+            {"id": "camera", "kind": "camera", "x": 306, "z": 196, "y": 182, "ry": -90,
+             "glow": [{"r": 40, "k": 0.22, "tint": "rgba(255,120,110,0.5)", "dy": 6}],
+             "title": "A camera under the awning",
+             "hint": "The only lens in the lane, and it is drawn: a body, a bracket, and a small light "
+                     "that is the whole reason the glow beside it exists. It records nothing, and "
+                     "nothing in this lane is watched."},
+            {"id": "front-b", "kind": "front", "x": 316, "z": 250, "y": 0, "ry": -90,
+             "glow": [{"r": 170, "k": 0.75, "tint": "rgba(255,176,96,0.40)", "dy": 150}],
+             # The second front you can do something to, in the half of the lane that used to be only
+             # scenery. Same three stops as the first, and the same coupling: the shutter's height and
+             # the light the lane gets are one number.
+             "states": [
+                 {"say": "Down, and warm behind the steel. Somewhere back there a room is still lit.",
+                  "shut": 0.0, "k": 0.6},
+                 {"say": "Half up: the counter, the shelf behind it, and nobody at either.", "shut": 0.55,
+                  "k": 1.1},
+                 {"say": "Fully up. An empty room with its light on, which is the most honest thing a "
+                         "lane at this hour can show you.", "shut": 1.0, "k": 1.4},
+             ],
+             "title": "The lit front halfway down",
+             "hint": "The far half of the lane answers now: press it and the shutter rolls, and the "
+                     "light that reaches the asphalt goes with it. Drawn, empty, and not for sale."},
+            {"id": "planter-2", "kind": "planter", "x": -252, "z": 332, "y": 0, "ry": 90,
+             "title": "Two planters further down",
+             "hint": "The second planting in the lane, put where the wall turns from brick to hoarding: "
+                     "an alley with only grey in it is a drawing of an alley."},
             {"id": "awning", "kind": "awning", "x": 292, "z": 200, "y": 214, "ry": -90,
              "title": "An awning over a shuttered front",
              "hint": "Drawn at 12 degrees so it sheds onto the lane. There is no shop behind it; "
@@ -1628,7 +1687,7 @@ DISTRICTS = [
              "title": "A pair of cones, stored rather than working",
              "hint": "Nothing is being repaired here. They are stacked where they were left, which is "
                      "the only reason they are in the scene."},
-            {"id": "mailbox", "kind": "mailbox", "x": 314, "z": 262, "y": 0, "ry": -90,
+            {"id": "mailbox", "kind": "mailbox", "x": 314, "z": 218, "y": 0, "ry": -90,
              "states": [
                  {"say": "Shut.", "flap": 0.0},
                  {"say": "The flap is open and the box is empty. It is a shape in a lane, not a way to "
@@ -1663,6 +1722,15 @@ DISTRICTS = [
                  {"say": "Opened a hand's width: the air of the room comes into the lane, and the light "
                          "with it.", "slide": 1.0, "k": 1.45},
              ]},
+            {"id": "recycle", "kind": "recycle", "x": -294, "z": 398, "y": 0, "ry": 90,
+             "states": [
+                 {"say": "Lidded.", "flap": 0.0},
+                 {"say": "Lid up, and empty. It stands beside the machine because that is where a crate "
+                         "like this stands; nothing in this lane gets recycled.", "flap": 1.0},
+             ],
+             "title": "The crate beside the machine",
+             "hint": "Every machine on a street like this has one within arm's reach of it. That is the "
+                     "only reason it is here, and nothing is in it."},
             {"id": "bin-2", "kind": "bin", "x": -262, "z": 356, "y": 0, "ry": 90,
              "title": "The far bin",
              "hint": "The last thing before the light at the end of the lane."},
@@ -1692,15 +1760,20 @@ DISTRICTS = [
             {"side": -1, "z0": 300, "z1": 470, "y0": 0, "y1": 130, "kind": "dado"},
             {"side": -1, "z0": 300, "z1": 470, "y0": 130, "y1": 420, "kind": "brick"},
             {"side": -1, "z0": 470, "z1": 760, "y0": 0, "y1": 290, "kind": "shutter"},
-            {"side": -1, "z0": 470, "z1": 760, "y0": 290, "y1": 420, "kind": "plaster", "tone": 1.12},
-            {"side": -1, "z0": 760, "z1": 1010, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.86},
+            # Board-formed concrete over that shutter: the lane's own structure showing above the
+            # shopfronts, which is what the second half of a street like this actually looks like.
+            {"side": -1, "z0": 470, "z1": 760, "y0": 290, "y1": 420, "kind": "concrete", "tone": 1.04},
+            {"side": -1, "z0": 760, "z1": 1010, "y0": 0, "y1": 300, "kind": "hoarding", "tone": 0.86},
+            # ...with a sheet of galvanised steel over the top of the boarding, because a hoarding in a
+            # working lane is patched with whatever was on the truck.
+            {"side": -1, "z0": 760, "z1": 1010, "y0": 300, "y1": 420, "kind": "galv", "tone": 0.94},
             {"side": -1, "z0": 1010, "z1": 1247, "y0": 0, "y1": 120, "kind": "dado"},
             {"side": -1, "z0": 1010, "z1": 1247, "y0": 120, "y1": 420, "kind": "brick"},
             {"side": 1, "z0": -240, "z1": 40, "y0": 0, "y1": 420, "kind": "brick"},
             {"side": 1, "z0": 40, "z1": 190, "y0": 0, "y1": 300, "kind": "shutter"},
             {"side": 1, "z0": 40, "z1": 190, "y0": 300, "y1": 420, "kind": "plaster"},
             {"side": 1, "z0": 190, "z1": 470, "y0": 0, "y1": 140, "kind": "dado"},
-            {"side": 1, "z0": 190, "z1": 470, "y0": 140, "y1": 420, "kind": "plaster"},
+            {"side": 1, "z0": 190, "z1": 470, "y0": 140, "y1": 420, "kind": "concrete", "tone": 0.96},
             {"side": 1, "z0": 470, "z1": 660, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.92},
             {"side": 1, "z0": 660, "z1": 900, "y0": 0, "y1": 290, "kind": "shutter"},
             {"side": 1, "z0": 660, "z1": 900, "y0": 290, "y1": 420, "kind": "corrugated"},
@@ -1713,9 +1786,16 @@ DISTRICTS = [
             {"kind": "tactile", "x0": -300, "x1": -272, "z0": -240, "z1": 1247},
             {"kind": "tactile", "x0": 272, "x1": 300, "z0": -240, "z1": 1247},
             {"kind": "gutter", "x0": -318, "x1": 318, "z0": 1230, "z1": 1244},
+            # The same painted line at the other end of the lane: a straight bar of paint at a mouth is
+            # the one piece of road marking this lane can have without writing a word on the ground.
+            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 26, "z1": 40},
+            # A channel drain crossing the lane: the kit is the same grate as the two at the kerb, and
+            # crossing the whole width is what a lane does where its own water has to leave it.
+            {"kind": "grate", "x0": -150, "x1": 150, "z0": 636, "z1": 650},
             {"kind": "grate", "x0": -118, "x1": -42, "z0": 148, "z1": 168},
             {"kind": "grate", "x0": 60, "x1": 136, "z0": 700, "z1": 720},
             {"kind": "manhole", "x0": -40, "x1": 40, "z0": 430, "z1": 510},
+            {"kind": "manhole", "x0": 120, "x1": 200, "z0": 286, "z1": 346},
             {"kind": "wet", "x0": -316, "x1": -60, "z0": 980, "z1": 1240},
             # The kerb: a six centimetre riser where the floor meets the wall, on both sides, so the
             # lane has a line at its base that light can fall along. Only the face is drawn — the top
@@ -1733,6 +1813,10 @@ DISTRICTS = [
             {"x": -120, "y": 268, "z": 150, "r": 27, "swing": 3.2, "period": 3.1, "phase": 0.0},
             {"x": 40, "y": 252, "z": 150, "r": 31, "swing": 2.6, "period": 3.9, "phase": 1.7},
             {"x": 210, "y": 262, "z": 560, "r": 26, "swing": 3.6, "period": 4.4, "phase": 0.9},
+            # Two more on the wires further down, so the far half of the lane is hung as well as the
+            # near half: the wire at 700 and the one at 1172 both carry paper now.
+            {"x": -140, "y": 262, "z": 700, "r": 26, "swing": 3.0, "period": 3.6, "phase": 2.1},
+            {"x": 150, "y": 258, "z": 1172, "r": 28, "swing": 2.6, "period": 4.1, "phase": 0.6},
             {"x": -170, "y": 272, "z": 900, "r": 29, "swing": 2.2, "period": 3.4, "phase": 2.6},
         ],
         # The window cut in the end wall, and what you see through it. These are NOT record depths and
@@ -1742,17 +1826,37 @@ DISTRICTS = [
         "vista": {"x": 0, "y0": 108, "y1": 336, "w": 470},
         "backdrop": {
             "plaza": {"y": -260, "z0": 1240, "z1": 12000, "half": 3600},
+            # A nearer row of rooftops, flanking the crossing rather than standing on it. Through the
+            # aperture the first thing seen should be a silhouette at the height a lane sees roofs;
+            # eight-storey facades straight out of the window would be a diagram of a city, not a view
+            # of one. Each carries its own tone, so the row is not four photocopies of one block.
+            "roofs": [
+                {"x": -1750, "y": 0, "z": 1900, "w": 780, "h": 470, "tone": 0.5},
+                {"x": -2520, "y": 0, "z": 2040, "w": 900, "h": 640, "tone": 0.25},
+                {"x": 1850, "y": 0, "z": 1860, "w": 720, "h": 520, "tone": 0.7},
+                {"x": 2640, "y": 0, "z": 2100, "w": 940, "h": 760, "tone": 0.35},
+            ],
+            # A raised road crossing the whole view, above the crossing on the ground: the one piece of
+            # infrastructure that says this city is larger than this window. Its lamps are geometry
+            # rather than light sources — nothing out there is allowed to light the lane it is seen
+            # from, and no source in the room is unnamed.
+            "express": {"z": 6300, "y": 1250, "half": 6200, "thick": 170, "depth": 900, "pier": 230,
+                        "ground": -260, "piers": [-4200, -1500, 1100, 3700, 5900],
+                        "lamps": [-4300, -1700, 900, 3500, 5700]},
             "crossing": {"y": -260, "z0": 2100, "z1": 3600, "x0": -1150, "x1": 1150,
                          "stripes": 9, "width": 96, "diagonals": True},
+            # `win` is how much of a block is lit; `tone` is how much of that light the air between here
+            # and there has taken out of it. A picture of a city has near and far in it, and without
+            # tones every block came back at exactly the same brightness at every distance.
             "city": [
-                {"x": -2200, "z": 2900, "w": 900, "h": 900, "win": 0.65},
-                {"x": 2300, "z": 3100, "w": 800, "h": 1100, "win": 0.6},
-                {"x": -1500, "z": 4200, "w": 1300, "h": 1500, "win": 0.5},
-                {"x": -450, "z": 4600, "w": 1500, "h": 2300, "win": 0.42},
-                {"x": 900, "z": 4100, "w": 1100, "h": 1200, "win": 0.6},
-                {"x": 2100, "z": 4800, "w": 1400, "h": 2900, "win": 0.34},
-                {"x": -2900, "z": 5400, "w": 1800, "h": 2600, "win": 0.4},
-                {"x": 3400, "z": 5600, "w": 1600, "h": 1800, "win": 0.5},
+                {"x": -2200, "z": 2900, "w": 900, "h": 900, "win": 0.65, "tone": 0.95},
+                {"x": 2300, "z": 3100, "w": 800, "h": 1100, "win": 0.6, "tone": 0.88},
+                {"x": -1500, "z": 4200, "w": 1300, "h": 1500, "win": 0.5, "tone": 0.7},
+                {"x": -450, "z": 4600, "w": 1500, "h": 2300, "win": 0.42, "tone": 0.62},
+                {"x": 900, "z": 4100, "w": 1100, "h": 1200, "win": 0.6, "tone": 0.74},
+                {"x": 2100, "z": 4800, "w": 1400, "h": 2900, "win": 0.34, "tone": 0.5},
+                {"x": -2900, "z": 5400, "w": 1800, "h": 2600, "win": 0.4, "tone": 0.42},
+                {"x": 3400, "z": 5600, "w": 1600, "h": 1800, "win": 0.5, "tone": 0.58},
             ],
             "tower": {"x": 1500, "z": 12000, "half": 520, "top": 4200,
                       "decks": [1500, 2600], "mast": 4700},
@@ -1768,6 +1872,11 @@ DISTRICTS = [
             {"a": [-320, 330, 182], "b": [292, 300, 275], "sag": 38},
             {"a": [-320, 344, 300], "b": [320, 330, 300], "sag": 52},
             {"a": [-320, 352, 404], "b": [320, 340, 404], "sag": 30},
+            # One more across the middle, and one running the length of the lane off the pole: a cable
+            # that only ever crosses is a diagram of a cable, and the two lanterns down there need a
+            # wire to hang from.
+            {"a": [-320, 338, 700], "b": [320, 334, 700], "sag": 44},
+            {"a": [292, 300, 275], "b": [300, 322, 1180], "sag": 34},
         ],
         "frames": [
             {"id": "sensoji", "src": "IMG/tokyo-sensoji.jpg", "x": 314, "z": 120, "y": 96, "ry": -90,
@@ -2003,10 +2112,12 @@ def walk_html(d, drawer):
     # cladding is what you are walking through and the sightline is only where it ends, so the space is
     # described first and the view second; both halves are conditional on the data, because a district
     # with no aperture must not promise one and a district with no cladding must not claim a material.
-    clad = (" The lane is dressed as a street: shutters, glazed tile, plaster and hoarding on its walls, "
-            "paper lanterns hung on the wires above it, a tactile guide path along both kerbs, and a post "
-            "box, bicycles and a blank board standing against the fronts. Nothing on any of it carries a "
-            "word." if d.get("surfaces") else "")
+    clad = (" The lane is dressed as a street: shutters and glazed tile at hand height, board-formed "
+            "concrete and sheets of galvanised steel above them, plaster and plywood hoarding further "
+            "down, paper lanterns hung on the wires it is wired with, a tactile guide path along both "
+            "kerbs, and against the fronts a convex mirror, a meter box, a standpipe, a ladder, a "
+            "telephone box, bicycles, planters, a litter crate and a blank folding board. Nothing on "
+            "any of it carries a word." if d.get("surfaces") else "")
     sight = (" At its far end the lane opens onto a drawn compound: a crossing below it, a tower, and "
              "a mountain beyond. Nothing out there is a record of anybody standing in it."
              if d.get("vista") else "")

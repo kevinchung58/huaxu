@@ -157,15 +157,25 @@ this repo's own code. What that buys, and what it cannot:
   the walk clamp, so turning around shows a lane instead of an edge. The box is authored (`data-lane-w`,
   `data-lane-d`, `data-lane-ceil`, `data-eye`), so the renderer draws the room the data describes
   rather than a room someone remembered to keep in sync.
+- **Both ends of the lane are built, because both ends are frames you stand in front of.** The wall the
+  lane runs into wears board-formed concrete — pour seams and tie holes, the same material as the far
+  half of its side walls — because it is the largest surface in the deepest frame and a pale grid there
+  read as the page having run out. The bottom of its opening is a parapet with a galvanised coping:
+  the camera stands above the lip, so that reveal's top face is the one surface of the end wall seen
+  from above, and it is the brightest line in the frame on purpose, because it is the edge the city is
+  seen over. The wall at your back gets a concrete plinth where it meets the wet floor, since no alley
+  wall meets a floor in the material it has at eye height. All three are authored: the opening is
+  `data-walk-vista`, the coping is a material the data names, the plinth is one height in the renderer.
 - Textures are patterns, not photographs, except the frames: those three JPGs are generated pictures
   and are labelled as such, and nothing in the scene pretends to be a survey of Tokyo.
 - Wall objects are `<button>`s the renderer pins to their projected bounding box every frame. A
   control that could drift away from the thing it names would be worse than none, and one behind you
   leaves the tab order instead of waiting there.
 - The lane is *lit*, and that is a requirement rather than a taste: ambient at 0.42 of material,
-  concrete and wet asphalt at mid-tone, seven bulbs whose falloff is the same inverse-square the
-  glows are drawn from, and a murk ceiling of 0.6 painted in navy so distance reads as air instead of
-  the picture ending. Hung frames keep 60% of their own contrast under that haze, because a photograph
+  concrete and wet asphalt at mid-tone, five bare bulbs and six paper lanterns whose falloff is the
+  same inverse-square the glows are drawn from, six bulbed props' worth of glow and one cool bounce
+  off the city beyond the opening, and a murk ceiling of 0.6 painted in navy so distance reads as air
+  instead of the picture ending. Hung frames keep 60% of their own contrast under that haze, because a photograph
   you cannot see has stopped being evidence. `prefers-contrast: more` gets a second exposure
   (ambient 0.6, murk 0.4) from the operating system's own switch rather than a widget in the corner —
   a dim laptop is the visitor's to correct, not mine to guess at. The HUD answer is a scrim that fades

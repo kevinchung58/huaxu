@@ -126,7 +126,14 @@ ok("no bulb sits on the ceiling that the generator did not place",
 ok("the arcade is authored", Array.isArray(beams) && beams.length === 4);
 ok("the aperture is authored in scene centimetres", vista && vista.w === 470 && vista.y0 === 108 && vista.y1 === 336);
 ok("the far plane names every landmark it draws",
-   bd && !!bd.plaza && !!bd.crossing && !!bd.tower && !!bd.mountain && bd.city.length === 8);
+   bd && !!bd.plaza && !!bd.crossing && !!bd.tower && !!bd.mountain && bd.city.length === 8
+     && bd.roofs.length === 4 && !!bd.express);
+ok("the near rooftops are beside the crossing, not standing on it",
+   bd.roofs.every((r) => Math.abs(r.x) > bd.crossing.x1 && r.z < bd.city[0].z)
+     && bd.roofs.every((r) => r.tone !== undefined && r.tone > 0 && r.tone < 1));
+ok("the raised road is infrastructure, not a light source: its lamps are geometry",
+   bd.express.lamps.length === 5 && bd.express.piers.length === 5
+     && !lights.some((L) => L.z === bd.express.z));
 ok("the crossing is a scramble: stripes and diagonals", bd.crossing.stripes === 9 && bd.crossing.diagonals === true);
 ok("the tower's bands are counted, not sketched", Array.isArray(bd.tower.decks) && bd.tower.decks.length === 2);
 ok("the mountain is farther than everything else, and says so by scale",
@@ -136,7 +143,11 @@ ok("the sky is three bands, and only the horizon band glows",
 ok("no prop's z is left in record units (all scaled by 2.9)",
    [...html.matchAll(/--z:(-?\d+)px/g)].every((m) => Math.abs(Number(m[1])) % 1 === 0));
 const surf = island("surfaces"), ground = island("marks");
-const CLAD = ["plaster", "shutter", "corrugated", "dado", "brick", "hoarding"];
+/* Two more materials, added when the lane's far half was dressed: board-formed concrete over the
+   shopfronts and a sheet of galvanised steel patched over the hoarding. Both are painted in code from
+   a 128px tile like every other one, and both are named here because this assertion is the list of
+   materials a band is allowed to name. */
+const CLAD = ["plaster", "shutter", "corrugated", "dado", "brick", "hoarding", "concrete", "galv"];
 ok("the walls are clad by data: every band names a material that has a pattern",
    !!surf && surf.length >= 18 && surf.every((v) => CLAD.includes(v.kind)), `${surf ? surf.length : 0} bands`);
 ok("a band cannot lie about the lane: inside the walls, below the ceiling, on one side",
@@ -171,8 +182,12 @@ ok("every mark lies flat on the floor and inside the walls",
    ground.every((m) => m.x0 >= -318 && m.x1 <= 318 && m.z0 >= -240 && m.z1 <= 1247
                        && m.x1 > m.x0 && m.z1 > m.z0));
 const lanterns = lights.filter((L) => L.body === "lantern");
+/* Six lanterns now, on six of the lane's wires: two more were hung when the far half of the lane was
+   dressed, on the wire that crosses at 700 and the one at 1172. What this assertion defends is not the
+   number, it is that each one is a *light* with a tint rather than a decoration the lighting does not
+   know about — so the count moved and the rule did not. */
 ok("a lantern is a light source, so the room is lit by what hangs in it",
-   lanterns.length === 4 && lanterns.every((L) => L.bulb === false && L.tint));
+   lanterns.length === 6 && lanterns.every((L) => L.bulb === false && L.tint));
 ok("and each one says how wide the paper is and where the cord ties off",
    lanterns.every((L) => L.size >= 20 && L.size <= 40 && L.h > L.y && L.y > 200 && L.y < 400));
 const props = qa(".walk-hit").map((b) => ({ obj: b.dataset.obj,
@@ -189,7 +204,8 @@ ok("a state's light multiplier is a number, and every stop has one or none, neve
      props.some((pr) => pr.x === L.x && pr.z === L.z) || L.z === 1247),
    `${lights.filter((L) => L.bulb === false && L.body !== "lantern").length} non-bulb sources`);
 ok("the street kit is in the tab order, so it is part of the space and not a painted backdrop",
-   ["front-a", "booth", "bikes", "planters", "cones", "mailbox", "board-a", "banner-left", "banner-right"]
+   ["front-a", "front-b", "booth", "bikes", "planters", "planter-2", "cones", "mailbox", "board-a",
+    "banner-left", "banner-right", "mirror", "meter", "hydrant", "ladder", "camera", "recycle"]
      .every((id) => ids.includes(id)));
 ok("the board stays blank and the copy says why: no lettering is ours to invent",
    /folding board, blank/i.test(html) && /invented lettering/i.test(html)
@@ -267,7 +283,8 @@ ok("no lettering is drawn anywhere in the scene, at any depth",
 ok("the cladding is tiled into the wall's own panels, so an affine map stays exact",
    /surfaces\.forEach/.test(js) && /PATS\[sc\.kind\]/.test(js) && /SEG/.test(js));
 ok("every material in the data has a painter, and every painter has a tile",
-   ["shutter", "dado", "brick", "corrugated", "hoarding", "tactile", "grate", "lantern"].every((k) => {
+   ["shutter", "dado", "brick", "corrugated", "hoarding", "concrete", "galv",
+    "tactile", "grate", "lantern"].every((k) => {
      const cap = k[0].toUpperCase() + k.slice(1);
      return new RegExp(`const paint${cap} = \\(c\\) =>`).test(js)
             && new RegExp(`PATS\\.${k} = mkTile`).test(js);
@@ -305,6 +322,13 @@ const stopAt = (z) => stops.reduce((best, el) =>
   Math.abs(parseFloat(el.style.getPropertyValue("--z")) - z) <
   Math.abs(parseFloat(best.style.getPropertyValue("--z")) - z) ? el : best, stops[0]);
 const status = () => q("[data-walk-status]").textContent.trim();
+/* Waiting for the body, not for a stopwatch. A station click starts a glide, and how long that glide
+   takes in wall-clock time depends on how heavy a frame is — and the lane got heavier the day it got
+   furniture, which turned a 400 ms sleep from "arrived" into "arrived 40 cm short" without a single
+   assertion changing. This waits for the depth the record promised. */
+const settle = async (want) => {
+  for (let i = 0; i < 40; i++) { await sleep(40); if (Math.abs(body().depth - want) < 2) return; }
+};
 const title0 = () => (qa(".walk-hit.is-reach")[0] || {}).dataset?.obj || "nothing";
 const body = () => q("[data-walk]").__walk;
 
@@ -317,13 +341,13 @@ ok("the plaza is seen, not entered: the far plane sits past the clamp",
 
 // The scramble frame, from the station beside it, with the wall as the only thing in between.
 click(stopAt(798));
-await sleep(300);
+await settle(798);
 await hold("a", 1500);                                   // to the left wall, x clamps at -290
 await sleep(120);
 ok("the wall prop nearer you wins: the reach is nearest-first, not list-order",
    /Utility pole|Poster|Frame|crate|drain|bin|sign/.test(status()), status());
 click(stopAt(798));
-await sleep(400);
+await settle(798);
 ok("standing at the frame's own depth brings it into reach",
    /Frame: the scramble at Shibuya/.test(status()), status());
 ok("the reach is announced with a dot on the note button, never with a caption",
@@ -384,7 +408,7 @@ ok("closing hands focus back to the thing on the wall that opened it",
 // Centre the body first — from the wall the vending machine is nearer, and nearest wins by design.
 await hold("d", 1300);
 click(stopAt(1146));
-await sleep(400);
+await settle(1146);
 ok("at the end of the lane the rail is what you are standing in front of",
    /lookout rail/i.test(status()), status());
 key("e");
@@ -404,8 +428,12 @@ ok("the card closes again", card.hidden);
 const booth = q('[data-obj="booth"]'), box = q('[data-obj="mailbox"]');
 ok("the new kit is a button in the lane, not a painted detail", !!booth && booth.tagName === "BUTTON"
    && booth.dataset.frame === undefined && !!box);
-ok("a thing with stops ships at its first one, and only five things have stops",
-   booth.dataset.state === "0" && box.dataset.state === "0" && qa("[data-states]").length === 5);
+/* Eight things can be done to now, not five: the lane gained a convex mirror that turns on its
+   bracket, the litter crate beside the machine with a lid, and a second lit front halfway down. The
+   rule this assertion defends is the first half of the line — a thing with stops ships at its first
+   one, and the count of stops is the count in the document rather than in the script. */
+ok("a thing with stops ships at its first one, and eight things have stops",
+   booth.dataset.state === "0" && box.dataset.state === "0" && qa("[data-states]").length === 8);
 click(stopAt(0));
 await sleep(1600);
 await hold("d", 900);                                       // hug the right wall, toward the box
