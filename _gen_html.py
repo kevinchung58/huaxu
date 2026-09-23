@@ -752,10 +752,8 @@ GAI_BEATS = [
     },
     {
         "name": "The doubt that arrived with the leverage",
-        "text": "The doubt came soon after, and it was not really about the tool. Something that "
-                "compresses a week of reading into an afternoon also compresses the chance to notice "
-                "that the answer was wrong. Capability was arriving much faster than the judgment "
-                "needed to use it.",
+        "text": "The doubt came soon after: I became aware that something was off. At that point I "
+                "could not yet say exactly what.",
     },
     {
         "name": "The moment it began doing what it could not",
@@ -837,9 +835,6 @@ gai_prepare_html = "\n".join(
 )
 
 gai_section = f"""    {titled("h2", "Four years, from where I was standing", ICON_CAL, "block-title reveal spaced")}
-    <p class="reveal">This page answers a committee. Before that it is answered by four years of my own
-      use of these tools: what I expected generative AI to do to teaching, what it actually did, and
-      what I think we should be preparing for now.</p>
     <figure class="pos-hero reveal">
       <img src="IMG/position-gai.jpg" alt="Illustration of an abstract machine stamping identical amber pieces onto a belt while a small student figure draws one different amber line in the air" loading="lazy" />
       <figcaption>Making more of what already exists is the part that got automated. Deciding what
