@@ -2483,3 +2483,38 @@ body.shell {
     display: none;
   }
 }
+
+/* A pair, for the one place on the site where the argument is a comparison rather than a single
+   image: what I expected the room to become, and what it did. Two cards of the same size, side by
+   side, each with its own label; stacked on a narrow screen, because a comparison read one above the
+   other is still a comparison, and one squeezed to half width is not. The images are 1408x768 and
+   the ratio is declared here rather than left to the file, so the layout does not shift while the
+   second one loads. */
+.gai-pair { margin: 1.4rem 0 1.6rem; }
+.gai-two { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; }
+@media (max-width: 720px) { .gai-two { grid-template-columns: 1fr; } }
+.gai-cell {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.gai-cell img { display: block; width: 100%; aspect-ratio: 1408 / 768; object-fit: cover; }
+.gai-cap { padding: 0.65rem 0.95rem 0.75rem; border-top: 1px solid var(--line); }
+.gai-tag {
+  margin: 0 0 0.25rem;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.gai-cap p:last-child { margin: 0; font-size: 0.86rem; }
+.gai-pair figcaption {
+  margin-top: 0.7rem;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}

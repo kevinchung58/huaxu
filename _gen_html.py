@@ -744,10 +744,11 @@ principle_rows_html = "\n".join(principle_rows)
 GAI_BEATS = [
     {
         "name": "When the first one arrived",
-        "text": "When GPT first appeared, I found quickly that a lot of my own work could be amplified "
-                "through it. It did not know what the CDIO engineering framework was — the framework "
-                "stayed in my head, I drove the tool from it and asked again — but the leverage was "
-                "obvious. At that point I read GAI as a small technical breakthrough.",
+        "text": "When GPT first appeared, the first thing it amplified was the ordinary work of "
+                "research and teaching: searching, writing, and the first draft of almost anything. "
+                "It did not know what the CDIO engineering framework was — the framework stayed in my "
+                "head, I drove the tool from it and asked again — but the leverage was obvious. At "
+                "that point generative AI really was, for me, a small technical breakthrough.",
     },
     {
         "name": "The doubt that arrived with the leverage",
@@ -760,18 +761,20 @@ GAI_BEATS = [
         "name": "The moment it began doing what it could not",
         "text": "At the point when Gemini 3 Pro arrived, that changed for me. It began doing things I "
                 "had not seen done before, writing code among them, and a question in almost any "
-                "subject now comes back with something close to a competent explanation. I will not "
-                "claim that the hallucination problem is gone. I will claim it clears a certain "
-                "teaching standard, and that makes it a different kind of tool from the one I started "
-                "with.",
+                "subject now comes back with something close to a competent explanation — close "
+                "enough that a student working alone with it can get near the level of studying with "
+                "someone who teaches them. I will not claim that the hallucination problem is gone. I "
+                "will claim it clears a certain teaching standard, and that makes it a different kind "
+                "of tool from the one I started with.",
     },
     {
         "name": "What I expected, and what did not happen",
         "text": "I expected higher education to reorganize itself around this — teaching, assessment, "
-                "and the question of what a course is for. That has not happened at the scale I "
-                "expected. What did happen is that the tools kept moving: the newest models made vibe "
-                "coding real, and one person can now produce a polished application or a playable game "
-                "without a team.",
+                "and the question of what a course is for. That did not happen, and I may have "
+                "imagined the change as more dramatic than it could ever have been — but not this "
+                "undramatic either, and meanwhile the tools did not wait: the newest models made vibe "
+                "coding real, and one person can now produce a polished application or a playable "
+                "game without a team.",
     },
 ]
 gai_beats_html = "\n".join(
@@ -798,6 +801,37 @@ GAI_PREPARE = [
                 "work that stays human, and it stays sharp only if it is practiced.",
     },
 ]
+# The comparison the story needs and one image cannot carry: what I expected the room to become, and
+# what it did. Two plates of the same size, each labelled, with the claim underneath. Kept as data for
+# the same reason the beats are: the generator decides which two files these are, and the registry
+# checks them like every other raster. Both alt texts describe what is drawn and claim nothing about
+# the world — they are illustrations of two rooms, not records of two rooms.
+GAI_PAIR = [
+    {
+        "tag": "What I expected",
+        "img": "IMG/position-expected.jpg",
+        "alt": "Illustration of a lecture hall rebuilt around one long shared table, every student "
+               "joined by a thin amber line to a large abstract machine built into the wall",
+        "note": "A room reorganized around the tools: one table, the machine in the architecture, "
+                "everyone connected to it.",
+    },
+    {
+        "tag": "What happened",
+        "img": "IMG/position-happened.jpg",
+        "alt": "Illustration of identical rows of desks in a lecture hall while a large abstract "
+               "machine stands to one side connected to nothing, and one student in the corner works "
+               "alone",
+        "note": "The same rows, unchanged. The machine stands to one side, wired to nothing, and one "
+                "student in the corner uses it by themselves.",
+    },
+]
+gai_pair_html = "\n".join(
+    f'''      <div class="gai-cell">
+        <img src="{x["img"]}" alt="{escape(x["alt"])}" loading="lazy" />
+        <div class="gai-cap"><p class="gai-tag">{escape(x["tag"])}</p><p>{escape(x["note"])}</p></div>
+      </div>''' for x in GAI_PAIR
+)
+
 gai_prepare_html = "\n".join(
     f'      <li><strong>{escape(x["name"])}.</strong> {escape(x["text"])}</li>' for x in GAI_PREPARE
 )
@@ -814,6 +848,13 @@ gai_section = f"""    {titled("h2", "Four years, from where I was standing", ICO
     <ol class="stance-list reveal">
 {gai_beats_html}
     </ol>
+    <figure class="gai-pair reveal">
+      <div class="gai-two">
+{gai_pair_html}
+      </div>
+      <figcaption>Both rooms are drawn, not photographed. The left one is the change I was waiting
+        for; the right one is the room I keep walking into.</figcaption>
+    </figure>
     <p class="reveal"><strong>What this asks of us.</strong> Creative work has two halves, and only one
       of them is being automated. Producing another version, another draft, another shape in a familiar
       style is now cheap and fast. Deciding what should exist, in what form, and for whom is not — and it
