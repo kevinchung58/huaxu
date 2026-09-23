@@ -734,6 +734,102 @@ for i, r in enumerate(PRINCIPLE_READS):
     )
 principle_rows_html = "\n".join(principle_rows)
 
+# "Four years, from where I was standing" — my own account of using generative AI since the first
+# public models, written down from the owner's telling (2026-09-23). Two names are his and only two:
+# GPT, where he started, and Gemini 3 Pro, the point at which he says the tools began doing what they
+# could not before. No other dates or version numbers are added, because the page would then be
+# claiming a timeline it does not keep. The last beat is the newest models and vibe coding, in his
+# words again. The claim the section lands on is deliberately the narrower one he chose: producing
+# more of what already exists can be replicated, deciding what should exist cannot.
+GAI_BEATS = [
+    {
+        "name": "When the first one arrived",
+        "text": "When GPT first appeared, I found quickly that a lot of my own work could be amplified "
+                "through it. It did not know what the CDIO engineering framework was — the framework "
+                "stayed in my head, I drove the tool from it and asked again — but the leverage was "
+                "obvious. At that point I read GAI as a small technical breakthrough.",
+    },
+    {
+        "name": "The doubt that arrived with the leverage",
+        "text": "The doubt came soon after, and it was not really about the tool. Something that "
+                "compresses a week of reading into an afternoon also compresses the chance to notice "
+                "that the answer was wrong. Capability was arriving much faster than the judgment "
+                "needed to use it.",
+    },
+    {
+        "name": "The moment it began doing what it could not",
+        "text": "At the point when Gemini 3 Pro arrived, that changed for me. It began doing things I "
+                "had not seen done before, writing code among them, and a question in almost any "
+                "subject now comes back with something close to a competent explanation. I will not "
+                "claim that the hallucination problem is gone. I will claim it clears a certain "
+                "teaching standard, and that makes it a different kind of tool from the one I started "
+                "with.",
+    },
+    {
+        "name": "What I expected, and what did not happen",
+        "text": "I expected higher education to reorganize itself around this — teaching, assessment, "
+                "and the question of what a course is for. That has not happened at the scale I "
+                "expected. What did happen is that the tools kept moving: the newest models made vibe "
+                "coding real, and one person can now produce a polished application or a playable game "
+                "without a team.",
+    },
+]
+gai_beats_html = "\n".join(
+    f'      <li><strong>{escape(b["name"])}.</strong> {escape(b["text"])}</li>' for b in GAI_BEATS
+)
+# What the story is for: the standing argument of this site, said once more in its own words. Kept
+# short because the list further down this page is about research directions, and a page that argues
+# the same point twice stops being read.
+GAI_PREPARE = [
+    {
+        "name": "The question before the answer",
+        "text": "A capable tool shortens the distance to an answer. It does not shorten the distance "
+                "to a question worth asking, and that work will not happen by accident.",
+    },
+    {
+        "name": "Judgment about the output",
+        "text": "Knowing whether an answer is any good is now the expensive half of using one. This is "
+                "where information literacy stops being a general virtue and becomes the operating "
+                "skill.",
+    },
+    {
+        "name": "Practice in deciding",
+        "text": "What to make, what to leave out, what the thing is for. It is the half of creative "
+                "work that stays human, and it stays sharp only if it is practiced.",
+    },
+]
+gai_prepare_html = "\n".join(
+    f'      <li><strong>{escape(x["name"])}.</strong> {escape(x["text"])}</li>' for x in GAI_PREPARE
+)
+
+gai_section = f"""    {titled("h2", "Four years, from where I was standing", ICON_CAL, "block-title reveal spaced")}
+    <p class="reveal">This page answers a committee. Before that it is answered by four years of my own
+      use of these tools: what I expected generative AI to do to teaching, what it actually did, and
+      what I think we should be preparing for now.</p>
+    <figure class="pos-hero reveal">
+      <img src="IMG/position-gai.jpg" alt="Illustration of an abstract machine stamping identical amber pieces onto a belt while a small student figure draws one different amber line in the air" loading="lazy" />
+      <figcaption>Making more of what already exists is the part that got automated. Deciding what
+        should exist was always the drawing.</figcaption>
+    </figure>
+    <ol class="stance-list reveal">
+{gai_beats_html}
+    </ol>
+    <p class="reveal"><strong>What this asks of us.</strong> Creative work has two halves, and only one
+      of them is being automated. Producing another version, another draft, another shape in a familiar
+      style is now cheap and fast. Deciding what should exist, in what form, and for whom is not — and it
+      is the half that becomes scarce exactly as the other half becomes free.</p>
+    <ol class="stance-list q-list reveal">
+{gai_prepare_html}
+    </ol>
+    <p class="when reveal">The argument is the one my thinking page already draws: the first row of dots
+      is what machines do, and the human premium sits in the second row, where the framing, the new
+      shape, and the one necessary line live.</p>
+    <p class="pillar-more reveal"><a class="text-arrow" href="thinking.html">The dot page: what machines
+      already do, and the human premium {ico(ICON_RIGHT)}</a></p>
+    <p class="pillar-more reveal"><a class="text-arrow" href="research.html#creativity-design-thinking">My
+      Creativity &amp; Design Thinking pillar {ico(ICON_RIGHT)}</a></p>
+
+"""
 position = page("Position · Hua-Xu Zhong", "position", f"""
 <section class="section">
   <div class="wrap">
@@ -742,7 +838,7 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
       <img src="IMG/position-hero.jpg" alt="Illustration of a student and an abstract AI figure as partners at a shared desk" loading="lazy" />
       <figcaption>AI as a partner in learning, not a substitute for it.</figcaption>
     </figure>
-    <p class="reveal">In August 2026, an MIT ad hoc committee published its report on AI use in teaching, learning, and research training. Its questions are the ones I keep asking: what AI does to students' thinking, when it helps learning, and when it quietly replaces it. This page states my position, shows where the report and I converge, walks through its eight principles one by one, and lists what I want to study next.</p>
+    <p class="reveal">In August 2026, an MIT ad hoc committee published its report on AI use in teaching, learning, and research training. Its questions are the ones I keep asking: what AI does to students' thinking, when it helps learning, and when it quietly replaces it. This page states my position, shows where the report and I converge, walks through its eight principles one by one, sets down what four years of using these tools changed in my thinking, and lists what I want to study next.</p>
     {titled("h2", "My position", ICON_USER)}
     <ol class="stance-list reveal">
       <li><strong>AI should support learners, not replace their thinking.</strong> The best uses of AI extend feedback, ideas, and scaffolding. The risky ones let students hand off exactly the work that learning depends on.</li>
@@ -766,7 +862,7 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
     <div class="principle-rows">
 {principle_rows_html}
     </div>
-    {titled("h2", "Beyond the report: what I want to study", ICON_BULB, "block-title reveal spaced")}
+{gai_section}{titled("h2", "Beyond the report: what I want to study", ICON_BULB, "block-title reveal spaced")}
     <ol class="stance-list q-list reveal">
       <li><strong>Designing for inquiry.</strong> What does an LLM learning system look like when its first job is to protect a student's own thinking? I came to this question from my own view of LLMs, and from the problems I saw them create for feedback in learning. My earlier work on feedback and scaffolding is where I start. I have not built such a system yet; that is the direction.</li>
       <li><strong>Creativity as an outcome.</strong> The report asks AI to augment curiosity and creativity. I am asking how creativity can be taught, practiced, and assessed when AI can imitate its products.</li>
@@ -1135,6 +1231,11 @@ IMG_RULES = [
     ("practice-", "figures", "figure"), ("principle-", "figures", "figure"),
     ("grid-", "figures", "figure"), ("diverge-", "figures", "figure"),
     ("mascot-", "interface", "art"), ("*-hero.jpg", "interface", "hero"),
+    # The position page's own figures. A `figure`, not a `generated` plate: it is an illustration
+    # carrying an argument on the page that cites it, and it is not album material, so it never
+    # reaches the album wall. Written after the `*-hero.jpg` rule on purpose — the hero is a hero
+    # first, and the order of this list is the only thing deciding that.
+    ("position-", "figures", "figure"),
 ]
 # Held back by name, with the reason printed instead of the file quietly dropped.
 UNFILED = {"3.jpg": "the owner asked that this one stay out until it has a caption"}
@@ -1303,6 +1404,22 @@ for it, tile in zip(ALBUM_ITEMS, album_tiles):
     _tiles_by_block[it["block"]].append(tile)
 
 
+# A block may open onto the place its plates came from. It belongs to the block rather than to the
+# page, because these plates are pictures of that room: the door stands where the pictures are, and
+# it says what walking through it does. This one used to sit above the album — and it was written as
+# a Python string split across two lines, so the quote and the continuation leaked into the anchor
+# text and the page read `Tokyo, " "walked at first person`. A door that is hard to read is a door
+# nobody opens, so the copy lives here as one sentence and the generator cannot fold it.
+BLOCK_DOORS = {
+    "field-notes": {
+        "href": "rooms.html",
+        "text": "The archive is also a place. Walk the lane these plates came from: it is drawn at "
+                "eye height, and the three frames hung on its wall open in the same viewer.",
+        "label": "Walk the Tokyo lane at first person",
+    },
+}
+
+
 def gallery_html():
     """One wall per block: the grid if there is anything to hang, the reason if there is not."""
     out = []
@@ -1315,10 +1432,15 @@ def gallery_html():
         head = (f'<h3>{escape(b["label"])}</h3>'
                 f'<p class="when">{escape(b["purpose"])} <span class="badge">{escape(b["kind"])}</span>'
                 f' {escape(state)}</p>')
+        door = BLOCK_DOORS.get(b["id"])
+        door_html = (f'    <p class="pillar-more reveal"><a class="text-arrow" href="{door["href"]}"'
+                     f' aria-label="{escape(door["label"])}">{escape(door["text"])}'
+                     f'{ico(ICON_RIGHT)}</a></p>\n' if door else "")
         inner = (f'<div class="ig-grid" data-ig-grid>{" ".join(tiles)}</div>' if tiles else
                  f'<div class="dashed empty">{chip(ICON_CAMERA)}<div><strong>Nothing in this block '
                  f'yet</strong><p class="when">{escape(b["note"])}</p></div></div>')
         out.append(f'    <div class="block-head reveal">{head}</div>\n'
+                   f'{door_html}'
                    f'    <p class="when reveal">{escape(b["note"])}</p>\n'
                    f'    <div class="ig-wall" data-ig-wall>\n      {inner}\n    </div>')
     return "\n".join(out)
@@ -1329,8 +1451,6 @@ activities = page("Activities · Hua-Xu Zhong", "activities", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>The archive of what has been shown, and a running record of talks. Captions and venues are attached as they are confirmed, and an image without one is filed but not hung.</p></div>
-    <p class="pillar-more"><a class="text-arrow" href="rooms.html">The archive is also a place: Tokyo, "
-              "walked at first person — three sights on the wall</a></p>
     {titled("h2", "The album", ICON_CAMERA)}
     <p class="when reveal" style="margin:-0.4rem 0 1rem">Plates hung on a wall, read the way the
       album is read on a phone: pick one and the roll opens at it, sideways, and nothing expires when
