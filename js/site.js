@@ -857,10 +857,25 @@ function leaveOverlay(root, trigger) {
     PATS.lantern = mkTile(paintLantern);
   };
 
+  /* Two shapes of island live inside the hit layer, and they answer two different questions: a list
+     (the lamps, the wires, the cladding bands, the ground's own kit) and a single object (the opening
+     in the end wall, and the compound seen through it). Reading them both with `[0]` was a list
+     operation applied to an object, so the vista and the whole backdrop — plaza, crossing, city,
+     tower, mountain, sky — were `undefined` from the day they were authored: `undefined || null` is
+     `null`, `if (vista)` was false, and the lane's far end has been a blank wall with an invented
+     lamp on it. The compound is drawn now, and nothing about it changed but this. */
   const readIsland = (sel) => {
+    const v = readAny(sel);
+    return Array.isArray(v) ? v : [];
+  };
+  const readOne = (sel) => {
+    const v = readAny(sel);
+    return v && typeof v === "object" && !Array.isArray(v) ? v : null;
+  };
+  const readAny = (sel) => {
     const node = layer.querySelector(sel);
-    if (!node) return [];
-    try { return JSON.parse(node.textContent) || []; } catch (err) { return []; }
+    if (!node) return null;
+    try { return JSON.parse(node.textContent); } catch (err) { return null; }
   };
   const meta = objs.map((el) => ({
     el, kind: el.dataset.obj, ry: num(el, "data-ry") || parseFloat(el.dataset.ry || 0),
@@ -876,8 +891,8 @@ function leaveOverlay(root, trigger) {
   }));
   const wires = readIsland("[data-walk-wires]");
   const beams = readIsland("[data-walk-beams]");
-  const vista = (readIsland("[data-walk-vista]")[0]) || null;
-  const bd = (readIsland("[data-walk-backdrop]")[0]) || null;
+  const vista = readOne("[data-walk-vista]");
+  const bd = readOne("[data-walk-backdrop]");
   const surfaces = readIsland("[data-walk-surfaces]");
   const marks = readIsland("[data-walk-marks]");
   const cam = () => {
@@ -939,7 +954,7 @@ function leaveOverlay(root, trigger) {
   };
   const ZERO8 = [0, 0, 0, 0, 0, 0, 0, 0];
   const quads = [];
-  const add = (C, corners, uv, mode, arg, img, big) => {
+  const add = (C, corners, uv, mode, arg, img) => {
     const pts = corners.map((c, i) => {
       const o = camPt(C, c[0], c[1], c[2]);
       o.u = uv[i * 2]; o.v = uv[i * 2 + 1];
@@ -947,18 +962,26 @@ function leaveOverlay(root, trigger) {
     });
     const cp = clipNear(pts);
     if (cp.length < 3) return null;
-    let off = 0, bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity;
+    let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity;
     cp.forEach((q) => {
       const sx = W * 0.5 + (focal * q.x) / q.z, sy = H * 0.5 + (focal * q.y) / q.z;
       bx0 = Math.min(bx0, sx); bx1 = Math.max(bx1, sx);
       by0 = Math.min(by0, sy); by1 = Math.max(by1, sy);
-      if (sx > -80 && sx < W + 80 && sy > -80 && sy < H + 80) off += 1;
     });
-    /* A far plane must not be culled by its corners: the sky covers the view by being larger than
-       it, so every corner lands off-screen and the whole backdrop would disappear. Big quads are
-       tested against their bounds instead, and they stay in the same list, so the depth sort still
-       puts them behind the room rather than under a fixed overlay. */
-    if (!off && !(big && bx1 > 0 && bx0 < W && by1 > 0 && by0 < H)) return null;
+    /* Bounds, never corners.
+
+       A quad is visible when the area it covers reaches the viewport, and that is not the same claim
+       as "one of its corners is on screen". The far plane was the case that first showed it — a sky
+       covers the view by being larger than it, so every corner lands off-screen and the whole
+       backdrop would vanish — and the near plane is the same failure with the sign flipped: stand
+       deep in the lane and the floor under you, the walls beside you and the roof over you are each
+       one panel wider than the screen, so *every* quad you are standing in the middle of used to be
+       culled at once and the frame collapsed to its base plate. The corner test was a cheap
+       conservative filter that was not conservative in the one direction that mattered, and the
+       lane's own harness had recorded it as a black frame for months. Clip first, project once,
+       and cull against the box the projected points occupy — a superset of what the corner test
+       kept, so nothing that used to be drawn has stopped being drawn. */
+    if (bx1 < -80 || bx0 > W + 80 || by1 < -80 || by0 > H + 80) return null;
     let z = 0; cp.forEach((q) => { z += q.z; });
     const quad = { z: z / cp.length, pts: cp, mode, arg, img };
     quads.push(quad);
@@ -1140,7 +1163,7 @@ function leaveOverlay(root, trigger) {
     const band = (b) => {
       const q = add(C, [[-150000, b.y0, 120000], [150000, b.y0, 120000],
                         [150000, b.y1, 120000], [-150000, b.y1, 120000]],
-                    ZERO8, "flat", b.c, null, true);
+                    ZERO8, "flat", b.c, null);
       if (q) { q.air = 0; q.lit = b.glow || 0; }
     };
     (bd.sky || []).forEach(band);
@@ -1148,12 +1171,12 @@ function leaveOverlay(root, trigger) {
     if (mt) {
       const q = add(C, [[mt.x - mt.half, mt.base, mt.z], [mt.x + mt.half, mt.base, mt.z],
                         [mt.x + mt.crown, mt.top, mt.z], [mt.x - mt.crown, mt.top, mt.z]],
-                    ZERO8, "flat", "#2e3d5c", null, true);
+                    ZERO8, "flat", "#2e3d5c", null);
       if (q) { q.air = 0.12; q.lit = 0.3; }
       const line = mt.top - (mt.top - mt.base) * mt.snow;
       const cap = add(C, [[mt.x - mt.crown, mt.top, mt.z], [mt.x + mt.crown, mt.top, mt.z],
                           [mt.x + mt.crown * 1.9, line, mt.z], [mt.x - mt.crown * 1.9, line, mt.z]],
-                      ZERO8, "flat", "#c9d8f2", null, true);
+                      ZERO8, "flat", "#c9d8f2", null);
       if (cap) { cap.air = 0.14; cap.lit = 0.5; }
     }
     const tw = bd.tower;
@@ -1166,29 +1189,45 @@ function leaveOverlay(root, trigger) {
         const y0 = cuts[i], y1 = cuts[i + 1];
         const q = add(C, [[tw.x - taper(y0), y0, tw.z], [tw.x + taper(y0), y0, tw.z],
                           [tw.x + taper(y1), y1, tw.z], [tw.x - taper(y1), y1, tw.z]],
-                      ZERO8, "flat", i % 2 ? "#c9613a" : "#e8e2d4", null, true);
+                      ZERO8, "flat", i % 2 ? "#c9613a" : "#e8e2d4", null);
         if (q) { q.air = 0.1; q.lit = 0.62; }
       }
       const mast = add(C, [[tw.x - 18, tw.top, tw.z], [tw.x + 18, tw.top, tw.z],
                            [tw.x + 6, tw.mast, tw.z], [tw.x - 6, tw.mast, tw.z]],
-                       ZERO8, "flat", "#d8d2c4", null, true);
+                       ZERO8, "flat", "#d8d2c4", null);
       if (mast) mast.air = 0.1;
       (tw.decks || []).forEach((dy) => {
         const w = taper(dy) * 1.5;
         const deck = add(C, [[tw.x - w, dy, tw.z], [tw.x + w, dy, tw.z],
                              [tw.x + w, dy + 90, tw.z], [tw.x - w, dy + 90, tw.z]],
-                         ZERO8, "flat", "#f0d9a8", null, true);
+                         ZERO8, "flat", "#f0d9a8", null);
         if (deck) { deck.air = 0.06; deck.lit = 0.9; }
       });
     }
     const plaza = bd.plaza;
     if (plaza) {
-      const fl = add(C, [[-plaza.half, plaza.y, plaza.z0], [plaza.half, plaza.y, plaza.z0],
-                          [plaza.half, plaza.y, plaza.z1], [-plaza.half, plaza.y, plaza.z1]],
-          [plaza.z0 * DPM, -plaza.half * DPM, plaza.z0 * DPM, plaza.half * DPM,
-           plaza.z1 * DPM, plaza.half * DPM, plaza.z1 * DPM, -plaza.half * DPM],
-          "pat", floorPat, null, true);
-      if (fl) { fl.air = 0.22; fl.lit = 0.5; }
+      /* The ground beyond the window is the one surface whose *scale* the lane's own rule cannot
+         reach: an affine map is exact across a narrow panel and this plane is a hundred metres deep,
+         so one quad would bend the paving the way a single stretched quad bends a wall — the same
+         reason the lane's walls are 60 cm slices. It is also dressed at its own scale, one tile per
+         8 m, because a 64 cm tile sixty metres away is smaller than a pixel and comes back as a
+         shimmer nobody authored. Air is ramped with depth rather than fixed, so the far edge of the
+         plaza dissolves into the sky the compound is set against. */
+      const STEP = 1200, PU = 1 / 10;                     // panel depth, uv units per centimetre
+      const span = Math.max(1, plaza.z1 - plaza.z0);
+      for (let z = plaza.z0; z < plaza.z1; z += STEP) {
+        const z1 = Math.min(z + STEP, plaza.z1);
+        const fl = add(C, [[-plaza.half, plaza.y, z], [plaza.half, plaza.y, z],
+                           [plaza.half, plaza.y, z1], [-plaza.half, plaza.y, z1]],
+            [z * PU, -plaza.half * PU, z * PU, plaza.half * PU,
+             z1 * PU, plaza.half * PU, z1 * PU, -plaza.half * PU],
+            "pat", floorPat);
+        // Air ramps toward the lane's own murk ceiling and never past it: the plaza is the one
+        // surface whose far edge is allowed to dissolve into the sky, and FOG_MAX is what "far" is
+        // defined as in this renderer. A hand-picked 0.65 here would be the renderer telling a
+        // different story about distance than every other quad in the frame.
+        if (fl) { fl.air = 0.2 + ((z - plaza.z0) / span) * (FOG_MAX - 0.2); fl.lit = 0.5; }
+      }
     }
     const cross = bd.crossing;
     if (cross) {
@@ -1199,7 +1238,7 @@ function leaveOverlay(root, trigger) {
                           [cross.x1, cross.y + 1, z - cross.width / 2],
                           [cross.x1, cross.y + 1, z + cross.width / 2],
                           [cross.x0, cross.y + 1, z + cross.width / 2]],
-                      ZERO8, "flat", "#c7d3e8", null, true);
+                      ZERO8, "flat", "#c7d3e8", null);
         if (q) { q.air = 0.18; q.lit = 0.72; }
       }
       if (cross.diagonals) {
@@ -1213,26 +1252,32 @@ function leaveOverlay(root, trigger) {
                             [cx + cross.width / 2, cross.y + 1, cz - cross.width / 2],
                             [cx + cross.width / 2, cross.y + 1, cz + cross.width / 2],
                             [cx - cross.width / 2, cross.y + 1, cz + cross.width / 2]],
-                        ZERO8, "flat", "#b9c7de", null, true);
+                        ZERO8, "flat", "#b9c7de", null);
           if (q) { q.air = 0.2; q.lit = 0.62; }
         }
       }
     }
+    /* A window is a window. The tile carries an 8x8 grid of them, so the only fact a facade needs is
+       how wide one cell is — 1.6 m, which puts five or six across a nine metre block. The scale used to
+       be `0.5 + win` *interpreted as uv units per centimetre*, which is ~40 windows on the same facade:
+       at 29 m that is two pixels per window, and the whole compound came back as television static.
+       `win` is the share of the block that is lit, so it moves the brightness, not the grid. */
+    const CELL_CM = 160, WINU = 16 / CELL_CM;
     (bd.city || []).forEach((b) => {
-      const hw = b.w / 2, k = 0.5 + (b.win || 0.4);
+      const hw = b.w / 2, k = WINU, glow = 0.3 + (b.win || 0.4) * 0.4;
       const face = add(C, [[b.x - hw, 0, b.z], [b.x + hw, 0, b.z], [b.x + hw, b.h, b.z],
                            [b.x - hw, b.h, b.z]],
           [(b.x - hw) * k, 0, (b.x + hw) * k, 0, (b.x + hw) * k, -b.h * k, (b.x - hw) * k, -b.h * k],
-          "pat", winPat, null, true);
-      if (face) { face.air = 0.14; face.lit = 0.46; }
+          "pat", winPat, null);
+      if (face) { face.air = 0.14; face.lit = glow; }
       const side = b.x < 0 ? 1 : -1;
       const sf = add(C, [[b.x + side * hw, 0, b.z - hw], [b.x + side * hw, 0, b.z + hw],
                           [b.x + side * hw, b.h, b.z + hw], [b.x + side * hw, b.h, b.z - hw]],
           [(b.z - hw) * k, 0, (b.z + hw) * k, 0, (b.z + hw) * k, -b.h * k, (b.z - hw) * k, -b.h * k],
-          "pat", winPat, null, true);
-      if (sf) { sf.air = 0.14; sf.lit = 0.3; }
+          "pat", winPat, null);
+      if (sf) { sf.air = 0.14; sf.lit = glow * 0.66; }
       const lip = add(C, [[b.x - hw, b.h, b.z], [b.x + hw, b.h, b.z], [b.x + hw, b.h, b.z - 40],
-                          [b.x - hw, b.h, b.z - 40]], ZERO8, "flat", "#0f1727", null, true);
+                          [b.x - hw, b.h, b.z - 40]], ZERO8, "flat", "#0f1727", null);
       if (lip) lip.air = 0.1;
     });
   };
@@ -1349,8 +1394,13 @@ function leaveOverlay(root, trigger) {
       });
     });
     if (bd) drawFar(C);
+    /* The wall at your back is a surface with no authored cladding, and the material model's own
+       default for that is the wall's tiles — not a flat colour. It was a flat plank, which meant that
+       turning round at the entrance filled the screen with one grey rectangle three metres away and
+       read as "the renderer stopped" rather than "the lane ends here". Lit, as everything is, by the
+       room's own sources: there is no lamp behind the mouth, so it stays dim, and that is true. */
     const back = add(C, [[WALL, 0, Z_BACK], [-WALL, 0, Z_BACK], [-WALL, CEIL, Z_BACK], [WALL, CEIL, Z_BACK]],
-        [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#2a3854");
+        [WALL * DPM, 0, -WALL * DPM, 0, -WALL * DPM, -CEIL * DPM, WALL * DPM, -CEIL * DPM], "pat", tilePat);
     if (back) back.lit = lightAt(0, 210, Z_BACK);
 
     beams.forEach((bz) => {          // so the ceiling has a rhythm, and the lane reads as a podium

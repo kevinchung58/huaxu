@@ -31,3 +31,6 @@ dist-ssr
 # harness-only: npm packages for the jsdom/verification tooling, never shipped
 package.json
 package-lock.json
+
+# harness output: lane frames rendered offscreen, not shipped
+.preview/

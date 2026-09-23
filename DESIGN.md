@@ -140,6 +140,19 @@ fog and the amber pool and the bulbs all distance functions of that same project
 WebGL and no library — the whole site is still dependency-free, and the renderer is ~200 lines of
 this repo's own code. What that buys, and what it cannot:
 
+- **A quad is culled by the bounds its projected points occupy, never by its corners.** Both failure
+  modes have now been paid for: the far plane (a sky covers the view by being larger than it, so every
+  corner is off-screen) and the near one (stand deep in the lane and the floor under you, the walls
+  beside you and the roof over you are each one panel wider than the screen — every quad you are
+  inside of was dropped at once and the frame collapsed to its base plate under a fog gradient).
+  `add()` projects first and compares the box; anything whose box misses the viewport by more than
+  80 px is dropped, which is a superset of what the corner test kept.
+- **Nothing is drawn that the data did not ask for, and everything the data asks for is drawn.** The
+  window, the opening in the end wall and the compound beyond it (plaza, crossing, eight city blocks,
+  the tower, the mountain, the sky bands) live in the `data-walk-vista` / `data-walk-backdrop` islands
+  and were invisible for as long as a single island could be read as a list. The district's own
+  harness rendered it that way for months without noticing, which is why `.verify/lane-shot.mjs` now
+  rasterises the lane's canvas and gates on what the frame is made of.
 - The lane is closed on six sides *by construction*: the camera clips at 24 cm and the walls run past
   the walk clamp, so turning around shows a lane instead of an edge. The box is authored (`data-lane-w`,
   `data-lane-d`, `data-lane-ceil`, `data-eye`), so the renderer draws the room the data describes

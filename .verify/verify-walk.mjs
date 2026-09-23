@@ -252,8 +252,16 @@ ok("the far plane stays a plane: nothing is projected off the ends of the earth"
    ctx.ptsMax > 0 && ctx.ptsMax < 60000, `widest coordinate ${Math.round(ctx.ptsMax)}`);
 ok("a texture covers its own quad and no more", ctx.huge === 0, `${ctx.huge} oversized fills`);
 ok("the backdrop adds its own fills to the room, not a second pass over it", ctx.fills > before);
+/* The ceiling is a pass detector, not a freeze on detail — and it was calibrated on a build where
+   the compound beyond the lane's window was not being drawn at all (the vista and backdrop islands
+   were read with a list operation and came back `null`, so `if (vista)` was false). With the
+   compound actually in the frame the same boot costs ~600 more fills: the plaza is sliced into panels
+   for the same reason the walls are, and the crossing, eight city blocks, the tower, the mountain and
+   three sky bands are ~48 quads that were previously invisible. The number to watch is a *second
+   depth pass*, which doubles the room and lands near 6 000; if this ever reads that, the day's change
+   put the scene through twice. */
 ok("one depth pass, dressed: the room costs fills, not passes",
-   ctx.fills > before && ctx.fills < 3200, `${ctx.fills} fills, one pass`);
+   ctx.fills > before && ctx.fills < 4400, `${ctx.fills} fills, one pass`);
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
 ok("the cladding is tiled into the wall's own panels, so an affine map stays exact",
