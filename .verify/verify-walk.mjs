@@ -117,7 +117,8 @@ const island = (name) => {
   const m = html.match(new RegExp(`data-walk-${name}>(.*?)</script>`));
   return m ? JSON.parse(m[1]) : null;
 };
-const lights = island("lights"), beams = island("beams"), vista = island("vista"), bd = island("backdrop");
+const lights = island("lights"), wires = island("wires"), beams = island("beams"),
+      vista = island("vista"), bd = island("backdrop");
 ok("lights are data, not a renderer's guess", lights && lights.length >= 6, `${lights && lights.length}`);
 ok("the compound's bounce is authored as a light source, with its own tint",
    !!lights.find((L) => L.tint && L.bulb === false));
@@ -188,6 +189,26 @@ const lanterns = lights.filter((L) => L.body === "lantern");
    know about — so the count moved and the rule did not. */
 ok("a lantern is a light source, so the room is lit by what hangs in it",
    lanterns.length === 6 && lanterns.every((L) => L.bulb === false && L.tint));
+/* The cable each lantern hangs on, found in the data rather than assumed: a crossing counts if it is at
+   the lantern's own depth, a run counts if it passes within a metre of the lantern's x at that depth.
+   Both halves of this were wrong in the district at once — the lanterns were authored in scene
+   centimetres while the cables beside them were authored in records, so five of six hung on air, and
+   one cable ran to a depth past the far wall, where it was drawn over the city in the aperture with
+   nothing on this side holding it up. */
+const cableOf = (L) => {
+  let best = null, bestDx = 100;
+  (wires || []).forEach((w) => {
+    const az = w.a[2], bz = w.b[2];
+    if (L.z < Math.min(az, bz) - 40 || L.z > Math.max(az, bz) + 40) return;
+    const dx = Math.abs(bz - az) < 60
+      ? 0 : Math.abs(w.a[0] + (w.b[0] - w.a[0]) * ((L.z - az) / (bz - az)) - L.x);
+    if (dx < bestDx) { bestDx = dx; best = w; }
+  });
+  return best;
+};
+ok("every lantern hangs on a cable, and every cable is strung to something inside the room",
+   !!wires && wires.length >= 5 && lanterns.every((L) => !!cableOf(L))
+     && wires.every((w) => [w.a, w.b].every((p) => p[2] > -240 && p[2] <= 1247)));
 ok("and each one says how wide the paper is and where the cord ties off",
    lanterns.every((L) => L.size >= 20 && L.size <= 40 && L.h > L.y && L.y > 200 && L.y < 400));
 const props = qa(".walk-hit").map((b) => ({ obj: b.dataset.obj,

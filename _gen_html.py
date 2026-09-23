@@ -5,7 +5,7 @@ from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260923b"   # one bump per changed asset pair; both tags read it
+VER = "20260923c"   # one bump per changed asset pair; both tags read it
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -1809,15 +1809,20 @@ DISTRICTS = [
         # here rather than taken from a random number, because a lane that moves differently on every
         # reload is not a drawn place, it is a screensaver. `swing` is centimetres at the foot of the
         # cord; the light moves with the paper, so the walls brighten and dim where the lamp is.
+        # Every `z` below is a record depth, the same as the cable it hangs from, and each one is the
+        # depth of a crossing in `wires`: a lantern is a light with a cord, and five of the six used to
+        # hang on air because these numbers were written in scene centimetres while the cables beside
+        # them were written in records. `verify-walk` now asserts the pairing rather than trusting it.
         "lanterns": [
-            {"x": -120, "y": 268, "z": 150, "r": 27, "swing": 3.2, "period": 3.1, "phase": 0.0},
-            {"x": 40, "y": 252, "z": 150, "r": 31, "swing": 2.6, "period": 3.9, "phase": 1.7},
-            {"x": 210, "y": 262, "z": 560, "r": 26, "swing": 3.6, "period": 4.4, "phase": 0.9},
-            # Two more on the wires further down, so the far half of the lane is hung as well as the
-            # near half: the wire at 700 and the one at 1172 both carry paper now.
-            {"x": -140, "y": 262, "z": 700, "r": 26, "swing": 3.0, "period": 3.6, "phase": 2.1},
-            {"x": 150, "y": 258, "z": 1172, "r": 28, "swing": 2.6, "period": 4.1, "phase": 0.6},
-            {"x": -170, "y": 272, "z": 900, "r": 29, "swing": 2.2, "period": 3.4, "phase": 2.6},
+            # The crossings below are spaced so that every published stop has one in view: a lantern
+            # hung at the mouth of the lane is over your head and out of frame from the entrance, and a
+            # warm light nobody can see is a number, not a room.
+            {"x": -120, "y": 268, "z": 60, "r": 27, "swing": 3.2, "period": 3.1, "phase": 0.0},
+            {"x": 40, "y": 252, "z": 60, "r": 31, "swing": 2.6, "period": 3.9, "phase": 1.7},
+            {"x": 210, "y": 262, "z": 150, "r": 26, "swing": 3.6, "period": 4.4, "phase": 0.9},
+            {"x": -170, "y": 272, "z": 240, "r": 29, "swing": 2.2, "period": 3.4, "phase": 2.6},
+            {"x": -140, "y": 262, "z": 330, "r": 26, "swing": 3.0, "period": 3.6, "phase": 2.1},
+            {"x": 150, "y": 258, "z": 410, "r": 28, "swing": 2.6, "period": 4.1, "phase": 0.6},
         ],
         # The window cut in the end wall, and what you see through it. These are NOT record depths and
         # are not multiplied by Z_SCALE: nothing here is hung from a record, and the far plane is
@@ -1867,16 +1872,19 @@ DISTRICTS = [
                     {"y0": 4200, "y1": 40000, "c": "#141e36"}],
         },
         # Cables, in the same units, strung wall to wall and to the pole they are bolted on to.
+        # Five crossings spread down the lane at the record depths the lanterns are hung on, plus the
+        # two runs that make it a street rather than a set of crossings: one from the left wall to the
+        # pole, one from the pole to the end wall. A cable used to be authored at record 700 and to run
+        # to record 1180 — both past the record's own end, which is the far wall: those two were drawn
+        # beyond the room, over the city in the aperture, anchored to nothing on this side of it.
         "wires": [
             {"a": [-320, 336, 60], "b": [320, 352, 60], "sag": 46},
+            {"a": [-320, 330, 150], "b": [320, 344, 150], "sag": 40},
+            {"a": [-320, 344, 240], "b": [320, 330, 240], "sag": 52},
+            {"a": [-320, 338, 330], "b": [320, 334, 330], "sag": 44},
+            {"a": [-320, 352, 410], "b": [320, 340, 410], "sag": 30},
             {"a": [-320, 330, 182], "b": [292, 300, 275], "sag": 38},
-            {"a": [-320, 344, 300], "b": [320, 330, 300], "sag": 52},
-            {"a": [-320, 352, 404], "b": [320, 340, 404], "sag": 30},
-            # One more across the middle, and one running the length of the lane off the pole: a cable
-            # that only ever crosses is a diagram of a cable, and the two lanterns down there need a
-            # wire to hang from.
-            {"a": [-320, 338, 700], "b": [320, 334, 700], "sag": 44},
-            {"a": [292, 300, 275], "b": [300, 322, 1180], "sag": 34},
+            {"a": [292, 300, 275], "b": [300, 322, 426], "sag": 34},
         ],
         "frames": [
             {"id": "sensoji", "src": "IMG/tokyo-sensoji.jpg", "x": 314, "z": 120, "y": 96, "ry": -90,
@@ -2023,7 +2031,11 @@ def walk_islands(d, placed):
     for L in d.get("lanterns", []):
         # The authored radius is the paper; how far the light reaches is a multiple of it. A glow with
         # no body is a smudge, so `size` and `h` travel with it and the renderer draws what it is told.
-        lights.append(dict(L, r=max(96, L["r"] * 3.4), size=L["r"], h=L["y"] + round(L["r"] * 1.15),
+        # `z` goes through Z_SCALE here because a lantern's depth is a record, exactly like the cable it
+        # hangs from and the wall it swings against — the two used to be in different spaces, which put
+        # five lanterns in mid-air and their pools at the wrong depths.
+        lights.append(dict(L, z=round(L["z"] * Z_SCALE), r=max(96, L["r"] * 3.4), size=L["r"],
+                           h=L["y"] + round(L["r"] * 1.15),
                            k=0.72, bulb=False, tint="rgba(255,158,86,0.52)", body="lantern"))
     islands = [("data-walk-lights", lights), ("data-walk-wires", wires),
                ("data-walk-beams", d.get("beams", [])),
