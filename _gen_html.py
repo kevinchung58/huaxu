@@ -1263,8 +1263,6 @@ def _jpeg_attrs(src, _path=None):
 IMG_RULES = [
     ("1.jpg", "portrait", "identity"), ("2.jpg", "portrait", "identity"),
     ("tokyo-", "field-notes", "generated"),
-    ("canada-", "field-notes", "generated"),
-    ("fukuoka-", "field-notes", "generated"),
     ("act-", "classroom", "record"),
     ("practice-", "figures", "figure"), ("principle-", "figures", "figure"),
     ("grid-", "figures", "figure"), ("diverge-", "figures", "figure"),
@@ -1274,6 +1272,9 @@ IMG_RULES = [
     # reaches the album wall. Written after the `*-hero.jpg` rule on purpose — the hero is a hero
     # first, and the order of this list is the only thing deciding that.
     ("position-", "figures", "figure"),
+    # Two more rooms' plates. They are generated illustrations like Tokyo's, and they open doors onto
+    # those rooms on the album wall.
+    ("canada-", "field-notes", "generated"), ("fukuoka-", "field-notes", "generated"),
 ]
 # Held back by name, with the reason printed instead of the file quietly dropped.
 UNFILED = {"3.jpg": "the owner asked that this one stay out until it has a caption"}
@@ -1340,7 +1341,41 @@ if _stale:
 
 # A `record` image may only be shown with a venue and a date. This is the table that holds them, and
 # it is empty until the owner writes it, which is what shuts the classroom block.
-CAPTIONS = {}
+# A plate's description is authored, and says what is drawn: these are illustrations of places, and
+# none of them is a photograph of one. Tokyo's plates predate this table and keep the generator's
+# honest fallback; everything added since is described here, which is also what a screen reader gets.
+CAPTIONS = {
+    "canada-cover.jpg": {
+        "alt": "Illustration of a snow-banked campus walkway between two buildings at dusk, brick "
+               "under pale siding, bare trees, one lit doorway at the far end.",
+        "caption": "The corridor in one drawing. Snow, brick, and a door left lit: what the room is "
+                   "made of, and not a record that anyone walked it."},
+    "canada-walkway.jpg": {
+        "alt": "Illustration of a winter campus path with snow banked against two low buildings, a "
+               "bare tree and one lit window, seen empty of people.",
+        "caption": "A walkway after snow, drawn. The tracks in it are props, like everything else "
+                   "here: nobody's walk is being documented."},
+    "canada-window.jpg": {
+        "alt": "Illustration of a warm lit window in a brick wall with snow on the sill and a "
+               "bicycle below, at dusk.",
+        "caption": "One window with the light on. This is the warmest thing in the corridor, and it "
+                   "is a drawing of a window, not of anyone's evening."},
+    "fukuoka-cover.jpg": {
+        "alt": "Illustration of a narrow Japanese stall alley at night: timber slats, noren curtains, "
+               "paper lanterns on wires, and dark water at the far end.",
+        "caption": "The alley in one drawing: lantern light over timber, and the canal past the last "
+                   "stall. No stall in it has a name."},
+    "fukuoka-yatai.jpg": {
+        "alt": "Illustration of a small stall front at night with a dark curtain, two paper lanterns "
+               "and a counter, seen empty of people.",
+        "caption": "A counter with nobody behind it. An alley after closing is the honest version of "
+                   "a place like this: the room can be warm without claiming anyone is in it."},
+    "fukuoka-canal.jpg": {
+        "alt": "Illustration of a narrow canal at night with long amber reflections, low lit houses "
+               "on the far bank and a slim tower on the horizon.",
+        "caption": "The canal, drawn, with the far bank reflected in it. The water is the subject "
+                   "here, which is why the view is mostly water and light rather than buildings."},
+}
 
 
 def block_files(block, shown=True):
@@ -1701,9 +1736,11 @@ OBJ_SIZE = {
     # The way on: a plain door at the far end of a lane, and the only object in the district whose
     # whole purpose is the page behind it. Height and width are a door's, not a prop's.
     "door": (96, 210, 14),
-    # The chain's own kit. A bench is in every corridor and on every campus; a table and a stool are
-    # what a food stall outside a station is made of; a puddle is January made visible on a path.
-    "bench": (170, 78, 48), "table": (118, 72, 62), "stool": (32, 46, 32), "puddle": (230, 2, 150),
+    # The two rooms ahead of the photographs brought their own furniture: a bench, a snow shovel, a
+    # stall stool, a barrel, a hand cart and a low rail. Each is a box with its own proportions — which
+    # is all any of them are, seen from a metre away in a lane.
+    "bench": (150, 44, 56), "broom": (26, 148, 18), "stool": (34, 62, 34),
+    "barrel": (58, 84, 58), "cart": (112, 96, 72), "fence": (130, 96, 16),
 }
 
 EYE = 168                    # the eye is 1.68 m above the floor; 1 px = 1 cm throughout
@@ -1718,194 +1755,6 @@ Z_SCALE = 2.9                # records are authored in the old 4.3 m lane; the s
 LANE_FALLBACK = {"w": 640, "d": 430, "ceil": 420, "back": 240}
 
 DISTRICTS = [
-    {
-        # ---------------------------------------------------------------------------------------------
-        # The first room of the chain, and the one that is honestly provisional: it is drawn from the
-        # shape of a Canadian campus in January — a covered walk between two wings, brick and glass,
-        # snow past it — and not from the owner's photographs, which have not arrived. The caveat in
-        # the drawer says so in words, and the record will be read again against the pictures.
-        "id": "canada", "label": "Canada",
-        "page": ROOM_BY_ID["canada"]["page"],
-        "plates": ROOM_BY_ID["canada"]["plates"],
-        "lane": {"w": 640, "d": 520, "ceil": 440, "back": 300, "ceilPat": "lattice"},
-        "onward": {"x": 316, "z": 500, "ry": -90},
-        "purpose": "A covered walk on a Canadian campus in January: brick, glass, snow past the doors",
-        "status": "open",
-        "kind": "personal",
-        "cover": "IMG/canada-cover.jpg",
-        "cover_caption": "The district in one sheet: a lamp with snow on it, the quad under snow, "
-                         "a window with the lights on.",
-        "blurb": "A walk under a roof between two wings, at the hour when the snow has gone blue "
-                 "and the windows have come on.",
-        "objects": [
-            {"id": "lamp", "kind": "utility", "x": 294, "z": 150, "y": 0, "ry": -90,
-             "glow": [{"r": 210, "k": 0.95, "dy": 380, "tint": "rgba(255,214,170,0.42)"}],
-             "title": "A lamp standard at the mouth of the walk",
-             "hint": "The light the walk is read by, and the first thing that tells you it is winter: "
-                     "the cap is drawn with snow on it. Drawn, like everything here."},
-            {"id": "bikes", "kind": "bikes", "x": -244, "z": 40, "y": 0, "ry": 0,
-             "title": "Bikes at the rack, out in the weather",
-             "hint": "Two frames and two wheels, no riders and no owner. Set dressing: a rack says "
-                     "people come here without saying who."},
-            {"id": "bench-a", "kind": "bench", "x": -300, "z": 120, "y": 0, "ry": 90,
-             "title": "A bench facing the quad",
-             "hint": "176 cm of it, which is a bench. The snow is on the other side of the glass "
-                     "and the bench is on this side, which is the whole reason the walk is roofed."},
-            {"id": "puddle", "kind": "puddle", "x": -60, "z": 210, "y": 0, "ry": 0,
-             "title": "Meltwater across the path",
-             "hint": "Salt, boots and a warm corridor make this, every afternoon of the term. The "
-                     "lane has one wet patch for the same reason Tokyo's has one."},
-            {"id": "panel", "kind": "meter", "x": -312, "z": 180, "y": 150, "ry": 90,
-             "title": "A panel of switches behind a door",
-             "hint": "Bolted to the wall where the services are, with its conduit going up. It reads "
-                     "nothing: the numbers on it would be invented."},
-            {"id": "vending", "kind": "vending", "x": -294, "z": 250, "y": 0, "ry": 90,
-             "glow": [{"r": 140, "k": 1.0}],
-             "title": "A vending machine, lit in an empty corridor",
-             "hint": "The only genuinely warm thing in the corridor, and the same machine that keeps "
-                     "Tokyo's frames. Press the slot and the drawer opens."},
-            {"id": "crate-winter", "kind": "crate", "x": -250, "z": 330, "y": 0, "ry": 0,
-             "title": "A crate that has been out here all winter",
-             "hint": "Drawn with a lid of snow on it. Nothing is inside and nothing is claimed about "
-                     "what was."},
-            {"id": "canopy", "kind": "awning", "x": 292, "z": 380, "y": 246, "ry": -90,
-             "title": "A canopy over the doors",
-             "hint": "Flat, wide, and edged with snow. It is the reason the puddle is under it."},
-            {"id": "downpipe", "kind": "pipe", "x": 308, "z": 220, "y": 0, "ry": -90,
-             "title": "A downpipe from the roof",
-             "hint": "The walk's one full-height vertical, and in this room it is the thing the snow "
-                     "slides off."},
-            {"id": "bin-snow", "kind": "bin", "x": 262, "z": 300, "y": 0, "ry": -90,
-             "title": "A bin with a snow cap",
-             "hint": "Nothing is in it and nothing will be: a district does not get to imply what "
-                     "somebody threw away."},
-            {"id": "bench-b", "kind": "bench", "x": 268, "z": 420, "y": 0, "ry": -90,
-             "title": "A second bench, under the lamp",
-             "hint": "Put where the light lands, because that is where a bench gets sat on."},
-            {"id": "board", "kind": "signA", "x": -300, "z": 430, "y": 130, "ry": 90,
-             "title": "A notice board with nothing on it",
-             "hint": "Deliberately blank. A drawn notice would be the one object here pretending to "
-                     "say something about a real campus."},
-            {"id": "planter-cold", "kind": "planter", "x": 288, "z": 470, "y": 0, "ry": -90,
-             "title": "A stone planter with snow in it",
-             "hint": "The planting is over for the year; the snow in it is the season, drawn."},
-            {"id": "cones", "kind": "cones", "x": -150, "z": 300, "y": 0, "ry": 0,
-             "title": "Cones round the wet patch",
-             "hint": "Facilities put them out in the morning. This is the only object in either room "
-                     "that implies somebody has a job, and it implies nothing about who."},
-            {"id": "camera-cold", "kind": "camera", "x": 306, "z": 196, "y": 200, "ry": -90,
-             "glow": [{"r": 36, "k": 0.2, "tint": "rgba(255,120,110,0.45)", "dy": 6}],
-             "title": "A camera over the walk",
-             "hint": "The same drawn lens Tokyo has, with the same small light. It records nothing, "
-                     "and nothing in either room is watched."},
-            {"id": "pane", "kind": "pane", "x": 316, "z": 96, "y": 120, "ry": -90,
-             "title": "A glazed door, dark behind it",
-             "hint": "The corridor's own glass, set into the wall: what you see through it is the "
-                     "corridor's light, not a room that was invented."},
-        ],
-        "surfaces": [
-            # Brick above, concrete at the base, glass in the middle: a campus building, band by band.
-            {"side": -1, "z0": -300, "z1": 140, "y0": 0, "y1": 120, "kind": "dado"},
-            {"side": -1, "z0": -300, "z1": 140, "y0": 120, "y1": 440, "kind": "brick"},
-            {"side": -1, "z0": 140, "z1": 430, "y0": 0, "y1": 110, "kind": "dado"},
-            {"side": -1, "z0": 140, "z1": 430, "y0": 110, "y1": 440, "kind": "glazing", "tone": 0.96},
-            {"side": -1, "z0": 430, "z1": 520, "y0": 0, "y1": 440, "kind": "brick", "tone": 1.05},
-            {"side": 1, "z0": -300, "z1": 60, "y0": 0, "y1": 110, "kind": "dado"},
-            {"side": 1, "z0": -300, "z1": 60, "y0": 110, "y1": 440, "kind": "glazing", "tone": 0.92},
-            {"side": 1, "z0": 60, "z1": 330, "y0": 0, "y1": 440, "kind": "brick"},
-            {"side": 1, "z0": 330, "z1": 520, "y0": 0, "y1": 130, "kind": "dado"},
-            {"side": 1, "z0": 330, "z1": 520, "y0": 130, "y1": 440, "kind": "plaster", "tone": 0.9},
-        ],
-        "marks": [
-            {"kind": "kerb", "x0": -318, "x1": -272, "z0": -300, "z1": 520, "y1": 6},
-            {"kind": "kerb", "x0": 272, "x1": 318, "z0": -300, "z1": 520, "y1": 6},
-            {"kind": "snow", "x0": -318, "x1": -240, "z0": -300, "z1": 60},
-            {"kind": "snow", "x0": -318, "x1": -190, "z0": 330, "z1": 520},
-            {"kind": "snow", "x0": 180, "x1": 318, "z0": -300, "z1": 40},
-            {"kind": "wet", "x0": -210, "x1": -40, "z0": 150, "z1": 320},
-            {"kind": "grate", "x0": 60, "x1": 150, "z0": 250, "z1": 270},
-            {"kind": "grate", "x0": -150, "x1": -60, "z0": 460, "z1": 480},
-            {"kind": "manhole", "x0": -60, "x1": 20, "z0": 90, "z1": 150},
-        ],
-        "lamps": [60, 150, 260, 370, 460,
-                  {"z": 520, "y": 250, "x": 0, "r": 900, "k": 0.5, "bulb": False,
-                   "tint": "rgba(198,214,238,0.30)"}],
-        "beams": [140, 300, 460],
-        "wires": [
-            {"a": [-308, 356, 20], "b": [308, 352, 20], "sag": 24},
-            {"a": [-308, 350, 190], "b": [308, 354, 190], "sag": 20},
-            {"a": [-308, 352, 360], "b": [308, 350, 360], "sag": 22},
-            {"a": [-306, 344, 60], "b": [-306, 344, 470], "sag": 16},
-        ],
-        "lanterns": [],
-        "frames": [
-            {"id": "quad", "src": "IMG/canada-quad.jpg", "x": -314, "z": 330, "y": 108, "ry": 90,
-             "title": "Frame: the quad in January",
-             "alt": "Illustration of a snow-covered quadrangle between brick buildings with lit "
-                    "windows, a path swept through the middle, no people.",
-             "caption": "The quad from under the roof, drawn. Empty on purpose: a crowd here would "
-                        "be an invented record, and this frame is not a record."},
-            {"id": "lamp", "src": "IMG/canada-lamp.jpg", "x": 314, "z": 210, "y": 104, "ry": -90,
-             "title": "Frame: the path lamp",
-             "alt": "Illustration of a lamp standard with a cap of snow throwing a cone of warm "
-                    "light across a swept path at dusk.",
-             "caption": "The lamp that lights the walk, drawn at the hour this room is read at."},
-            {"id": "studio", "src": "IMG/canada-studio.jpg", "x": -314, "z": 120, "y": 100, "ry": 90,
-             "title": "Frame: a studio window",
-             "alt": "Illustration of a tall studio window at dusk with a drawing board and a lamp "
-                    "behind it, snow on the sill outside, nobody at the desk.",
-             "caption": "A window with the lights on and nobody in the room. Drawn, and the empty "
-                        "chair is the drawing's own decision."},
-        ],
-        "stations": [
-            {"z": 0, "label": "the mouth of the walk"},
-            {"z": 130, "label": "by the glass"},
-            {"z": 260, "label": "under the beam"},
-            {"z": 360, "label": "under the canopy"},
-            # Not against the far wall: a stop a metre from it fills the frame with one surface, and a
-            # station is a place to stand and look, not a place to stand and read plaster.
-            {"z": 430, "label": "at the far doors"},
-        ],
-        "slots": [
-            {"label": "Frames", "note": "Photographs go here, one per wall slot.",
-             "state": "Three drawn sights hold the wall now; the owner's own photographs replace "
-                      "them, and this room will be re-read against them when they arrive."},
-            {"label": "Winter", "note": "One room, one season: the walk is only ever read in "
-                                        "January.",
-             "state": "No clip yet, and no sound: this room is silent until a slot carries some."},
-        ],
-        "exit": {"id": "noren", "kind": "noren", "x": 0, "z": -44, "y": 178, "ry": 180,
-                 "title": "The doors at your back", "hint": "Push them to leave the walk."},
-        "caveat": "Provisional, and the drawer says so: this room was drawn from the shape of a "
-                  "Canadian campus in January before the owner's photographs arrived. It is an "
-                  "illustration of a kind of place, not a record of one. The plates are generated, "
-                  "the objects are props, and nothing here implies a visit — when the pictures "
-                  "arrive the room will be read again against them.",
-        "vista": {"x": 0, "y0": 120, "y1": 350, "w": 520},
-        "backdrop": {
-            "sky": [{"y0": 0, "y1": 900, "c": "#c9a98c"},
-                    {"y0": 900, "y1": 2600, "c": "#8fa2be"},
-                    {"y0": 2600, "y1": 40000, "c": "#2f4463"}],
-            "mountain": {"x": -1400, "y": 520, "z": 12000, "w": 9000, "h": 900, "c": "#41527a"},
-            "plaza": {"y": -300, "z0": 1540, "z1": 13000, "half": 5200, "pat": "snow", "tone": 1.06},
-            "roofs": [
-                {"x": -1900, "y": 0, "z": 2200, "w": 1100, "h": 620, "tone": 0.45},
-                {"x": -3400, "y": 0, "z": 2600, "w": 1400, "h": 820, "tone": 0.3},
-                {"x": 2000, "y": 0, "z": 2100, "w": 1200, "h": 700, "tone": 0.6},
-                {"x": 3600, "y": 0, "z": 2500, "w": 1500, "h": 900, "tone": 0.42},
-            ],
-            "tower": {"x": 900, "y": 0, "z": 3400, "half": 420, "top": 3000, "mast": 3400,
-                      "c1": "#d9d2c4", "c2": "#8a5a3c", "decks": [1500, 2600]},
-            "city": [
-                {"x": -5200, "z": 6200, "w": 1600, "h": 1600, "win": 0.5, "tone": 0.62},
-                {"x": -2800, "z": 6000, "w": 1300, "h": 1200, "win": 0.45, "tone": 0.7},
-                {"x": -900, "z": 5800, "w": 1400, "h": 1900, "win": 0.55, "tone": 0.55},
-                {"x": 1400, "z": 6000, "w": 1200, "h": 1400, "win": 0.5, "tone": 0.66},
-                {"x": 3400, "z": 6300, "w": 1500, "h": 1100, "win": 0.4, "tone": 0.72},
-                {"x": 5600, "z": 6600, "w": 1700, "h": 1700, "win": 0.58, "tone": 0.5},
-            ],
-        },
-    },
     {
         "id": "tokyo", "label": "Tokyo",
         # The page, the plate prefixes and the position in the chain all come from the ROOMS table
@@ -2318,7 +2167,10 @@ DISTRICTS = [
             {"z": 150, "label": "under the posters"},
             {"z": 275, "label": "by the pole"},
             {"z": 350, "label": "by the lit window"},
-            {"z": 395, "label": "in front of the machine"},
+            # 88% of the lane, not 92: the last stop used to stand 29 cm from the end wall, which put
+            # the whole room behind the reader and made the deepest frame in every tour a picture of
+            # one wall. The machine is still ahead of you from here, which is the point of the stop.
+            {"z": 380, "label": "in front of the machine"},
         ],
         # The curtain at your back is the way out, and which page it opens onto is decided when the
         # pages are emitted: the place before this one in the chain, or the album if there is none.
@@ -2330,234 +2182,349 @@ DISTRICTS = [
                   "arrive when the owner supplies them, and nothing here implies a place was "
                   "visited.",
     },
+# ── Canada and Fukuoka ───────────────────────────────────────────────────────────────────────────
+# Two rooms authored ahead of the owner's photographs, so the chain has more than one link and the
+# form is proven before real material arrives. Built from what the place *is* — a winter campus
+# corridor, and a yatai alley beside a canal — in the vocabulary the renderer already has, with two
+# new materials (snow, timber), two new ground marks (a drift, tracks), a duct run overhead, and a
+# canal with authored reflections in place of the plaza. Every number below is a decision with a
+# reason, and every object carries the reason in its hint.
     {
-        # ---------------------------------------------------------------------------------------------
-        # The last room of the chain: the stalls outside a station, which is what Fukuoka is known
-        # for and all this room claims — a lane of food stands under a viaduct, at night, with the
-        # station wall at one end of the view. Also drawn before the photographs arrive.
-        "id": "fukuoka", "label": "Fukuoka",
-        "page": ROOM_BY_ID["fukuoka"]["page"],
-        "plates": ROOM_BY_ID["fukuoka"]["plates"],
-        "lane": {"w": 640, "d": 500, "ceil": 420, "back": 260},
-        "purpose": "A lane of food stalls outside a station: lanterns, tables, a viaduct overhead",
-        "status": "open",
-        "kind": "personal",
-        "cover": "IMG/fukuoka-cover.jpg",
-        "cover_caption": "The district in one sheet: lanterns over a counter, a table with two "
-                         "stools, the viaduct crossing above.",
-        "blurb": "The stalls are open and the seats are empty. Paper light the whole way down, and "
-                 "the station behind it.",
-        "objects": [
-            {"id": "stall", "kind": "front", "x": -300, "z": 120, "y": 0, "ry": 90,
-             "glow": [{"r": 190, "k": 1.1, "tint": "rgba(255,186,110,0.5)", "dy": 150}],
-             "states": [
-                 {"say": "Open, warm, and nobody at the counter.", "shut": 0.0, "k": 1.1},
-                 {"say": "Half closed: the counter, the pots behind it, and the light on both.",
-                  "shut": 0.55, "k": 0.8},
-                 {"say": "Shut for the night. A stall closing is the least dramatic thing in this "
-                         "lane and the only thing it does.", "shut": 1.0, "k": 0.5},
-             ],
-             "title": "The stall you can close",
-             "hint": "Three stops, and the light on the asphalt goes with the shutter, because the "
-                     "two are one number. Drawn, empty, and not for sale."},
-            {"id": "table-a", "kind": "table", "x": -196, "z": 200, "y": 0, "ry": 90,
-             "title": "A table outside the stall",
-             "hint": "118 cm by 62, which is a table for two. The stools are beside it because "
-                     "that is where stools are."},
-            {"id": "stool-a", "kind": "stool", "x": -150, "z": 196, "y": 0, "ry": 0,
-             "title": "A stool on the near side",
-             "hint": "Turned out slightly, the way somebody leaves a stool when they get up."},
-            {"id": "stool-b", "kind": "stool", "x": -246, "z": 204, "y": 0, "ry": 0,
-             "title": "A stool on the far side",
-             "hint": "The second seat at the same table. No chairs are drawn anywhere else in this "
-                     "lane: eating here happens standing."},
-            {"id": "table-b", "kind": "table", "x": -204, "z": 262, "y": 0, "ry": 90,
-             "title": "A second table further down",
-             "hint": "Same size, same emptiness, two metres on: a lane of stalls has a rhythm of "
-                     "them, and one table is furniture while two are a place."},
-            {"id": "crates-stall", "kind": "crate", "x": -258, "z": 330, "y": 0, "ry": 0,
-             "title": "Crates stacked behind the stall",
-             "hint": "Empty and stacked. What was in them is not this room's business."},
-            {"id": "vending-fk", "kind": "vending", "x": 296, "z": 400, "y": 0, "ry": -90,
-             "glow": [{"r": 150, "k": 1.0}],
-             "title": "A vending machine at the station end",
-             "hint": "The same machine as the other two rooms, and in this one it stands in the "
-                     "machine's own country. It keeps the frames; press the slot."},
-            {"id": "recycle-fk", "kind": "recycle", "x": 300, "z": 452, "y": 0, "ry": -90,
-             "states": [
-                 {"say": "Lid down.", "flap": 0.0},
-                 {"say": "Lid up: dark inside, and the smell of a can is a fact this room does not "
-                         "need to draw.", "flap": 1.0},
-             ],
-             "title": "The crate for cans, beside the machine",
-             "hint": "Nobody empties it in the drawing, which is what makes it read as a place "
-                     "somebody uses."},
-            {"id": "bikes-fk", "kind": "bikes", "x": 288, "z": 60, "y": 0, "ry": -90,
-             "title": "Bikes against the station wall",
-             "hint": "Parked, not ridden. They are here so the wall has something leaning on it."},
-            {"id": "booth-fk", "kind": "booth", "x": -296, "z": 40, "y": 0, "ry": 90,
-             "title": "A glass booth, dark",
-             "hint": "A hundred metres from the platforms and shut. It is the room's one piece of "
-                     "glass, and the only thing in the lane that is taller than the lanterns."},
-            {"id": "board-fk", "kind": "signA", "x": 304, "z": 340, "y": 132, "ry": -90,
-             "title": "A board with the night's list on it",
-             "hint": "Blank, and it stays blank: what a stall sells tonight is not something this "
-                     "site will make up."},
-            {"id": "banner-fk", "kind": "banner", "x": -306, "z": 190, "y": 250, "ry": 90,
-             "title": "A cloth banner, hanging still",
-             "hint": "No lettering on it, for the same reason the board has none. It is here for "
-                     "the colour and the fold."},
-            {"id": "mirror-fk", "kind": "mirror", "x": 306, "z": 24, "y": 236, "ry": -90,
-             "states": [
-                 {"say": "Aimed down the lane.", "turn": 0.0},
-                 {"say": "Turned to the wall. There is no reflection in it either way: it is drawn "
-                         "glass.", "turn": 1.0},
-             ],
-             "title": "The lane mirror at the mouth",
-             "hint": "Every lane like this has one, aimed at the corner you cannot see. Drawn, not "
-                     "silvered."},
-            {"id": "ac-fk", "kind": "ac", "x": -304, "z": 300, "y": 262, "ry": 90,
-             "title": "An air-conditioning unit over the stall",
-             "hint": "Where the kitchen's heat goes, and the reason the awning below it is stained "
-                     "in the drawing."},
-            {"id": "awning-fk", "kind": "awning", "x": -286, "z": 150, "y": 236, "ry": 90,
-             "title": "The awning over the counter",
-             "hint": "Drawn at 12 degrees so the rain sheds into the lane, in a room where it is "
-                     "not raining."},
-            {"id": "planter-fk", "kind": "planter", "x": 286, "z": 250, "y": 0, "ry": -90,
-             "title": "Two planters by the station wall",
-             "hint": "The green is the only colour in the lane the lanterns did not put there."},
-            {"id": "cones-fk", "kind": "cones", "x": 150, "z": 300, "y": 0, "ry": 0,
-             "title": "Cones where the paving is up",
-             "hint": "Three of them, and a plate of steel: the station end of the lane is always "
-                     "being repaired, and the room says so without inventing a date."},
-            {"id": "steps-fk", "kind": "steps", "x": 0, "z": -60, "y": 0, "ry": 0,
-             "title": "Two steps down to the lane",
-             "hint": "The mouth of this room is a step below the street, which is how the stalls "
-                     "get their floor."},
-            {"id": "camera-fk", "kind": "camera", "x": 306, "z": 204, "y": 196, "ry": -90,
-             "glow": [{"r": 38, "k": 0.22, "tint": "rgba(255,120,110,0.5)", "dy": 6}],
-             "title": "A camera under the viaduct",
-             "hint": "Drawn, with the small light every one of these has. It records nothing."},
-        ],
+        "id": "canada", "label": "Canada",
+        "purpose": "A winter campus corridor: snow along the walls, one lit door at the end",
+        "status": "open", "kind": "personal",
+        "page": ROOM_BY_ID["canada"]["page"], "plates": ROOM_BY_ID["canada"]["plates"],
+        "cover": "IMG/canada-cover.jpg",
+        "cover_caption": "The corridor in one sheet: banked snow, brick under siding, and a single "
+                         "lit doorway at the far end.",
+        "blurb": "A walkway between two buildings after snow. The light is a doorway left on, and "
+                 "nobody is in the corridor.",
+        # Narrower, lower and shorter than the lane: this is a covered walkway between two buildings,
+        # 5.2 m wide and 3.7 m to the deck, with the services running inside the ceiling.
+        "lane": {"w": 520, "d": 300, "ceil": 370, "back": 200, "ceil_kind": "galv"},
+        # Where the door onto the next place stands: on the right wall near the far end, so it is in
+        # the frame you walk toward rather than behind you. It is hung only when the next room exists.
+        "onward": {"x": 250, "z": 290, "ry": -90},
+        # What the corridor is made of: snow piled against the base of both walls, brick to hip height,
+        # pale siding above on one side and board-formed concrete on the other, and a galvanised band
+        # where the deck meets the wall. Extents are scene centimetres.
         "surfaces": [
-            {"side": -1, "z0": -260, "z1": 90, "y0": 0, "y1": 130, "kind": "dado"},
-            {"side": -1, "z0": -260, "z1": 90, "y0": 130, "y1": 420, "kind": "brick"},
-            {"side": -1, "z0": 90, "z1": 360, "y0": 0, "y1": 300, "kind": "corrugated", "tone": 0.94},
-            {"side": -1, "z0": 90, "z1": 360, "y0": 300, "y1": 420, "kind": "hoarding", "tone": 0.84},
-            {"side": -1, "z0": 360, "z1": 500, "y0": 0, "y1": 420, "kind": "shutter", "tone": 0.9},
-            {"side": 1, "z0": -260, "z1": 60, "y0": 0, "y1": 140, "kind": "tactile"},
-            {"side": 1, "z0": -260, "z1": 60, "y0": 140, "y1": 420, "kind": "plaster", "tone": 1.04},
-            {"side": 1, "z0": 60, "z1": 300, "y0": 0, "y1": 300, "kind": "shutter"},
-            {"side": 1, "z0": 60, "z1": 300, "y0": 300, "y1": 420, "kind": "corrugated", "tone": 0.88},
-            {"side": 1, "z0": 300, "z1": 500, "y0": 0, "y1": 130, "kind": "dado"},
-            {"side": 1, "z0": 300, "z1": 500, "y0": 130, "y1": 420, "kind": "brick"},
+            {"side": -1, "z0": -200, "z1": 870, "y0": 0, "y1": 34, "kind": "snow", "tone": 1.0},
+            {"side": -1, "z0": -200, "z1": 300, "y0": 34, "y1": 132, "kind": "brick", "tone": 0.78},
+            {"side": -1, "z0": -200, "z1": 300, "y0": 132, "y1": 370, "kind": "plaster", "tone": 0.9},
+            {"side": -1, "z0": 300, "z1": 600, "y0": 34, "y1": 148, "kind": "brick", "tone": 0.72},
+            {"side": -1, "z0": 300, "z1": 600, "y0": 148, "y1": 370, "kind": "galv", "tone": 0.86},
+            {"side": -1, "z0": 600, "z1": 870, "y0": 34, "y1": 370, "kind": "concrete", "tone": 0.92},
+            {"side": 1, "z0": -200, "z1": 870, "y0": 0, "y1": 34, "kind": "snow", "tone": 0.97},
+            {"side": 1, "z0": -200, "z1": 240, "y0": 34, "y1": 370, "kind": "plaster", "tone": 0.94},
+            {"side": 1, "z0": 240, "z1": 520, "y0": 34, "y1": 140, "kind": "brick", "tone": 0.8},
+            {"side": 1, "z0": 240, "z1": 520, "y0": 140, "y1": 370, "kind": "corrugated", "tone": 0.84},
+            {"side": 1, "z0": 520, "z1": 870, "y0": 34, "y1": 370, "kind": "concrete", "tone": 0.9},
         ],
+        # Two drifts banked where the plough left them, and one line of boot prints down the middle:
+        # the corridor's own evidence that somebody else walked it, with no claim about who.
         "marks": [
-            {"kind": "tactile", "x0": -300, "x1": -272, "z0": -260, "z1": 500},
-            {"kind": "tactile", "x0": 272, "x1": 300, "z0": -260, "z1": 500},
-            {"kind": "kerb", "x0": -318, "x1": -272, "z0": -260, "z1": 500, "y1": 6},
-            {"kind": "kerb", "x0": 272, "x1": 318, "z0": -260, "z1": 500, "y1": 6},
-            {"kind": "grate", "x0": -120, "x1": 120, "z0": 240, "z1": 256},
-            {"kind": "grate", "x0": 40, "x1": 120, "z0": 430, "z1": 450},
-            {"kind": "manhole", "x0": 60, "x1": 140, "z0": 120, "z1": 180},
-            {"kind": "wet", "x0": -300, "x1": -80, "z0": 300, "z1": 420},
-            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 480, "z1": 494},
-            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 20, "z1": 34},
+            {"kind": "snow", "x0": -262, "x1": -196, "z0": -200, "z1": 870, "y1": 30},
+            {"kind": "snow", "x0": 196, "x1": 262, "z0": -200, "z1": 870, "y1": 26},
+            {"kind": "tracks", "x0": -40, "x1": 40, "z0": 40, "z1": 820, "step": 78, "wide": 30},
+            {"kind": "grate", "x0": -240, "x1": -196, "z0": 430, "z1": 470},
+            {"kind": "grate", "x0": 196, "x1": 240, "z0": 430, "z1": 470},
+            {"kind": "kerb", "x0": -262, "x1": -196, "z0": -200, "z1": 870, "y1": 10},
+            {"kind": "kerb", "x0": 196, "x1": 262, "z0": -200, "z1": 870, "y1": 10},
         ],
-        "lamps": [30, 120, 210, 300, 400, 470,
-                  {"z": 500, "y": 250, "x": 0, "r": 900, "k": 0.52, "bulb": False,
-                   "tint": "rgba(160,186,255,0.24)"}],
-        "beams": [180, 400],
-        "wires": [
-            {"a": [-320, 336, 60], "b": [320, 344, 60], "sag": 40},
-            {"a": [-320, 330, 150], "b": [320, 340, 150], "sag": 44},
-            {"a": [-320, 344, 250], "b": [320, 332, 250], "sag": 38},
-            {"a": [-320, 338, 350], "b": [320, 336, 350], "sag": 46},
-            {"a": [-320, 332, 440], "b": [320, 342, 440], "sag": 36},
-            {"a": [-308, 330, 60], "b": [-300, 322, 440], "sag": 28},
+        "beams": [280, 620],
+        # A service duct and a pipe run above the walk, which is what an enclosed corridor has instead
+        # of sky: a flat ceiling there reads as the top of a diagram.
+        "ducts": [
+            {"z0": -200, "z1": 870, "hw": 62, "y": 322, "th": 52, "c": "#55627a", "k": 0.86},
+            {"z0": -200, "z1": 870, "hw": 16, "y": 352, "th": 16, "c": "#6d7488", "k": 0.8},
         ],
-        "lanterns": [
-            {"x": -120, "y": 264, "z": 60, "r": 26, "swing": 3.0, "period": 3.4, "phase": 0.4},
-            {"x": 60, "y": 256, "z": 60, "r": 30, "swing": 2.6, "period": 4.0, "phase": 1.9},
-            {"x": 180, "y": 262, "z": 150, "r": 25, "swing": 3.4, "period": 3.6, "phase": 2.4},
-            {"x": -150, "y": 268, "z": 250, "r": 28, "swing": 2.4, "period": 3.2, "phase": 0.8},
-            {"x": 130, "y": 260, "z": 350, "r": 27, "swing": 3.2, "period": 4.2, "phase": 1.2},
-            {"x": -90, "y": 258, "z": 440, "r": 24, "swing": 2.8, "period": 3.8, "phase": 2.8},
-        ],
-        "frames": [
-            {"id": "lanterns", "src": "IMG/fukuoka-lanterns.jpg", "x": -312, "z": 240, "y": 108, "ry": 90,
-             "title": "Frame: lanterns over a counter",
-             "alt": "Illustration of paper lanterns hanging in a row above a stall counter, warm "
-                    "light on wood, no people.",
-             "caption": "A row of paper lights over a counter, drawn. The lamp is the subject "
-                        "because in this lane it always is."},
-            {"id": "canal", "src": "IMG/fukuoka-canal.jpg", "x": 312, "z": 300, "y": 104, "ry": -90,
-             "title": "Frame: the canal at night",
-             "alt": "Illustration of a narrow canal between low buildings at night, lamps doubled "
-                    "in the water, no boats and no people.",
-             "caption": "The water and the lamps, drawn. Empty, and the reflection is the whole "
-                        "picture."},
-            {"id": "platform", "src": "IMG/fukuoka-platform.jpg", "x": 312, "z": 130, "y": 100, "ry": -90,
-             "title": "Frame: the platform edge",
-             "alt": "Illustration of a station platform edge with its tactile strip and a lit "
-                    "canopy, rails empty, no people.",
-             "caption": "Where this room's people come from and go back to, drawn without either "
-                        "them or a timetable."},
+        # Strip lights down the deck, and the doorway at the end is the one warm source in the room.
+        # Four, spread to the far end: three lamps in an 8.7 m corridor left its last third unlit, and
+        # an unlit ceiling in a snow corridor reads as a black band across the view.
+        "lamps": [30, 120, 210, 292],
+        "wires": [],
+        "objects": [
+            {"id": "rack", "kind": "bikes", "x": -238, "z": 60, "y": 0, "ry": 90,
+             "title": "A bicycle rack under the snow",
+             "hint": "Two frames and a bar, drawn rather than surveyed. Snow on the top rail is the "
+                     "only thing that says winter here, and it is part of the prop."},
+            {"id": "bench", "kind": "bench", "x": 236, "z": 96, "y": 0, "ry": -90,
+             "title": "A bench nobody is sitting on",
+             "hint": "Set dressing with a reason: it is the one piece of furniture in the corridor, "
+                     "and it makes the width of the room legible at a glance."},
+            {"id": "door-a", "kind": "front", "x": 248, "z": 300, "y": 0, "ry": -90,
+             "title": "A door with the light on behind it",
+             "glow": [{"r": 96, "k": 0.7, "dy": 150}],
+             "title": "A door with the light on behind it",
+             "hint": "The far end's own answer to the vending machine: a doorway, lit, and nobody in "
+                     "it. Nothing about the corridor claims anyone is inside."},
+            {"id": "bin-a", "kind": "bin", "x": -240, "z": 210, "y": 0, "ry": 90,
+             "title": "A bin with a lid of snow",
+             "hint": "It is here so the left wall is not a run of unbroken siding, and because a "
+                     "winter corridor is exactly where a bin is."},
+            {"id": "crate-a", "kind": "crate", "x": 240, "z": 176, "y": 0, "ry": -90,
+             "title": "A crate left out",
+             "hint": "Set dressing. Its height is the unit the corridor is measured against: a "
+                     "crate is 46 cm and the bench beside it is 44."},
+            {"id": "shovel", "kind": "broom", "x": -236, "z": 268, "y": 0, "ry": 110,
+             "title": "A shovel leaning where somebody left it",
+             "hint": "The corridor's one piece of evidence that snow was dealt with, standing still "
+                     "rather than in use. A prop that says winter without saying weather."},
+            {"id": "sign-a", "kind": "sign", "x": 250, "z": 66, "y": 196, "ry": -90,
+             "title": "A blade sign, blank",
+             "hint": "A sign with nothing on it, which is the only honest sign this site can hang: "
+                     "lettering is banned in the scene, and a made-up word would be a lie."},
+            {"id": "meter-a", "kind": "meter", "x": -250, "z": 148, "y": 130, "ry": 90,
+             "title": "A meter box",
+             "hint": "Set dressing. The corridor's services are the room's only fine detail at close "
+                     "range, and this is one of them."},
+            {"id": "pipe-a", "kind": "pipe", "x": -252, "z": 352, "y": 0, "ry": 90,
+             "title": "A downpipe",
+             "hint": "It marks where one building stops and the other starts, which is the one fact "
+                     "a walkway between two buildings has to carry."},
+            {"id": "planter-w", "kind": "planter", "x": 240, "z": 380, "y": 0, "ry": -90,
+             "title": "A planter under the snow",
+             "hint": "Drawn. Whatever is in it is not claimed to be alive: in this room the snow is "
+                     "the subject and the plant is a shape."},
         ],
         "stations": [
-            {"z": 0, "label": "the top of the steps"},
-            {"z": 120, "label": "under the lanterns"},
-            {"z": 240, "label": "by the tables"},
-            {"z": 350, "label": "under the viaduct"},
-            # Two metres off the end wall, for the reason Canada's is: the last stop is a view, not a wall.
-            {"z": 415, "label": "by the machines"},
+            {"z": 0, "label": "the mouth of the walkway"},
+            {"z": 120, "label": "beside the rack"},
+            {"z": 230, "label": "under the duct"},
+            {"z": 258, "label": "at the door with the light on"},
+        ],
+        # What is past the corridor: a walkway crossing it, snow, and the low campus roofline with two
+        # windows lit. Cool air, because this room is daylight and the lane's navy murk is a night.
+        "vista": {"x": 0, "y0": 108, "y1": 336, "w": 380},
+        "backdrop": {
+            "haze": "206,216,232",
+            "sky": [{"y0": 420, "y1": 1800, "c": "#c9d6e8"},
+                    {"y0": 1800, "y1": 6000, "c": "#aebfd6"},
+                    {"y0": 6000, "y1": 40000, "c": "#93a7c2"}],
+            "roofs": [
+                {"x": -1450, "y": 60, "z": 1500, "w": 1250, "h": 470, "tone": 0.46, "win": True},
+                {"x": -420, "y": 60, "z": 2050, "w": 900, "h": 330, "tone": 0.34, "win": True},
+                {"x": 1150, "y": 60, "z": 1650, "w": 1500, "h": 420, "tone": 0.52, "win": True},
+                {"x": 1700, "y": 60, "z": 2600, "w": 1300, "h": 360, "tone": 0.3, "win": True},
+            ],
+            # Snow ground rather than paving, and half the depth Tokyo's plaza has: this view is a
+            # walkway crossing a quad, not a city square, and a snowfield the eye cannot reach the end
+            # of reads as fog rather than as ground.
+            "plaza": {"y": -80, "z0": 1240, "z1": 4400, "half": 3000, "kind": "snow"},
+            "city": [
+                {"x": -2600, "z": 5400, "w": 1400, "h": 1100, "win": 0.34, "tone": 0.6},
+                {"x": -900, "z": 6000, "w": 1200, "h": 1500, "win": 0.4, "tone": 0.55},
+                {"x": 700, "z": 5700, "w": 1100, "h": 900, "win": 0.3, "tone": 0.62},
+                {"x": 2400, "z": 6200, "w": 1500, "h": 1300, "win": 0.36, "tone": 0.5},
+            ],
+        },
+        "frames": [
+            {"id": "walkway", "src": "IMG/canada-walkway.jpg", "x": -254, "z": 200, "y": 150, "ry": 90,
+             "title": "Frame: the walkway after snow",
+             "alt": "Illustration of a snow-banked campus walkway at dusk with a bare tree and one "
+                    "lit window, seen empty of people.",
+             "caption": "The walkway drawn, not photographed. Snow, brick and one lit window: the "
+                        "corridor's own subject, and not a record that anyone walked it."},
+            {"id": "window", "src": "IMG/canada-window.jpg", "x": 254, "z": 240, "y": 96, "ry": -90,
+             "title": "Frame: a lit window in brick",
+             "alt": "Illustration of a warm lit window in a brick wall with snow on the sill and a "
+                    "bicycle below, at dusk.",
+             "caption": "A window with the light on. Warmth in a cold room is the one thing this "
+                        "corridor is about, and it is drawn here rather than claimed anywhere."},
         ],
         "slots": [
             {"label": "Frames", "note": "Photographs go here, one per wall slot.",
-             "state": "Three drawn sights hold the wall now; the owner's own photographs replace "
-                      "them when they arrive."},
-            {"label": "The lane at 21:10", "note": "Sound only if a visitor asks for it.",
-             "state": "Silent. Nothing plays here until a slot carries audio."},
+             "state": "Two drawn sights hold the wall now; a photograph still replaces its slot."},
+            {"label": "Short clips", "note": "Vertical clips, muted by default, captioned always.",
+             "state": "Empty. A clip needs its caption before it can play here."},
+            {"label": "The corridor at dusk", "note": "Sound only if a visitor asks for it.",
+             "state": "Silent by default, and it stays that way until a slot carries audio."},
         ],
-        "exit": {"id": "noren", "kind": "noren", "x": 0, "z": -104, "y": 178, "ry": 180,
-                 "title": "The curtain at your back", "hint": "Part it to leave the lane."},
-        "caveat": "Provisional, and the drawer says so: this lane was drawn from the shape of the "
-                  "stalls outside a Fukuoka station before the owner's photographs arrived. It is "
-                  "an illustration of a kind of place, not a record of one. The plates are "
-                  "generated, the objects are props, and nothing here implies a visit.",
-        "vista": {"x": 0, "y0": 108, "y1": 336, "w": 470},
+        "exit": {"id": "noren", "kind": "noren", "x": 0, "z": -34, "y": 150, "ry": 180,
+                 "title": "The door at your back", "hint": "Open it to leave the corridor."},
+        "caveat": "The corridor is drawn, not surveyed, and nobody is in it. The wall holds two drawn "
+                  "sights, the objects are props, and no footage sits in any slot: nothing here "
+                  "implies the owner stood in this room, or that anyone else did.",
+    },
+    {
+        "id": "fukuoka", "label": "Fukuoka",
+        "purpose": "A yatai alley by the canal: lanterns, timber, and water past the last stall",
+        "status": "open", "kind": "personal",
+        "page": ROOM_BY_ID["fukuoka"]["page"], "plates": ROOM_BY_ID["fukuoka"]["plates"],
+        "cover": "IMG/fukuoka-cover.jpg",
+        "cover_caption": "The alley in one sheet: lantern light over timber, a stall front, and the "
+                         "canal beyond it.",
+        "blurb": "A wooden alley of small stalls, lit by paper. The lane ends at the canal, where "
+                 "the city is reflected instead of drawn.",
+        # Tighter than the lane and lower: a yatai alley is a timber box, 4.6 m across and 3.8 m to the
+        # eaves, with the roof carried on posts along both sides.
+        "lane": {"w": 460, "d": 340, "ceil": 380, "back": 200, "ceil_kind": "timber"},
+        # The alley's onward door is on the left, past the stalls: the room is walked with the stall
+        # fronts on the right, so the way out is on the side you are not looking at.
+        "onward": {"x": -224, "z": 330, "ry": 90},
+        "surfaces": [
+            {"side": -1, "z0": -200, "z1": 200, "y0": 0, "y1": 44, "kind": "dado", "tone": 0.8},
+            {"side": -1, "z0": -200, "z1": 200, "y0": 44, "y1": 380, "kind": "timber", "tone": 0.95},
+            {"side": -1, "z0": 200, "z1": 560, "y0": 0, "y1": 380, "kind": "timber", "tone": 0.88},
+            {"side": -1, "z0": 560, "z1": 986, "y0": 0, "y1": 130, "kind": "brick", "tone": 0.7},
+            {"side": -1, "z0": 560, "z1": 986, "y0": 130, "y1": 380, "kind": "timber", "tone": 0.82},
+            {"side": 1, "z0": -200, "z1": 140, "y0": 0, "y1": 380, "kind": "timber", "tone": 0.92},
+            {"side": 1, "z0": 140, "z1": 470, "y0": 0, "y1": 380, "kind": "shutter", "tone": 0.96},
+            {"side": 1, "z0": 470, "z1": 986, "y0": 0, "y1": 120, "kind": "brick", "tone": 0.72},
+            {"side": 1, "z0": 470, "z1": 986, "y0": 120, "y1": 380, "kind": "timber", "tone": 0.86},
+        ],
+        # Wet stone down the middle where the stalls wash up, one channel drain across the alley, and
+        # the strip of paving at the canal end that the whole alley has been draining into.
+        "marks": [
+            {"kind": "wet", "x0": -150, "x1": 150, "z0": 120, "z1": 700},
+            {"kind": "grate", "x0": -160, "x1": 160, "z0": 700, "z1": 716},
+            {"kind": "grate", "x0": 120, "x1": 170, "z0": 260, "z1": 286},
+            {"kind": "gutter", "x0": -230, "x1": 230, "z0": 900, "z1": 918},
+            {"kind": "kerb", "x0": -232, "x1": -196, "z0": -200, "z1": 986, "y1": 8},
+            {"kind": "kerb", "x0": 196, "x1": 232, "z0": -200, "z1": 986, "y1": 8},
+        ],
+        "beams": [260, 620, 900],
+        # The eaves of the stalls, hung with the lanterns: the layer a photograph of this alley is
+        # mostly made of.
+        "ducts": [
+            {"z0": -200, "z1": 986, "hw": 128, "y": 344, "th": 34, "c": "#3b3244", "k": 0.74},
+            {"z0": 200, "z1": 900, "hw": 14, "y": 322, "th": 14, "c": "#5a4c46", "k": 0.7},
+        ],
+        "lamps": [80],
+        "wires": [
+            {"a": [-232, 330, 40], "b": [232, 344, 40], "sag": 46},
+            {"a": [-232, 336, 150], "b": [232, 330, 150], "sag": 40},
+            {"a": [-232, 328, 250], "b": [232, 342, 250], "sag": 52},
+            {"a": [-232, 340, 330], "b": [232, 332, 330], "sag": 44},
+            {"a": [-232, 332, 200], "b": [206, 300, 300], "sag": 38},
+            {"a": [206, 300, 300], "b": [214, 318, 420], "sag": 34},
+        ],
+        # Six lanterns on the crossings above: paper is the light source in this room, and the bulbs
+        # the alley also has are the two small ones behind the stall fronts.
+        "lanterns": [
+            {"x": -110, "y": 250, "z": 40, "r": 28, "swing": 3.0, "period": 3.4, "phase": 0.0},
+            {"x": 90, "y": 244, "z": 40, "r": 30, "swing": 2.4, "period": 4.0, "phase": 1.3},
+            {"x": -140, "y": 252, "z": 150, "r": 26, "swing": 3.4, "period": 3.2, "phase": 2.2},
+            {"x": 60, "y": 246, "z": 250, "r": 29, "swing": 2.8, "period": 3.8, "phase": 0.7},
+            {"x": -120, "y": 250, "z": 330, "r": 27, "swing": 3.2, "period": 3.5, "phase": 1.9},
+            {"x": 130, "y": 244, "z": 330, "r": 25, "swing": 2.6, "period": 4.2, "phase": 2.8},
+        ],
+        "objects": [
+            {"id": "stall-a", "kind": "front", "x": -214, "z": 120, "y": 0, "ry": 90,
+             "glow": [{"r": 120, "k": 0.85, "dy": 150}],
+             "title": "A stall front, lit",
+             "hint": "The room's anchor and the reason its light is warm. It is a counter with a "
+                     "cloth over the top third and nobody behind it: an alley after closing, which is "
+                     "what a drawn alley can honestly be."},
+            {"id": "stall-b", "kind": "front", "x": 214, "z": 300, "y": 0, "ry": -90,
+             "glow": [{"r": 70, "k": 0.4, "dy": 140}],
+             "title": "A second stall, closing",
+             "hint": "Same kit, dimmer, with its shutter part down: two of these is what makes the "
+                     "alley a row rather than one shop with a lane in front of it."},
+            {"id": "stool-a", "kind": "stool", "x": -190, "z": 150, "y": 0, "ry": 0,
+             "title": "A stool",
+             "hint": "Height 62, which is the seat you would sit on at that counter. Props like this "
+                     "are how a room states its own scale without a single measurement in words."},
+            {"id": "stool-b", "kind": "stool", "x": -172, "z": 186, "y": 0, "ry": 0,
+             "title": "Another stool",
+             "hint": "Two, because one stool is a prop and two are a row."},
+            {"id": "barrel", "kind": "barrel", "x": 194, "z": 210, "y": 0, "ry": 0,
+             "title": "A barrel by the stall",
+             "hint": "Set dressing with an edge: it breaks the long straight base of the stall front, "
+                     "which is what stops a wall of props reading as a wall."},
+            {"id": "crate-f", "kind": "crate", "x": -196, "z": 60, "y": 0, "ry": 90,
+             "title": "A crate stacked high",
+             "hint": "Drawn. Two crates' worth of height, so the alley has something at the mouth "
+                     "that is not a wall."},
+            {"id": "cart", "kind": "cart", "x": 204, "z": 60, "y": 0, "ry": -90,
+             "title": "A hand cart",
+             "hint": "The alley's own vehicle: too narrow for anything else, which is the width of "
+                     "the room said in furniture."},
+            {"id": "bin-f", "kind": "bin", "x": -204, "z": 420, "y": 0, "ry": 90,
+             "title": "A waste bin",
+             "hint": "Set dressing. It sits where the stalls stop and the wall takes over."},
+            {"id": "fence", "kind": "fence", "x": 214, "z": 640, "y": 0, "ry": -90,
+             "title": "A low rail at the water",
+             "hint": "The last two metres of the alley before the canal, and the only thing between "
+                     "the walk and the water. It is also what makes the end of the room legible."},
+            {"id": "planter-f", "kind": "planter", "x": -214, "z": 520, "y": 0, "ry": 90,
+             "title": "A planter",
+             "hint": "Drawn. A wooden alley still has one thing growing in it, and this is where the "
+                     "row of stalls ends."},
+            {"id": "sign-f", "kind": "sign", "x": -224, "z": 300, "y": 210, "ry": 90,
+             "title": "A blank blade",
+             "hint": "A sign with nothing written on it. Lettering is banned in the scene and this "
+                     "alley is full of signs, so the honest thing is a blade with no words."},
+            {"id": "meter-f", "kind": "meter", "x": 220, "z": 470, "y": 140, "ry": -90,
+             "title": "A meter box",
+             "hint": "The services that make a timber alley read as somewhere people work."},
+        ],
+        "stations": [
+            {"z": 0, "label": "the mouth of the alley"},
+            {"z": 110, "label": "at the first stall"},
+            {"z": 230, "label": "under the lanterns"},
+            {"z": 292, "label": "by the rail at the water"},
+        ],
+        # Past the alley: the canal, the far bank, and one slim tower on the skyline. The water is the
+        # view's subject, so the view is mostly water and reflection rather than blocks.
+        "vista": {"x": 0, "y0": 120, "y1": 330, "w": 340},
         "backdrop": {
-            "sky": [{"y0": 0, "y1": 900, "c": "#4a4a6a"},
-                    {"y0": 900, "y1": 4200, "c": "#26314d"},
-                    {"y0": 4200, "y1": 40000, "c": "#141e36"}],
-            "mountain": {"x": 1700, "y": 480, "z": 13000, "w": 10000, "h": 820, "c": "#1d2842"},
-            "plaza": {"y": -260, "z0": 1240, "z1": 12000, "half": 4200},
-            # A low wide block dead ahead is the station this lane is beside: not a landmark, the
-            # building the light and the people come out of. Flanking it, two nearer rooftops, so the
-            # first thing through the aperture is a silhouette at the height a lane sees roofs.
+            "haze": "240,232,214",
+            "sky": [{"y0": 420, "y1": 2000, "c": "#f0e6d2"},
+                    {"y0": 2000, "y1": 6000, "c": "#e2d6be"},
+                    {"y0": 6000, "y1": 40000, "c": "#cdbfa4"}],
+            "water": {
+                "y": -180, "z0": 1240, "z1": 6200, "half": 2600, "c": "#16203a",
+                "reflect": [
+                    {"x": -1180, "w": 90, "d": 40, "len": 1500},
+                    {"x": -420, "w": 60, "d": 120, "len": 1100},
+                    {"x": 380, "w": 76, "d": 60, "len": 1700},
+                    {"x": 1240, "w": 52, "d": 140, "len": 900},
+                    {"x": 1980, "w": 68, "d": 30, "len": 1300},
+                ],
+            },
             "roofs": [
-                {"x": 0, "y": 0, "z": 2600, "w": 5200, "h": 1150, "tone": 0.72},
-                {"x": -2300, "y": 0, "z": 2000, "w": 900, "h": 660, "tone": 0.34},
-                {"x": 2400, "y": 0, "z": 2060, "w": 980, "h": 780, "tone": 0.4},
+                {"x": -1900, "y": -180, "z": 3000, "w": 900, "h": 420, "tone": 0.38, "win": True},
+                {"x": -700, "y": -180, "z": 3200, "w": 800, "h": 340, "tone": 0.3, "win": True},
+                {"x": 900, "y": -180, "z": 3100, "w": 860, "h": 300, "tone": 0.34, "win": True},
+                {"x": 2100, "y": -180, "z": 3300, "w": 1000, "h": 460, "tone": 0.26, "win": True},
             ],
-            "tower": {"x": -300, "y": 0, "z": 4300, "half": 520, "top": 2600, "mast": 3000,
-                      "decks": [1300, 2200]},
-            "express": {"z": 6300, "y": 1250, "half": 6200, "thick": 160, "depth": 900,
-                        "pier": 220, "ground": -620,
-                        "piers": [-4600, -2300, 0, 2300, 4600],
-                        "lamps": [-5200, -2600, 0, 2600, 5200]},
             "city": [
-                {"x": -5600, "z": 5400, "w": 1500, "h": 1500, "win": 0.5, "tone": 0.72},
-                {"x": -3600, "z": 5000, "w": 1200, "h": 1100, "win": 0.45, "tone": 0.82},
-                {"x": -1800, "z": 5200, "w": 1300, "h": 1300, "win": 0.5, "tone": 0.68},
-                {"x": 0, "z": 5000, "w": 1400, "h": 1900, "win": 0.6, "tone": 0.9},
-                {"x": 1800, "z": 5300, "w": 1200, "h": 1200, "win": 0.5, "tone": 0.74},
-                {"x": 3600, "z": 5600, "w": 1400, "h": 900, "win": 0.4, "tone": 0.86},
-                {"x": 5400, "z": 6000, "w": 1600, "h": 1600, "win": 0.55, "tone": 0.6},
-                {"x": 7200, "z": 6400, "w": 1800, "h": 2000, "win": 0.62, "tone": 0.5},
+                {"x": -2200, "z": 5200, "w": 900, "h": 700, "win": 0.3, "tone": 0.5},
+                {"x": -600, "z": 5600, "w": 800, "h": 560, "win": 0.26, "tone": 0.44},
+                {"x": 900, "z": 5400, "w": 900, "h": 620, "win": 0.28, "tone": 0.46},
+                {"x": 2300, "z": 5800, "w": 1000, "h": 800, "win": 0.32, "tone": 0.4},
             ],
         },
+        "frames": [
+            {"id": "yatai", "src": "IMG/fukuoka-yatai.jpg", "x": -224, "z": 190, "y": 150, "ry": 90,
+             "title": "Frame: a stall front",
+             "alt": "Illustration of a small Japanese stall front at night with a dark curtain, two "
+                    "paper lanterns and a counter, seen empty of people.",
+             "caption": "The counter and its lanterns, drawn. Warm light over timber is the whole "
+                        "subject of this room, and no stall here says who runs it."},
+            {"id": "canal", "src": "IMG/fukuoka-canal.jpg", "x": 224, "z": 260, "y": 96, "ry": -90,
+             "title": "Frame: the canal at night",
+             "alt": "Illustration of a narrow canal at night with long amber reflections, low lit "
+                    "houses on the far bank and a slim tower on the horizon.",
+             "caption": "The canal past the last stall, drawn. The far bank is real enough to be "
+                        "reflected, and nothing in the picture is photographed."},
+        ],
+        "slots": [
+            {"label": "Frames", "note": "Photographs go here, one per wall slot.",
+             "state": "Two drawn sights hold the wall now; a photograph still replaces its slot."},
+            {"label": "Short clips", "note": "Vertical clips, muted by default, captioned always.",
+             "state": "Empty. A clip needs its caption before it can play here."},
+            {"label": "The alley at 21:00", "note": "Sound only if a visitor asks for it.",
+             "state": "Silent by default, and it stays that way until a slot carries audio."},
+        ],
+        "exit": {"id": "noren", "kind": "noren", "x": 0, "z": -34, "y": 150, "ry": 180,
+                 "title": "The curtain at your back", "hint": "Part it to leave the alley."},
+        "caveat": "The alley is drawn, not surveyed, and nobody is in it. The stalls are props with "
+                  "no names on them, the wall holds two drawn sights, and no footage sits in any "
+                  "slot: nothing here implies the owner ate at any of these counters, or that anyone "
+                  "did.",
     },
     {
         "id": "undeclared", "label": "Next district", "purpose": "Purpose not declared",
@@ -2795,7 +2762,7 @@ def walk_html(d, drawer):
              if d.get("vista") else "")
     return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}"
        data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
-       data-lane-back="{lane["back"]}"{f' data-lane-ceil-pat="{lane["ceilPat"]}"' if lane.get("ceilPat") else ""} data-eye="{EYE}">
+       data-lane-back="{lane["back"]}" data-lane-ceil-kind="{lane.get("ceil_kind", "")}" data-eye="{EYE}">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
        Space to jump, E to open what you are standing in front of, L for the list, I for this note.
@@ -2857,7 +2824,7 @@ def walk_html(d, drawer):
       {ICON_X}</button>
     <p class="eyebrow">The lane, written out</p>
     <ul class="walk-districts">
-      {INDENT.join(district_card(x, did) for x in DISTRICTS)}
+      {INDENT.join(district_card(x) for x in DISTRICTS)}
     </ul>
 {drawer}
     <ul class="walk-links">{"".join(links)}</ul>
@@ -2866,24 +2833,13 @@ def walk_html(d, drawer):
 """
 
 
-def district_card(d, here=None):
+def district_card(d):
     """The card is a record first and a link second: heading and body text stay in the page's
     own colour, and only the arrow is a link, because main a is accented and underlined
     site-wide. The kind is printed here with the gate it implies, and the cover — if there is
     one — carries the kind's cover rule as its caption, so a drawn cover can never be read as
-    a photograph the owner took.
-
-    `here` is the room the reader is actually standing in. With one room in the chain the state
-    line could be a constant; with three, a card that says "you are standing in it" on the other
-    two is simply false, and the honest line for those is that they are open and further down
-    the walk. A room that is built is also a door, and one that is not is a shut door with a
-    reason — both are stated, neither is implied by colour."""
-    if d["status"] == "soon":
-        state, state_full = "Not open yet.", "Not open yet."
-    elif here is not None and d["id"] == here:
-        state, state_full = "You are standing in it.", "You are standing in it."
-    else:
-        state, state_full = "Open, further down the walk.", "Open: walk it from its own page."
+    a photograph the owner took."""
+    state = "Not open yet." if d["status"] == "soon" else "You are standing in it."
     kind = d.get("kind")
     meta = KINDS.get(kind, {})
     badge = f'{escape(meta["label"])} · {escape(d["purpose"])}' if meta else escape(d["purpose"])
@@ -2899,19 +2855,13 @@ def district_card(d, here=None):
         # a cover named in the data but missing on disk must not draw a broken image, and
         # must not be papered over either: the empty card is the true state
         cover = '<p class="when">No cover image is available for this district.</p>'
-    door = ""
-    if d["status"] == "open" and here is not None and d["id"] != here:
-        door = (f'<p class="pillar-more"><a class="text-arrow" href="{d["page"]}" '
-                f'aria-label="Walk into {escape(d["label"])}">{escape(state_full)}'
-                f'{ico(ICON_RIGHT)}</a></p>')
     return (f'<li class="district-card is-{d["status"]}" aria-describedby="room-{escape(d["id"])}">'
             f'{cover}'
             f'<span class="badge">{badge}</span>'
             f'<h2>{escape(d["label"])}</h2>'
             f'{gate}'
             f'<p class="when">{state}</p>'
-            f'{door}'
-            f'</li>')
+            f'<p class="pillar-more"><span class="when">{escape(state)}</span></p></li>')
 
 
 def slot_row(d, sl):
@@ -2920,7 +2870,10 @@ def slot_row(d, sl):
             f'<p class="when">{escape(sl["state"])}</p></li>')
 
 
-open_districts = [d for d in DISTRICTS if d["status"] == "open"]
+# The chain is the ROOMS table's order, not the order the records happen to sit in the file: a room's
+# place in the walk is a fact about the walk, and the file is where its data is written.
+open_districts = sorted((d for d in DISTRICTS if d["status"] == "open"),
+                        key=lambda d: ROOM_ORDER.get(d["id"], len(ROOMS)))
 
 
 def district_drawer(d):

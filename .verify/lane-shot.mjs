@@ -37,14 +37,7 @@ const OUT = process.argv[2] || "/tmp/lane";
 fs.mkdirSync(OUT, { recursive: true });
 /* SITE / ROOMS let the same tour be run against another build of the renderer, which is how the
    gate below was written: the old file, the new file, the same four stops. */
-const ROOMS = process.env.ROOMS || "rooms.html";
-const markup = fs.readFileSync(ROOMS, "utf8");
-/* Which room this run is looking at. The page's own name used to be written into the sheet's title and
-   labels, which is the kind of thing that quietly stops being true the day a second room is built. The
-   place is the page it was handed. */
-const PLACE = { "rooms.html": "Tokyo", "rooms-canada.html": "Canada", "rooms-fukuoka.html": "Fukuoka" }[ROOMS]
-  || "the room";
-const stopEls = [...markup.matchAll(/class="walk-stop"/g)].length;
+const markup = fs.readFileSync(process.env.ROOMS || "rooms.html", "utf8");
 const js = fs.readFileSync(process.env.SITE || "js/site.js", "utf8");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -104,7 +97,7 @@ class Pic {
 const vc = new VirtualConsole();
 vc.on("jsdomError", (e) => { if (!/Not implemented: navigation/.test(String(e && e.message))) console.warn("[jsdom]", e.message); });
 const dom = new JSDOM(markup.replace(/<script[^>]*src=[^>]*><\/script>/g, ""), {
-  runScripts: "dangerously", pretendToBeVisual: true, url: `https://huaxu.test/${ROOMS}`, virtualConsole: vc,
+  runScripts: "dangerously", pretendToBeVisual: true, url: "https://huaxu.test/rooms.html", virtualConsole: vc,
 });
 const w = dom.window;
 w.HTMLElement.prototype.scrollIntoView = function () {};
@@ -176,17 +169,17 @@ await sleep(1200);                                      // boot, first paint, ti
 const listBtn = doc.querySelector("[data-walk-list]");
 if (listBtn && listBtn.getAttribute("aria-expanded") === "true") tap(listBtn);   // drawer folded anyway
 
-/* The tour: the stops the room itself publishes, each looked at three ways. A frame that is almost
-   all one fill is a wall with no working in it, and that is a thing you can only see. The names come
-   from the page's own station labels now, slugged, so a Fukuoka frame is not filed under Tokyo's
-   "by-the-pole" — the five stops are 0 and the last, with three spread between. */
-const stopNames = [...markup.matchAll(/class="walk-stop"[^>]*aria-label="([^"]+)"/g)]
-  .map((m) => m[1].split(",")[0].trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""));
-const TOUR = [0, 1, 2, 3].map((i) => {
-  const last = stopNames.length - 1;
-  const at = i === 0 ? 0 : i === 3 ? last : Math.round((last * i) / 3);
-  return [at, stopNames[at] || `stop-${at}`];
-});
+/* The tour: the four stops the lane itself publishes, each looked at three ways. A frame that is
+   almost all one fill is a wall with no working in it, and that is a thing you can only see. */
+/* Which room this is comes off the page, not out of this file: the tour walks the stops the room
+   itself publishes, and names the frames after them, so pointing the harness at another room does not
+   silently label Canada's hallway "under-the-posters". */
+const stops = Array.from(doc.querySelectorAll("[data-walk-stop]"));
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+const roomName = (doc.title.split("·")[0] || "the room").trim();
+const pick = [0, 1, 2, 3].map((k) => Math.round((k * (stops.length - 1)) / 3))
+  .filter((i, k, arr) => arr.indexOf(i) === k);
+const TOUR = pick.map((i) => [i, slug((stops[i].getAttribute("aria-label") || "").split(",")[0]) || `stop-${i}`]);
 let n = 0;
 for (const [i, label] of TOUR) {
   await goTo(i);
@@ -241,10 +234,7 @@ for (const sh of shots.filter((s) => /-ahead$/.test(s.name))) {
 }
 // 2. The deepest stop is the one that used to collapse: floor, walls and ceiling all nearer than the
 //    near plane's own panels. It has to be the richest frame in the set, not the poorest.
-/* The deepest stop, found by position rather than by name: the rooms have different stations now, and a
-   gate that only recognises Tokyo's "in front of the machine" would have skipped the other two rooms
-   silently — and crashed the sheet when the name was gone. */
-const deep = stats.get(shots.filter((s) => /-ahead$/.test(s.name)).slice(-1)[0].name);
+const deep = stats.get(shots.find((s) => /-ahead$/.test(s.name) && /in-front/.test(s.name)).name);
 gate("the deepest stop is not the frame that empties out", deep.colours >= 15 && deep.luma >= 90,
      `${deep.colours} colours, mean luma ${deep.luma.toFixed(1)}`);
 // 3. Turning round at the entrance shows the lane behind you, not the underside of the world.
@@ -259,7 +249,7 @@ const sheet = createCanvas(COLS * TW, Math.ceil(shots.length / COLS) * (TH + BAR
 const sc = sheet.getContext("2d");
 sc.fillStyle = "#0f1830"; sc.fillRect(0, 0, sheet.width, sheet.height);
 sc.fillStyle = "#f2c88e"; sc.font = "600 20px sans-serif";
-sc.fillText(`${ROOMS} · ${PLACE} · its ${stopEls} stops, each looked at three ways`, 14, 30);
+sc.fillText(`${roomName} · the stops it publishes, each looked at three ways`, 14, 30);
 shots.forEach((sh, i) => {
   const x = (i % COLS) * TW, y = 44 + Math.floor(i / COLS) * (TH + BAR);
   sc.drawImage(pics[i], x, y, TW, TH);
