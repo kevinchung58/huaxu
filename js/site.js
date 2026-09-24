@@ -662,19 +662,16 @@ function leaveOverlay(root, trigger) {
      functions of the same projection, so no depth cue can disagree with the geometry the way an
      overlaid gradient would. What this is not: a lightmap, a raytracer, or a survey. */
   const attr = (name, dflt) => parseFloat(layer.dataset[name]) || dflt;
+  // What you are walking on, in the place's own words: a lane at night is asphalt, a campus walkway
+  // in February is snow, and an alley by a canal is wet slabs. A place that names nothing keeps the
+  // floor the first room was built on, so no district has to restate a default.
+  const groundPat = () => PATS[layer.dataset.ground] || floorPat;
   const WALL = attr("laneW", 640) / 2, CEIL = attr("laneCeil", 420);
   const Z_FAR = attr("laneD", 1247), Z_BACK = -attr("laneBack", 240);
-  // A place may give its ceiling a material. Unset means the painted navy every room had before, which
-  // is still the right answer for a lane at night.
-  const ceilKind = layer.dataset.laneCeilKind || "";
   const EYE = attr("eye", 168);
   const SEG = 60, NEAR = 24, DPM = 2;   // panel, near plane, pattern scale: the renderer's own
   let W = 0, H = 0, focal = 620, tilePat = null, floorPat = null, winPat = null,
       concretePat = null, galvPat = null;
-  // What distance looks like in *this* room. Navy is right for a lane at night and wrong for a snow
-  // corridor at dusk or a canal under a pale sky, so the colour is authored with the place and read
-  // here; the amount of it is still the renderer's own FOG_MAX.
-  let MURK = "22,34,60";
   // One lookup for every cladding the walls and the ground can be wearing; a kind with no entry falls
   // back to the wall's own tiles, which is the honest default for a surface nobody specified.
   const PATS = {};
@@ -870,48 +867,107 @@ function leaveOverlay(root, trigger) {
     }
     c.fillStyle = "rgba(16,24,42,0.26)"; c.fillRect(0, 108, 128, 20);
   };
-  const paintSnow = (c) => {
-    // Packed snow against a wall: a blue-cast white, wind streaks along it, and the grey line where it
-    // meets the ground. It is not lit by anything — snow at dusk reads bright because it reflects the
-    // sky, so its own tile carries that cast rather than waiting for a lamp that is not there.
-    c.fillStyle = "#d9e2ee"; c.fillRect(0, 0, 128, 128);
-    const grd = c.createLinearGradient(0, 0, 0, 128);
-    grd.addColorStop(0, "rgba(255,255,255,0.5)");
-    grd.addColorStop(0.62, "rgba(214,226,242,0.1)");
-    grd.addColorStop(1, "rgba(96,116,146,0.34)");
-    c.fillStyle = grd; c.fillRect(0, 0, 128, 128);
-    for (let i = 0; i < 26; i++) {          // wind streaks: the only texture snow shows from a distance
-      const y = (i * 37) % 118, w = 30 + ((i * 29) % 74);
-      c.strokeStyle = `rgba(255,255,255,${(0.16 + (i % 3) * 0.06).toFixed(2)})`;
-      c.lineWidth = 2;
-      c.beginPath(); c.moveTo((i * 53) % 128, y); c.lineTo(((i * 53) % 128) + w, y - 3); c.stroke();
+  /* Two more worlds, five more surfaces, all painted here rather than photographed. A winter campus
+     walkway and a stall alley by a canal share nothing with the Tokyo lane except the projection:
+     clapboard, snow, dark timber, canal stone and wet slabs. Each is a 128px tile and each carries its
+     own scale in the drawing, so the affine map stays exact across a 60cm panel. */
+  const paintSiding = (c) => {              // clapboard: 16px boards, a shadow under every lap
+    c.fillStyle = "#b7bcc4";
+    c.fillRect(0, 0, 128, 128);
+    for (let y = 0; y < 128; y += 16) {
+      c.fillStyle = "rgba(255,255,255,0.16)";
+      c.fillRect(0, y, 128, 4);
+      c.fillStyle = "rgba(22,30,46,0.20)";
+      c.fillRect(0, y + 13, 128, 3);
     }
-    for (let i = 0; i < 120; i++) {         // grains of ice catching the sky
-      c.fillStyle = `rgba(255,255,255,${((i % 4) * 0.05).toFixed(2)})`;
-      c.fillRect((i * 71) % 128, (i * 41) % 128, 2, 2);
+    for (let i = 0; i < 90; i++) {
+      c.fillStyle = i % 3 ? "rgba(30,40,58,0.05)" : "rgba(255,255,255,0.06)";
+      c.fillRect((i * 37) % 128, (i * 53) % 128, 2, 1);
     }
-    c.fillStyle = "rgba(74,94,124,0.34)"; c.fillRect(0, 112, 128, 16);   // the grey line at the foot
   };
-  const paintTimber = (c) => {
-    // Vertical boards, weathered warm, knots every so often: the yatai alley's wall, which is a wooden
-    // lane rather than a concrete one. Painted at the same scale as everything else — a board is 12 cm.
-    c.fillStyle = "#7d6448"; c.fillRect(0, 0, 128, 128);
-    for (let x = 0; x < 128; x += 12) {
-      c.fillStyle = (x / 12) % 2 ? "rgba(255,226,182,0.05)" : "rgba(40,26,14,0.07)";
-      c.fillRect(x, 0, 12, 128);
-      c.strokeStyle = "rgba(38,24,12,0.42)"; c.lineWidth = 1;
-      c.beginPath(); c.moveTo(x + 0.5, 0); c.lineTo(x + 0.5, 128); c.stroke();
+  const paintSnow = (c) => {                // snow: white with drifts, and dimples where it settled
+    c.fillStyle = "#e6edf6";
+    c.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 14; i++) {
+      const x = (i * 41) % 128, y = (i * 67) % 128, r = 10 + (i % 4) * 6;
+      c.fillStyle = "rgba(196,210,229,0.5)";
+      c.beginPath();
+      c.arc(x, y, r, 0, Math.PI * 2);
+      c.fill();
     }
-    for (let i = 0; i < 7; i++) {           // knots, and the grain running past them
-      const x = 14 + ((i * 31) % 100), y = 16 + ((i * 47) % 96);
-      c.strokeStyle = "rgba(48,30,16,0.34)"; c.lineWidth = 2;
-      c.beginPath(); c.ellipse(x, y, 5, 3.4, 0, 0, 6.2832); c.stroke();
-      // Straight segments for the grain rather than a curve: the harness's recording context
-      // implements the path calls the renderer actually uses, and adding a curve here would mean
-      // teaching a test double to be a canvas.
-      c.beginPath(); c.moveTo(x - 9, y - 5); c.lineTo(x, y - 11); c.lineTo(x + 9, y + 5); c.stroke();
+    for (let i = 0; i < 120; i++) {
+      c.fillStyle = i % 4 ? "rgba(255,255,255,0.55)" : "rgba(168,186,212,0.5)";
+      c.fillRect((i * 29) % 128, (i * 47) % 128, 2, 2);
     }
-    c.fillStyle = "rgba(28,18,8,0.24)"; c.fillRect(0, 110, 128, 18);
+  };
+  const paintTimber = (c) => {              // dark timber slats, vertical, with grain
+    c.fillStyle = "#4a3729";
+    c.fillRect(0, 0, 128, 128);
+    for (let x = 0; x < 128; x += 16) {
+      c.fillStyle = "rgba(255,225,190,0.07)";
+      c.fillRect(x + 1, 0, 5, 128);
+      c.fillStyle = "rgba(12,8,4,0.42)";
+      c.fillRect(x + 15, 0, 1, 128);
+    }
+    for (let i = 0; i < 70; i++) {
+      c.fillStyle = i % 3 ? "rgba(20,12,6,0.16)" : "rgba(226,190,148,0.09)";
+      c.fillRect((i * 31) % 128, (i * 19) % 128, 1, 5 + (i % 7));
+    }
+  };
+  const paintStone = (c) => {               // canal stone: courses of blocks, mortar between
+    c.fillStyle = "#7e838c";
+    c.fillRect(0, 0, 128, 128);
+    for (let row = 0; row < 4; row++) {
+      const y = row * 32, off = (row % 2) * 32;
+      c.fillStyle = "rgba(255,255,255,0.07)";
+      c.fillRect(0, y, 128, 2);
+      c.fillStyle = "rgba(18,22,32,0.34)";
+      c.fillRect(0, y + 30, 128, 2);
+      for (let k = 0; k < 3; k++) {
+        c.fillStyle = "rgba(18,22,32,0.30)";
+        c.fillRect((off + k * 64) % 128, y, 2, 32);
+      }
+    }
+    for (let i = 0; i < 80; i++) {
+      c.fillStyle = i % 2 ? "rgba(255,255,255,0.05)" : "rgba(20,26,38,0.07)";
+      c.fillRect((i * 43) % 128, (i * 61) % 128, 3, 2);
+    }
+  };
+  const paintWetSlab = (c) => {             // the alley floor: slabs, dark, with water on them
+    c.fillStyle = "#4e5563";
+    c.fillRect(0, 0, 128, 128);
+    for (let y = 0; y < 128; y += 64) {
+      for (let x = 0; x < 128; x += 64) {
+        c.fillStyle = "rgba(255,255,255,0.05)";
+        c.fillRect(x, y, 62, 62);
+        c.fillStyle = "rgba(14,18,28,0.36)";
+        c.fillRect(x, y + 62, 64, 2);
+        c.fillRect(x + 62, y, 2, 64);
+      }
+    }
+    // the wet: a few long soft highlights, so a light anywhere in the lane has something to sit on
+    for (let i = 0; i < 6; i++) {
+      c.fillStyle = "rgba(198,214,238,0.10)";
+      c.fillRect(4 + (i * 21) % 100, (i * 37) % 120, 26, 3);
+    }
+    for (let i = 0; i < 70; i++) {
+      c.fillStyle = i % 3 ? "rgba(16,22,34,0.10)" : "rgba(220,232,248,0.07)";
+      c.fillRect((i * 29) % 128, (i * 71) % 128, 2, 2);
+    }
+  };
+  const paintWater = (c) => {               // the canal: dark water, ripples running across it
+    c.fillStyle = "#1c2740";
+    c.fillRect(0, 0, 128, 128);
+    for (let y = 0; y < 128; y += 7) {
+      c.fillStyle = "rgba(120,150,196,0.14)";
+      c.fillRect((y * 3) % 20, y, 128 - ((y * 3) % 20), 1);
+      c.fillStyle = "rgba(10,14,26,0.30)";
+      c.fillRect(0, y + 4, 128, 1);
+    }
+    for (let i = 0; i < 40; i++) {
+      c.fillStyle = "rgba(180,205,240,0.10)";
+      c.fillRect((i * 53) % 128, (i * 23) % 128, 5, 1);
+    }
   };
   const paintWindows = (c) => {
     // Windows are a pattern, like the tiles and the asphalt: a photographed facade would be the one
@@ -953,13 +1009,17 @@ function leaveOverlay(root, trigger) {
     PATS.lantern = mkTile(paintLantern);
     PATS.concrete = mkTile(paintConcrete);
     PATS.galv = mkTile(paintGalv);
+    PATS.siding = mkTile(paintSiding);
+    PATS.snow = mkTile(paintSnow);
+    PATS.timber = mkTile(paintTimber);
+    PATS.stone = mkTile(paintStone);
+    PATS.wetslab = mkTile(paintWetSlab);
+    PATS.water = mkTile(paintWater);
     // Locals as well as registry entries: the end wall's face and the parapet's coping are painted in
     // draw() by name, and reading them back off PATS there would be the drawing code doing a lookup for
     // a material it can see in this file.
     concretePat = PATS.concrete;
     galvPat = PATS.galv;
-    PATS.snow = mkTile(paintSnow);
-    PATS.timber = mkTile(paintTimber);
   };
 
   /* Two shapes of island live inside the hit layer, and they answer two different questions: a list
@@ -996,10 +1056,8 @@ function leaveOverlay(root, trigger) {
   }));
   const wires = readIsland("[data-walk-wires]");
   const beams = readIsland("[data-walk-beams]");
-  const ducts = readIsland("[data-walk-ducts]");
   const vista = readOne("[data-walk-vista]");
   const bd = readOne("[data-walk-backdrop]");
-  if (bd && bd.haze) MURK = bd.haze;
   const surfaces = readIsland("[data-walk-surfaces]");
   const marks = readIsland("[data-walk-marks]");
   const cam = () => {
@@ -1048,8 +1106,8 @@ function leaveOverlay(root, trigger) {
                       front: "#2c3a56", ledge: "#6b7890", pane: "#6f7d92", window: "#6f7d92",
                   mirror: "#8f9bb0", ladder: "#a98a5e", hydrant: "#b8443a", recycle: "#3f6d5a",
                   meter: "#5f6a78", camera: "#4a566a", door: "#33405c",
-                  bench: "#6f7b8c", broom: "#8a7f6a", stool: "#7a6446",
-                  barrel: "#6b5a44", cart: "#5d6675", fence: "#7d8695" };
+                  bank: "#dfe7f2", rack: "#8b93a0", stall: "#6b4a33", stool: "#7a5637",
+                  barrel: "#5d4632" };
   // How far a kind is a solid. A picture on a wall is a plane and must not be given a thickness it
   // cannot have; everything else in a lane has three visible faces or it is a decal, not an object.
   const SHAPE = { vending: "box", shrine: "box", utility: "box", ac: "box", crate: "box",
@@ -1059,8 +1117,7 @@ function leaveOverlay(root, trigger) {
                   sign: "box", drain: "plate", noren: "cloth", poster: "plane", frame: "plane",
                   mirror: "mirror", ladder: "ladder", hydrant: "hydrant", recycle: "flap",
                   meter: "box", camera: "camera", door: "plate",
-                  bench: "box", broom: "box", stool: "box",
-                  barrel: "box", cart: "box", fence: "box" };
+                  bank: "box", rack: "box", stall: "box", stool: "box", barrel: "box" };
   const mix = (hex, k) => {
     const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
     const to = k >= 0 ? [255, 238, 208] : [10, 17, 40];
@@ -1204,7 +1261,7 @@ function leaveOverlay(root, trigger) {
     const warm = clamp((q.lit || 0) - 0.55, 0, 1.15);
     if (warm > 0.02) { path(); g.fillStyle = `rgba(255,228,186,${(warm * 0.24).toFixed(3)})`; g.fill(); }
     const dark = q.air === undefined ? haze(q.z) : q.air;
-    if (dark > 0.01) { path(); g.fillStyle = `rgba(${MURK},${dark.toFixed(3)})`; g.fill(); }
+    if (dark > 0.01) { path(); g.fillStyle = `rgba(22,34,60,${dark.toFixed(3)})`; g.fill(); }
   };
 
   const drawMarks = (C) => {
@@ -1226,33 +1283,6 @@ function leaveOverlay(root, trigger) {
         };
         ring(r, "#2b3648");
         ring(r * 0.78, "#1a2330");
-        return;
-      }
-      if (mk.kind === "snow") {
-        // A drift is a raised band, drawn as three strips of the snow pattern at increasing height so
-        // its edge is a slope rather than a step. It is authored as a rectangle like every other mark,
-        // because what a drift is, is snow that piled up *here*.
-        const y1 = mk.y1 || 26;
-        [[0, 0.42], [0.55, 0.3], [0.82, 0.22]].forEach(([t0, hi]) => {
-          const y = y1 * hi, inset = (mk.x1 - mk.x0) * (1 - t0) / 2;
-          const q = add(C, [[mk.x0 + inset, y, mk.z0], [mk.x1 - inset, y, mk.z1],
-                            [mk.x1 - inset, y, mk.z1], [mk.x0 + inset, y, mk.z0]],
-              [0, 0, 128, 0, 128, 0, 0, 0], "pat", PATS.snow);
-          if (q) { q.lit = lightAt((mk.x0 + mk.x1) / 2, y, (mk.z0 + mk.z1) / 2) * 1.35; }
-        });
-        return;
-      }
-      if (mk.kind === "tracks") {
-        // Footprints: the one mark on the ground that is evidence somebody else was here, drawn as a
-        // metred row of them. Nothing is claimed about who, and nothing is claimed about when.
-        const mid = (mk.x0 + mk.x1) / 2, step = mk.step || 74, wide = mk.wide || 26;
-        for (let z = mk.z0 + step * 0.5, i = 0; z < mk.z1; z += step, i++) {
-          const dx = (i % 2 ? wide : -wide) * 0.5;
-          const q = add(C, [[mid + dx - 9, 1, z], [mid + dx + 9, 1, z + 24],
-                            [mid + dx + 9, 1, z + 24], [mid + dx - 9, 1, z]],
-              [0, 0, 128, 0, 128, 0, 0, 0], "flat", "rgba(74,92,120,0.5)");
-          if (q) { q.lit = lightAt(mid, 2, z) * 0.9; }
-        }
         return;
       }
       if (mk.kind === "kerb") {
@@ -1357,51 +1387,19 @@ function leaveOverlay(root, trigger) {
          plaza dissolves into the sky the compound is set against. */
       const STEP = 1200, PU = 1 / 10;                     // panel depth, uv units per centimetre
       const span = Math.max(1, plaza.z1 - plaza.z0);
-      // The ground past the opening wears the place's own material: the lane's paving is right for a
-      // city street and wrong for a snowfield, and a corridor ending in a hundred metres of wet asphalt
-      // is a room wearing another room's ground.
-      const groundPat = plaza.kind && PATS[plaza.kind] ? PATS[plaza.kind] : floorPat;
-      const groundLit = plaza.kind === "snow" ? 0.9 : (plaza.lit === undefined ? 0.5 : plaza.lit);
       for (let z = plaza.z0; z < plaza.z1; z += STEP) {
         const z1 = Math.min(z + STEP, plaza.z1);
         const fl = add(C, [[-plaza.half, plaza.y, z], [plaza.half, plaza.y, z],
                            [plaza.half, plaza.y, z1], [-plaza.half, plaza.y, z1]],
             [z * PU, -plaza.half * PU, z * PU, plaza.half * PU,
              z1 * PU, plaza.half * PU, z1 * PU, -plaza.half * PU],
-            "pat", groundPat);
+            "pat", PATS[plaza.kind] || groundPat());
         // Air ramps toward the lane's own murk ceiling and never past it: the plaza is the one
         // surface whose far edge is allowed to dissolve into the sky, and FOG_MAX is what "far" is
         // defined as in this renderer. A hand-picked 0.65 here would be the renderer telling a
         // different story about distance than every other quad in the frame.
-        if (fl) { fl.air = 0.2 + ((z - plaza.z0) / span) * (FOG_MAX - 0.2); fl.lit = groundLit; }
+        if (fl) { fl.air = 0.2 + ((z - plaza.z0) / span) * (FOG_MAX - 0.2); fl.lit = 0.5; }
       }
-    }
-    /* A canal: the one far view whose far side is reflection rather than silhouette. The plane is dark
-       because water at night is; the light on it is authored, streak by streak, from the windows that
-       are actually behind it — a reflection nobody placed is how a renderer lies about a city. */
-    const water = bd.water;
-    if (water) {
-      const STEP = 900, span = Math.max(1, water.z1 - water.z0);
-      for (let z = water.z0; z < water.z1; z += STEP) {
-        const z1 = Math.min(z + STEP, water.z1);
-        const fl = add(C, [[-water.half, water.y, z], [water.half, water.y, z],
-                           [water.half, water.y, z1], [-water.half, water.y, z1]],
-            ZERO8, "flat", water.c || "#101a30");
-        if (fl) { fl.air = 0.16 + ((z - water.z0) / span) * 0.3; fl.lit = 0.24; }
-      }
-      (water.reflect || []).forEach((rf) => {
-        const len = rf.len || 900;
-        const q = add(C, [[rf.x - rf.w / 2, water.y + 1, water.z0 + rf.d], [rf.x + rf.w / 2, water.y + 1, water.z0 + rf.d],
-                          [rf.x + rf.w / 2, water.y + 1, water.z0 + rf.d + len],
-                          [rf.x - rf.w / 2, water.y + 1, water.z0 + rf.d + len]],
-            ZERO8, "flat", rf.c || "rgba(226,150,72,0.5)");
-        if (q) { q.air = 0.2; q.lit = 0.5; }
-      });
-      // The bank you look over: a lip of stone on this side of the water, at the aperture's foot.
-      const bank = add(C, [[-water.half, water.y, water.z0 - 90], [water.half, water.y, water.z0 - 90],
-                           [water.half, water.y + 90, water.z0 - 90], [-water.half, water.y + 90, water.z0 - 90]],
-          ZERO8, "flat", "#2a3348");
-      if (bank) { bank.air = 0.14; bank.lit = 0.34; }
     }
     const cross = bd.crossing;
     if (cross) {
@@ -1460,19 +1458,10 @@ function leaveOverlay(root, trigger) {
        They carry their own tone, so a low-rise row is not eight photocopies of one block. */
     (bd.roofs || []).forEach((r) => {
       const hw = r.w / 2, y0 = r.y || 0, tone = 0.34 + (r.tone === undefined ? 0.4 : r.tone * 0.6);
-      // A roof that carries windows wears the same window tile as a block, at its own scale: the row is
-      // what the eye lands on first through the opening, and a row of flat silhouettes reads as a wall
-      // drawn in front of the city rather than as the city's own edge.
-      const face = r.win
-        ? add(C, [[r.x - hw, y0, r.z], [r.x + hw, y0, r.z],
-                  [r.x + hw, y0 + r.h, r.z], [r.x - hw, y0 + r.h, r.z]],
-              [(r.x - hw) * (16 / CELL_CM), 0, (r.x + hw) * (16 / CELL_CM), 0,
-               (r.x + hw) * (16 / CELL_CM), -r.h * (16 / CELL_CM), (r.x - hw) * (16 / CELL_CM),
-               -r.h * (16 / CELL_CM)], "pat", winPat)
-        : add(C, [[r.x - hw, y0, r.z], [r.x + hw, y0, r.z],
-                  [r.x + hw, y0 + r.h, r.z], [r.x - hw, y0 + r.h, r.z]],
-              ZERO8, "flat", "#1d2740");
-      if (face) { face.air = 0.1; face.lit = r.win ? tone * (r.tone || 0.6) * 1.5 : tone; }
+      const face = add(C, [[r.x - hw, y0, r.z], [r.x + hw, y0, r.z],
+                           [r.x + hw, y0 + r.h, r.z], [r.x - hw, y0 + r.h, r.z]],
+          ZERO8, "flat", "#1d2740");
+      if (face) { face.air = 0.1; face.lit = tone; }
       const eave = add(C, [[r.x - hw, y0 + r.h, r.z], [r.x + hw, y0 + r.h, r.z],
                            [r.x + hw, y0 + r.h, r.z - 140], [r.x - hw, y0 + r.h, r.z - 140]],
           ZERO8, "flat", "#2b3752");
@@ -1505,6 +1494,69 @@ function leaveOverlay(root, trigger) {
                              [px + pw, ex.y, ex.z], [px - pw, ex.y, ex.z]],
             ZERO8, "flat", "#2a3247");
         if (pier) { pier.air = 0.18; pier.lit = 0.26; }
+      });
+    }
+    /* A treeline: the far plane of a place that has no city to look at. Each tree is a trunk and a
+       stack of narrowing bands, which is what a conifer is at a few hundred metres; the widths and
+       the taper are authored per tree, so a line of them is not a row of one stamp. */
+    (bd.trees || []).forEach((t) => {
+      const trunk = add(C, [[t.x - 22, t.y || 0, t.z], [t.x + 22, t.y || 0, t.z],
+                            [t.x + 22, (t.y || 0) + t.h * 0.42, t.z], [t.x - 22, (t.y || 0) + t.h * 0.42, t.z]],
+          ZERO8, "flat", "#131c2c");
+      if (trunk) trunk.air = 0.22;
+      const bands = t.bands || 4;
+      for (let i = 0; i < bands; i++) {
+        const f0 = 0.34 + (i / bands) * 0.64, f1 = 0.34 + ((i + 1) / bands) * 0.64;
+        const y0 = (t.y || 0) + t.h * f0, y1 = (t.y || 0) + t.h * f1;
+        const w0 = (t.w / 2) * (1 - f0 * 0.82), w1 = (t.w / 2) * (1 - f1 * 0.82);
+        const b = add(C, [[t.x - w0, y0, t.z], [t.x + w0, y0, t.z],
+                          [t.x + w1, y1, t.z], [t.x - w1, y1, t.z]],
+            ZERO8, "flat", i % 2 ? "#16223a" : "#101a2e");
+        if (b) { b.air = 0.2; b.lit = 0.3 + ((t.tone === undefined ? 0.4 : t.tone) * (i / bands)); }
+      }
+    });
+    /* Water: a plane whose far edge dissolves, wearing the canal's own ripple pattern, and the lights
+       that fall on it as long streaks. In a drawn world the reflections are what make water read as
+       water, so they are authored one by one rather than derived — a streak is a lit quad, and it is
+       the only place in this renderer where the far plane is allowed to be bright. */
+    const wt = bd.water;
+    if (wt) {
+      const STEP = 1400, PU = 1 / 9;
+      const span = Math.max(1, wt.z1 - wt.z0);
+      for (let z = wt.z0; z < wt.z1; z += STEP) {
+        const z1 = Math.min(z + STEP, wt.z1);
+        const fl = add(C, [[-wt.half, wt.y, z], [wt.half, wt.y, z],
+                           [wt.half, wt.y, z1], [-wt.half, wt.y, z1]],
+            [z * PU, -wt.half * PU, z * PU, wt.half * PU,
+             z1 * PU, wt.half * PU, z1 * PU, -wt.half * PU], "pat", PATS.water || floorPat);
+        if (fl) { fl.air = 0.18 + ((z - wt.z0) / span) * (FOG_MAX - 0.18); fl.lit = 0.54; }
+      }
+      (wt.streaks || []).forEach((sk) => {
+        const q = add(C, [[sk.x - sk.w / 2, wt.y + 1, sk.z0], [sk.x + sk.w / 2, wt.y + 1, sk.z0],
+                          [sk.x + sk.w / 2, wt.y + 1, sk.z1], [sk.x - sk.w / 2, wt.y + 1, sk.z1]],
+            ZERO8, "flat", sk.tint || "rgba(255,186,110,0.5)");
+        if (q) { q.air = 0.12; q.lit = sk.k === undefined ? 0.9 : sk.k; }
+      });
+    }
+    /* A footbridge over that water: a deck, a rail, and piers that stop at the surface. The one piece
+       of structure in this view, and the thing that tells you the water is below you rather than in
+       front of you. */
+    const br = bd.bridge;
+    if (br) {
+      const deck = add(C, [[-br.half, br.y, br.z], [br.half, br.y, br.z],
+                           [br.half, br.y + (br.thick || 90), br.z], [-br.half, br.y + (br.thick || 90), br.z]],
+          ZERO8, "flat", "#3a4152");
+      if (deck) { deck.air = 0.14; deck.lit = 0.5; }
+      const rail = add(C, [[-br.half, br.y + (br.thick || 90) + 150, br.z], [br.half, br.y + (br.thick || 90) + 150, br.z],
+                          [br.half, br.y + (br.thick || 90) + 166, br.z], [-br.half, br.y + (br.thick || 90) + 166, br.z]],
+          ZERO8, "flat", "#2b3346");
+      if (rail) { rail.air = 0.12; rail.lit = 0.62; }
+      (br.piers || []).forEach((px) => {
+        const pw = (br.pier || 200) / 2;
+        const pier = add(C, [[px - pw, br.bottom === undefined ? -400 : br.bottom, br.z], [px + pw, br.bottom === undefined ? -400 : br.bottom, br.z],
+                             [px + pw, br.y, br.z], [px - pw, br.y, br.z]],
+            ZERO8, "flat", "#242b3c");
+        if (pier) { pier.air = 0.2; pier.lit = 0.28; }
       });
     }
   };
@@ -1544,17 +1596,11 @@ function leaveOverlay(root, trigger) {
       });
       const fl = add(C, [[-WALL, 0, z], [WALL, 0, z], [WALL, 0, z1], [-WALL, 0, z1]],
           [z * DPM, -WALL * DPM, z * DPM, WALL * DPM, z1 * DPM, WALL * DPM, z1 * DPM, -WALL * DPM],
-          "pat", floorPat);
+          "pat", groundPat());
       if (fl) { fl.lit = lightAt(0, 6, zc) * 1.15; fl.air = haze(fl.z) * 0.7; }
-      const cl = ceilKind
-        ? add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
-              [z * DPM, -WALL * DPM, z * DPM, WALL * DPM, z1 * DPM, WALL * DPM, z1 * DPM, -WALL * DPM],
-              "pat", PATS[ceilKind] || tilePat)
-        : add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
-              [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#232f4a");
-      // A painted ceiling is out of the bulbs' reach and should look it; a material one is lit like the
-      // wall it continues from, because it is the same structure seen from below.
-      if (cl) cl.lit = ceilKind ? lightAt(0, CEIL - 10, zc) * 0.7 : AMBIENT * 0.8;
+      const cl = add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
+          [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#232f4a");
+      if (cl) cl.lit = AMBIENT * 0.8;   // out of the bulbs' reach, and it should look that way
     }
     /* The wall the lane runs into is the largest single surface in the deepest frame, and it was the
        lane's default tile: a pale grid with nothing in it, which read as the page having run out rather
@@ -1658,32 +1704,6 @@ function leaveOverlay(root, trigger) {
         "pat", concretePat);
     if (plinth) plinth.lit = lightAt(0, 30, Z_BACK) * 1.25;
 
-    /* What hangs over the lane. A service duct, a pipe run, the eaves of a covered alley: authored
-       numbers like everything else, drawn as long boxes with a bracket every few metres. It matters
-       because the ceiling is the layer a room is most easily robbed of — an alley seen from a
-       photograph is nearly all overhead, and a flat plane up there reads as the top of a diagram. */
-    ducts.forEach((d) => {
-      const z0 = Math.max(d.z0, Z_BACK), z1 = Math.min(d.z1, Z_FAR), hw = d.hw, y = d.y, th = d.th || 46;
-      if (z1 <= z0 || y > CEIL) return;
-      [[-hw, -1], [hw, 1]].forEach(() => {});            // (faces are listed explicitly below)
-      const faces = [
-        { p: [[-hw, y - th, z0], [hw, y - th, z0], [hw, y - th, z1], [-hw, y - th, z1]], k: 0.08 },
-        { p: [[-hw, y - th, z0], [-hw, y, z0], [-hw, y, z1], [-hw, y - th, z1]], k: -0.16 },
-        { p: [[hw, y - th, z0], [hw, y, z0], [hw, y, z1], [hw, y - th, z1]], k: -0.16 },
-        { p: [[-hw, y, z0], [hw, y, z0], [hw, y, z1], [-hw, y, z1]], k: 0.22 },
-      ];
-      faces.forEach((f) => {
-        const q = add(C, f.p, ZERO8, "flat", mix(d.c || "#4d5a72", f.k));
-        if (q) q.lit = lightAt(0, y, (z0 + z1) / 2) * (d.k === undefined ? 1 : d.k);
-      });
-      for (let bz = Math.ceil(z0 / 320) * 320; bz < z1; bz += 320) {   // the brackets holding it up
-        [-hw, hw].forEach((sx) => {
-          const q = add(C, [[sx, y, bz - 7], [sx, CEIL, bz - 7], [sx, CEIL, bz + 7], [sx, y, bz + 7]],
-              ZERO8, "flat", mix(d.c || "#4d5a72", -0.3));
-          if (q) q.lit = lightAt(sx, y + 60, bz) * 0.9;
-        });
-      }
-    });
     beams.forEach((bz) => {          // so the ceiling has a rhythm, and the lane reads as a podium
       const y = CEIL - 26, half = 11;
       const under = add(C, [[-WALL, y, bz - half], [WALL, y, bz - half], [WALL, y, bz + half],
