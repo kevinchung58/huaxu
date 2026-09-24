@@ -638,7 +638,6 @@ function leaveOverlay(root, trigger) {
   const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const ease = !reduce();   // one test, shared by the walk's motion and the rail's hold-to-pause
 
-  const HALF = 290, MIN_D = -30, MAX_D = 1200, REACH = 190, MAX_PITCH = 35;
   // The smallest thing a hand can be asked to press. A lantern 30 m down the lane projects to a few
   // pixels of wall, and a wall of a few pixels is not a control; the ring stays on the silhouette and
   // only the press area grows, so the lane keeps its drawing while the finger keeps its target.
@@ -664,10 +663,15 @@ function leaveOverlay(root, trigger) {
   const attr = (name, dflt) => parseFloat(layer.dataset[name]) || dflt;
   const WALL = attr("laneW", 640) / 2, CEIL = attr("laneCeil", 420);
   const Z_FAR = attr("laneD", 1247), Z_BACK = -attr("laneBack", 240);
+  // The box is authored, so the walk is derived from it rather than restated: a corridor four metres
+  // wide and twenty long is a room this renderer should be able to hold, and clamps written for
+  // Tokyo's lane would have walked a visitor through a Fukuoka wall. Forty centimetres short of the
+  // wall and forty-seven short of the end, which is where the lens and the near clip already sit.
+  const HALF = WALL - 40, MIN_D = -30, MAX_D = Z_FAR - 47, REACH = 190, MAX_PITCH = 35;
   const EYE = attr("eye", 168);
   const SEG = 60, NEAR = 24, DPM = 2;   // panel, near plane, pattern scale: the renderer's own
   let W = 0, H = 0, focal = 620, tilePat = null, floorPat = null, winPat = null,
-      concretePat = null, galvPat = null;
+      concretePat = null, galvPat = null, ceilPat = null;
   // One lookup for every cladding the walls and the ground can be wearing; a kind with no entry falls
   // back to the wall's own tiles, which is the honest default for a surface nobody specified.
   const PATS = {};
@@ -818,6 +822,49 @@ function leaveOverlay(root, trigger) {
     }
     c.fillStyle = "rgba(12,10,16,0.42)"; c.fillRect(0, 56, 128, 3);
   };
+  /* A wall of glazing: mullions on a cold sky. A Canadian corridor is mostly window, so the material
+     is mostly the frame and the sky behind it — and the sky is painted at the pattern's own scale, the
+     same way the wall tiles are, so a window sixty times the width of its pane does not stretch. */
+  const paintGlazing = (c) => {
+    c.fillStyle = "#5d7186"; c.fillRect(0, 0, 128, 128);
+    const sky = c.createLinearGradient(0, 0, 0, 128);
+    sky.addColorStop(0, "rgba(196,214,230,0.55)"); sky.addColorStop(1, "rgba(120,142,164,0.35)");
+    c.fillStyle = sky; c.fillRect(0, 0, 128, 128);
+    c.fillStyle = "rgba(23,32,48,0.85)";
+    for (let i = 0; i <= 128; i += 32) c.fillRect(i - 2, 0, 4, 128);       // mullions
+    c.fillRect(0, 60, 128, 5);                                            // a transom
+    c.fillStyle = "rgba(255,255,255,0.16)";
+    for (let i = 32; i < 128; i += 32) c.fillRect(i + 6, 4, 3, 52);        // a little reflected light
+  };
+
+  /* The arcade's roof structure: a lattice of thin members over a dark soffit, which is what you
+     actually see looking up in a covered street — not a ceiling, a framework holding one. */
+  const paintLattice = (c) => {
+    c.fillStyle = "#2b3550"; c.fillRect(0, 0, 128, 128);
+    c.strokeStyle = "rgba(158,170,192,0.5)"; c.lineWidth = 2;
+    for (let i = -128; i < 256; i += 32) {
+      c.beginPath(); c.moveTo(i, 0); c.lineTo(i + 128, 128); c.stroke();
+      c.beginPath(); c.moveTo(i + 128, 0); c.lineTo(i, 128); c.stroke();
+    }
+    c.fillStyle = "rgba(12,18,32,0.5)";
+    for (let i = 0; i < 128; i += 32) c.fillRect(i, 0, 3, 128);
+    c.fillStyle = "rgba(255,214,170,0.12)";
+    for (let i = 16; i < 128; i += 32) c.fillRect(i, 0, 10, 128);          // warm lamps behind it
+  };
+
+  /* Snow, for the ground outside a room that is not in Tokyo. Flat, faint, and loud: a snow field is
+     the brightest thing in any frame that has one, so the tile is nearly white and the light on it
+     does the rest. */
+  const paintSnow = (c) => {
+    c.fillStyle = "#e8eef4"; c.fillRect(0, 0, 128, 128);
+    c.fillStyle = "rgba(150,168,190,0.18)";
+    for (let i = 0; i < 26; i++) {
+      const x = (i * 53) % 128, y = (i * 97) % 128;
+      c.fillRect(x, y, 20 + (i % 3) * 8, 2);                              // wind lines, not footprints
+    }
+    c.fillStyle = "rgba(120,140,166,0.14)"; c.fillRect(0, 96, 128, 6);
+  };
+
   const paintConcrete = (c) => {
     // Board-formed concrete: the lane's other structural voice. Four pours to the tile, the board
     // seams left in, and the tie holes the formwork left — plus the grout that ran out of them, which
@@ -901,8 +948,14 @@ function leaveOverlay(root, trigger) {
     PATS.kerb = mkTile(paintKerb);
     PATS.grate = mkTile(paintGrate);
     PATS.lantern = mkTile(paintLantern);
+    PATS.glazing = mkTile(paintGlazing);
+    PATS.lattice = mkTile(paintLattice);
+    PATS.snow = mkTile(paintSnow);
     PATS.concrete = mkTile(paintConcrete);
     PATS.galv = mkTile(paintGalv);
+    // The roof's material, if the room asked for one. Read here rather than at the top of the module
+    // because the tiles only exist once this runs.
+    ceilPat = PATS[layer.dataset.laneCeilPat] || null;
     // Locals as well as registry entries: the end wall's face and the parapet's coping are painted in
     // draw() by name, and reading them back off PATS there would be the drawing code doing a lookup for
     // a material it can see in this file.
@@ -993,7 +1046,8 @@ function leaveOverlay(root, trigger) {
                       cones: "#c96a34", mailbox: "#9c3b33", signA: "#c8c2b2", banner: "#8f3a3a",
                       front: "#2c3a56", ledge: "#6b7890", pane: "#6f7d92", window: "#6f7d92",
                   mirror: "#8f9bb0", ladder: "#a98a5e", hydrant: "#b8443a", recycle: "#3f6d5a",
-                  meter: "#5f6a78", camera: "#4a566a", door: "#33405c" };
+                  meter: "#5f6a78", camera: "#4a566a", door: "#33405c",
+                  bench: "#5c6b80", table: "#6d5a44", stool: "#7a6a52", puddle: "#4b5a72" };
   // How far a kind is a solid. A picture on a wall is a plane and must not be given a thickness it
   // cannot have; everything else in a lane has three visible faces or it is a decal, not an object.
   const SHAPE = { vending: "box", shrine: "box", utility: "box", ac: "box", crate: "box",
@@ -1002,7 +1056,8 @@ function leaveOverlay(root, trigger) {
                   bin: "box", bollard: "box", steps: "box", pipe: "box", awning: "box",
                   sign: "box", drain: "plate", noren: "cloth", poster: "plane", frame: "plane",
                   mirror: "mirror", ladder: "ladder", hydrant: "hydrant", recycle: "flap",
-                  meter: "box", camera: "camera", door: "plate" };
+                  meter: "box", camera: "camera", door: "plate",
+                  bench: "box", table: "box", stool: "box", puddle: "plate" };
   const mix = (hex, k) => {
     const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
     const to = k >= 0 ? [255, 238, 208] : [10, 17, 40];
@@ -1242,11 +1297,14 @@ function leaveOverlay(root, trigger) {
       // Three banded sections, two decks and a mast: at night the tower reads as stripes of colour,
       // and a lattice nobody can resolve at that distance would be decoration, not sightline.
       const cuts = [0, tw.top * 0.42, tw.top * 0.72, tw.top];
+      // A tower may bring its own stone: Tokyo's is lit orange and cream, a campus clock tower is
+      // brick and pale stone, and it is the same shape either way.
+      const stone1 = tw.c1 || "#e8e2d4", stone2 = tw.c2 || "#c9613a";
       for (let i = 0; i < cuts.length - 1; i++) {
         const y0 = cuts[i], y1 = cuts[i + 1];
         const q = add(C, [[tw.x - taper(y0), y0, tw.z], [tw.x + taper(y0), y0, tw.z],
                           [tw.x + taper(y1), y1, tw.z], [tw.x - taper(y1), y1, tw.z]],
-                      ZERO8, "flat", i % 2 ? "#c9613a" : "#e8e2d4", null);
+                      ZERO8, "flat", i % 2 ? stone2 : stone1, null);
         if (q) { q.air = 0.1; q.lit = 0.62; }
       }
       const mast = add(C, [[tw.x - 18, tw.top, tw.z], [tw.x + 18, tw.top, tw.z],
@@ -1270,7 +1328,10 @@ function leaveOverlay(root, trigger) {
          8 m, because a 64 cm tile sixty metres away is smaller than a pixel and comes back as a
          shimmer nobody authored. Air is ramped with depth rather than fixed, so the far edge of the
          plaza dissolves into the sky the compound is set against. */
+      // A place may name the material of its ground — a quadrangle under snow is the obvious one —
+      // and it may tone it, so the snow reads as snow instead of as pale concrete.
       const STEP = 1200, PU = 1 / 10;                     // panel depth, uv units per centimetre
+      const gpat = plaza.pat ? PATS[plaza.pat] : floorPat;
       const span = Math.max(1, plaza.z1 - plaza.z0);
       for (let z = plaza.z0; z < plaza.z1; z += STEP) {
         const z1 = Math.min(z + STEP, plaza.z1);
@@ -1278,12 +1339,15 @@ function leaveOverlay(root, trigger) {
                            [plaza.half, plaza.y, z1], [-plaza.half, plaza.y, z1]],
             [z * PU, -plaza.half * PU, z * PU, plaza.half * PU,
              z1 * PU, plaza.half * PU, z1 * PU, -plaza.half * PU],
-            "pat", floorPat);
+            "pat", gpat);
         // Air ramps toward the lane's own murk ceiling and never past it: the plaza is the one
         // surface whose far edge is allowed to dissolve into the sky, and FOG_MAX is what "far" is
         // defined as in this renderer. A hand-picked 0.65 here would be the renderer telling a
         // different story about distance than every other quad in the frame.
-        if (fl) { fl.air = 0.2 + ((z - plaza.z0) / span) * (FOG_MAX - 0.2); fl.lit = 0.5; }
+        if (fl) {
+          fl.air = 0.2 + ((z - plaza.z0) / span) * (FOG_MAX - 0.2);
+          fl.lit = 0.5 * (plaza.tone === undefined ? 1 : plaza.tone);
+        }
       }
     }
     const cross = bd.crossing;
@@ -1420,9 +1484,19 @@ function leaveOverlay(root, trigger) {
           [z * DPM, -WALL * DPM, z * DPM, WALL * DPM, z1 * DPM, WALL * DPM, z1 * DPM, -WALL * DPM],
           "pat", floorPat);
       if (fl) { fl.lit = lightAt(0, 6, zc) * 1.15; fl.air = haze(fl.z) * 0.7; }
-      const cl = add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
-          [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#232f4a");
-      if (cl) cl.lit = AMBIENT * 0.8;   // out of the bulbs' reach, and it should look that way
+      /* The roof, in the room's own material when the place names one. A covered walk is read by what
+         holds its roof up, and a flat navy soffit is the one surface that says "ceiling" rather than
+         "structure" — so a district may hand its ceiling a pattern, textured at the same scale as the
+         floor so the trusses do not stretch down a thirty-metre corridor. */
+      const cl = ceilPat
+        ? add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
+              [z * DPM, WALL * DPM, z * DPM, -WALL * DPM, z1 * DPM, -WALL * DPM, z1 * DPM, WALL * DPM],
+              "pat", ceilPat)
+        : add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
+              [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#232f4a");
+      // Out of the bulbs' reach either way, and it should look that way: a lit ceiling would mean
+      // light coming from above, and every source in these rooms is below one.
+      if (cl) cl.lit = ceilPat ? 0.62 : AMBIENT * 0.8;
     }
     /* The wall the lane runs into is the largest single surface in the deepest frame, and it was the
        lane's default tile: a pale grid with nothing in it, which read as the page having run out rather

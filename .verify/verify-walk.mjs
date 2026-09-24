@@ -355,10 +355,18 @@ const body = () => q("[data-walk]").__walk;
 
 await hold("w", 500);
 ok("W moves the body: a station chip takes over the readout", /m in$|ahead$/.test(status()), status());
-ok("the walk stays inside the authored box", /HALF = 290, MIN_D = -30, MAX_D = 1200/.test(js));
+/* The clamps are derived from the room's own numbers now that rooms differ: a Tokyo lane and a
+   Canadian corridor are not the same box, and literals here would let a visitor walk through one of
+   them. What is asserted is the derivation and the margin, not the numbers. */
+ok("the walk stays inside the authored box, whatever box the room declared",
+   /const HALF = WALL - 40, MIN_D = -30, MAX_D = Z_FAR - 47/.test(js)
+     && /const Z_FAR = attr\("laneD"/.test(js));
+/* The clamp is derived from the room's own depth now, so the assertion is the derivation and the
+   margin rather than the number: whatever box a place declares, you stop short of its end wall, and
+   the aperture stays a window instead of a hole out of the world. */
 ok("the plaza is seen, not entered: the far plane sits past the clamp",
-   /MAX_D = 1200/.test(js) && vista.w > 0 && 1200 < 1247,
-   "MAX_D 1200 < the end wall at 1247, so the window is a view and not a hole out of the world");
+   /MAX_D = Z_FAR - 47/.test(js) && vista.w > 0,
+   "the walk stops 47 cm short of the end wall, so the window is a view and not a hole out of the world");
 
 // The scramble frame, from the station beside it, with the wall as the only thing in between.
 click(stopAt(798));
@@ -460,8 +468,12 @@ await sleep(1600);
 await hold("d", 900);                                       // hug the right wall, toward the box
 await hold("w", 350);
 await sleep(140);
+/* What is in reach at the mouth depends on where the body ends up, and the lane has furniture there
+   now: the standpipe and the mirror are at the entrance too. The assertion that matters is that the
+   thing offered is street kit rather than a wall or nothing at all. */
 ok("at the mouth of the lane the street kit is what you are standing in front of",
-   qa(".walk-hit.is-reach").length === 1 && /shrine|telephone box|planters/i.test(status()), status());
+   qa(".walk-hit.is-reach").length === 1
+     && /shrine|telephone box|planters|standpipe|mirror|meter|posters/i.test(status()), status());
 const doorPaints = () => ctx.counts.get("rgba(150,186,218,0.28)") || 0;
 const doorBefore = doorPaints();
 click(booth);
@@ -493,9 +505,14 @@ const noren = q('[data-obj="noren"]');
    lands on the place you choose the next room from, and the corner link is what goes back to the CV.
    What this asserts is not the destination — that is the chain's business — it is that the chrome and
    the prop read the same authored value, so the two ways out of a room cannot point different ways. */
+/* Tokyo is no longer the first room in the chain, so its curtain opens onto the room behind it — but
+   what this asserts is the invariant, not the destination: the curtain's authored target and the
+   chrome's are one value, and whatever it names is a page that exists. */
 ok("the way out is authored in the record, and the chrome reads the same link",
-   noren.dataset.leave === "activities.html"
-     && q("[data-walk-exit]").getAttribute("href") === noren.dataset.leave);
+   !!noren.dataset.leave
+     && q("[data-walk-exit]").getAttribute("href") === noren.dataset.leave
+     && fs.existsSync(noren.dataset.leave),
+   `the curtain opens onto ${noren.dataset.leave}`);
 const navs = () => ctx.navs.filter((m) => /navigation/.test(m)).length;
 click(noren);
 ok("and parting the curtain leaves the lane, instead of describing the exit",
@@ -760,8 +777,13 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   // data only when there is a room past it, because a door onto nothing is worse than no door.
   const open = rooms.filter((r) => r.status === "open");
   const last = fs.readFileSync(open[open.length - 1].page, "utf8");
-  ok("the curtain at the back opens onto the album when there is no room behind it",
-     /data-leave="activities\.html"/.test(last));
+  // One room behind it means the curtain opens onto that room; the first room in the chain opens onto
+  // the album, which is the picker. Both are the same mechanism and neither is a dead end.
+  const first = fs.readFileSync(open[0].page, "utf8");
+  ok("the first room in the chain opens onto the album, and the last onto the room behind it",
+     /data-leave="activities\.html"/.test(first)
+       && (open.length === 1 || new RegExp(`data-leave="${open[open.length - 2].page}"`).test(last)),
+     `first -> album, last -> ${open.length > 1 ? open[open.length - 2].page : "album"}`);
   ok("no door is hung onto a place that is not built",
      open.length === rooms.length || !/id="way-on"/.test(last));
   // The album is the picker: a plate whose room is built carries the door under it, and a plate whose

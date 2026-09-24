@@ -186,7 +186,7 @@ this repo's own code. What that buys, and what it cannot:
   `prefers-reduced-motion: reduce`, which is decided inside the integrator rather than cancelled in
   CSS after it has been paid for.
 
-### The corridor: one place, one page, and a chain of them
+### The corridor: one place, one page, and a chain of them (Canada, Tokyo, Fukuoka)
 
 The lane was written as the site's only room, with the plumbing to join several districts into one
 page. That join was never usable: the renderer reads one island per key, so a second open district
@@ -207,9 +207,18 @@ door. Adding a place therefore touches one row, one record, and one gate run; `s
 is the checklist, and it also decides — with the owner, and against a count of what the photographs
 actually show — whether a trip earns one lane or several.
 
-The album is the picker. Its Field notes wall reads in chain order, and under a plate whose room is
-built there is one line: *Enter Tokyo*. A plate whose room is shut carries nothing, because a locked
-door on a picture is a promise the site cannot keep.
+The album is the picker. Its Field notes wall reads in chain order — Canada, Tokyo, Fukuoka — and
+under a plate whose room is built there is one line, *Enter Canada*, *Enter Tokyo*, *Enter Fukuoka*.
+A plate whose room is shut carries nothing, because a locked door on a picture is a promise the site
+cannot keep.
+
+**Two of the three rooms are provisional, and say so.** Canada and Fukuoka were drawn from the shape
+of their kind of place — a covered walk on a January campus, a lane of stalls outside a station —
+before the owner's photographs arrived, and the caveat in each drawer says exactly that: an
+illustration of a kind of place, not a record of one, to be read again against the pictures. What a
+photograph contributes when it does arrive is in `skills/place-intake`: the numbers (width, height,
+what the eye lands on), the material bands, the objects that read as silhouettes, the lights, and
+what to leave blank.
 
 ### Kinds: the two defaults a district can be
 

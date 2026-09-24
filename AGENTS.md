@@ -270,6 +270,11 @@ Reinstall sources:
     objects would float in the first room's lane. Adding a place means adding a row, a record, a page
     write, and a gate run — `skills/place-intake` is the checklist.
 
+- **Three rooms are open, in chain order: Canada → Tokyo → Fukuoka.** Canada and Fukuoka are drawn
+    from the *kind* of place they are and their drawers say so in words; when the owner's photographs
+    of the real places arrive they are read against the pictures per `skills/place-intake`. Do not
+    quietly upgrade a provisional room to a record: the caveat is the thing that makes it honest.
+
 - **Reference photographs never ship.** The owner's photographs of a real place live in `ref/`
     (gitignored) and are read, not published: what hangs on the wall is a generated plate, and what you
     stand in is built from what the photographs show. `IMG/` is a registry and every file in it must
