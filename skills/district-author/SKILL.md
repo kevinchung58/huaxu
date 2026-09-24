@@ -11,6 +11,15 @@ the list.
 
 Work in this order. Do not skip the intake, and do not start with a library.
 
+## 0. Is there material?
+
+If the district comes from the owner's photographs of a real place — a trip, a site, an alley they
+walked — run `skills/place-intake` first. It reads the space off the pictures, decides whether the
+place earns one lane or several, tells you where the reference photographs live (they are read and
+never shipped), and hands you back a record. Building directly from photographs without that step is
+how a room becomes a backdrop: this skill knows how to build a place, that one knows what the place
+was.
+
 ## 1. Intake — ask before you build
 
 Ask the whole frontier in one round, numbered, each with your recommended answer. Two

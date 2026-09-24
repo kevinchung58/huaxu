@@ -186,6 +186,31 @@ this repo's own code. What that buys, and what it cannot:
   `prefers-reduced-motion: reduce`, which is decided inside the integrator rather than cancelled in
   CSS after it has been paid for.
 
+### The corridor: one place, one page, and a chain of them
+
+The lane was written as the site's only room, with the plumbing to join several districts into one
+page. That join was never usable: the renderer reads one island per key, so a second open district
+would build its furniture over the first room's lane. So a place is now its own page, and the rooms
+are a chain.
+
+`ROOMS` in `_gen_html.py` is the chain, in order, one row per place: its page, the plate prefixes that
+belong to it, and whether it is open. `DISTRICTS` holds the room and takes its page and plates from
+that row, so the album and the walk cannot disagree about which room a plate opens onto. A district
+also brings its own **box** — `lane.w/d/ceil/back` — and its own stops; a Fukuoka alley and a Canadian
+corridor are different rooms and the renderer reads whatever the place authored.
+
+Out of a room, two ways: the curtain at your back (and the corner control, which is the same authored
+value, so the key and the prop cannot point different ways) opens onto the place behind this one, or
+onto the album when this is the first room built. At the far end, a plain door opens onto the next
+place — and it is only hung when there *is* a next place, because a door onto nothing is worse than no
+door. Adding a place therefore touches one row, one record, and one gate run; `skills/place-intake`
+is the checklist, and it also decides — with the owner, and against a count of what the photographs
+actually show — whether a trip earns one lane or several.
+
+The album is the picker. Its Field notes wall reads in chain order, and under a plate whose room is
+built there is one line: *Enter Tokyo*. A plate whose room is shut carries nothing, because a locked
+door on a picture is a promise the site cannot keep.
+
 ### Kinds: the two defaults a district can be
 
 `purpose` says what a space is about. `kind` says what it is allowed to assert, and there

@@ -993,7 +993,7 @@ function leaveOverlay(root, trigger) {
                       cones: "#c96a34", mailbox: "#9c3b33", signA: "#c8c2b2", banner: "#8f3a3a",
                       front: "#2c3a56", ledge: "#6b7890", pane: "#6f7d92", window: "#6f7d92",
                   mirror: "#8f9bb0", ladder: "#a98a5e", hydrant: "#b8443a", recycle: "#3f6d5a",
-                  meter: "#5f6a78", camera: "#4a566a" };
+                  meter: "#5f6a78", camera: "#4a566a", door: "#33405c" };
   // How far a kind is a solid. A picture on a wall is a plane and must not be given a thickness it
   // cannot have; everything else in a lane has three visible faces or it is a decal, not an object.
   const SHAPE = { vending: "box", shrine: "box", utility: "box", ac: "box", crate: "box",
@@ -1002,7 +1002,7 @@ function leaveOverlay(root, trigger) {
                   bin: "box", bollard: "box", steps: "box", pipe: "box", awning: "box",
                   sign: "box", drain: "plate", noren: "cloth", poster: "plane", frame: "plane",
                   mirror: "mirror", ladder: "ladder", hydrant: "hydrant", recycle: "flap",
-                  meter: "box", camera: "camera" };
+                  meter: "box", camera: "camera", door: "plate" };
   const mix = (hex, k) => {
     const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
     const to = k >= 0 ? [255, 238, 208] : [10, 17, 40];

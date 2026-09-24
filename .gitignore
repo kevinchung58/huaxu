@@ -34,3 +34,6 @@ package-lock.json
 
 # harness output: lane frames rendered offscreen, not shipped
 .preview/
+
+# reference material: the owner's photographs of a place, read to build a room and never shipped
+ref/

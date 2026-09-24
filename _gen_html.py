@@ -1383,6 +1383,35 @@ HELD = {b["id"]: [n for n in block_files(b["id"], shown=False)
 ALBUM_BLOCKS = [b for b in BLOCKS if b["id"] in ("field-notes", "classroom")]
 
 
+# The rooms, and the order the chain runs in: earliest first, which is also the order the album reads
+# them in. This table exists above the districts for a boring reason — the album wall is built before
+# the district records are — and for a good one: the chain is a fact about the site, not about one
+# room, and a place should not have to know what exists on either side of it. `verify-walk.mjs`
+# asserts that each district agrees with its row here, so the two cannot drift apart silently.
+ROOMS = [
+    ("canada", "Canada", "rooms-canada.html", ["canada-"], "soon"),
+    ("tokyo", "Tokyo", "rooms.html", ["tokyo-"], "open"),
+    ("fukuoka", "Fukuoka", "rooms-fukuoka.html", ["fukuoka-"], "soon"),
+]
+ROOM_BY_ID = {r[0]: {"label": r[1], "page": r[2], "plates": r[3], "status": r[4]} for r in ROOMS}
+ROOM_ORDER = {r[0]: i for i, r in enumerate(ROOMS)}
+ALBUM_PAGE = "activities.html"
+
+
+def room_of_plate(src):
+    """Which room a plate belongs to, by the prefixes the rooms declared, or None.
+
+    The album uses this to decide two things it would otherwise guess: whether to print a door under
+    a plate, and where in the wall that plate belongs. A plate that belongs to no room is a plate,
+    and stays where the registry put it.
+    """
+    name = src.split("/")[-1]
+    for rid, room in ROOM_BY_ID.items():
+        if any(name.startswith(pre) for pre in room["plates"]):
+            return rid
+    return None
+
+
 def _plate_for(items):
     """The roll: one plate, containing the same items the wall shows, in the same order.
 
@@ -1399,10 +1428,21 @@ def _plate_for(items):
         label = f"{it['title']} \u00b7 {BLOCK_LABEL[it['block']]} \u00b7 {tag}"
         # The wall is the photographs and nothing else. What a plate may claim — its block, and that it
         # is generated rather than taken — is said inside it, where you have to arrive to read it.
+        # Under a plate that belongs to a built room there is one more thing: the door into that room,
+        # said in words because a picture of a place is not an invitation to walk it.
+        rid = room_of_plate(it["src"])
+        door = ""
+        if rid and ROOM_BY_ID[rid]["status"] == "open":
+            room = ROOM_BY_ID[rid]
+            door = (f'<a class="ig-room" href="{room["page"]}" '
+                    f'aria-label="Walk into {escape(room["label"])}: the room this plate is from">'
+                    f'Enter {escape(room["label"])} {ico(ICON_RIGHT)}</a>')
         tiles.append(
+            f'<div class="ig-cell">'
             f'<a class="ig-tile" href="#{ident}" data-ig '
             f'aria-label="{escape(label)}: open in the roll">'
-            f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} loading="lazy" /></a>')
+            f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} loading="lazy" /></a>'
+            f'{door}</div>')
         frames.append(
             f'<figure class="ig-frame" id="{ident}">'
             f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} />'
@@ -1433,7 +1473,13 @@ def _plate_for(items):
 
 
 BLOCK_LABEL = {b["id"]: b["label"] for b in BLOCKS}
-ALBUM_ITEMS = [it for b in ALBUM_BLOCKS for it in ALBUM[b["id"]]]
+# The album's order is the chain's: a place earlier in the walk is read earlier on the wall, and the
+# plates that belong to no room keep their registry order after them. Decided here rather than in the
+# registry, because the registry is about what an image may claim and the chain is about where a room
+# stands in the walk — and decided *before* the wall and the roll are built, because the roll is
+# addressed by index and a tile that disagrees with its frame sends a visitor to the wrong plate.
+ALBUM_ITEMS = sorted((it for b in ALBUM_BLOCKS for it in ALBUM[b["id"]]),
+                     key=lambda it: ROOM_ORDER.get(room_of_plate(it["src"]), len(ROOMS)))
 album_tiles, gallery_plate = _plate_for(ALBUM_ITEMS)
 _tiles_by_block = {b["id"]: [] for b in ALBUM_BLOCKS}
 for it, tile in zip(ALBUM_ITEMS, album_tiles):
@@ -1650,30 +1696,32 @@ OBJ_SIZE = {
     "signA": (70, 86, 52), "banner": (56, 150, 6), "pane": (120, 86, 22),
     "mirror": (78, 78, 24), "ladder": (36, 268, 48), "hydrant": (32, 94, 30),
     "recycle": (58, 72, 52), "meter": (46, 58, 24), "camera": (28, 24, 34),
+    # The way on: a plain door at the far end of a lane, and the only object in the district whose
+    # whole purpose is the page behind it. Height and width are a door's, not a prop's.
+    "door": (96, 210, 14),
 }
 
 EYE = 168                    # the eye is 1.68 m above the floor; 1 px = 1 cm throughout
-LANE_W, LANE_D, LANE_H = 640, 430, 360
-LANE_CEIL = 420             # cm, and a rendering choice rather than a record: the authored 360 is
-                            # the diagram's lane, while the space you stand in needs the extra half
-                            # metre or the bulbs hang at a walker's eyes
-LANE_BACK = 240             # how far the walls run behind you, so turning round shows a lane
 Z_SCALE = 2.9                # records are authored in the old 4.3 m lane; the space is 12.4 m
-WALK_D = round(LANE_D * Z_SCALE)
-# Stations are places, and a place is where something is: the mouth with its mirror and meter, the
-# posters, the lit front halfway down, the pole and its crates, and the machine at the end. Five, not
-# four, because the lane now has furniture the whole way down it and a stop that names a thing you can
-# walk to is worth more than a stop that divides the distance evenly.
-STATIONS = [
-    {"z": 0, "label": "the entrance"},
-    {"z": 150, "label": "under the posters"},
-    {"z": 275, "label": "by the pole"},
-    {"z": 350, "label": "by the lit window"},
-    {"z": 395, "label": "in front of the machine"},
-]
+
+# The lane box and the stops belong to the place, not to the site. A Fukuoka alley and a Canadian
+# corridor are different rooms; the renderer reads whatever the district authored through
+# `data-lane-*`, so those numbers now sit in the record next to the objects that must fit inside them.
+# A place that declares no lane gets the Tokyo one, which is what every district written so far
+# assumed. `ceil` is a rendering choice rather than a record: the authored 360 is the diagram's lane,
+# and the space you stand in needs the extra half metre or the bulbs hang at a walker's eyes.
+LANE_FALLBACK = {"w": 640, "d": 430, "ceil": 420, "back": 240}
+
 DISTRICTS = [
     {
         "id": "tokyo", "label": "Tokyo",
+        # The page, the plate prefixes and the position in the chain all come from the ROOMS table
+        # above, so the album and the walk cannot disagree about which room a plate opens onto.
+        "page": ROOM_BY_ID["tokyo"]["page"],
+        "plates": ROOM_BY_ID["tokyo"]["plates"],
+        # ...and the box it stands in is its own, along with where its onward door hangs.
+        "lane": LANE_FALLBACK,
+        "onward": {"x": 316, "z": 415, "ry": -90},
         "purpose": "A Tokyo lane, dressed: shutters, lanterns, a crossing at its end",
         "status": "open",
         "kind": "personal",
@@ -2070,9 +2118,24 @@ DISTRICTS = [
             {"label": "The lane at 22:40", "note": "Sound only if a visitor asks for it.",
              "state": "Silent by default, and it stays that way until a slot carries audio."},
         ],
+        # Where the stops are, in record centimetres: the chips the reader walks between. Part of the
+        # record because a different room has different places worth standing.
+        "stations": [
+            {"z": 0, "label": "the entrance"},
+            {"z": 150, "label": "under the posters"},
+            {"z": 275, "label": "by the pole"},
+            {"z": 350, "label": "by the lit window"},
+            {"z": 395, "label": "in front of the machine"},
+        ],
+        # The curtain at your back is the way out, and which page it opens onto is decided when the
+        # pages are emitted: the place before this one in the chain, or the album if there is none.
         "exit": {"id": "noren", "kind": "noren", "x": 0, "z": -44, "y": 178, "ry": 180,
-                 "title": "The curtain at your back", "hint": "Part it to leave the lane.",
-                 "leave": "index.html"},
+                 "title": "The curtain at your back", "hint": "Part it to leave the lane."},
+        "caveat": "The lane is drawn, not surveyed. The wall holds drawn covers and three drawn "
+                  "sights — the temple gate at Asakusa, the crossing at Shibuya, the tower at dusk "
+                  "— and the objects are props; no footage sits in any slot yet. Frames and clips "
+                  "arrive when the owner supplies them, and nothing here implies a place was "
+                  "visited.",
     },
     {
         "id": "undeclared", "label": "Next district", "purpose": "Purpose not declared",
@@ -2164,7 +2227,8 @@ def walk_islands(d, placed):
 
     Depths are record centimetres and go through Z_SCALE like any other record. Heights are real.
     """
-    ceiling = LANE_CEIL - 34
+    lane = d.get("lane", LANE_FALLBACK)
+    ceiling = lane["ceil"] - 34
     lights = []
     for lamp in d.get("lamps", []):
         if isinstance(lamp, (int, float)):
@@ -2239,6 +2303,11 @@ def walk_object(o):
 def walk_html(d, drawer):
     """The whole viewport is the space; every control is a head-up display floating on it.
 
+    Where leaving goes is one authored value, used twice: the corner control and the curtain at your
+    back are the same door, read from the same field, so the key and the prop cannot point different
+    ways. With a chain of rooms that value is the place behind this one, or the album when this is the
+    first room built — the CV is one click further on, from the album's own navigation.
+
     That is the reference's arrangement, read as an architecture rather than as a style: one route,
     the building owns the screen, the picker and the reading live in overlays that appear on
     request. So there is no doorway to click through any more — arriving at this page *is*
@@ -2248,9 +2317,22 @@ def walk_html(d, drawer):
     always shows the space instead of its edge. Objects keep their authored coordinates and are
     pushed down the lane by Z_SCALE, which is a rendering constant and not a fact about the record.
     """
+    lane = d.get("lane", LANE_FALLBACK)
+    walk_d = round(lane["d"] * Z_SCALE)
     objects = list(d["objects"]) + wall_frames(d)
     if d["exit"]:
-        objects.append(d["exit"])
+        # Leaving this room means arriving somewhere: the place behind it in the chain, or the album
+        # when this is the first room built. The target is decided by the emitter, not by the record,
+        # so a place does not have to know what exists on the other side of its own curtain.
+        objects.append(dict(d["exit"], leave=d.get("back_to", "activities.html")))
+    if d.get("onward") and d.get("onward_to"):
+        # ...and at the far end, a door onto the next place. A room with only an entrance is a dead
+        # end, and the brief is a corridor: out of this one, into the next.
+        objects.append({"id": "way-on", "kind": "door", "x": d["onward"]["x"], "z": d["onward"]["z"],
+                        "y": 0, "ry": d["onward"]["ry"], "leave": d["onward_to"],
+                        "title": "The door at the far end",
+                        "hint": f"It opens onto {d['onward_label']}. Everything between here and "
+                                f"there is a corridor drawn at the same scale."})
     parts = []
     placed = []
     for o in objects:
@@ -2259,12 +2341,12 @@ def walk_html(d, drawer):
         placed.append(o)
         parts.append(walk_object(o))
     chips = []
-    for n, st in enumerate(STATIONS):
+    for n, st in enumerate(d["stations"]):
         # A tick, not a caption: where the words go is the card, and the accessible name is what a
         # screen reader gets without anything being painted over the space.
         chips.append(
             f'<button type="button" class="walk-stop" data-walk-stop="{n}" '
-            f'style="--z:{round(st["z"] * Z_SCALE)}px;--p:{st["z"] * Z_SCALE / WALK_D:.3f}" '
+            f'style="--z:{round(st["z"] * Z_SCALE)}px;--p:{st["z"] * Z_SCALE / walk_d:.3f}" '
             f'aria-label="{escape(st["label"])}, {round(st["z"] * Z_SCALE)} cm in"></button>')
     links = []
     for n, fr in enumerate(d.get("frames", [])):
@@ -2290,8 +2372,8 @@ def walk_html(d, drawer):
              "a mountain beyond. Nothing out there is a record of anybody standing in it."
              if d.get("vista") else "")
     return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}"
-       data-lane-w="{LANE_W}" data-lane-d="{WALK_D}" data-lane-ceil="{LANE_CEIL}"
-       data-lane-back="{LANE_BACK}" data-eye="{EYE}">
+       data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
+       data-lane-back="{lane["back"]}" data-eye="{EYE}">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
        Space to jump, E to open what you are standing in front of, L for the list, I for this note.
@@ -2305,7 +2387,7 @@ def walk_html(d, drawer):
   <div class="walk-hud">
     <div class="walk-top">
       <div class="walk-pick">
-        <a class="walk-icon walk-exit" href="index.html" data-walk-exit aria-label="Leave the lane">{ICON_EXIT}</a>
+        <a class="walk-icon walk-exit" href="{d.get("back_to", "activities.html")}" data-walk-exit aria-label="Leave the lane">{ICON_EXIT}</a>
         <div class="walk-stops" role="group" aria-label="Stops in this lane">{"".join(chips)}</div>
       </div>
       <div class="walk-read">
@@ -2401,26 +2483,42 @@ def slot_row(d, sl):
 
 open_districts = [d for d in DISTRICTS if d["status"] == "open"]
 
-# The district content, assembled for the drawer rather than for an article: the same builders the
-# rest of the site uses, minus the scroll-in state, because a head-up display does not scroll and
-# because reveal-on-scroll hides everything when scripting is off.
-drawer_inner = "\n    ".join(x for x in [
-    frames_section(open_districts),
-    titled("h2", "Slots", ICON_CASE, "block-title spaced"),
-    '<ul class="slot-list">\n      '
-    + INDENT.join(slot_row(d, sl) for d in open_districts for sl in d["slots"])
-    + "\n    </ul>",
-    '<p class="when">The lane is drawn, not surveyed. The wall holds drawn covers and three drawn '
-    'sights — the temple gate at Asakusa, the crossing at Shibuya, the tower at dusk — and the '
-    'objects are props; no footage sits in any slot yet. Frames and clips arrive when the owner '
-    'supplies them, and nothing here implies a place was visited.</p>',
-] if x)
 
-walk_pages = "\n".join(walk_html(d, drawer_inner) for d in open_districts)
-rooms = shell_page("Tokyo · Districts · Hua-Xu Zhong",
-                   walk_pages + "\n" + rooms_plate_html(open_districts), "rooms.html")
+def district_drawer(d):
+    """One room's reading material, for that room's drawer.
 
-(ROOT / "rooms.html").write_text(rooms, encoding="utf-8")
+    Assembled per place rather than per site: the frames section lists this room's sights, the slots
+    are this room's slots, and the caveat is the sentence this room's record wrote about what it may
+    claim. A drawer that listed every district would print another room's inventory inside this one.
+    """
+    return "\n    ".join(x for x in [
+        frames_section([d]),
+        titled("h2", "Slots", ICON_CASE, "block-title spaced"),
+        '<ul class="slot-list">\n      ' + INDENT.join(slot_row(d, sl) for sl in d["slots"])
+        + "\n    </ul>",
+        f'<p class="when">{escape(d["caveat"])}</p>' if d.get("caveat") else "",
+    ] if x)
+
+
+# The corridor. Each open room is told which page stands behind it and which stands ahead of it, and
+# the two ends fall back to the album: a room with no neighbour is not a dead end, it opens onto the
+# picker. Wiring it here rather than in the record means a place never has to know what exists on the
+# other side of its own curtain, and adding Fukuoka later retargets Tokyo's far door by itself.
+for i, d in enumerate(open_districts):
+    prev_room = open_districts[i - 1] if i > 0 else None
+    next_room = open_districts[i + 1] if i + 1 < len(open_districts) else None
+    d["back_to"] = prev_room["page"] if prev_room else ALBUM_PAGE
+    if next_room:
+        d["onward_to"] = next_room["page"]
+        d["onward_label"] = next_room["label"]
+
+rooms_pages = {}
+for d in open_districts:
+    body = walk_html(d, district_drawer(d)) + "\n" + rooms_plate_html([d])
+    rooms_pages[d["page"]] = shell_page(f'{d["label"]} · Rooms · Hua-Xu Zhong', body, d["page"])
+
+for _path, _html in rooms_pages.items():
+    (ROOT / _path).write_text(_html, encoding="utf-8")
 
 (ROOT / "robots.txt").write_text(
     f"User-agent: *\nAllow: /\n\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")
@@ -2428,6 +2526,7 @@ rooms = shell_page("Tokyo · Districts · Hua-Xu Zhong",
     '<?xml version="1.0" encoding="UTF-8"?>\n'
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     + "".join(f"  <url><loc>{SITE}/{p}</loc><lastmod>2026-08-31</lastmod></url>\n"
-              for p in PUBLIC_PAGES)
+              for p in PUBLIC_PAGES + [d["page"] for d in open_districts
+                                       if d["page"] not in PUBLIC_PAGES])
     + "</urlset>\n", encoding="utf-8")
 print("wrote html pages")

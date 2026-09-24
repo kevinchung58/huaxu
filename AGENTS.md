@@ -261,6 +261,20 @@ Reinstall sources:
     registry, and do not classify a new block as `personal` or `academic` without writing down what
     it is for — the same rule that governs a district governs the picture of one.
 
+- **A place is its page, and the pages are a corridor.** `ROOMS` in `_gen_html.py` is the chain, in
+    order: one row per place, carrying its page, the plate prefixes that belong to it, and whether it
+    is open. `DISTRICTS` holds the room itself and takes its page and plates from that row, so the
+    album and the walk cannot disagree about which room a plate opens onto. Walking out of a room puts
+    you in the next one; the first room's curtain opens onto the album, which is the picker. Never
+    stack two open districts into one page: the renderer reads one island per key, so the second room's
+    objects would float in the first room's lane. Adding a place means adding a row, a record, a page
+    write, and a gate run — `skills/place-intake` is the checklist.
+
+- **Reference photographs never ship.** The owner's photographs of a real place live in `ref/`
+    (gitignored) and are read, not published: what hangs on the wall is a generated plate, and what you
+    stand in is built from what the photographs show. `IMG/` is a registry and every file in it must
+    match a rule — putting a personal photograph there would pull it onto the album wall.
+
 - **`rooms.html` is a shell, not an article.** It is the only page built by `shell_page()`: no
     nav, no footer, no `reveal`, and its reading material lives in a drawer that ships open and is
     folded by JS. Adding a section, a `reveal` class or a navy drawer surface to that page is a

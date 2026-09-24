@@ -2518,3 +2518,25 @@ body.shell {
   letter-spacing: 0.02em;
   color: var(--muted);
 }
+
+/* The album is the picker, so a plate that belongs to a built room carries its door underneath it.
+   The cell is the grid child now rather than the tile, because a link may not be nested inside a
+   link: the picture opens the roll, the word under it walks into the room. On a narrow screen the
+   word stays — it is the only way through, and it is three lines at worst. */
+.ig-cell { display: flex; flex-direction: column; background: var(--card); }
+.ig-cell .ig-tile { flex: 1 1 auto; }
+.ig-room {
+  display: block;
+  padding: 0.45rem 0.6rem 0.5rem;
+  font-family: var(--sans);
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  color: var(--navy);
+  border-top: 1px solid var(--line);
+  text-decoration: none;
+  transition: background 220ms var(--ease), color 220ms var(--ease);
+}
+.ig-room .ico { margin-left: 0.35rem; }
+.ig-room:hover, .ig-room:focus-visible { background: var(--navy); color: var(--bg); }
+.ig-room:hover .ico, .ig-room:focus-visible .ico { color: var(--bg); }
+.ig-room:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }

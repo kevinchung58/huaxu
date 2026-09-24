@@ -489,8 +489,12 @@ ok("an interactive thing says so without a word: the reach ring is dashed for a 
    are), a far prop's press box was as small as the few pixels it covered, and the curtain that reads
    "part it to leave the lane" opened a card instead of leaving. jsdom passed all three for a week. */
 const noren = q('[data-obj="noren"]');
+/* The curtain opens onto the album now, not onto the CV: the album is the picker, so leaving a room
+   lands on the place you choose the next room from, and the corner link is what goes back to the CV.
+   What this asserts is not the destination — that is the chain's business — it is that the chrome and
+   the prop read the same authored value, so the two ways out of a room cannot point different ways. */
 ok("the way out is authored in the record, and the chrome reads the same link",
-   noren.dataset.leave === "index.html"
+   noren.dataset.leave === "activities.html"
      && q("[data-walk-exit]").getAttribute("href") === noren.dataset.leave);
 const navs = () => ctx.navs.filter((m) => /navigation/.test(m)).length;
 click(noren);
@@ -728,6 +732,52 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
     }
   }
   ok("every raster a page points at exists", missing.length === 0, missing.join(", "));
+}
+
+/* ---- 6. the corridor: a place is its page, and the rooms are a chain ---------------------------------- */
+{
+  // The generator's own tables, read the way the generator reads them: source order, the ROOMS rows
+  // first, then each district's page and plates. This is a structural assertion on purpose — whether
+  // the walk itself is right is what the rest of this file and the pixel gate are for, but a place
+  // that has drifted out of the chain is a page nothing can reach.
+  const rooms = Array.from(gen.matchAll(
+    /^\s*\("([a-z-]+)", "([^"]+)", "([^"]+\.html)", \["([a-z-]+)"\], "(open|soon)"\),$/gm))
+    .map((m) => ({ id: m[1], label: m[2], page: m[3], prefix: m[4], status: m[5] }));
+  ok("the rooms table declares the chain, one row per place",
+     rooms.length >= 1 && rooms.every((r, i) => i === 0 || r.id !== rooms[i - 1].id),
+     rooms.map((r) => `${r.id}:${r.status}`).join(" "));
+  ok("every built room is a page on disk, with the place's own box in it",
+     rooms.filter((r) => r.status === "open").every((r) => fs.existsSync(r.page)
+       && /data-lane-w="\d+" data-lane-d="\d+" data-lane-ceil="\d+"/.test(fs.readFileSync(r.page, "utf8"))));
+  ok("a room's page is titled as that room, not as the site",
+     rooms.filter((r) => r.status === "open")
+       .every((r) => new RegExp(`<title>${r.label} · Rooms · Hua-Xu Zhong</title>`)
+         .test(fs.readFileSync(r.page, "utf8"))));
+  ok("the district takes its page and its plates from the row, so the two cannot drift",
+     /"page": ROOM_BY_ID\["tokyo"\]\["page"\]/.test(gen)
+       && /"plates": ROOM_BY_ID\["tokyo"\]\["plates"\]/.test(gen));
+  // One open room so far, so its curtain is the way back to the picker; the far door exists in the
+  // data only when there is a room past it, because a door onto nothing is worse than no door.
+  const open = rooms.filter((r) => r.status === "open");
+  const last = fs.readFileSync(open[open.length - 1].page, "utf8");
+  ok("the curtain at the back opens onto the album when there is no room behind it",
+     /data-leave="activities\.html"/.test(last));
+  ok("no door is hung onto a place that is not built",
+     open.length === rooms.length || !/id="way-on"/.test(last));
+  // The album is the picker: a plate whose room is built carries the door under it, and a plate whose
+  // room is shut does not, because a locked door on a picture is a promise the site cannot keep.
+  const doors = Array.from(act.matchAll(/<a class="ig-room" href="([^"]+)"/g)).map((m) => m[1]);
+  // Each plate appears twice on the page — once as a tile and once as the frame in the roll — so the
+  // wall is counted in distinct names, and the doors are counted where they are emitted: under tiles.
+  const plates = [...new Set(Array.from(act.matchAll(/<img src="IMG\/([A-Za-z0-9._-]+)"/g))
+    .map((m) => m[1]))];
+  const owned = plates.filter((n) => rooms.some((r) => n.startsWith(r.prefix)));
+  ok("the album offers the door only to the rooms that are built",
+     doors.length === plates.filter((n) => rooms.some((r) => n.startsWith(r.prefix) && r.status === "open"))
+       .length && doors.every((h) => fs.existsSync(h)),
+     `${doors.length} doors, ${owned.length} plates belong to a room`);
+  ok("a plate that belongs to no room is a plate, and carries nothing under it",
+     plates.length === owned.length || !/<a class="ig-room" href="\w[^"]*"[^>]*>\s*Enter/.test(act));
 }
 
 console.log(out.join("\n"));
