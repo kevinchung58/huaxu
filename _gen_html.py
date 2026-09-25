@@ -1990,63 +1990,64 @@ DISTRICTS = [
         "lamps": [20, 120, 220, 320, 402,
                   {"z": 430, "y": 240, "x": 0, "r": 900, "k": 0.55, "bulb": False,
                    "tint": "rgba(146,178,255,0.26)"}],
-        # The arcade's rhythm overhead: where a beam crosses the ceiling, in scene centimetres.
-        "beams": [220, 520, 820, 1120],
+        # The arcade's rhythm overhead: where a beam crosses the ceiling, in record centimetres like
+        # every other depth in a district record (the emitter scales them with Z_SCALE).
+        "beams": [75.86, 179.31, 282.76, 386.21],
         # What the walls are made of. This is the street's own kit, band by band: rolling shutters over
         # closed fronts, glazed tile up to hand height where a shopfront was glazed, painted plaster
         # above, corrugated patching where a wall has been opened and closed again, a plank hoarding
         # where a building is being worked on. Side -1 is the left wall, 1 the right, 0 the end wall;
-        # the extents are scene centimetres, and the renderer tiles each band into the same 60 cm panels
+        # the depths are record centimetres, and the renderer tiles each band into the same 60 cm panels
         # as the wall behind it so an affine map stays exact.
         "surfaces": [
-            {"side": -1, "z0": -240, "z1": 60, "y0": 0, "y1": 420, "kind": "plaster"},
-            {"side": -1, "z0": 60, "z1": 300, "y0": 0, "y1": 300, "kind": "shutter"},
-            {"side": -1, "z0": 60, "z1": 300, "y0": 300, "y1": 420, "kind": "corrugated"},
-            {"side": -1, "z0": 300, "z1": 470, "y0": 0, "y1": 130, "kind": "dado"},
-            {"side": -1, "z0": 300, "z1": 470, "y0": 130, "y1": 420, "kind": "brick"},
-            {"side": -1, "z0": 470, "z1": 760, "y0": 0, "y1": 290, "kind": "shutter"},
+            {"side": -1, "z0": -82.76, "z1": 20.69, "y0": 0, "y1": 420, "kind": "plaster"},
+            {"side": -1, "z0": 20.69, "z1": 103.45, "y0": 0, "y1": 300, "kind": "shutter"},
+            {"side": -1, "z0": 20.69, "z1": 103.45, "y0": 300, "y1": 420, "kind": "corrugated"},
+            {"side": -1, "z0": 103.45, "z1": 162.07, "y0": 0, "y1": 130, "kind": "dado"},
+            {"side": -1, "z0": 103.45, "z1": 162.07, "y0": 130, "y1": 420, "kind": "brick"},
+            {"side": -1, "z0": 162.07, "z1": 262.07, "y0": 0, "y1": 290, "kind": "shutter"},
             # Board-formed concrete over that shutter: the lane's own structure showing above the
             # shopfronts, which is what the second half of a street like this actually looks like.
-            {"side": -1, "z0": 470, "z1": 760, "y0": 290, "y1": 420, "kind": "concrete", "tone": 1.04},
-            {"side": -1, "z0": 760, "z1": 1010, "y0": 0, "y1": 300, "kind": "hoarding", "tone": 0.86},
+            {"side": -1, "z0": 162.07, "z1": 262.07, "y0": 290, "y1": 420, "kind": "concrete", "tone": 1.04},
+            {"side": -1, "z0": 262.07, "z1": 348.28, "y0": 0, "y1": 300, "kind": "hoarding", "tone": 0.86},
             # ...with a sheet of galvanised steel over the top of the boarding, because a hoarding in a
             # working lane is patched with whatever was on the truck.
-            {"side": -1, "z0": 760, "z1": 1010, "y0": 300, "y1": 420, "kind": "galv", "tone": 0.94},
-            {"side": -1, "z0": 1010, "z1": 1247, "y0": 0, "y1": 120, "kind": "dado"},
-            {"side": -1, "z0": 1010, "z1": 1247, "y0": 120, "y1": 420, "kind": "brick"},
-            {"side": 1, "z0": -240, "z1": 40, "y0": 0, "y1": 420, "kind": "brick"},
-            {"side": 1, "z0": 40, "z1": 190, "y0": 0, "y1": 300, "kind": "shutter"},
-            {"side": 1, "z0": 40, "z1": 190, "y0": 300, "y1": 420, "kind": "plaster"},
-            {"side": 1, "z0": 190, "z1": 470, "y0": 0, "y1": 140, "kind": "dado"},
-            {"side": 1, "z0": 190, "z1": 470, "y0": 140, "y1": 420, "kind": "concrete", "tone": 0.96},
-            {"side": 1, "z0": 470, "z1": 660, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.92},
-            {"side": 1, "z0": 660, "z1": 900, "y0": 0, "y1": 290, "kind": "shutter"},
-            {"side": 1, "z0": 660, "z1": 900, "y0": 290, "y1": 420, "kind": "corrugated"},
-            {"side": 1, "z0": 900, "z1": 1247, "y0": 0, "y1": 130, "kind": "dado", "tone": 1.08},
-            {"side": 1, "z0": 900, "z1": 1247, "y0": 130, "y1": 420, "kind": "brick"},
+            {"side": -1, "z0": 262.07, "z1": 348.28, "y0": 300, "y1": 420, "kind": "galv", "tone": 0.94},
+            {"side": -1, "z0": 348.28, "z1": 430, "y0": 0, "y1": 120, "kind": "dado"},
+            {"side": -1, "z0": 348.28, "z1": 430, "y0": 120, "y1": 420, "kind": "brick"},
+            {"side": 1, "z0": -82.76, "z1": 13.79, "y0": 0, "y1": 420, "kind": "brick"},
+            {"side": 1, "z0": 13.79, "z1": 65.52, "y0": 0, "y1": 300, "kind": "shutter"},
+            {"side": 1, "z0": 13.79, "z1": 65.52, "y0": 300, "y1": 420, "kind": "plaster"},
+            {"side": 1, "z0": 65.52, "z1": 162.07, "y0": 0, "y1": 140, "kind": "dado"},
+            {"side": 1, "z0": 65.52, "z1": 162.07, "y0": 140, "y1": 420, "kind": "concrete", "tone": 0.96},
+            {"side": 1, "z0": 162.07, "z1": 227.59, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.92},
+            {"side": 1, "z0": 227.59, "z1": 310.34, "y0": 0, "y1": 290, "kind": "shutter"},
+            {"side": 1, "z0": 227.59, "z1": 310.34, "y0": 290, "y1": 420, "kind": "corrugated"},
+            {"side": 1, "z0": 310.34, "z1": 430, "y0": 0, "y1": 130, "kind": "dado", "tone": 1.08},
+            {"side": 1, "z0": 310.34, "z1": 430, "y0": 130, "y1": 420, "kind": "brick"},
         ],
         # And on the ground: the tactile guide path that runs beside the walls in a real lane, a painted
         # gutter line, two grates, a manhole, and one wet patch that holds the machine's light.
         "marks": [
-            {"kind": "tactile", "x0": -300, "x1": -272, "z0": -240, "z1": 1247},
-            {"kind": "tactile", "x0": 272, "x1": 300, "z0": -240, "z1": 1247},
-            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 1230, "z1": 1244},
+            {"kind": "tactile", "x0": -300, "x1": -272, "z0": -82.76, "z1": 430},
+            {"kind": "tactile", "x0": 272, "x1": 300, "z0": -82.76, "z1": 430},
+            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 424.14, "z1": 428.97},
             # The same painted line at the other end of the lane: a straight bar of paint at a mouth is
             # the one piece of road marking this lane can have without writing a word on the ground.
-            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 26, "z1": 40},
+            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 8.97, "z1": 13.79},
             # A channel drain crossing the lane: the kit is the same grate as the two at the kerb, and
             # crossing the whole width is what a lane does where its own water has to leave it.
-            {"kind": "grate", "x0": -150, "x1": 150, "z0": 636, "z1": 650},
-            {"kind": "grate", "x0": -118, "x1": -42, "z0": 148, "z1": 168},
-            {"kind": "grate", "x0": 60, "x1": 136, "z0": 700, "z1": 720},
-            {"kind": "manhole", "x0": -40, "x1": 40, "z0": 430, "z1": 510},
-            {"kind": "manhole", "x0": 120, "x1": 200, "z0": 286, "z1": 346},
-            {"kind": "wet", "x0": -316, "x1": -60, "z0": 980, "z1": 1240},
+            {"kind": "grate", "x0": -150, "x1": 150, "z0": 219.31, "z1": 224.14},
+            {"kind": "grate", "x0": -118, "x1": -42, "z0": 51.03, "z1": 57.93},
+            {"kind": "grate", "x0": 60, "x1": 136, "z0": 241.38, "z1": 248.28},
+            {"kind": "manhole", "x0": -40, "x1": 40, "z0": 148.28, "z1": 175.86},
+            {"kind": "manhole", "x0": 120, "x1": 200, "z0": 98.62, "z1": 119.31},
+            {"kind": "wet", "x0": -316, "x1": -60, "z0": 337.93, "z1": 427.59},
             # The kerb: a six centimetre riser where the floor meets the wall, on both sides, so the
             # lane has a line at its base that light can fall along. Only the face is drawn — the top
             # of a 46 cm kerb is what you stand on, not what you look at.
-            {"kind": "kerb", "x0": -318, "x1": -272, "z0": -240, "z1": 1247, "y1": 6},
-            {"kind": "kerb", "x0": 272, "x1": 318, "z0": -240, "z1": 1247, "y1": 6},
+            {"kind": "kerb", "x0": -318, "x1": -272, "z0": -82.76, "z1": 430, "y1": 6},
+            {"kind": "kerb", "x0": 272, "x1": 318, "z0": -82.76, "z1": 430, "y1": 6},
         ],
         # Paper lanterns, hung where a wire already crosses the lane: each one is a light source with a
         # body, which is the only way the room can be lit by something you can also point at.
@@ -2688,9 +2689,31 @@ def walk_islands(d, placed):
         lights.append(dict(L, z=round(L["z"] * Z_SCALE), r=max(96, L["r"] * 3.4), size=L["r"],
                            h=L["y"] + round(L["r"] * 1.15),
                            k=0.72, bulb=False, tint="rgba(255,158,86,0.52)", body="lantern"))
+    # Surfaces, marks and beams are depths in a district record, exactly like the objects: every z
+    # coordinate goes through Z_SCALE so the cladding, the stripes on the floor, the beams overhead,
+    # and the props on the wall all live in one scaled space. The first two rooms after Tokyo authored
+    # these in record centimetres while Tokyo had them in scene centimetres, and nothing scaled them:
+    # the walls stopped at the record's own d (Canada 400, Fukuoka 380) while the objects ran on to
+    # walk_d (1160 / 1102), so the far half of each new room lost its cladding, its ground kit and its
+    # beams. Tokyo's record has been rebased to record centimetres with it (the generated islands are
+    # unchanged to the centimetre), and the convention is now one space everywhere.
+    def _scale_band(s):
+        s = dict(s)
+        s["z0"] = round(s["z0"] * Z_SCALE)
+        s["z1"] = round(s["z1"] * Z_SCALE)
+        return s
+    def _scale_mark(mk):
+        mk = dict(mk)
+        for k in ("z0", "z1"):
+            if k in mk:
+                mk[k] = round(mk[k] * Z_SCALE)
+        return mk
+    surfaces = [_scale_band(s) for s in d.get("surfaces", [])]
+    marks    = [_scale_mark(m) for m in d.get("marks", [])]
+    beams    = [round(b * Z_SCALE) for b in d.get("beams", [])]
     islands = [("data-walk-lights", lights), ("data-walk-wires", wires),
-               ("data-walk-beams", d.get("beams", [])),
-               ("data-walk-surfaces", d.get("surfaces", [])), ("data-walk-marks", d.get("marks", []))]
+               ("data-walk-beams", beams),
+               ("data-walk-surfaces", surfaces), ("data-walk-marks", marks)]
     if d.get("vista"):
         islands.append(("data-walk-vista", d["vista"]))
     if d.get("backdrop"):

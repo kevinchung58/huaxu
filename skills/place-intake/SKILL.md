@@ -55,12 +55,12 @@ Read each picture for the numbers, not for the mood. The unit is the centimetre;
 | How deep you walk | `lane.d` | how far the picture lets you see before the end wall; this is a *record* depth and the renderer scales it |
 | Behind you | `lane.back` | how far the walls should run past the entrance so turning round still shows a room |
 | Where the stop points are | `stations` | 4–6 places worth standing: the mouth, the lit thing, the end |
-| Wall materials, band by band | `surfaces` | from the ground up, and side by side: what is at ankle, hand, and eye height; where a wall changes material, that is a band |
+| Wall materials, band by band | `surfaces` | from the ground up, and side by side: what is at ankle, hand, and eye height; where a wall changes material, that is a band. Depths in record centimetres, like everything else — the emitter scales them |
 | What is at the far end | `vista` + `backdrop` | the aperture, and the plane behind it: what the eye lands on, and what is beyond that |
 | Objects | `objects` | 8–20 things that read as **silhouettes**: what you could recognise at 20 m. Each gets a position, a kind that exists in `OBJ_SIZE`, and a `hint` saying why it is there |
 | Lights | `lamps`, `lanterns`, `wires` | every source you can see, with its height, tint and strength; a lantern hangs from a wire that crosses the lane, so the wire is authored too |
 | Ground | `marks` | paint, grates, drains, patches, wet. Marks are rectangles in the record's units |
-| Overhead | `beams`, ducts, cables | what crosses above: the ceiling is the layer most rooms leave empty, and it is the one a photograph of a real alley is fullest of |
+| Overhead | `beams`, ducts, cables | what crosses above: the ceiling is the layer most rooms leave empty, and it is the one a photograph of a real alley is fullest of. Beam depths are record centimetres — the emitter scales them |
 | The way on | `onward` | where a door onto the next place would stand. A room with a door onto nothing is worse than a room with no door; leave it out until the next room exists |
 
 Rules that keep a room from reading as a backdrop:

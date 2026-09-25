@@ -1003,7 +1003,12 @@ function leaveOverlay(root, trigger) {
                   bin: "box", bollard: "box", steps: "box", pipe: "box", awning: "box",
                   sign: "box", drain: "plate", noren: "cloth", poster: "plane", frame: "plane",
                   mirror: "mirror", ladder: "ladder", hydrant: "hydrant", recycle: "flap",
-                  meter: "box", camera: "camera", door: "plate",
+                  meter: "box", camera: "camera",
+                  // A door is a plane, not a plate: the chain doors (`way-on`, `door-back`) carry a
+                  // door's height in `data-h`, and a plate is flat on the floor — it projects a few
+                  // pixels tall, fails the press-box floor, and the one object whose whole purpose is
+                  // the page behind it could never be seen or pressed. Vertical plane, door-sized.
+                  door: "plane",
                   bank: "bank", bench: "box", rack: "box" };
   const mix = (hex, k) => {
     const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -1066,7 +1071,11 @@ function leaveOverlay(root, trigger) {
       const sx = W * 0.5 + (focal * p.x) / p.z, sy = H * 0.5 + (focal * p.y) / p.z;
       x0 = Math.min(x0, sx); y0 = Math.min(y0, sy); x1 = Math.max(x1, sx); y1 = Math.max(y1, sy);
     });
-    return [x0, y0, x1 - x0, y1 - y0];
+    // Absolute corners, not [x0, y0, w, h]: the hit-box union below maxes x1/y1 against the other
+    // faces' absolute edges. A relative width here met that union as if it were an edge, so any
+    // object drawn as a single quad — the chain doors, the wall frames, a drain plate — came out
+    // with a negative width and was culled as invisible: real, painted, and untouchable.
+    return [x0, y0, x1, y1];
   };
   /* Lighting, in the order a night actually works: the level the eye has adapted to, then a
      distance-squared falloff from each source, then the air in between. The sources are the same
@@ -1903,10 +1912,10 @@ function leaveOverlay(root, trigger) {
       drawn.slice(1).forEach((other) => {          // the control wraps the object, not one face of it
         const o = box(C, other);
         b[0] = Math.min(b[0], o[0]); b[1] = Math.min(b[1], o[1]);
-        b[2] = Math.max(b[2], o[0] + o[2]); b[3] = Math.max(b[3], o[1] + o[3]);
+        b[2] = Math.max(b[2], o[2]); b[3] = Math.max(b[3], o[3]);
         minz = Math.min(minz, other.z);
       });
-      b[2] -= b[0]; b[3] -= b[1];
+      b[2] -= b[0]; b[3] -= b[1];                  // corners in, size out — once, at the end
       if (b[2] > 6 && b[3] > 6 && b[0] > -40 && b[0] < W + 40 && b[1] < H + 40 && b[1] > -40) {
         m.el.style.visibility = "visible";
         m.el.tabIndex = 0;

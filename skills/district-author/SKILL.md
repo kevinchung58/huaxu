@@ -162,14 +162,18 @@ makes the whole thing vanish. So `preserve-3d` goes on `.ig-grid` only, the `per
 on `.ig-wall`, and the frames' depth **inside each frame's own transform**, because a scroll container
 flattens its children.
 
-Inside the raster, the equivalent rule is that nothing may be invented by the renderer, and there are
-two coordinate systems that must never be mixed: a *record* is authored in record centimetres and
-multiplied by `Z_SCALE`, while the *space* — an arcade beam, an aperture in a wall, the far plane seen
-through it — is authored in scene centimetres and is not scaled at all, because it is not a record of
+Inside the raster, the equivalent rule is that nothing may be invented by the renderer, and there is
+one coordinate system for everything a district record authors: a *record* is written in record
+centimetres, and the emitter multiplies it by `Z_SCALE` — objects, lamps, wires, stations, and the
+wall, ground and beam islands alike. Depths that skip the emitter land in the wrong space: Canada's
+and Fukuoka's cladding was once authored pre-scaled, stopped at the record's own `d`, and left the far
+half of each room an unpainted void while its objects floated on. What the *renderer* authors itself —
+an aperture in a wall, the far plane seen through it — is in scene centimetres and is not scaled,
+because it is not a record of
 anything. A prop is
 authored as a solid (`OBJ_SIZE` gives width, height and depth; depth is what lets you walk behind it
 and what wraps the hit box around the thing you can see), and light is authored as data — `data-walk-lights`
-and `data-walk-wires`, plus the scene-centimetre islands `data-walk-surfaces` (what each wall is clad
+and `data-walk-wires`, plus the islands `data-walk-surfaces` (what each wall is clad
 in, band by band), `data-walk-marks` (what is painted or let into the ground), `data-walk-beams`,
 `data-walk-vista` and `data-walk-backdrop`. The renderer draws the bulbs it is told about and
 derives exactly one glow from a prop's own position, because that light has to come from the machine.

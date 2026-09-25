@@ -167,8 +167,12 @@ intact:
   that no node in `.walk-hud` has text of its own — do not "improve" discoverability by putting a label
   back on the space.
 - **The space wears the atmosphere; the view only frames it.** Wall materials, ground markings and
-  hanging lights are emitted as scene-centimetre islands (`data-walk-surfaces`, `data-walk-marks`, the
-  lantern entries in `data-walk-lights`) and painted from tiles the renderer draws in code. Nothing may
+  hanging lights are emitted as scene islands (`data-walk-surfaces`, `data-walk-marks`, the
+  lantern entries in `data-walk-lights`) and painted from tiles the renderer draws in code. Every
+  depth in a district record is authored in record centimetres — objects, lamps, wires, stations, and
+  these islands alike — and the emitter is the one place that scales them by `Z_SCALE`; a depth that
+  skips the emitter lands in the wrong space (Canada's and Fukuoka's walls once stopped at the
+  record's own `d` while their objects ran on to `walk_d`). Nothing may
   be lit by a source the data does not name, nothing may be dressed with a photograph of somebody's real
   street, and no surface carries invented lettering — the blank folding board is that assertion.
 - **No watched state.** `放進限時動態只是做相簿用`: this is an album, not a story. Nothing may be
