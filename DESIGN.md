@@ -82,13 +82,20 @@ stops text never sits on; verify plate text against the *painted* navy, and pref
 the `--accent-bright` / `--muted-navy` tokens over weakening the plate.
 
 
-## Districts: the lane (rooms.html)
+## Districts: the rooms (rooms.html and its neighbours)
 
-A walkable district is the one place in this world where geometry is allowed. It stays in
-uniform: the floor and walls are navy plates, the only light is amber and it comes from one
-object (the vending machine), captions are the same `--muted`/`--muted-navy` as everywhere
-else, and the poster surfaces are drawn in CSS rather than generated as images so nothing in
-the scene can be mistaken for a photograph the owner took.
+A walkable district is the one place in this world where geometry is allowed. It stays in uniform
+across all three rooms: the palette is the site's, captions are the same `--muted`/`--muted-navy` as
+everywhere else, and the poster surfaces are drawn on the canvas rather than pasted on as
+photographs, so nothing in the scene can be mistaken for a picture the owner took.
+
+What is *not* uniform is the light. It used to be one rule — the only light is amber and it comes from
+one object — and that rule stopped being true the moment there were three places: a vending machine on
+a lane, a lamp post and a lit door on a winter walkway, six paper lanterns over a stall alley. Each
+district authors its own lamps, and each entry is either a **fixture** (the renderer draws a body and a
+cord for it) or **spill** (`"bulb": false`: light with no body — a pool, a bounce, the sky near an
+aperture). Canada's four spill entries were authored as fixtures once, which hung four white bulbs over
+a walkway with one lamp post in it.
 
 Camera rule of the world: the eye never moves — `.room-world` is translated and rotated in
 the opposite direction. That is what keeps the lane free of a 3D library, and it is why
@@ -98,6 +105,12 @@ the next step lands).
 Two limits are deliberate and should not be "improved": yaw and pitch are clamped to ±35° /
 ±10° because past that the walls stop covering the viewport and the room shows its own edges;
 and turning is drag, not Pointer Lock, because the site must stay usable on a phone.
+
+Three more are properties of *these* rooms rather than of the mechanism, and each cost a fix when a
+room was built: an opening is sized against the wall it is cut in **and** the stop it is seen from
+(Canada's 5.6 m aperture in a 7.2 m wall read as a window); a light 20 m away does nothing, because
+`lightAt`'s half-radius is 210 cm, so each room lights its own far plane; and a stop should stand about
+two metres off an end wall, or the last thing the room shows you is the wall.
 
 A district with no declared purpose cannot open — `status: "soon"` renders as such. The
 reference this was modelled on ships one built level and one honest `Coming soon`, and this

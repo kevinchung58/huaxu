@@ -39,7 +39,8 @@ Workflow for any content or markup change:
 
 Files you MAY edit directly:
 
-- `css/site.css` — all styling (bump the `?v=` cache-buster in `_gen_html.py` when changing it)
+- `css/site.css` — all styling. Nothing to bump: `VER` is derived from this file and `js/site.js`
+  on every build, and the harness fails if a page disagrees (see the cache-buster note above)
 - `js/site.js` — nav toggle, reveal animations, small interactions
 - `IMG/` — photos and assets
 - `_gen_html.py` — the generator itself
@@ -79,14 +80,14 @@ rather than loading a hundred files. Their conclusions that reached this code ar
 - **Contact email.** The site's contact email is `k43122003@gmail.com` (set in `_gen_html.py`;
   hero + footer social icons — both `mailto:` occurrences). The old
   `mailto:your.email@example.com` placeholder was replaced on 2026-08-31. If the owner changes
-  it, update every `mailto:` occurrence and bump the `?v=` cache-buster. (Ask the owner to
+  it, update every `mailto:` occurrence. `VER` looks after itself. (Ask the owner to
   double-check the spelling once — it was supplied in a form.)
 
 ## Backlog — pending owner input (2026-08)
 
 Owner will send materials later; **do not fabricate** any of this. When the asset/value lands,
 edit `_gen_html.py` (+ add the file under `IMG/` if a download), rerun `python3 _gen_html.py`,
-bump the `?v=` cache-buster, and keep the detector at 0 findings.
+and keep the detector at 0 findings — `VER` is derived, so there is nothing to bump.
 
 1. **English CV / PDF download link** — owner will provide the CV file (place at repo root as
    e.g. `HuaXu_Zhong_CV.pdf`). Add a download link in the hero actions (or About), styled with
