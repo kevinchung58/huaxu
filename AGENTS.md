@@ -6,9 +6,12 @@ Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo 
 
 ## Critical: source of truth
 
-- `CSS` and the footer `<script>` both read one `VER` constant in `_gen_html.py`. Bump
-  `VER`, never a per-file literal: two independent `?v=` strings is how a build ships new
-  CSS and JS that no browser will fetch, and the tree still looks correct.
+- The cache-buster is **derived, not hand-bumped**: `VER` in `_gen_html.py` is the sha1 of
+  `css/site.css` + `js/site.js`, truncated, and both the stylesheet link and the footer `<script>`
+  read that one value. It used to be a literal that a human had to remember, and it went stale the
+  first time the renderer changed in a commit that forgot: new rooms, old `?v=`, and the only person
+  who would ever see the bug is a returning visitor whose browser drew them with the last renderer.
+  `verify-walk.mjs` now recomputes the hash from disk and fails if a page asks for anything else.
 - Verification means the artefact the browser asks for. After a build, `curl` the served
   page and grep for the new markup and the pin. Pages already on disk make a crashing
   generator look healthy, so `python3 _gen_html.py` exiting 0 is a precondition for

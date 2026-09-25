@@ -1,11 +1,30 @@
 #!/usr/bin/env python3
+import hashlib
 import json
 from fnmatch import fnmatch
 from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260923c"   # one bump per changed asset pair; both tags read it
+
+
+def _asset_ver() -> str:
+    """The cache-buster is the assets' own hash, so it cannot go stale.
+
+    It used to be a hand-bumped string, and it went wrong the first time the renderer changed in a
+    commit that forgot the bump: `js/site.js` gained the snow, the bank and the spill flag while the
+    pages went on asking for `?v=20260923c`, so a returning visitor would have drawn the two new rooms
+    with the old renderer and seen them wrong — the one class of bug that no gate here can see, because
+    it only happens in somebody's browser cache. Derived, it is correct by construction: touch either
+    asset and every page asks for the new bytes.
+    """
+    h = hashlib.sha1()
+    for f in ("css/site.css", "js/site.js"):
+        h.update((ROOT / f).read_bytes())
+    return h.hexdigest()[:10]
+
+
+VER = _asset_ver()
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -13,6 +32,26 @@ DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and
 PUBLIC_PAGES = ["index.html", "about.html", "research.html", "teaching.html",
                 "position.html", "thinking.html", "practice.html",
                 "activities.html", "rooms.html", "service.html", "links.html"]
+
+
+# The rooms, and the order the chain runs in: earliest first, which is also the order the album reads
+# them in. This table exists above the districts for a boring reason — the album wall is built before
+# the district records are — and for a good one: the chain is a fact about the site, not about one
+# room, and a place should not have to know what exists on either side of it. `verify-walk.mjs`
+# asserts that each district agrees with its row here, so the two cannot drift apart silently.
+ROOMS = [
+    ("canada", "Canada", "rooms-canada.html", ["canada-"], "open"),
+    ("tokyo", "Tokyo", "rooms.html", ["tokyo-"], "open"),
+    ("fukuoka", "Fukuoka", "rooms-fukuoka.html", ["fukuoka-"], "open"),
+]
+ROOM_BY_ID = {r[0]: {"label": r[1], "page": r[2], "plates": r[3], "status": r[4]} for r in ROOMS}
+ROOM_ORDER = {r[0]: i for i, r in enumerate(ROOMS)}
+# The nav item says "Rooms", so it goes to the near end of the chain: a visitor arriving there should
+# start where the walk starts rather than in the middle of it, and that room's curtain opens onto the
+# album, which is where the other rooms are chosen. Follows the ROOMS table, so adding an earlier
+# place moves the door without anyone having to remember that it did.
+CHAIN_ENTRY = next((r[2] for r in ROOMS if r[4] == "open"), "activities.html")
+
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -89,7 +128,7 @@ def nav(active: str) -> str:
         </div>
       </div>
       {a("activities.html", "Activities", "activities")}
-      {a("rooms.html", "Rooms", "rooms")}
+      {a(CHAIN_ENTRY, "Rooms", "rooms")}
       <div class="more">
         <button class="more-btn{more_on}" type="button" aria-expanded="false" aria-haspopup="true">More <span class="caret" aria-hidden="true">{ICON_CARET}</span></button>
         <div class="more-menu" role="menu">
@@ -113,7 +152,7 @@ def nav(active: str) -> str:
     <div class="label">More</div>
     {a("service.html", "Service", "service")}
     {a("links.html", "Resources", "links")}
-    {a("rooms.html", "Rooms", "rooms")}
+    {a(CHAIN_ENTRY, "Rooms", "rooms")}
   </nav>
 </header>"""
 
@@ -176,7 +215,7 @@ def page(title: str, active: str, body: str, path: str = "", extra: str = "") ->
 """
 
 
-def shell_page(title: str, body: str, path: str) -> str:
+def shell_page(title: str, body: str, path: str, cover: str = "IMG/1.jpg") -> str:
     """A page that is not an article: no masthead, no footer, no prose stacked under the view.
 
     A walkable space is an application, and the reference proves the point by refusing to be a
@@ -201,7 +240,7 @@ def shell_page(title: str, body: str, path: str) -> str:
   <meta property="og:title" content="{escape(title)}" />
   <meta property="og:description" content="{DESC}" />
   <meta property="og:url" content="{canonical}" />
-  <meta property="og:image" content="{SITE}/IMG/1.jpg" />
+  <meta property="og:image" content="{SITE}/{cover}" />
   <meta name="twitter:card" content="summary" />
   <title>{escape(title)}</title>
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
@@ -1387,18 +1426,6 @@ HELD = {b["id"]: [n for n in block_files(b["id"], shown=False)
 ALBUM_BLOCKS = [b for b in BLOCKS if b["id"] in ("field-notes", "classroom")]
 
 
-# The rooms, and the order the chain runs in: earliest first, which is also the order the album reads
-# them in. This table exists above the districts for a boring reason — the album wall is built before
-# the district records are — and for a good one: the chain is a fact about the site, not about one
-# room, and a place should not have to know what exists on either side of it. `verify-walk.mjs`
-# asserts that each district agrees with its row here, so the two cannot drift apart silently.
-ROOMS = [
-    ("canada", "Canada", "rooms-canada.html", ["canada-"], "open"),
-    ("tokyo", "Tokyo", "rooms.html", ["tokyo-"], "open"),
-    ("fukuoka", "Fukuoka", "rooms-fukuoka.html", ["fukuoka-"], "open"),
-]
-ROOM_BY_ID = {r[0]: {"label": r[1], "page": r[2], "plates": r[3], "status": r[4]} for r in ROOMS}
-ROOM_ORDER = {r[0]: i for i, r in enumerate(ROOMS)}
 ALBUM_PAGE = "activities.html"
 
 
@@ -2926,7 +2953,8 @@ for i, d in enumerate(open_districts):
 rooms_pages = {}
 for d in open_districts:
     body = walk_html(d, district_drawer(d)) + "\n" + rooms_plate_html([d])
-    rooms_pages[d["page"]] = shell_page(f'{d["label"]} · Rooms · Hua-Xu Zhong', body, d["page"])
+    rooms_pages[d["page"]] = shell_page(f'{d["label"]} · Rooms · Hua-Xu Zhong', body, d["page"],
+                                         d.get("cover", "IMG/1.jpg"))
 
 for _path, _html in rooms_pages.items():
     (ROOT / _path).write_text(_html, encoding="utf-8")

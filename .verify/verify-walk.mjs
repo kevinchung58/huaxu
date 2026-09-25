@@ -738,7 +738,29 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   ok("every raster a page points at exists", missing.length === 0, missing.join(", "));
 }
 
-/* ---- 6. the corridor: a place is its page, and the rooms are a chain ---------------------------------- */
+/* ---- 6. the cache-buster is the assets' own hash ----------------------------------------------- */
+{
+  const { createHash } = await import("node:crypto");
+  const digest = createHash("sha1").update(fs.readFileSync("css/site.css"))
+    .update(fs.readFileSync("js/site.js")).digest("hex").slice(0, 10);
+  const pages = fs.readdirSync(".").filter((f) => f.endsWith(".html"));
+  const tokens = new Set();
+  const wrong = [];
+  pages.forEach((f) => {
+    const html = fs.readFileSync(f, "utf8");
+    const tags = [...html.matchAll(/(?:site\.css|site\.js)\?v=([0-9a-z]+)/g)].map((m) => m[1]);
+    tags.forEach((t) => tokens.add(t));
+    // Every page must ask for the bytes on disk, and ask for both with one token: two tokens is how a
+    // build ships a new renderer under an old key, which no other gate here can see because it only
+    // shows up in a returning visitor's cache.
+    if (tags.length && (new Set(tags).size !== 1 || tags[0] !== digest)) wrong.push(`${f}: ${tags[0]}`);
+  });
+  ok("the cache-buster is the hash of the two assets, so a stale one cannot ship",
+     wrong.length === 0 && tokens.size === 1 && [...tokens][0] === digest,
+     [...tokens].join(" ") + (wrong.length ? " — " + wrong.join(", ") : ""));
+}
+
+/* ---- 7. the corridor: a place is its page, and the rooms are a chain ---------------------------------- */
 {
   // The generator's own tables, read the way the generator reads them: source order, the ROOMS rows
   // first, then each district's page and plates. This is a structural assertion on purpose — whether
@@ -780,6 +802,14 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   });
   ok("every room opens the way it should: back toward the album, on toward the next place",
      problems.length === 0, problems.join("; "));
+  // The nav item called Rooms is the front door of the walk, so it has to open at the near end: a
+  // visitor arriving there should start where the chain starts rather than in the middle of it.
+  const navRooms = fs.readdirSync(".").filter((f) => f.endsWith(".html"))
+    .map((f) => ({ f, m: fs.readFileSync(f, "utf8").match(/<a href="([^"]+)" class="[^"]*">Rooms<\/a>/) }))
+    .filter((x) => x.m);
+  ok("the nav item called Rooms starts the walk at its near end",
+     built.length === 0 || (navRooms.length > 0 && navRooms.every((x) => x.m[1] === built[0].page)),
+     navRooms.map((x) => `${x.f}->${x.m[1]}`).slice(0, 3).join(" "));
   ok("the district takes its page and plates from its own row, for every room, not just the first",
      rooms.every((r) => new RegExp(`"${r.id}", "label": "[^"]+"`.replace("label", "id")).test(gen) === false
        || new RegExp(`ROOM_BY_ID\\["${r.id}"\\]\\["page"\\]`).test(gen)));
