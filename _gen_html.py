@@ -1531,8 +1531,15 @@ BLOCK_LABEL = {b["id"]: b["label"] for b in BLOCKS}
 # where a room stands in the walk — and decided *before* the wall and the roll are built, because
 # the roll is addressed by index and a tile that disagrees with its frame sends a visitor to the
 # wrong plate.
-ALBUM_ITEMS = sorted((it for b in ALBUM_BLOCKS for it in ALBUM[b["id"]]),
-                     key=lambda it: ROOM_ORDER.get(room_of_plate(it["src"]), len(ROOMS)))
+# The album keeps ONE representative plate per place — the place's cover sheet — and nothing else:
+# the sub-area plates (the gate, the stall row, the lanterns) hang inside their rooms as the frames
+# of the little places they stand in for. A wall of fifteen plates read as a pile; a wall of three
+# reads as three places, one door each.
+_REPRESENTATIVE = {f"IMG/{r[0]}-cover.jpg" for r in ROOMS if r[4] == "open" and r[0] != "street"}
+ALBUM_ITEMS = sorted(
+    (it for b in ALBUM_BLOCKS for it in ALBUM[b["id"]]
+     if b["id"] != "field-notes" or it["src"] in _REPRESENTATIVE),
+    key=lambda it: ROOM_ORDER.get(room_of_plate(it["src"]), len(ROOMS)))
 album_tiles, gallery_plate = _plate_for(ALBUM_ITEMS)
 _tiles_by_block = {b["id"]: [] for b in ALBUM_BLOCKS}
 _tiles_by_room = {}          # field-notes only: room id -> its tiles, still in ALBUM_ITEMS order
@@ -1563,15 +1570,15 @@ PLACE_GROUP_NOTES = {
 
 
 def _place_group(r, tiles):
-    """One place on the Field notes wall: heading, one door, its plates."""
+    """One place on the Field notes wall: heading, its representative plate, one door."""
     label, page = r[1], r[2]
     head = (f'<div class="block-head reveal" data-place-group="{r[0]}">'
             f'<h3>{escape(label)}</h3>'
             f'<p class="when">{escape(PLACE_GROUP_NOTES[r[0]])} <span class="badge">'
-            f'{len(tiles)} plates</span></p></div>')
+            f'1 plate</span></p></div>')
     door = (f'<p class="pillar-more reveal"><a class="text-arrow" href="{page}" '
             f'aria-label="Walk into {escape(label)}">'
-            f'These {len(tiles)} plates are the little places inside {escape(label)}. '
+            f'This plate stands in for {escape(label)}; the little places of it hang inside. '
             f'Walk into {escape(label)}.{ico(ICON_RIGHT)}</a></p>')
     grid = (f'<div class="ig-grid" data-ig-grid>{" ".join(tiles)}</div>' if tiles else
             f'<div class="dashed empty">{chip(ICON_CAMERA)}<div><strong>Nothing in this place '
@@ -1817,7 +1824,7 @@ DISTRICTS = [
         "id": "street", "label": "The street",
         "page": ROOM_BY_ID["street"]["page"],
         "plates": ROOM_BY_ID["street"]["plates"],
-        "lane": {"w": 700, "d": 560, "ceil": 620, "back": 300},
+        "lane": {"w": 700, "d": 560, "ceil": 620, "back": 300, "max_d": 2400},
         "purpose": "The street the three rooms stand on, walked under a night sky",
         "status": "open",
         "kind": "personal",
@@ -1904,7 +1911,7 @@ DISTRICTS = [
             # The city's own light, standing in the opening: the far wall of the street faces a lit
             # skyline through it, and without this the last stretch reads as a dead end. Cool, soft,
             # no bulb — it is the glow of somewhere open, not a fitting on the street.
-            {"x": 0, "y": 190, "z": 536, "r": 135, "k": 0.42, "tint": "#9fb2d8", "bulb": False},
+            {"x": 0, "y": 190, "z": 536, "r": 135, "k": 0.5, "tint": "#9fb2d8", "bulb": False},
         ],
         "wires": [
             {"a": [-350, 512, 140], "b": [350, 504, 140], "sag": 42},
@@ -1915,50 +1922,56 @@ DISTRICTS = [
         "surfaces": [
             # Building fronts, band by band, both sides. The materials repeat the rooms' own kit so
             # the whole walk reads as one drawn world.
-            {"side": -1, "z0": -300, "z1": 200, "y0": 0, "y1": 140, "kind": "dado", "tone": 1.16},
-            {"side": -1, "z0": -300, "z1": 200, "y0": 140, "y1": 620, "kind": "plaster", "tone": 1.14},
+            {"side": -1, "z0": -1400, "z1": 200, "y0": 0, "y1": 140, "kind": "dado", "tone": 1.16},
+            {"side": -1, "z0": -1400, "z1": 200, "y0": 140, "y1": 620, "kind": "plaster", "tone": 1.14},
             {"side": -1, "z0": 200, "z1": 440, "y0": 0, "y1": 300, "kind": "shutter", "tone": 1.26},
             {"side": -1, "z0": 200, "z1": 440, "y0": 300, "y1": 620, "kind": "brick", "tone": 1.22},
             {"side": -1, "z0": 440, "z1": 560, "y0": 0, "y1": 620, "kind": "brick", "tone": 1.3},
-            {"side": 1, "z0": -300, "z1": 80, "y0": 0, "y1": 620, "kind": "brick", "tone": 1.12},
+            {"side": 1, "z0": -1400, "z1": 80, "y0": 0, "y1": 620, "kind": "brick", "tone": 1.12},
             {"side": 1, "z0": 80, "z1": 320, "y0": 0, "y1": 130, "kind": "dado", "tone": 1.18},
             {"side": 1, "z0": 80, "z1": 320, "y0": 130, "y1": 620, "kind": "plaster", "tone": 1.12},
             {"side": 1, "z0": 320, "z1": 560, "y0": 0, "y1": 300, "kind": "shutter", "tone": 1.32},
             {"side": 1, "z0": 320, "z1": 560, "y0": 300, "y1": 620, "kind": "plaster", "tone": 1.26},
         ],
         "marks": [
-            {"kind": "tactile", "x0": -330, "x1": -306, "z0": -300, "z1": 560},
-            {"kind": "tactile", "x0": 306, "x1": 330, "z0": -300, "z1": 560},
-            {"kind": "gutter", "x0": -368, "x1": 368, "z0": 8, "z1": 14},
+            {"kind": "tactile", "x0": -330, "x1": -306, "z0": -1400, "z1": 560},
+            {"kind": "tactile", "x0": 306, "x1": 330, "z0": -1400, "z1": 560},
+            {"kind": "gutter", "x0": -368, "x1": 368, "z0": -1400, "z1": 14},
             {"kind": "grate", "x0": -80, "x1": 80, "z0": 296, "z1": 304},
             {"kind": "manhole", "x0": -40, "x1": 40, "z0": 210, "z1": 250},
-            {"kind": "kerb", "x0": -368, "x1": -306, "z0": -300, "z1": 560, "y1": 6},
-            {"kind": "kerb", "x0": 306, "x1": 368, "z0": -300, "z1": 560, "y1": 6},
+            {"kind": "kerb", "x0": -368, "x1": -306, "z0": -1400, "z1": 560, "y1": 6},
+            {"kind": "kerb", "x0": 306, "x1": 368, "z0": -1400, "z1": 560, "y1": 6},
         ],
-        # The far end is an opening, not a wall: most of the street's width is sky, and what is
-        # through it is a skyline the street does not name. No tower, no crossing, no expressway —
-        # those are Tokyo's, and the street is nobody's.
-        "vista": {"x": 0, "y0": 140, "y1": 470, "w": 620},
+        # The far end is not a window but the way on: the opening runs nearly wall to wall and floor
+        # to sky, and the clamp is authored past it (max_d above) — walk out of the street and the
+        # ground continues under the night sky, GTA-style, with the skyline ahead. What is out there
+        # is open ground the street does not name. No tower, no crossing, no expressway — those are
+        # Tokyo's, and the street is nobody's.
+        "vista": {"x": 0, "y0": 6, "y1": 614, "w": 620},
         "backdrop": {
             # glow is the band's own brightness: without it a sky band paints at lit 0, and the
             # horizon band — the one the opening actually frames — reads as a hole in the world.
             # The band heights are projection-aware: the backdrop sits at z=120000 in scene units,
             # so a band has to span thousands of cm of y to be more than a hairline on screen, and
             # the gradient below is the honest "sky is brightest at the horizon" order.
-            "sky": [{"y0": -400, "y1": 8000, "c": "#4a5a84", "glow": 0.9},
-                    {"y0": 8000, "y1": 30000, "c": "#2c3859", "glow": 0.5},
-                    {"y0": 30000, "y1": 40000, "c": "#1a2440", "glow": 0.34}],
+            "sky": [{"y0": -400, "y1": 8000, "c": "#4a5a84", "glow": 1.0},
+                    {"y0": 8000, "y1": 30000, "c": "#2c3859", "glow": 0.62},
+                    {"y0": 30000, "y1": 40000, "c": "#1e2946", "glow": 0.42}],
             "mountain": [{"x": -900, "y": 380, "w": 2400, "h": 260, "c": "#1b2540"},
                          {"x": 1400, "y": 340, "w": 1800, "h": 220, "c": "#1e2946"}],
-            "plaza": {"y": -240, "z0": 660, "z1": 9000, "half": 4200},
-            # No near roofs: the first build had three blocks hugging the opening and they read as
-            # one dark slab bolted over the skyline — the city towers carry the horizon alone.
+            "plaza": {"y": -6, "z0": 1624, "z1": 9000, "half": 4200, "lit": 1.1},
+            # Two low-rise, lit rooftops flank the opening — off the centre line, so they give the
+            # open ground something human-sized at the edges without a slab over the skyline.
+            "roofs": [
+                {"x": -1350, "y": 0, "z": 2050, "w": 700, "h": 300, "tone": 1.0},
+                {"x": 1350, "y": 0, "z": 2150, "w": 640, "h": 260, "tone": 1.05},
+            ],
             "city": [
-                {"x": -1500, "z": 2600, "w": 1100, "h": 1400, "win": 0.85, "tone": 1.5},
-                {"x": -300, "z": 3100, "w": 900, "h": 1000, "win": 0.75, "tone": 1.3},
-                {"x": 700, "z": 2800, "w": 1050, "h": 1600, "win": 0.9, "tone": 1.6},
-                {"x": 1800, "z": 3300, "w": 1150, "h": 950, "win": 0.72, "tone": 1.24},
-                {"x": 2650, "z": 2900, "w": 850, "h": 1300, "win": 0.8, "tone": 1.42},
+                {"x": -1500, "z": 5600, "w": 1100, "h": 1400, "win": 0.85, "tone": 1.8},
+                {"x": -300, "z": 6800, "w": 900, "h": 1000, "win": 0.75, "tone": 1.55},
+                {"x": 700, "z": 5200, "w": 1050, "h": 1600, "win": 0.9, "tone": 1.9},
+                {"x": 1800, "z": 7200, "w": 1150, "h": 950, "win": 0.72, "tone": 1.5},
+                {"x": 2650, "z": 6200, "w": 850, "h": 1300, "win": 0.8, "tone": 1.7},
             ],
         },
         "slots_title": "Rooms on this street",
@@ -1979,13 +1992,15 @@ DISTRICTS = [
             {"z": 300, "label": "at the crossing"},
             {"z": 380, "label": "by the last door"},
             {"z": 540, "label": "the end of the street"},
+            {"z": 700, "label": "out in the open"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
                  "title": "The door at your back", "hint": "It opens onto the album, where the "
                  "same places are hung as pictures."},
         "caveat": "The street is the site's own ground, drawn: it names no city, carries no "
-                  "lettering, and hangs no pictures. The three rooms stand along it, and each one "
-                  "opens from a door you can walk to. Nothing here says the owner was anywhere.",
+                  "lettering, and hangs no pictures. The three rooms stand along it, each one opens "
+                  "from a door you can walk to, and the far end is no wall — walk out of the street "
+                  "and it is open ground under the sky. Nothing here says the owner was anywhere.",
     },
     {
         "id": "tokyo", "label": "Tokyo",
@@ -2564,12 +2579,16 @@ DISTRICTS = [
              "tint": "rgba(255,224,186,0.28)"},
             # The last of the spill is the sky's: an outdoor room sees more of it at its far end than
             # anywhere else, and without this the wall the walk runs into was the darkest thing in it.
-            {"x": 0, "y": 300, "z": 1150, "r": 420, "k": 0.3, "bulb": False,
+            {"x": 0, "y": 300, "z": 1150, "r": 520, "k": 0.42, "bulb": False,
              "tint": "rgba(180,204,255,0.26)"},
             # Just past the end wall, where the near roof row stands: the light that makes the view
             # through the opening a lit street rather than a dark hole in a bright wall.
             {"x": -300, "y": 260, "z": 1420, "r": 900, "k": 0.5, "bulb": False,
              "tint": "rgba(255,226,186,0.26)"},
+            # And the dusk sky itself, standing in the opening: the end wall faces the last of the
+            # light, and the falloff means only a source this close to the opening lights it.
+            {"x": 0, "y": 300, "z": 3350, "r": 900, "k": 0.5, "bulb": False,
+             "tint": "rgba(190,214,255,0.30)"},
         ],
         "beams": [],
         "surfaces": [
@@ -2577,12 +2596,12 @@ DISTRICTS = [
             # was opened and closed again. A campus is patched the same way a lane is.
             {"side": -1, "z0": -300, "z1": 90, "y0": 0, "y1": 470, "kind": "brick", "tone": 0.94},
             {"side": -1, "z0": 90, "z1": 340, "y0": 0, "y1": 200, "kind": "dado", "tone": 1.02},
-            {"side": -1, "z0": 90, "z1": 340, "y0": 200, "y1": 470, "kind": "plaster", "tone": 0.88},
-            {"side": -1, "z0": 340, "z1": 400, "y0": 0, "y1": 470, "kind": "brick", "tone": 0.9},
+            {"side": -1, "z0": 90, "z1": 340, "y0": 200, "y1": 470, "kind": "plaster", "tone": 1.1},
+            {"side": -1, "z0": 340, "z1": 400, "y0": 0, "y1": 470, "kind": "brick", "tone": 1.05},
             {"side": 1, "z0": -300, "z1": 150, "y0": 0, "y1": 470, "kind": "plaster", "tone": 0.92},
             {"side": 1, "z0": 150, "z1": 330, "y0": 0, "y1": 240, "kind": "corrugated", "tone": 0.96},
-            {"side": 1, "z0": 150, "z1": 330, "y0": 240, "y1": 470, "kind": "plaster", "tone": 0.86},
-            {"side": 1, "z0": 330, "z1": 400, "y0": 0, "y1": 470, "kind": "brick", "tone": 0.9},
+            {"side": 1, "z0": 150, "z1": 330, "y0": 240, "y1": 470, "kind": "plaster", "tone": 1.08},
+            {"side": 1, "z0": 330, "z1": 400, "y0": 0, "y1": 470, "kind": "brick", "tone": 1.05},
         ],
         # Snow is a ground mark, not a wall: it lies where it was pushed, and the middle of the path
         # is where it is not. One ice patch, glossy, in the low corner where water went.
@@ -2606,9 +2625,12 @@ DISTRICTS = [
             {"a": [-360, 430, 220], "b": [360, 442, 250], "sag": 74},
         ],
         "backdrop": {
-            "sky": [{"y0": -400, "y1": 1400, "c": "#2b3852"},
-                    {"y0": 1400, "y1": 4200, "c": "#26314d"},
-                    {"y0": 4200, "y1": 40000, "c": "#141e36"}],
+            # Dusk, so the bands carry their own glow: the aperture frames the horizon, and an
+            # unlit band paints at lit 0 — a hairline of night where the record says the sky was
+            # still light.
+            "sky": [{"y0": -400, "y1": 8000, "c": "#41507a", "glow": 0.82},
+                    {"y0": 8000, "y1": 21000, "c": "#26314d", "glow": 0.4},
+                    {"y0": 21000, "y1": 40000, "c": "#141e36", "glow": 0.16}],
             "mountain": [{"x": -900, "y": 520, "w": 2600, "h": 380, "c": "#1b2740"},
                          {"x": 1200, "y": 460, "w": 2000, "h": 300, "c": "#1e2a44"}],
             "plaza": {"y": -160, "z0": 900, "z1": 9000, "half": 4200},
@@ -2809,9 +2831,10 @@ DISTRICTS = [
             {"a": [214, 300, 84], "b": [220, 316, 330], "sag": 30},
         ],
         "backdrop": {
-            "sky": [{"y0": -400, "y1": 1300, "c": "#2a3750"},
-                    {"y0": 1300, "y1": 4000, "c": "#243049"},
-                    {"y0": 4000, "y1": 40000, "c": "#131d33"}],
+            # Night over water: the horizon band glows off the surface, the upper bands hold it.
+            "sky": [{"y0": -400, "y1": 8000, "c": "#37456a", "glow": 0.62},
+                    {"y0": 8000, "y1": 20000, "c": "#243049", "glow": 0.3},
+                    {"y0": 20000, "y1": 40000, "c": "#131d33", "glow": 0.14}],
             "mountain": [{"x": 600, "y": 420, "w": 2200, "h": 300, "c": "#1c2740"}],
             "plaza": {"y": -300, "z0": 700, "z1": 7000, "half": 4000},
             "roofs": [
@@ -3135,9 +3158,12 @@ def walk_html(d, drawer):
     sight = (" At its far end the lane opens onto a drawn compound: a crossing below it, a tower, and "
              "a mountain beyond. Nothing out there is a record of anybody standing in it."
              if d.get("vista") else "")
+    # An open-world far end: the record authors how far the walker may keep going (walk units), and
+    # the renderer lets the world continue past the last wall. Absent, the clamp is the wall itself.
+    max_d_attr = f' data-lane-max-d="{lane["max_d"]}"' if lane.get("max_d") else ""
     return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}"
        data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
-       data-lane-back="{lane["back"]}" data-eye="{EYE}">
+       data-lane-back="{lane["back"]}"{max_d_attr} data-eye="{EYE}">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
        Space to jump, E to open what you are standing in front of, L for the list, I for this note.

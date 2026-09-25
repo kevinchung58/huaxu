@@ -638,7 +638,7 @@ function leaveOverlay(root, trigger) {
   const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const ease = !reduce();   // one test, shared by the walk's motion and the rail's hold-to-pause
 
-  const HALF = 290, MIN_D = -30, MAX_D = 1200, REACH = 190, MAX_PITCH = 35;
+  const HALF = 290, MIN_D = -30, REACH = 190, MAX_PITCH = 35;
   // The smallest thing a hand can be asked to press. A lantern 30 m down the lane projects to a few
   // pixels of wall, and a wall of a few pixels is not a control; the ring stays on the silhouette and
   // only the press area grows, so the lane keeps its drawing while the finger keeps its target.
@@ -664,6 +664,11 @@ function leaveOverlay(root, trigger) {
   const attr = (name, dflt) => parseFloat(layer.dataset[name]) || dflt;
   const WALL = attr("laneW", 640) / 2, CEIL = attr("laneCeil", 420);
   const Z_FAR = attr("laneD", 1247), Z_BACK = -attr("laneBack", 240);
+  // How far the walker may go. The default is the end wall minus a body — the far plane is a view,
+  // not a hole out of the world. A place whose far end is genuinely open (the hub street) authors
+  // laneMaxD in walk units and the world simply continues: the walls stop, the ground goes on, and
+  // the backdrop ahead is somewhere you can stand in rather than a picture behind glass.
+  const MAX_D = attr("laneMaxD", Z_FAR - 47);
   const EYE = attr("eye", 168);
   const SEG = 60, NEAR = 24, DPM = 2;   // panel, near plane, pattern scale: the renderer's own
   let W = 0, H = 0, focal = 620, tilePat = null, floorPat = null, winPat = null,
@@ -1304,7 +1309,7 @@ function leaveOverlay(root, trigger) {
         // surface whose far edge is allowed to dissolve into the sky, and FOG_MAX is what "far" is
         // defined as in this renderer. A hand-picked 0.65 here would be the renderer telling a
         // different story about distance than every other quad in the frame.
-        if (fl) { fl.air = 0.2 + ((z - plaza.z0) / span) * (FOG_MAX - 0.2); fl.lit = 0.5; }
+        if (fl) { fl.air = 0.2 + ((z - plaza.z0) / span) * (FOG_MAX - 0.2); fl.lit = plaza.lit || 0.5; }
       }
     }
     const cross = bd.crossing;

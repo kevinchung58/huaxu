@@ -64,8 +64,10 @@ Pointer Lock is unsupported on every iOS Safari and it hijacks the cursor.
 
 **Slots are sub-areas.** A room's `slots` list is not media kinds — it is the room's little
 places, one per Field notes plate the room owns: the drawn frame holding a place carries the
-place's name (from `PLACE_TITLES`, the album-side title table), and the slot's `state` says what
-replaces it when a real photograph arrives. The closure is asserted: every frame's title in a
+place's name (from `PLACE_TITLES`), and the slot's `state` says what replaces it when a real
+photograph arrives. On the album these plates do not appear at all — the album hangs **one
+representative plate per place** (the cover sheet); the sub-area plates live inside the rooms
+as the frames of the places they stand in for. The closure is asserted: every frame's title in a
 room page must be a slot label in that same page, and every frame's `src` must be a
 `PLACE_TITLES` key. An image with a name but no place fails the gate; so does a place with
 nothing holding it. On the album the same plates hang grouped by place — one heading and one
@@ -272,11 +274,19 @@ street is the one exception: its back door leaves for the album. `Esc` closes a 
 list, and only then leaves. A control whose `data-hint` says "part it to leave" while it opens a
 card instead is severity 4 — it is a lie about the room, and it happened here.
 
-**A door must be reachable on foot.** The walker's depth clamps at `MAX_D` (1200 in walk units)
-and the reach ring is 190 cm, so a door authored deeper than record z ≈ 479 (over `Z_SCALE`) can
-be seen but never opened — the street's last door was originally authored at 480 and the key-walk
-harness could not reach it. Site doors so they sit a stop inside the clamp, and let the e2e walk
-to them rather than trusting a click dispatched from nowhere.
+**A door must be reachable on foot.** The walker's depth clamps at `MAX_D` — the page's far
+depth minus a body, unless the page authors `lane.max_d` (walk units) — and the reach ring is
+190 cm, so a door authored deeper than the clamp plus a reach can be seen but never opened: the
+street's last door was originally authored past it and the key-walk harness could not reach it.
+Site doors so they sit a stop inside the clamp, and let the e2e walk to them rather than trusting
+a click dispatched from nowhere.
+
+**A far end may be open world.** A record whose `lane` carries `max_d` (walk units, past
+`d`) walks out of its own walls: the emitter stamps `data-lane-max-d`, the clamp moves past the
+far plane, and the ground continues — the hub street ends in an open night view you can stand in.
+The far-end aperture should then run nearly wall to wall and floor to sky, and everything outside
+(street walls, kerbs, tactile paving) is authored deep past the mouth so looking back still shows
+the street. A sealed room keeps the default clamp: its window is a view, not a door.
 
 Three rules that exist because a real person could not use the page:
 

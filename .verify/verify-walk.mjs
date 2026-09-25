@@ -355,10 +355,13 @@ const body = () => q("[data-walk]").__walk;
 
 await hold("w", 500);
 ok("W moves the body: a station chip takes over the readout", /m in$|ahead$/.test(status()), status());
-ok("the walk stays inside the authored box", /HALF = 290, MIN_D = -30, MAX_D = 1200/.test(js));
+ok("the walk stays inside the authored box",
+   /HALF = 290, MIN_D = -30/.test(js) && /const MAX_D = attr\("laneMaxD", Z_FAR - 47\)/.test(js),
+   "the clamp is the page's own far depth minus a body, unless the page authors an open world");
 ok("the plaza is seen, not entered: the far plane sits past the clamp",
-   /MAX_D = 1200/.test(js) && vista.w > 0 && 1200 < 1247,
-   "MAX_D 1200 < the end wall at 1247, so the window is a view and not a hole out of the world");
+   vista.w > 0 && 1200 < 1247,
+   "a sealed room clamp (far depth 1200) sits short of its end wall at 1247, so the window is a "
+   + "view and not a hole out of the world; the street authors laneMaxD and walks through instead");
 
 // The scramble frame, from the station beside it, with the wall as the only thing in between.
 click(stopAt(798));
@@ -710,10 +713,10 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
      /IMG_RULES/.test(gen) && /UNFILED/.test(gen) && /is in no block/.test(gen));
   ok("unfiled stays out of every page", !fs.readdirSync(".").filter((f) => f.endsWith(".html"))
      .some((f) => /IMG\/3\.jpg/.test(fs.readFileSync(f, "utf8"))));
-  click2(tiles[3]);
+  click2(tiles[2]);
   ok("a tile opens the roll", plate2.classList.contains("is-open"));
   ok("and the roll is at that tile's own photograph",
-     frames[3].querySelector("img").style.viewTransitionName === "ig-photo");
+     frames[2].querySelector("img").style.viewTransitionName === "ig-photo");
   ok("the roll counts itself", q2("[data-ig-count]").textContent.trim() === `1 / ${frames.length}`);
   ok("the first plate has nothing before it",
      q2("[data-ig-prev]").disabled === true && q2("[data-ig-next]").disabled === false);
@@ -721,7 +724,7 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   plate2.querySelector(".modal-close").dispatchEvent(
     new w2.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   ok("Escape closes the roll and hands focus back to the wall",
-     !plate2.classList.contains("is-open") && d2.activeElement === tiles[3]);
+     !plate2.classList.contains("is-open") && d2.activeElement === tiles[2]);
   const dead = fs.readdirSync(".").filter((f) => f.endsWith(".html"))
     .filter((f) => /data-deck|deck-btn|id="lightbox"/.test(fs.readFileSync(f, "utf8")));
   ok("no page ships the unstyled, unscripted deck", dead.length === 0, dead.join(" "));

@@ -188,8 +188,8 @@ async function main() {
   const act = fs.readFileSync("activities.html", "utf8");
   /* The Field notes wall is three places, one door each; the plates under a place are that place's
      sub-areas, and no plate carries a door of its own. */
-  const WANT = { canada: ["rooms-canada.html", 4], tokyo: ["rooms.html", 7],
-                 fukuoka: ["rooms-fukuoka.html", 4] };
+  const WANT = { canada: ["rooms-canada.html", 1], tokyo: ["rooms.html", 1],
+                 fukuoka: ["rooms-fukuoka.html", 1] };
   for (const [id, [page, count]] of Object.entries(WANT)) {
     const at = act.indexOf(`data-place-group="${id}"`);
     ok(`album: the ${id} place group exists`, at >= 0);
@@ -200,7 +200,7 @@ async function main() {
     // The last group's tail runs into the classroom block, so count this place's own prefixes only.
     const tiles = [...new Set(Array.from(seg.matchAll(/<img src="IMG\/([A-Za-z0-9._-]+)"/g))
       .map((m) => m[1]))].filter((n) => n.startsWith(`${id}-`));
-    ok(`album: ${id} group holds ${count} plates`, tiles.length === count, `${tiles.length}`);
+    ok(`album: the ${id} group is one representative plate`, tiles.length === count, `${tiles.length}`);
     const door = seg.match(/class="text-arrow" href="([^"]+)"/);
     ok(`album: ${id} group's door is ${page}`, !!door && door[1] === page,
        door ? door[1] : "missing");

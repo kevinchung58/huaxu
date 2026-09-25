@@ -63,7 +63,8 @@ Read each picture for the numbers, not for the mood. The unit is the centimetre;
 | Ground | `marks` | paint, grates, drains, patches, wet. Marks are rectangles in the record's units |
 | Overhead | `beams`, ducts, cables | what crosses above: the ceiling is the layer most rooms leave empty, and it is the one a photograph of a real alley is fullest of. Beam depths are record centimetres — the emitter scales them |
 | The way out | the back exit | where the door or curtain behind the walker stands; the emitter points it at the hub street, so author the prop, not the destination. Doors to *other rooms* are not a room's business at all — they live on the street |
-| The sub-areas | `slots` | the little places the photographs actually show — the stall row, the temple gate, the machine at the end — one per Field notes plate the room will own. The drawn frame that holds a place takes the place's name (`PLACE_TITLES`); a real photograph replaces it in the slot when one arrives |
+| The sub-areas | `slots` | the little places the photographs actually show — the stall row, the temple gate, the machine at the end — one per Field notes plate the room will own. The drawn frame that holds a place takes the place's name (`PLACE_TITLES`); a real photograph replaces it in the slot when one arrives. On the album these plates do not appear: the album hangs one representative plate per place, and the sub-areas live inside the rooms |
+| The way on, if the far end is open | `lane.max_d` | walk-units depth past `d` at which the walker may keep going when the place's far end is genuinely open ground (the hub street). Absent, the clamp sits a body short of the far wall and the view stays a view |
 
 Rules that keep a room from reading as a backdrop:
 
