@@ -100,9 +100,9 @@ positioned inside the walker's reach — see `district-author` §9). Then `distr
 apply unchanged, and so does its gate:
 
 - `node .verify/verify-walk.mjs` — the harness asserts, per room, that the walk stays inside the
-  authored box, that every lantern hangs on a cable that exists, that the album offers a door only to a
-  room that is built, that each district agrees with its row in `ROOMS`, and that every frame's title
-  is a sub-area slot in its own room.
+  authored box, that every lantern hangs on a cable that exists, that the Field notes wall is the
+  built places grouped with one door each, that each district agrees with its row in `ROOMS`, and
+  that every frame's title is a sub-area slot in its own room.
 - `node .verify/verify-chain.mjs` — the hub door graph: every room's every exit lands on the street,
   the street carries exactly one door per built room plus its own door to the album, and no page still
   wires the retired chain.

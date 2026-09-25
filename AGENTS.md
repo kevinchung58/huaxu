@@ -283,9 +283,11 @@ Reinstall sources:
 
 - **The hub street and three rooms are open:** `street.html` (the hub, outdoors), Canada
     (`rooms-canada.html`), Tokyo (`rooms.html`), Fukuoka (`rooms-fukuoka.html`). The album's Field
-    notes wall reads the rooms in `ROOMS` order and each plate carries the door into its own room;
-    each Field notes plate is also allocated to a **sub-area** — a named little place inside its room
-    (`PLACE_TITLES` + the room's slot list; `verify-walk.mjs` asserts every frame's title is a slot).
+    notes wall is three place groups, **one door per place**, and the plates under each place stand
+    in for its **sub-areas** — named little places inside the room (`PLACE_TITLES` + the room's slot
+    list; `verify-walk.mjs` asserts every frame's title is a slot and every group holds exactly its
+    own plates). A plate is never an entrance in its own right: fifteen scattered "walk in" links
+    read as a pile, not as three places you could go.
     A new place is a row in `ROOMS`, a record in `DISTRICTS`, a door on the street, a page written by
     the walk loop, plate prefixes added to `IMG_RULES` and to the row, and a gate run —
     `skills/place-intake` walks through it.

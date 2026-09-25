@@ -186,23 +186,26 @@ async function main() {
   // door under the heading opens the street.
   out.push("\n-- activities album --");
   const act = fs.readFileSync("activities.html", "utf8");
-  const rooms = { canada: 0, tokyo: 0, fukuoka: 0 };
-  const m = act.match(/<div class="ig-cell"[\s\S]*?<\/div>/g) || [];
-  let doors = 0;
-  for (const cell of m) {
-    const door = cell.match(/class="ig-room"[^>]*href="([^"]+)"/);
-    if (!door) continue;
-    doors++;
-    const href = door[1];
-    if (href.includes("canada")) rooms.canada++;
-    else if (href === "rooms.html") rooms.tokyo++;
-    else if (href.includes("fukuoka")) rooms.fukuoka++;
+  /* The Field notes wall is three places, one door each; the plates under a place are that place's
+     sub-areas, and no plate carries a door of its own. */
+  const WANT = { canada: ["rooms-canada.html", 4], tokyo: ["rooms.html", 7],
+                 fukuoka: ["rooms-fukuoka.html", 4] };
+  for (const [id, [page, count]] of Object.entries(WANT)) {
+    const at = act.indexOf(`data-place-group="${id}"`);
+    ok(`album: the ${id} place group exists`, at >= 0);
+    if (at < 0) continue;
+    const next = Math.min(...Object.keys(WANT).map((k) => act.indexOf(`data-place-group="${k}"`))
+      .filter((p) => p > at).concat([act.length]));
+    const seg = act.slice(at, next);
+    // The last group's tail runs into the classroom block, so count this place's own prefixes only.
+    const tiles = [...new Set(Array.from(seg.matchAll(/<img src="IMG\/([A-Za-z0-9._-]+)"/g))
+      .map((m) => m[1]))].filter((n) => n.startsWith(`${id}-`));
+    ok(`album: ${id} group holds ${count} plates`, tiles.length === count, `${tiles.length}`);
+    const door = seg.match(/class="text-arrow" href="([^"]+)"/);
+    ok(`album: ${id} group's door is ${page}`, !!door && door[1] === page,
+       door ? door[1] : "missing");
   }
-  ok(`album offers a door under every built room's plates`, doors === 15, `doors=${doors}`);
-  ok(`album has 4 Canada doors (3 plates + cover)`, rooms.canada === 4, `${rooms.canada}`);
-  ok(`album has 7 Tokyo doors`, rooms.tokyo === 7, `${rooms.tokyo}`);
-  ok(`album has 4 Fukuoka doors`, rooms.fukuoka === 4, `${rooms.fukuoka}`);
-  ok(`album's block door opens the street`, /class="text-arrow" href="street\.html"/.test(act));
+  ok("album: plates carry no doors of their own", !/<a class="ig-room"/.test(act));
 
   // Nav "Rooms" points at the hub street. Only check nav links, not album doors.
   out.push("\n-- site nav --");

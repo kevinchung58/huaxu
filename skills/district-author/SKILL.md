@@ -68,7 +68,8 @@ place's name (from `PLACE_TITLES`, the album-side title table), and the slot's `
 replaces it when a real photograph arrives. The closure is asserted: every frame's title in a
 room page must be a slot label in that same page, and every frame's `src` must be a
 `PLACE_TITLES` key. An image with a name but no place fails the gate; so does a place with
-nothing holding it.
+nothing holding it. On the album the same plates hang grouped by place — one heading and one
+door per place (`_place_group`/`gallery_html`); a plate is never an entrance in its own right.
 
 ## 3. Build rules
 

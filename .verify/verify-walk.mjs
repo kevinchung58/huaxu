@@ -840,20 +840,45 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   ok("the nav item called Rooms opens the hub street",
      built.length === 0 || (navRooms.length > 0 && navRooms.every((x) => x.m[1] === streetRow.page)),
      navRooms.map((x) => `${x.f}->${x.m[1]}`).slice(0, 3).join(" "));
-  // The album is the picker: a plate whose room is built carries the door under it, and a plate whose
-  // room is shut does not, because a locked door on a picture is a promise the site cannot keep.
-  const doors = Array.from(act.matchAll(/<a class="ig-room" href="([^"]+)"/g)).map((m) => m[1]);
   // Each plate appears twice on the page — once as a tile and once as the frame in the roll — so the
-  // wall is counted in distinct names, and the doors are counted where they are emitted: under tiles.
+  // wall is counted in distinct names.
   const plates = [...new Set(Array.from(act.matchAll(/<img src="IMG\/([A-Za-z0-9._-]+)"/g))
     .map((m) => m[1]))];
-  const owned = plates.filter((n) => rooms.some((r) => n.startsWith(r.prefix)));
-  ok("the album offers the door only to the rooms that are built",
-     doors.length === plates.filter((n) => rooms.some((r) => n.startsWith(r.prefix) && r.status === "open"))
-       .length && doors.every((h) => fs.existsSync(h)),
-     `${doors.length} doors, ${owned.length} plates belong to a room`);
-  ok("a plate that belongs to no room is a plate, and carries nothing under it",
-     plates.length === owned.length || !/<a class="ig-room" href="\w[^"]*"[^>]*>\s*Enter/.test(act));
+  /* The Field notes wall is three places, one door each. The plates under a place are that place's
+     sub-areas — standing in for the little areas until photographs arrive — and a plate carries no
+     door of its own: fifteen scattered "walk in" links read as a pile of invitations, not as three
+     places you could go. Grouped in ROOMS order, doors target the room's own page, and every tile in
+     a group belongs to that place's plate prefix. */
+  const places = built.filter((r) => r.id !== "street");
+  const gpos = places.map((r) => act.indexOf(`data-place-group="${r.id}"`));
+  ok("the Field notes wall is the built places, one group each, in ROOMS order",
+     gpos.every((p) => p >= 0) && gpos.every((p, i) => i === 0 || p > gpos[i - 1]),
+     gpos.join(" < "));
+  const wallProblems = [];
+  for (let i = 0; i < places.length; i++) {
+    const r = places[i];
+    // The last group's tail runs on into the classroom block and the roll, so the segment ends at
+    // whichever comes first: the next place group or the next plain block heading.
+    const blockHead = act.indexOf('<div class="block-head reveal"><h3>', gpos[i]);
+    const seg = act.slice(gpos[i], Math.min(i + 1 < places.length ? gpos[i + 1] : act.length,
+                                            blockHead < 0 ? act.length : blockHead));
+    const tileImgs = [...new Set(Array.from(seg.matchAll(/<img src="IMG\/([A-Za-z0-9._-]+)"/g))
+      .map((m) => m[1]))];
+    // The last group's tail runs on into the classroom block, so membership is judged by prefix:
+    // no other place's plates may appear here, and every one of this place's plates must.
+    const foreign = tileImgs.filter((n) => places.some((q) => q.id !== r.id && n.startsWith(q.prefix)));
+    if (foreign.length)
+      wallProblems.push(`${r.id}: another place's plates in its group (${foreign.join(", ")})`);
+    if (!new RegExp(`class="text-arrow" href="${r.page}"`).test(seg))
+      wallProblems.push(`${r.id}: no place door`);
+    const mine = tileImgs.filter((n) => n.startsWith(r.prefix)).length;
+    const want = plates.filter((n) => n.startsWith(r.prefix)).length;
+    if (mine !== want)
+      wallProblems.push(`${r.id}: ${mine} of its plates on the wall, ${want} in the registry`);
+  }
+  ok("each place group holds exactly its own plates, behind one door", wallProblems.length === 0,
+     wallProblems.join("; "));
+  ok("a plate is not an entrance: the per-tile doors are retired", !/<a class="ig-room"/.test(act));
 }
 
 console.log(out.join("\n"));
