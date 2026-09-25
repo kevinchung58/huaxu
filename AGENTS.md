@@ -270,6 +270,12 @@ Reinstall sources:
     objects would float in the first room's lane. Adding a place means adding a row, a record, a page
     write, and a gate run — `skills/place-intake` is the checklist.
 
+- **Three rooms are open, in chain order:** Canada (`rooms-canada.html`), Tokyo (`rooms.html`),
+    Fukuoka (`rooms-fukuoka.html`). The album's Field notes wall reads them in that order and each
+    plate carries the door into its own room. A new place is a row in `ROOMS`, a record in `DISTRICTS`,
+    a page written by the walk loop, plate prefixes added to `IMG_RULES` and to the row, and a gate run
+    — `skills/place-intake` walks through it.
+
 - **Reference photographs never ship.** The owner's photographs of a real place live in `ref/`
     (gitignored) and are read, not published: what hangs on the wall is a generated plate, and what you
     stand in is built from what the photographs show. `IMG/` is a registry and every file in it must

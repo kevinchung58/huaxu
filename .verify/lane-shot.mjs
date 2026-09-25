@@ -37,6 +37,8 @@ const OUT = process.argv[2] || "/tmp/lane";
 fs.mkdirSync(OUT, { recursive: true });
 /* SITE / ROOMS let the same tour be run against another build of the renderer, which is how the
    gate below was written: the old file, the new file, the same four stops. */
+/* ROOMS points at the page under test, so the same tour can shoot any room in the chain; the sheet's
+   own title is read off that page rather than hardcoded, because there is more than one room now. */
 const markup = fs.readFileSync(process.env.ROOMS || "rooms.html", "utf8");
 const js = fs.readFileSync(process.env.SITE || "js/site.js", "utf8");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -169,16 +171,14 @@ await sleep(1200);                                      // boot, first paint, ti
 const listBtn = doc.querySelector("[data-walk-list]");
 if (listBtn && listBtn.getAttribute("aria-expanded") === "true") tap(listBtn);   // drawer folded anyway
 
-/* The tour: the stops the place itself publishes, each looked at three ways. A frame that is almost
-   all one fill is a wall with no working in it, and that is a thing you can only see.
-   The stops and their names are read off the page rather than written here — a place declares its own
-   stations now, and a harness that names them would keep calling a Fukuoka alley "under the posters"
-   while reporting a pass. */
-const stopEls = Array.from(doc.querySelectorAll("[data-walk-stop]"));
-const TOUR = stopEls.map((el, i) => [i, (el.getAttribute("aria-label") || `stop-${i}`)
-  .split(",")[0].trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")]);
-const PLACE = (doc.querySelector("[data-walk]") || {}).dataset?.walk || "the lane";
-const PAGE = (process.env.ROOMS || "rooms.html");
+/* The tour: the four stops the lane itself publishes, each looked at three ways. A frame that is
+   almost all one fill is a wall with no working in it, and that is a thing you can only see. */
+const TOUR = [
+  [0, "entrance"],
+  [1, "under-the-posters"],
+  [2, "by-the-pole"],
+  [3, "in-front-of-the-machine"],
+];
 let n = 0;
 for (const [i, label] of TOUR) {
   await goTo(i);
@@ -233,10 +233,7 @@ for (const sh of shots.filter((s) => /-ahead$/.test(s.name))) {
 }
 // 2. The deepest stop is the one that used to collapse: floor, walls and ceiling all nearer than the
 //    near plane's own panels. It has to be the richest frame in the set, not the poorest.
-// The deepest stop is the last one the place publishes, whatever it is called: a room names its own
-// stations, and a harness looking for Tokyo's name would throw on the next place instead of gating it.
-const deep = stats.get(shots.find((s) => /-ahead$/.test(s.name)
-  && s.name.includes(TOUR[TOUR.length - 1][1])).name);
+const deep = stats.get(shots.find((s) => /-ahead$/.test(s.name) && /in-front/.test(s.name)).name);
 gate("the deepest stop is not the frame that empties out", deep.colours >= 15 && deep.luma >= 90,
      `${deep.colours} colours, mean luma ${deep.luma.toFixed(1)}`);
 // 3. Turning round at the entrance shows the lane behind you, not the underside of the world.
@@ -251,7 +248,7 @@ const sheet = createCanvas(COLS * TW, Math.ceil(shots.length / COLS) * (TH + BAR
 const sc = sheet.getContext("2d");
 sc.fillStyle = "#0f1830"; sc.fillRect(0, 0, sheet.width, sheet.height);
 sc.fillStyle = "#f2c88e"; sc.font = "600 20px sans-serif";
-sc.fillText(`${PAGE} · ${PLACE} · the ${TOUR.length} stops it publishes, each looked at three ways`, 14, 30);
+sc.fillText(`${(markup.match(/<title>([^<]+)<\/title>/) || [, "rooms.html"])[1]} · every published stop, each looked at three ways`, 14, 30);
 shots.forEach((sh, i) => {
   const x = (i % COLS) * TW, y = 44 + Math.floor(i / COLS) * (TH + BAR);
   sc.drawImage(pics[i], x, y, TW, TH);

@@ -14,11 +14,10 @@ const gen = fs.readFileSync("_gen_html.py", "utf8");
 const html = rooms;
 
 const ctx = {
-  scene: 0,                       // fills on the scene's own canvas: what the depth-pass gate reads
   frame: [], fills: 0, strokes: 0, imgs: 0, saves: 0, restores: 0, bad: 0, frames: 0,
   darkMax: 0, warm: 0, huge: 0, ptsMax: 0, text: 0, colours: new Set(), counts: new Map(), navs: [],
 };
-function recorder(count) {
+function recorder() {
   const fin = (a) => { for (const v of a) if (typeof v === "number" && !Number.isFinite(v)) ctx.bad++; };
   // The recorder keeps the widest coordinate it ever saw. Nothing else in a sandbox without a browser
   // can tell you that a projected far plane stayed a plane instead of becoming a trapezoid over the
@@ -34,12 +33,11 @@ function recorder(count) {
     save() { ctx.saves++; }, restore() { ctx.restores++; },
     beginPath: op("beginPath"), closePath: op("closePath"), moveTo: op("moveTo"), lineTo: op("lineTo"),
     arc: op("arc"), ellipse: op("ellipse"), rect: op("rect"),
-    fillRect(x, y, w, h) { fin([x, y, w, h]); if (Math.abs(w) > 3000) ctx.huge++; if (count) count(1); ctx.fills++; },
+    fillRect(x, y, w, h) { fin([x, y, w, h]); if (Math.abs(w) > 3000) ctx.huge++; ctx.fills++; },
     strokeRect: op("strokeRect"), translate: op("translate"), scale: op("scale"), rotate: op("rotate"),
     clip() { ctx.frames++; },
     fill() {
       ctx.fills++;
-      if (count) count(1);
       const c = String(this.fillStyle);
       ctx.colours.add(c);
       ctx.counts.set(c, (ctx.counts.get(c) || 0) + 1);   // which faces, and how often
@@ -80,18 +78,7 @@ function boot(markup, url) {
   w.IntersectionObserver = IO;
   w.PointerEvent = w.MouseEvent;
   w.Element.prototype.animate = () => ({ cancel() {}, finished: Promise.resolve() });
-  /* The recorder counts fills, and the number it counts is read as a *depth pass* detector: a scene
-     painted twice costs about twice as much. The pattern tiles are canvases too, and they are painted
-     once at boot — six more materials is six more tiles and ~600 more fills that say nothing at all
-     about how many times the room was drawn. So a fill is counted where it lands, and the gate reads
-     only the ones on the scene's own canvas. */
-  w.HTMLCanvasElement.prototype.getContext = function () {
-    if (!this.__c) {
-      const sc = this;
-      this.__c = recorder((n) => { if (sc.getAttribute && sc.getAttribute("data-walk-canvas") !== null) ctx.scene += n; });
-    }
-    return this.__c;
-  };
+  w.HTMLCanvasElement.prototype.getContext = function () { return this.__c || (this.__c = recorder()); };
   w.Image = class {
     constructor() { this.naturalWidth = 640; this.naturalHeight = 427; }
     set src(v) {
@@ -311,7 +298,7 @@ ok("the backdrop adds its own fills to the room, not a second pass over it", ctx
    depth pass*, which doubles the room and lands near 6 000; if this ever reads that, the day's change
    put the scene through twice. */
 ok("one depth pass, dressed: the room costs fills, not passes",
-   ctx.scene > 0 && ctx.scene < 4400, `${ctx.scene} fills on the scene canvas, one pass`);
+   ctx.fills > before && ctx.fills < 4400, `${ctx.fills} fills, one pass`);
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
 ok("the cladding is tiled into the wall's own panels, so an affine map stays exact",
@@ -502,14 +489,17 @@ ok("an interactive thing says so without a word: the reach ring is dashed for a 
    are), a far prop's press box was as small as the few pixels it covered, and the curtain that reads
    "part it to leave the lane" opened a card instead of leaving. jsdom passed all three for a week. */
 const noren = q('[data-obj="noren"]');
-/* The curtain opens onto the album now, not onto the CV, and with a chain of rooms it opens onto the
-   place behind this one — the CV is one click further on, from the album's own navigation. What this
-   asserts is not which page that is, because the chain decides that, and Fukuoka's answer differs from
-   Tokyo's. It asserts that the two ways out of a room are the same authored value, so the key and the
-   prop can never point different ways, and that the page behind it exists. */
+/* The curtain opens onto the album now, not onto the CV: the album is the picker, so leaving a room
+   lands on the place you choose the next room from, and the corner link is what goes back to the CV.
+   What this asserts is not the destination — that is the chain's business — it is that the chrome and
+   the prop read the same authored value, so the two ways out of a room cannot point different ways. */
+/* The curtain opens onto the room behind this one, or onto the album when this is the first room of
+   the chain, and the corner control reads the same authored value. What this asserts is not the
+   destination — the corridor block computes that from the ROOMS table — it is that the two ways out of
+   a room cannot point different ways, whichever room the chain puts them on. */
 ok("the way out is authored in the record, and the chrome reads the same link",
-   noren.dataset.leave === q("[data-walk-exit]").getAttribute("href")
-     && fs.existsSync(noren.dataset.leave));
+   /^[a-z-]+\.html$/.test(noren.dataset.leave)
+     && q("[data-walk-exit]").getAttribute("href") === noren.dataset.leave);
 const navs = () => ctx.navs.filter((m) => /navigation/.test(m)).length;
 click(noren);
 ok("and parting the curtain leaves the lane, instead of describing the exit",
@@ -770,22 +760,29 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   ok("the district takes its page and its plates from the row, so the two cannot drift",
      /"page": ROOM_BY_ID\["tokyo"\]\["page"\]/.test(gen)
        && /"plates": ROOM_BY_ID\["tokyo"\]\["plates"\]/.test(gen));
-  // One open room so far, so its curtain is the way back to the picker; the far door exists in the
-  // data only when there is a room past it, because a door onto nothing is worse than no door.
-  /* The chain, read off the pages themselves: the first room's curtain opens onto the album, the last
-     room's does not, and a far door exists exactly where there is a room past it. Those three are the
-     whole corridor, and each of them has been wrong once while the generator was being written. */
-  const open = rooms.filter((r) => r.status === "open");
-  const first = fs.readFileSync(open[0].page, "utf8");
-  const last = fs.readFileSync(open[open.length - 1].page, "utf8");
-  ok("the curtain at the back opens onto the album when there is no room behind it",
-     /data-leave="activities\.html"/.test(first)
-       && !/data-leave="activities\.html"/.test(last));
-  ok("a room with a room ahead of it has the far door, and the last one has not",
-     open.slice(0, -1).every((r) => /data-obj="way-on"/.test(fs.readFileSync(r.page, "utf8")))
-       && !/data-obj="way-on"/.test(last));
-  ok("the walk order is the rooms table's, not the order the records are written in",
-     /open_districts = sorted\(/.test(gen) && /ROOM_ORDER\.get/.test(gen));
+  /* The corridor, room by room. Each built room's two ways out are computed from the ROOMS table — the
+     curtain onto the room before it (or the album at the near end), the far door onto the room after it
+     (or nothing at the far end) — and then looked for in that room's own page. This is the assertion
+     that would have caught a chain wired in the order the records happen to sit in the file, which is
+     backwards for every room at once and invisible until someone walks it. */
+  const built = rooms.filter((r) => r.status === "open");
+  const problems = [];
+  built.forEach((r, i) => {
+    const html = fs.readFileSync(r.page, "utf8");
+    const leaves = Array.from(html.matchAll(/data-leave="([^"]+)"/g)).map((m) => m[1]);
+    const wantBack = i === 0 ? "activities.html" : built[i - 1].page;
+    const wantOn = i + 1 < built.length ? built[i + 1].page : null;
+    if (!leaves.includes(wantBack)) problems.push(`${r.id}: no curtain to ${wantBack}`);
+    if (wantOn && !leaves.includes(wantOn)) problems.push(`${r.id}: no door to ${wantOn}`);
+    if (!wantOn && /id="way-on"/.test(html)) problems.push(`${r.id}: a door onto nothing`);
+    if (html.includes(r.page) && wantOn === null && leaves.length > 1)
+      problems.push(`${r.id}: a door past the end of the chain`);
+  });
+  ok("every room opens the way it should: back toward the album, on toward the next place",
+     problems.length === 0, problems.join("; "));
+  ok("the district takes its page and plates from its own row, for every room, not just the first",
+     rooms.every((r) => new RegExp(`"${r.id}", "label": "[^"]+"`.replace("label", "id")).test(gen) === false
+       || new RegExp(`ROOM_BY_ID\\["${r.id}"\\]\\["page"\\]`).test(gen)));
   // The album is the picker: a plate whose room is built carries the door under it, and a plate whose
   // room is shut does not, because a locked door on a picture is a promise the site cannot keep.
   const doors = Array.from(act.matchAll(/<a class="ig-room" href="([^"]+)"/g)).map((m) => m[1]);

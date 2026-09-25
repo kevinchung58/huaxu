@@ -208,8 +208,17 @@ is the checklist, and it also decides — with the owner, and against a count of
 actually show — whether a trip earns one lane or several.
 
 The album is the picker. Its Field notes wall reads in chain order, and under a plate whose room is
-built there is one line: *Enter Tokyo*. A plate whose room is shut carries nothing, because a locked
-door on a picture is a promise the site cannot keep.
+built there is one line: *Enter Canada*, *Enter Tokyo*, *Enter Fukuoka*. A plate whose room is shut
+carries nothing, because a locked door on a picture is a promise the site cannot keep.
+
+Three rooms are built, and they are deliberately not the same room at three sizes: **Canada** is a
+campus walkway at dusk — 7.2 m wide, open to 4.7 m, snow banked at both edges, one lit door and one
+lamp post; **Tokyo** is the lane the district skill was written around; **Fukuoka** is a stall alley
+between them in width, 5.2 m by 3.8 m, lit by six lanterns on three crossings, ending on water. Each
+declares its own box, its own stops, its own surface kit and its own far plane, and each author's
+lamps are either fixtures (a bulb the renderer draws a body for) or spill (`"bulb": false`, light with
+no body) — a distinction that cost a walkway four white bulbs floating in mid-air before it was made
+explicit in the records.
 
 ### Kinds: the two defaults a district can be
 
