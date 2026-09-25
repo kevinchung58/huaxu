@@ -82,13 +82,20 @@ stops text never sits on; verify plate text against the *painted* navy, and pref
 the `--accent-bright` / `--muted-navy` tokens over weakening the plate.
 
 
-## Districts: the lane (rooms.html)
+## Districts: the rooms (rooms.html and its neighbours)
 
-A walkable district is the one place in this world where geometry is allowed. It stays in
-uniform: the floor and walls are navy plates, the only light is amber and it comes from one
-object (the vending machine), captions are the same `--muted`/`--muted-navy` as everywhere
-else, and the poster surfaces are drawn in CSS rather than generated as images so nothing in
-the scene can be mistaken for a photograph the owner took.
+A walkable district is the one place in this world where geometry is allowed. It stays in uniform
+across all three rooms: the palette is the site's, captions are the same `--muted`/`--muted-navy` as
+everywhere else, and the poster surfaces are drawn on the canvas rather than pasted on as
+photographs, so nothing in the scene can be mistaken for a picture the owner took.
+
+What is *not* uniform is the light. It used to be one rule — the only light is amber and it comes from
+one object — and that rule stopped being true the moment there were three places: a vending machine on
+a lane, a lamp post and a lit door on a winter walkway, six paper lanterns over a stall alley. Each
+district authors its own lamps, and each entry is either a **fixture** (the renderer draws a body and a
+cord for it) or **spill** (`"bulb": false`: light with no body — a pool, a bounce, the sky near an
+aperture). Canada's four spill entries were authored as fixtures once, which hung four white bulbs over
+a walkway with one lamp post in it.
 
 Camera rule of the world: the eye never moves — `.room-world` is translated and rotated in
 the opposite direction. That is what keeps the lane free of a 3D library, and it is why
@@ -98,6 +105,12 @@ the next step lands).
 Two limits are deliberate and should not be "improved": yaw and pitch are clamped to ±35° /
 ±10° because past that the walls stop covering the viewport and the room shows its own edges;
 and turning is drag, not Pointer Lock, because the site must stay usable on a phone.
+
+Three more are properties of *these* rooms rather than of the mechanism, and each cost a fix when a
+room was built: an opening is sized against the wall it is cut in **and** the stop it is seen from
+(Canada's 5.6 m aperture in a 7.2 m wall read as a window); a light 20 m away does nothing, because
+`lightAt`'s half-radius is 210 cm, so each room lights its own far plane; and a stop should stand about
+two metres off an end wall, or the last thing the room shows you is the wall.
 
 A district with no declared purpose cannot open — `status: "soon"` renders as such. The
 reference this was modelled on ships one built level and one honest `Coming soon`, and this
@@ -140,19 +153,42 @@ fog and the amber pool and the bulbs all distance functions of that same project
 WebGL and no library — the whole site is still dependency-free, and the renderer is ~200 lines of
 this repo's own code. What that buys, and what it cannot:
 
+- **A quad is culled by the bounds its projected points occupy, never by its corners.** Both failure
+  modes have now been paid for: the far plane (a sky covers the view by being larger than it, so every
+  corner is off-screen) and the near one (stand deep in the lane and the floor under you, the walls
+  beside you and the roof over you are each one panel wider than the screen — every quad you are
+  inside of was dropped at once and the frame collapsed to its base plate under a fog gradient).
+  `add()` projects first and compares the box; anything whose box misses the viewport by more than
+  80 px is dropped, which is a superset of what the corner test kept.
+- **Nothing is drawn that the data did not ask for, and everything the data asks for is drawn.** The
+  window, the opening in the end wall and the compound beyond it (plaza, crossing, eight city blocks,
+  the tower, the mountain, the sky bands) live in the `data-walk-vista` / `data-walk-backdrop` islands
+  and were invisible for as long as a single island could be read as a list. The district's own
+  harness rendered it that way for months without noticing, which is why `.verify/lane-shot.mjs` now
+  rasterises the lane's canvas and gates on what the frame is made of.
 - The lane is closed on six sides *by construction*: the camera clips at 24 cm and the walls run past
   the walk clamp, so turning around shows a lane instead of an edge. The box is authored (`data-lane-w`,
   `data-lane-d`, `data-lane-ceil`, `data-eye`), so the renderer draws the room the data describes
   rather than a room someone remembered to keep in sync.
+- **Both ends of the lane are built, because both ends are frames you stand in front of.** The wall the
+  lane runs into wears board-formed concrete — pour seams and tie holes, the same material as the far
+  half of its side walls — because it is the largest surface in the deepest frame and a pale grid there
+  read as the page having run out. The bottom of its opening is a parapet with a galvanised coping:
+  the camera stands above the lip, so that reveal's top face is the one surface of the end wall seen
+  from above, and it is the brightest line in the frame on purpose, because it is the edge the city is
+  seen over. The wall at your back gets a concrete plinth where it meets the wet floor, since no alley
+  wall meets a floor in the material it has at eye height. All three are authored: the opening is
+  `data-walk-vista`, the coping is a material the data names, the plinth is one height in the renderer.
 - Textures are patterns, not photographs, except the frames: those three JPGs are generated pictures
   and are labelled as such, and nothing in the scene pretends to be a survey of Tokyo.
 - Wall objects are `<button>`s the renderer pins to their projected bounding box every frame. A
   control that could drift away from the thing it names would be worse than none, and one behind you
   leaves the tab order instead of waiting there.
 - The lane is *lit*, and that is a requirement rather than a taste: ambient at 0.42 of material,
-  concrete and wet asphalt at mid-tone, seven bulbs whose falloff is the same inverse-square the
-  glows are drawn from, and a murk ceiling of 0.6 painted in navy so distance reads as air instead of
-  the picture ending. Hung frames keep 60% of their own contrast under that haze, because a photograph
+  concrete and wet asphalt at mid-tone, five bare bulbs and six paper lanterns whose falloff is the
+  same inverse-square the glows are drawn from, six bulbed props' worth of glow and one cool bounce
+  off the city beyond the opening, and a murk ceiling of 0.6 painted in navy so distance reads as air
+  instead of the picture ending. Hung frames keep 60% of their own contrast under that haze, because a photograph
   you cannot see has stopped being evidence. `prefers-contrast: more` gets a second exposure
   (ambient 0.6, murk 0.4) from the operating system's own switch rather than a widget in the corner —
   a dim laptop is the visitor's to correct, not mine to guess at. The HUD answer is a scrim that fades
@@ -162,6 +198,40 @@ this repo's own code. What that buys, and what it cannot:
 - Motion is declined where the numbers live: no bob, no sway, no flicker under
   `prefers-reduced-motion: reduce`, which is decided inside the integrator rather than cancelled in
   CSS after it has been paid for.
+
+### The corridor: one place, one page, and a chain of them
+
+The lane was written as the site's only room, with the plumbing to join several districts into one
+page. That join was never usable: the renderer reads one island per key, so a second open district
+would build its furniture over the first room's lane. So a place is now its own page, and the rooms
+are a chain.
+
+`ROOMS` in `_gen_html.py` is the chain, in order, one row per place: its page, the plate prefixes that
+belong to it, and whether it is open. `DISTRICTS` holds the room and takes its page and plates from
+that row, so the album and the walk cannot disagree about which room a plate opens onto. A district
+also brings its own **box** — `lane.w/d/ceil/back` — and its own stops; a Fukuoka alley and a Canadian
+corridor are different rooms and the renderer reads whatever the place authored.
+
+Out of a room, two ways: the curtain at your back (and the corner control, which is the same authored
+value, so the key and the prop cannot point different ways) opens onto the place behind this one, or
+onto the album when this is the first room built. At the far end, a plain door opens onto the next
+place — and it is only hung when there *is* a next place, because a door onto nothing is worse than no
+door. Adding a place therefore touches one row, one record, and one gate run; `skills/place-intake`
+is the checklist, and it also decides — with the owner, and against a count of what the photographs
+actually show — whether a trip earns one lane or several.
+
+The album is the picker. Its Field notes wall reads in chain order, and under a plate whose room is
+built there is one line: *Enter Canada*, *Enter Tokyo*, *Enter Fukuoka*. A plate whose room is shut
+carries nothing, because a locked door on a picture is a promise the site cannot keep.
+
+Three rooms are built, and they are deliberately not the same room at three sizes: **Canada** is a
+campus walkway at dusk — 7.2 m wide, open to 4.7 m, snow banked at both edges, one lit door and one
+lamp post; **Tokyo** is the lane the district skill was written around; **Fukuoka** is a stall alley
+between them in width, 5.2 m by 3.8 m, lit by six lanterns on three crossings, ending on water. Each
+declares its own box, its own stops, its own surface kit and its own far plane, and each author's
+lamps are either fixtures (a bulb the renderer draws a body for) or spill (`"bulb": false`, light with
+no body) — a distinction that cost a walkway four white bulbs floating in mid-air before it was made
+explicit in the records.
 
 ### Kinds: the two defaults a district can be
 

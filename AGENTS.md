@@ -6,9 +6,12 @@ Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo 
 
 ## Critical: source of truth
 
-- `CSS` and the footer `<script>` both read one `VER` constant in `_gen_html.py`. Bump
-  `VER`, never a per-file literal: two independent `?v=` strings is how a build ships new
-  CSS and JS that no browser will fetch, and the tree still looks correct.
+- The cache-buster is **derived, not hand-bumped**: `VER` in `_gen_html.py` is the sha1 of
+  `css/site.css` + `js/site.js`, truncated, and both the stylesheet link and the footer `<script>`
+  read that one value. It used to be a literal that a human had to remember, and it went stale the
+  first time the renderer changed in a commit that forgot: new rooms, old `?v=`, and the only person
+  who would ever see the bug is a returning visitor whose browser drew them with the last renderer.
+  `verify-walk.mjs` now recomputes the hash from disk and fails if a page asks for anything else.
 - Verification means the artefact the browser asks for. After a build, `curl` the served
   page and grep for the new markup and the pin. Pages already on disk make a crashing
   generator look healthy, so `python3 _gen_html.py` exiting 0 is a precondition for
@@ -36,7 +39,8 @@ Workflow for any content or markup change:
 
 Files you MAY edit directly:
 
-- `css/site.css` — all styling (bump the `?v=` cache-buster in `_gen_html.py` when changing it)
+- `css/site.css` — all styling. Nothing to bump: `VER` is derived from this file and `js/site.js`
+  on every build, and the harness fails if a page disagrees (see the cache-buster note above)
 - `js/site.js` — nav toggle, reveal animations, small interactions
 - `IMG/` — photos and assets
 - `_gen_html.py` — the generator itself
@@ -76,14 +80,14 @@ rather than loading a hundred files. Their conclusions that reached this code ar
 - **Contact email.** The site's contact email is `k43122003@gmail.com` (set in `_gen_html.py`;
   hero + footer social icons — both `mailto:` occurrences). The old
   `mailto:your.email@example.com` placeholder was replaced on 2026-08-31. If the owner changes
-  it, update every `mailto:` occurrence and bump the `?v=` cache-buster. (Ask the owner to
+  it, update every `mailto:` occurrence. `VER` looks after itself. (Ask the owner to
   double-check the spelling once — it was supplied in a form.)
 
 ## Backlog — pending owner input (2026-08)
 
 Owner will send materials later; **do not fabricate** any of this. When the asset/value lands,
 edit `_gen_html.py` (+ add the file under `IMG/` if a download), rerun `python3 _gen_html.py`,
-bump the `?v=` cache-buster, and keep the detector at 0 findings.
+and keep the detector at 0 findings — `VER` is derived, so there is nothing to bump.
 
 1. **English CV / PDF download link** — owner will provide the CV file (place at repo root as
    e.g. `HuaXu_Zhong_CV.pdf`). Add a download link in the hero actions (or About), styled with
@@ -260,6 +264,26 @@ Reinstall sources:
     exit, so the partition cannot rot. Do not add an image to a page before adding it to the
     registry, and do not classify a new block as `personal` or `academic` without writing down what
     it is for — the same rule that governs a district governs the picture of one.
+
+- **A place is its page, and the pages are a corridor.** `ROOMS` in `_gen_html.py` is the chain, in
+    order: one row per place, carrying its page, the plate prefixes that belong to it, and whether it
+    is open. `DISTRICTS` holds the room itself and takes its page and plates from that row, so the
+    album and the walk cannot disagree about which room a plate opens onto. Walking out of a room puts
+    you in the next one; the first room's curtain opens onto the album, which is the picker. Never
+    stack two open districts into one page: the renderer reads one island per key, so the second room's
+    objects would float in the first room's lane. Adding a place means adding a row, a record, a page
+    write, and a gate run — `skills/place-intake` is the checklist.
+
+- **Three rooms are open, in chain order:** Canada (`rooms-canada.html`), Tokyo (`rooms.html`),
+    Fukuoka (`rooms-fukuoka.html`). The album's Field notes wall reads them in that order and each
+    plate carries the door into its own room. A new place is a row in `ROOMS`, a record in `DISTRICTS`,
+    a page written by the walk loop, plate prefixes added to `IMG_RULES` and to the row, and a gate run
+    — `skills/place-intake` walks through it.
+
+- **Reference photographs never ship.** The owner's photographs of a real place live in `ref/`
+    (gitignored) and are read, not published: what hangs on the wall is a generated plate, and what you
+    stand in is built from what the photographs show. `IMG/` is a registry and every file in it must
+    match a rule — putting a personal photograph there would pull it onto the album wall.
 
 - **`rooms.html` is a shell, not an article.** It is the only page built by `shell_page()`: no
     nav, no footer, no `reveal`, and its reading material lives in a drawer that ships open and is

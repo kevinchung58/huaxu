@@ -1,11 +1,30 @@
 #!/usr/bin/env python3
+import hashlib
 import json
 from fnmatch import fnmatch
 from pathlib import Path
 from html import escape
 
 ROOT = Path(__file__).resolve().parent
-VER = "20260916f"   # one bump per changed asset pair; both tags read it
+
+
+def _asset_ver() -> str:
+    """The cache-buster is the assets' own hash, so it cannot go stale.
+
+    It used to be a hand-bumped string, and it went wrong the first time the renderer changed in a
+    commit that forgot the bump: `js/site.js` gained the snow, the bank and the spill flag while the
+    pages went on asking for `?v=20260923c`, so a returning visitor would have drawn the two new rooms
+    with the old renderer and seen them wrong — the one class of bug that no gate here can see, because
+    it only happens in somebody's browser cache. Derived, it is correct by construction: touch either
+    asset and every page asks for the new bytes.
+    """
+    h = hashlib.sha1()
+    for f in ("css/site.css", "js/site.js"):
+        h.update((ROOT / f).read_bytes())
+    return h.hexdigest()[:10]
+
+
+VER = _asset_ver()
 CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
@@ -13,6 +32,26 @@ DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and
 PUBLIC_PAGES = ["index.html", "about.html", "research.html", "teaching.html",
                 "position.html", "thinking.html", "practice.html",
                 "activities.html", "rooms.html", "service.html", "links.html"]
+
+
+# The rooms, and the order the chain runs in: earliest first, which is also the order the album reads
+# them in. This table exists above the districts for a boring reason — the album wall is built before
+# the district records are — and for a good one: the chain is a fact about the site, not about one
+# room, and a place should not have to know what exists on either side of it. `verify-walk.mjs`
+# asserts that each district agrees with its row here, so the two cannot drift apart silently.
+ROOMS = [
+    ("canada", "Canada", "rooms-canada.html", ["canada-"], "open"),
+    ("tokyo", "Tokyo", "rooms.html", ["tokyo-"], "open"),
+    ("fukuoka", "Fukuoka", "rooms-fukuoka.html", ["fukuoka-"], "open"),
+]
+ROOM_BY_ID = {r[0]: {"label": r[1], "page": r[2], "plates": r[3], "status": r[4]} for r in ROOMS}
+ROOM_ORDER = {r[0]: i for i, r in enumerate(ROOMS)}
+# The nav item says "Rooms", so it goes to the near end of the chain: a visitor arriving there should
+# start where the walk starts rather than in the middle of it, and that room's curtain opens onto the
+# album, which is where the other rooms are chosen. Follows the ROOMS table, so adding an earlier
+# place moves the door without anyone having to remember that it did.
+CHAIN_ENTRY = next((r[2] for r in ROOMS if r[4] == "open"), "activities.html")
+
 
 def svg(d: str, filled: bool = False) -> str:
     if filled:
@@ -34,9 +73,7 @@ ICON_OUT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H
 ICON_SPARK = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />')
 ICON_CAL = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />')
 ICON_BULB = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />')
-ICON_CPU = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-16.5 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />')
 ICON_PENCIL = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />')
-ICON_MONITOR = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z" />')
 ICON_PHOTO = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />')
 ICON_X = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />')
 ICON_CHAT = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />')
@@ -89,7 +126,7 @@ def nav(active: str) -> str:
         </div>
       </div>
       {a("activities.html", "Activities", "activities")}
-      {a("rooms.html", "Rooms", "rooms")}
+      {a(CHAIN_ENTRY, "Rooms", "rooms")}
       <div class="more">
         <button class="more-btn{more_on}" type="button" aria-expanded="false" aria-haspopup="true">More <span class="caret" aria-hidden="true">{ICON_CARET}</span></button>
         <div class="more-menu" role="menu">
@@ -113,7 +150,7 @@ def nav(active: str) -> str:
     <div class="label">More</div>
     {a("service.html", "Service", "service")}
     {a("links.html", "Resources", "links")}
-    {a("rooms.html", "Rooms", "rooms")}
+    {a(CHAIN_ENTRY, "Rooms", "rooms")}
   </nav>
 </header>"""
 
@@ -176,7 +213,7 @@ def page(title: str, active: str, body: str, path: str = "", extra: str = "") ->
 """
 
 
-def shell_page(title: str, body: str, path: str) -> str:
+def shell_page(title: str, body: str, path: str, cover: str = "IMG/1.jpg") -> str:
     """A page that is not an article: no masthead, no footer, no prose stacked under the view.
 
     A walkable space is an application, and the reference proves the point by refusing to be a
@@ -201,7 +238,7 @@ def shell_page(title: str, body: str, path: str) -> str:
   <meta property="og:title" content="{escape(title)}" />
   <meta property="og:description" content="{DESC}" />
   <meta property="og:url" content="{canonical}" />
-  <meta property="og:image" content="{SITE}/IMG/1.jpg" />
+  <meta property="og:image" content="{SITE}/{cover}" />
   <meta name="twitter:card" content="summary" />
   <title>{escape(title)}</title>
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
@@ -734,6 +771,138 @@ for i, r in enumerate(PRINCIPLE_READS):
     )
 principle_rows_html = "\n".join(principle_rows)
 
+# "Four years, from where I was standing" — my own account of using generative AI since the first
+# public models, written down from the owner's telling (2026-09-23). Two names are his and only two:
+# GPT, where he started, and Gemini 3 Pro, the point at which he says the tools began doing what they
+# could not before. No other dates or version numbers are added, because the page would then be
+# claiming a timeline it does not keep. The last beat is the newest models and vibe coding, in his
+# words again. The claim the section lands on is deliberately the narrower one he chose: producing
+# more of what already exists can be replicated, deciding what should exist cannot.
+GAI_BEATS = [
+    {
+        "name": "When the first one arrived",
+        "text": "When GPT first appeared, the first thing it amplified was the ordinary work of "
+                "research and teaching: searching, writing, and the first draft of almost anything. "
+                "It did not know what the CDIO engineering framework was — the framework stayed in my "
+                "head, I drove the tool from it and asked again — but the leverage was obvious. At "
+                "that point generative AI really was, for me, a small technical breakthrough.",
+    },
+    {
+        "name": "The doubt that arrived with the leverage",
+        "text": "The doubt came soon after: I became aware that something was off. At that point I "
+                "could not yet say exactly what.",
+    },
+    {
+        "name": "The moment it began doing what it could not",
+        "text": "At the point when Gemini 3 Pro arrived, that changed for me. It began doing things I "
+                "had not seen done before, writing code among them, and a question in almost any "
+                "subject now comes back with something close to a competent explanation — close "
+                "enough that a student working alone with it can get near the level of studying with "
+                "someone who teaches them. I will not claim that the hallucination problem is gone. I "
+                "will claim it clears a certain teaching standard, and that makes it a different kind "
+                "of tool from the one I started with.",
+    },
+    {
+        "name": "What I expected, and what did not happen",
+        "text": "I expected higher education to reorganize itself around this — teaching, assessment, "
+                "and the question of what a course is for. That did not happen, and I may have "
+                "imagined the change as more dramatic than it could ever have been — but not this "
+                "undramatic either, and meanwhile the tools did not wait: the newest models made vibe "
+                "coding real, and one person can now produce a polished application or a playable "
+                "game without a team.",
+    },
+]
+gai_beats_html = "\n".join(
+    f'      <li><strong>{escape(b["name"])}.</strong> {escape(b["text"])}</li>' for b in GAI_BEATS
+)
+# What the story is for: the standing argument of this site, said once more in its own words. Kept
+# short because the list further down this page is about research directions, and a page that argues
+# the same point twice stops being read.
+GAI_PREPARE = [
+    {
+        "name": "The question before the answer",
+        "text": "A capable tool shortens the distance to an answer. It does not shorten the distance "
+                "to a question worth asking, and that work will not happen by accident.",
+    },
+    {
+        "name": "Judgment about the output",
+        "text": "Knowing whether an answer is any good is now the expensive half of using one. This is "
+                "where information literacy stops being a general virtue and becomes the operating "
+                "skill.",
+    },
+    {
+        "name": "Practice in deciding",
+        "text": "What to make, what to leave out, what the thing is for. It is the half of creative "
+                "work that stays human, and it stays sharp only if it is practiced.",
+    },
+]
+# The comparison the story needs and one image cannot carry: what I expected the room to become, and
+# what it did. Two plates of the same size, each labelled, with the claim underneath. Kept as data for
+# the same reason the beats are: the generator decides which two files these are, and the registry
+# checks them like every other raster. Both alt texts describe what is drawn and claim nothing about
+# the world — they are illustrations of two rooms, not records of two rooms.
+GAI_PAIR = [
+    {
+        "tag": "What I expected",
+        "img": "IMG/position-expected.jpg",
+        "alt": "Illustration of a lecture hall rebuilt around one long shared table, every student "
+               "joined by a thin amber line to a large abstract machine built into the wall",
+        "note": "A room reorganized around the tools: one table, the machine in the architecture, "
+                "everyone connected to it.",
+    },
+    {
+        "tag": "What happened",
+        "img": "IMG/position-happened.jpg",
+        "alt": "Illustration of identical rows of desks in a lecture hall while a large abstract "
+               "machine stands to one side connected to nothing, and one student in the corner works "
+               "alone",
+        "note": "The same rows, unchanged. The machine stands to one side, wired to nothing, and one "
+                "student in the corner uses it by themselves.",
+    },
+]
+gai_pair_html = "\n".join(
+    f'''      <div class="gai-cell">
+        <img src="{x["img"]}" alt="{escape(x["alt"])}" loading="lazy" />
+        <div class="gai-cap"><p class="gai-tag">{escape(x["tag"])}</p><p>{escape(x["note"])}</p></div>
+      </div>''' for x in GAI_PAIR
+)
+
+gai_prepare_html = "\n".join(
+    f'      <li><strong>{escape(x["name"])}.</strong> {escape(x["text"])}</li>' for x in GAI_PREPARE
+)
+
+gai_section = f"""    {titled("h2", "Four years, from where I was standing", ICON_CAL, "block-title reveal spaced")}
+    <figure class="pos-hero reveal">
+      <img src="IMG/position-gai.jpg" alt="Illustration of an abstract machine stamping identical amber pieces onto a belt while a small student figure draws one different amber line in the air" loading="lazy" />
+      <figcaption>Making more of what already exists is the part that got automated. Deciding what
+        should exist was always the drawing.</figcaption>
+    </figure>
+    <ol class="stance-list reveal">
+{gai_beats_html}
+    </ol>
+    <figure class="gai-pair reveal">
+      <div class="gai-two">
+{gai_pair_html}
+      </div>
+      <figcaption>Both rooms are drawn, not photographed. The left one is the change I was waiting
+        for; the right one is the room I keep walking into.</figcaption>
+    </figure>
+    <p class="reveal"><strong>What this asks of us.</strong> Creative work has two halves, and only one
+      of them is being automated. Producing another version, another draft, another shape in a familiar
+      style is now cheap and fast. Deciding what should exist, in what form, and for whom is not — and it
+      is the half that becomes scarce exactly as the other half becomes free.</p>
+    <ol class="stance-list q-list reveal">
+{gai_prepare_html}
+    </ol>
+    <p class="when reveal">The argument is the one my thinking page already draws: the first row of dots
+      is what machines do, and the human premium sits in the second row, where the framing, the new
+      shape, and the one necessary line live.</p>
+    <p class="pillar-more reveal"><a class="text-arrow" href="thinking.html">The dot page: what machines
+      already do, and the human premium {ico(ICON_RIGHT)}</a></p>
+    <p class="pillar-more reveal"><a class="text-arrow" href="research.html#creativity-design-thinking">My
+      Creativity &amp; Design Thinking pillar {ico(ICON_RIGHT)}</a></p>
+
+"""
 position = page("Position · Hua-Xu Zhong", "position", f"""
 <section class="section">
   <div class="wrap">
@@ -742,7 +911,7 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
       <img src="IMG/position-hero.jpg" alt="Illustration of a student and an abstract AI figure as partners at a shared desk" loading="lazy" />
       <figcaption>AI as a partner in learning, not a substitute for it.</figcaption>
     </figure>
-    <p class="reveal">In August 2026, an MIT ad hoc committee published its report on AI use in teaching, learning, and research training. Its questions are the ones I keep asking: what AI does to students' thinking, when it helps learning, and when it quietly replaces it. This page states my position, shows where the report and I converge, walks through its eight principles one by one, and lists what I want to study next.</p>
+    <p class="reveal">In August 2026, an MIT ad hoc committee published its report on AI use in teaching, learning, and research training. Its questions are the ones I keep asking: what AI does to students' thinking, when it helps learning, and when it quietly replaces it. This page states my position, shows where the report and I converge, walks through its eight principles one by one, sets down what four years of using these tools changed in my thinking, and lists what I want to study next.</p>
     {titled("h2", "My position", ICON_USER)}
     <ol class="stance-list reveal">
       <li><strong>AI should support learners, not replace their thinking.</strong> The best uses of AI extend feedback, ideas, and scaffolding. The risky ones let students hand off exactly the work that learning depends on.</li>
@@ -766,7 +935,7 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
     <div class="principle-rows">
 {principle_rows_html}
     </div>
-    {titled("h2", "Beyond the report: what I want to study", ICON_BULB, "block-title reveal spaced")}
+{gai_section}{titled("h2", "Beyond the report: what I want to study", ICON_BULB, "block-title reveal spaced")}
     <ol class="stance-list q-list reveal">
       <li><strong>Designing for inquiry.</strong> What does an LLM learning system look like when its first job is to protect a student's own thinking? I came to this question from my own view of LLMs, and from the problems I saw them create for feedback in learning. My earlier work on feedback and scaffolding is where I start. I have not built such a system yet; that is the direction.</li>
       <li><strong>Creativity as an outcome.</strong> The report asks AI to augment curiosity and creativity. I am asking how creativity can be taught, practiced, and assessed when AI can imitate its products.</li>
@@ -1131,10 +1300,19 @@ def _jpeg_attrs(src, _path=None):
 IMG_RULES = [
     ("1.jpg", "portrait", "identity"), ("2.jpg", "portrait", "identity"),
     ("tokyo-", "field-notes", "generated"),
+    # The two rooms built after Tokyo. Same block, same kind: drawn plates, from the walkable
+    # districts, never a record that anyone stood anywhere.
+    ("canada-", "field-notes", "generated"),
+    ("fukuoka-", "field-notes", "generated"),
     ("act-", "classroom", "record"),
     ("practice-", "figures", "figure"), ("principle-", "figures", "figure"),
     ("grid-", "figures", "figure"), ("diverge-", "figures", "figure"),
     ("mascot-", "interface", "art"), ("*-hero.jpg", "interface", "hero"),
+    # The position page's own figures. A `figure`, not a `generated` plate: it is an illustration
+    # carrying an argument on the page that cites it, and it is not album material, so it never
+    # reaches the album wall. Written after the `*-hero.jpg` rule on purpose — the hero is a hero
+    # first, and the order of this list is the only thing deciding that.
+    ("position-", "figures", "figure"),
 ]
 # Held back by name, with the reason printed instead of the file quietly dropped.
 UNFILED = {"3.jpg": "the owner asked that this one stay out until it has a caption"}
@@ -1246,6 +1424,23 @@ HELD = {b["id"]: [n for n in block_files(b["id"], shown=False)
 ALBUM_BLOCKS = [b for b in BLOCKS if b["id"] in ("field-notes", "classroom")]
 
 
+ALBUM_PAGE = "activities.html"
+
+
+def room_of_plate(src):
+    """Which room a plate belongs to, by the prefixes the rooms declared, or None.
+
+    The album uses this to decide two things it would otherwise guess: whether to print a door under
+    a plate, and where in the wall that plate belongs. A plate that belongs to no room is a plate,
+    and stays where the registry put it.
+    """
+    name = src.split("/")[-1]
+    for rid, room in ROOM_BY_ID.items():
+        if any(name.startswith(pre) for pre in room["plates"]):
+            return rid
+    return None
+
+
 def _plate_for(items):
     """The roll: one plate, containing the same items the wall shows, in the same order.
 
@@ -1262,10 +1457,21 @@ def _plate_for(items):
         label = f"{it['title']} \u00b7 {BLOCK_LABEL[it['block']]} \u00b7 {tag}"
         # The wall is the photographs and nothing else. What a plate may claim — its block, and that it
         # is generated rather than taken — is said inside it, where you have to arrive to read it.
+        # Under a plate that belongs to a built room there is one more thing: the door into that room,
+        # said in words because a picture of a place is not an invitation to walk it.
+        rid = room_of_plate(it["src"])
+        door = ""
+        if rid and ROOM_BY_ID[rid]["status"] == "open":
+            room = ROOM_BY_ID[rid]
+            door = (f'<a class="ig-room" href="{room["page"]}" '
+                    f'aria-label="Walk into {escape(room["label"])}: the room this plate is from">'
+                    f'Enter {escape(room["label"])} {ico(ICON_RIGHT)}</a>')
         tiles.append(
+            f'<div class="ig-cell">'
             f'<a class="ig-tile" href="#{ident}" data-ig '
             f'aria-label="{escape(label)}: open in the roll">'
-            f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} loading="lazy" /></a>')
+            f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} loading="lazy" /></a>'
+            f'{door}</div>')
         frames.append(
             f'<figure class="ig-frame" id="{ident}">'
             f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} />'
@@ -1296,11 +1502,36 @@ def _plate_for(items):
 
 
 BLOCK_LABEL = {b["id"]: b["label"] for b in BLOCKS}
-ALBUM_ITEMS = [it for b in ALBUM_BLOCKS for it in ALBUM[b["id"]]]
+# The album's order is the chain's: a place earlier in the walk is read earlier on the wall, and the
+# plates that belong to no room keep their registry order after them. Decided here rather than in the
+# registry, because the registry is about what an image may claim and the chain is about where a room
+# stands in the walk — and decided *before* the wall and the roll are built, because the roll is
+# addressed by index and a tile that disagrees with its frame sends a visitor to the wrong plate.
+ALBUM_ITEMS = sorted((it for b in ALBUM_BLOCKS for it in ALBUM[b["id"]]),
+                     key=lambda it: ROOM_ORDER.get(room_of_plate(it["src"]), len(ROOMS)))
 album_tiles, gallery_plate = _plate_for(ALBUM_ITEMS)
 _tiles_by_block = {b["id"]: [] for b in ALBUM_BLOCKS}
 for it, tile in zip(ALBUM_ITEMS, album_tiles):
     _tiles_by_block[it["block"]].append(tile)
+
+
+# A block may open onto the place its plates came from. It belongs to the block rather than to the
+# page, because these plates are pictures of that room: the door stands where the pictures are, and
+# it says what walking through it does. This one used to sit above the album — and it was written as
+# a Python string split across two lines, so the quote and the continuation leaked into the anchor
+# text and the page read `Tokyo, " "walked at first person`. A door that is hard to read is a door
+# nobody opens, so the copy lives here as one sentence and the generator cannot fold it.
+BLOCK_DOORS = {
+    "field-notes": {
+        # The chain's near end, not a hardcoded page: the door under this heading starts the walk where
+        # the walk starts, and it retargets itself when a room is added earlier in the chain. Each
+        # plate that belongs to a built room carries its own door underneath it as well.
+        "href": None,
+        "text": "The archive is also a place. These plates come from rooms you can walk at eye height, "
+                "and the frames hung on their walls open in the same viewer.",
+        "label": "Walk the first room of the chain",
+    },
+}
 
 
 def gallery_html():
@@ -1315,10 +1546,21 @@ def gallery_html():
         head = (f'<h3>{escape(b["label"])}</h3>'
                 f'<p class="when">{escape(b["purpose"])} <span class="badge">{escape(b["kind"])}</span>'
                 f' {escape(state)}</p>')
+        door = BLOCK_DOORS.get(b["id"])
+        if door and door["href"] is None:
+            # Resolved here, where the chain is known: the first room in ROOMS that is built. A chain
+            # with nothing built yet has no door, and the block says nothing rather than pointing at a
+            # page that does not exist.
+            first = next((r for r in ROOMS if r[4] == "open"), None)
+            door = dict(door, href=first[2]) if first else None
+        door_html = (f'    <p class="pillar-more reveal"><a class="text-arrow" href="{door["href"]}"'
+                     f' aria-label="{escape(door["label"])}">{escape(door["text"])}'
+                     f'{ico(ICON_RIGHT)}</a></p>\n' if door else "")
         inner = (f'<div class="ig-grid" data-ig-grid>{" ".join(tiles)}</div>' if tiles else
                  f'<div class="dashed empty">{chip(ICON_CAMERA)}<div><strong>Nothing in this block '
                  f'yet</strong><p class="when">{escape(b["note"])}</p></div></div>')
         out.append(f'    <div class="block-head reveal">{head}</div>\n'
+                   f'{door_html}'
                    f'    <p class="when reveal">{escape(b["note"])}</p>\n'
                    f'    <div class="ig-wall" data-ig-wall>\n      {inner}\n    </div>')
     return "\n".join(out)
@@ -1329,8 +1571,6 @@ activities = page("Activities · Hua-Xu Zhong", "activities", f"""
 <section class="section">
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>The archive of what has been shown, and a running record of talks. Captions and venues are attached as they are confirmed, and an image without one is filed but not hung.</p></div>
-    <p class="pillar-more"><a class="text-arrow" href="rooms.html">The archive is also a place: Tokyo, "
-              "walked at first person — three sights on the wall</a></p>
     {titled("h2", "The album", ICON_CAMERA)}
     <p class="when reveal" style="margin:-0.4rem 0 1rem">Plates hung on a wall, read the way the
       album is read on a phone: pick one and the roll opens at it, sideways, and nothing expires when
@@ -1492,25 +1732,37 @@ OBJ_SIZE = {
     "front": (170, 300, 40), "booth": (110, 215, 110), "bikes": (150, 102, 55),
     "planter": (104, 50, 46), "cones": (74, 70, 34), "mailbox": (52, 74, 36),
     "signA": (70, 86, 52), "banner": (56, 150, 6), "pane": (120, 86, 22),
+    "mirror": (78, 78, 24), "ladder": (36, 268, 48), "hydrant": (32, 94, 30),
+    "recycle": (58, 72, 52), "meter": (46, 58, 24), "camera": (28, 24, 34),
+    # The way on: a plain door at the far end of a lane, and the only object in the district whose
+    # whole purpose is the page behind it. Height and width are a door's, not a prop's.
+    "door": (96, 210, 14),
+    # The winter walkway's kit. A snow bank is wide and low because that is what a ploughed edge
+    # looks like; a bench and a rack are the two things every campus walk has and nobody draws.
+    "bank": (520, 60, 150), "bench": (150, 84, 48), "rack": (140, 76, 90),
 }
 
 EYE = 168                    # the eye is 1.68 m above the floor; 1 px = 1 cm throughout
-LANE_W, LANE_D, LANE_H = 640, 430, 360
-LANE_CEIL = 420             # cm, and a rendering choice rather than a record: the authored 360 is
-                            # the diagram's lane, while the space you stand in needs the extra half
-                            # metre or the bulbs hang at a walker's eyes
-LANE_BACK = 240             # how far the walls run behind you, so turning round shows a lane
 Z_SCALE = 2.9                # records are authored in the old 4.3 m lane; the space is 12.4 m
-WALK_D = round(LANE_D * Z_SCALE)
-STATIONS = [
-    {"z": 0, "label": "the entrance"},
-    {"z": 150, "label": "under the posters"},
-    {"z": 275, "label": "by the pole"},
-    {"z": 395, "label": "in front of the machine"},
-]
+
+# The lane box and the stops belong to the place, not to the site. A Fukuoka alley and a Canadian
+# corridor are different rooms; the renderer reads whatever the district authored through
+# `data-lane-*`, so those numbers now sit in the record next to the objects that must fit inside them.
+# A place that declares no lane gets the Tokyo one, which is what every district written so far
+# assumed. `ceil` is a rendering choice rather than a record: the authored 360 is the diagram's lane,
+# and the space you stand in needs the extra half metre or the bulbs hang at a walker's eyes.
+LANE_FALLBACK = {"w": 640, "d": 430, "ceil": 420, "back": 240}
+
 DISTRICTS = [
     {
         "id": "tokyo", "label": "Tokyo",
+        # The page, the plate prefixes and the position in the chain all come from the ROOMS table
+        # above, so the album and the walk cannot disagree about which room a plate opens onto.
+        "page": ROOM_BY_ID["tokyo"]["page"],
+        "plates": ROOM_BY_ID["tokyo"]["plates"],
+        # ...and the box it stands in is its own, along with where its onward door hangs.
+        "lane": LANE_FALLBACK,
+        "onward": {"x": 316, "z": 415, "ry": -90},
         "purpose": "A Tokyo lane, dressed: shutters, lanterns, a crossing at its end",
         "status": "open",
         "kind": "personal",
@@ -1540,6 +1792,28 @@ DISTRICTS = [
              "title": "A small shrine at knee height",
              "hint": "Draw one slip. The slip picks which slot you look at first; there is "
                      "no score, because a lane is not a game to win."},
+            {"id": "mirror", "kind": "mirror", "x": -308, "z": 14, "y": 236, "ry": 90,
+             # The only object in the lane that turns. `turn` swings the disc on its bracket, so a press
+             # changes the geometry — and what you can see down the lane does not change at all, because
+             # there is nothing behind the glass to show.
+             "states": [
+                 {"say": "Aimed down the lane, the way it was hung.", "turn": 0.0},
+                 {"say": "Turned to the wall. A mirror is aimed by whoever put it up, and this one "
+                         "has nothing to show either way: it is drawn glass, not silvered.",
+                  "turn": 1.0},
+             ],
+             "title": "A convex mirror on a bracket",
+             "hint": "At the mouth of every lane like this, aimed at the corner you cannot see. Drawn, "
+                     "not silvered: there is no reflection in it, because a mirror that invented one "
+                     "would be the renderer making something up."},
+            {"id": "meter", "kind": "meter", "x": 312, "z": 10, "y": 148, "ry": -90,
+             "title": "A meter box and its conduit",
+             "hint": "Bolted where the supply comes in, with its conduit running up to the wire. It "
+                     "reads nothing, because it is drawn: no reading of anybody's is in this lane."},
+            {"id": "hydrant", "kind": "hydrant", "x": 288, "z": 44, "y": 0, "ry": -90,
+             "title": "A standpipe at the kerb",
+             "hint": "Short, red and unmistakable at thirty metres, which is the whole test for "
+                     "dressing. Nothing is claimed about water, or about anybody's fire."},
             {"id": "drain", "kind": "drain", "x": -80, "z": 54, "y": 0, "ry": 0,
              "title": "A drain in the asphalt",
              "hint": "It is the one thing on the floor that knows the lane is wet."},
@@ -1566,6 +1840,36 @@ DISTRICTS = [
             {"id": "pipe", "kind": "pipe", "x": 308, "z": 170, "y": 0, "ry": -90,
              "title": "A drainpipe down the right wall",
              "hint": "The lane's other vertical: the one thing here that runs the whole height."},
+            {"id": "ladder", "kind": "ladder", "x": -300, "z": 165, "y": 0, "ry": 90,
+             "title": "A ladder left against the wall",
+             "hint": "Leaning, not resting: `d` is how far its feet stand out from the wall. It is the "
+                     "one prop here that is pure silhouette, which is exactly why it belongs."},
+            {"id": "camera", "kind": "camera", "x": 306, "z": 196, "y": 182, "ry": -90,
+             "glow": [{"r": 40, "k": 0.22, "tint": "rgba(255,120,110,0.5)", "dy": 6}],
+             "title": "A camera under the awning",
+             "hint": "The only lens in the lane, and it is drawn: a body, a bracket, and a small light "
+                     "that is the whole reason the glow beside it exists. It records nothing, and "
+                     "nothing in this lane is watched."},
+            {"id": "front-b", "kind": "front", "x": 316, "z": 250, "y": 0, "ry": -90,
+             "glow": [{"r": 170, "k": 0.75, "tint": "rgba(255,176,96,0.40)", "dy": 150}],
+             # The second front you can do something to, in the half of the lane that used to be only
+             # scenery. Same three stops as the first, and the same coupling: the shutter's height and
+             # the light the lane gets are one number.
+             "states": [
+                 {"say": "Down, and warm behind the steel. Somewhere back there a room is still lit.",
+                  "shut": 0.0, "k": 0.6},
+                 {"say": "Half up: the counter, the shelf behind it, and nobody at either.", "shut": 0.55,
+                  "k": 1.1},
+                 {"say": "Fully up. An empty room with its light on, which is the most honest thing a "
+                         "lane at this hour can show you.", "shut": 1.0, "k": 1.4},
+             ],
+             "title": "The lit front halfway down",
+             "hint": "The far half of the lane answers now: press it and the shutter rolls, and the "
+                     "light that reaches the asphalt goes with it. Drawn, empty, and not for sale."},
+            {"id": "planter-2", "kind": "planter", "x": -252, "z": 332, "y": 0, "ry": 90,
+             "title": "Two planters further down",
+             "hint": "The second planting in the lane, put where the wall turns from brick to hoarding: "
+                     "an alley with only grey in it is a drawing of an alley."},
             {"id": "awning", "kind": "awning", "x": 292, "z": 200, "y": 214, "ry": -90,
              "title": "An awning over a shuttered front",
              "hint": "Drawn at 12 degrees so it sheds onto the lane. There is no shop behind it; "
@@ -1628,7 +1932,7 @@ DISTRICTS = [
              "title": "A pair of cones, stored rather than working",
              "hint": "Nothing is being repaired here. They are stacked where they were left, which is "
                      "the only reason they are in the scene."},
-            {"id": "mailbox", "kind": "mailbox", "x": 314, "z": 262, "y": 0, "ry": -90,
+            {"id": "mailbox", "kind": "mailbox", "x": 314, "z": 218, "y": 0, "ry": -90,
              "states": [
                  {"say": "Shut.", "flap": 0.0},
                  {"say": "The flap is open and the box is empty. It is a shape in a lane, not a way to "
@@ -1663,6 +1967,15 @@ DISTRICTS = [
                  {"say": "Opened a hand's width: the air of the room comes into the lane, and the light "
                          "with it.", "slide": 1.0, "k": 1.45},
              ]},
+            {"id": "recycle", "kind": "recycle", "x": -294, "z": 398, "y": 0, "ry": 90,
+             "states": [
+                 {"say": "Lidded.", "flap": 0.0},
+                 {"say": "Lid up, and empty. It stands beside the machine because that is where a crate "
+                         "like this stands; nothing in this lane gets recycled.", "flap": 1.0},
+             ],
+             "title": "The crate beside the machine",
+             "hint": "Every machine on a street like this has one within arm's reach of it. That is the "
+                     "only reason it is here, and nothing is in it."},
             {"id": "bin-2", "kind": "bin", "x": -262, "z": 356, "y": 0, "ry": 90,
              "title": "The far bin",
              "hint": "The last thing before the light at the end of the lane."},
@@ -1692,15 +2005,20 @@ DISTRICTS = [
             {"side": -1, "z0": 300, "z1": 470, "y0": 0, "y1": 130, "kind": "dado"},
             {"side": -1, "z0": 300, "z1": 470, "y0": 130, "y1": 420, "kind": "brick"},
             {"side": -1, "z0": 470, "z1": 760, "y0": 0, "y1": 290, "kind": "shutter"},
-            {"side": -1, "z0": 470, "z1": 760, "y0": 290, "y1": 420, "kind": "plaster", "tone": 1.12},
-            {"side": -1, "z0": 760, "z1": 1010, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.86},
+            # Board-formed concrete over that shutter: the lane's own structure showing above the
+            # shopfronts, which is what the second half of a street like this actually looks like.
+            {"side": -1, "z0": 470, "z1": 760, "y0": 290, "y1": 420, "kind": "concrete", "tone": 1.04},
+            {"side": -1, "z0": 760, "z1": 1010, "y0": 0, "y1": 300, "kind": "hoarding", "tone": 0.86},
+            # ...with a sheet of galvanised steel over the top of the boarding, because a hoarding in a
+            # working lane is patched with whatever was on the truck.
+            {"side": -1, "z0": 760, "z1": 1010, "y0": 300, "y1": 420, "kind": "galv", "tone": 0.94},
             {"side": -1, "z0": 1010, "z1": 1247, "y0": 0, "y1": 120, "kind": "dado"},
             {"side": -1, "z0": 1010, "z1": 1247, "y0": 120, "y1": 420, "kind": "brick"},
             {"side": 1, "z0": -240, "z1": 40, "y0": 0, "y1": 420, "kind": "brick"},
             {"side": 1, "z0": 40, "z1": 190, "y0": 0, "y1": 300, "kind": "shutter"},
             {"side": 1, "z0": 40, "z1": 190, "y0": 300, "y1": 420, "kind": "plaster"},
             {"side": 1, "z0": 190, "z1": 470, "y0": 0, "y1": 140, "kind": "dado"},
-            {"side": 1, "z0": 190, "z1": 470, "y0": 140, "y1": 420, "kind": "plaster"},
+            {"side": 1, "z0": 190, "z1": 470, "y0": 140, "y1": 420, "kind": "concrete", "tone": 0.96},
             {"side": 1, "z0": 470, "z1": 660, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.92},
             {"side": 1, "z0": 660, "z1": 900, "y0": 0, "y1": 290, "kind": "shutter"},
             {"side": 1, "z0": 660, "z1": 900, "y0": 290, "y1": 420, "kind": "corrugated"},
@@ -1713,9 +2031,16 @@ DISTRICTS = [
             {"kind": "tactile", "x0": -300, "x1": -272, "z0": -240, "z1": 1247},
             {"kind": "tactile", "x0": 272, "x1": 300, "z0": -240, "z1": 1247},
             {"kind": "gutter", "x0": -318, "x1": 318, "z0": 1230, "z1": 1244},
+            # The same painted line at the other end of the lane: a straight bar of paint at a mouth is
+            # the one piece of road marking this lane can have without writing a word on the ground.
+            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 26, "z1": 40},
+            # A channel drain crossing the lane: the kit is the same grate as the two at the kerb, and
+            # crossing the whole width is what a lane does where its own water has to leave it.
+            {"kind": "grate", "x0": -150, "x1": 150, "z0": 636, "z1": 650},
             {"kind": "grate", "x0": -118, "x1": -42, "z0": 148, "z1": 168},
             {"kind": "grate", "x0": 60, "x1": 136, "z0": 700, "z1": 720},
             {"kind": "manhole", "x0": -40, "x1": 40, "z0": 430, "z1": 510},
+            {"kind": "manhole", "x0": 120, "x1": 200, "z0": 286, "z1": 346},
             {"kind": "wet", "x0": -316, "x1": -60, "z0": 980, "z1": 1240},
             # The kerb: a six centimetre riser where the floor meets the wall, on both sides, so the
             # lane has a line at its base that light can fall along. Only the face is drawn — the top
@@ -1729,11 +2054,20 @@ DISTRICTS = [
         # here rather than taken from a random number, because a lane that moves differently on every
         # reload is not a drawn place, it is a screensaver. `swing` is centimetres at the foot of the
         # cord; the light moves with the paper, so the walls brighten and dim where the lamp is.
+        # Every `z` below is a record depth, the same as the cable it hangs from, and each one is the
+        # depth of a crossing in `wires`: a lantern is a light with a cord, and five of the six used to
+        # hang on air because these numbers were written in scene centimetres while the cables beside
+        # them were written in records. `verify-walk` now asserts the pairing rather than trusting it.
         "lanterns": [
-            {"x": -120, "y": 268, "z": 150, "r": 27, "swing": 3.2, "period": 3.1, "phase": 0.0},
-            {"x": 40, "y": 252, "z": 150, "r": 31, "swing": 2.6, "period": 3.9, "phase": 1.7},
-            {"x": 210, "y": 262, "z": 560, "r": 26, "swing": 3.6, "period": 4.4, "phase": 0.9},
-            {"x": -170, "y": 272, "z": 900, "r": 29, "swing": 2.2, "period": 3.4, "phase": 2.6},
+            # The crossings below are spaced so that every published stop has one in view: a lantern
+            # hung at the mouth of the lane is over your head and out of frame from the entrance, and a
+            # warm light nobody can see is a number, not a room.
+            {"x": -120, "y": 268, "z": 60, "r": 27, "swing": 3.2, "period": 3.1, "phase": 0.0},
+            {"x": 40, "y": 252, "z": 60, "r": 31, "swing": 2.6, "period": 3.9, "phase": 1.7},
+            {"x": 210, "y": 262, "z": 150, "r": 26, "swing": 3.6, "period": 4.4, "phase": 0.9},
+            {"x": -170, "y": 272, "z": 240, "r": 29, "swing": 2.2, "period": 3.4, "phase": 2.6},
+            {"x": -140, "y": 262, "z": 330, "r": 26, "swing": 3.0, "period": 3.6, "phase": 2.1},
+            {"x": 150, "y": 258, "z": 410, "r": 28, "swing": 2.6, "period": 4.1, "phase": 0.6},
         ],
         # The window cut in the end wall, and what you see through it. These are NOT record depths and
         # are not multiplied by Z_SCALE: nothing here is hung from a record, and the far plane is
@@ -1742,17 +2076,37 @@ DISTRICTS = [
         "vista": {"x": 0, "y0": 108, "y1": 336, "w": 470},
         "backdrop": {
             "plaza": {"y": -260, "z0": 1240, "z1": 12000, "half": 3600},
+            # A nearer row of rooftops, flanking the crossing rather than standing on it. Through the
+            # aperture the first thing seen should be a silhouette at the height a lane sees roofs;
+            # eight-storey facades straight out of the window would be a diagram of a city, not a view
+            # of one. Each carries its own tone, so the row is not four photocopies of one block.
+            "roofs": [
+                {"x": -1750, "y": 0, "z": 1900, "w": 780, "h": 470, "tone": 0.5},
+                {"x": -2520, "y": 0, "z": 2040, "w": 900, "h": 640, "tone": 0.25},
+                {"x": 1850, "y": 0, "z": 1860, "w": 720, "h": 520, "tone": 0.7},
+                {"x": 2640, "y": 0, "z": 2100, "w": 940, "h": 760, "tone": 0.35},
+            ],
+            # A raised road crossing the whole view, above the crossing on the ground: the one piece of
+            # infrastructure that says this city is larger than this window. Its lamps are geometry
+            # rather than light sources — nothing out there is allowed to light the lane it is seen
+            # from, and no source in the room is unnamed.
+            "express": {"z": 6300, "y": 1250, "half": 6200, "thick": 170, "depth": 900, "pier": 230,
+                        "ground": -260, "piers": [-4200, -1500, 1100, 3700, 5900],
+                        "lamps": [-4300, -1700, 900, 3500, 5700]},
             "crossing": {"y": -260, "z0": 2100, "z1": 3600, "x0": -1150, "x1": 1150,
                          "stripes": 9, "width": 96, "diagonals": True},
+            # `win` is how much of a block is lit; `tone` is how much of that light the air between here
+            # and there has taken out of it. A picture of a city has near and far in it, and without
+            # tones every block came back at exactly the same brightness at every distance.
             "city": [
-                {"x": -2200, "z": 2900, "w": 900, "h": 900, "win": 0.65},
-                {"x": 2300, "z": 3100, "w": 800, "h": 1100, "win": 0.6},
-                {"x": -1500, "z": 4200, "w": 1300, "h": 1500, "win": 0.5},
-                {"x": -450, "z": 4600, "w": 1500, "h": 2300, "win": 0.42},
-                {"x": 900, "z": 4100, "w": 1100, "h": 1200, "win": 0.6},
-                {"x": 2100, "z": 4800, "w": 1400, "h": 2900, "win": 0.34},
-                {"x": -2900, "z": 5400, "w": 1800, "h": 2600, "win": 0.4},
-                {"x": 3400, "z": 5600, "w": 1600, "h": 1800, "win": 0.5},
+                {"x": -2200, "z": 2900, "w": 900, "h": 900, "win": 0.65, "tone": 0.95},
+                {"x": 2300, "z": 3100, "w": 800, "h": 1100, "win": 0.6, "tone": 0.88},
+                {"x": -1500, "z": 4200, "w": 1300, "h": 1500, "win": 0.5, "tone": 0.7},
+                {"x": -450, "z": 4600, "w": 1500, "h": 2300, "win": 0.42, "tone": 0.62},
+                {"x": 900, "z": 4100, "w": 1100, "h": 1200, "win": 0.6, "tone": 0.74},
+                {"x": 2100, "z": 4800, "w": 1400, "h": 2900, "win": 0.34, "tone": 0.5},
+                {"x": -2900, "z": 5400, "w": 1800, "h": 2600, "win": 0.4, "tone": 0.42},
+                {"x": 3400, "z": 5600, "w": 1600, "h": 1800, "win": 0.5, "tone": 0.58},
             ],
             "tower": {"x": 1500, "z": 12000, "half": 520, "top": 4200,
                       "decks": [1500, 2600], "mast": 4700},
@@ -1763,11 +2117,19 @@ DISTRICTS = [
                     {"y0": 4200, "y1": 40000, "c": "#141e36"}],
         },
         # Cables, in the same units, strung wall to wall and to the pole they are bolted on to.
+        # Five crossings spread down the lane at the record depths the lanterns are hung on, plus the
+        # two runs that make it a street rather than a set of crossings: one from the left wall to the
+        # pole, one from the pole to the end wall. A cable used to be authored at record 700 and to run
+        # to record 1180 — both past the record's own end, which is the far wall: those two were drawn
+        # beyond the room, over the city in the aperture, anchored to nothing on this side of it.
         "wires": [
             {"a": [-320, 336, 60], "b": [320, 352, 60], "sag": 46},
+            {"a": [-320, 330, 150], "b": [320, 344, 150], "sag": 40},
+            {"a": [-320, 344, 240], "b": [320, 330, 240], "sag": 52},
+            {"a": [-320, 338, 330], "b": [320, 334, 330], "sag": 44},
+            {"a": [-320, 352, 410], "b": [320, 340, 410], "sag": 30},
             {"a": [-320, 330, 182], "b": [292, 300, 275], "sag": 38},
-            {"a": [-320, 344, 300], "b": [320, 330, 300], "sag": 52},
-            {"a": [-320, 352, 404], "b": [320, 340, 404], "sag": 30},
+            {"a": [292, 300, 275], "b": [300, 322, 426], "sag": 34},
         ],
         "frames": [
             {"id": "sensoji", "src": "IMG/tokyo-sensoji.jpg", "x": 314, "z": 120, "y": 96, "ry": -90,
@@ -1797,9 +2159,414 @@ DISTRICTS = [
             {"label": "The lane at 22:40", "note": "Sound only if a visitor asks for it.",
              "state": "Silent by default, and it stays that way until a slot carries audio."},
         ],
+        # Where the stops are, in record centimetres: the chips the reader walks between. Part of the
+        # record because a different room has different places worth standing.
+        "stations": [
+            {"z": 0, "label": "the entrance"},
+            {"z": 150, "label": "under the posters"},
+            {"z": 275, "label": "by the pole"},
+            {"z": 350, "label": "by the lit window"},
+            {"z": 395, "label": "in front of the machine"},
+        ],
+        # The curtain at your back is the way out, and which page it opens onto is decided when the
+        # pages are emitted: the place before this one in the chain, or the album if there is none.
         "exit": {"id": "noren", "kind": "noren", "x": 0, "z": -44, "y": 178, "ry": 180,
-                 "title": "The curtain at your back", "hint": "Part it to leave the lane.",
-                 "leave": "index.html"},
+                 "title": "The curtain at your back", "hint": "Part it to leave the lane."},
+        "caveat": "The lane is drawn, not surveyed. The wall holds drawn covers and three drawn "
+                  "sights — the temple gate at Asakusa, the crossing at Shibuya, the tower at dusk "
+                  "— and the objects are props; no footage sits in any slot yet. Frames and clips "
+                  "arrive when the owner supplies them, and nothing here implies a place was "
+                  "visited.",
+    },
+    {
+        "id": "canada", "label": "Canada",
+        "page": ROOM_BY_ID["canada"]["page"],
+        "plates": ROOM_BY_ID["canada"]["plates"],
+        # A walkway is wider and lower-shouldered than the Tokyo lane, and it is outdoors: the roof is
+        # four and a half metres up so that looking up reads as sky, not as a corridor.
+        "lane": {"w": 720, "d": 400, "ceil": 470, "back": 300},
+        "onward": {"x": 330, "z": 388, "ry": -90},
+        "purpose": "A campus walkway after snow, walked at dusk toward the one lit door",
+        "status": "open",
+        "kind": "personal",
+        "cover": "IMG/canada-cover.jpg",
+        "cover_caption": "The walkway in one sheet: banked snow, bare trees, one lit doorway at the end.",
+        "blurb": "Dusk after snow. Two buildings, a path between them, and the only warm light is a "
+                 "door at the far end.",
+        # Everything here is drawn. The reference photographs read a walkway's proportions, the way
+        # snow banks against a wall, and which way the one warm light points; nothing in the lane is
+        # a photograph, and nothing claims a date, a name or an event.
+        "objects": [
+            {"id": "bank-left", "kind": "bank", "x": -250, "z": 60, "y": 0, "ry": 0,
+             "title": "Snow banked against the left wall",
+             "hint": "The first thing snow does: it is pushed to the edges and left there. It is the "
+                     "walkway's only soft edge."},
+            {"id": "bank-left-2", "kind": "bank", "x": -240, "z": 240, "y": 0, "ry": 0,
+             "title": "A second bank further down",
+             "hint": "Drawn. The far half of the walk needs the same edge as the near half, or the "
+                     "snow reads as paint that stopped."},
+            {"id": "bank-right", "kind": "bank", "x": 248, "z": 170, "y": 0, "ry": 0,
+             "title": "Snow banked against the right wall",
+             "hint": "Drawn, and deliberately not symmetrical with the left: snow is cleared by "
+                     "people, and people are not symmetrical."},
+            {"id": "bench", "kind": "bench", "x": -262, "z": 78, "y": 0, "ry": 90,
+             "title": "A bench under the snow",
+             "hint": "A campus has benches and nobody brushes them. Set dressing: nothing to open."},
+            {"id": "rack", "kind": "rack", "x": 268, "z": 118, "y": 0, "ry": -90,
+             "title": "A bicycle rack, empty",
+             "hint": "Empty in the drawing because there is no bicycle in the reference. A rack "
+                     "with nothing in it is a fact about winter."},
+            {"id": "lamp-post", "kind": "utility", "x": 300, "z": 150, "y": 0, "ry": -90,
+             "glow": [{"r": 200, "k": 0.42, "dy": 300}],
+             "title": "A lamp post",
+             "hint": "The walkway's second light, and the reason the snow has a blue side. The glow "
+                     "is authored here; nothing else lights this lane."},
+            {"id": "crate", "kind": "crate", "x": -244, "z": 300, "y": 0, "ry": 20,
+             "title": "A crate by the wall",
+             "hint": "Whatever it held is gone. Drawn for silhouette, not for a story."},
+            {"id": "bin", "kind": "bin", "x": 262, "z": 250, "y": 0, "ry": -90,
+             "title": "A bin with a lid",
+             "hint": "The kind of thing every walkway has at its halfway point. Nothing to open."},
+            {"id": "hydrant", "kind": "hydrant", "x": 240, "z": 84, "y": 0, "ry": 0,
+             "title": "A hydrant, cleared",
+             "hint": "Snow is shovelled off hydrants first: it is the one object on the walk that has "
+                     "been dug out, which is why it reads as cared for."},
+            {"id": "sign", "kind": "sign", "x": 300, "z": 300, "y": 210, "ry": -90,
+             "title": "A sign with nothing written on it",
+             "hint": "Blank on purpose. Lettering in the scene would be invented, and this site does "
+                     "not invent lettering."},
+            {"id": "ac", "kind": "ac", "x": 336, "z": 210, "y": 240, "ry": -90,
+             "title": "A vent on the wall",
+             "hint": "A wall with nothing on it reads as a diagram; this is the smallest thing that "
+                     "makes it a building."},
+            {"id": "pipe", "kind": "pipe", "x": 336, "z": 340, "y": 0, "ry": -90,
+             "title": "A downpipe",
+             "hint": "Drawn to the wall's own height so the eye has a vertical in a lane of "
+                     "horizontals."},
+            {"id": "door-lit", "kind": "door", "x": -300, "z": 372, "y": 0, "ry": 90,
+             "glow": [{"r": 260, "k": 0.5, "dy": 130}],
+             "title": "The lit door",
+             "hint": "The one warm light at the end of the walk, and the reason the whole lane is "
+                     "walked toward it. It is scenery: the way on is the door on the other side."},
+            {"id": "planter", "kind": "planter", "x": -300, "z": 160, "y": 0, "ry": 90,
+             "title": "A planter under snow",
+             "hint": "Set dressing. What is planted in it is not visible and is not claimed."},
+            {"id": "cones", "kind": "cones", "x": -120, "z": 12, "y": 0, "ry": 0,
+             "title": "Two cones at the mouth of the walk",
+             "hint": "Where the walkway meets the road: something has to mark the edge between them."},
+            {"id": "board-a", "kind": "signA", "x": -336, "z": 200, "y": 150, "ry": 90,
+             "title": "A notice board, pinned empty",
+             "hint": "The board is drawn and its paper is not: a notice would be a claim about what "
+                     "this campus announced."},
+        ],
+        # Dusk: a lamp post, the lit door, and a cold bounce off the snow itself. Nothing else glows,
+        # and the cool one is authored here rather than invented by the renderer.
+        # Three sources and no more: the lamp post, the lit door, and a *weak* bounce off the snow.
+        # The bounce was authored at 0.32 over a 24 m radius first, which lit the far plane as hard as
+        # the lamp post lit the walk and turned the aperture into a flat white panel — snow reflects,
+        # it does not emit, and a room outdoors at dusk is dimmer than it looks in a photograph.
+        # Every entry carries `bulb: False`, and that flag is the difference between light and a lamp:
+        # a bulb is a fixture the renderer draws a body and a cord for, and these four are *spill* —
+        # the lamp post's pool, the open door's warmth, the snow's weak bounce, the wall light over the
+        # far end. Authored without the flag, four white bulbs were hung in the middle of the air over
+        # a walkway that has one lamp post in it.
+        "lamps": [
+            {"x": 300, "y": 330, "z": 150, "r": 240, "k": 0.34, "bulb": False,
+             "tint": "rgba(190,210,255,0.22)"},
+            {"x": -300, "y": 236, "z": 372, "r": 280, "k": 0.4, "bulb": False},
+            {"x": 0, "y": 30, "z": 200, "r": 1400, "k": 0.11, "bulb": False,
+             "tint": "rgba(206,222,255,0.24)"},
+            # A wall light over the far end of the walk, authored in scene centimetres like the rest of
+            # this list. Without it the last stop stands in the dark: the lit door is on a side wall
+            # and by then it is behind you, which is true of the place and unusable in the room.
+            {"x": 140, "y": 318, "z": 1112, "r": 460, "k": 0.62, "bulb": False,
+             "tint": "rgba(255,224,186,0.28)"},
+            # The last of the spill is the sky's: an outdoor room sees more of it at its far end than
+            # anywhere else, and without this the wall the walk runs into was the darkest thing in it.
+            {"x": 0, "y": 300, "z": 1150, "r": 420, "k": 0.3, "bulb": False,
+             "tint": "rgba(180,204,255,0.26)"},
+            # Just past the end wall, where the near roof row stands: the light that makes the view
+            # through the opening a lit street rather than a dark hole in a bright wall.
+            {"x": -300, "y": 260, "z": 1420, "r": 900, "k": 0.5, "bulb": False,
+             "tint": "rgba(255,226,186,0.26)"},
+        ],
+        "beams": [],
+        "surfaces": [
+            # Brick below, siding above, and one replacement panel of corrugated steel where the wall
+            # was opened and closed again. A campus is patched the same way a lane is.
+            {"side": -1, "z0": -300, "z1": 90, "y0": 0, "y1": 470, "kind": "brick", "tone": 0.94},
+            {"side": -1, "z0": 90, "z1": 340, "y0": 0, "y1": 200, "kind": "dado", "tone": 1.02},
+            {"side": -1, "z0": 90, "z1": 340, "y0": 200, "y1": 470, "kind": "plaster", "tone": 0.88},
+            {"side": -1, "z0": 340, "z1": 400, "y0": 0, "y1": 470, "kind": "brick", "tone": 0.9},
+            {"side": 1, "z0": -300, "z1": 150, "y0": 0, "y1": 470, "kind": "plaster", "tone": 0.92},
+            {"side": 1, "z0": 150, "z1": 330, "y0": 0, "y1": 240, "kind": "corrugated", "tone": 0.96},
+            {"side": 1, "z0": 150, "z1": 330, "y0": 240, "y1": 470, "kind": "plaster", "tone": 0.86},
+            {"side": 1, "z0": 330, "z1": 400, "y0": 0, "y1": 470, "kind": "brick", "tone": 0.9},
+        ],
+        # Snow is a ground mark, not a wall: it lies where it was pushed, and the middle of the path
+        # is where it is not. One ice patch, glossy, in the low corner where water went.
+        "marks": [
+            {"kind": "snow", "x0": -360, "x1": -150, "z0": -300, "z1": 400},
+            {"kind": "snow", "x0": 150, "x1": 360, "z0": -300, "z1": 400},
+            {"kind": "snow", "x0": -150, "x1": 150, "z0": -300, "z1": -120},
+            {"kind": "wet", "x0": -150, "x1": -40, "z0": 180, "z1": 260},
+            {"kind": "grate", "x0": -60, "x1": 60, "z0": 356, "z1": 376},
+            {"kind": "kerb", "x0": -360, "x1": -326, "z0": -300, "z1": 400, "y1": 8},
+            {"kind": "kerb", "x0": 326, "x1": 360, "z0": -300, "z1": 400, "y1": 8},
+        ],
+        "lanterns": [],
+        # The aperture at the end of the walk: the lit door and the buildings past it.
+        # The aperture: 4 m of a 7.2 m wall, which is what a walkway between buildings actually opens
+        # onto. It was 5.6 m first, and the deepest frame came back as a screen of city with a strip of
+        # wall under it — the end of the walk read as a window, not as the end of a walk.
+        "vista": {"x": 0, "y0": 170, "y1": 320, "w": 340},
+        "wires": [
+            {"a": [-360, 438, 40], "b": [360, 428, 66], "sag": 88},
+            {"a": [-360, 430, 220], "b": [360, 442, 250], "sag": 74},
+        ],
+        "backdrop": {
+            "sky": [{"y0": -400, "y1": 1400, "c": "#2b3852"},
+                    {"y0": 1400, "y1": 4200, "c": "#26314d"},
+                    {"y0": 4200, "y1": 40000, "c": "#141e36"}],
+            "mountain": [{"x": -900, "y": 520, "w": 2600, "h": 380, "c": "#1b2740"},
+                         {"x": 1200, "y": 460, "w": 2000, "h": 300, "c": "#1e2a44"}],
+            "plaza": {"y": -160, "z0": 900, "z1": 9000, "half": 4200},
+            # The near row is what the aperture actually frames, so it carries the light: a walkway
+            # at dusk ends on other buildings' walls, not on a skyline. Tones here are dull greys by
+            # design — the city behind them is the thing with lit windows.
+            "roofs": [
+                {"x": -900, "y": 0, "z": 1360, "w": 1300, "h": 620, "tone": 0.8},
+                {"x": 1000, "y": 0, "z": 1420, "w": 1200, "h": 700, "tone": 0.62},
+                {"x": 200, "y": 0, "z": 1300, "w": 700, "h": 420, "tone": 0.9},
+            ],
+            "city": [
+                {"x": -2100, "z": 3400, "w": 1500, "h": 1700, "win": 0.62, "tone": 0.9},
+                {"x": -400, "z": 3900, "w": 1300, "h": 1400, "win": 0.58, "tone": 0.82},
+                {"x": 900, "z": 3600, "w": 1200, "h": 1900, "win": 0.66, "tone": 0.95},
+                {"x": 2400, "z": 4200, "w": 1400, "h": 1200, "win": 0.52, "tone": 0.72},
+            ],
+        },
+        "frames": [
+            {"id": "walk", "src": "IMG/canada-1.jpg", "x": 354, "z": 96, "y": 150, "ry": -90,
+             "title": "Frame: the walkway at dusk",
+             "alt": "Illustration of a wide snow-covered walkway between two buildings at dusk, "
+                    "snow banked at both edges and one lit doorway far down it.",
+             "caption": "The proportion the room is built from: how wide the walk is, how the snow "
+                        "sits against the walls, and where the warm light is. Drawn, not photographed."},
+            {"id": "trees", "src": "IMG/canada-2.jpg", "x": -354, "z": 210, "y": 150, "ry": 90,
+             "title": "Frame: bare trees over the path",
+             "alt": "Illustration of leafless trees leaning over a snow-covered path, their trunks "
+                    "dark against a pale winter sky.",
+             "caption": "Leafless, drawn: the shape a winter campus has and the reason the lane has a "
+                        "vertical in it."},
+            {"id": "door", "src": "IMG/canada-3.jpg", "x": 354, "z": 322, "y": 150, "ry": -90,
+             "title": "Frame: the lit door at the end",
+             "alt": "Illustration of a single glass door with warm light behind it at the end of a "
+                    "snow-covered path, seen from a distance.",
+             "caption": "The end of the walk, as a picture of a door. The room walks toward it; the "
+                        "picture does not claim anyone went through."},
+        ],
+        "slots": [
+            {"label": "Frames", "note": "Photographs go here, one per wall slot.",
+             "state": "Three drawn sights hold the wall; a photograph still replaces its slot."},
+            {"label": "Short clips", "note": "Vertical clips, muted by default, captioned always.",
+             "state": "Empty. A clip needs its caption before it can play here."},
+            {"label": "The walk at dusk", "note": "Sound only if a visitor asks for it.",
+             "state": "Silent by default, and it stays that way until a slot carries audio."},
+        ],
+        "stations": [
+            {"z": 0, "label": "the mouth of the walk"},
+            {"z": 110, "label": "by the bench and the rack"},
+            {"z": 220, "label": "at the bend of the snow"},
+            {"z": 280, "label": "by the sign and the pipe"},
+            # Two metres short of the end wall. At 368 the stop was 93 cm from it: the frame was the
+            # aperture and nothing else, which is true of standing with your nose to a wall and useless
+            # as the last thing a room shows you.
+            {"z": 330, "label": "at the far end of the walk"},
+        ],
+        "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
+                 "title": "The door at your back", "hint": "It opens the way you came."},
+        "caveat": "The walkway is drawn, not surveyed: its proportions come from the owner's own "
+                  "photographs of a campus winter, and every object in it is a drawn prop. The wall "
+                  "holds three drawn sights and no photograph, no venue is named and no date is "
+                  "claimed. Nothing here says the owner was anywhere.",
+    },
+    {
+        "id": "fukuoka", "label": "Fukuoka",
+        "page": ROOM_BY_ID["fukuoka"]["page"],
+        "plates": ROOM_BY_ID["fukuoka"]["plates"],
+        # A stall alley: narrower than the Tokyo lane and lower, because the lanterns hang close over
+        # the counters, and the far end is water rather than a street.
+        "lane": {"w": 520, "d": 380, "ceil": 380, "back": 260},
+        "purpose": "A stall alley at night, walked toward the water at its end",
+        "status": "open",
+        "kind": "personal",
+        "cover": "IMG/fukuoka-cover.jpg",
+        "cover_caption": "The alley in one sheet: noren, timber, lanterns on wires, and water at the end.",
+        "blurb": "Warm and narrow. Stalls on both sides, lanterns the whole way down, and a canal at "
+                 "the end of it.",
+        # The alley is drawn. Its proportions come from the reference photographs; every object is a
+        # prop, every sign is blank, and no stall is named or said to be open.
+        "objects": [
+            {"id": "stall-a", "kind": "front", "x": -240, "z": 96, "y": 0, "ry": 90,
+             "glow": [{"r": 145, "k": 0.68, "dy": 190}],
+             "title": "A stall front, shutters half up",
+             "hint": "The alley's first lit front. The counter is drawn and nothing on it is named; "
+                     "the glow is authored here because a stall is where the light comes from."},
+            {"id": "stall-b", "kind": "front", "x": 240, "z": 208, "y": 0, "ry": -90,
+             "glow": [{"r": 135, "k": 0.62, "dy": 190}],
+             "title": "The second stall, further down",
+             "hint": "Drawn so the alley has a middle. Its light is dimmer than the first, which is "
+                     "what makes the near one read as nearer."},
+            {"id": "a-noren", "kind": "noren", "x": -236, "z": 60, "y": 168, "ry": 90,
+             "title": "A curtain over a doorway",
+             "hint": "Blank cloth: a name on it would be invented lettering, and this site does not "
+                     "invent lettering."},
+            {"id": "b-noren", "kind": "noren", "x": 236, "z": 168, "y": 168, "ry": -90,
+             "title": "A shorter curtain, hung lower",
+             "hint": "Drawn to the alley's own height rather than a standard door's, because a stall "
+                     "alley is built to whatever the frame allowed."},
+            {"id": "stool", "kind": "crate", "x": -190, "z": 128, "y": 0, "ry": 30,
+             "title": "A stool at the counter",
+             "hint": "Low, round-ish, empty: the two things a stall has in front of it are a counter "
+                     "and somewhere to sit, and neither implies anybody did."},
+            {"id": "crate-f", "kind": "crate", "x": 196, "z": 250, "y": 0, "ry": -20,
+             "title": "A crate stacked by the second stall",
+             "hint": "Set dressing: something has to break the long line where the stalls end."},
+            {"id": "bin-f", "kind": "bin", "x": 210, "z": 300, "y": 0, "ry": -90,
+             "title": "A bin at the turning",
+             "hint": "Drawn where the alley widens toward the water."},
+            {"id": "barrel", "kind": "bin", "x": -206, "z": 268, "y": 0, "ry": 0,
+             "title": "A barrel against the wall",
+             "hint": "The alley's own furniture. Nothing is claimed about what is in it."},
+            {"id": "pole-f", "kind": "utility", "x": 214, "z": 84, "y": 0, "ry": -90,
+             "title": "The pole the cables are strung from",
+             "hint": "Every wire overhead is anchored here or on the walls: a cable has to start "
+                     "somewhere you can point at."},
+            {"id": "lamp-post-f", "kind": "utility", "x": -212, "z": 330, "y": 0, "ry": 90,
+             "glow": [{"r": 140, "k": 0.4, "dy": 320}],
+             "title": "A lamp post near the water",
+             "hint": "Cooler than the lanterns, and the reason the water at the end has a colour."},
+            {"id": "board-f", "kind": "signA", "x": 226, "z": 42, "y": 150, "ry": -90,
+             "title": "A board, pinned empty",
+             "hint": "A stall wall always has one. Blank, because its paper would be a claim."},
+            {"id": "awning-f", "kind": "awning", "x": -250, "z": 178, "y": 250, "ry": 90,
+             "title": "An awning over the second doorway",
+             "hint": "Drawn, and deliberately lower than the Tokyo lane's: the alley is smaller."},
+            {"id": "pipe-f", "kind": "pipe", "x": 226, "z": 320, "y": 0, "ry": -90,
+             "title": "A drainpipe at the water end",
+             "hint": "The last vertical before the alley stops being an alley."},
+            {"id": "planter-f", "kind": "planter", "x": -222, "z": 226, "y": 0, "ry": 90,
+             "title": "A planter of dark leaves",
+             "hint": "Set dressing: the one green thing, and it is drawn as a silhouette."},
+            {"id": "wheel", "kind": "bikes", "x": 200, "z": 136, "y": 0, "ry": -90,
+             "title": "A bicycle left against the wall",
+             "hint": "Parked in the drawing because the alley is too narrow to pass one comfortably, "
+                     "which is exactly why bicycles are left along it."},
+        ],
+        # Spill again, not fixtures: the lamp post near the water, and the water's own amber bounce.
+        # The alley's lamps are its lanterns, and those travel in the `lanterns` list where they belong.
+        "lamps": [
+            {"x": -212, "y": 330, "z": 330, "r": 240, "k": 0.36, "bulb": False,
+             "tint": "rgba(186,208,255,0.20)"},
+            {"x": 0, "y": 12, "z": 380, "r": 500, "k": 0.24, "bulb": False,
+             "tint": "rgba(255,206,150,0.20)"},
+        ],
+        "beams": [90, 240, 340],
+        "surfaces": [
+            # Timber, tile and plaster, with one patch of corrugated sheet where a stall was rebuilt.
+            {"side": -1, "z0": -260, "z1": 80, "y0": 0, "y1": 150, "kind": "dado", "tone": 0.98},
+            {"side": -1, "z0": -260, "z1": 80, "y0": 150, "y1": 380, "kind": "hoarding", "tone": 0.94},
+            {"side": -1, "z0": 80, "z1": 300, "y0": 0, "y1": 380, "kind": "plaster", "tone": 0.9},
+            {"side": -1, "z0": 300, "z1": 380, "y0": 0, "y1": 380, "kind": "brick", "tone": 0.86},
+            {"side": 1, "z0": -260, "z1": 60, "y0": 0, "y1": 380, "kind": "hoarding", "tone": 0.92},
+            {"side": 1, "z0": 60, "z1": 240, "y0": 0, "y1": 160, "kind": "dado", "tone": 1.0},
+            {"side": 1, "z0": 60, "z1": 240, "y0": 160, "y1": 380, "kind": "corrugated", "tone": 0.9},
+            {"side": 1, "z0": 240, "z1": 380, "y0": 0, "y1": 380, "kind": "plaster", "tone": 0.88},
+        ],
+        # Wet stone the whole way down — it is an alley beside water — with a grate, a drain run and
+        # the painted line at the mouth.
+        "marks": [
+            {"kind": "wet", "x0": -260, "x1": 260, "z0": 200, "z1": 380},
+            {"kind": "grate", "x0": -60, "x1": 60, "z0": 330, "z1": 348},
+            {"kind": "gutter", "x0": -260, "x1": 260, "z0": 24, "z1": 36},
+            {"kind": "kerb", "x0": -260, "x1": -230, "z0": -260, "z1": 380, "y1": 7},
+            {"kind": "kerb", "x0": 230, "x1": 260, "z0": -260, "z1": 380, "y1": 7},
+        ],
+        # Six lanterns on three crossings: the alley is lit by paper and nothing else that is warm.
+        "lanterns": [
+            {"x": -90, "y": 258, "z": 40, "r": 24, "swing": 3.0, "period": 3.3, "phase": 0.2},
+            {"x": 70, "y": 252, "z": 40, "r": 26, "swing": 2.6, "period": 3.8, "phase": 1.4},
+            {"x": -110, "y": 254, "z": 150, "r": 25, "swing": 3.2, "period": 3.5, "phase": 0.8},
+            {"x": 100, "y": 250, "z": 150, "r": 23, "swing": 2.8, "period": 4.0, "phase": 2.2},
+            {"x": -60, "y": 254, "z": 280, "r": 26, "swing": 3.4, "period": 3.2, "phase": 1.1},
+            {"x": 120, "y": 252, "z": 280, "r": 24, "swing": 2.4, "period": 3.9, "phase": 2.9},
+        ],
+        "vista": {"x": 0, "y0": 96, "y1": 300, "w": 460},
+        "wires": [
+            {"a": [-260, 344, 40], "b": [260, 338, 40], "sag": 46},
+            {"a": [-260, 340, 150], "b": [260, 334, 150], "sag": 50},
+            {"a": [-260, 346, 280], "b": [260, 340, 280], "sag": 44},
+            {"a": [214, 300, 84], "b": [220, 316, 330], "sag": 30},
+        ],
+        "backdrop": {
+            "sky": [{"y0": -400, "y1": 1300, "c": "#2a3750"},
+                    {"y0": 1300, "y1": 4000, "c": "#243049"},
+                    {"y0": 4000, "y1": 40000, "c": "#131d33"}],
+            "mountain": [{"x": 600, "y": 420, "w": 2200, "h": 300, "c": "#1c2740"}],
+            "plaza": {"y": -300, "z0": 700, "z1": 7000, "half": 4000},
+            "roofs": [
+                {"x": -1200, "y": 0, "z": 1300, "w": 700, "h": 420, "tone": 0.55},
+                {"x": 1300, "y": 0, "z": 1400, "w": 800, "h": 500, "tone": 0.4},
+                {"x": 300, "y": 0, "z": 1250, "w": 620, "h": 360, "tone": 0.68},
+            ],
+            "city": [
+                {"x": -1600, "z": 2800, "w": 1200, "h": 1500, "win": 0.5, "tone": 0.66},
+                {"x": -200, "z": 3200, "w": 1000, "h": 1100, "win": 0.45, "tone": 0.58},
+                {"x": 800, "z": 2900, "w": 1100, "h": 1700, "win": 0.55, "tone": 0.74},
+                {"x": 1900, "z": 3400, "w": 1200, "h": 1000, "win": 0.4, "tone": 0.5},
+                {"x": 2600, "z": 3000, "w": 900, "h": 1400, "win": 0.5, "tone": 0.62},
+            ],
+        },
+        "frames": [
+            {"id": "stalls", "src": "IMG/fukuoka-1.jpg", "x": -284, "z": 120, "y": 96, "ry": 90,
+             "title": "Frame: the stall row",
+             "alt": "Illustration of a row of small stall fronts along a narrow alley at night, "
+                    "counters drawn in outline and nothing written on any of them.",
+             "caption": "The alley's proportion and its first light, drawn: how narrow it is, and how "
+                        "close the counters come."},
+            {"id": "lanterns", "src": "IMG/fukuoka-2.jpg", "x": 284, "z": 240, "y": 150, "ry": -90,
+             "title": "Frame: lanterns over the wires",
+             "alt": "Illustration of paper lanterns hanging in a row from wires across a narrow "
+                    "alley, warm against a dark sky.",
+             "caption": "The overhead layer, drawn: where the light comes from and how low it hangs."},
+            {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 284, "z": 350, "y": 96, "ry": -90,
+             "title": "Frame: the water at the end",
+             "alt": "Illustration of dark water at the end of an alley with amber light reflected "
+                    "along its surface.",
+             "caption": "What the alley ends in. Drawn: the room walks toward it, and the picture "
+                        "claims nothing about what is on the far bank."},
+        ],
+        "slots": [
+            {"label": "Frames", "note": "Photographs go here, one per wall slot.",
+             "state": "Three drawn sights hold the wall; a photograph still replaces its slot."},
+            {"label": "Short clips", "note": "Vertical clips, muted by default, captioned always.",
+             "state": "Empty. A clip needs its caption before it can play here."},
+            {"label": "The alley at closing", "note": "Sound only if a visitor asks for it.",
+             "state": "Silent by default, and it stays that way until a slot carries audio."},
+        ],
+        "stations": [
+            {"z": 0, "label": "the mouth of the alley"},
+            {"z": 90, "label": "at the first stall"},
+            {"z": 190, "label": "between the stalls"},
+            {"z": 280, "label": "by the bin and the lamp"},
+            {"z": 320, "label": "at the water"},
+        ],
+        "exit": {"id": "curtain-back", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
+                 "title": "The curtain at your back", "hint": "Part it to leave the alley."},
+        "caveat": "The alley is drawn, not surveyed: its proportions come from the owner's own "
+                  "photographs, no stall is named, no sign carries lettering and no date is claimed. "
+                  "Nothing here says the owner was in any of these places.",
     },
     {
         "id": "undeclared", "label": "Next district", "purpose": "Purpose not declared",
@@ -1891,7 +2658,8 @@ def walk_islands(d, placed):
 
     Depths are record centimetres and go through Z_SCALE like any other record. Heights are real.
     """
-    ceiling = LANE_CEIL - 34
+    lane = d.get("lane", LANE_FALLBACK)
+    ceiling = lane["ceil"] - 34
     lights = []
     for lamp in d.get("lamps", []):
         if isinstance(lamp, (int, float)):
@@ -1914,7 +2682,11 @@ def walk_islands(d, placed):
     for L in d.get("lanterns", []):
         # The authored radius is the paper; how far the light reaches is a multiple of it. A glow with
         # no body is a smudge, so `size` and `h` travel with it and the renderer draws what it is told.
-        lights.append(dict(L, r=max(96, L["r"] * 3.4), size=L["r"], h=L["y"] + round(L["r"] * 1.15),
+        # `z` goes through Z_SCALE here because a lantern's depth is a record, exactly like the cable it
+        # hangs from and the wall it swings against — the two used to be in different spaces, which put
+        # five lanterns in mid-air and their pools at the wrong depths.
+        lights.append(dict(L, z=round(L["z"] * Z_SCALE), r=max(96, L["r"] * 3.4), size=L["r"],
+                           h=L["y"] + round(L["r"] * 1.15),
                            k=0.72, bulb=False, tint="rgba(255,158,86,0.52)", body="lantern"))
     islands = [("data-walk-lights", lights), ("data-walk-wires", wires),
                ("data-walk-beams", d.get("beams", [])),
@@ -1962,6 +2734,11 @@ def walk_object(o):
 def walk_html(d, drawer):
     """The whole viewport is the space; every control is a head-up display floating on it.
 
+    Where leaving goes is one authored value, used twice: the corner control and the curtain at your
+    back are the same door, read from the same field, so the key and the prop cannot point different
+    ways. With a chain of rooms that value is the place behind this one, or the album when this is the
+    first room built — the CV is one click further on, from the album's own navigation.
+
     That is the reference's arrangement, read as an architecture rather than as a style: one route,
     the building owns the screen, the picker and the reading live in overlays that appear on
     request. So there is no doorway to click through any more — arriving at this page *is*
@@ -1971,9 +2748,22 @@ def walk_html(d, drawer):
     always shows the space instead of its edge. Objects keep their authored coordinates and are
     pushed down the lane by Z_SCALE, which is a rendering constant and not a fact about the record.
     """
+    lane = d.get("lane", LANE_FALLBACK)
+    walk_d = round(lane["d"] * Z_SCALE)
     objects = list(d["objects"]) + wall_frames(d)
     if d["exit"]:
-        objects.append(d["exit"])
+        # Leaving this room means arriving somewhere: the place behind it in the chain, or the album
+        # when this is the first room built. The target is decided by the emitter, not by the record,
+        # so a place does not have to know what exists on the other side of its own curtain.
+        objects.append(dict(d["exit"], leave=d.get("back_to", "activities.html")))
+    if d.get("onward") and d.get("onward_to"):
+        # ...and at the far end, a door onto the next place. A room with only an entrance is a dead
+        # end, and the brief is a corridor: out of this one, into the next.
+        objects.append({"id": "way-on", "kind": "door", "x": d["onward"]["x"], "z": d["onward"]["z"],
+                        "y": 0, "ry": d["onward"]["ry"], "leave": d["onward_to"],
+                        "title": "The door at the far end",
+                        "hint": f"It opens onto {d['onward_label']}. Everything between here and "
+                                f"there is a corridor drawn at the same scale."})
     parts = []
     placed = []
     for o in objects:
@@ -1982,12 +2772,12 @@ def walk_html(d, drawer):
         placed.append(o)
         parts.append(walk_object(o))
     chips = []
-    for n, st in enumerate(STATIONS):
+    for n, st in enumerate(d["stations"]):
         # A tick, not a caption: where the words go is the card, and the accessible name is what a
         # screen reader gets without anything being painted over the space.
         chips.append(
             f'<button type="button" class="walk-stop" data-walk-stop="{n}" '
-            f'style="--z:{round(st["z"] * Z_SCALE)}px;--p:{st["z"] * Z_SCALE / WALK_D:.3f}" '
+            f'style="--z:{round(st["z"] * Z_SCALE)}px;--p:{st["z"] * Z_SCALE / walk_d:.3f}" '
             f'aria-label="{escape(st["label"])}, {round(st["z"] * Z_SCALE)} cm in"></button>')
     links = []
     for n, fr in enumerate(d.get("frames", [])):
@@ -2003,16 +2793,18 @@ def walk_html(d, drawer):
     # cladding is what you are walking through and the sightline is only where it ends, so the space is
     # described first and the view second; both halves are conditional on the data, because a district
     # with no aperture must not promise one and a district with no cladding must not claim a material.
-    clad = (" The lane is dressed as a street: shutters, glazed tile, plaster and hoarding on its walls, "
-            "paper lanterns hung on the wires above it, a tactile guide path along both kerbs, and a post "
-            "box, bicycles and a blank board standing against the fronts. Nothing on any of it carries a "
-            "word." if d.get("surfaces") else "")
+    clad = (" The lane is dressed as a street: shutters and glazed tile at hand height, board-formed "
+            "concrete and sheets of galvanised steel above them, plaster and plywood hoarding further "
+            "down, paper lanterns hung on the wires it is wired with, a tactile guide path along both "
+            "kerbs, and against the fronts a convex mirror, a meter box, a standpipe, a ladder, a "
+            "telephone box, bicycles, planters, a litter crate and a blank folding board. Nothing on "
+            "any of it carries a word." if d.get("surfaces") else "")
     sight = (" At its far end the lane opens onto a drawn compound: a crossing below it, a tower, and "
              "a mountain beyond. Nothing out there is a record of anybody standing in it."
              if d.get("vista") else "")
     return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}"
-       data-lane-w="{LANE_W}" data-lane-d="{WALK_D}" data-lane-ceil="{LANE_CEIL}"
-       data-lane-back="{LANE_BACK}" data-eye="{EYE}">
+       data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
+       data-lane-back="{lane["back"]}" data-eye="{EYE}">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
        Space to jump, E to open what you are standing in front of, L for the list, I for this note.
@@ -2026,7 +2818,7 @@ def walk_html(d, drawer):
   <div class="walk-hud">
     <div class="walk-top">
       <div class="walk-pick">
-        <a class="walk-icon walk-exit" href="index.html" data-walk-exit aria-label="Leave the lane">{ICON_EXIT}</a>
+        <a class="walk-icon walk-exit" href="{d.get("back_to", "activities.html")}" data-walk-exit aria-label="Leave the lane">{ICON_EXIT}</a>
         <div class="walk-stops" role="group" aria-label="Stops in this lane">{"".join(chips)}</div>
       </div>
       <div class="walk-read">
@@ -2120,28 +2912,50 @@ def slot_row(d, sl):
             f'<p class="when">{escape(sl["state"])}</p></li>')
 
 
-open_districts = [d for d in DISTRICTS if d["status"] == "open"]
+# The walk's order is the ROOMS table's order — earliest first — not the order the records happen to
+# appear in the file. Getting this backwards is invisible until someone walks it: the first room's
+# curtain would open onto the second room while its far door opened onto the third, and the harness
+# asserts the two agree because that is exactly the mistake this line exists to prevent.
+open_districts = sorted((d for d in DISTRICTS if d["status"] == "open"),
+                        key=lambda d: ROOM_ORDER[d["id"]])
 
-# The district content, assembled for the drawer rather than for an article: the same builders the
-# rest of the site uses, minus the scroll-in state, because a head-up display does not scroll and
-# because reveal-on-scroll hides everything when scripting is off.
-drawer_inner = "\n    ".join(x for x in [
-    frames_section(open_districts),
-    titled("h2", "Slots", ICON_CASE, "block-title spaced"),
-    '<ul class="slot-list">\n      '
-    + INDENT.join(slot_row(d, sl) for d in open_districts for sl in d["slots"])
-    + "\n    </ul>",
-    '<p class="when">The lane is drawn, not surveyed. The wall holds drawn covers and three drawn '
-    'sights — the temple gate at Asakusa, the crossing at Shibuya, the tower at dusk — and the '
-    'objects are props; no footage sits in any slot yet. Frames and clips arrive when the owner '
-    'supplies them, and nothing here implies a place was visited.</p>',
-] if x)
 
-walk_pages = "\n".join(walk_html(d, drawer_inner) for d in open_districts)
-rooms = shell_page("Tokyo · Districts · Hua-Xu Zhong",
-                   walk_pages + "\n" + rooms_plate_html(open_districts), "rooms.html")
+def district_drawer(d):
+    """One room's reading material, for that room's drawer.
 
-(ROOT / "rooms.html").write_text(rooms, encoding="utf-8")
+    Assembled per place rather than per site: the frames section lists this room's sights, the slots
+    are this room's slots, and the caveat is the sentence this room's record wrote about what it may
+    claim. A drawer that listed every district would print another room's inventory inside this one.
+    """
+    return "\n    ".join(x for x in [
+        frames_section([d]),
+        titled("h2", "Slots", ICON_CASE, "block-title spaced"),
+        '<ul class="slot-list">\n      ' + INDENT.join(slot_row(d, sl) for sl in d["slots"])
+        + "\n    </ul>",
+        f'<p class="when">{escape(d["caveat"])}</p>' if d.get("caveat") else "",
+    ] if x)
+
+
+# The corridor. Each open room is told which page stands behind it and which stands ahead of it, and
+# the two ends fall back to the album: a room with no neighbour is not a dead end, it opens onto the
+# picker. Wiring it here rather than in the record means a place never has to know what exists on the
+# other side of its own curtain, and adding Fukuoka later retargets Tokyo's far door by itself.
+for i, d in enumerate(open_districts):
+    prev_room = open_districts[i - 1] if i > 0 else None
+    next_room = open_districts[i + 1] if i + 1 < len(open_districts) else None
+    d["back_to"] = prev_room["page"] if prev_room else ALBUM_PAGE
+    if next_room:
+        d["onward_to"] = next_room["page"]
+        d["onward_label"] = next_room["label"]
+
+rooms_pages = {}
+for d in open_districts:
+    body = walk_html(d, district_drawer(d)) + "\n" + rooms_plate_html([d])
+    rooms_pages[d["page"]] = shell_page(f'{d["label"]} · Rooms · Hua-Xu Zhong', body, d["page"],
+                                         d.get("cover", "IMG/1.jpg"))
+
+for _path, _html in rooms_pages.items():
+    (ROOT / _path).write_text(_html, encoding="utf-8")
 
 (ROOT / "robots.txt").write_text(
     f"User-agent: *\nAllow: /\n\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")
@@ -2149,6 +2963,7 @@ rooms = shell_page("Tokyo · Districts · Hua-Xu Zhong",
     '<?xml version="1.0" encoding="UTF-8"?>\n'
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     + "".join(f"  <url><loc>{SITE}/{p}</loc><lastmod>2026-08-31</lastmod></url>\n"
-              for p in PUBLIC_PAGES)
+              for p in PUBLIC_PAGES + [d["page"] for d in open_districts
+                                       if d["page"] not in PUBLIC_PAGES])
     + "</urlset>\n", encoding="utf-8")
 print("wrote html pages")

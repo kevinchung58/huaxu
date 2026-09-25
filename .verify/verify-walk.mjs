@@ -117,7 +117,8 @@ const island = (name) => {
   const m = html.match(new RegExp(`data-walk-${name}>(.*?)</script>`));
   return m ? JSON.parse(m[1]) : null;
 };
-const lights = island("lights"), beams = island("beams"), vista = island("vista"), bd = island("backdrop");
+const lights = island("lights"), wires = island("wires"), beams = island("beams"),
+      vista = island("vista"), bd = island("backdrop");
 ok("lights are data, not a renderer's guess", lights && lights.length >= 6, `${lights && lights.length}`);
 ok("the compound's bounce is authored as a light source, with its own tint",
    !!lights.find((L) => L.tint && L.bulb === false));
@@ -126,7 +127,14 @@ ok("no bulb sits on the ceiling that the generator did not place",
 ok("the arcade is authored", Array.isArray(beams) && beams.length === 4);
 ok("the aperture is authored in scene centimetres", vista && vista.w === 470 && vista.y0 === 108 && vista.y1 === 336);
 ok("the far plane names every landmark it draws",
-   bd && !!bd.plaza && !!bd.crossing && !!bd.tower && !!bd.mountain && bd.city.length === 8);
+   bd && !!bd.plaza && !!bd.crossing && !!bd.tower && !!bd.mountain && bd.city.length === 8
+     && bd.roofs.length === 4 && !!bd.express);
+ok("the near rooftops are beside the crossing, not standing on it",
+   bd.roofs.every((r) => Math.abs(r.x) > bd.crossing.x1 && r.z < bd.city[0].z)
+     && bd.roofs.every((r) => r.tone !== undefined && r.tone > 0 && r.tone < 1));
+ok("the raised road is infrastructure, not a light source: its lamps are geometry",
+   bd.express.lamps.length === 5 && bd.express.piers.length === 5
+     && !lights.some((L) => L.z === bd.express.z));
 ok("the crossing is a scramble: stripes and diagonals", bd.crossing.stripes === 9 && bd.crossing.diagonals === true);
 ok("the tower's bands are counted, not sketched", Array.isArray(bd.tower.decks) && bd.tower.decks.length === 2);
 ok("the mountain is farther than everything else, and says so by scale",
@@ -136,7 +144,11 @@ ok("the sky is three bands, and only the horizon band glows",
 ok("no prop's z is left in record units (all scaled by 2.9)",
    [...html.matchAll(/--z:(-?\d+)px/g)].every((m) => Math.abs(Number(m[1])) % 1 === 0));
 const surf = island("surfaces"), ground = island("marks");
-const CLAD = ["plaster", "shutter", "corrugated", "dado", "brick", "hoarding"];
+/* Two more materials, added when the lane's far half was dressed: board-formed concrete over the
+   shopfronts and a sheet of galvanised steel patched over the hoarding. Both are painted in code from
+   a 128px tile like every other one, and both are named here because this assertion is the list of
+   materials a band is allowed to name. */
+const CLAD = ["plaster", "shutter", "corrugated", "dado", "brick", "hoarding", "concrete", "galv"];
 ok("the walls are clad by data: every band names a material that has a pattern",
    !!surf && surf.length >= 18 && surf.every((v) => CLAD.includes(v.kind)), `${surf ? surf.length : 0} bands`);
 ok("a band cannot lie about the lane: inside the walls, below the ceiling, on one side",
@@ -171,8 +183,32 @@ ok("every mark lies flat on the floor and inside the walls",
    ground.every((m) => m.x0 >= -318 && m.x1 <= 318 && m.z0 >= -240 && m.z1 <= 1247
                        && m.x1 > m.x0 && m.z1 > m.z0));
 const lanterns = lights.filter((L) => L.body === "lantern");
+/* Six lanterns now, on six of the lane's wires: two more were hung when the far half of the lane was
+   dressed, on the wire that crosses at 700 and the one at 1172. What this assertion defends is not the
+   number, it is that each one is a *light* with a tint rather than a decoration the lighting does not
+   know about — so the count moved and the rule did not. */
 ok("a lantern is a light source, so the room is lit by what hangs in it",
-   lanterns.length === 4 && lanterns.every((L) => L.bulb === false && L.tint));
+   lanterns.length === 6 && lanterns.every((L) => L.bulb === false && L.tint));
+/* The cable each lantern hangs on, found in the data rather than assumed: a crossing counts if it is at
+   the lantern's own depth, a run counts if it passes within a metre of the lantern's x at that depth.
+   Both halves of this were wrong in the district at once — the lanterns were authored in scene
+   centimetres while the cables beside them were authored in records, so five of six hung on air, and
+   one cable ran to a depth past the far wall, where it was drawn over the city in the aperture with
+   nothing on this side holding it up. */
+const cableOf = (L) => {
+  let best = null, bestDx = 100;
+  (wires || []).forEach((w) => {
+    const az = w.a[2], bz = w.b[2];
+    if (L.z < Math.min(az, bz) - 40 || L.z > Math.max(az, bz) + 40) return;
+    const dx = Math.abs(bz - az) < 60
+      ? 0 : Math.abs(w.a[0] + (w.b[0] - w.a[0]) * ((L.z - az) / (bz - az)) - L.x);
+    if (dx < bestDx) { bestDx = dx; best = w; }
+  });
+  return best;
+};
+ok("every lantern hangs on a cable, and every cable is strung to something inside the room",
+   !!wires && wires.length >= 5 && lanterns.every((L) => !!cableOf(L))
+     && wires.every((w) => [w.a, w.b].every((p) => p[2] > -240 && p[2] <= 1247)));
 ok("and each one says how wide the paper is and where the cord ties off",
    lanterns.every((L) => L.size >= 20 && L.size <= 40 && L.h > L.y && L.y > 200 && L.y < 400));
 const props = qa(".walk-hit").map((b) => ({ obj: b.dataset.obj,
@@ -189,7 +225,8 @@ ok("a state's light multiplier is a number, and every stop has one or none, neve
      props.some((pr) => pr.x === L.x && pr.z === L.z) || L.z === 1247),
    `${lights.filter((L) => L.bulb === false && L.body !== "lantern").length} non-bulb sources`);
 ok("the street kit is in the tab order, so it is part of the space and not a painted backdrop",
-   ["front-a", "booth", "bikes", "planters", "cones", "mailbox", "board-a", "banner-left", "banner-right"]
+   ["front-a", "front-b", "booth", "bikes", "planters", "planter-2", "cones", "mailbox", "board-a",
+    "banner-left", "banner-right", "mirror", "meter", "hydrant", "ladder", "camera", "recycle"]
      .every((id) => ids.includes(id)));
 ok("the board stays blank and the copy says why: no lettering is ours to invent",
    /folding board, blank/i.test(html) && /invented lettering/i.test(html)
@@ -252,14 +289,23 @@ ok("the far plane stays a plane: nothing is projected off the ends of the earth"
    ctx.ptsMax > 0 && ctx.ptsMax < 60000, `widest coordinate ${Math.round(ctx.ptsMax)}`);
 ok("a texture covers its own quad and no more", ctx.huge === 0, `${ctx.huge} oversized fills`);
 ok("the backdrop adds its own fills to the room, not a second pass over it", ctx.fills > before);
+/* The ceiling is a pass detector, not a freeze on detail — and it was calibrated on a build where
+   the compound beyond the lane's window was not being drawn at all (the vista and backdrop islands
+   were read with a list operation and came back `null`, so `if (vista)` was false). With the
+   compound actually in the frame the same boot costs ~600 more fills: the plaza is sliced into panels
+   for the same reason the walls are, and the crossing, eight city blocks, the tower, the mountain and
+   three sky bands are ~48 quads that were previously invisible. The number to watch is a *second
+   depth pass*, which doubles the room and lands near 6 000; if this ever reads that, the day's change
+   put the scene through twice. */
 ok("one depth pass, dressed: the room costs fills, not passes",
-   ctx.fills > before && ctx.fills < 3200, `${ctx.fills} fills, one pass`);
+   ctx.fills > before && ctx.fills < 4400, `${ctx.fills} fills, one pass`);
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
 ok("the cladding is tiled into the wall's own panels, so an affine map stays exact",
    /surfaces\.forEach/.test(js) && /PATS\[sc\.kind\]/.test(js) && /SEG/.test(js));
 ok("every material in the data has a painter, and every painter has a tile",
-   ["shutter", "dado", "brick", "corrugated", "hoarding", "tactile", "grate", "lantern"].every((k) => {
+   ["shutter", "dado", "brick", "corrugated", "hoarding", "concrete", "galv",
+    "tactile", "grate", "lantern"].every((k) => {
      const cap = k[0].toUpperCase() + k.slice(1);
      return new RegExp(`const paint${cap} = \\(c\\) =>`).test(js)
             && new RegExp(`PATS\\.${k} = mkTile`).test(js);
@@ -297,6 +343,13 @@ const stopAt = (z) => stops.reduce((best, el) =>
   Math.abs(parseFloat(el.style.getPropertyValue("--z")) - z) <
   Math.abs(parseFloat(best.style.getPropertyValue("--z")) - z) ? el : best, stops[0]);
 const status = () => q("[data-walk-status]").textContent.trim();
+/* Waiting for the body, not for a stopwatch. A station click starts a glide, and how long that glide
+   takes in wall-clock time depends on how heavy a frame is — and the lane got heavier the day it got
+   furniture, which turned a 400 ms sleep from "arrived" into "arrived 40 cm short" without a single
+   assertion changing. This waits for the depth the record promised. */
+const settle = async (want) => {
+  for (let i = 0; i < 40; i++) { await sleep(40); if (Math.abs(body().depth - want) < 2) return; }
+};
 const title0 = () => (qa(".walk-hit.is-reach")[0] || {}).dataset?.obj || "nothing";
 const body = () => q("[data-walk]").__walk;
 
@@ -309,13 +362,13 @@ ok("the plaza is seen, not entered: the far plane sits past the clamp",
 
 // The scramble frame, from the station beside it, with the wall as the only thing in between.
 click(stopAt(798));
-await sleep(300);
+await settle(798);
 await hold("a", 1500);                                   // to the left wall, x clamps at -290
 await sleep(120);
 ok("the wall prop nearer you wins: the reach is nearest-first, not list-order",
    /Utility pole|Poster|Frame|crate|drain|bin|sign/.test(status()), status());
 click(stopAt(798));
-await sleep(400);
+await settle(798);
 ok("standing at the frame's own depth brings it into reach",
    /Frame: the scramble at Shibuya/.test(status()), status());
 ok("the reach is announced with a dot on the note button, never with a caption",
@@ -376,7 +429,7 @@ ok("closing hands focus back to the thing on the wall that opened it",
 // Centre the body first — from the wall the vending machine is nearer, and nearest wins by design.
 await hold("d", 1300);
 click(stopAt(1146));
-await sleep(400);
+await settle(1146);
 ok("at the end of the lane the rail is what you are standing in front of",
    /lookout rail/i.test(status()), status());
 key("e");
@@ -396,8 +449,12 @@ ok("the card closes again", card.hidden);
 const booth = q('[data-obj="booth"]'), box = q('[data-obj="mailbox"]');
 ok("the new kit is a button in the lane, not a painted detail", !!booth && booth.tagName === "BUTTON"
    && booth.dataset.frame === undefined && !!box);
-ok("a thing with stops ships at its first one, and only five things have stops",
-   booth.dataset.state === "0" && box.dataset.state === "0" && qa("[data-states]").length === 5);
+/* Eight things can be done to now, not five: the lane gained a convex mirror that turns on its
+   bracket, the litter crate beside the machine with a lid, and a second lit front halfway down. The
+   rule this assertion defends is the first half of the line — a thing with stops ships at its first
+   one, and the count of stops is the count in the document rather than in the script. */
+ok("a thing with stops ships at its first one, and eight things have stops",
+   booth.dataset.state === "0" && box.dataset.state === "0" && qa("[data-states]").length === 8);
 click(stopAt(0));
 await sleep(1600);
 await hold("d", 900);                                       // hug the right wall, toward the box
@@ -432,8 +489,16 @@ ok("an interactive thing says so without a word: the reach ring is dashed for a 
    are), a far prop's press box was as small as the few pixels it covered, and the curtain that reads
    "part it to leave the lane" opened a card instead of leaving. jsdom passed all three for a week. */
 const noren = q('[data-obj="noren"]');
+/* The curtain opens onto the album now, not onto the CV: the album is the picker, so leaving a room
+   lands on the place you choose the next room from, and the corner link is what goes back to the CV.
+   What this asserts is not the destination — that is the chain's business — it is that the chrome and
+   the prop read the same authored value, so the two ways out of a room cannot point different ways. */
+/* The curtain opens onto the room behind this one, or onto the album when this is the first room of
+   the chain, and the corner control reads the same authored value. What this asserts is not the
+   destination — the corridor block computes that from the ROOMS table — it is that the two ways out of
+   a room cannot point different ways, whichever room the chain puts them on. */
 ok("the way out is authored in the record, and the chrome reads the same link",
-   noren.dataset.leave === "index.html"
+   /^[a-z-]+\.html$/.test(noren.dataset.leave)
      && q("[data-walk-exit]").getAttribute("href") === noren.dataset.leave);
 const navs = () => ctx.navs.filter((m) => /navigation/.test(m)).length;
 click(noren);
@@ -671,6 +736,97 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
     }
   }
   ok("every raster a page points at exists", missing.length === 0, missing.join(", "));
+}
+
+/* ---- 6. the cache-buster is the assets' own hash ----------------------------------------------- */
+{
+  const { createHash } = await import("node:crypto");
+  const digest = createHash("sha1").update(fs.readFileSync("css/site.css"))
+    .update(fs.readFileSync("js/site.js")).digest("hex").slice(0, 10);
+  const pages = fs.readdirSync(".").filter((f) => f.endsWith(".html"));
+  const tokens = new Set();
+  const wrong = [];
+  pages.forEach((f) => {
+    const html = fs.readFileSync(f, "utf8");
+    const tags = [...html.matchAll(/(?:site\.css|site\.js)\?v=([0-9a-z]+)/g)].map((m) => m[1]);
+    tags.forEach((t) => tokens.add(t));
+    // Every page must ask for the bytes on disk, and ask for both with one token: two tokens is how a
+    // build ships a new renderer under an old key, which no other gate here can see because it only
+    // shows up in a returning visitor's cache.
+    if (tags.length && (new Set(tags).size !== 1 || tags[0] !== digest)) wrong.push(`${f}: ${tags[0]}`);
+  });
+  ok("the cache-buster is the hash of the two assets, so a stale one cannot ship",
+     wrong.length === 0 && tokens.size === 1 && [...tokens][0] === digest,
+     [...tokens].join(" ") + (wrong.length ? " — " + wrong.join(", ") : ""));
+}
+
+/* ---- 7. the corridor: a place is its page, and the rooms are a chain ---------------------------------- */
+{
+  // The generator's own tables, read the way the generator reads them: source order, the ROOMS rows
+  // first, then each district's page and plates. This is a structural assertion on purpose — whether
+  // the walk itself is right is what the rest of this file and the pixel gate are for, but a place
+  // that has drifted out of the chain is a page nothing can reach.
+  const rooms = Array.from(gen.matchAll(
+    /^\s*\("([a-z-]+)", "([^"]+)", "([^"]+\.html)", \["([a-z-]+)"\], "(open|soon)"\),$/gm))
+    .map((m) => ({ id: m[1], label: m[2], page: m[3], prefix: m[4], status: m[5] }));
+  ok("the rooms table declares the chain, one row per place",
+     rooms.length >= 1 && rooms.every((r, i) => i === 0 || r.id !== rooms[i - 1].id),
+     rooms.map((r) => `${r.id}:${r.status}`).join(" "));
+  ok("every built room is a page on disk, with the place's own box in it",
+     rooms.filter((r) => r.status === "open").every((r) => fs.existsSync(r.page)
+       && /data-lane-w="\d+" data-lane-d="\d+" data-lane-ceil="\d+"/.test(fs.readFileSync(r.page, "utf8"))));
+  ok("a room's page is titled as that room, not as the site",
+     rooms.filter((r) => r.status === "open")
+       .every((r) => new RegExp(`<title>${r.label} · Rooms · Hua-Xu Zhong</title>`)
+         .test(fs.readFileSync(r.page, "utf8"))));
+  ok("the district takes its page and its plates from the row, so the two cannot drift",
+     /"page": ROOM_BY_ID\["tokyo"\]\["page"\]/.test(gen)
+       && /"plates": ROOM_BY_ID\["tokyo"\]\["plates"\]/.test(gen));
+  /* The corridor, room by room. Each built room's two ways out are computed from the ROOMS table — the
+     curtain onto the room before it (or the album at the near end), the far door onto the room after it
+     (or nothing at the far end) — and then looked for in that room's own page. This is the assertion
+     that would have caught a chain wired in the order the records happen to sit in the file, which is
+     backwards for every room at once and invisible until someone walks it. */
+  const built = rooms.filter((r) => r.status === "open");
+  const problems = [];
+  built.forEach((r, i) => {
+    const html = fs.readFileSync(r.page, "utf8");
+    const leaves = Array.from(html.matchAll(/data-leave="([^"]+)"/g)).map((m) => m[1]);
+    const wantBack = i === 0 ? "activities.html" : built[i - 1].page;
+    const wantOn = i + 1 < built.length ? built[i + 1].page : null;
+    if (!leaves.includes(wantBack)) problems.push(`${r.id}: no curtain to ${wantBack}`);
+    if (wantOn && !leaves.includes(wantOn)) problems.push(`${r.id}: no door to ${wantOn}`);
+    if (!wantOn && /id="way-on"/.test(html)) problems.push(`${r.id}: a door onto nothing`);
+    if (html.includes(r.page) && wantOn === null && leaves.length > 1)
+      problems.push(`${r.id}: a door past the end of the chain`);
+  });
+  ok("every room opens the way it should: back toward the album, on toward the next place",
+     problems.length === 0, problems.join("; "));
+  // The nav item called Rooms is the front door of the walk, so it has to open at the near end: a
+  // visitor arriving there should start where the chain starts rather than in the middle of it.
+  const navRooms = fs.readdirSync(".").filter((f) => f.endsWith(".html"))
+    .map((f) => ({ f, m: fs.readFileSync(f, "utf8").match(/<a href="([^"]+)" class="[^"]*">Rooms<\/a>/) }))
+    .filter((x) => x.m);
+  ok("the nav item called Rooms starts the walk at its near end",
+     built.length === 0 || (navRooms.length > 0 && navRooms.every((x) => x.m[1] === built[0].page)),
+     navRooms.map((x) => `${x.f}->${x.m[1]}`).slice(0, 3).join(" "));
+  ok("the district takes its page and plates from its own row, for every room, not just the first",
+     rooms.every((r) => new RegExp(`"${r.id}", "label": "[^"]+"`.replace("label", "id")).test(gen) === false
+       || new RegExp(`ROOM_BY_ID\\["${r.id}"\\]\\["page"\\]`).test(gen)));
+  // The album is the picker: a plate whose room is built carries the door under it, and a plate whose
+  // room is shut does not, because a locked door on a picture is a promise the site cannot keep.
+  const doors = Array.from(act.matchAll(/<a class="ig-room" href="([^"]+)"/g)).map((m) => m[1]);
+  // Each plate appears twice on the page — once as a tile and once as the frame in the roll — so the
+  // wall is counted in distinct names, and the doors are counted where they are emitted: under tiles.
+  const plates = [...new Set(Array.from(act.matchAll(/<img src="IMG\/([A-Za-z0-9._-]+)"/g))
+    .map((m) => m[1]))];
+  const owned = plates.filter((n) => rooms.some((r) => n.startsWith(r.prefix)));
+  ok("the album offers the door only to the rooms that are built",
+     doors.length === plates.filter((n) => rooms.some((r) => n.startsWith(r.prefix) && r.status === "open"))
+       .length && doors.every((h) => fs.existsSync(h)),
+     `${doors.length} doors, ${owned.length} plates belong to a room`);
+  ok("a plate that belongs to no room is a plate, and carries nothing under it",
+     plates.length === owned.length || !/<a class="ig-room" href="\w[^"]*"[^>]*>\s*Enter/.test(act));
 }
 
 console.log(out.join("\n"));

@@ -2483,3 +2483,60 @@ body.shell {
     display: none;
   }
 }
+
+/* A pair, for the one place on the site where the argument is a comparison rather than a single
+   image: what I expected the room to become, and what it did. Two cards of the same size, side by
+   side, each with its own label; stacked on a narrow screen, because a comparison read one above the
+   other is still a comparison, and one squeezed to half width is not. The images are 1408x768 and
+   the ratio is declared here rather than left to the file, so the layout does not shift while the
+   second one loads. */
+.gai-pair { margin: 1.4rem 0 1.6rem; }
+.gai-two { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; }
+@media (max-width: 720px) { .gai-two { grid-template-columns: 1fr; } }
+.gai-cell {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.gai-cell img { display: block; width: 100%; aspect-ratio: 1408 / 768; object-fit: cover; }
+.gai-cap { padding: 0.65rem 0.95rem 0.75rem; border-top: 1px solid var(--line); }
+.gai-tag {
+  margin: 0 0 0.25rem;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.gai-cap p:last-child { margin: 0; font-size: 0.86rem; }
+.gai-pair figcaption {
+  margin-top: 0.7rem;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+/* The album is the picker, so a plate that belongs to a built room carries its door underneath it.
+   The cell is the grid child now rather than the tile, because a link may not be nested inside a
+   link: the picture opens the roll, the word under it walks into the room. On a narrow screen the
+   word stays — it is the only way through, and it is three lines at worst. */
+.ig-cell { display: flex; flex-direction: column; background: var(--card); }
+.ig-cell .ig-tile { flex: 1 1 auto; }
+.ig-room {
+  display: block;
+  padding: 0.45rem 0.6rem 0.5rem;
+  font-family: var(--sans);
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  color: var(--navy);
+  border-top: 1px solid var(--line);
+  text-decoration: none;
+  transition: background 220ms var(--ease), color 220ms var(--ease);
+}
+.ig-room .ico { margin-left: 0.35rem; }
+.ig-room:hover, .ig-room:focus-visible { background: var(--navy); color: var(--bg); }
+.ig-room:hover .ico, .ig-room:focus-visible .ico { color: var(--bg); }
+.ig-room:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }

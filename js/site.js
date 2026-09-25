@@ -646,7 +646,7 @@ function leaveOverlay(root, trigger) {
   const SPEED = 235, RUN = 1.75, ACCEL = 11, GRAV = 2400, JUMP = 465;
   let zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
   let vx = 0, vd = 0, phase = 0, bob = 0, roll = 0, raf = 0, last = 0, here = -1, reach = null;
-  let gliding = null, keys = new Set(), stick = null, down = null;
+  let gliding = null, keys = new Set(), stick = null, down = null, hereFar = Infinity, hereShown = -1;
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const num = (el, prop) => parseFloat(el.style.getPropertyValue(prop)) || 0;
@@ -666,7 +666,8 @@ function leaveOverlay(root, trigger) {
   const Z_FAR = attr("laneD", 1247), Z_BACK = -attr("laneBack", 240);
   const EYE = attr("eye", 168);
   const SEG = 60, NEAR = 24, DPM = 2;   // panel, near plane, pattern scale: the renderer's own
-  let W = 0, H = 0, focal = 620, tilePat = null, floorPat = null, winPat = null;
+  let W = 0, H = 0, focal = 620, tilePat = null, floorPat = null, winPat = null,
+      concretePat = null, galvPat = null;
   // One lookup for every cladding the walls and the ground can be wearing; a kind with no entry falls
   // back to the wall's own tiles, which is the honest default for a surface nobody specified.
   const PATS = {};
@@ -817,6 +818,51 @@ function leaveOverlay(root, trigger) {
     }
     c.fillStyle = "rgba(12,10,16,0.42)"; c.fillRect(0, 56, 128, 3);
   };
+  const paintConcrete = (c) => {
+    // Board-formed concrete: the lane's other structural voice. Four pours to the tile, the board
+    // seams left in, and the tie holes the formwork left — plus the grout that ran out of them, which
+    // is the detail that separates "concrete" from "grey".
+    c.fillStyle = "#6b7380"; c.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 4; i++) {
+      const y = i * 32;
+      c.fillStyle = i % 2 ? "rgba(255,255,255,0.030)" : "rgba(12,18,32,0.055)";
+      c.fillRect(0, y, 128, 32);
+      c.strokeStyle = "rgba(24,32,50,0.45)"; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(0, y + 0.5); c.lineTo(128, y + 0.5); c.stroke();
+      [26, 102].forEach((x) => {
+        c.fillStyle = "rgba(18,24,40,0.5)";
+        c.beginPath(); c.arc(x, y + 16, 3, 0, 6.2832); c.fill();
+        c.fillStyle = "rgba(210,222,236,0.15)"; c.fillRect(x - 1, y + 19, 2, 8);
+      });
+    }
+    for (let i = 0; i < 170; i++) {
+      c.fillStyle = `rgba(232,240,252,${((i % 4) * 0.012).toFixed(3)})`;
+      c.fillRect((i * 61) % 128, (i * 43) % 128, 2, 2);
+    }
+    c.fillStyle = "rgba(16,24,42,0.22)"; c.fillRect(0, 104, 128, 24);
+  };
+  const paintGalv = (c) => {
+    // Sheet metal over a frame: seams every 32 cm of tile, rivets down each seam, and the cold sheen
+    // that is the whole reason a galvanised wall reads as metal instead of as paint. It is the material
+    // that answers corrugated board at close range: corrugated is a wall, this is a skin over one.
+    c.fillStyle = "#79828f"; c.fillRect(0, 0, 128, 128);
+    const grd = c.createLinearGradient(0, 0, 128, 0);
+    grd.addColorStop(0, "rgba(255,255,255,0.10)");
+    grd.addColorStop(0.5, "rgba(255,255,255,0)");
+    grd.addColorStop(1, "rgba(10,16,30,0.12)");
+    c.fillStyle = grd; c.fillRect(0, 0, 128, 128);
+    for (let x = 0; x < 128; x += 32) {
+      c.strokeStyle = "rgba(20,28,44,0.5)"; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(x + 0.5, 0); c.lineTo(x + 0.5, 128); c.stroke();
+      c.strokeStyle = "rgba(236,244,255,0.12)"; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(x + 3.5, 0); c.lineTo(x + 3.5, 128); c.stroke();
+      for (let y = 8; y < 128; y += 24) {
+        c.fillStyle = "rgba(30,40,58,0.4)";
+        c.beginPath(); c.arc(x + 16, y, 2, 0, 6.2832); c.fill();
+      }
+    }
+    c.fillStyle = "rgba(16,24,42,0.26)"; c.fillRect(0, 108, 128, 20);
+  };
   const paintWindows = (c) => {
     // Windows are a pattern, like the tiles and the asphalt: a photographed facade would be the one
     // lie available for free here, because it would carry somebody's actual street. Which cells are
@@ -855,12 +901,34 @@ function leaveOverlay(root, trigger) {
     PATS.kerb = mkTile(paintKerb);
     PATS.grate = mkTile(paintGrate);
     PATS.lantern = mkTile(paintLantern);
+    PATS.concrete = mkTile(paintConcrete);
+    PATS.galv = mkTile(paintGalv);
+    // Locals as well as registry entries: the end wall's face and the parapet's coping are painted in
+    // draw() by name, and reading them back off PATS there would be the drawing code doing a lookup for
+    // a material it can see in this file.
+    concretePat = PATS.concrete;
+    galvPat = PATS.galv;
   };
 
+  /* Two shapes of island live inside the hit layer, and they answer two different questions: a list
+     (the lamps, the wires, the cladding bands, the ground's own kit) and a single object (the opening
+     in the end wall, and the compound seen through it). Reading them both with `[0]` was a list
+     operation applied to an object, so the vista and the whole backdrop — plaza, crossing, city,
+     tower, mountain, sky — were `undefined` from the day they were authored: `undefined || null` is
+     `null`, `if (vista)` was false, and the lane's far end has been a blank wall with an invented
+     lamp on it. The compound is drawn now, and nothing about it changed but this. */
   const readIsland = (sel) => {
+    const v = readAny(sel);
+    return Array.isArray(v) ? v : [];
+  };
+  const readOne = (sel) => {
+    const v = readAny(sel);
+    return v && typeof v === "object" && !Array.isArray(v) ? v : null;
+  };
+  const readAny = (sel) => {
     const node = layer.querySelector(sel);
-    if (!node) return [];
-    try { return JSON.parse(node.textContent) || []; } catch (err) { return []; }
+    if (!node) return null;
+    try { return JSON.parse(node.textContent); } catch (err) { return null; }
   };
   const meta = objs.map((el) => ({
     el, kind: el.dataset.obj, ry: num(el, "data-ry") || parseFloat(el.dataset.ry || 0),
@@ -876,8 +944,8 @@ function leaveOverlay(root, trigger) {
   }));
   const wires = readIsland("[data-walk-wires]");
   const beams = readIsland("[data-walk-beams]");
-  const vista = (readIsland("[data-walk-vista]")[0]) || null;
-  const bd = (readIsland("[data-walk-backdrop]")[0]) || null;
+  const vista = readOne("[data-walk-vista]");
+  const bd = readOne("[data-walk-backdrop]");
   const surfaces = readIsland("[data-walk-surfaces]");
   const marks = readIsland("[data-walk-marks]");
   const cam = () => {
@@ -923,14 +991,20 @@ function leaveOverlay(root, trigger) {
                       steps: "#565f74", pipe: "#5c6a80", awning: "#8a3f3a", sign: "#2b3a56",
                       drain: "#111a2c", booth: "#8b9ab0", bikes: "#39435a", planter: "#6e5540",
                       cones: "#c96a34", mailbox: "#9c3b33", signA: "#c8c2b2", banner: "#8f3a3a",
-                      front: "#2c3a56", ledge: "#6b7890", pane: "#6f7d92", window: "#6f7d92" };
+                      front: "#2c3a56", ledge: "#6b7890", pane: "#6f7d92", window: "#6f7d92",
+                  mirror: "#8f9bb0", ladder: "#a98a5e", hydrant: "#b8443a", recycle: "#3f6d5a",
+                  meter: "#5f6a78", camera: "#4a566a", door: "#33405c",
+                  bank: "#dfe8f2", bench: "#4a3f36", rack: "#6a6f78" };
   // How far a kind is a solid. A picture on a wall is a plane and must not be given a thickness it
   // cannot have; everything else in a lane has three visible faces or it is a decal, not an object.
   const SHAPE = { vending: "box", shrine: "box", utility: "box", ac: "box", crate: "box",
                   booth: "glass", bikes: "bikes", planter: "planter", cones: "cones",
                   mailbox: "flap", signA: "aboard", banner: "cloth", front: "front", pane: "pane",
                   bin: "box", bollard: "box", steps: "box", pipe: "box", awning: "box",
-                  sign: "box", drain: "plate", noren: "cloth", poster: "plane", frame: "plane" };
+                  sign: "box", drain: "plate", noren: "cloth", poster: "plane", frame: "plane",
+                  mirror: "mirror", ladder: "ladder", hydrant: "hydrant", recycle: "flap",
+                  meter: "box", camera: "camera", door: "plate",
+                  bank: "bank", bench: "box", rack: "box" };
   const mix = (hex, k) => {
     const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
     const to = k >= 0 ? [255, 238, 208] : [10, 17, 40];
@@ -939,7 +1013,7 @@ function leaveOverlay(root, trigger) {
   };
   const ZERO8 = [0, 0, 0, 0, 0, 0, 0, 0];
   const quads = [];
-  const add = (C, corners, uv, mode, arg, img, big) => {
+  const add = (C, corners, uv, mode, arg, img) => {
     const pts = corners.map((c, i) => {
       const o = camPt(C, c[0], c[1], c[2]);
       o.u = uv[i * 2]; o.v = uv[i * 2 + 1];
@@ -947,18 +1021,26 @@ function leaveOverlay(root, trigger) {
     });
     const cp = clipNear(pts);
     if (cp.length < 3) return null;
-    let off = 0, bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity;
+    let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity;
     cp.forEach((q) => {
       const sx = W * 0.5 + (focal * q.x) / q.z, sy = H * 0.5 + (focal * q.y) / q.z;
       bx0 = Math.min(bx0, sx); bx1 = Math.max(bx1, sx);
       by0 = Math.min(by0, sy); by1 = Math.max(by1, sy);
-      if (sx > -80 && sx < W + 80 && sy > -80 && sy < H + 80) off += 1;
     });
-    /* A far plane must not be culled by its corners: the sky covers the view by being larger than
-       it, so every corner lands off-screen and the whole backdrop would disappear. Big quads are
-       tested against their bounds instead, and they stay in the same list, so the depth sort still
-       puts them behind the room rather than under a fixed overlay. */
-    if (!off && !(big && bx1 > 0 && bx0 < W && by1 > 0 && by0 < H)) return null;
+    /* Bounds, never corners.
+
+       A quad is visible when the area it covers reaches the viewport, and that is not the same claim
+       as "one of its corners is on screen". The far plane was the case that first showed it — a sky
+       covers the view by being larger than it, so every corner lands off-screen and the whole
+       backdrop would vanish — and the near plane is the same failure with the sign flipped: stand
+       deep in the lane and the floor under you, the walls beside you and the roof over you are each
+       one panel wider than the screen, so *every* quad you are standing in the middle of used to be
+       culled at once and the frame collapsed to its base plate. The corner test was a cheap
+       conservative filter that was not conservative in the one direction that mattered, and the
+       lane's own harness had recorded it as a black frame for months. Clip first, project once,
+       and cull against the box the projected points occupy — a superset of what the corner test
+       kept, so nothing that used to be drawn has stopped being drawn. */
+    if (bx1 < -80 || bx0 > W + 80 || by1 < -80 || by0 > H + 80) return null;
     let z = 0; cp.forEach((q) => { z += q.z; });
     const quad = { z: z / cp.length, pts: cp, mode, arg, img };
     quads.push(quad);
@@ -1000,7 +1082,7 @@ function leaveOverlay(root, trigger) {
   const lamps = (authored.length ? authored : [{ x: 0, y: CEIL - 34, z: Z_FAR * 0.5, r: 40 }]).map((L) => ({
     x: L.x, y: L.y, z: L.z, r: L.r || 30, k: L.k === undefined ? 0.5 : L.k,
     tint: L.tint || (L.bulb === false ? "rgba(255,192,104,0.5)" : "rgba(255,216,158,0.42)"),
-    wet: L.bulb !== false,
+    wet: L.bulb !== false, bulb: L.bulb !== false && !L.of,
     // Sources with something hanging from the wire: a bulb is a dot of light, a lantern is a body you
     // can walk under. Which lights have a body is decided by the district, not by the renderer.
     body: L.body || null, size: L.size || 0, h: L.h || 0,
@@ -1109,6 +1191,16 @@ function leaveOverlay(root, trigger) {
         }
         return;
       }
+      if (mk.kind === "snow") {
+        /* Snow is a ground cover, not a surface with ribs: a flat fill is exactly right, and it is
+           brighter than anything else on the walk because snow is. It is drawn as one quad per mark,
+           because a rectangle this shape under an affine map bends by nothing anyone can see — unlike
+           the lane's floor, this is not a plane running to the horizon. */
+        const q = add(C, [[mk.x0, 1, mk.z0], [mk.x1, 1, mk.z0], [mk.x1, 1, mk.z1], [mk.x0, 1, mk.z1]],
+                      ZERO8, "flat", "#c3d3e6");
+        if (q) { q.lit = lightAt((mk.x0 + mk.x1) / 2, 6, (mk.z0 + mk.z1) / 2) * 1.0; q.air = haze(q.z) * 0.6; }
+        return;
+      }
       if (mk.kind === "wet") {
         const q = add(C, [[mk.x0, 1, mk.z0], [mk.x1, 1, mk.z0], [mk.x1, 1, mk.z1], [mk.x0, 1, mk.z1]],
                       ZERO8, "flat", "rgba(150,182,224,0.10)");
@@ -1140,7 +1232,7 @@ function leaveOverlay(root, trigger) {
     const band = (b) => {
       const q = add(C, [[-150000, b.y0, 120000], [150000, b.y0, 120000],
                         [150000, b.y1, 120000], [-150000, b.y1, 120000]],
-                    ZERO8, "flat", b.c, null, true);
+                    ZERO8, "flat", b.c, null);
       if (q) { q.air = 0; q.lit = b.glow || 0; }
     };
     (bd.sky || []).forEach(band);
@@ -1148,12 +1240,12 @@ function leaveOverlay(root, trigger) {
     if (mt) {
       const q = add(C, [[mt.x - mt.half, mt.base, mt.z], [mt.x + mt.half, mt.base, mt.z],
                         [mt.x + mt.crown, mt.top, mt.z], [mt.x - mt.crown, mt.top, mt.z]],
-                    ZERO8, "flat", "#2e3d5c", null, true);
+                    ZERO8, "flat", "#2e3d5c", null);
       if (q) { q.air = 0.12; q.lit = 0.3; }
       const line = mt.top - (mt.top - mt.base) * mt.snow;
       const cap = add(C, [[mt.x - mt.crown, mt.top, mt.z], [mt.x + mt.crown, mt.top, mt.z],
                           [mt.x + mt.crown * 1.9, line, mt.z], [mt.x - mt.crown * 1.9, line, mt.z]],
-                      ZERO8, "flat", "#c9d8f2", null, true);
+                      ZERO8, "flat", "#c9d8f2", null);
       if (cap) { cap.air = 0.14; cap.lit = 0.5; }
     }
     const tw = bd.tower;
@@ -1166,29 +1258,45 @@ function leaveOverlay(root, trigger) {
         const y0 = cuts[i], y1 = cuts[i + 1];
         const q = add(C, [[tw.x - taper(y0), y0, tw.z], [tw.x + taper(y0), y0, tw.z],
                           [tw.x + taper(y1), y1, tw.z], [tw.x - taper(y1), y1, tw.z]],
-                      ZERO8, "flat", i % 2 ? "#c9613a" : "#e8e2d4", null, true);
+                      ZERO8, "flat", i % 2 ? "#c9613a" : "#e8e2d4", null);
         if (q) { q.air = 0.1; q.lit = 0.62; }
       }
       const mast = add(C, [[tw.x - 18, tw.top, tw.z], [tw.x + 18, tw.top, tw.z],
                            [tw.x + 6, tw.mast, tw.z], [tw.x - 6, tw.mast, tw.z]],
-                       ZERO8, "flat", "#d8d2c4", null, true);
+                       ZERO8, "flat", "#d8d2c4", null);
       if (mast) mast.air = 0.1;
       (tw.decks || []).forEach((dy) => {
         const w = taper(dy) * 1.5;
         const deck = add(C, [[tw.x - w, dy, tw.z], [tw.x + w, dy, tw.z],
                              [tw.x + w, dy + 90, tw.z], [tw.x - w, dy + 90, tw.z]],
-                         ZERO8, "flat", "#f0d9a8", null, true);
+                         ZERO8, "flat", "#f0d9a8", null);
         if (deck) { deck.air = 0.06; deck.lit = 0.9; }
       });
     }
     const plaza = bd.plaza;
     if (plaza) {
-      const fl = add(C, [[-plaza.half, plaza.y, plaza.z0], [plaza.half, plaza.y, plaza.z0],
-                          [plaza.half, plaza.y, plaza.z1], [-plaza.half, plaza.y, plaza.z1]],
-          [plaza.z0 * DPM, -plaza.half * DPM, plaza.z0 * DPM, plaza.half * DPM,
-           plaza.z1 * DPM, plaza.half * DPM, plaza.z1 * DPM, -plaza.half * DPM],
-          "pat", floorPat, null, true);
-      if (fl) { fl.air = 0.22; fl.lit = 0.5; }
+      /* The ground beyond the window is the one surface whose *scale* the lane's own rule cannot
+         reach: an affine map is exact across a narrow panel and this plane is a hundred metres deep,
+         so one quad would bend the paving the way a single stretched quad bends a wall — the same
+         reason the lane's walls are 60 cm slices. It is also dressed at its own scale, one tile per
+         8 m, because a 64 cm tile sixty metres away is smaller than a pixel and comes back as a
+         shimmer nobody authored. Air is ramped with depth rather than fixed, so the far edge of the
+         plaza dissolves into the sky the compound is set against. */
+      const STEP = 1200, PU = 1 / 10;                     // panel depth, uv units per centimetre
+      const span = Math.max(1, plaza.z1 - plaza.z0);
+      for (let z = plaza.z0; z < plaza.z1; z += STEP) {
+        const z1 = Math.min(z + STEP, plaza.z1);
+        const fl = add(C, [[-plaza.half, plaza.y, z], [plaza.half, plaza.y, z],
+                           [plaza.half, plaza.y, z1], [-plaza.half, plaza.y, z1]],
+            [z * PU, -plaza.half * PU, z * PU, plaza.half * PU,
+             z1 * PU, plaza.half * PU, z1 * PU, -plaza.half * PU],
+            "pat", floorPat);
+        // Air ramps toward the lane's own murk ceiling and never past it: the plaza is the one
+        // surface whose far edge is allowed to dissolve into the sky, and FOG_MAX is what "far" is
+        // defined as in this renderer. A hand-picked 0.65 here would be the renderer telling a
+        // different story about distance than every other quad in the frame.
+        if (fl) { fl.air = 0.2 + ((z - plaza.z0) / span) * (FOG_MAX - 0.2); fl.lit = 0.5; }
+      }
     }
     const cross = bd.crossing;
     if (cross) {
@@ -1199,7 +1307,7 @@ function leaveOverlay(root, trigger) {
                           [cross.x1, cross.y + 1, z - cross.width / 2],
                           [cross.x1, cross.y + 1, z + cross.width / 2],
                           [cross.x0, cross.y + 1, z + cross.width / 2]],
-                      ZERO8, "flat", "#c7d3e8", null, true);
+                      ZERO8, "flat", "#c7d3e8", null);
         if (q) { q.air = 0.18; q.lit = 0.72; }
       }
       if (cross.diagonals) {
@@ -1213,28 +1321,78 @@ function leaveOverlay(root, trigger) {
                             [cx + cross.width / 2, cross.y + 1, cz - cross.width / 2],
                             [cx + cross.width / 2, cross.y + 1, cz + cross.width / 2],
                             [cx - cross.width / 2, cross.y + 1, cz + cross.width / 2]],
-                        ZERO8, "flat", "#b9c7de", null, true);
+                        ZERO8, "flat", "#b9c7de", null);
           if (q) { q.air = 0.2; q.lit = 0.62; }
         }
       }
     }
+    /* A window is a window. The tile carries an 8x8 grid of them, so the only fact a facade needs is
+       how wide one cell is — 1.6 m, which puts five or six across a nine metre block. The scale used to
+       be `0.5 + win` *interpreted as uv units per centimetre*, which is ~40 windows on the same facade:
+       at 29 m that is two pixels per window, and the whole compound came back as television static.
+       `win` is the share of the block that is lit, so it moves the brightness, not the grid. */
+    const CELL_CM = 160, WINU = 16 / CELL_CM;
     (bd.city || []).forEach((b) => {
-      const hw = b.w / 2, k = 0.5 + (b.win || 0.4);
+      const hw = b.w / 2, k = WINU, glow = (0.3 + (b.win || 0.4) * 0.4) * (b.tone === undefined ? 1 : b.tone);
       const face = add(C, [[b.x - hw, 0, b.z], [b.x + hw, 0, b.z], [b.x + hw, b.h, b.z],
                            [b.x - hw, b.h, b.z]],
           [(b.x - hw) * k, 0, (b.x + hw) * k, 0, (b.x + hw) * k, -b.h * k, (b.x - hw) * k, -b.h * k],
-          "pat", winPat, null, true);
-      if (face) { face.air = 0.14; face.lit = 0.46; }
+          "pat", winPat, null);
+      if (face) { face.air = 0.14; face.lit = glow; }
       const side = b.x < 0 ? 1 : -1;
       const sf = add(C, [[b.x + side * hw, 0, b.z - hw], [b.x + side * hw, 0, b.z + hw],
                           [b.x + side * hw, b.h, b.z + hw], [b.x + side * hw, b.h, b.z - hw]],
           [(b.z - hw) * k, 0, (b.z + hw) * k, 0, (b.z + hw) * k, -b.h * k, (b.z - hw) * k, -b.h * k],
-          "pat", winPat, null, true);
-      if (sf) { sf.air = 0.14; sf.lit = 0.3; }
+          "pat", winPat, null);
+      if (sf) { sf.air = 0.14; sf.lit = glow * 0.66; }
       const lip = add(C, [[b.x - hw, b.h, b.z], [b.x + hw, b.h, b.z], [b.x + hw, b.h, b.z - 40],
-                          [b.x - hw, b.h, b.z - 40]], ZERO8, "flat", "#0f1727", null, true);
+                          [b.x - hw, b.h, b.z - 40]], ZERO8, "flat", "#0f1727", null);
       if (lip) lip.air = 0.1;
     });
+    /* A nearer row of rooftops, flanking the crossing rather than standing on it: the first thing the
+       aperture shows should be a silhouette at the height a lane sees roofs, because a lane that opened
+       straight onto eight-storey facades would read as a diagram of a city rather than a view of one.
+       They carry their own tone, so a low-rise row is not eight photocopies of one block. */
+    (bd.roofs || []).forEach((r) => {
+      const hw = r.w / 2, y0 = r.y || 0, tone = 0.34 + (r.tone === undefined ? 0.4 : r.tone * 0.6);
+      const face = add(C, [[r.x - hw, y0, r.z], [r.x + hw, y0, r.z],
+                           [r.x + hw, y0 + r.h, r.z], [r.x - hw, y0 + r.h, r.z]],
+          ZERO8, "flat", "#1d2740");
+      if (face) { face.air = 0.1; face.lit = tone; }
+      const eave = add(C, [[r.x - hw, y0 + r.h, r.z], [r.x + hw, y0 + r.h, r.z],
+                           [r.x + hw, y0 + r.h, r.z - 140], [r.x - hw, y0 + r.h, r.z - 140]],
+          ZERO8, "flat", "#2b3752");
+      if (eave) { eave.air = 0.08; eave.lit = tone * 1.5; }   // the edge the sky can still reach
+    });
+    /* And a raised road crossing the whole view, above the crossing below it: the one piece of
+       infrastructure that says "this city is bigger than this window". The lane's own rule holds out
+       here too — the deck, its piers and the row of lamps along it are all authored numbers, and those
+       lamps are geometry rather than light sources, because nothing out there may light the lane. */
+    const ex = bd.express;
+    if (ex) {
+      const thick = ex.thick || 160, depth = ex.depth || 900, ground = ex.ground === undefined ? -260 : ex.ground;
+      const deck = add(C, [[-ex.half, ex.y, ex.z], [ex.half, ex.y, ex.z],
+                           [ex.half, ex.y + thick, ex.z], [-ex.half, ex.y + thick, ex.z]],
+          ZERO8, "flat", "#39445c");
+      if (deck) { deck.air = 0.16; deck.lit = 0.34; }
+      const under = add(C, [[-ex.half, ex.y, ex.z], [ex.half, ex.y, ex.z],
+                            [ex.half, ex.y, ex.z + depth], [-ex.half, ex.y, ex.z + depth]],
+          ZERO8, "flat", "#1b2338");
+      if (under) { under.air = 0.2; under.lit = 0.2; }
+      (ex.lamps || []).forEach((lx) => {
+        const lamp = add(C, [[lx - 46, ex.y + thick - 74, ex.z - 1], [lx + 46, ex.y + thick - 74, ex.z - 1],
+                             [lx + 46, ex.y + thick - 34, ex.z - 1], [lx - 46, ex.y + thick - 34, ex.z - 1]],
+            ZERO8, "flat", "rgba(255,226,178,0.72)");
+        if (lamp) { lamp.air = 0.1; lamp.lit = 1.1; }
+      });
+      (ex.piers || []).forEach((px) => {
+        const pw = (ex.pier || 220) / 2;
+        const pier = add(C, [[px - pw, ground, ex.z], [px + pw, ground, ex.z],
+                             [px + pw, ex.y, ex.z], [px - pw, ex.y, ex.z]],
+            ZERO8, "flat", "#2a3247");
+        if (pier) { pier.air = 0.18; pier.lit = 0.26; }
+      });
+    }
   };
 
   const draw = () => {
@@ -1278,10 +1436,15 @@ function leaveOverlay(root, trigger) {
           [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#232f4a");
       if (cl) cl.lit = AMBIENT * 0.8;   // out of the bulbs' reach, and it should look that way
     }
+    /* The wall the lane runs into is the largest single surface in the deepest frame, and it was the
+       lane's default tile: a pale grid with nothing in it, which read as the page having run out rather
+       than as a wall. It is board-formed concrete now, the same material as the far half of the side
+       walls — the face is at Z_FAR and dead ahead of the camera, so one affine map covers it exactly,
+       and the pour seams and tie holes give the paint the scale the aperture is read against. */
     const wallPiece = (x0, y0, x1, y1, at) => {
       const q = add(C, [[x0, y0, Z_FAR], [x1, y0, Z_FAR], [x1, y1, Z_FAR], [x0, y1, Z_FAR]],
           [x0 * DPM, -y0 * DPM, x1 * DPM, -y0 * DPM, x1 * DPM, -y1 * DPM, x0 * DPM, -y1 * DPM],
-          "pat", tilePat);
+          "pat", concretePat);
       if (q) q.lit = at;
       return q;
     };
@@ -1300,10 +1463,17 @@ function leaveOverlay(root, trigger) {
                       ZERO8, "flat", mix("#465572", -0.16));
         if (q) q.lit = lightAt(ex * 0.6, 210, Z_FAR) * 1.2;
       });
+      /* The bottom of the opening is a parapet, not a hole: the camera stands above its lip, so the
+         reveal's top face is the one surface of the whole end wall seen from above. A pale grey there
+         read as the wall continuing round a corner. It is a galvanised coping — the one piece of the
+         lane the weather actually runs off — and it is the brightest line in the frame on purpose,
+         because it is the edge you stand at and the line the city is measured against. */
       const sill = add(C, [[vx0, vista.y0, Z_FAR], [vx1, vista.y0, Z_FAR],
                            [vx1, vista.y0, Z_FAR - deep], [vx0, vista.y0, Z_FAR - deep]],
-                       ZERO8, "flat", mix("#5a6a88", 0.1));
-      if (sill) sill.lit = lightAt(0, 120, Z_FAR) * 1.3;
+                       [vx0 * DPM, vista.y0 * DPM, vx1 * DPM, vista.y0 * DPM,
+                        vx1 * DPM, (vista.y0 - deep) * DPM, vx0 * DPM, (vista.y0 - deep) * DPM],
+                       "pat", galvPat);
+      if (sill) sill.lit = lightAt(0, 120, Z_FAR) * 1.5;
     } else {
       wallPiece(-WALL, 0, WALL, CEIL, lightAt(0, 210, Z_FAR));
     }
@@ -1349,9 +1519,24 @@ function leaveOverlay(root, trigger) {
       });
     });
     if (bd) drawFar(C);
-    const back = add(C, [[WALL, 0, Z_BACK], [-WALL, 0, Z_BACK], [-WALL, CEIL, Z_BACK], [WALL, CEIL, Z_BACK]],
-        [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#2a3854");
+    /* The wall at your back is a surface with no authored cladding, and the material model's own
+       default for that is the wall's tiles — not a flat colour. It was a flat plank, which meant that
+       turning round at the entrance filled the screen with one grey rectangle three metres away and
+       read as "the renderer stopped" rather than "the lane ends here". Lit, as everything is, by the
+       room's own sources: there is no lamp behind the mouth, so it stays dim, and that is true. */
+    /* Split into two heights rather than one: the tile above and a plinth of the same concrete the rest
+       of the lane's lower walls are made of, because a wall that meets a wet floor in the same material
+       it has at eye height is the one thing no alley wall does. It is one extra quad and it is what
+       turns the frame behind you at the entrance from a pale rectangle into a wall. */
+    const PLINTH = 92;
+    const back = add(C, [[WALL, PLINTH, Z_BACK], [-WALL, PLINTH, Z_BACK], [-WALL, CEIL, Z_BACK], [WALL, CEIL, Z_BACK]],
+        [WALL * DPM, -PLINTH * DPM, -WALL * DPM, -PLINTH * DPM,
+         -WALL * DPM, -CEIL * DPM, WALL * DPM, -CEIL * DPM], "pat", tilePat);
     if (back) back.lit = lightAt(0, 210, Z_BACK);
+    const plinth = add(C, [[WALL, 0, Z_BACK], [-WALL, 0, Z_BACK], [-WALL, PLINTH, Z_BACK], [WALL, PLINTH, Z_BACK]],
+        [WALL * DPM, 0, -WALL * DPM, 0, -WALL * DPM, -PLINTH * DPM, WALL * DPM, -PLINTH * DPM],
+        "pat", concretePat);
+    if (plinth) plinth.lit = lightAt(0, 30, Z_BACK) * 1.25;
 
     beams.forEach((bz) => {          // so the ceiling has a rhythm, and the lane reads as a podium
       const y = CEIL - 26, half = 11;
@@ -1591,6 +1776,109 @@ function leaveOverlay(root, trigger) {
                        ZERO8, "flat", mix(base, flip ? 0.12 : -0.28));
         if (q1) { q1.lit = lit * (flip ? 1.05 : 0.7); drawn.push(q1); }
         if (flip && q0) q0.lit = lit * 0.62;
+      } else if (shape === "mirror") {
+        /* A convex mirror on a bracket, which is the most Tokyo object a lane can hold and the only
+           one here that turns. It is drawn, not silvered: there is nothing behind the glass in this
+           scene, so it is a pale disc with one highlight and no reflection of any kind — a mirror
+           that invented a reflection would be the renderer making something up.
+
+           `turn` swings the whole disc about its bracket (up to 62 degrees) by rotating its plane: a
+           point `u` along the disc moves in depth by `u·sinθ` and across by `u·cosθ`, so a stop is a
+           change in the geometry rather than a caption on it, and the reach ring follows. */
+        const dir = m.x < 0 ? 1 : -1;
+        const r = Math.min(m.w, m.h) / 2, cy = m.y + m.h / 2;
+        const turn = S && S.turn ? S.turn : 0;
+        const th = turn * 1.082;                        // 62 degrees, as a fraction of a turn
+        const st = Math.sin(th), ct = Math.cos(th);
+        const P = (u, y, v) => [m.x + dir * (v + u * st), y, m.z + u * ct];
+        const disc = (rad, off, col, l) => {
+          const pts = [];
+          for (let i = 0; i < 12; i++) {
+            const a = (i / 12) * 6.2832;
+            pts.push(P(Math.cos(a) * rad, cy + Math.sin(a) * rad, off));
+          }
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; drawn.push(q); }
+        };
+        disc(r, 9, mix(base, -0.26), lit * 0.78);                  // the rim, 9 cm off the wall
+        disc(r * 0.9, 6, "rgba(196,212,232,0.55)", lit * 0.9);     // the glass
+        const hi = add(C, [P(-r * 0.52, cy + r * 0.34, 5), P(-r * 0.1, cy + r * 0.5, 5),
+                           P(-r * 0.08, cy + r * 0.16, 5), P(-r * 0.44, cy + r * 0.02, 5)],
+                      ZERO8, "flat", "rgba(255,246,224,0.34)");
+        if (hi) { hi.lit = lit * 1.1; drawn.push(hi); }            // one highlight, and no image
+        const arm = add(C, [P(-5, cy - 3, 0), P(5, cy - 3, 0), P(5, cy + 3, 0), P(-5, cy + 3, 0)],
+                        ZERO8, "flat", mix(base, -0.3));
+        if (arm) { arm.lit = lit * 0.6; drawn.push(arm); }         // the bracket it turns on
+      } else if (shape === "ladder") {
+        /* Two rails and five rungs, leaning out of the wall by `d` centimetres. A ladder is almost
+           pure silhouette, which is exactly why it belongs in a lane that is otherwise all surface:
+           it is the one prop whose whole reading is a rhythm of horizontals at an angle. */
+        const dir = m.x < 0 ? 1 : -1;
+        const along = Math.abs(m.ry) > 45;
+        const rw = 5, lean = m.d;
+        const P = (u, y, v) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
+        [-1, 1].forEach((sgn) => {
+          const u = sgn * (m.w / 2 - rw / 2);
+          const rail = add(C, [P(u - rw / 2, 0, lean), P(u + rw / 2, 0, lean),
+                               P(u + rw / 2, m.h, 5), P(u - rw / 2, m.h, 5)],
+                           ZERO8, "flat", mix(base, -0.22));
+          if (rail) { rail.lit = lit; drawn.push(rail); }
+        });
+        for (let i = 1; i <= 5; i++) {
+          const t = i / 5.6, y = m.h * t, v = lean + (5 - lean) * t;
+          const rung = add(C, [P(-m.w / 2 + 2, y, v), P(m.w / 2 - 2, y, v),
+                               P(m.w / 2 - 2, y + 5, v), P(-m.w / 2 + 2, y + 5, v)],
+                           ZERO8, "flat", mix(base, 0.05));
+          if (rung) { rung.lit = lit * 1.12; drawn.push(rung); }
+        }
+      } else if (shape === "bank") {
+        /* A ploughed edge: two boxes of different lengths, the longer one lower, so the silhouette
+           rises from the lane instead of standing on it like furniture. Snow is the one thing in
+           these rooms that is drawn by its silhouette and its brightness rather than its material. */
+        [[0, m.h * 0.55, m.d], [m.h * 0.55, m.h * 0.45, m.d * 0.62]].forEach(([y0, h, d]) => {
+          facesOf({ ...m, y: m.y + y0, h: h, d: d, w: m.w * (y0 ? 0.86 : 1) }).forEach((f) => {
+            const q = add(C, f.pts, f.uv, f.mode, f.arg, f.img);
+            if (q) { q.lit = lit * (y0 ? 1.12 : 1.0); drawn.push(q); }
+          });
+        });
+      } else if (shape === "hydrant") {
+        /* A standpipe at the kerb: it is three boxes and two caps, and the reason it earns its place is
+           that it is recognisable as a silhouette at thirty metres. Nothing is claimed about water
+           pressure or about anybody's fire. */
+        [[0, m.h * 0.6, m.w, m.d, 0], [m.h * 0.6, m.h * 0.16, m.w * 0.74, m.d * 0.74, 0.12],
+         [m.h * 0.76, m.h * 0.24, m.w * 0.4, m.d * 0.4, 0.2]].forEach(([y0, h, w, d, k]) => {
+          facesOf({ ...m, y: m.y + y0, h: h, w: w, d: d }).forEach((f) => {
+            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                         + f.n[2] * (C.z - f.p[0][2]);
+            if (toward <= 0) return;
+            const q = add(C, f.p, ZERO8, "flat", mix(base, f.k + k + (lit - 0.7) * 0.2));
+            if (q) { q.lit = lit; drawn.push(q); }
+          });
+        });
+        const collar = add(C, [[m.x - m.d * 0.62, m.y + m.h * 0.42, m.z], [m.x + m.d * 0.62, m.y + m.h * 0.42, m.z],
+                               [m.x + m.d * 0.62, m.y + m.h * 0.56, m.z], [m.x - m.d * 0.62, m.y + m.h * 0.56, m.z]],
+                           ZERO8, "flat", mix(base, -0.24));
+        if (collar) { collar.lit = lit * 0.9; drawn.push(collar); }
+      } else if (shape === "camera") {
+        /* The only lens in the lane, and it is drawn rather than implied: a body on a bracket, a lens
+           looking down the lane, and a small light beside it whose glow is authored in the record as
+           `of: camera`. Nothing is recorded by it and nothing in this lane is watched. */
+        const dir = m.x < 0 ? 1 : -1;
+        facesOf(m).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
+          if (q) { q.lit = lit; drawn.push(q); }
+        });
+        const along = Math.abs(m.ry) > 45;
+        const lensPts = along
+          ? [[m.x + dir * 4, m.y + m.h * 0.22, m.z - 6], [m.x + dir * 4, m.y + m.h * 0.22, m.z + 6],
+             [m.x + dir * 4, m.y + m.h * 0.78, m.z + 6], [m.x + dir * 4, m.y + m.h * 0.78, m.z - 6]]
+          : [[m.x - 6, m.y + m.h * 0.22, m.z + dir * 4], [m.x + 6, m.y + m.h * 0.22, m.z + dir * 4],
+             [m.x + 6, m.y + m.h * 0.78, m.z + dir * 4], [m.x - 6, m.y + m.h * 0.78, m.z + dir * 4]];
+        const lens = add(C, lensPts, ZERO8, "flat", "rgba(24,32,48,0.8)");
+        if (lens) { lens.lit = lit * 0.5; drawn.push(lens); }
       } else if (shape === "plate") {
         const q = add(C, [[m.x - m.w / 2, m.y + 1, m.z - m.d / 2], [m.x + m.w / 2, m.y + 1, m.z - m.d / 2],
                           [m.x + m.w / 2, m.y + 1, m.z + m.d / 2], [m.x - m.w / 2, m.y + 1, m.z + m.d / 2]],
@@ -1683,8 +1971,12 @@ function leaveOverlay(root, trigger) {
       const dx = swayOf(L);
       glow(L.x + dx, L.y, L.z, L.r, L.tint);
       if (L.wet) reflect(L.x + dx, L.z, L.r * 3.6);   // each bulb's pool, thrown back by the asphalt
+      /* Only a lamp the record calls a bulb gets a bulb drawn. Everything else already has a body in
+         the scene — a lantern's paper, a machine's panel, a camera's lens — and drawing a white dot at
+         the light's own coordinate put a floating bulb in the middle of the lane for every glow that
+         was authored `of` something, and one in mid-air for the city's bounce through the window. */
       const p = camPt(C, L.x, L.y, L.z);
-      if (p.z > NEAR) {                            // the bulb itself, so the glow has a body
+      if (L.bulb && p.z > NEAR) {                  // the bulb itself, so the glow has a body
         const sx = W * 0.5 + (focal * p.x) / p.z, sy = H * 0.5 + (focal * p.y) / p.z;
         g.fillStyle = "rgba(255,240,206,0.92)";
         g.beginPath(); g.arc(sx, sy, Math.max(1.5, (focal * 9) / p.z), 0, 6.2832); g.fill();
@@ -1771,16 +2063,25 @@ function leaveOverlay(root, trigger) {
   };
   const metres = (v) => `${(Math.abs(v) / 100).toFixed(1)} m`;
 
+  /* Two claimants for one line, and the line is also the live region a screen reader follows: what you
+     are standing in front of, and where you are standing. The thing in front wins, always — a station
+     name that arrives a frame later used to overwrite the reach announcement and left the readout
+     describing the floor while a shutter was a metre away and offered. The station is what the line
+     falls back to when nothing is in reach, which is the only order that is true in both directions. */
+  const sayPlace = () => {
+    if (here >= 0 && hereFar < 240) say(`${labels[here]} · ${metres(depth)} in`, "");
+  };
   const markStops = () => {
     let best = -1, far = Infinity;
     stopZ.forEach((z, i) => {
       const d = Math.abs(z - depth);
       if (d < far) { far = d; best = i; }
     });
-    if (best === here) return;
-    here = best;
+    here = best; hereFar = far;
+    if (best === hereShown) return;
+    hereShown = best;
     stops.forEach((el, i) => el.classList.toggle("is-here", i === here));
-    if (here >= 0 && far < 240) say(`${labels[here]} · ${metres(depth)} in`, "");
+    if (!reach) sayPlace();
   };
   // The chip's name lives in `aria-label` now, because nothing is written on the display any more;
   // splitting it is the whole difference between an announced status and a painted one.
@@ -1807,7 +2108,7 @@ function leaveOverlay(root, trigger) {
     if (best && best.el === (reach && reach.el)) { reach = best; return; }
     if (reach) reach.el.classList.remove("is-reach");
     reach = best;
-    if (!best) { layer.classList.remove("has-reach"); return; }
+    if (!best) { layer.classList.remove("has-reach"); sayPlace(); return; }
     best.el.classList.add("is-reach");
     // One non-verbal signal for the whole display: the note button carries a dot while there is
     // something to read about what is in front of you.
