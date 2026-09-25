@@ -112,7 +112,7 @@ ok("the lane is furnished, and every prop is authored", ids.length >= 20, `${ids
 ok("each object carries its own depth, so a prop is a solid", (html.match(/data-d="\d+"/g) || []).length === ids.length);
 ok("the lookout rail is one of them", ids.includes("ledge"));
 ok("the end wall is clear: the two things that were on it moved beside it",
-   /data-obj="frame-tower"[^>]*--x:314px/.test(html) && /data-obj="poster-ticket"[^>]*--x:-310px/.test(html));
+   /data-obj="frame-tower"[^>]*--x:314px/.test(html) && /data-obj="frame-poster-ticket"[^>]*--x:-310px/.test(html));
 const island = (name) => {
   const m = html.match(new RegExp(`data-walk-${name}>(.*?)</script>`));
   return m ? JSON.parse(m[1]) : null;
@@ -366,11 +366,11 @@ await settle(798);
 await hold("a", 1500);                                   // to the left wall, x clamps at -290
 await sleep(120);
 ok("the wall prop nearer you wins: the reach is nearest-first, not list-order",
-   /Utility pole|Poster|Frame|crate|drain|bin|sign/.test(status()), status());
+   /The scramble at Shibuya|Utility pole|crate|drain|bin|sign/.test(status()), status());
 click(stopAt(798));
 await settle(798);
 ok("standing at the frame's own depth brings it into reach",
-   /Frame: the scramble at Shibuya/.test(status()), status());
+   /The scramble at Shibuya/.test(status()), status());
 ok("the reach is announced with a dot on the note button, never with a caption",
    q("[data-walk]").classList.contains("has-reach")
      && /\.walk\.has-reach \.walk-info::after/.test(css));
@@ -385,14 +385,14 @@ const plate = q("#room-plate");
 ok("E opens the plate on that frame", plate.classList.contains("is-open")
    && /scramble/i.test(q("[data-room-title]").textContent));
 ok("the plate opens at the frame you were standing in front of, and carries the whole reel",
-   qa("[data-story-frame]").length === 3
-   && q("[data-story-count]").textContent.trim() === `${Number(inReach[0].dataset.frame) + 1} of 3`,
+   qa("[data-story-frame]").length === 6
+   && q("[data-story-count]").textContent.trim() === `${Number(inReach[0].dataset.frame) + 1} of 6`,
    q("[data-story-count]").textContent);
 const panel0 = plate.querySelector(".modal-panel");
 const segEls = qa(".story-seg");
 const nowIdx = Number(inReach[0].dataset.frame);
 ok("a story's bars are one per frame, and the current one is the bar that fills",
-   segEls.length === 3 && segEls[nowIdx].classList.contains("is-now")
+   segEls.length === 6 && segEls[nowIdx].classList.contains("is-now")
      && segEls.every((sg) => !sg.firstChild.getAttribute("style")),
    segEls.map((sg) => sg.className.replace("story-seg", "·") || "pending").join(" "));
 ok("the ground behind the story is the frame's own pixels, so the screen changes with the frame",
@@ -489,14 +489,10 @@ ok("an interactive thing says so without a word: the reach ring is dashed for a 
    are), a far prop's press box was as small as the few pixels it covered, and the curtain that reads
    "part it to leave the lane" opened a card instead of leaving. jsdom passed all three for a week. */
 const noren = q('[data-obj="noren"]');
-/* The curtain opens onto the album now, not onto the CV: the album is the picker, so leaving a room
-   lands on the place you choose the next room from, and the corner link is what goes back to the CV.
-   What this asserts is not the destination — that is the chain's business — it is that the chrome and
-   the prop read the same authored value, so the two ways out of a room cannot point different ways. */
-/* The curtain opens onto the room behind this one, or onto the album when this is the first room of
-   the chain, and the corner control reads the same authored value. What this asserts is not the
-   destination — the corridor block computes that from the ROOMS table — it is that the two ways out of
-   a room cannot point different ways, whichever room the chain puts them on. */
+/* The curtain opens onto the hub street: out of any room, onto the place the other rooms hang off.
+   What this asserts is not the destination — that is the hub block's business — it is that the chrome
+   and the prop read the same authored value, so the two ways out of a room cannot point different
+   ways, whichever room they are on. */
 ok("the way out is authored in the record, and the chrome reads the same link",
    /^[a-z-]+\.html$/.test(noren.dataset.leave)
      && q("[data-walk-exit]").getAttribute("href") === noren.dataset.leave);
@@ -760,59 +756,90 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
      [...tokens].join(" ") + (wrong.length ? " — " + wrong.join(", ") : ""));
 }
 
-/* ---- 7. the corridor: a place is its page, and the rooms are a chain ---------------------------------- */
+/* ---- 7. the hub: the street is a place, and every door hangs off it ----------------------------------- */
 {
   // The generator's own tables, read the way the generator reads them: source order, the ROOMS rows
   // first, then each district's page and plates. This is a structural assertion on purpose — whether
   // the walk itself is right is what the rest of this file and the pixel gate are for, but a place
-  // that has drifted out of the chain is a page nothing can reach.
+  // that has drifted off the hub is a page nothing can reach.
   const rooms = Array.from(gen.matchAll(
-    /^\s*\("([a-z-]+)", "([^"]+)", "([^"]+\.html)", \["([a-z-]+)"\], "(open|soon)"\),$/gm))
-    .map((m) => ({ id: m[1], label: m[2], page: m[3], prefix: m[4], status: m[5] }));
-  ok("the rooms table declares the chain, one row per place",
-     rooms.length >= 1 && rooms.every((r, i) => i === 0 || r.id !== rooms[i - 1].id),
+    /^\s*\("([a-z-]+)", "([^"]+)", "([^"]+\.html)", \[("([a-z-]+)")?\], "(open|soon)"\),$/gm))
+    .map((m) => ({ id: m[1], label: m[2], page: m[3], prefix: m[5] || "", status: m[6] }));
+  ok("the rooms table declares the hub, one row per place, street first",
+     rooms.length >= 2 && rooms[0].id === "street" && rooms[0].status === "open"
+       && rooms.every((r, i) => i === 0 || r.id !== rooms[i - 1].id),
      rooms.map((r) => `${r.id}:${r.status}`).join(" "));
-  ok("every built room is a page on disk, with the place's own box in it",
+  ok("every built place is a page on disk, with the place's own box in it",
      rooms.filter((r) => r.status === "open").every((r) => fs.existsSync(r.page)
        && /data-lane-w="\d+" data-lane-d="\d+" data-lane-ceil="\d+"/.test(fs.readFileSync(r.page, "utf8"))));
-  ok("a room's page is titled as that room, not as the site",
+  ok("a place's page is titled as that place, not as the site",
      rooms.filter((r) => r.status === "open")
        .every((r) => new RegExp(`<title>${r.label} · Rooms · Hua-Xu Zhong</title>`)
          .test(fs.readFileSync(r.page, "utf8"))));
-  ok("the district takes its page and its plates from the row, so the two cannot drift",
-     /"page": ROOM_BY_ID\["tokyo"\]\["page"\]/.test(gen)
-       && /"plates": ROOM_BY_ID\["tokyo"\]\["plates"\]/.test(gen));
-  /* The corridor, room by room. Each built room's two ways out are computed from the ROOMS table — the
-     curtain onto the room before it (or the album at the near end), the far door onto the room after it
-     (or nothing at the far end) — and then looked for in that room's own page. This is the assertion
-     that would have caught a chain wired in the order the records happen to sit in the file, which is
-     backwards for every room at once and invisible until someone walks it. */
+  ok("the street district takes its page and plates from the row, so the two cannot drift",
+     /"page": ROOM_BY_ID\["street"\]\["page"\]/.test(gen)
+       && /"plates": ROOM_BY_ID\["street"\]\["plates"\]/.test(gen));
+  ok("each room district takes its page and plates from its own row",
+     rooms.filter((r) => r.id !== "street").every((r) =>
+       new RegExp(`ROOM_BY_ID\\["${r.id}"\\]\\["page"\\]`).test(gen)
+       && new RegExp(`ROOM_BY_ID\\["${r.id}"\\]\\["plates"\\]`).test(gen)));
+  /* The hub, room by room. Every built room's every way out — curtain, HUD exit, anything with a
+     data-leave — must land on the street, and the street must carry exactly one door per room plus
+     its own door to the album. This is the assertion that would have caught a room still wired as
+     the old chain (a curtain to the room behind, a far door to the room ahead), which is exactly the
+     architecture the hub replaced, and invisible until someone walks it. */
   const built = rooms.filter((r) => r.status === "open");
+  const streetRow = built.find((r) => r.id === "street");
+  const roomRows = built.filter((r) => r.id !== "street");
   const problems = [];
-  built.forEach((r, i) => {
+  for (const r of roomRows) {
     const html = fs.readFileSync(r.page, "utf8");
     const leaves = Array.from(html.matchAll(/data-leave="([^"]+)"/g)).map((m) => m[1]);
-    const wantBack = i === 0 ? "activities.html" : built[i - 1].page;
-    const wantOn = i + 1 < built.length ? built[i + 1].page : null;
-    if (!leaves.includes(wantBack)) problems.push(`${r.id}: no curtain to ${wantBack}`);
-    if (wantOn && !leaves.includes(wantOn)) problems.push(`${r.id}: no door to ${wantOn}`);
-    if (!wantOn && /id="way-on"/.test(html)) problems.push(`${r.id}: a door onto nothing`);
-    if (html.includes(r.page) && wantOn === null && leaves.length > 1)
-      problems.push(`${r.id}: a door past the end of the chain`);
-  });
-  ok("every room opens the way it should: back toward the album, on toward the next place",
+    if (!leaves.length) problems.push(`${r.id}: no way out at all`);
+    for (const t of new Set(leaves))
+      if (t !== streetRow.page) problems.push(`${r.id}: a leave to ${t}, not the street`);
+    if (/id="way-on"/.test(html)) problems.push(`${r.id}: still carries a chain door`);
+    if (html.includes(streetRow.page) === false) problems.push(`${r.id}: the street is not named on it`);
+  }
+  {
+    const html = fs.readFileSync(streetRow.page, "utf8");
+    const leaves = Array.from(html.matchAll(/data-leave="([^"]+)"/g)).map((m) => m[1]);
+    for (const r of roomRows)
+      if (!leaves.includes(r.page)) problems.push(`street: no door onto ${r.id}`);
+    if (!leaves.includes("activities.html")) problems.push("street: no door onto the album");
+    const doorTargets = new Set(leaves);
+    for (const t of doorTargets)
+      if (t !== "activities.html" && !roomRows.some((r) => r.page === t))
+        problems.push(`street: a door to ${t}, which is no built room`);
+    if (leaves.filter((t) => t === "activities.html").length !== 1)
+      problems.push("street: the album door is not exactly one");
+  }
+  ok("the hub door graph closes: rooms leave only to the street, the street doors every room + the album",
      problems.length === 0, problems.join("; "));
-  // The nav item called Rooms is the front door of the walk, so it has to open at the near end: a
-  // visitor arriving there should start where the chain starts rather than in the middle of it.
+  // Sub-area closure: the Field notes plates are allocated to little places inside the rooms, and
+  // the drawn frame holding each place carries the place's name as its title. A frame whose title is
+  // not one of its room's slot labels is an image with a name but no place — exactly the drift the
+  // allocation was drawn up to prevent.
+  const gaps = [];
+  for (const r of roomRows) {
+    const html = fs.readFileSync(r.page, "utf8");
+    const frameTags = [...html.matchAll(/<button type="button" class="walk-hit"[^>]*>/g)]
+      .map((m) => m[0]).filter((t) => /data-obj="frame-/.test(t));
+    const slotLabels = [...html.matchAll(/<strong>([^<]+)<\/strong>/g)].map((m) => m[1]);
+    for (const t of frameTags) {
+      const title = (t.match(/data-title="([^"]+)"/) || [])[1];
+      if (title && !slotLabels.includes(title)) gaps.push(`${r.id}: “${title}” has no sub-area slot`);
+    }
+  }
+  ok("every frame in a room is one of that room's named sub-areas", gaps.length === 0, gaps.join("; "));
+  // The nav item called Rooms is the front door of the walk, so it opens the hub street: a visitor
+  // arriving there starts on the street, where every room is one door away.
   const navRooms = fs.readdirSync(".").filter((f) => f.endsWith(".html"))
     .map((f) => ({ f, m: fs.readFileSync(f, "utf8").match(/<a href="([^"]+)" class="[^"]*">Rooms<\/a>/) }))
     .filter((x) => x.m);
-  ok("the nav item called Rooms starts the walk at its near end",
-     built.length === 0 || (navRooms.length > 0 && navRooms.every((x) => x.m[1] === built[0].page)),
+  ok("the nav item called Rooms opens the hub street",
+     built.length === 0 || (navRooms.length > 0 && navRooms.every((x) => x.m[1] === streetRow.page)),
      navRooms.map((x) => `${x.f}->${x.m[1]}`).slice(0, 3).join(" "));
-  ok("the district takes its page and plates from its own row, for every room, not just the first",
-     rooms.every((r) => new RegExp(`"${r.id}", "label": "[^"]+"`.replace("label", "id")).test(gen) === false
-       || new RegExp(`ROOM_BY_ID\\["${r.id}"\\]\\["page"\\]`).test(gen)));
   // The album is the picker: a plate whose room is built carries the door under it, and a plate whose
   // room is shut does not, because a locked door on a picture is a promise the site cannot keep.
   const doors = Array.from(act.matchAll(/<a class="ig-room" href="([^"]+)"/g)).map((m) => m[1]);

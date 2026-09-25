@@ -1,14 +1,18 @@
-/* verify-rooms-e2e.cjs — the chain, walked with the keys, not clicked.
+/* verify-rooms-e2e.cjs — the hub street, walked with the keys, not clicked.
 
-   Boots each open room, walks the lane the way a visitor does (W to move, arrow
-   taps to turn, E to act), and proves the three questions the static harnesses
-   cannot answer end to end:
+   The site is a street with three rooms off it, and this harness walks it the
+   way a visitor does (W to move, A/D to edge across, arrow taps to turn, E to
+   act, Esc to leave) and proves the things a static grep cannot:
 
-     1. Canada: walking to the far end brings the onward door into reach, and E
-        on it leaves for Tokyo.
-     2. Tokyo: the same walk reaches ITS onward door, and E leaves for Fukuoka.
-     3. Fukuoka: the lane ends in water, there is no onward door, and Esc — the
-        designed exit — leaves for the room behind (Tokyo).
+     1. The street boots outdoors: sky vista and backdrop wired, lamps painted,
+        and at least one room door within reach of the mouth.
+     2. Each street door is reachable on foot — walk beside it, face it, press
+        E — and E leaves for the room it names (Canada, Tokyo, Fukuoka).
+     3. Every room's back curtain leaves for the street, and Esc — the designed
+        exit — leaves for the street from all three rooms.
+     4. The street's own back door leaves for the album, not for a room.
+     5. The doors are drawn geometry: walked-in and turned-for, each is a
+        visible plane and clicking it navigates.
 
    jsdom has no layout and refuses navigation; the camera math is deterministic,
    so movement is driven by pumping requestAnimationFrame with a monotonic clock
@@ -48,8 +52,7 @@ function boot(file) {
     w.IntersectionObserver = class {
       constructor(cb){ this.cb = cb; }
       observe(el){ this.cb([{ target: el, isIntersecting: true, intersectionRatio: 1 }], this); }
-      unobserve(){} disconnect(){}
-    };
+      unobserve(){} disconnect(){} };
     w.PointerEvent = w.MouseEvent;
     w.Element.prototype.animate = () => ({ cancel(){}, finished: Promise.resolve() });
     w.ResizeObserver = class { observe(){} unobserve(){} disconnect(){} };
@@ -136,42 +139,144 @@ async function turnToReach(env, objId, maxTaps = 60) {
   return !!(r && r.dataset.obj === objId);
 }
 
+/* Sidle along the street (A or D, no forward motion) until the wanted door is
+   the one in reach once you face it. Doors sit flush to a wall at x ±346; the
+   walker's stop keeps ~60 cm off the wall, well inside the 190 cm reach, so
+   the whole problem is being beside the door in z — edging solves that. */
+async function sidleToReach(env, objId, dir = -1, maxFrames = 400) {
+  const k = dir < 0 ? "a" : "d";
+  env.key(k);
+  for (let i = 0; i < maxFrames; i += 4) {
+    await env.pump(4);
+    const r = env.reach();
+    if (r && r.dataset.obj === objId) { env.keyUp(k); await env.pump(4); return true; }
+  }
+  env.keyUp(k);
+  await env.pump(4);
+  return turnToReach(env, objId);
+}
+
+/* Hold W until the walker is deep enough (door z minus a body's width), with a
+   hard frame cap. Fixed frame counts lie: forward speed saturates, so the same
+   285 frames that cross the lane's mid-depth stop well short of the far door. */
+async function walkToDepth(env, target, maxFrames = 600) {
+  env.key("w");
+  for (let i = 0; i < maxFrames; i += 5) {
+    await env.pump(5);
+    if (env.walk().depth >= target) break;
+  }
+  env.keyUp("w");
+  await env.pump(6);
+}
+
+/* Turn until the wanted object's press box is on screen (visibility, not reach). */
+async function turnToVisible(env, el, maxTaps = 70) {
+  for (let i = 0; i < maxTaps; i++) {
+    if (el.style.visibility === "visible") return true;
+    env.key("arrowright");
+    await env.pump(2);
+  }
+  return el.style.visibility === "visible";
+}
+
 async function main() {
-  /* ---- 1. Canada: walk the walkway, E on the far door, land in Tokyo ---- */
-  out.push("-- Canada: W-walk to the far end, E on the onward door --");
-  let env = await boot("rooms-canada.html");
-  ok("canada boots with the walk view", !!env.doc.querySelector("[data-walk]"));
-  ok("canada paints the lane (quads > 100)", env.walk().quads > 100, `quads=${env.walk().quads}`);
-  ok("canada has pressable objects visible at the mouth",
+  /* ---- 1. The street boots as an outdoor place ---- */
+  out.push("-- Street: boots, paints, and is outdoors --");
+  let env = await boot("street.html");
+  ok("street boots with the walk view", !!env.doc.querySelector("[data-walk]"));
+  ok("street paints the space (quads > 100)", env.walk().quads > 100, `quads=${env.walk().quads}`);
+  ok("street has pressable objects visible at the mouth",
      [...env.doc.querySelectorAll(".walk-hit")].filter((e) => e.style.visibility === "visible").length >= 3);
-  await walkDeep(env, 210, 90);
-  const cWalk = env.walk();
-  ok("canada: W carried the walker to the far end", cWalk.depth > 1000, `depth=${cWalk.depth.toFixed(0)}`);
-  const reachedDoor = await turnToReach(env, "way-on");
-  ok("canada: the onward door comes into reach (ring on it)", reachedDoor,
+  const vista = env.doc.querySelector('[data-walk-vista]');
+  const backdrop = env.doc.querySelector('[data-walk-backdrop]');
+  ok("street carries a far-end vista (the opening is authored, not implied)",
+     !!vista && JSON.parse(vista.textContent).w >= 600,
+     vista ? `w=${JSON.parse(vista.textContent).w}` : "missing");
+  ok("street carries a painted backdrop (sky, skyline, roofs)",
+     !!backdrop && JSON.parse(backdrop.textContent).city.length >= 3
+       && JSON.parse(backdrop.textContent).sky.length >= 2,
+     backdrop ? "sky+city present" : "missing");
+  ok("street carries all three room doors as objects",
+     ["door-canada", "door-tokyo", "door-fukuoka"].every((id) => env.doc.querySelector(`[data-obj="${id}"]`)));
+  ok("no room door on the street is wired to another street door",
+     ["door-canada", "door-tokyo", "door-fukuoka"].every((id) => {
+       const el = env.doc.querySelector(`[data-obj="${id}"]`);
+       return el && el.dataset.leave && el.dataset.leave !== "street.html";
+     }));
+
+  /* ---- 2. Canada by foot: walk beside the first door, face it, press E ---- */
+  out.push("\n-- Street -> Canada on foot: E on the lit door --");
+  env.close();
+  env = await boot("street.html");
+  await walkToDepth(env, 290);                            // door walk-z 348: stop just short of it
+  const cReach = await sidleToReach(env, "door-canada", -1);
+  ok("street: the Canada door comes into reach (ring on it)", cReach,
      env.reach() ? env.reach().dataset.obj : "nothing in reach");
   env.navs.length = 0;
-  env.key("e");
-  await env.pump(10); await sleep(60);
-  ok("canada: E on the door leaves for Tokyo", env.navs.length === 1, env.navs[0] || "no navigation");
+  env.key("e"); await env.pump(10); await sleep(60);
+  ok("street: E on the Canada door leaves for rooms-canada.html", env.navs.length === 1,
+     env.navs[0] || "no navigation");
   env.close();
 
-  /* ---- 2. Tokyo: same walk, onward door, land in Fukuoka ---- */
-  out.push("\n-- Tokyo: W-walk the lane, E on the onward door --");
-  env = await boot("rooms.html");
-  ok("tokyo boots with the walk view", !!env.doc.querySelector("[data-walk]"));
-  await walkDeep(env, 210, 80);
-  const tWalk = env.walk();
-  ok("tokyo: W carried the walker to the far end", tWalk.depth > 1000, `depth=${tWalk.depth.toFixed(0)}`);
-  const tDoor = await turnToReach(env, "way-on");
-  ok("tokyo: the onward door comes into reach", tDoor, env.reach()?.dataset.obj || "nothing");
+  /* ---- 3. Tokyo by foot: further up the street, right-hand side ---- */
+  out.push("\n-- Street -> Tokyo on foot: E on the middle door --");
+  env = await boot("street.html");
+  await walkToDepth(env, 810);                            // door walk-z 870: the middle of the street
+  const tReach = await sidleToReach(env, "door-tokyo", 1);
+  ok("street: the Tokyo door comes into reach", tReach,
+     env.reach() ? env.reach().dataset.obj : "nothing in reach");
   env.navs.length = 0;
-  env.key("e");
-  await env.pump(10); await sleep(60);
-  ok("tokyo: E on the door leaves for Fukuoka", env.navs.length === 1, env.navs[0] || "no navigation");
+  env.key("e"); await env.pump(10); await sleep(60);
+  ok("street: E on the Tokyo door leaves for rooms.html", env.navs.length === 1,
+     env.navs[0] || "no navigation");
   env.close();
 
-  /* ---- 3. Tokyo at the mouth: press E on the drain, then leave by the curtain ---- */
+  /* ---- 4. Fukuoka by foot: the far stretch, left-hand side ---- */
+  out.push("\n-- Street -> Fukuoka on foot: E on the last door --");
+  env = await boot("street.html");
+  await walkToDepth(env, 1040);                           // door walk-z 1102: the far stretch
+  const fReach = await sidleToReach(env, "door-fukuoka", -1);
+  ok("street: the Fukuoka door comes into reach", fReach,
+     env.reach() ? env.reach().dataset.obj : "nothing in reach");
+  env.navs.length = 0;
+  env.key("e"); await env.pump(10); await sleep(60);
+  ok("street: E on the Fukuoka door leaves for rooms-fukuoka.html", env.navs.length === 1,
+     env.navs[0] || "no navigation");
+  env.close();
+
+  /* ---- 5. The street's own back door opens the album ---- */
+  out.push("\n-- Street back door: the album, not another room --");
+  env = await boot("street.html");
+  const sBack = env.doc.querySelector('[data-obj="door-back"]');
+  ok("street: the back door points at activities.html",
+     sBack && sBack.dataset.leave === "activities.html", sBack?.dataset.leave || "missing");
+  env.navs.length = 0;
+  env.key("escape"); await env.pump(6); await sleep(60);
+  ok("street: Esc with nothing open leaves for the album", env.navs.length === 1,
+     env.navs[0] || "no nav");
+  env.close();
+
+  /* ---- 6. Every room exits to the street, by attribute and by Esc ---- */
+  out.push("\n-- Rooms: every way out lands on the street --");
+  for (const [file, objId, label] of [
+    ["rooms-canada.html", "door-back", "Canada"],
+    ["rooms.html", "noren", "Tokyo"],
+    ["rooms-fukuoka.html", "curtain-back", "Fukuoka"],
+  ]) {
+    const e1 = await boot(file);
+    ok(`${label}: boots with the walk view`, !!e1.doc.querySelector("[data-walk]"));
+    ok(`${label}: no onward door exists (the hub carries the doors)`,
+       !e1.doc.querySelector('[data-obj="way-on"]'));
+    const back = e1.doc.querySelector(`[data-obj="${objId}"]`);
+    ok(`${label}: the way you came in points at the street`,
+       back && back.dataset.leave === "street.html", back?.dataset.leave || "missing");
+    e1.navs.length = 0;
+    e1.key("escape"); await e1.pump(6); await sleep(60);
+    ok(`${label}: Esc leaves for the street`, e1.navs.length === 1, e1.navs[0] || "no nav");
+    e1.close();
+  }
+
+  /* ---- 7. Tokyo inside: the plate still opens, Esc folds it before leaving ---- */
   out.push("\n-- Tokyo mouth: E acts on the street kit, the noren leaves --");
   env = await boot("rooms.html");
   const mouth = env.reach();
@@ -186,52 +291,44 @@ async function main() {
     await env.pump(6);
     ok("tokyo: Esc folds the plate first", card.hidden);
   }
-  const noren = env.doc.querySelector('[data-obj="noren"]');
-  ok("tokyo: the back curtain is a real link", noren && noren.dataset.leave === "rooms-canada.html",
-     noren?.dataset.leave || "missing");
   env.navs.length = 0;
   env.key("escape");                                 // nothing open now: Esc is the door
   await env.pump(6); await sleep(60);
-  ok("tokyo: Esc with nothing open leaves for Canada", env.navs.length === 1, env.navs[0] || "no nav");
+  ok("tokyo: Esc with nothing open leaves for the street", env.navs.length === 1,
+     env.navs[0] || "no nav");
   env.close();
 
-  /* ---- 4. Fukuoka: the lane ends at water; Esc is the way back ---- */
-  out.push("\n-- Fukuoka: end of the chain --");
+  /* ---- 8. Fukuoka still ends at the water; the walk has a far end ---- */
+  out.push("\n-- Fukuoka: end of the alley is water --");
   env = await boot("rooms-fukuoka.html");
-  ok("fukuoka boots with the walk view", !!env.doc.querySelector("[data-walk]"));
   ok("fukuoka has pressable objects visible at the mouth",
      [...env.doc.querySelectorAll(".walk-hit")].filter((e) => e.style.visibility === "visible").length >= 3);
-  ok("fukuoka: no onward door (the chain ends here)",
-     !env.doc.querySelector('[data-obj="way-on"]'));
   await walkDeep(env, 250, 0);
   const fWalk = env.walk();
   ok("fukuoka: W carries the walker to the water", fWalk.depth > 950, `depth=${fWalk.depth.toFixed(0)}`);
-  const curtain = env.doc.querySelector('[data-obj="curtain-back"]');
-  ok("fukuoka: the back curtain points at Tokyo", curtain && curtain.dataset.leave === "rooms.html",
-     curtain?.dataset.leave || "missing");
-  env.navs.length = 0;
-  env.key("escape");
-  await env.pump(6); await sleep(60);
-  ok("fukuoka: Esc leaves for the room behind (Tokyo)", env.navs.length === 1, env.navs[0] || "no nav");
   env.close();
 
-  /* ---- 5. The doors themselves are drawn, not just wired ---- */
-  out.push("\n-- The chain doors are painted geometry, and clicking one leaves --");
-  for (const [file, objId, expect] of [
-    ["rooms-canada.html", "way-on", "rooms.html"],
-    ["rooms.html", "way-on", "rooms-fukuoka.html"],
-    ["rooms-canada.html", "door-back", "activities.html"],
-    ["rooms.html", "noren", "rooms-canada.html"],
-    ["rooms-fukuoka.html", "curtain-back", "rooms.html"],
+  /* ---- 9. The doors are painted geometry: walk in, turn, click, leave ---- */
+  out.push("\n-- The hub doors are painted geometry, and clicking one leaves --");
+  for (const [file, objId, expect, prep] of [
+    ["street.html", "door-canada", "rooms-canada.html", { fwd: 250, side: -1 }],
+    ["street.html", "door-tokyo", "rooms.html", { fwd: 750, side: 1 }],
+    ["street.html", "door-fukuoka", "rooms-fukuoka.html", { fwd: 1000, side: -1 }],
+    ["rooms-canada.html", "door-back", "street.html", { fwd: 300, side: 0 }],
+    ["rooms.html", "noren", "street.html", { fwd: 300, side: 0 }],
+    ["rooms-fukuoka.html", "curtain-back", "street.html", { fwd: 300, side: 0 }],
   ]) {
     const e2 = await boot(file);
     const el = e2.doc.querySelector(`[data-obj="${objId}"]`);
-    // The way-on door hangs at the far end and is visible from the mouth. A back exit needs both
-    // some distance (a door fills the frame at arm's length, so its box overflows the view) and a
-    // look behind: walk in, then turn until its press box is on screen.
-    if (objId !== "way-on") { e2.key("w"); await e2.pump(70); e2.keyUp("w"); await e2.pump(6); }
+    // A door needs both some distance (its box overflows the view at arm's length) and a look
+    // toward it: walk past the mouth, edge to its side of the street, then turn until on screen.
+    if (prep.fwd) await walkToDepth(e2, prep.fwd);
+    if (prep.side) {
+      const k = prep.side < 0 ? "a" : "d";
+      e2.key(k); await e2.pump(30); e2.keyUp(k); await e2.pump(6);
+    }
     let vis = el && el.style.visibility === "visible";
-    for (let i = 0; i < 55 && !vis; i++) {
+    for (let i = 0; i < 70 && !vis; i++) {
       e2.key("arrowright"); await e2.pump(2);
       vis = el.style.visibility === "visible";
     }

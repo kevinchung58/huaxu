@@ -269,27 +269,33 @@ Reinstall sources:
     registry, and do not classify a new block as `personal` or `academic` without writing down what
     it is for — the same rule that governs a district governs the picture of one.
 
-- **A place is its page, and the pages are a corridor.** `ROOMS` in `_gen_html.py` is the chain, in
-    order: one row per place, carrying its page, the plate prefixes that belong to it, and whether it
-    is open. `DISTRICTS` holds the room itself and takes its page and plates from that row, so the
-    album and the walk cannot disagree about which room a plate opens onto. Walking out of a room puts
-    you in the next one; the first room's curtain opens onto the album, which is the picker. Never
-    stack two open districts into one page: the renderer reads one island per key, so the second room's
+- **A place is its page, and the pages hang off a hub street.** `ROOMS` in `_gen_html.py` is the
+    table, street first: one row per place, carrying its page, the plate prefixes that belong to it,
+    and whether it is open. The street row **is** the hub — a walkable outdoor page whose record
+    carries one door object per room — and `DISTRICTS` holds each place, taking its page and plates
+    from its row so the album and the walk cannot disagree about which room a plate opens onto.
+    Walking out of any room puts you on the street, and the street's doors put you in any room; the
+    street's own back door opens the album, which is the picker. There is no onward wiring: the old
+    Canada→Tokyo→Fukuoka chain is retired, and a `way-on` door anywhere is a regression. Never stack
+    two open districts into one page: the renderer reads one island per key, so the second room's
     objects would float in the first room's lane. Adding a place means adding a row, a record, a page
-    write, and a gate run — `skills/place-intake` is the checklist.
+    write, **a door object on the street**, and a gate run — `skills/place-intake` is the checklist.
 
-- **Three rooms are open, in chain order:** Canada (`rooms-canada.html`), Tokyo (`rooms.html`),
-    Fukuoka (`rooms-fukuoka.html`). The album's Field notes wall reads them in that order and each
-    plate carries the door into its own room. A new place is a row in `ROOMS`, a record in `DISTRICTS`,
-    a page written by the walk loop, plate prefixes added to `IMG_RULES` and to the row, and a gate run
-    — `skills/place-intake` walks through it.
+- **The hub street and three rooms are open:** `street.html` (the hub, outdoors), Canada
+    (`rooms-canada.html`), Tokyo (`rooms.html`), Fukuoka (`rooms-fukuoka.html`). The album's Field
+    notes wall reads the rooms in `ROOMS` order and each plate carries the door into its own room;
+    each Field notes plate is also allocated to a **sub-area** — a named little place inside its room
+    (`PLACE_TITLES` + the room's slot list; `verify-walk.mjs` asserts every frame's title is a slot).
+    A new place is a row in `ROOMS`, a record in `DISTRICTS`, a door on the street, a page written by
+    the walk loop, plate prefixes added to `IMG_RULES` and to the row, and a gate run —
+    `skills/place-intake` walks through it.
 
 - **Reference photographs never ship.** The owner's photographs of a real place live in `ref/`
     (gitignored) and are read, not published: what hangs on the wall is a generated plate, and what you
     stand in is built from what the photographs show. `IMG/` is a registry and every file in it must
     match a rule — putting a personal photograph there would pull it onto the album wall.
 
-- **`rooms.html` is a shell, not an article.** It is the only page built by `shell_page()`: no
+- **The walk pages are shells, not articles.** The street and every room are built by `shell_page()`: no
     nav, no footer, no `reveal`, and its reading material lives in a drawer that ships open and is
     folded by JS. Adding a section, a `reveal` class or a navy drawer surface to that page is a
     defect, not a design choice — it either hides content from visitors without scripting or drops
