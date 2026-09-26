@@ -1587,6 +1587,16 @@ def _place_group(r, tiles):
             f'    <div class="ig-wall" data-ig-wall>\n      {grid}\n    </div>')
 
 
+# The one instruction the album gives, in the block's own voice: what a door does, how to walk once
+# you are inside, how you get back, and that the street's far end is open. It sits above the places,
+# because the moment after "walk in" is exactly where a first-time visitor is lost.
+HOW_TO_WALK = ("Every door on this wall steps you into its place at eye height: W A S D to walk, "
+               "arrow keys or drag to turn, E to open what is in front of you, or the on-screen pad "
+               "on a phone. Esc walks you back out - room to street, street back to this wall - and "
+               "the street is the road between all three places. Its far end is open: keep walking "
+               "and you are outside under the night sky.")
+
+
 def gallery_html():
     """The wall, block by block: Field notes as three places, anything else as one grid."""
     out = []
@@ -1602,7 +1612,8 @@ def gallery_html():
             # but no built status would hang its plates without a door; today every room is open.
             out.append(f'    <p class="eyebrow reveal">{escape(b["label"])}</p>\n'
                        f'    <p class="when reveal">{escape(b["purpose"])} <span class="badge">'
-                       f'{escape(b["kind"])}</span> {escape(state)}</p>\n')
+                       f'{escape(b["kind"])}</span> {escape(state)}</p>\n'
+                       f'    <p class="when reveal" data-walk-guide>{escape(HOW_TO_WALK)}</p>\n')
             for r in ROOMS:
                 if r[4] != "open" or r[0] == "street":
                     continue
