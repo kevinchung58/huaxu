@@ -1849,18 +1849,21 @@ DISTRICTS = [
             # door authored deeper than record z ~479 (1200+190, over Z_SCALE) could be seen but
             # never opened. The last door sits at 380 with room to spare.
             {"id": "door-canada", "kind": "door", "x": -346, "z": 120, "y": 0, "ry": 90,
+             "leaf": "#3e5c66",
              "glow": [{"r": 130, "k": 0.58, "dy": 235}],
              "leave": ROOM_BY_ID["canada"]["page"],
              "title": "The door onto Canada",
              "hint": "It opens onto Canada: a campus walkway after snow, drawn at the same scale "
                      "as this street. Everything between here and there is one step through."},
             {"id": "door-tokyo", "kind": "door", "x": 346, "z": 300, "y": 0, "ry": -90,
+             "leaf": "#5c4434",
              "glow": [{"r": 130, "k": 0.62, "dy": 235}],
              "leave": ROOM_BY_ID["tokyo"]["page"],
              "title": "The door onto Tokyo",
              "hint": "It opens onto the lane: shutters, lanterns, a vending machine at its end. "
                      "The curtain inside parts the other way."},
             {"id": "door-fukuoka", "kind": "door", "x": -346, "z": 380, "y": 0, "ry": 90,
+             "leaf": "#4b4368",
              "glow": [{"r": 130, "k": 0.58, "dy": 235}],
              "leave": ROOM_BY_ID["fukuoka"]["page"],
              "title": "The door onto Fukuoka",
@@ -1901,12 +1904,26 @@ DISTRICTS = [
              "glow": [{"r": 120, "k": 0.45, "dy": 190}],
              "title": "A shut front with a light behind it",
              "hint": "Shutter down, light on in the transom: a building with nobody in it and a "
-                     "timer on its lamp. It keeps the far stretch of street from being empty."},
+                     "timer on its lamp. It keeps the far stretch of street from being empty. "
+                     "Done, the shutter rises — onto an interior the site does not furnish, so "
+                     "all it gives up is more light.",
+             "states": [
+                 {"say": "Up. The transom lamp plus a room lamp: twice the light, none the wiser "
+                         "about who left it on.", "k": 1.15, "shut": 0.9},
+                 {"say": "Down again. The street keeps its shuttered half.", "k": 0.45,
+                  "shut": 0},
+             ]},
             {"id": "front-n", "kind": "front", "x": -346, "z": 300, "y": 0, "ry": 90,
              "glow": [{"r": 120, "k": 0.45, "dy": 190}],
              "title": "Another shut front, across the crossing",
              "hint": "Same story from the other side of the street: shutter down, transom lit. "
-                     "Two closed fronts facing is most of what a night street is."},
+                     "Two closed fronts facing is most of what a night street is. Done, this one "
+                     "stays as it is — the pair should not match, or the street is a stage set.",
+             "states": [
+                 {"say": "It does not budge. Some shutters are just shut.", "k": 0.5, "shut": 0},
+                 {"say": "Still shut. The lamp behind it stays on regardless.", "k": 0.5,
+                  "shut": 0},
+             ]},
             {"id": "ac-s", "kind": "ac", "x": -344, "z": 250, "y": 262, "ry": 90,
              "title": "An air conditioner over the first door",
              "hint": "High on the wall, dripping nothing: the street's one horizontal above head "
@@ -2551,10 +2568,18 @@ DISTRICTS = [
              "hint": "Drawn to the wall's own height so the eye has a vertical in a lane of "
                      "horizontals."},
             {"id": "door-lit", "kind": "door", "x": -300, "z": 372, "y": 0, "ry": 90,
+             "leaf": "#4a3a2c",
              "glow": [{"r": 260, "k": 0.5, "dy": 130}],
              "title": "The lit door",
              "hint": "The one warm light at the end of the walk, and the reason the whole lane is "
-                     "walked toward it. It is scenery: the way on is the door on the other side."},
+                     "walked toward it. It is scenery: the way on is the door on the other side. "
+                     "Done, it stands ajar and the light steps down when it is shut again.",
+             "states": [
+                 {"say": "Ajar, and the light lies down the snow past the step.", "k": 1.0,
+                  "door": 0.6},
+                 {"say": "Shut again. The light under it stays, whoever is behind it stays.",
+                  "k": 0.45, "door": 0},
+             ]},
             {"id": "planter", "kind": "planter", "x": -300, "z": 160, "y": 0, "ry": 90,
              "title": "A planter under snow",
              "hint": "Set dressing. What is planted in it is not visible and is not claimed."},
@@ -2562,6 +2587,12 @@ DISTRICTS = [
              "title": "Two cones at the mouth of the walk",
              "hint": "Where the walkway meets the road: something has to mark the edge between them."},
             {"id": "board-a", "kind": "signA", "x": -336, "z": 200, "y": 150, "ry": 90,
+             "states": [
+                 {"say": "The board turns over. The other face is blank too.", "k": 1.05,
+                  "flip": 1},
+                 {"say": "Turned back. Still nothing written on it, by the same rule that keeps "
+                         "every sign here blank.", "k": 0.8, "flip": 0},
+             ],
              "title": "A notice board, pinned empty",
              "hint": "The board is drawn and its paper is not: a notice would be a claim about what "
                      "this campus announced."},
@@ -2744,17 +2775,29 @@ DISTRICTS = [
              "glow": [{"r": 145, "k": 0.68, "dy": 190}],
              "title": "A stall front, shutters half up",
              "hint": "The alley's first lit front. The counter is drawn and nothing on it is named; "
-                     "the glow is authored here because a stall is where the light comes from."},
+                     "the glow is authored here because a stall is where the light comes from. "
+                     "Done, the shutter runs up to serve and down to close.",
+             "states": [
+                 {"say": "Up. Light on the counter, and the alley gets brighter by one stall.",
+                  "k": 1.0, "shut": 1},
+                 {"say": "Down for the night. The transom keeps a lamp burning.", "k": 0.45,
+                  "shut": 0},
+             ]},
             {"id": "stall-b", "kind": "front", "x": 240, "z": 208, "y": 0, "ry": -90,
              "glow": [{"r": 135, "k": 0.62, "dy": 190}],
              "title": "The second stall, further down",
+             "states": [
+                 {"say": "Up here too — two stalls serving is most of what this alley is.",
+                  "k": 1.0, "shut": 1},
+                 {"say": "Down. One stall still lit, further up the alley.", "k": 0.45, "shut": 0},
+             ],
              "hint": "Drawn so the alley has a middle. Its light is dimmer than the first, which is "
                      "what makes the near one read as nearer."},
-            {"id": "a-noren", "kind": "noren", "x": -236, "z": 60, "y": 168, "ry": 90,
+            {"id": "noren-a", "kind": "noren", "x": -236, "z": 60, "y": 168, "ry": 90,
              "title": "A curtain over a doorway",
              "hint": "Blank cloth: a name on it would be invented lettering, and this site does not "
                      "invent lettering."},
-            {"id": "b-noren", "kind": "noren", "x": 236, "z": 168, "y": 168, "ry": -90,
+            {"id": "noren-b", "kind": "noren", "x": 236, "z": 168, "y": 168, "ry": -90,
              "title": "A shorter curtain, hung lower",
              "hint": "Drawn to the alley's own height rather than a standard door's, because a stall "
                      "alley is built to whatever the frame allowed."},
@@ -2767,7 +2810,12 @@ DISTRICTS = [
              "hint": "Set dressing: something has to break the long line where the stalls end."},
             {"id": "bin-f", "kind": "bin", "x": 210, "z": 300, "y": 0, "ry": -90,
              "title": "A bin at the turning",
-             "hint": "Drawn where the alley widens toward the water."},
+             "hint": "Drawn where the alley widens toward the water. Done, its lid swings.",
+             "states": [
+                 {"say": "The lid swings open, and swings back by itself a moment later.",
+                  "k": 1.0, "flap": 1},
+                 {"say": "Shut. The alley keeps its own counsel.", "k": 1.0, "flap": 0},
+             ]},
             {"id": "barrel", "kind": "bin", "x": -206, "z": 268, "y": 0, "ry": 0,
              "title": "A barrel against the wall",
              "hint": "The alley's own furniture. Nothing is claimed about what is in it."},
@@ -3089,6 +3137,8 @@ def walk_object(o):
     # curtain leaving the lane is a link in the data, not a special case in the script.
     leave = f' data-leave="{escape(o["leave"])}"' if o.get("leave") else ""
     texture = f' data-tex="{escape(tex)}"' if tex else ""
+    # A door may carry its own leaf colour: the street's three doors are three different doors.
+    leaf_attr = f' data-leaf="{escape(o["leaf"])}"' if o.get("leaf") else ""
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
@@ -3101,7 +3151,7 @@ def walk_object(o):
     return (f'<button type="button" class="walk-hit" data-obj="{escape(o["id"])}" '
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
-            f'data-d="{dep}" style="{style}"{frame}{texture}{states}{leave}></button>')
+            f'data-d="{dep}" style="{style}"{frame}{texture}{leaf_attr}{states}{leave}></button>')
 
 
 def walk_html(d, drawer):

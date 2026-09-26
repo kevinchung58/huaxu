@@ -936,7 +936,8 @@ function leaveOverlay(root, trigger) {
     try { return JSON.parse(node.textContent); } catch (err) { return null; }
   };
   const meta = objs.map((el) => ({
-    el, kind: el.dataset.obj, ry: num(el, "data-ry") || parseFloat(el.dataset.ry || 0),
+    el, kind: el.dataset.obj, leaf: el.dataset.leaf || null,
+    ry: num(el, "data-ry") || parseFloat(el.dataset.ry || 0),
     w: parseFloat(el.dataset.w) || 100, h: parseFloat(el.dataset.h) || 140,
     d: parseFloat(el.dataset.d) || 12, x: num(el, "--x"), z: num(el, "--z"), y: num(el, "--y"),
     pic: el.dataset.tex ? pics.get(el.dataset.tex) : null, sx: 0, sy: 0, sw: 0, sh: 0, shown: false,
@@ -999,7 +1000,23 @@ function leaveOverlay(root, trigger) {
                       front: "#2c3a56", ledge: "#6b7890", pane: "#6f7d92", window: "#6f7d92",
                   mirror: "#8f9bb0", ladder: "#a98a5e", hydrant: "#b8443a", recycle: "#3f6d5a",
                   meter: "#5f6a78", camera: "#4a566a", door: "#33405c",
+                  pole: "#5c6a80", barrel: "#6a5340", stool: "#4a3f36", lamp: "#4a566a",
+                  curtain: "#24406b", stall: "#6e4f38",
                   bank: "#dfe8f2", bench: "#4a3f36", rack: "#6a6f78" };
+  /* Props are named `kind`, `kind-2`, `kind-left`, `kind-s1`… and the shape/tint tables were keyed
+     by the *whole* id — so `front-a` was a flat plane while `front` was a painted recess, and whole
+     families of props (banners, crates, snow banks, stall curtains) lost their bodies to a fallback.
+     A prop's kind is therefore resolved: the exact name if the table knows it, else the longest
+     table key the id starts with at a dash or the string's end, else the id itself (a plane). */
+  const kindOf = (id) => {
+    if (PROP_TINT[id] !== undefined || SHAPE[id] !== undefined) return id;
+    let best = null;
+    for (const k of Object.keys(SHAPE)) {
+      if (id.startsWith(k) && (id.length === k.length || id[k.length] === "-")
+          && (best === null || k.length > best.length)) best = k;
+    }
+    return best || id;
+  };
   // How far a kind is a solid. A picture on a wall is a plane and must not be given a thickness it
   // cannot have; everything else in a lane has three visible faces or it is a decal, not an object.
   const SHAPE = { vending: "box", shrine: "box", utility: "box", ac: "box", crate: "box",
@@ -1009,12 +1026,14 @@ function leaveOverlay(root, trigger) {
                   sign: "box", drain: "plate", noren: "cloth", poster: "plane", frame: "plane",
                   mirror: "mirror", ladder: "ladder", hydrant: "hydrant", recycle: "flap",
                   meter: "box", camera: "camera",
-                  // A door is a plane, not a plate: the chain doors (`way-on`, `door-back`) carry a
-                  // door's height in `data-h`, and a plate is flat on the floor — it projects a few
-                  // pixels tall, fails the press-box floor, and the one object whose whole purpose is
-                  // the page behind it could never be seen or pressed. Vertical plane, door-sized.
-                  door: "plane",
+                  // A door draws itself now (see the `door` branch): recess, leaf, panels, handle,
+                  // fanlight. It still needs its door-height `data-h` from the record — a plate is
+                  // flat on the floor and fails the press-box floor.
+                  door: "door",
                   bank: "bank", bench: "box", rack: "box" };
+  // A few props are named for what they are, not for the kind that draws them; these are the aliases.
+  Object.assign(SHAPE, { pole: "box", barrel: "box", stool: "box", lamp: "box",
+                         curtain: "cloth", stall: "front", ledge: "plane" });
   const mix = (hex, k) => {
     const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
     const to = k >= 0 ? [255, 238, 208] : [10, 17, 40];
@@ -1573,8 +1592,9 @@ function leaveOverlay(root, trigger) {
       const uv = m.pic
         ? [[0, 0], [m.pic.naturalWidth || 640, 0], [m.pic.naturalWidth || 640, -(m.pic.naturalHeight || 427)], [0, -(m.pic.naturalHeight || 427)]]
         : [[0, 0], [0, 0], [0, 0], [0, 0]];
-      const base = PROP_TINT[m.kind] || "#33435f";
-      const shape = SHAPE[m.kind] || "plane";
+      const kind = kindOf(m.kind);
+      const base = m.leaf || PROP_TINT[kind] || PROP_TINT[m.kind] || "#33435f";
+      const shape = SHAPE[kind] || "plane";
       const S = m.states ? (m.states[m.st] || m.states[0]) : null;
       const drawn = [];
       if (shape === "box") {
@@ -1587,6 +1607,36 @@ function leaveOverlay(root, trigger) {
           const q = add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.24));
           if (q) { q.lit = lit; drawn.push(q); }
         });
+      } else if (shape === "door") {
+        /* A door is joinery, not a rectangle: a dark reveal behind it, a leaf with two inset panels
+           and a handle, a threshold under it, and a lit fanlight over its head — that fanlight is
+           why a street door reads from down the street. The record may tint the leaf per door
+           (`data-leaf`); `door` in the states slides it ajar across the reveal, which is the same
+           trick the booth's sliding door earned: a hinge needs a second axis this painter lacks. */
+        const along = Math.abs(m.ry) > 45;
+        const dir = along ? (m.x < 0 ? 1 : -1) : (m.z < 0 ? -1 : 1);
+        const half = m.w / 2, ins = Math.max(m.d, 10), ajar = S && S.door ? S.door : 0;
+        const P = (u, v, y) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
+        const Q = (pts, col, l, air) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); }
+        };
+        Q([P(-half, ins, 0), P(half, ins, 0), P(half, ins, m.h), P(-half, ins, m.h)],
+          mix(base, -0.42), lit * 0.5);
+        const lw = m.w * 0.92, y1 = m.h * 0.94, slide = ajar * lw * 0.8;
+        const leaf = (u0, u1, ya, yb, col, l) =>
+          Q([P(u0 + slide, 4, ya), P(u1 + slide, 4, ya), P(u1 + slide, 4, yb), P(u0 + slide, 4, yb)],
+            col, l);
+        leaf(-lw / 2, lw / 2, 0, y1, mix(base, 0.16), lit * 1.05);
+        if (ajar < 0.9) {
+          leaf(-lw * 0.32, -lw * 0.08, m.h * 0.16, m.h * 0.44, mix(base, -0.3), lit * 0.78);
+          leaf(-lw * 0.32, -lw * 0.08, m.h * 0.54, m.h * 0.84, mix(base, -0.3), lit * 0.78);
+          leaf(lw * 0.08, lw * 0.32, m.h * 0.16, m.h * 0.44, mix(base, -0.3), lit * 0.78);
+          leaf(lw * 0.08, lw * 0.32, m.h * 0.54, m.h * 0.84, mix(base, -0.3), lit * 0.78);
+        }
+        leaf(lw * 0.5 - 20, lw * 0.5 - 5, m.h * 0.4, m.h * 0.54, "#e2d2ae", lit * 1.9);
+        Q([P(-half, 6, y1), P(half, 6, y1), P(half, 6, m.h), P(-half, 6, m.h)], "#f0c27a", 1.6, 0.05);
+        Q([P(-half, 2, 0), P(half, 2, 0), P(half, 2, 6), P(-half, 2, 6)], mix(base, 0.3), lit * 1.1);
       } else if (shape === "cloth") {
         const along = Math.abs(m.ry) > 45;
         const len = m.w, n = 4, gap = 8;
@@ -1849,12 +1899,16 @@ function leaveOverlay(root, trigger) {
         /* A ploughed edge: two boxes of different lengths, the longer one lower, so the silhouette
            rises from the lane instead of standing on it like furniture. Snow is the one thing in
            these rooms that is drawn by its silhouette and its brightness rather than its material. */
-        [[0, m.h * 0.55, m.d], [m.h * 0.55, m.h * 0.45, m.d * 0.62]].forEach(([y0, h, d]) => {
-          facesOf({ ...m, y: m.y + y0, h: h, d: d, w: m.w * (y0 ? 0.86 : 1) }).forEach((f) => {
-            const q = add(C, f.pts, f.uv, f.mode, f.arg, f.img);
-            if (q) { q.lit = lit * (y0 ? 1.12 : 1.0); drawn.push(q); }
+        [[0, m.h * 0.55, m.d, 1], [m.h * 0.55, m.h * 0.45, m.d * 0.62, 0.86]]
+          .forEach(([y0, h, d, wf]) => {
+            facesOf({ ...m, y: m.y + y0, h, d, w: m.w * wf }).forEach((f) => {
+              const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                           + f.n[2] * (C.z - f.p[0][2]);
+              if (toward <= 0) return;
+              const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
+              if (q) { q.lit = lit * (y0 ? 1.12 : 1.0); drawn.push(q); }
+            });
           });
-        });
       } else if (shape === "hydrant") {
         /* A standpipe at the kerb: it is three boxes and two caps, and the reason it earns its place is
            that it is recognisable as a silhouette at thirty metres. Nothing is claimed about water

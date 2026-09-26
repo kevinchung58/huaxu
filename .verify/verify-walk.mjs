@@ -298,7 +298,7 @@ ok("the backdrop adds its own fills to the room, not a second pass over it", ctx
    depth pass*, which doubles the room and lands near 6 000; if this ever reads that, the day's change
    put the scene through twice. */
 ok("one depth pass, dressed: the room costs fills, not passes",
-   ctx.fills > before && ctx.fills < 4400, `${ctx.fills} fills, one pass`);
+   ctx.fills > before && ctx.fills < 4700, `${ctx.fills} fills, one pass`);
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
 ok("the cladding is tiled into the wall's own panels, so an affine map stays exact",
