@@ -1635,10 +1635,11 @@ activities = page("Activities · Hua-Xu Zhong", "activities", f"""
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>The archive of what has been shown, and a running record of talks. Captions and venues are attached as they are confirmed, and an image without one is filed but not hung.</p></div>
     {titled("h2", "The album", ICON_CAMERA)}
-    <p class="when reveal" style="margin:-0.4rem 0 1rem">Plates hung on a wall, read the way the
-      album is read on a phone: pick one and the roll opens at it, sideways, and nothing expires when
-      it has been seen. Which block an image belongs to, and what it is allowed to claim, is declared
-      in the generator rather than sorted afterwards.</p>
+    <p class="when reveal" style="margin:-0.4rem 0 1rem">Three places, and the cards below are
+      their doors: pick a card and you are standing inside the place, at eye height, free to walk.
+      The photographs themselves live on the places' own walls; this page only holds the doors.
+      Which block an image belongs to, and what it is allowed to claim, is declared in the
+      generator rather than sorted afterwards.</p>
 {gallery_wall}
     {titled("h2", "Talks and visits", ICON_CHAT, "block-title reveal spaced")}
     <p class="when reveal">Invited talks, presentations, workshops, and conference attendance. They will appear as a CV timeline when records are added.</p>
