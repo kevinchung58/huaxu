@@ -186,26 +186,23 @@ async function main() {
   // door under the heading opens the street.
   out.push("\n-- activities album --");
   const act = fs.readFileSync("activities.html", "utf8");
-  /* The Field notes wall is three places, one door each; the plates under a place are that place's
-     sub-areas, and no plate carries a door of its own. */
-  const WANT = { canada: ["rooms-canada.html", 1], tokyo: ["rooms.html", 1],
-                 fukuoka: ["rooms-fukuoka.html", 1] };
-  for (const [id, [page, count]] of Object.entries(WANT)) {
-    const at = act.indexOf(`data-place-group="${id}"`);
-    ok(`album: the ${id} place group exists`, at >= 0);
+  /* The Field notes wall is ONE container of three cards, the card itself the door. */
+  const WANT = { canada: "rooms-canada.html", tokyo: "rooms.html", fukuoka: "rooms-fukuoka.html" };
+  const wrapAt = act.indexOf("data-place-cards");
+  ok("album: the place-card container exists", wrapAt >= 0);
+  for (const [id, page] of Object.entries(WANT)) {
+    const at = act.indexOf(`data-place-card="${id}"`, wrapAt);
+    ok(`album: the ${id} card exists`, at >= 0);
     if (at < 0) continue;
-    const next = Math.min(...Object.keys(WANT).map((k) => act.indexOf(`data-place-group="${k}"`))
-      .filter((p) => p > at).concat([act.length]));
-    const seg = act.slice(at, next);
-    // The last group's tail runs into the classroom block, so count this place's own prefixes only.
-    const tiles = [...new Set(Array.from(seg.matchAll(/<img src="IMG\/([A-Za-z0-9._-]+)"/g))
-      .map((m) => m[1]))].filter((n) => n.startsWith(`${id}-`));
-    ok(`album: the ${id} group is one representative plate`, tiles.length === count, `${tiles.length}`);
-    const door = seg.match(/class="text-arrow" href="([^"]+)"/);
-    ok(`album: ${id} group's door is ${page}`, !!door && door[1] === page,
-       door ? door[1] : "missing");
+    const card = act.slice(at, act.indexOf("</a>", at));
+    const href = (card.match(/href="([^"]+)"/) || [])[1];
+    ok(`album: the ${id} card is the door to ${page}`, href === page, href || "missing");
+    ok(`album: the ${id} card carries its cover sheet`, card.includes(`IMG/${id}-cover.jpg`));
   }
+  ok("album: three cards in one container", (act.match(/data-place-card="/g) || []).length === 3);
   ok("album: plates carry no doors of their own", !/<a class="ig-room"/.test(act));
+  ok("album: no field-notes frames in the roll (the cards replaced them)",
+     !/id="ig-field-notes-/.test(act));
 
   // Nav "Rooms" points at the hub street. Only check nav links, not album doors.
   out.push("\n-- site nav --");

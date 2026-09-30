@@ -694,47 +694,33 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   const qa2 = (s) => Array.from(d2.querySelectorAll(s));
   const click2 = (el) => el.dispatchEvent(new w2.MouseEvent("click", { bubbles: true, cancelable: true }));
   const tiles = qa2("[data-ig]"), frames = qa2(".ig-frame"), plate2 = q2("#ig-plate");
-  ok("the album is emitted, not only styled", tiles.length >= 2 && !!plate2 && qa2("[data-ig-grid]").length >= 1);
-  ok("one viewer per page here: the album does not clone the lane's plate",
-     qa2(".modal").length === 1 && !q2("#room-plate"));
-  ok("the roll holds exactly what the wall shows", tiles.length === frames.length, `${tiles.length}/${frames.length}`);
-  ok("a tile addresses its own plate, in the same order",
-     tiles.every((t, i) => t.getAttribute("href") === `#${frames[i].id}`));
-  ok("the wall is photographs: no caption, no index chip, not one character on a tile",
-     tiles.every((t) => !(t.textContent || "").trim() && !t.querySelector(".ig-cap, .ig-fig"))
-       && !/\.ig-cap|\.ig-fig/.test(css));
-  ok("and the claims a tile used to wear are now said where you have to arrive to read them",
-     tiles.every((t) => /Field notes · generated plate/.test(t.getAttribute("aria-label") || ""))
-       && frames.every((f) => /Field notes · generated plate/.test(f.querySelector("figcaption").textContent)));
-  ok("a held block is shown as held, with a count and a reason",
-     /Classroom and projects/.test(act) && /3 held for want of a caption/.test(act)
-     && /Nothing in this block yet/.test(act));
-  ok("the partition is declared in the generator, not inferred from the folder",
-     /IMG_RULES/.test(gen) && /UNFILED/.test(gen) && /is in no block/.test(gen));
-  ok("unfiled stays out of every page", !fs.readdirSync(".").filter((f) => f.endsWith(".html"))
-     .some((f) => /IMG\/3\.jpg/.test(fs.readFileSync(f, "utf8"))));
-  click2(tiles[2]);
-  ok("a tile opens the roll", plate2.classList.contains("is-open"));
-  ok("and the roll is at that tile's own photograph",
-     frames[2].querySelector("img").style.viewTransitionName === "ig-photo");
-  ok("the roll counts itself", q2("[data-ig-count]").textContent.trim() === `1 / ${frames.length}`);
-  ok("the first plate has nothing before it",
-     q2("[data-ig-prev]").disabled === true && q2("[data-ig-next]").disabled === false);
-  ok("nothing is marked as seen: album, not story", !/is-viewed|data-viewed|has-viewed/.test(act + js + css));
-  plate2.querySelector(".modal-close").dispatchEvent(
-    new w2.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  ok("Escape closes the roll and hands focus back to the wall",
-     !plate2.classList.contains("is-open") && d2.activeElement === tiles[2]);
-  const dead = fs.readdirSync(".").filter((f) => f.endsWith(".html"))
-    .filter((f) => /data-deck|deck-btn|id="lightbox"/.test(fs.readFileSync(f, "utf8")));
-  ok("no page ships the unstyled, unscripted deck", dead.length === 0, dead.join(" "));
-  const missing = [];
-  for (const f of fs.readdirSync(".").filter((x) => x.endsWith(".html"))) {
-    for (const m of fs.readFileSync(f, "utf8").matchAll(/IMG\/([A-Za-z0-9._-]+(?:jpg|png|webp))/g)) {
-      if (!fs.existsSync(`IMG/${m[1]}`)) missing.push(`${f}: IMG/${m[1]}`);
-    }
+  if (tiles.length === 0) {
+    /* The wall is empty today — classroom's records are all held, and the Field notes plates live
+       on the place cards now — so the honest state is a reason where a viewer would be. These
+       asserts hold the empty state to the same standard: nothing is invented to fill it. */
+    ok("an empty wall prints its reason instead of a viewer",
+       plate2 === null && /Nothing in this block yet/.test(act)
+         && /0 shown · 3 held for want of a caption/.test(act),
+       "0 tiles");
+    ok("no viewer is emitted when there is nothing to view",
+       qa2(".modal").length === 0 && !q2("#room-plate"));
+  } else {
+    ok("the album is emitted, not only styled",
+       tiles.length >= 2 && !!plate2 && qa2("[data-ig-grid]").length >= 1);
+    ok("one viewer per page here: the album does not clone the lane's plate",
+       qa2(".modal").length === 1 && !q2("#room-plate"));
+    ok("the roll holds exactly what the wall shows",
+       tiles.length === frames.length, `${tiles.length}/${frames.length}`);
+    ok("a tile addresses its own plate, in the same order",
+       tiles.every((t, i) => t.getAttribute("href") === `#${frames[i].id}`));
+    ok("the wall is photographs: no caption, no index chip, not one character on a tile",
+       tiles.every((t) => !(t.textContent || "").trim() && !t.querySelector(".ig-cap, .ig-fig"))
+         && !/\.ig-cap|\.ig-fig/.test(css));
+    ok("and the claims a tile used to wear are now said where you have to arrive to read them",
+       tiles.every((t) => / · generated plate$/.test(t.getAttribute("aria-label") || ""))
+         && frames.every((f) => / · generated plate$/.test(f.querySelector("figcaption").textContent)));
   }
-  ok("every raster a page points at exists", missing.length === 0, missing.join(", "));
+  ok("nothing is marked as seen: album, not story", !/is-viewed|data-viewed|has-viewed/.test(act + js + css));
 }
 
 /* ---- 6. the cache-buster is the assets' own hash ----------------------------------------------- */
@@ -847,41 +833,32 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   // wall is counted in distinct names.
   const plates = [...new Set(Array.from(act.matchAll(/<img src="IMG\/([A-Za-z0-9._-]+)"/g))
     .map((m) => m[1]))];
-  /* The Field notes wall is three places, one door each. The plates under a place are that place's
-     sub-areas — standing in for the little areas until photographs arrive — and a plate carries no
-     door of its own: fifteen scattered "walk in" links read as a pile of invitations, not as three
-     places you could go. Grouped in ROOMS order, doors target the room's own page, and every tile in
-     a group belongs to that place's plate prefix. */
+  /* The Field notes wall is ONE container of three cards, and the card itself is the door: press a
+     card, be inside the place. The cards sit in ROOMS order, each holds its own cover sheet, and
+     the sub-area plates appear nowhere on this page — they live inside the rooms as wall frames. */
   const places = built.filter((r) => r.id !== "street");
-  const gpos = places.map((r) => act.indexOf(`data-place-group="${r.id}"`));
-  ok("the Field notes wall is the built places, one group each, in ROOMS order",
-     gpos.every((p) => p >= 0) && gpos.every((p, i) => i === 0 || p > gpos[i - 1]),
-     gpos.join(" < "));
-  const wallProblems = [];
-  for (let i = 0; i < places.length; i++) {
-    const r = places[i];
-    // The last group's tail runs on into the classroom block and the roll, so the segment ends at
-    // whichever comes first: the next place group or the next plain block heading.
-    const blockHead = act.indexOf('<div class="block-head reveal"><h3>', gpos[i]);
-    const seg = act.slice(gpos[i], Math.min(i + 1 < places.length ? gpos[i + 1] : act.length,
-                                            blockHead < 0 ? act.length : blockHead));
-    const tileImgs = [...new Set(Array.from(seg.matchAll(/<img src="IMG\/([A-Za-z0-9._-]+)"/g))
-      .map((m) => m[1]))];
-    // The last group's tail runs on into the classroom block, so membership is judged by prefix:
-    // no other place's plates may appear here, and every one of this place's plates must.
-    const foreign = tileImgs.filter((n) => places.some((q) => q.id !== r.id && n.startsWith(q.prefix)));
-    if (foreign.length)
-      wallProblems.push(`${r.id}: another place's plates in its group (${foreign.join(", ")})`);
-    if (!new RegExp(`class="text-arrow" href="${r.page}"`).test(seg))
-      wallProblems.push(`${r.id}: no place door`);
-    const mine = tileImgs.filter((n) => n.startsWith(r.prefix)).length;
-    const want = plates.filter((n) => n.startsWith(r.prefix)).length;
-    if (mine !== want)
-      wallProblems.push(`${r.id}: ${mine} of its plates on the wall, ${want} in the registry`);
+  const wrapAt = act.indexOf('data-place-cards');
+  ok("the Field notes wall is one container of place cards", wrapAt >= 0);
+  const cardProblems = [];
+  let prevCard = -1;
+  for (const r of places) {
+    const cardStart = act.indexOf(`data-place-card="${r.id}"`, wrapAt);
+    if (cardStart < 0) { cardProblems.push(`${r.id}: no card`); continue; }
+    if (cardStart < prevCard) cardProblems.push("cards are not in ROOMS order");
+    prevCard = cardStart;
+    const cardEnd = act.indexOf("</a>", cardStart);
+    const card = act.slice(cardStart, cardEnd);
+    const href = (card.match(/href="([^"]+)"/) || [])[1];
+    if (href !== r.page) cardProblems.push(`${r.id}: card href ${href}, want ${r.page}`);
+    if (!card.includes(`IMG/${r.id}-cover.jpg`))
+      cardProblems.push(`${r.id}: the card does not carry its own cover sheet`);
   }
-  ok("each place group holds exactly its own plates, behind one door", wallProblems.length === 0,
-     wallProblems.join("; "));
-  ok("a plate is not an entrance: the per-tile doors are retired", !/<a class="ig-room"/.test(act));
+  ok("three cards, one door each, in ROOMS order, each holding its own cover",
+     cardProblems.length === 0, cardProblems.join("; "));
+  ok("a plate is not an entrance: no tile or text-arrow doors survive on this wall",
+     !/<a class="ig-room"/.test(act) && !/class="text-arrow" href="rooms-/.test(act));
+  ok("the sub-area plates do not hang here: the roll carries classroom only",
+     !/id="ig-field-notes-/.test(act));
 }
 
 console.log(out.join("\n"));

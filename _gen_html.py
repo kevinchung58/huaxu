@@ -1531,22 +1531,17 @@ BLOCK_LABEL = {b["id"]: b["label"] for b in BLOCKS}
 # where a room stands in the walk — and decided *before* the wall and the roll are built, because
 # the roll is addressed by index and a tile that disagrees with its frame sends a visitor to the
 # wrong plate.
-# The album keeps ONE representative plate per place — the place's cover sheet — and nothing else:
-# the sub-area plates (the gate, the stall row, the lanterns) hang inside their rooms as the frames
-# of the little places they stand in for. A wall of fifteen plates read as a pile; a wall of three
-# reads as three places, one door each.
-_REPRESENTATIVE = {f"IMG/{r[0]}-cover.jpg" for r in ROOMS if r[4] == "open" and r[0] != "street"}
+# The album wall carries only the blocks read as photographs here (classroom). Field notes is not a
+# plate wall any more: it is ONE container of three cards, each card a place, and the card itself is
+# the door into that room. The sub-area plates (the gate, the stall row, the lanterns) hang inside
+# their rooms, as the frames of the little places they stand in for — never on this wall.
 ALBUM_ITEMS = sorted(
-    (it for b in ALBUM_BLOCKS for it in ALBUM[b["id"]]
-     if b["id"] != "field-notes" or it["src"] in _REPRESENTATIVE),
+    (it for b in ALBUM_BLOCKS for it in ALBUM[b["id"]] if b["id"] != "field-notes"),
     key=lambda it: ROOM_ORDER.get(room_of_plate(it["src"]), len(ROOMS)))
 album_tiles, gallery_plate = _plate_for(ALBUM_ITEMS)
 _tiles_by_block = {b["id"]: [] for b in ALBUM_BLOCKS}
-_tiles_by_room = {}          # field-notes only: room id -> its tiles, still in ALBUM_ITEMS order
 for it, tile in zip(ALBUM_ITEMS, album_tiles):
     _tiles_by_block[it["block"]].append(tile)
-    if it["block"] == "field-notes":
-        _tiles_by_room.setdefault(room_of_plate(it["src"]), []).append(tile)
 
 
 # A block may open onto the place its plates came from. It belongs to the block rather than to the
@@ -1569,22 +1564,25 @@ PLACE_GROUP_NOTES = {
 }
 
 
-def _place_group(r, tiles):
-    """One place on the Field notes wall: heading, its representative plate, one door."""
-    label, page = r[1], r[2]
-    head = (f'<div class="block-head reveal" data-place-group="{r[0]}">'
-            f'<h3>{escape(label)}</h3>'
-            f'<p class="when">{escape(PLACE_GROUP_NOTES[r[0]])} <span class="badge">'
-            f'1 plate</span></p></div>')
-    door = (f'<p class="pillar-more reveal"><a class="text-arrow" href="{page}" '
-            f'aria-label="Walk into {escape(label)}">'
-            f'This plate stands in for {escape(label)}; the little places of it hang inside. '
-            f'Walk into {escape(label)}.{ico(ICON_RIGHT)}</a></p>')
-    grid = (f'<div class="ig-grid" data-ig-grid>{" ".join(tiles)}</div>' if tiles else
-            f'<div class="dashed empty">{chip(ICON_CAMERA)}<div><strong>Nothing in this place '
-            f'yet</strong></div></div>')
-    return (f'    {head}\n{door}'
-            f'    <div class="ig-wall" data-ig-wall>\n      {grid}\n    </div>')
+def _place_card(r):
+    """One card in the Field notes container: the place's sheet, its name and note — and the card
+    itself is the door. One container, three cards, one press to be inside the place."""
+    rid, label, page = r[0], r[1], r[2]
+    src = f"IMG/{rid}-cover.jpg"
+    if (ROOT / src).exists():
+        media = (f'<span class="place-card-media"><img src="{src}" alt="" loading="lazy" '
+                 f'{poster_attrs(src)} /></span>')
+    else:
+        media = (f'<span class="place-card-media dashed empty">{chip(ICON_CAMERA)}'
+                 f'<span class="when">No cover yet</span></span>')
+    note = PLACE_GROUP_NOTES[rid]
+    return (f'<a class="place-card reveal" data-place-card="{rid}" href="{page}" '
+            f'aria-label="Walk into {escape(label)}: {escape(note)}">'
+            f'{media}'
+            f'<span class="place-card-body"><strong>{escape(label)}</strong>'
+            f'<span class="when">{escape(note)}</span>'
+            f'<span class="place-card-go">Walk into {escape(label)} {ico(ICON_RIGHT)}</span>'
+            f'</span></a>')
 
 
 # The one instruction the album gives, in the block's own voice: what a door does, how to walk once
@@ -1607,24 +1605,17 @@ def gallery_html():
         if held:
             state += ' · ' + str(len(held)) + ' held for want of a caption'
         if b["id"] == "field-notes":
-            # Three places, one door each. The block's own heading is a line, not an h3: the places
-            # are the structure a visitor navigates, so they are the headings. A room row with plates
-            # but no built status would hang its plates without a door; today every room is open.
+            # One container, three cards, each card the door. The block's own heading is a line, not
+            # an h3: the cards are the structure a visitor navigates. A place with no cover yet still
+            # gets its card, honest about the missing sheet rather than absent from the row.
+            cards = [_place_card(r) for r in ROOMS
+                     if r[4] == "open" and r[0] != "street" and PLACE_GROUP_NOTES.get(r[0])]
             out.append(f'    <p class="eyebrow reveal">{escape(b["label"])}</p>\n'
                        f'    <p class="when reveal">{escape(b["purpose"])} <span class="badge">'
-                       f'{escape(b["kind"])}</span> {escape(state)}</p>\n'
-                       f'    <p class="when reveal" data-walk-guide>{escape(HOW_TO_WALK)}</p>\n')
-            for r in ROOMS:
-                if r[4] != "open" or r[0] == "street":
-                    continue
-                group = _tiles_by_room.get(r[0], [])
-                if group or PLACE_GROUP_NOTES.get(r[0]):
-                    out.append(_place_group(r, group))
-            orphan = _tiles_by_room.get(None, [])
-            if orphan:
-                out.append(f'    <p class="when reveal">{len(orphan)} plates belong to no place '
-                           f'yet.</p>\n    <div class="ig-wall" data-ig-wall>\n      '
-                           f'<div class="ig-grid" data-ig-grid>{" ".join(orphan)}</div>\n    </div>')
+                       f'{escape(b["kind"])}</span> {len(cards)} places</p>\n'
+                       f'    <p class="when reveal" data-walk-guide>{escape(HOW_TO_WALK)}</p>\n'
+                       f'    <div class="place-cards" data-place-cards>\n      '
+                       + "\n      ".join(cards) + '\n    </div>')
             continue
         head = (f'<div class="block-head reveal"><h3>{escape(b["label"])}</h3>'
                 f'<p class="when">{escape(b["purpose"])} <span class="badge">{escape(b["kind"])}'

@@ -65,9 +65,10 @@ Pointer Lock is unsupported on every iOS Safari and it hijacks the cursor.
 **Slots are sub-areas.** A room's `slots` list is not media kinds — it is the room's little
 places, one per Field notes plate the room owns: the drawn frame holding a place carries the
 place's name (from `PLACE_TITLES`), and the slot's `state` says what replaces it when a real
-photograph arrives. On the album these plates do not appear at all — the album hangs **one
-representative plate per place** (the cover sheet); the sub-area plates live inside the rooms
-as the frames of the places they stand in for. The closure is asserted: every frame's title in a
+photograph arrives. On the album these plates do not appear at all — the Field notes wall is
+**one container of three cards, the card itself the door** into its room (the card carries the
+place's cover sheet); the sub-area plates live inside the rooms as the frames of the places they
+stand in for. The closure is asserted: every frame's title in a
 room page must be a slot label in that same page, and every frame's `src` must be a
 `PLACE_TITLES` key. An image with a name but no place fails the gate; so does a place with
 nothing holding it. On the album the same plates hang grouped by place — one heading and one

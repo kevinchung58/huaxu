@@ -283,12 +283,13 @@ Reinstall sources:
 
 - **The hub street and three rooms are open:** `street.html` (the hub, outdoors), Canada
     (`rooms-canada.html`), Tokyo (`rooms.html`), Fukuoka (`rooms-fukuoka.html`). The album's Field
-    notes wall is **one representative plate per place** — the place's cover sheet, three plates and
-    three doors in all (`PLACE_GROUP_NOTES` / `_place_group`). The sub-area plates — the gate, the
-    stall row, the lanterns — do **not** hang on the album: they are the wall frames **inside their
-    rooms**, one per named little place (`PLACE_TITLES` + the room's slot list; `verify-walk.mjs`
-    asserts every frame's title is a slot). A plate is never an entrance in its own right; a wall of
-    fifteen scattered links read as a pile, not as three places you could go.
+    notes wall is **one container of three cards, and the card itself is the door** (`_place_card`
+    → `data-place-cards`): press a card, be inside the place. Each card carries the place's cover
+    sheet, name and note. The sub-area plates — the gate, the stall row, the lanterns — do **not**
+    appear on the album at all: they are the wall frames **inside their rooms**, one per named
+    little place (`PLACE_TITLES` + the room's slot list; `verify-walk.mjs` asserts every frame's
+    title is a slot). Fifteen scattered tiles-with-doors read as a pile; one container of three
+    cards reads as three places you could go.
     A new place is a row in `ROOMS`, a record in `DISTRICTS`, a door on the street, a page written by
     the walk loop, plate prefixes added to `IMG_RULES` and to the row, and a gate run —
     `skills/place-intake` walks through it.
