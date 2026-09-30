@@ -34,23 +34,25 @@ PUBLIC_PAGES = ["index.html", "about.html", "research.html", "teaching.html",
                 "activities.html", "rooms.html", "service.html", "links.html"]
 
 
-# The rooms, and the order the chain runs in: earliest first, which is also the order the album reads
-# them in. This table exists above the districts for a boring reason — the album wall is built before
-# the district records are — and for a good one: the chain is a fact about the site, not about one
-# room, and a place should not have to know what exists on either side of it. `verify-walk.mjs`
+# The rooms, and the shape of the walk: a street, and the rooms that stand on it. The street is the
+# hub — it is the page the nav's "Rooms" opens, it carries a door for every built room, and every
+# room's back curtain opens back onto it. A place should not have to know what exists on either side
+# of its own door, and it does not: the wiring is computed from this table, and `verify-walk.mjs`
 # asserts that each district agrees with its row here, so the two cannot drift apart silently.
+# The street row carries no plate prefix, because the street hangs no pictures: it is the site's own
+# ground, not one more place in the archive.
 ROOMS = [
+    ("street", "The street", "street.html", [], "open"),
     ("canada", "Canada", "rooms-canada.html", ["canada-"], "open"),
     ("tokyo", "Tokyo", "rooms.html", ["tokyo-"], "open"),
     ("fukuoka", "Fukuoka", "rooms-fukuoka.html", ["fukuoka-"], "open"),
 ]
 ROOM_BY_ID = {r[0]: {"label": r[1], "page": r[2], "plates": r[3], "status": r[4]} for r in ROOMS}
 ROOM_ORDER = {r[0]: i for i, r in enumerate(ROOMS)}
-# The nav item says "Rooms", so it goes to the near end of the chain: a visitor arriving there should
-# start where the walk starts rather than in the middle of it, and that room's curtain opens onto the
-# album, which is where the other rooms are chosen. Follows the ROOMS table, so adding an earlier
-# place moves the door without anyone having to remember that it did.
-CHAIN_ENTRY = next((r[2] for r in ROOMS if r[4] == "open"), "activities.html")
+# The nav item says "Rooms", so it opens on the street: a visitor arriving there is standing where
+# every room can be walked to from, rather than inside one of them. Follows the ROOMS table, so
+# rebuilding the hub renames the door without anyone having to remember that it did.
+CHAIN_ENTRY = next((r[2] for r in ROOMS if r[4] == "open" and r[0] == "street"), "activities.html")
 
 
 def svg(d: str, filled: bool = False) -> str:
@@ -1406,12 +1408,39 @@ def album_item(name, block):
     """
     stem = name.rsplit(".", 1)[0]
     meta = CAPTIONS.get(name, {})
-    title = meta.get("title", stem.replace("-", " ").replace("_", " ").capitalize())
+    title = meta.get("title",
+                     PLACE_TITLES.get("IMG/" + name,
+                                      stem.replace("-", " ").replace("_", " ").capitalize()))
     fallback = ("Filed under " + title.lower() + "; no caption was written for it, so none is "
                 "invented here.")
     return {"src": "IMG/" + name, "name": name, "title": title,
             "alt": meta.get("alt", title), "caption": meta.get("caption", fallback),
             "block": block, "kind": REGISTRY[name][1]}
+
+
+# The album is built here, above the district records, but its plates are the rooms' sub-places — the
+# small areas inside each place, one drawn plate each — and those names live in the district records
+# further down. So the names travel in one table next to the registry, file to name, and the district
+# block asserts the two agree file by file: a plate keeps its name as a tile on the album wall and as
+# a frame hung in its room, or the build stops. The three covers are sheets, not sub-places; they are
+# named here so the wall does not read "Tokyo cover" at a visitor.
+PLACE_TITLES = {
+    "IMG/tokyo-sensoji.jpg": "The gate at Asakusa",
+    "IMG/tokyo-scramble.jpg": "The scramble at Shibuya",
+    "IMG/tokyo-tower.jpg": "The tower at dusk",
+    "IMG/tokyo-poster-lantern.jpg": "The paper lantern",
+    "IMG/tokyo-poster-wires.jpg": "The wires over the lane",
+    "IMG/tokyo-poster-ticket.jpg": "The ticket machine",
+    "IMG/tokyo-cover.jpg": "Tokyo, the lane in one sheet",
+    "IMG/canada-1.jpg": "The walkway at dusk",
+    "IMG/canada-2.jpg": "Bare trees over the path",
+    "IMG/canada-3.jpg": "The lit door at the end",
+    "IMG/canada-cover.jpg": "Canada, the walk in one sheet",
+    "IMG/fukuoka-1.jpg": "The stall row",
+    "IMG/fukuoka-2.jpg": "Lanterns over the wires",
+    "IMG/fukuoka-3.jpg": "The water at the end",
+    "IMG/fukuoka-cover.jpg": "Fukuoka, the alley in one sheet",
+}
 
 
 ALBUM = {b["id"]: [album_item(n, b["id"]) for n in block_files(b["id"])] for b in BLOCKS}
@@ -1457,21 +1486,15 @@ def _plate_for(items):
         label = f"{it['title']} \u00b7 {BLOCK_LABEL[it['block']]} \u00b7 {tag}"
         # The wall is the photographs and nothing else. What a plate may claim — its block, and that it
         # is generated rather than taken — is said inside it, where you have to arrive to read it.
-        # Under a plate that belongs to a built room there is one more thing: the door into that room,
-        # said in words because a picture of a place is not an invitation to walk it.
-        rid = room_of_plate(it["src"])
-        door = ""
-        if rid and ROOM_BY_ID[rid]["status"] == "open":
-            room = ROOM_BY_ID[rid]
-            door = (f'<a class="ig-room" href="{room["page"]}" '
-                    f'aria-label="Walk into {escape(room["label"])}: the room this plate is from">'
-                    f'Enter {escape(room["label"])} {ico(ICON_RIGHT)}</a>')
+        # A plate carries no door of its own: the wall is grouped by place, and the place's door is
+        # the one entrance (gallery_html). Fifteen scattered "walk in" links made the wall read as a
+        # pile of invitations instead of three places with their little areas inside.
         tiles.append(
             f'<div class="ig-cell">'
             f'<a class="ig-tile" href="#{ident}" data-ig '
             f'aria-label="{escape(label)}: open in the roll">'
             f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} loading="lazy" /></a>'
-            f'{door}</div>')
+            f'</div>')
         frames.append(
             f'<figure class="ig-frame" id="{ident}">'
             f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} />'
@@ -1502,13 +1525,19 @@ def _plate_for(items):
 
 
 BLOCK_LABEL = {b["id"]: b["label"] for b in BLOCKS}
-# The album's order is the chain's: a place earlier in the walk is read earlier on the wall, and the
-# plates that belong to no room keep their registry order after them. Decided here rather than in the
-# registry, because the registry is about what an image may claim and the chain is about where a room
-# stands in the walk — and decided *before* the wall and the roll are built, because the roll is
-# addressed by index and a tile that disagrees with its frame sends a visitor to the wrong plate.
-ALBUM_ITEMS = sorted((it for b in ALBUM_BLOCKS for it in ALBUM[b["id"]]),
-                     key=lambda it: ROOM_ORDER.get(room_of_plate(it["src"]), len(ROOMS)))
+# The album's order is the ROOMS table's: a room earlier in the table is read earlier on the wall,
+# and the plates that belong to no room keep their registry order after them. Decided here rather
+# than in the registry, because the registry is about what an image may claim and the table is about
+# where a room stands in the walk — and decided *before* the wall and the roll are built, because
+# the roll is addressed by index and a tile that disagrees with its frame sends a visitor to the
+# wrong plate.
+# The album wall carries only the blocks read as photographs here (classroom). Field notes is not a
+# plate wall any more: it is ONE container of three cards, each card a place, and the card itself is
+# the door into that room. The sub-area plates (the gate, the stall row, the lanterns) hang inside
+# their rooms, as the frames of the little places they stand in for — never on this wall.
+ALBUM_ITEMS = sorted(
+    (it for b in ALBUM_BLOCKS for it in ALBUM[b["id"]] if b["id"] != "field-notes"),
+    key=lambda it: ROOM_ORDER.get(room_of_plate(it["src"]), len(ROOMS)))
 album_tiles, gallery_plate = _plate_for(ALBUM_ITEMS)
 _tiles_by_block = {b["id"]: [] for b in ALBUM_BLOCKS}
 for it, tile in zip(ALBUM_ITEMS, album_tiles):
@@ -1521,21 +1550,53 @@ for it, tile in zip(ALBUM_ITEMS, album_tiles):
 # a Python string split across two lines, so the quote and the continuation leaked into the anchor
 # text and the page read `Tokyo, " "walked at first person`. A door that is hard to read is a door
 # nobody opens, so the copy lives here as one sentence and the generator cannot fold it.
-BLOCK_DOORS = {
-    "field-notes": {
-        # The chain's near end, not a hardcoded page: the door under this heading starts the walk where
-        # the walk starts, and it retargets itself when a room is added earlier in the chain. Each
-        # plate that belongs to a built room carries its own door underneath it as well.
-        "href": None,
-        "text": "The archive is also a place. These plates come from rooms you can walk at eye height, "
-                "and the frames hung on their walls open in the same viewer.",
-        "label": "Walk the first room of the chain",
-    },
+# The Field notes wall is three places, not a pile of plates: one heading per place, one door per
+# place, and that place's plates hung under it — each plate standing in for a little area inside the
+# place (the gate, the stall row, the lit door) until a photograph of the real one arrives. A plate
+# is never an entrance in its own right; the door is the place's. The notes live here rather than in
+# the district records because the album is assembled above DISTRICTS; the door targets and the
+# group names come from the ROOMS table, which does exist by here, so the wall and the walk pages
+# cannot disagree about what a place is called or where its door goes.
+PLACE_GROUP_NOTES = {
+    "canada": "A campus walkway after snow, walked at dusk toward the one lit door.",
+    "tokyo": "A night lane with shutters, lanterns, and a vending machine keeping the far end.",
+    "fukuoka": "A stall alley, lanterns low over the counters, water at the end of it.",
 }
 
 
+def _place_card(r):
+    """One card in the Field notes container: the place's sheet, its name and note — and the card
+    itself is the door. One container, three cards, one press to be inside the place."""
+    rid, label, page = r[0], r[1], r[2]
+    src = f"IMG/{rid}-cover.jpg"
+    if (ROOT / src).exists():
+        media = (f'<span class="place-card-media"><img src="{src}" alt="" loading="lazy" '
+                 f'{poster_attrs(src)} /></span>')
+    else:
+        media = (f'<span class="place-card-media dashed empty">{chip(ICON_CAMERA)}'
+                 f'<span class="when">No cover yet</span></span>')
+    note = PLACE_GROUP_NOTES[rid]
+    return (f'<a class="place-card reveal" data-place-card="{rid}" href="{page}" '
+            f'aria-label="Walk into {escape(label)}: {escape(note)}">'
+            f'{media}'
+            f'<span class="place-card-body"><strong>{escape(label)}</strong>'
+            f'<span class="when">{escape(note)}</span>'
+            f'<span class="place-card-go">Walk into {escape(label)} {ico(ICON_RIGHT)}</span>'
+            f'</span></a>')
+
+
+# The one instruction the album gives, in the block's own voice: what a door does, how to walk once
+# you are inside, how you get back, and that the street's far end is open. It sits above the places,
+# because the moment after "walk in" is exactly where a first-time visitor is lost.
+HOW_TO_WALK = ("Every door on this wall steps you into its place at eye height: W A S D to walk, "
+               "arrow keys or drag to turn, E to open what is in front of you, or the on-screen pad "
+               "on a phone. Esc walks you back out - room to street, street back to this wall - and "
+               "the street is the road between all three places. Its far end is open: keep walking "
+               "and you are outside under the night sky.")
+
+
 def gallery_html():
-    """One wall per block: the grid if there is anything to hang, the reason if there is not."""
+    """The wall, block by block: Field notes as three places, anything else as one grid."""
     out = []
     for b in ALBUM_BLOCKS:
         tiles = _tiles_by_block[b["id"]]
@@ -1543,24 +1604,26 @@ def gallery_html():
         state = f'{len(tiles)} shown'
         if held:
             state += ' · ' + str(len(held)) + ' held for want of a caption'
-        head = (f'<h3>{escape(b["label"])}</h3>'
-                f'<p class="when">{escape(b["purpose"])} <span class="badge">{escape(b["kind"])}</span>'
-                f' {escape(state)}</p>')
-        door = BLOCK_DOORS.get(b["id"])
-        if door and door["href"] is None:
-            # Resolved here, where the chain is known: the first room in ROOMS that is built. A chain
-            # with nothing built yet has no door, and the block says nothing rather than pointing at a
-            # page that does not exist.
-            first = next((r for r in ROOMS if r[4] == "open"), None)
-            door = dict(door, href=first[2]) if first else None
-        door_html = (f'    <p class="pillar-more reveal"><a class="text-arrow" href="{door["href"]}"'
-                     f' aria-label="{escape(door["label"])}">{escape(door["text"])}'
-                     f'{ico(ICON_RIGHT)}</a></p>\n' if door else "")
+        if b["id"] == "field-notes":
+            # One container, three cards, each card the door. The block's own heading is a line, not
+            # an h3: the cards are the structure a visitor navigates. A place with no cover yet still
+            # gets its card, honest about the missing sheet rather than absent from the row.
+            cards = [_place_card(r) for r in ROOMS
+                     if r[4] == "open" and r[0] != "street" and PLACE_GROUP_NOTES.get(r[0])]
+            out.append(f'    <p class="eyebrow reveal">{escape(b["label"])}</p>\n'
+                       f'    <p class="when reveal">{escape(b["purpose"])} <span class="badge">'
+                       f'{escape(b["kind"])}</span> {len(cards)} places</p>\n'
+                       f'    <p class="when reveal" data-walk-guide>{escape(HOW_TO_WALK)}</p>\n'
+                       f'    <div class="place-cards" data-place-cards>\n      '
+                       + "\n      ".join(cards) + '\n    </div>')
+            continue
+        head = (f'<div class="block-head reveal"><h3>{escape(b["label"])}</h3>'
+                f'<p class="when">{escape(b["purpose"])} <span class="badge">{escape(b["kind"])}'
+                f'</span> {escape(state)}</p></div>')
         inner = (f'<div class="ig-grid" data-ig-grid>{" ".join(tiles)}</div>' if tiles else
                  f'<div class="dashed empty">{chip(ICON_CAMERA)}<div><strong>Nothing in this block '
                  f'yet</strong><p class="when">{escape(b["note"])}</p></div></div>')
-        out.append(f'    <div class="block-head reveal">{head}</div>\n'
-                   f'{door_html}'
+        out.append(f'    {head}\n'
                    f'    <p class="when reveal">{escape(b["note"])}</p>\n'
                    f'    <div class="ig-wall" data-ig-wall>\n      {inner}\n    </div>')
     return "\n".join(out)
@@ -1572,10 +1635,11 @@ activities = page("Activities · Hua-Xu Zhong", "activities", f"""
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Community</p><h1>Academic activities</h1><p>The archive of what has been shown, and a running record of talks. Captions and venues are attached as they are confirmed, and an image without one is filed but not hung.</p></div>
     {titled("h2", "The album", ICON_CAMERA)}
-    <p class="when reveal" style="margin:-0.4rem 0 1rem">Plates hung on a wall, read the way the
-      album is read on a phone: pick one and the roll opens at it, sideways, and nothing expires when
-      it has been seen. Which block an image belongs to, and what it is allowed to claim, is declared
-      in the generator rather than sorted afterwards.</p>
+    <p class="when reveal" style="margin:-0.4rem 0 1rem">Three places, and the cards below are
+      their doors: pick a card and you are standing inside the place, at eye height, free to walk.
+      The photographs themselves live on the places' own walls; this page only holds the doors.
+      Which block an image belongs to, and what it is allowed to claim, is declared in the
+      generator rather than sorted afterwards.</p>
 {gallery_wall}
     {titled("h2", "Talks and visits", ICON_CHAT, "block-title reveal spaced")}
     <p class="when reveal">Invited talks, presentations, workshops, and conference attendance. They will appear as a CV timeline when records are added.</p>
@@ -1755,14 +1819,219 @@ LANE_FALLBACK = {"w": 640, "d": 430, "ceil": 420, "back": 240}
 
 DISTRICTS = [
     {
+        # The hub. The street is the site's own ground — it names no city, carries no lettering, and
+        # hangs no pictures: its whole job is to be the place the three rooms stand on, with a door
+        # for each and a sky over both. It is outdoors the way Canada's walkway is: the "ceiling" is
+        # high enough to read as night sky, the far end opens instead of stopping, and the light
+        # comes from doorways, street lamps and the wires strung between the poles.
+        "id": "street", "label": "The street",
+        "page": ROOM_BY_ID["street"]["page"],
+        "plates": ROOM_BY_ID["street"]["plates"],
+        "lane": {"w": 700, "d": 560, "ceil": 620, "back": 300, "max_d": 2400},
+        "purpose": "The street the three rooms stand on, walked under a night sky",
+        "status": "open",
+        "kind": "personal",
+        "blurb": "One straight street at night. Three lit doors, one per room, and the open end "
+                 "of the street for a skyline.",
+        "objects": [
+            # The three doors. Each names the room it opens onto — that is navigation, not a claim —
+            # and each carries a lamp over it, because on a night street a door you can read is a
+            # door with light on it. Reachability is a rendering fact the records must respect: the
+            # walker's z clamps at MAX_D (1200 in walk units) and the reach ring is 190 cm, so a
+            # door authored deeper than record z ~479 (1200+190, over Z_SCALE) could be seen but
+            # never opened. The last door sits at 380 with room to spare.
+            {"id": "door-canada", "kind": "door", "x": -346, "z": 120, "y": 0, "ry": 90,
+             "leaf": "#3e5c66",
+             "glow": [{"r": 130, "k": 0.58, "dy": 235}],
+             "leave": ROOM_BY_ID["canada"]["page"],
+             "title": "The door onto Canada",
+             "hint": "It opens onto Canada: a campus walkway after snow, drawn at the same scale "
+                     "as this street. Everything between here and there is one step through."},
+            {"id": "door-tokyo", "kind": "door", "x": 346, "z": 300, "y": 0, "ry": -90,
+             "leaf": "#5c4434",
+             "glow": [{"r": 130, "k": 0.62, "dy": 235}],
+             "leave": ROOM_BY_ID["tokyo"]["page"],
+             "title": "The door onto Tokyo",
+             "hint": "It opens onto the lane: shutters, lanterns, a vending machine at its end. "
+                     "The curtain inside parts the other way."},
+            {"id": "door-fukuoka", "kind": "door", "x": -346, "z": 380, "y": 0, "ry": 90,
+             "leaf": "#4b4368",
+             "glow": [{"r": 130, "k": 0.58, "dy": 235}],
+             "leave": ROOM_BY_ID["fukuoka"]["page"],
+             "title": "The door onto Fukuoka",
+             "hint": "It opens onto the stall alley: lanterns low over the counters, and water at "
+                     "the end of it."},
+            # The street's own furniture, and the two poles the wires run from.
+            {"id": "pole-west", "kind": "utility", "x": -330, "z": 140, "y": 0, "ry": 90,
+             "title": "The pole the wires are strung from",
+             "hint": "Every wire overhead starts or ends on one of the two poles: a cable has to "
+                     "be anchored somewhere you can point at."},
+            {"id": "pole-east", "kind": "utility", "x": 330, "z": 400, "y": 0, "ry": -90,
+             "title": "The pole at the far crossing",
+             "hint": "The second anchor. Between them the wires carry the street's two bulbs."},
+            {"id": "bollard-s", "kind": "bollard", "x": -160, "z": 24, "y": 0, "ry": 0,
+             "title": "A bollard at the mouth of the street",
+             "hint": "Drawn rather than surveyed: it is here so the entrance has an edge."},
+            {"id": "bench-s", "kind": "bench", "x": -300, "z": 250, "y": 0, "ry": 90,
+             "title": "A bench under the dark half of the street",
+             "hint": "The one seat on the street. It sits in the gap between two doors, where a "
+                     "walker is allowed to stop."},
+            {"id": "bin-s", "kind": "bin", "x": 322, "z": 210, "y": 0, "ry": -90,
+             "title": "A bin by the middle door",
+             "hint": "Lid shut, nothing implied about what is in it."},
+            {"id": "planter-s1", "kind": "planter", "x": -300, "z": 370, "y": 0, "ry": 90,
+             "title": "A planter of dark leaves",
+             "hint": "Set dressing: the one green thing on the street, drawn as a silhouette."},
+            {"id": "planter-s2", "kind": "planter", "x": 296, "z": 60, "y": 0, "ry": -90,
+             "title": "A second planter, by the wall",
+             "hint": "The street's edges need a rhythm more than they need symmetry."},
+            {"id": "board-s", "kind": "signA", "x": 300, "z": 120, "y": 150, "ry": -90,
+             "title": "A folding board, blank",
+             "hint": "Both faces blank: the lettering would be a shop's to write, and no shop here "
+                     "is real."},
+            {"id": "drain-s", "kind": "drain", "x": 60, "z": 300, "y": 0, "ry": 0,
+             "title": "A drain in the asphalt",
+             "hint": "The street's one piece of water kit, at the crossing point."},
+            {"id": "front-s", "kind": "front", "x": 346, "z": 380, "y": 0, "ry": -90,
+             "glow": [{"r": 120, "k": 0.45, "dy": 190}],
+             "title": "A shut front with a light behind it",
+             "hint": "Shutter down, light on in the transom: a building with nobody in it and a "
+                     "timer on its lamp. It keeps the far stretch of street from being empty. "
+                     "Done, the shutter rises — onto an interior the site does not furnish, so "
+                     "all it gives up is more light.",
+             "states": [
+                 {"say": "Up. The transom lamp plus a room lamp: twice the light, none the wiser "
+                         "about who left it on.", "k": 1.15, "shut": 0.9},
+                 {"say": "Down again. The street keeps its shuttered half.", "k": 0.45,
+                  "shut": 0},
+             ]},
+            {"id": "front-n", "kind": "front", "x": -346, "z": 300, "y": 0, "ry": 90,
+             "glow": [{"r": 120, "k": 0.45, "dy": 190}],
+             "title": "Another shut front, across the crossing",
+             "hint": "Same story from the other side of the street: shutter down, transom lit. "
+                     "Two closed fronts facing is most of what a night street is. Done, this one "
+                     "stays as it is — the pair should not match, or the street is a stage set.",
+             "states": [
+                 {"say": "It does not budge. Some shutters are just shut.", "k": 0.5, "shut": 0},
+                 {"say": "Still shut. The lamp behind it stays on regardless.", "k": 0.5,
+                  "shut": 0},
+             ]},
+            {"id": "ac-s", "kind": "ac", "x": -344, "z": 250, "y": 262, "ry": 90,
+             "title": "An air conditioner over the first door",
+             "hint": "High on the wall, dripping nothing: the street's one horizontal above head "
+                     "height."},
+        ],
+        # The street lights itself the way an open street does: two street lamps on the poles, a
+        # broad cool skylight (bulb:false — it is the night sky dome, not a fitting), and the doors'
+        # own glows from the objects list. All of it is data; the renderer only multiplies.
+        "lamps": [
+            {"x": 0, "y": 505, "z": 140, "r": 46, "k": 0.6},
+            {"x": 0, "y": 500, "z": 400, "r": 46, "k": 0.6},
+            {"x": 0, "y": 502, "z": 268, "r": 44, "k": 0.55},
+            # The city's own light, standing in the opening: the far wall of the street faces a lit
+            # skyline through it, and without this the last stretch reads as a dead end. Cool, soft,
+            # no bulb — it is the glow of somewhere open, not a fitting on the street.
+            {"x": 0, "y": 190, "z": 536, "r": 135, "k": 0.5, "tint": "#9fb2d8", "bulb": False},
+        ],
+        "wires": [
+            {"a": [-350, 512, 140], "b": [350, 504, 140], "sag": 42},
+            {"a": [-350, 512, 268], "b": [350, 504, 268], "sag": 40},
+            {"a": [-350, 508, 400], "b": [350, 512, 400], "sag": 38},
+        ],
+        "beams": [],
+        "surfaces": [
+            # Building fronts, band by band, both sides. The materials repeat the rooms' own kit so
+            # the whole walk reads as one drawn world.
+            {"side": -1, "z0": -1400, "z1": 200, "y0": 0, "y1": 140, "kind": "dado", "tone": 1.16},
+            {"side": -1, "z0": -1400, "z1": 200, "y0": 140, "y1": 620, "kind": "plaster", "tone": 1.14},
+            {"side": -1, "z0": 200, "z1": 440, "y0": 0, "y1": 300, "kind": "shutter", "tone": 1.26},
+            {"side": -1, "z0": 200, "z1": 440, "y0": 300, "y1": 620, "kind": "brick", "tone": 1.22},
+            {"side": -1, "z0": 440, "z1": 560, "y0": 0, "y1": 620, "kind": "brick", "tone": 1.3},
+            {"side": 1, "z0": -1400, "z1": 80, "y0": 0, "y1": 620, "kind": "brick", "tone": 1.12},
+            {"side": 1, "z0": 80, "z1": 320, "y0": 0, "y1": 130, "kind": "dado", "tone": 1.18},
+            {"side": 1, "z0": 80, "z1": 320, "y0": 130, "y1": 620, "kind": "plaster", "tone": 1.12},
+            {"side": 1, "z0": 320, "z1": 560, "y0": 0, "y1": 300, "kind": "shutter", "tone": 1.32},
+            {"side": 1, "z0": 320, "z1": 560, "y0": 300, "y1": 620, "kind": "plaster", "tone": 1.26},
+        ],
+        "marks": [
+            {"kind": "tactile", "x0": -330, "x1": -306, "z0": -1400, "z1": 560},
+            {"kind": "tactile", "x0": 306, "x1": 330, "z0": -1400, "z1": 560},
+            {"kind": "gutter", "x0": -368, "x1": 368, "z0": -1400, "z1": 14},
+            {"kind": "grate", "x0": -80, "x1": 80, "z0": 296, "z1": 304},
+            {"kind": "manhole", "x0": -40, "x1": 40, "z0": 210, "z1": 250},
+            {"kind": "kerb", "x0": -368, "x1": -306, "z0": -1400, "z1": 560, "y1": 6},
+            {"kind": "kerb", "x0": 306, "x1": 368, "z0": -1400, "z1": 560, "y1": 6},
+        ],
+        # The far end is not a window but the way on: the opening runs nearly wall to wall and floor
+        # to sky, and the clamp is authored past it (max_d above) — walk out of the street and the
+        # ground continues under the night sky, GTA-style, with the skyline ahead. What is out there
+        # is open ground the street does not name. No tower, no crossing, no expressway — those are
+        # Tokyo's, and the street is nobody's.
+        "vista": {"x": 0, "y0": 6, "y1": 614, "w": 620},
+        "backdrop": {
+            # glow is the band's own brightness: without it a sky band paints at lit 0, and the
+            # horizon band — the one the opening actually frames — reads as a hole in the world.
+            # The band heights are projection-aware: the backdrop sits at z=120000 in scene units,
+            # so a band has to span thousands of cm of y to be more than a hairline on screen, and
+            # the gradient below is the honest "sky is brightest at the horizon" order.
+            "sky": [{"y0": -400, "y1": 8000, "c": "#4a5a84", "glow": 1.0},
+                    {"y0": 8000, "y1": 30000, "c": "#2c3859", "glow": 0.62},
+                    {"y0": 30000, "y1": 40000, "c": "#1e2946", "glow": 0.42}],
+            "mountain": [{"x": -900, "y": 380, "w": 2400, "h": 260, "c": "#1b2540"},
+                         {"x": 1400, "y": 340, "w": 1800, "h": 220, "c": "#1e2946"}],
+            "plaza": {"y": -6, "z0": 1624, "z1": 9000, "half": 4200, "lit": 1.1},
+            # Two low-rise, lit rooftops flank the opening — off the centre line, so they give the
+            # open ground something human-sized at the edges without a slab over the skyline.
+            "roofs": [
+                {"x": -1350, "y": 0, "z": 2050, "w": 700, "h": 300, "tone": 1.0},
+                {"x": 1350, "y": 0, "z": 2150, "w": 640, "h": 260, "tone": 1.05},
+            ],
+            "city": [
+                {"x": -1500, "z": 5600, "w": 1100, "h": 1400, "win": 0.85, "tone": 1.8},
+                {"x": -300, "z": 6800, "w": 900, "h": 1000, "win": 0.75, "tone": 1.55},
+                {"x": 700, "z": 5200, "w": 1050, "h": 1600, "win": 0.9, "tone": 1.9},
+                {"x": 1800, "z": 7200, "w": 1150, "h": 950, "win": 0.72, "tone": 1.5},
+                {"x": 2650, "z": 6200, "w": 850, "h": 1300, "win": 0.8, "tone": 1.7},
+            ],
+        },
+        "slots_title": "Rooms on this street",
+        "slots": [
+            {"label": "Canada", "note": "A campus walkway after snow, walked at dusk toward the "
+                                        "one lit door.",
+             "state": "Open — the left-hand door, lit."},
+            {"label": "Tokyo", "note": "A night lane with shutters, lanterns, and a vending "
+                                       "machine keeping the far end.",
+             "state": "Open — the right-hand door."},
+            {"label": "Fukuoka", "note": "A stall alley, lanterns low over the counters, water at "
+                                         "the end of it.",
+             "state": "Open — the last door on the left."},
+        ],
+        "stations": [
+            {"z": 0, "label": "the mouth of the street"},
+            {"z": 120, "label": "by the first door"},
+            {"z": 300, "label": "at the crossing"},
+            {"z": 380, "label": "by the last door"},
+            {"z": 540, "label": "the end of the street"},
+            {"z": 700, "label": "out in the open"},
+        ],
+        "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
+                 "title": "The door at your back", "hint": "It opens onto the album, where the "
+                 "same places are hung as pictures."},
+        "caveat": "The street is the site's own ground, drawn: it names no city, carries no "
+                  "lettering, and hangs no pictures. The three rooms stand along it, each one opens "
+                  "from a door you can walk to, and the far end is no wall — walk out of the street "
+                  "and it is open ground under the sky. Nothing here says the owner was anywhere.",
+    },
+    {
         "id": "tokyo", "label": "Tokyo",
-        # The page, the plate prefixes and the position in the chain all come from the ROOMS table
-        # above, so the album and the walk cannot disagree about which room a plate opens onto.
+        # The page and the plate prefixes come from the ROOMS table above, so the album and the walk
+        # cannot disagree about which room a plate opens onto. The row also carries the street, which
+        # is what this room's back curtain and the hub's door on it must agree on.
         "page": ROOM_BY_ID["tokyo"]["page"],
         "plates": ROOM_BY_ID["tokyo"]["plates"],
-        # ...and the box it stands in is its own, along with where its onward door hangs.
+        # The box the lane stands in. There is no far door: the walk is a hub now, and every room
+        # opens back onto the street, which carries the doors onward.
         "lane": LANE_FALLBACK,
-        "onward": {"x": 316, "z": 415, "ry": -90},
         "purpose": "A Tokyo lane, dressed: shutters, lanterns, a crossing at its end",
         "status": "open",
         "kind": "personal",
@@ -1827,16 +2096,9 @@ DISTRICTS = [
              "title": "A bin, lid shut",
              "hint": "Nothing is in it, and nothing will be: a district does not get to imply "
                      "what somebody threw away."},
-            {"id": "poster-lantern", "kind": "poster", "img": "IMG/tokyo-poster-lantern.jpg", "x": -310, "z": 150, "y": 96, "ry": 90,
-             "title": "Poster: paper lantern",
-             "hint": "Generated illustration, pinned so the lane has a first image. It is not "
-                     "a photograph and not evidence of a visit."},
-            {"id": "poster-wires", "kind": "poster", "img": "IMG/tokyo-poster-wires.jpg", "x": 310, "z": 214, "y": 104, "ry": -90,
-             "title": "Poster: wires and rain",
-             "hint": "Generated illustration, not a photograph. A real frame replaces it when one is supplied."},
-            {"id": "poster-ticket", "kind": "poster", "img": "IMG/tokyo-poster-ticket.jpg", "x": -310, "z": 392, "y": 108, "ry": 90,
-             "title": "Poster: a folded ticket",
-             "hint": "Generated illustration, on the end wall where the lane's light lands."},
+            # The lane's three poster images were promoted to sub-places: they hang as frames now,
+            # in the frames list below, at these same coordinates. A picture the walker can open is
+            # a place in the record; a poster pinned over it would be the same picture twice.
             {"id": "pipe", "kind": "pipe", "x": 308, "z": 170, "y": 0, "ry": -90,
              "title": "A drainpipe down the right wall",
              "hint": "The lane's other vertical: the one thing here that runs the whole height."},
@@ -1990,63 +2252,64 @@ DISTRICTS = [
         "lamps": [20, 120, 220, 320, 402,
                   {"z": 430, "y": 240, "x": 0, "r": 900, "k": 0.55, "bulb": False,
                    "tint": "rgba(146,178,255,0.26)"}],
-        # The arcade's rhythm overhead: where a beam crosses the ceiling, in scene centimetres.
-        "beams": [220, 520, 820, 1120],
+        # The arcade's rhythm overhead: where a beam crosses the ceiling, in record centimetres like
+        # every other depth in a district record (the emitter scales them with Z_SCALE).
+        "beams": [75.86, 179.31, 282.76, 386.21],
         # What the walls are made of. This is the street's own kit, band by band: rolling shutters over
         # closed fronts, glazed tile up to hand height where a shopfront was glazed, painted plaster
         # above, corrugated patching where a wall has been opened and closed again, a plank hoarding
         # where a building is being worked on. Side -1 is the left wall, 1 the right, 0 the end wall;
-        # the extents are scene centimetres, and the renderer tiles each band into the same 60 cm panels
+        # the depths are record centimetres, and the renderer tiles each band into the same 60 cm panels
         # as the wall behind it so an affine map stays exact.
         "surfaces": [
-            {"side": -1, "z0": -240, "z1": 60, "y0": 0, "y1": 420, "kind": "plaster"},
-            {"side": -1, "z0": 60, "z1": 300, "y0": 0, "y1": 300, "kind": "shutter"},
-            {"side": -1, "z0": 60, "z1": 300, "y0": 300, "y1": 420, "kind": "corrugated"},
-            {"side": -1, "z0": 300, "z1": 470, "y0": 0, "y1": 130, "kind": "dado"},
-            {"side": -1, "z0": 300, "z1": 470, "y0": 130, "y1": 420, "kind": "brick"},
-            {"side": -1, "z0": 470, "z1": 760, "y0": 0, "y1": 290, "kind": "shutter"},
+            {"side": -1, "z0": -82.76, "z1": 20.69, "y0": 0, "y1": 420, "kind": "plaster"},
+            {"side": -1, "z0": 20.69, "z1": 103.45, "y0": 0, "y1": 300, "kind": "shutter"},
+            {"side": -1, "z0": 20.69, "z1": 103.45, "y0": 300, "y1": 420, "kind": "corrugated"},
+            {"side": -1, "z0": 103.45, "z1": 162.07, "y0": 0, "y1": 130, "kind": "dado"},
+            {"side": -1, "z0": 103.45, "z1": 162.07, "y0": 130, "y1": 420, "kind": "brick"},
+            {"side": -1, "z0": 162.07, "z1": 262.07, "y0": 0, "y1": 290, "kind": "shutter"},
             # Board-formed concrete over that shutter: the lane's own structure showing above the
             # shopfronts, which is what the second half of a street like this actually looks like.
-            {"side": -1, "z0": 470, "z1": 760, "y0": 290, "y1": 420, "kind": "concrete", "tone": 1.04},
-            {"side": -1, "z0": 760, "z1": 1010, "y0": 0, "y1": 300, "kind": "hoarding", "tone": 0.86},
+            {"side": -1, "z0": 162.07, "z1": 262.07, "y0": 290, "y1": 420, "kind": "concrete", "tone": 1.04},
+            {"side": -1, "z0": 262.07, "z1": 348.28, "y0": 0, "y1": 300, "kind": "hoarding", "tone": 0.86},
             # ...with a sheet of galvanised steel over the top of the boarding, because a hoarding in a
             # working lane is patched with whatever was on the truck.
-            {"side": -1, "z0": 760, "z1": 1010, "y0": 300, "y1": 420, "kind": "galv", "tone": 0.94},
-            {"side": -1, "z0": 1010, "z1": 1247, "y0": 0, "y1": 120, "kind": "dado"},
-            {"side": -1, "z0": 1010, "z1": 1247, "y0": 120, "y1": 420, "kind": "brick"},
-            {"side": 1, "z0": -240, "z1": 40, "y0": 0, "y1": 420, "kind": "brick"},
-            {"side": 1, "z0": 40, "z1": 190, "y0": 0, "y1": 300, "kind": "shutter"},
-            {"side": 1, "z0": 40, "z1": 190, "y0": 300, "y1": 420, "kind": "plaster"},
-            {"side": 1, "z0": 190, "z1": 470, "y0": 0, "y1": 140, "kind": "dado"},
-            {"side": 1, "z0": 190, "z1": 470, "y0": 140, "y1": 420, "kind": "concrete", "tone": 0.96},
-            {"side": 1, "z0": 470, "z1": 660, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.92},
-            {"side": 1, "z0": 660, "z1": 900, "y0": 0, "y1": 290, "kind": "shutter"},
-            {"side": 1, "z0": 660, "z1": 900, "y0": 290, "y1": 420, "kind": "corrugated"},
-            {"side": 1, "z0": 900, "z1": 1247, "y0": 0, "y1": 130, "kind": "dado", "tone": 1.08},
-            {"side": 1, "z0": 900, "z1": 1247, "y0": 130, "y1": 420, "kind": "brick"},
+            {"side": -1, "z0": 262.07, "z1": 348.28, "y0": 300, "y1": 420, "kind": "galv", "tone": 0.94},
+            {"side": -1, "z0": 348.28, "z1": 430, "y0": 0, "y1": 120, "kind": "dado"},
+            {"side": -1, "z0": 348.28, "z1": 430, "y0": 120, "y1": 420, "kind": "brick"},
+            {"side": 1, "z0": -82.76, "z1": 13.79, "y0": 0, "y1": 420, "kind": "brick"},
+            {"side": 1, "z0": 13.79, "z1": 65.52, "y0": 0, "y1": 300, "kind": "shutter"},
+            {"side": 1, "z0": 13.79, "z1": 65.52, "y0": 300, "y1": 420, "kind": "plaster"},
+            {"side": 1, "z0": 65.52, "z1": 162.07, "y0": 0, "y1": 140, "kind": "dado"},
+            {"side": 1, "z0": 65.52, "z1": 162.07, "y0": 140, "y1": 420, "kind": "concrete", "tone": 0.96},
+            {"side": 1, "z0": 162.07, "z1": 227.59, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.92},
+            {"side": 1, "z0": 227.59, "z1": 310.34, "y0": 0, "y1": 290, "kind": "shutter"},
+            {"side": 1, "z0": 227.59, "z1": 310.34, "y0": 290, "y1": 420, "kind": "corrugated"},
+            {"side": 1, "z0": 310.34, "z1": 430, "y0": 0, "y1": 130, "kind": "dado", "tone": 1.08},
+            {"side": 1, "z0": 310.34, "z1": 430, "y0": 130, "y1": 420, "kind": "brick"},
         ],
         # And on the ground: the tactile guide path that runs beside the walls in a real lane, a painted
         # gutter line, two grates, a manhole, and one wet patch that holds the machine's light.
         "marks": [
-            {"kind": "tactile", "x0": -300, "x1": -272, "z0": -240, "z1": 1247},
-            {"kind": "tactile", "x0": 272, "x1": 300, "z0": -240, "z1": 1247},
-            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 1230, "z1": 1244},
+            {"kind": "tactile", "x0": -300, "x1": -272, "z0": -82.76, "z1": 430},
+            {"kind": "tactile", "x0": 272, "x1": 300, "z0": -82.76, "z1": 430},
+            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 424.14, "z1": 428.97},
             # The same painted line at the other end of the lane: a straight bar of paint at a mouth is
             # the one piece of road marking this lane can have without writing a word on the ground.
-            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 26, "z1": 40},
+            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 8.97, "z1": 13.79},
             # A channel drain crossing the lane: the kit is the same grate as the two at the kerb, and
             # crossing the whole width is what a lane does where its own water has to leave it.
-            {"kind": "grate", "x0": -150, "x1": 150, "z0": 636, "z1": 650},
-            {"kind": "grate", "x0": -118, "x1": -42, "z0": 148, "z1": 168},
-            {"kind": "grate", "x0": 60, "x1": 136, "z0": 700, "z1": 720},
-            {"kind": "manhole", "x0": -40, "x1": 40, "z0": 430, "z1": 510},
-            {"kind": "manhole", "x0": 120, "x1": 200, "z0": 286, "z1": 346},
-            {"kind": "wet", "x0": -316, "x1": -60, "z0": 980, "z1": 1240},
+            {"kind": "grate", "x0": -150, "x1": 150, "z0": 219.31, "z1": 224.14},
+            {"kind": "grate", "x0": -118, "x1": -42, "z0": 51.03, "z1": 57.93},
+            {"kind": "grate", "x0": 60, "x1": 136, "z0": 241.38, "z1": 248.28},
+            {"kind": "manhole", "x0": -40, "x1": 40, "z0": 148.28, "z1": 175.86},
+            {"kind": "manhole", "x0": 120, "x1": 200, "z0": 98.62, "z1": 119.31},
+            {"kind": "wet", "x0": -316, "x1": -60, "z0": 337.93, "z1": 427.59},
             # The kerb: a six centimetre riser where the floor meets the wall, on both sides, so the
             # lane has a line at its base that light can fall along. Only the face is drawn — the top
             # of a 46 cm kerb is what you stand on, not what you look at.
-            {"kind": "kerb", "x0": -318, "x1": -272, "z0": -240, "z1": 1247, "y1": 6},
-            {"kind": "kerb", "x0": 272, "x1": 318, "z0": -240, "z1": 1247, "y1": 6},
+            {"kind": "kerb", "x0": -318, "x1": -272, "z0": -82.76, "z1": 430, "y1": 6},
+            {"kind": "kerb", "x0": 272, "x1": 318, "z0": -82.76, "z1": 430, "y1": 6},
         ],
         # Paper lanterns, hung where a wire already crosses the lane: each one is a light source with a
         # body, which is the only way the room can be lit by something you can also point at.
@@ -2132,32 +2395,85 @@ DISTRICTS = [
             {"a": [292, 300, 275], "b": [300, 322, 426], "sag": 34},
         ],
         "frames": [
+            # The sub-places: the small areas inside the place, one drawn plate each, hung where the
+            # walk passes them. A plate is planned from a place the owner actually went; a corner
+            # nobody stood in gets no plate. The titles are the album's own, via the PLACE_TITLES
+            # table above, which this block is checked against at build time.
             {"id": "sensoji", "src": "IMG/tokyo-sensoji.jpg", "x": 314, "z": 120, "y": 96, "ry": -90,
-             "title": "Frame: the gate at Asakusa",
+             "title": "The gate at Asakusa",
              "alt": "Illustration of a temple gate with a giant hanging lantern and a row of "
                     "closed shopfronts, empty of people.",
              "caption": "The gate lantern and a closed shopfront row, drawn. Asakusa as the "
                         "subject of a picture, not as proof that anyone stood in it."},
             {"id": "scramble", "src": "IMG/tokyo-scramble.jpg", "x": -314, "z": 290, "y": 96, "ry": 90,
-             "title": "Frame: the scramble at Shibuya",
+             "title": "The scramble at Shibuya",
              "alt": "Illustration of a wide pedestrian scramble crossing seen from above at "
                     "night, stripes radiating, no people and no cars.",
              "caption": "The crossing from above, drawn. Empty on purpose: a crowd here would "
                         "be an invented record, and this frame is not a record."},
             {"id": "tower", "src": "IMG/tokyo-tower.jpg", "x": 314, "z": 380, "y": 96, "ry": -90,
-             "title": "Frame: the tower at dusk",
+             "title": "The tower at dusk",
              "alt": "Illustration of a lattice radio tower at dusk seen between low rooftops, "
                     "small lights along its frame.",
              "caption": "The lattice tower between rooftops, drawn, its own lights the only "
                         "amber in the frame."},
+            {"id": "poster-lantern", "src": "IMG/tokyo-poster-lantern.jpg", "x": -310, "z": 150, "y": 96, "ry": 90,
+             "title": "The paper lantern",
+             "alt": "Illustration of a single round paper lantern glowing warm against the dark "
+                    "grain of a closed shopfront.",
+             "caption": "One lantern, close up, drawn. It is the shape every light in the lane "
+                        "repeats, hung here at the height a walker reads it."},
+            {"id": "poster-wires", "src": "IMG/tokyo-poster-wires.jpg", "x": 310, "z": 214, "y": 104, "ry": -90,
+             "title": "The wires over the lane",
+             "alt": "Illustration of a tangle of overhead wires crossing a dark sky, cut into "
+                    "short segments by the rooftops.",
+             "caption": "The overhead tangle, drawn. The lane's own wires in the wires island are "
+                        "the same subject at full scale."},
+            {"id": "poster-ticket", "src": "IMG/tokyo-poster-ticket.jpg", "x": -310, "z": 392, "y": 108, "ry": 90,
+             "title": "The ticket machine",
+             "alt": "Illustration of a small ticket machine glowing on a sidewalk at night, its "
+                    "buttons drawn as blank studs.",
+             "caption": "The machine's light is the lane's coldest, drawn: one more small light "
+                        "sunk into the wall an arm's length from the vending machine."},
         ],
+        # The sub-areas. Each Field notes plate belongs to one little place in the lane, and the
+        # drawn frame with the same name holds that place until a photograph of it arrives; the
+        # album's title for each plate is the place, not the picture. verify-walk asserts the
+        # closure: every frame's title is a slot in this list.
+        "slots_title": "Places in the lane",
         "slots": [
-            {"label": "Frames", "note": "Photographs go here, one per wall slot.",
-             "state": "Three drawn sights hold the wall now; a photograph still replaces its slot."},
-            {"label": "Short clips", "note": "Vertical clips, muted by default, captioned always.",
-             "state": "Empty. A clip needs its caption before it can play here."},
-            {"label": "The lane at 22:40", "note": "Sound only if a visitor asks for it.",
-             "state": "Silent by default, and it stays that way until a slot carries audio."},
+            {"label": "The lane in one sheet", "note": "The album's cover plate for this room. In "
+                                                       "the lane it is the mouth itself: stand at "
+                                                       "the first chip and the whole lane is the "
+                                                       "sheet.",
+             "state": "Held by the lane itself, until a photograph of the mouth takes the slot."},
+            {"label": "The gate at Asakusa", "note": "The mouth end of the left wall, where the "
+                                                     "curtain is still at your back.",
+             "state": "Held by a drawn frame; a photograph of the real gate takes the slot when one "
+                      "arrives."},
+            {"label": "The scramble at Shibuya", "note": "Mid left wall, opposite the lit window.",
+             "state": "Held by a drawn frame; a photograph of the crossing takes the slot when one "
+                      "arrives."},
+            {"label": "The tower at dusk", "note": "The deep end of the left wall, beside the end "
+                                                   "wall the old far door stood in.",
+             "state": "Held by a drawn frame; a photograph of the tower takes the slot when one "
+                      "arrives."},
+            {"label": "The paper lantern", "note": "The poster beside the gate picture, where the "
+                                                   "wall is still close enough to read.",
+             "state": "Held by a drawn poster frame; a photograph of the lantern takes the slot "
+                      "when one arrives."},
+            {"label": "The wires over the lane", "note": "The poster on the right wall, under the "
+                                                          "crossing of cables the lane is lit by.",
+             "state": "Held by a drawn poster frame; a photograph of the wires takes the slot when "
+                      "one arrives."},
+            {"label": "The ticket machine", "note": "The deep end of the left wall, in front of "
+                                                    "the machine that keeps the lane's far end.",
+             "state": "Held by a drawn poster frame; a photograph of the machine takes the slot "
+                      "when one arrives."},
+            {"label": "Clips and the lane at 22:40", "note": "Vertical clips and one sound, when "
+                                                             "material exists.",
+             "state": "Empty by design. A clip needs its caption before it can play here, and the "
+                      "sound only if a visitor asks for it."},
         ],
         # Where the stops are, in record centimetres: the chips the reader walks between. Part of the
         # record because a different room has different places worth standing.
@@ -2168,10 +2484,10 @@ DISTRICTS = [
             {"z": 350, "label": "by the lit window"},
             {"z": 395, "label": "in front of the machine"},
         ],
-        # The curtain at your back is the way out, and which page it opens onto is decided when the
-        # pages are emitted: the place before this one in the chain, or the album if there is none.
+        # The curtain at your back opens onto the street: the hub the lane stands off, and the page
+        # every other room is reached from. The wiring block decides the href.
         "exit": {"id": "noren", "kind": "noren", "x": 0, "z": -44, "y": 178, "ry": 180,
-                 "title": "The curtain at your back", "hint": "Part it to leave the lane."},
+                 "title": "The curtain at your back", "hint": "It parts onto the street."},
         "caveat": "The lane is drawn, not surveyed. The wall holds drawn covers and three drawn "
                   "sights — the temple gate at Asakusa, the crossing at Shibuya, the tower at dusk "
                   "— and the objects are props; no footage sits in any slot yet. Frames and clips "
@@ -2183,9 +2499,9 @@ DISTRICTS = [
         "page": ROOM_BY_ID["canada"]["page"],
         "plates": ROOM_BY_ID["canada"]["plates"],
         # A walkway is wider and lower-shouldered than the Tokyo lane, and it is outdoors: the roof is
-        # four and a half metres up so that looking up reads as sky, not as a corridor.
+        # four and a half metres up so that looking up reads as sky, not as a corridor. No onward
+        # door — the hub street carries every door but its own.
         "lane": {"w": 720, "d": 400, "ceil": 470, "back": 300},
-        "onward": {"x": 330, "z": 388, "ry": -90},
         "purpose": "A campus walkway after snow, walked at dusk toward the one lit door",
         "status": "open",
         "kind": "personal",
@@ -2244,10 +2560,18 @@ DISTRICTS = [
              "hint": "Drawn to the wall's own height so the eye has a vertical in a lane of "
                      "horizontals."},
             {"id": "door-lit", "kind": "door", "x": -300, "z": 372, "y": 0, "ry": 90,
+             "leaf": "#4a3a2c",
              "glow": [{"r": 260, "k": 0.5, "dy": 130}],
              "title": "The lit door",
              "hint": "The one warm light at the end of the walk, and the reason the whole lane is "
-                     "walked toward it. It is scenery: the way on is the door on the other side."},
+                     "walked toward it. It is scenery: the way on is the door on the other side. "
+                     "Done, it stands ajar and the light steps down when it is shut again.",
+             "states": [
+                 {"say": "Ajar, and the light lies down the snow past the step.", "k": 1.0,
+                  "door": 0.6},
+                 {"say": "Shut again. The light under it stays, whoever is behind it stays.",
+                  "k": 0.45, "door": 0},
+             ]},
             {"id": "planter", "kind": "planter", "x": -300, "z": 160, "y": 0, "ry": 90,
              "title": "A planter under snow",
              "hint": "Set dressing. What is planted in it is not visible and is not claimed."},
@@ -2255,6 +2579,12 @@ DISTRICTS = [
              "title": "Two cones at the mouth of the walk",
              "hint": "Where the walkway meets the road: something has to mark the edge between them."},
             {"id": "board-a", "kind": "signA", "x": -336, "z": 200, "y": 150, "ry": 90,
+             "states": [
+                 {"say": "The board turns over. The other face is blank too.", "k": 1.05,
+                  "flip": 1},
+                 {"say": "Turned back. Still nothing written on it, by the same rule that keeps "
+                         "every sign here blank.", "k": 0.8, "flip": 0},
+             ],
              "title": "A notice board, pinned empty",
              "hint": "The board is drawn and its paper is not: a notice would be a claim about what "
                      "this campus announced."},
@@ -2283,12 +2613,16 @@ DISTRICTS = [
              "tint": "rgba(255,224,186,0.28)"},
             # The last of the spill is the sky's: an outdoor room sees more of it at its far end than
             # anywhere else, and without this the wall the walk runs into was the darkest thing in it.
-            {"x": 0, "y": 300, "z": 1150, "r": 420, "k": 0.3, "bulb": False,
+            {"x": 0, "y": 300, "z": 1150, "r": 520, "k": 0.42, "bulb": False,
              "tint": "rgba(180,204,255,0.26)"},
             # Just past the end wall, where the near roof row stands: the light that makes the view
             # through the opening a lit street rather than a dark hole in a bright wall.
             {"x": -300, "y": 260, "z": 1420, "r": 900, "k": 0.5, "bulb": False,
              "tint": "rgba(255,226,186,0.26)"},
+            # And the dusk sky itself, standing in the opening: the end wall faces the last of the
+            # light, and the falloff means only a source this close to the opening lights it.
+            {"x": 0, "y": 300, "z": 3350, "r": 900, "k": 0.5, "bulb": False,
+             "tint": "rgba(190,214,255,0.30)"},
         ],
         "beams": [],
         "surfaces": [
@@ -2296,12 +2630,12 @@ DISTRICTS = [
             # was opened and closed again. A campus is patched the same way a lane is.
             {"side": -1, "z0": -300, "z1": 90, "y0": 0, "y1": 470, "kind": "brick", "tone": 0.94},
             {"side": -1, "z0": 90, "z1": 340, "y0": 0, "y1": 200, "kind": "dado", "tone": 1.02},
-            {"side": -1, "z0": 90, "z1": 340, "y0": 200, "y1": 470, "kind": "plaster", "tone": 0.88},
-            {"side": -1, "z0": 340, "z1": 400, "y0": 0, "y1": 470, "kind": "brick", "tone": 0.9},
+            {"side": -1, "z0": 90, "z1": 340, "y0": 200, "y1": 470, "kind": "plaster", "tone": 1.1},
+            {"side": -1, "z0": 340, "z1": 400, "y0": 0, "y1": 470, "kind": "brick", "tone": 1.05},
             {"side": 1, "z0": -300, "z1": 150, "y0": 0, "y1": 470, "kind": "plaster", "tone": 0.92},
             {"side": 1, "z0": 150, "z1": 330, "y0": 0, "y1": 240, "kind": "corrugated", "tone": 0.96},
-            {"side": 1, "z0": 150, "z1": 330, "y0": 240, "y1": 470, "kind": "plaster", "tone": 0.86},
-            {"side": 1, "z0": 330, "z1": 400, "y0": 0, "y1": 470, "kind": "brick", "tone": 0.9},
+            {"side": 1, "z0": 150, "z1": 330, "y0": 240, "y1": 470, "kind": "plaster", "tone": 1.08},
+            {"side": 1, "z0": 330, "z1": 400, "y0": 0, "y1": 470, "kind": "brick", "tone": 1.05},
         ],
         # Snow is a ground mark, not a wall: it lies where it was pushed, and the middle of the path
         # is where it is not. One ice patch, glossy, in the low corner where water went.
@@ -2325,9 +2659,12 @@ DISTRICTS = [
             {"a": [-360, 430, 220], "b": [360, 442, 250], "sag": 74},
         ],
         "backdrop": {
-            "sky": [{"y0": -400, "y1": 1400, "c": "#2b3852"},
-                    {"y0": 1400, "y1": 4200, "c": "#26314d"},
-                    {"y0": 4200, "y1": 40000, "c": "#141e36"}],
+            # Dusk, so the bands carry their own glow: the aperture frames the horizon, and an
+            # unlit band paints at lit 0 — a hairline of night where the record says the sky was
+            # still light.
+            "sky": [{"y0": -400, "y1": 8000, "c": "#41507a", "glow": 0.82},
+                    {"y0": 8000, "y1": 21000, "c": "#26314d", "glow": 0.4},
+                    {"y0": 21000, "y1": 40000, "c": "#141e36", "glow": 0.16}],
             "mountain": [{"x": -900, "y": 520, "w": 2600, "h": 380, "c": "#1b2740"},
                          {"x": 1200, "y": 460, "w": 2000, "h": 300, "c": "#1e2a44"}],
             "plaza": {"y": -160, "z0": 900, "z1": 9000, "half": 4200},
@@ -2347,32 +2684,50 @@ DISTRICTS = [
             ],
         },
         "frames": [
+            # The walk's sub-places, one drawn plate each: the proportion, the vertical, the end.
             {"id": "walk", "src": "IMG/canada-1.jpg", "x": 354, "z": 96, "y": 150, "ry": -90,
-             "title": "Frame: the walkway at dusk",
+             "title": "The walkway at dusk",
              "alt": "Illustration of a wide snow-covered walkway between two buildings at dusk, "
                     "snow banked at both edges and one lit doorway far down it.",
              "caption": "The proportion the room is built from: how wide the walk is, how the snow "
                         "sits against the walls, and where the warm light is. Drawn, not photographed."},
             {"id": "trees", "src": "IMG/canada-2.jpg", "x": -354, "z": 210, "y": 150, "ry": 90,
-             "title": "Frame: bare trees over the path",
+             "title": "Bare trees over the path",
              "alt": "Illustration of leafless trees leaning over a snow-covered path, their trunks "
                     "dark against a pale winter sky.",
              "caption": "Leafless, drawn: the shape a winter campus has and the reason the lane has a "
                         "vertical in it."},
             {"id": "door", "src": "IMG/canada-3.jpg", "x": 354, "z": 322, "y": 150, "ry": -90,
-             "title": "Frame: the lit door at the end",
+             "title": "The lit door at the end",
              "alt": "Illustration of a single glass door with warm light behind it at the end of a "
                     "snow-covered path, seen from a distance.",
              "caption": "The end of the walk, as a picture of a door. The room walks toward it; the "
                         "picture does not claim anyone went through."},
         ],
+        # Sub-areas, same rule as the lane: one little place per Field notes plate, a drawn frame
+        # holding the place until a photograph arrives.
+        "slots_title": "Places on the walk",
         "slots": [
-            {"label": "Frames", "note": "Photographs go here, one per wall slot.",
-             "state": "Three drawn sights hold the wall; a photograph still replaces its slot."},
-            {"label": "Short clips", "note": "Vertical clips, muted by default, captioned always.",
-             "state": "Empty. A clip needs its caption before it can play here."},
-            {"label": "The walk at dusk", "note": "Sound only if a visitor asks for it.",
-             "state": "Silent by default, and it stays that way until a slot carries audio."},
+            {"label": "Canada, the walk in one sheet", "note": "The album's cover plate for this "
+                                                               "room. On the walk it is the mouth "
+                                                               "itself: the whole walkway in one "
+                                                               "look.",
+             "state": "Held by the walk itself, until a photograph of the mouth takes the slot."},
+            {"label": "The walkway at dusk", "note": "The first stretch of path, where the light "
+                                                     "is still in the trees.",
+             "state": "Held by a drawn frame; a photograph of the walkway takes the slot when one "
+                      "arrives."},
+            {"label": "Bare trees over the path", "note": "The bend of the snow, where the branches "
+                                                          "close overhead.",
+             "state": "Held by a drawn frame; a photograph of the trees takes the slot when one "
+                      "arrives."},
+            {"label": "The lit door at the end", "note": "The far end, where the walk was always "
+                                                         "going.",
+             "state": "Held by a drawn frame; a photograph of the door takes the slot when one "
+                      "arrives."},
+            {"label": "Clips and the walk at dusk", "note": "Vertical clips and one sound, when "
+                                                            "material exists.",
+             "state": "Empty by design. A clip needs its caption before it can play here."},
         ],
         "stations": [
             {"z": 0, "label": "the mouth of the walk"},
@@ -2385,7 +2740,7 @@ DISTRICTS = [
             {"z": 330, "label": "at the far end of the walk"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
-                 "title": "The door at your back", "hint": "It opens the way you came."},
+                 "title": "The door at your back", "hint": "It opens onto the street."},
         "caveat": "The walkway is drawn, not surveyed: its proportions come from the owner's own "
                   "photographs of a campus winter, and every object in it is a drawn prop. The wall "
                   "holds three drawn sights and no photograph, no venue is named and no date is "
@@ -2412,17 +2767,29 @@ DISTRICTS = [
              "glow": [{"r": 145, "k": 0.68, "dy": 190}],
              "title": "A stall front, shutters half up",
              "hint": "The alley's first lit front. The counter is drawn and nothing on it is named; "
-                     "the glow is authored here because a stall is where the light comes from."},
+                     "the glow is authored here because a stall is where the light comes from. "
+                     "Done, the shutter runs up to serve and down to close.",
+             "states": [
+                 {"say": "Up. Light on the counter, and the alley gets brighter by one stall.",
+                  "k": 1.0, "shut": 1},
+                 {"say": "Down for the night. The transom keeps a lamp burning.", "k": 0.45,
+                  "shut": 0},
+             ]},
             {"id": "stall-b", "kind": "front", "x": 240, "z": 208, "y": 0, "ry": -90,
              "glow": [{"r": 135, "k": 0.62, "dy": 190}],
              "title": "The second stall, further down",
+             "states": [
+                 {"say": "Up here too — two stalls serving is most of what this alley is.",
+                  "k": 1.0, "shut": 1},
+                 {"say": "Down. One stall still lit, further up the alley.", "k": 0.45, "shut": 0},
+             ],
              "hint": "Drawn so the alley has a middle. Its light is dimmer than the first, which is "
                      "what makes the near one read as nearer."},
-            {"id": "a-noren", "kind": "noren", "x": -236, "z": 60, "y": 168, "ry": 90,
+            {"id": "noren-a", "kind": "noren", "x": -236, "z": 60, "y": 168, "ry": 90,
              "title": "A curtain over a doorway",
              "hint": "Blank cloth: a name on it would be invented lettering, and this site does not "
                      "invent lettering."},
-            {"id": "b-noren", "kind": "noren", "x": 236, "z": 168, "y": 168, "ry": -90,
+            {"id": "noren-b", "kind": "noren", "x": 236, "z": 168, "y": 168, "ry": -90,
              "title": "A shorter curtain, hung lower",
              "hint": "Drawn to the alley's own height rather than a standard door's, because a stall "
                      "alley is built to whatever the frame allowed."},
@@ -2435,7 +2802,12 @@ DISTRICTS = [
              "hint": "Set dressing: something has to break the long line where the stalls end."},
             {"id": "bin-f", "kind": "bin", "x": 210, "z": 300, "y": 0, "ry": -90,
              "title": "A bin at the turning",
-             "hint": "Drawn where the alley widens toward the water."},
+             "hint": "Drawn where the alley widens toward the water. Done, its lid swings.",
+             "states": [
+                 {"say": "The lid swings open, and swings back by itself a moment later.",
+                  "k": 1.0, "flap": 1},
+                 {"say": "Shut. The alley keeps its own counsel.", "k": 1.0, "flap": 0},
+             ]},
             {"id": "barrel", "kind": "bin", "x": -206, "z": 268, "y": 0, "ry": 0,
              "title": "A barrel against the wall",
              "hint": "The alley's own furniture. Nothing is claimed about what is in it."},
@@ -2510,9 +2882,10 @@ DISTRICTS = [
             {"a": [214, 300, 84], "b": [220, 316, 330], "sag": 30},
         ],
         "backdrop": {
-            "sky": [{"y0": -400, "y1": 1300, "c": "#2a3750"},
-                    {"y0": 1300, "y1": 4000, "c": "#243049"},
-                    {"y0": 4000, "y1": 40000, "c": "#131d33"}],
+            # Night over water: the horizon band glows off the surface, the upper bands hold it.
+            "sky": [{"y0": -400, "y1": 8000, "c": "#37456a", "glow": 0.62},
+                    {"y0": 8000, "y1": 20000, "c": "#243049", "glow": 0.3},
+                    {"y0": 20000, "y1": 40000, "c": "#131d33", "glow": 0.14}],
             "mountain": [{"x": 600, "y": 420, "w": 2200, "h": 300, "c": "#1c2740"}],
             "plaza": {"y": -300, "z0": 700, "z1": 7000, "half": 4000},
             "roofs": [
@@ -2529,31 +2902,49 @@ DISTRICTS = [
             ],
         },
         "frames": [
+            # The alley's sub-places: the counters, the overhead layer, and what it ends in.
             {"id": "stalls", "src": "IMG/fukuoka-1.jpg", "x": -284, "z": 120, "y": 96, "ry": 90,
-             "title": "Frame: the stall row",
+             "title": "The stall row",
              "alt": "Illustration of a row of small stall fronts along a narrow alley at night, "
                     "counters drawn in outline and nothing written on any of them.",
              "caption": "The alley's proportion and its first light, drawn: how narrow it is, and how "
                         "close the counters come."},
             {"id": "lanterns", "src": "IMG/fukuoka-2.jpg", "x": 284, "z": 240, "y": 150, "ry": -90,
-             "title": "Frame: lanterns over the wires",
+             "title": "Lanterns over the wires",
              "alt": "Illustration of paper lanterns hanging in a row from wires across a narrow "
                     "alley, warm against a dark sky.",
              "caption": "The overhead layer, drawn: where the light comes from and how low it hangs."},
             {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 284, "z": 350, "y": 96, "ry": -90,
-             "title": "Frame: the water at the end",
+             "title": "The water at the end",
              "alt": "Illustration of dark water at the end of an alley with amber light reflected "
                     "along its surface.",
              "caption": "What the alley ends in. Drawn: the room walks toward it, and the picture "
                         "claims nothing about what is on the far bank."},
         ],
+        # Sub-areas, same rule as the other rooms: one little place per Field notes plate, a drawn
+        # frame holding the place until a photograph arrives.
+        "slots_title": "Places in the alley",
         "slots": [
-            {"label": "Frames", "note": "Photographs go here, one per wall slot.",
-             "state": "Three drawn sights hold the wall; a photograph still replaces its slot."},
-            {"label": "Short clips", "note": "Vertical clips, muted by default, captioned always.",
-             "state": "Empty. A clip needs its caption before it can play here."},
-            {"label": "The alley at closing", "note": "Sound only if a visitor asks for it.",
-             "state": "Silent by default, and it stays that way until a slot carries audio."},
+            {"label": "Fukuoka, the alley in one sheet", "note": "The album's cover plate for this "
+                                                                 "room. In the alley it is the "
+                                                                 "mouth: the whole stall row in one "
+                                                                 "look.",
+             "state": "Held by the alley itself, until a photograph of the mouth takes the slot."},
+            {"label": "The stall row", "note": "The first stalls, where the counters start and the "
+                                               "steam is.",
+             "state": "Held by a drawn frame; a photograph of the stalls takes the slot when one "
+                      "arrives."},
+            {"label": "Lanterns over the wires", "note": "Between the stalls, where the light is "
+                                                         "strung lowest.",
+             "state": "Held by a drawn frame; a photograph of the lanterns takes the slot when one "
+                      "arrives."},
+            {"label": "The water at the end", "note": "The end of the alley, where the counters "
+                                                      "stop and the surface starts.",
+             "state": "Held by a drawn frame; a photograph of the water takes the slot when one "
+                      "arrives."},
+            {"label": "Clips and the alley at closing", "note": "Vertical clips and one sound, when "
+                                                                "material exists.",
+             "state": "Empty by design. A clip needs its caption before it can play here."},
         ],
         "stations": [
             {"z": 0, "label": "the mouth of the alley"},
@@ -2563,7 +2954,7 @@ DISTRICTS = [
             {"z": 320, "label": "at the water"},
         ],
         "exit": {"id": "curtain-back", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
-                 "title": "The curtain at your back", "hint": "Part it to leave the alley."},
+                 "title": "The curtain at your back", "hint": "It parts onto the street."},
         "caveat": "The alley is drawn, not surveyed: its proportions come from the owner's own "
                   "photographs, no stall is named, no sign carries lettering and no date is claimed. "
                   "Nothing here says the owner was in any of these places.",
@@ -2688,9 +3079,31 @@ def walk_islands(d, placed):
         lights.append(dict(L, z=round(L["z"] * Z_SCALE), r=max(96, L["r"] * 3.4), size=L["r"],
                            h=L["y"] + round(L["r"] * 1.15),
                            k=0.72, bulb=False, tint="rgba(255,158,86,0.52)", body="lantern"))
+    # Surfaces, marks and beams are depths in a district record, exactly like the objects: every z
+    # coordinate goes through Z_SCALE so the cladding, the stripes on the floor, the beams overhead,
+    # and the props on the wall all live in one scaled space. The first two rooms after Tokyo authored
+    # these in record centimetres while Tokyo had them in scene centimetres, and nothing scaled them:
+    # the walls stopped at the record's own d (Canada 400, Fukuoka 380) while the objects ran on to
+    # walk_d (1160 / 1102), so the far half of each new room lost its cladding, its ground kit and its
+    # beams. Tokyo's record has been rebased to record centimetres with it (the generated islands are
+    # unchanged to the centimetre), and the convention is now one space everywhere.
+    def _scale_band(s):
+        s = dict(s)
+        s["z0"] = round(s["z0"] * Z_SCALE)
+        s["z1"] = round(s["z1"] * Z_SCALE)
+        return s
+    def _scale_mark(mk):
+        mk = dict(mk)
+        for k in ("z0", "z1"):
+            if k in mk:
+                mk[k] = round(mk[k] * Z_SCALE)
+        return mk
+    surfaces = [_scale_band(s) for s in d.get("surfaces", [])]
+    marks    = [_scale_mark(m) for m in d.get("marks", [])]
+    beams    = [round(b * Z_SCALE) for b in d.get("beams", [])]
     islands = [("data-walk-lights", lights), ("data-walk-wires", wires),
-               ("data-walk-beams", d.get("beams", [])),
-               ("data-walk-surfaces", d.get("surfaces", [])), ("data-walk-marks", d.get("marks", []))]
+               ("data-walk-beams", beams),
+               ("data-walk-surfaces", surfaces), ("data-walk-marks", marks)]
     if d.get("vista"):
         islands.append(("data-walk-vista", d["vista"]))
     if d.get("backdrop"):
@@ -2716,6 +3129,8 @@ def walk_object(o):
     # curtain leaving the lane is a link in the data, not a special case in the script.
     leave = f' data-leave="{escape(o["leave"])}"' if o.get("leave") else ""
     texture = f' data-tex="{escape(tex)}"' if tex else ""
+    # A door may carry its own leaf colour: the street's three doors are three different doors.
+    leaf_attr = f' data-leaf="{escape(o["leaf"])}"' if o.get("leaf") else ""
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
@@ -2728,7 +3143,7 @@ def walk_object(o):
     return (f'<button type="button" class="walk-hit" data-obj="{escape(o["id"])}" '
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
-            f'data-d="{dep}" style="{style}"{frame}{texture}{states}{leave}></button>')
+            f'data-d="{dep}" style="{style}"{frame}{texture}{leaf_attr}{states}{leave}></button>')
 
 
 def walk_html(d, drawer):
@@ -2736,8 +3151,9 @@ def walk_html(d, drawer):
 
     Where leaving goes is one authored value, used twice: the corner control and the curtain at your
     back are the same door, read from the same field, so the key and the prop cannot point different
-    ways. With a chain of rooms that value is the place behind this one, or the album when this is the
-    first room built — the CV is one click further on, from the album's own navigation.
+    ways. Every room's value is the hub street — walk out of any room and you are on it, with the
+    doors to the other rooms along it — and the CV is one click further on, from the album's own
+    navigation.
 
     That is the reference's arrangement, read as an architecture rather than as a style: one route,
     the building owns the screen, the picker and the reading live in overlays that appear on
@@ -2752,18 +3168,11 @@ def walk_html(d, drawer):
     walk_d = round(lane["d"] * Z_SCALE)
     objects = list(d["objects"]) + wall_frames(d)
     if d["exit"]:
-        # Leaving this room means arriving somewhere: the place behind it in the chain, or the album
-        # when this is the first room built. The target is decided by the emitter, not by the record,
-        # so a place does not have to know what exists on the other side of its own curtain.
+        # Leaving this room means arriving on the hub street — from every room, without exception.
+        # The target is decided by the emitter (back_to), not by the record, so a place does not
+        # have to know what exists on the other side of its own curtain. Doors between rooms are
+        # objects in the street's own record, not per-room wiring.
         objects.append(dict(d["exit"], leave=d.get("back_to", "activities.html")))
-    if d.get("onward") and d.get("onward_to"):
-        # ...and at the far end, a door onto the next place. A room with only an entrance is a dead
-        # end, and the brief is a corridor: out of this one, into the next.
-        objects.append({"id": "way-on", "kind": "door", "x": d["onward"]["x"], "z": d["onward"]["z"],
-                        "y": 0, "ry": d["onward"]["ry"], "leave": d["onward_to"],
-                        "title": "The door at the far end",
-                        "hint": f"It opens onto {d['onward_label']}. Everything between here and "
-                                f"there is a corridor drawn at the same scale."})
     parts = []
     placed = []
     for o in objects:
@@ -2802,9 +3211,12 @@ def walk_html(d, drawer):
     sight = (" At its far end the lane opens onto a drawn compound: a crossing below it, a tower, and "
              "a mountain beyond. Nothing out there is a record of anybody standing in it."
              if d.get("vista") else "")
+    # An open-world far end: the record authors how far the walker may keep going (walk units), and
+    # the renderer lets the world continue past the last wall. Absent, the clamp is the wall itself.
+    max_d_attr = f' data-lane-max-d="{lane["max_d"]}"' if lane.get("max_d") else ""
     return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}"
        data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
-       data-lane-back="{lane["back"]}" data-eye="{EYE}">
+       data-lane-back="{lane["back"]}"{max_d_attr} data-eye="{EYE}">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
        Space to jump, E to open what you are standing in front of, L for the list, I for this note.
@@ -2912,6 +3324,16 @@ def slot_row(d, sl):
             f'<p class="when">{escape(sl["state"])}</p></li>')
 
 
+# PLACE_TITLES and the records must name the same set of frames. The album is built before DISTRICTS
+# exists (ALBUM sits above it in the file), which is why the titles live in the side table at all;
+# this assert is the seam between the two orderings, and it fails the build the moment a frame is
+# renamed in a record but not in the table, or a table entry is left pointing at a retired IMG.
+_assert_frames = {fr["src"] for d in DISTRICTS for fr in d.get("frames", [])}
+assert _assert_frames <= set(PLACE_TITLES), (
+    "frames missing from PLACE_TITLES: " + ", ".join(sorted(_assert_frames - set(PLACE_TITLES))))
+del _assert_frames
+
+
 # The walk's order is the ROOMS table's order — earliest first — not the order the records happen to
 # appear in the file. Getting this backwards is invisible until someone walks it: the first room's
 # curtain would open onto the second room while its far door opened onto the third, and the harness
@@ -2929,24 +3351,21 @@ def district_drawer(d):
     """
     return "\n    ".join(x for x in [
         frames_section([d]),
-        titled("h2", "Slots", ICON_CASE, "block-title spaced"),
+        titled("h2", d.get("slots_title", "Slots"), ICON_CASE, "block-title spaced"),
         '<ul class="slot-list">\n      ' + INDENT.join(slot_row(d, sl) for sl in d["slots"])
         + "\n    </ul>",
         f'<p class="when">{escape(d["caveat"])}</p>' if d.get("caveat") else "",
     ] if x)
 
 
-# The corridor. Each open room is told which page stands behind it and which stands ahead of it, and
-# the two ends fall back to the album: a room with no neighbour is not a dead end, it opens onto the
-# picker. Wiring it here rather than in the record means a place never has to know what exists on the
-# other side of its own curtain, and adding Fukuoka later retargets Tokyo's far door by itself.
-for i, d in enumerate(open_districts):
-    prev_room = open_districts[i - 1] if i > 0 else None
-    next_room = open_districts[i + 1] if i + 1 < len(open_districts) else None
-    d["back_to"] = prev_room["page"] if prev_room else ALBUM_PAGE
-    if next_room:
-        d["onward_to"] = next_room["page"]
-        d["onward_label"] = next_room["label"]
+# The wiring. The street is the hub: every open room's back door — street, lane, walkway or alley —
+# opens onto the street page, which is what makes the three rooms freely reachable from one another
+# instead of strung along a chain. Wiring it here rather than in the records means a room never has
+# to know what exists on the other side of its own curtain; a room added to ROOMS is on the street
+# by the same rule. There is no onward wiring: doors between rooms live in the street's record.
+# The street itself is the one exception — its back door opens the album, not itself.
+for d in open_districts:
+    d["back_to"] = ALBUM_PAGE if d["id"] == "street" else CHAIN_ENTRY
 
 rooms_pages = {}
 for d in open_districts:

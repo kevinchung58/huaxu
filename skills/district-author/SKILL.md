@@ -1,13 +1,16 @@
 ---
 name: district-author
-description: Author a themed walkable district for the huaxu site — intake questions, the record shape, the build rules, and the verification gate. Use when adding or changing a district (a place whose frames, objects and clips hang in one lane), when an owner asks for "3D" or a stories-style viewer on this site, or before choosing any rendering library for it.
+description: Author a themed walkable district for the huaxu site — intake questions, the record shape, the build rules, and the verification gate. Use when adding or changing a district (a place whose frames, objects and clips hang in one lane, reached from the hub street), when an owner asks for "3D" or a stories-style viewer on this site, or before choosing any rendering library for it.
 ---
 
 # Authoring a district
 
 A district is one themed space: a lane of a few planes, some interactive objects, and the
 frames that belong to it. It is not a gallery with a camera bolted on, and it never replaces
-the list.
+the list. The districts hang off **the hub street** (`street.html`): one walkable outdoor page
+whose record carries a door per room, so every room is reachable from every other by walking out
+and back in. A new district is a new door on that street, not a link in a chain — the old
+Canada→Tokyo→Fukuoka corridor is retired.
 
 Work in this order. Do not skip the intake, and do not start with a library.
 
@@ -48,9 +51,28 @@ objects, frames, slots. Geometry in px with CSS' handedness: `x` across the lane
 floor line, `ry` turns it to face down the lane. The eye never moves: `.room-world` is
 translated and rotated the other way, so there is no projection math, no loop, no library.
 
+Every district also has a row in `ROOMS` (id, label, page, plate prefixes, status), street row
+first. The emitter wires the doors from the table, not from the records: each room's back exit
+is pointed at the street page (`CHAIN_ENTRY`), and doors **between** rooms are ordinary door
+objects in the street's own record, each with `"leave": ROOM_BY_ID[...]["page"]`. A district
+record never names another district's page — that is what makes rooms freely reorderable and
+what the door-graph assertions police.
+
 Clamps are design, not limitation: yaw ±35°, pitch ±10°. Past that the walls stop covering
 the viewport and the room shows its own edges. Turning is drag, never Pointer Lock —
 Pointer Lock is unsupported on every iOS Safari and it hijacks the cursor.
+
+**Slots are sub-areas.** A room's `slots` list is not media kinds — it is the room's little
+places, one per Field notes plate the room owns: the drawn frame holding a place carries the
+place's name (from `PLACE_TITLES`), and the slot's `state` says what replaces it when a real
+photograph arrives. On the album these plates do not appear at all — the Field notes wall is
+**one container of three cards, the card itself the door** into its room (the card carries the
+place's cover sheet); the sub-area plates live inside the rooms as the frames of the places they
+stand in for. The closure is asserted: every frame's title in a
+room page must be a slot label in that same page, and every frame's `src` must be a
+`PLACE_TITLES` key. An image with a name but no place fails the gate; so does a place with
+nothing holding it. On the album the same plates hang grouped by place — one heading and one
+door per place (`_place_group`/`gallery_html`); a plate is never an entrance in its own right.
 
 ## 3. Build rules
 
@@ -118,7 +140,9 @@ Run in this order and stop on the first failure:
 python3 _gen_html.py; echo "exit=$?"          # exit 0 or nothing else counts
 md5sum *.html > /tmp/a && python3 _gen_html.py >/dev/null && md5sum *.html > /tmp/b
 diff -q /tmp/a /tmp/b                          # the generator must be idempotent
-node .verify/verify-walk.mjs           # 164 assertions, run from the repo root
+node .verify/verify-walk.mjs           # 178 assertions, run from the repo root
+node .verify/verify-chain.mjs          # the hub door graph, booted page by page
+node .verify/verify-rooms-e2e.cjs      # the walk driven by keys: street -> each room, room -> street
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 curl -s http://127.0.0.1:8080/<page>.html | grep -o 'site\.\(css\|js\)?v=[0-9a-z]*' | sort -u
 curl -s http://127.0.0.1:8080/<page>.html | grep -c '<new marker you just added>'
@@ -162,14 +186,18 @@ makes the whole thing vanish. So `preserve-3d` goes on `.ig-grid` only, the `per
 on `.ig-wall`, and the frames' depth **inside each frame's own transform**, because a scroll container
 flattens its children.
 
-Inside the raster, the equivalent rule is that nothing may be invented by the renderer, and there are
-two coordinate systems that must never be mixed: a *record* is authored in record centimetres and
-multiplied by `Z_SCALE`, while the *space* — an arcade beam, an aperture in a wall, the far plane seen
-through it — is authored in scene centimetres and is not scaled at all, because it is not a record of
+Inside the raster, the equivalent rule is that nothing may be invented by the renderer, and there is
+one coordinate system for everything a district record authors: a *record* is written in record
+centimetres, and the emitter multiplies it by `Z_SCALE` — objects, lamps, wires, stations, and the
+wall, ground and beam islands alike. Depths that skip the emitter land in the wrong space: Canada's
+and Fukuoka's cladding was once authored pre-scaled, stopped at the record's own `d`, and left the far
+half of each room an unpainted void while its objects floated on. What the *renderer* authors itself —
+an aperture in a wall, the far plane seen through it — is in scene centimetres and is not scaled,
+because it is not a record of
 anything. A prop is
 authored as a solid (`OBJ_SIZE` gives width, height and depth; depth is what lets you walk behind it
 and what wraps the hit box around the thing you can see), and light is authored as data — `data-walk-lights`
-and `data-walk-wires`, plus the scene-centimetre islands `data-walk-surfaces` (what each wall is clad
+and `data-walk-wires`, plus the islands `data-walk-surfaces` (what each wall is clad
 in, band by band), `data-walk-marks` (what is painted or let into the ground), `data-walk-beams`,
 `data-walk-vista` and `data-walk-backdrop`. The renderer draws the bulbs it is told about and
 derives exactly one glow from a prop's own position, because that light has to come from the machine.
@@ -239,11 +267,27 @@ returns, or the highlight goes stale behind an object that happens to be in fron
 
 A district is a place you can be *in*, so it needs three things named in the record before it is finished:
 a way in (the page is the space — there is no door to open), a way to do something (the `states` of §8),
-and **a way out**. The exit is authored the same way as a state: put `"leave": "index.html"` on the prop
-that is the doorway and the renderer navigates when it is pressed; `data-walk-exit` in the chrome points at
-the same destination so key, finger and record cannot disagree. `Esc` closes a plate, then the list, and
-only then leaves. A control whose `data-hint` says "part it to leave" while it opens a card instead is
-severity 4 — it is a lie about the room, and it happened here.
+and **a way out**. The exit is authored the same way as a state: put a `leave` on the prop that is the
+doorway and the renderer navigates when it is pressed; `data-walk-exit` in the chrome points at
+the same destination so key, finger and record cannot disagree. For every room the destination is
+the hub street — the emitter sets it from `CHAIN_ENTRY`, so the record only authors the prop. The
+street is the one exception: its back door leaves for the album. `Esc` closes a plate, then the
+list, and only then leaves. A control whose `data-hint` says "part it to leave" while it opens a
+card instead is severity 4 — it is a lie about the room, and it happened here.
+
+**A door must be reachable on foot.** The walker's depth clamps at `MAX_D` — the page's far
+depth minus a body, unless the page authors `lane.max_d` (walk units) — and the reach ring is
+190 cm, so a door authored deeper than the clamp plus a reach can be seen but never opened: the
+street's last door was originally authored past it and the key-walk harness could not reach it.
+Site doors so they sit a stop inside the clamp, and let the e2e walk to them rather than trusting
+a click dispatched from nowhere.
+
+**A far end may be open world.** A record whose `lane` carries `max_d` (walk units, past
+`d`) walks out of its own walls: the emitter stamps `data-lane-max-d`, the clamp moves past the
+far plane, and the ground continues — the hub street ends in an open night view you can stand in.
+The far-end aperture should then run nearly wall to wall and floor to sky, and everything outside
+(street walls, kerbs, tactile paving) is authored deep past the mouth so looking back still shows
+the street. A sealed room keeps the default clamp: its window is a view, not a door.
 
 Three rules that exist because a real person could not use the page:
 

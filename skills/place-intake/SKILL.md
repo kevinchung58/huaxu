@@ -23,9 +23,10 @@ Two rules come from the site and are not negotiable here:
 
 Four questions are blocking. Ask them before reading anything.
 
-1. **The place and its place in the chain.** Which room is this, and does it belong before or after the
-   ones already built? The chain runs in the order of the `ROOMS` table in `_gen_html.py`; the album
-   reads plates in that same order.
+1. **The place and its door on the street.** The site is a hub: a walkable street
+   (`street.html`) with a door per room, so a new place is a new door on the street, not a link in a
+   chain. Ask where on the street the door stands (the street is walked mouth to far end; the doors
+   so far sit at Canada/Tokyo/Fukuoka), and remember the album reads plates in `ROOMS` table order.
 2. **The photographs.** How many, of what, and which ones are of the *space* rather than of a subject?
    A lane needs at least one picture that shows the ground, one that shows the walls' height, and one
    that shows what is at the far end. If those do not exist, the room is not buildable yet — say so,
@@ -55,13 +56,15 @@ Read each picture for the numbers, not for the mood. The unit is the centimetre;
 | How deep you walk | `lane.d` | how far the picture lets you see before the end wall; this is a *record* depth and the renderer scales it |
 | Behind you | `lane.back` | how far the walls should run past the entrance so turning round still shows a room |
 | Where the stop points are | `stations` | 4–6 places worth standing: the mouth, the lit thing, the end |
-| Wall materials, band by band | `surfaces` | from the ground up, and side by side: what is at ankle, hand, and eye height; where a wall changes material, that is a band |
+| Wall materials, band by band | `surfaces` | from the ground up, and side by side: what is at ankle, hand, and eye height; where a wall changes material, that is a band. Depths in record centimetres, like everything else — the emitter scales them |
 | What is at the far end | `vista` + `backdrop` | the aperture, and the plane behind it: what the eye lands on, and what is beyond that |
 | Objects | `objects` | 8–20 things that read as **silhouettes**: what you could recognise at 20 m. Each gets a position, a kind that exists in `OBJ_SIZE`, and a `hint` saying why it is there |
 | Lights | `lamps`, `lanterns`, `wires` | every source you can see, with its height, tint and strength; a lantern hangs from a wire that crosses the lane, so the wire is authored too |
 | Ground | `marks` | paint, grates, drains, patches, wet. Marks are rectangles in the record's units |
-| Overhead | `beams`, ducts, cables | what crosses above: the ceiling is the layer most rooms leave empty, and it is the one a photograph of a real alley is fullest of |
-| The way on | `onward` | where a door onto the next place would stand. A room with a door onto nothing is worse than a room with no door; leave it out until the next room exists |
+| Overhead | `beams`, ducts, cables | what crosses above: the ceiling is the layer most rooms leave empty, and it is the one a photograph of a real alley is fullest of. Beam depths are record centimetres — the emitter scales them |
+| The way out | the back exit | where the door or curtain behind the walker stands; the emitter points it at the hub street, so author the prop, not the destination. Doors to *other rooms* are not a room's business at all — they live on the street |
+| The sub-areas | `slots` | the little places the photographs actually show — the stall row, the temple gate, the machine at the end — one per Field notes plate the room will own. The drawn frame that holds a place takes the place's name (`PLACE_TITLES`); a real photograph replaces it in the slot when one arrives. On the album these plates do not appear: the album hangs one representative plate per place, and the sub-areas live inside the rooms |
+| The way on, if the far end is open | `lane.max_d` | walk-units depth past `d` at which the walker may keep going when the place's far end is genuinely open ground (the hub street). Absent, the clamp sits a body short of the far wall and the view stays a view |
 
 Rules that keep a room from reading as a backdrop:
 
@@ -92,12 +95,20 @@ They are never committed, never added to `IMG_RULES`, and never rendered.
 
 ## 4. Hand off, then verify
 
-The record you produce is a block in `DISTRICTS` plus one row in `ROOMS` (id, label, page, plate
-prefixes, status). Then `district-author`'s build rules apply unchanged, and so does its gate:
+The record you produce is a block in `DISTRICTS`, one row in `ROOMS` (id, label, page, plate
+prefixes, status), and **one door object on the street's record** (`"leave": ROOM_BY_ID[...]["page"]`,
+positioned inside the walker's reach — see `district-author` §9). Then `district-author`'s build rules
+apply unchanged, and so does its gate:
 
 - `node .verify/verify-walk.mjs` — the harness asserts, per room, that the walk stays inside the
-  authored box, that every lantern hangs on a cable that exists, that the album offers a door only to a
-  room that is built, and that each district agrees with its row in `ROOMS`.
+  authored box, that every lantern hangs on a cable that exists, that the Field notes wall is the
+  built places grouped with one door each, that each district agrees with its row in `ROOMS`, and
+  that every frame's title is a sub-area slot in its own room.
+- `node .verify/verify-chain.mjs` — the hub door graph: every room's every exit lands on the street,
+  the street carries exactly one door per built room plus its own door to the album, and no page still
+  wires the retired chain.
+- `node .verify/verify-rooms-e2e.cjs` — the walk itself, driven by keys: from the street into each
+  room and out again, Esc included.
 - `node .verify/lane-shot.mjs .preview/lane/<place>` — the pixel gate, shot against that room's page:
   the lane is painted where you stand, the deepest stop is not the frame that empties out, and the wall
   behind the entrance is a room.

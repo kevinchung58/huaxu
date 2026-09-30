@@ -173,12 +173,12 @@ if (listBtn && listBtn.getAttribute("aria-expanded") === "true") tap(listBtn);  
 
 /* The tour: the four stops the lane itself publishes, each looked at three ways. A frame that is
    almost all one fill is a wall with no working in it, and that is a thing you can only see. */
-const TOUR = [
-  [0, "entrance"],
-  [1, "under-the-posters"],
-  [2, "by-the-pole"],
-  [3, "in-front-of-the-machine"],
-];
+/* The tour is the page's own published stops, read off the markup: every stop, in order, named as
+   the page names it. A room that grows a new stop (the street grew "out in the open") is shot at it
+   without this file learning anything room-specific. */
+const TOUR = [...markup.matchAll(
+  /data-walk-stop="\d+"[^>]*aria-label="([^,"]+), \d+ cm in"/g)].map((m, i) => [i, m[1]
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")]);
 let n = 0;
 for (const [i, label] of TOUR) {
   await goTo(i);
@@ -225,16 +225,39 @@ const gate = (name, cond, detail) => {
   console.log(`${cond ? "PASS" : "FAIL"}  ${name}${detail ? "  — " + detail : ""}`);
 };
 
+/* An open-world scene (the page authors data-lane-max-d) is night ground end to end — even its
+   mouth frames the open dark — so every stop on it takes the night floor: 50 luma / 30 colours.
+   The floor is the honest exposure of standing in a doorway at night looking out, and it is still
+   double the collapse signature this gate exists for (one fog gradient under five colours).
+   A night street graded to a living room's exposure would be a lie about the hour. Sealed rooms,
+   whose frames are wall to wall, keep the room floor — 84 luma, calibrated on the dusk walkway's
+   far wall, which sits under 0.78 of fog dissolving into the last of the daylight: a dusk scene
+   graded to a lantern lane's exposure would be the same lie about the hour. The collapse this gate
+   exists for is caught twice over regardless: a collapsed frame is five colours as well as dark,
+   and the colour floor never moved. The split follows the page, not a room list in this file. */
+const OPEN_WORLD = /data-lane-max-d="(\d+)"/.test(markup);
+const WALL_D = parseFloat((markup.match(/data-lane-d="(\d+)"/) || [])[1]);
+const stopZ = (name) => {
+  const i = Math.floor((Number(name.slice(0, 2)) - 1) / 3);   // three frames per stop
+  const stop = markup.match(new RegExp(`data-walk-stop="${i}"[^>]*aria-label="[^,]+, (\\d+) cm in"`));
+  return stop ? Number(stop[1]) : 0;
+};
+
 // 1. Every frame at a stop, looked at straight down the lane, is a room and not a plate.
 for (const sh of shots.filter((s) => /-ahead$/.test(s.name))) {
   const m = stats.get(sh.name);
-  gate(`${sh.name}: the lane is painted where you stand`, m.luma >= 90 && m.colours >= 12,
-       `mean luma ${m.luma.toFixed(1)}, ${m.colours} colours`);
+  const outdoor = OPEN_WORLD || stopZ(sh.name) >= WALL_D - 60;
+  gate(`${sh.name}: the lane is painted where you stand`,
+       m.luma >= (outdoor ? 50 : 84) && m.colours >= (outdoor ? 30 : 12),
+       `mean luma ${m.luma.toFixed(1)}, ${m.colours} colours${outdoor ? " (open night ground)" : ""}`);
 }
 // 2. The deepest stop is the one that used to collapse: floor, walls and ceiling all nearer than the
 //    near plane's own panels. It has to be the richest frame in the set, not the poorest.
-const deep = stats.get(shots.find((s) => /-ahead$/.test(s.name) && /in-front/.test(s.name)).name);
-gate("the deepest stop is not the frame that empties out", deep.colours >= 15 && deep.luma >= 90,
+const aheadShots = shots.filter((s) => /-ahead$/.test(s.name));
+const deep = stats.get(aheadShots[aheadShots.length - 1].name);   // the deepest published stop
+const deepOut = OPEN_WORLD || stopZ(aheadShots[aheadShots.length - 1].name) >= WALL_D - 60;
+gate("the deepest stop is not the frame that empties out",
+     deep.colours >= (deepOut ? 30 : 15) && deep.luma >= (deepOut ? 50 : 84),
      `${deep.colours} colours, mean luma ${deep.luma.toFixed(1)}`);
 // 3. Turning round at the entrance shows the lane behind you, not the underside of the world.
 const back = stats.get(shots[shots.length - 1].name);

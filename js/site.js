@@ -638,7 +638,7 @@ function leaveOverlay(root, trigger) {
   const reduce = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const ease = !reduce();   // one test, shared by the walk's motion and the rail's hold-to-pause
 
-  const HALF = 290, MIN_D = -30, MAX_D = 1200, REACH = 190, MAX_PITCH = 35;
+  const HALF = 290, MIN_D = -30, REACH = 190, MAX_PITCH = 35;
   // The smallest thing a hand can be asked to press. A lantern 30 m down the lane projects to a few
   // pixels of wall, and a wall of a few pixels is not a control; the ring stays on the silhouette and
   // only the press area grows, so the lane keeps its drawing while the finger keeps its target.
@@ -664,6 +664,11 @@ function leaveOverlay(root, trigger) {
   const attr = (name, dflt) => parseFloat(layer.dataset[name]) || dflt;
   const WALL = attr("laneW", 640) / 2, CEIL = attr("laneCeil", 420);
   const Z_FAR = attr("laneD", 1247), Z_BACK = -attr("laneBack", 240);
+  // How far the walker may go. The default is the end wall minus a body — the far plane is a view,
+  // not a hole out of the world. A place whose far end is genuinely open (the hub street) authors
+  // laneMaxD in walk units and the world simply continues: the walls stop, the ground goes on, and
+  // the backdrop ahead is somewhere you can stand in rather than a picture behind glass.
+  const MAX_D = attr("laneMaxD", Z_FAR - 47);
   const EYE = attr("eye", 168);
   const SEG = 60, NEAR = 24, DPM = 2;   // panel, near plane, pattern scale: the renderer's own
   let W = 0, H = 0, focal = 620, tilePat = null, floorPat = null, winPat = null,
@@ -931,7 +936,8 @@ function leaveOverlay(root, trigger) {
     try { return JSON.parse(node.textContent); } catch (err) { return null; }
   };
   const meta = objs.map((el) => ({
-    el, kind: el.dataset.obj, ry: num(el, "data-ry") || parseFloat(el.dataset.ry || 0),
+    el, kind: el.dataset.obj, leaf: el.dataset.leaf || null,
+    ry: num(el, "data-ry") || parseFloat(el.dataset.ry || 0),
     w: parseFloat(el.dataset.w) || 100, h: parseFloat(el.dataset.h) || 140,
     d: parseFloat(el.dataset.d) || 12, x: num(el, "--x"), z: num(el, "--z"), y: num(el, "--y"),
     pic: el.dataset.tex ? pics.get(el.dataset.tex) : null, sx: 0, sy: 0, sw: 0, sh: 0, shown: false,
@@ -994,7 +1000,23 @@ function leaveOverlay(root, trigger) {
                       front: "#2c3a56", ledge: "#6b7890", pane: "#6f7d92", window: "#6f7d92",
                   mirror: "#8f9bb0", ladder: "#a98a5e", hydrant: "#b8443a", recycle: "#3f6d5a",
                   meter: "#5f6a78", camera: "#4a566a", door: "#33405c",
+                  pole: "#5c6a80", barrel: "#6a5340", stool: "#4a3f36", lamp: "#4a566a",
+                  curtain: "#24406b", stall: "#6e4f38",
                   bank: "#dfe8f2", bench: "#4a3f36", rack: "#6a6f78" };
+  /* Props are named `kind`, `kind-2`, `kind-left`, `kind-s1`… and the shape/tint tables were keyed
+     by the *whole* id — so `front-a` was a flat plane while `front` was a painted recess, and whole
+     families of props (banners, crates, snow banks, stall curtains) lost their bodies to a fallback.
+     A prop's kind is therefore resolved: the exact name if the table knows it, else the longest
+     table key the id starts with at a dash or the string's end, else the id itself (a plane). */
+  const kindOf = (id) => {
+    if (PROP_TINT[id] !== undefined || SHAPE[id] !== undefined) return id;
+    let best = null;
+    for (const k of Object.keys(SHAPE)) {
+      if (id.startsWith(k) && (id.length === k.length || id[k.length] === "-")
+          && (best === null || k.length > best.length)) best = k;
+    }
+    return best || id;
+  };
   // How far a kind is a solid. A picture on a wall is a plane and must not be given a thickness it
   // cannot have; everything else in a lane has three visible faces or it is a decal, not an object.
   const SHAPE = { vending: "box", shrine: "box", utility: "box", ac: "box", crate: "box",
@@ -1003,8 +1025,15 @@ function leaveOverlay(root, trigger) {
                   bin: "box", bollard: "box", steps: "box", pipe: "box", awning: "box",
                   sign: "box", drain: "plate", noren: "cloth", poster: "plane", frame: "plane",
                   mirror: "mirror", ladder: "ladder", hydrant: "hydrant", recycle: "flap",
-                  meter: "box", camera: "camera", door: "plate",
+                  meter: "box", camera: "camera",
+                  // A door draws itself now (see the `door` branch): recess, leaf, panels, handle,
+                  // fanlight. It still needs its door-height `data-h` from the record — a plate is
+                  // flat on the floor and fails the press-box floor.
+                  door: "door",
                   bank: "bank", bench: "box", rack: "box" };
+  // A few props are named for what they are, not for the kind that draws them; these are the aliases.
+  Object.assign(SHAPE, { pole: "box", barrel: "box", stool: "box", lamp: "box",
+                         curtain: "cloth", stall: "front", ledge: "plane" });
   const mix = (hex, k) => {
     const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
     const to = k >= 0 ? [255, 238, 208] : [10, 17, 40];
@@ -1066,7 +1095,11 @@ function leaveOverlay(root, trigger) {
       const sx = W * 0.5 + (focal * p.x) / p.z, sy = H * 0.5 + (focal * p.y) / p.z;
       x0 = Math.min(x0, sx); y0 = Math.min(y0, sy); x1 = Math.max(x1, sx); y1 = Math.max(y1, sy);
     });
-    return [x0, y0, x1 - x0, y1 - y0];
+    // Absolute corners, not [x0, y0, w, h]: the hit-box union below maxes x1/y1 against the other
+    // faces' absolute edges. A relative width here met that union as if it were an edge, so any
+    // object drawn as a single quad — the chain doors, the wall frames, a drain plate — came out
+    // with a negative width and was culled as invisible: real, painted, and untouchable.
+    return [x0, y0, x1, y1];
   };
   /* Lighting, in the order a night actually works: the level the eye has adapted to, then a
      distance-squared falloff from each source, then the air in between. The sources are the same
@@ -1295,7 +1328,7 @@ function leaveOverlay(root, trigger) {
         // surface whose far edge is allowed to dissolve into the sky, and FOG_MAX is what "far" is
         // defined as in this renderer. A hand-picked 0.65 here would be the renderer telling a
         // different story about distance than every other quad in the frame.
-        if (fl) { fl.air = 0.2 + ((z - plaza.z0) / span) * (FOG_MAX - 0.2); fl.lit = 0.5; }
+        if (fl) { fl.air = 0.2 + ((z - plaza.z0) / span) * (FOG_MAX - 0.2); fl.lit = plaza.lit || 0.5; }
       }
     }
     const cross = bd.crossing;
@@ -1559,8 +1592,9 @@ function leaveOverlay(root, trigger) {
       const uv = m.pic
         ? [[0, 0], [m.pic.naturalWidth || 640, 0], [m.pic.naturalWidth || 640, -(m.pic.naturalHeight || 427)], [0, -(m.pic.naturalHeight || 427)]]
         : [[0, 0], [0, 0], [0, 0], [0, 0]];
-      const base = PROP_TINT[m.kind] || "#33435f";
-      const shape = SHAPE[m.kind] || "plane";
+      const kind = kindOf(m.kind);
+      const base = m.leaf || PROP_TINT[kind] || PROP_TINT[m.kind] || "#33435f";
+      const shape = SHAPE[kind] || "plane";
       const S = m.states ? (m.states[m.st] || m.states[0]) : null;
       const drawn = [];
       if (shape === "box") {
@@ -1573,6 +1607,36 @@ function leaveOverlay(root, trigger) {
           const q = add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.24));
           if (q) { q.lit = lit; drawn.push(q); }
         });
+      } else if (shape === "door") {
+        /* A door is joinery, not a rectangle: a dark reveal behind it, a leaf with two inset panels
+           and a handle, a threshold under it, and a lit fanlight over its head — that fanlight is
+           why a street door reads from down the street. The record may tint the leaf per door
+           (`data-leaf`); `door` in the states slides it ajar across the reveal, which is the same
+           trick the booth's sliding door earned: a hinge needs a second axis this painter lacks. */
+        const along = Math.abs(m.ry) > 45;
+        const dir = along ? (m.x < 0 ? 1 : -1) : (m.z < 0 ? -1 : 1);
+        const half = m.w / 2, ins = Math.max(m.d, 10), ajar = S && S.door ? S.door : 0;
+        const P = (u, v, y) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
+        const Q = (pts, col, l, air) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); }
+        };
+        Q([P(-half, ins, 0), P(half, ins, 0), P(half, ins, m.h), P(-half, ins, m.h)],
+          mix(base, -0.42), lit * 0.5);
+        const lw = m.w * 0.92, y1 = m.h * 0.94, slide = ajar * lw * 0.8;
+        const leaf = (u0, u1, ya, yb, col, l) =>
+          Q([P(u0 + slide, 4, ya), P(u1 + slide, 4, ya), P(u1 + slide, 4, yb), P(u0 + slide, 4, yb)],
+            col, l);
+        leaf(-lw / 2, lw / 2, 0, y1, mix(base, 0.16), lit * 1.05);
+        if (ajar < 0.9) {
+          leaf(-lw * 0.32, -lw * 0.08, m.h * 0.16, m.h * 0.44, mix(base, -0.3), lit * 0.78);
+          leaf(-lw * 0.32, -lw * 0.08, m.h * 0.54, m.h * 0.84, mix(base, -0.3), lit * 0.78);
+          leaf(lw * 0.08, lw * 0.32, m.h * 0.16, m.h * 0.44, mix(base, -0.3), lit * 0.78);
+          leaf(lw * 0.08, lw * 0.32, m.h * 0.54, m.h * 0.84, mix(base, -0.3), lit * 0.78);
+        }
+        leaf(lw * 0.5 - 20, lw * 0.5 - 5, m.h * 0.4, m.h * 0.54, "#e2d2ae", lit * 1.9);
+        Q([P(-half, 6, y1), P(half, 6, y1), P(half, 6, m.h), P(-half, 6, m.h)], "#f0c27a", 1.6, 0.05);
+        Q([P(-half, 2, 0), P(half, 2, 0), P(half, 2, 6), P(-half, 2, 6)], mix(base, 0.3), lit * 1.1);
       } else if (shape === "cloth") {
         const along = Math.abs(m.ry) > 45;
         const len = m.w, n = 4, gap = 8;
@@ -1835,12 +1899,16 @@ function leaveOverlay(root, trigger) {
         /* A ploughed edge: two boxes of different lengths, the longer one lower, so the silhouette
            rises from the lane instead of standing on it like furniture. Snow is the one thing in
            these rooms that is drawn by its silhouette and its brightness rather than its material. */
-        [[0, m.h * 0.55, m.d], [m.h * 0.55, m.h * 0.45, m.d * 0.62]].forEach(([y0, h, d]) => {
-          facesOf({ ...m, y: m.y + y0, h: h, d: d, w: m.w * (y0 ? 0.86 : 1) }).forEach((f) => {
-            const q = add(C, f.pts, f.uv, f.mode, f.arg, f.img);
-            if (q) { q.lit = lit * (y0 ? 1.12 : 1.0); drawn.push(q); }
+        [[0, m.h * 0.55, m.d, 1], [m.h * 0.55, m.h * 0.45, m.d * 0.62, 0.86]]
+          .forEach(([y0, h, d, wf]) => {
+            facesOf({ ...m, y: m.y + y0, h, d, w: m.w * wf }).forEach((f) => {
+              const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                           + f.n[2] * (C.z - f.p[0][2]);
+              if (toward <= 0) return;
+              const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
+              if (q) { q.lit = lit * (y0 ? 1.12 : 1.0); drawn.push(q); }
+            });
           });
-        });
       } else if (shape === "hydrant") {
         /* A standpipe at the kerb: it is three boxes and two caps, and the reason it earns its place is
            that it is recognisable as a silhouette at thirty metres. Nothing is claimed about water
@@ -1903,10 +1971,10 @@ function leaveOverlay(root, trigger) {
       drawn.slice(1).forEach((other) => {          // the control wraps the object, not one face of it
         const o = box(C, other);
         b[0] = Math.min(b[0], o[0]); b[1] = Math.min(b[1], o[1]);
-        b[2] = Math.max(b[2], o[0] + o[2]); b[3] = Math.max(b[3], o[1] + o[3]);
+        b[2] = Math.max(b[2], o[2]); b[3] = Math.max(b[3], o[3]);
         minz = Math.min(minz, other.z);
       });
-      b[2] -= b[0]; b[3] -= b[1];
+      b[2] -= b[0]; b[3] -= b[1];                  // corners in, size out — once, at the end
       if (b[2] > 6 && b[3] > 6 && b[0] > -40 && b[0] < W + 40 && b[1] < H + 40 && b[1] > -40) {
         m.el.style.visibility = "visible";
         m.el.tabIndex = 0;
