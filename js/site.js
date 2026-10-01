@@ -1015,7 +1015,7 @@ function leaveOverlay(root, trigger) {
                   curtain: "#24406b", stall: "#6e4f38",
                   bank: "#dfe8f2", bench: "#4a3f36", rack: "#6a6f78",
                   plinth: "#2b2733", tower: "#6b7a92", skyline: "#1c2740", dome: "#93a3b8",
-                  falls: "#dfe9f2", pool: "#1d3a55" };
+                  falls: "#dfe9f2", pool: "#1d3a55", boat: "#e8eef4" };
   /* Props are named `kind`, `kind-2`, `kind-left`, `kind-s1`… and the shape/tint tables were keyed
      by the *whole* id — so `front-a` was a flat plane while `front` was a painted recess, and whole
      families of props (banners, crates, snow banks, stall curtains) lost their bodies to a fallback.
@@ -1048,7 +1048,7 @@ function leaveOverlay(root, trigger) {
                   // known by. Each is its own branch below; without one the prop falls back to a
                   // plane, so a new shape that never shipped would show as a card, not a crash.
                   plinth: "plinth", tower: "tower", skyline: "skyline", dome: "dome",
-                  falls: "falls", pool: "pool" };
+                  falls: "falls", pool: "pool", boat: "boat" };
   // A few props are named for what they are, not for the kind that draws them; these are the aliases.
   Object.assign(SHAPE, { pole: "box", barrel: "box", stool: "box", lamp: "box",
                          curtain: "cloth", stall: "stall", ledge: "plane" });
@@ -1653,8 +1653,15 @@ function leaveOverlay(root, trigger) {
           leaf(lw * 0.08, lw * 0.32, m.h * 0.54, m.h * 0.84, mix(base, -0.3), lit * 0.78);
         }
         leaf(lw * 0.5 - 20, lw * 0.5 - 5, m.h * 0.4, m.h * 0.54, "#e2d2ae", lit * 1.9);
-        Q([P(-half, 6, y1), P(half, 6, y1), P(half, 6, m.h), P(-half, 6, m.h)], "#f0c27a", 1.6, 0.05);
+        Q([P(-half, 6, y1), P(half, 6, y1), P(half, 6, m.h), P(-half, 6, m.h)], "#f0c27a", 2.1, 0.05);
         Q([P(-half, 2, 0), P(half, 2, 0), P(half, 2, 6), P(-half, 2, 6)], mix(base, 0.3), lit * 1.1);
+        /* A doorway you can read from down the street: a lit jamb either side of the leaf, and the
+           fanlight's colour spilled onto the ground in front of it. A door with no light on it is
+           a wall; these three quads are the difference. */
+        Q([P(-half, 3, 0), P(-half + 5, 3, 0), P(-half + 5, 3, y1), P(-half, 3, y1)], "#f0c27a", 1.8);
+        Q([P(half - 5, 3, 0), P(half, 3, 0), P(half, 3, y1), P(half - 5, 3, y1)], "#f0c27a", 1.8);
+        Q([P(-half, 6, 0), P(half, 6, 0), P(half, 76, 0), P(-half, 76, 0)],
+          "rgba(240,194,122,0.22)", 1.2, 0.06);
       } else if (shape === "cloth") {
         const along = Math.abs(m.ry) > 45;
         const len = m.w, n = 4, gap = 8;
@@ -1996,6 +2003,19 @@ function leaveOverlay(root, trigger) {
             if (q) { q.lit = lit * (k > 0.1 ? 1.5 : 1); drawn.push(q); }
           });
         });
+        // The pod keeps a warm band of windows, and the needle carries the city's red blink —
+        // both on the frame clock, so they hold still for a reduced-motion eye.
+        const pb = add(C, [[m.x - m.w * 0.42, m.y + m.h * 0.64, m.z - m.d * 0.5 - 1],
+                           [m.x + m.w * 0.42, m.y + m.h * 0.64, m.z - m.d * 0.5 - 1],
+                           [m.x + m.w * 0.42, m.y + m.h * 0.72, m.z - m.d * 0.5 - 1],
+                           [m.x - m.w * 0.42, m.y + m.h * 0.72, m.z - m.d * 0.5 - 1]],
+                       ZERO8, "flat", "#f0c27a");
+        if (pb) { pb.lit = 1.5; drawn.push(pb); }
+        const blink = ease ? (Math.sin(T * 2.4) > 0.2 ? 0.85 : 0.15) : 0.6;
+        const bc = add(C, [[m.x - 3, m.y + m.h - 8, m.z - 1], [m.x + 3, m.y + m.h - 8, m.z - 1],
+                           [m.x + 3, m.y + m.h - 1, m.z - 1], [m.x - 3, m.y + m.h - 1, m.z - 1]],
+                       ZERO8, "flat", `rgba(255,72,56,${blink.toFixed(2)})`);
+        if (bc) { bc.lit = 1.7; drawn.push(bc); }
       } else if (shape === "skyline") {
         /* A row of blocky towers of different heights; a few lit windows are the only words it has.
            The blocks share the table's footprint and sit at staggered depths so the row has a
@@ -2015,6 +2035,9 @@ function leaveOverlay(root, trigger) {
         // A handful of lit windows on the two tall blocks, on the face turned to the walk.
         [[-0.1, 0.95], [0.16, 0.7]].forEach(([cx, hf], bi) => {
           for (let i = 0; i < 4; i++) {
+            // A slow twinkle: which windows are lit drifts on the frame clock; reduced motion
+            // keeps them all on.
+            if (ease && ((i * 7 + bi * 3 + Math.floor(T * 0.7)) % 5) === 0) continue;
             const wy = m.y + m.h * hf * (0.3 + 0.16 * i), wx = m.x + cx * m.w + (i % 2 ? 4 : -5);
             const q = add(C, [[wx, wy, m.z - m.d * 0.26], [wx + 4, wy, m.z - m.d * 0.26],
                               [wx + 4, wy + 5, m.z - m.d * 0.26], [wx, wy + 5, m.z - m.d * 0.26]],
@@ -2068,7 +2091,7 @@ function leaveOverlay(root, trigger) {
         if (crest) { crest.lit = 1.0; drawn.push(crest); }
         const mist = add(C, [[m.x - hw, m.y + 2, zf - 8], [m.x + hw, m.y + 2, zf - 8],
                              [m.x + hw, m.y + m.h * 0.3, zf - 8], [m.x - hw, m.y + m.h * 0.3, zf - 8]],
-                         ZERO8, "flat", "rgba(238,244,250,0.5)");
+                         ZERO8, "flat", `rgba(238,244,250,${(0.42 + (ease ? 0.14 * Math.sin(T * 1.3) : 0)).toFixed(2)})`);
         if (mist) { mist.lit = 0.95; mist.air = 0.08; drawn.push(mist); }
         const basin = add(C, [[m.x - hw, m.y + 1, zf - 10], [m.x + hw, m.y + 1, zf - 10],
                               [m.x + hw, m.y + 1, m.z + hd * 0.4], [m.x - hw, m.y + 1, m.z + hd * 0.4]],
@@ -2080,10 +2103,26 @@ function leaveOverlay(root, trigger) {
                           [m.x + m.w / 2, m.y + 1, m.z + m.d / 2], [m.x - m.w / 2, m.y + 1, m.z + m.d / 2]],
                       ZERO8, "flat", base);
         if (q) { q.lit = 0.9; drawn.push(q); }
-        const sheen = add(C, [[m.x - m.w * 0.2, m.y + 2, m.z - m.d * 0.3], [m.x + m.w * 0.1, m.y + 2, m.z - m.d * 0.3],
-                              [m.x + m.w * 0.2, m.y + 2, m.z - m.d * 0.1], [m.x - m.w * 0.1, m.y + 2, m.z - m.d * 0.1]],
+        const drift = ease ? Math.sin(T * 0.5) * m.w * 0.22 : 0;
+        const sheen = add(C, [[m.x - m.w * 0.2 + drift, m.y + 2, m.z - m.d * 0.3], [m.x + m.w * 0.1 + drift, m.y + 2, m.z - m.d * 0.3],
+                              [m.x + m.w * 0.2 + drift, m.y + 2, m.z - m.d * 0.1], [m.x - m.w * 0.1 + drift, m.y + 2, m.z - m.d * 0.1]],
                           ZERO8, "flat", "rgba(214,230,244,0.5)");
         if (sheen) { sheen.lit = 1.1; drawn.push(sheen); }
+      } else if (shape === "boat") {
+        /* The ferry crosses the sheet on the frame clock: a hull, a cabin, a wake. Reduced
+           motion moors it mid-lake. */
+        const dx = ease ? Math.sin(T * 0.22) * 52 : 8;
+        facesOf({ ...m, x: m.x + dx }).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k + (f.n[1] === 1 ? 0.1 : 0)));
+          if (q) { q.lit = lit * 1.15; drawn.push(q); }
+        });
+        const wake = add(C, [[m.x + dx - m.w * 1.6, m.y + 1, m.z - 2], [m.x + dx - m.w * 0.6, m.y + 1, m.z - 2],
+                             [m.x + dx - m.w * 0.6, m.y + 1, m.z + 2], [m.x + dx - m.w * 1.6, m.y + 1, m.z + 2]],
+                         ZERO8, "flat", "rgba(226,238,248,0.4)");
+        if (wake) { wake.lit = 1.1; drawn.push(wake); }
       } else if (shape === "stall") {
         /* A market stall at table scale: a counter, a dark opening under a striped awning. The
            awning slopes the way an awning does and carries the stripes a market reads by; nothing
@@ -2111,6 +2150,11 @@ function leaveOverlay(root, trigger) {
                         ZERO8, "flat", i % 2 ? "#b8433c" : "#e6ddca");
           if (q) { q.lit = lit * 1.2; drawn.push(q); }
         }
+        const fl = (0.5 + (ease ? 0.1 * Math.sin(T * 5.2 + m.z * 0.1) : 0)).toFixed(2);
+        const lampq = add(C, [P(-7, m.d * 0.42, m.h * 0.58), P(7, m.d * 0.42, m.h * 0.58),
+                              P(7, m.d * 0.42, m.h * 0.66), P(-7, m.d * 0.42, m.h * 0.66)],
+                          ZERO8, "flat", `rgba(255,196,120,${fl})`);
+        if (lampq) { lampq.lit = 1.6; drawn.push(lampq); }
       } else {
         const q = add(C, corners, uv.flat(), face, base, m.pic);
         if (q) {

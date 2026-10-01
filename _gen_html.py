@@ -1848,21 +1848,21 @@ DISTRICTS = [
             # never opened. The last door sits at 780 with room to spare.
             {"id": "door-toronto", "kind": "door", "x": -346, "z": 160, "y": 0, "ry": 90,
              "leaf": "#274b66",
-             "glow": [{"r": 130, "k": 0.66, "dy": 235, "tint": "rgba(255,178,102,0.55)"}],
+             "glow": [{"r": 150, "k": 0.75, "dy": 235, "tint": "rgba(255,178,102,0.6)"}],
              "leave": ROOM_BY_ID["toronto"]["page"],
              "title": "The door onto Toronto",
              "hint": "It opens onto the little city: a dark hall of lit tables where Toronto, its "
                      "falls and its markets stand small enough to walk around."},
             {"id": "door-tokyo", "kind": "door", "x": 346, "z": 470, "y": 0, "ry": -90,
              "leaf": "#5c4434",
-             "glow": [{"r": 130, "k": 0.62, "dy": 235}],
+             "glow": [{"r": 150, "k": 0.72, "dy": 235}],
              "leave": ROOM_BY_ID["tokyo"]["page"],
              "title": "The door onto Tokyo",
              "hint": "It opens onto the lane: shutters, lanterns, a vending machine at its end. "
                      "The curtain inside parts the other way."},
             {"id": "door-fukuoka", "kind": "door", "x": -346, "z": 780, "y": 0, "ry": 90,
              "leaf": "#4b4368",
-             "glow": [{"r": 130, "k": 0.58, "dy": 235}],
+             "glow": [{"r": 150, "k": 0.7, "dy": 235}],
              "leave": ROOM_BY_ID["fukuoka"]["page"],
              "title": "The door onto Fukuoka",
              "hint": "It opens onto the stall alley: lanterns low over the counters, and water at "
@@ -2744,37 +2744,37 @@ DISTRICTS = [
         "objects": [
             # Table one — the city. A plinth with the skyline on it: the tower reads first because
             # it is the one silhouette nobody mistakes, then the blocks, then the dome.
-            {"id": "plinth-sky", "kind": "plinth", "x": -230, "z": 100, "y": 0, "ry": 0,
-             "w": 260, "h": 80, "d": 150,
-             "glow": [{"r": 150, "k": 0.34, "dy": 96, "tint": "rgba(255,214,170,0.34)"}],
+            {"id": "plinth-sky", "kind": "plinth", "x": 0, "z": 396, "y": 0, "ry": 0,
+             "w": 300, "h": 80, "d": 150,
+             "glow": [{"r": 160, "k": 0.4, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
              "title": "The table the city stands on",
              "hint": "A lit plinth, table height. Everything on it is small; the light under the "
                      "edge is what makes a model read as a model."},
-            {"id": "tower-cn", "kind": "tower", "x": -270, "z": 78, "y": 80, "ry": 0,
-             "w": 44, "h": 220, "d": 44,
+            {"id": "tower-cn", "kind": "tower", "x": -70, "z": 372, "y": 80, "ry": 0,
+             "w": 54, "h": 260, "d": 54,
              "title": "The tower, small",
              "hint": "Tapered shaft, a round pod two thirds up, a needle above: the one silhouette "
                      "the whole city is known by, drawn at table scale. No lettering, no claim — "
                      "a shape, not a postcard."},
-            {"id": "skyline-cn", "kind": "skyline", "x": -205, "z": 118, "y": 80, "ry": 0,
-             "w": 170, "h": 96, "d": 90,
+            {"id": "skyline-cn", "kind": "skyline", "x": 55, "z": 400, "y": 80, "ry": 0,
+             "w": 200, "h": 120, "d": 90,
              "title": "The skyline, small",
              "hint": "A row of blocky towers with a few lit windows, the way a downtown reads from "
                      "the lake at night. Drawn small; the windows are the only words it has."},
-            {"id": "dome-rc", "kind": "dome", "x": -235, "z": 152, "y": 80, "ry": 0,
-             "w": 76, "h": 34, "d": 76,
+            {"id": "dome-rc", "kind": "dome", "x": -10, "z": 430, "y": 80, "ry": 0,
+             "w": 84, "h": 44, "d": 84,
              "title": "The dome, small",
              "hint": "A low white dome among the blocks: the stadium the skyline keeps making room "
                      "for. Nothing on it but its own curve."},
             # Table two — the falls. The water is the one thing in the hall that moves.
             {"id": "plinth-falls", "kind": "plinth", "x": 230, "z": 170, "y": 0, "ry": 0,
              "w": 260, "h": 80, "d": 160,
-             "glow": [{"r": 150, "k": 0.34, "dy": 96, "tint": "rgba(190,220,245,0.34)"}],
+             "glow": [{"r": 160, "k": 0.4, "dy": 96, "tint": "rgba(190,220,245,0.36)"}],
              "title": "The table the falls stand on",
              "hint": "The same lit plinth, cooler light: the water gets a cold pool on the floor, "
                      "the way real spray cools the air at the rail."},
             {"id": "falls-n", "kind": "falls", "x": 230, "z": 170, "y": 80, "ry": 0,
-             "w": 190, "h": 64, "d": 70,
+             "w": 220, "h": 84, "d": 70,
              "title": "The falls, small",
              "hint": "A sheet of water over a ledge into mist, small enough to step over and loud "
                      "enough to imagine. The one moving thing in the hall; it moves because you "
@@ -2782,7 +2782,7 @@ DISTRICTS = [
             # Table three — the market. Stalls at model scale: awnings, crates, a warm lamp.
             {"id": "plinth-market", "kind": "plinth", "x": -230, "z": 320, "y": 0, "ry": 0,
              "w": 260, "h": 80, "d": 150,
-             "glow": [{"r": 150, "k": 0.34, "dy": 96, "tint": "rgba(255,214,170,0.34)"}],
+             "glow": [{"r": 160, "k": 0.4, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
              "title": "The table the market stands on",
              "hint": "A stall row at table scale. No stall is named and no price is written; a "
                      "market reads by its awnings and its crates, not its lettering."},
@@ -2807,26 +2807,26 @@ DISTRICTS = [
              "title": "A second crate",
              "hint": "The market's clutter, at a scale where clutter is a centimetre tall."},
             # Table four — the lake. The city's front door: water, islands, one small ferry.
-            {"id": "plinth-lake", "kind": "plinth", "x": 230, "z": 370, "y": 0, "ry": 0,
+            {"id": "plinth-lake", "kind": "plinth", "x": -230, "z": 120, "y": 0, "ry": 0,
              "w": 260, "h": 80, "d": 140,
-             "glow": [{"r": 150, "k": 0.32, "dy": 96, "tint": "rgba(190,220,245,0.32)"}],
+             "glow": [{"r": 160, "k": 0.38, "dy": 96, "tint": "rgba(190,220,245,0.34)"}],
              "title": "The table the lake lies on",
              "hint": "A flat sheet of water with low green islands: the view the skyline turns to "
                      "face. The ferry is one white box, because at this scale it is."},
-            {"id": "pool-lake", "kind": "pool", "x": 230, "z": 370, "y": 80, "ry": 0,
+            {"id": "pool-lake", "kind": "pool", "x": -230, "z": 120, "y": 80, "ry": 0,
              "w": 210, "h": 4, "d": 100,
              "title": "The lake, small",
              "hint": "Still water on a table. It reflects the hall's spots the way the real one "
                      "reflects the city."},
-            {"id": "isle-1", "kind": "planter", "x": 200, "z": 356, "y": 82, "ry": 0,
+            {"id": "isle-1", "kind": "planter", "x": -260, "z": 106, "y": 82, "ry": 0,
              "w": 44, "h": 16, "d": 30,
              "title": "An island, small",
              "hint": "A low green bump in the water: the islands, reduced to their silhouette."},
-            {"id": "isle-2", "kind": "planter", "x": 262, "z": 384, "y": 82, "ry": 0,
+            {"id": "isle-2", "kind": "planter", "x": -198, "z": 134, "y": 82, "ry": 0,
              "w": 38, "h": 14, "d": 26,
              "title": "A second island, small",
              "hint": "The second island, further out. Two bumps are an archipelago at this scale."},
-            {"id": "ferry-1", "kind": "box", "x": 236, "z": 368, "y": 83, "ry": 20,
+            {"id": "ferry-1", "kind": "boat", "x": -228, "z": 118, "y": 83, "ry": 0,
              "w": 26, "h": 10, "d": 10,
              "title": "The ferry, small",
              "hint": "One white box crossing the sheet: the ferry, at a scale where it cannot be "
@@ -2839,7 +2839,7 @@ DISTRICTS = [
              "hint": "The hall's own cover plate, hung on the far wall: tower, falls and market "
                      "in a single look, the way the room ends."},
             # The hall's own furniture: a bench between tables and the rope line of a model room.
-            {"id": "bench-t", "kind": "bench", "x": -320, "z": 210, "y": 0, "ry": 90,
+            {"id": "bench-t", "kind": "bench", "x": 320, "z": 300, "y": 0, "ry": -90,
              "title": "A bench in the dark",
              "hint": "The one seat in the hall, between the city and the market, for looking."},
             {"id": "bollard-t", "kind": "bollard", "x": 140, "z": 24, "y": 0, "ry": 0,
@@ -2849,9 +2849,13 @@ DISTRICTS = [
         # Dim spots over the walk; the tables carry their own glows from the objects list, so the
         # dioramas are the brightest things in the room and the walk stays a dark hall around them.
         "lamps": [
-            {"x": 0, "y": 366, "z": 90, "r": 30, "k": 0.34},
-            {"x": 0, "y": 366, "z": 240, "r": 30, "k": 0.32},
-            {"x": 0, "y": 366, "z": 390, "r": 30, "k": 0.34},
+            {"x": 0, "y": 366, "z": 90, "r": 30, "k": 0.3},
+            {"x": 0, "y": 366, "z": 240, "r": 30, "k": 0.3},
+            # One spot per table, close and narrow: the diorama outshines the hall it stands in.
+            {"x": -230, "y": 300, "z": 120, "r": 46, "k": 0.5},
+            {"x": 230, "y": 300, "z": 170, "r": 46, "k": 0.5},
+            {"x": -230, "y": 300, "z": 320, "r": 46, "k": 0.5},
+            {"x": 0, "y": 300, "z": 396, "r": 52, "k": 0.55},
             # A picture light over the cover plate on the far wall: the hall ends on the city in
             # one sheet, and a plate you walk toward is a plate you can read.
             {"x": 0, "y": 320, "z": 452, "r": 130, "k": 0.7},
@@ -2861,17 +2865,17 @@ DISTRICTS = [
         "surfaces": [
             # A hall, not a lane: concrete dado at hand height, dark hoarding above, both sides the
             # whole length, so the walls recede and the lit tables do the talking.
-            {"side": -1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "concrete", "tone": 0.9},
-            {"side": -1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "hoarding", "tone": 0.8},
-            {"side": 1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "concrete", "tone": 0.9},
-            {"side": 1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "hoarding", "tone": 0.8},
+            {"side": -1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "concrete", "tone": 0.5},
+            {"side": -1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "plaster", "tone": 0.42},
+            {"side": 1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "concrete", "tone": 0.5},
+            {"side": 1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "plaster", "tone": 0.42},
         ],
         "marks": [
             {"kind": "gutter", "x0": -380, "x1": 380, "z0": -260, "z1": -246},
         ],
         "lanterns": [],
         "frames": [
-            {"id": "skyline", "src": "IMG/toronto-1.jpg", "x": -374, "z": 100, "y": 150, "ry": 90,
+            {"id": "skyline", "src": "IMG/toronto-1.jpg", "x": 374, "z": 396, "y": 150, "ry": -90,
              "title": "The skyline, small",
              "alt": "Illustration of a miniature Toronto skyline on a lit table: a small CN Tower "
                     "with a round pod among blocky navy towers with a few amber windows.",
@@ -2910,11 +2914,10 @@ DISTRICTS = [
         ],
         "stations": [
             {"z": 0, "label": "the mouth of the hall"},
-            {"z": 100, "label": "by the city table"},
+            {"z": 120, "label": "by the lake table"},
             {"z": 170, "label": "by the falls table"},
             {"z": 320, "label": "by the market table"},
-            {"z": 370, "label": "by the lake table"},
-            {"z": 440, "label": "the far wall"},
+            {"z": 396, "label": "by the city table"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
                  "title": "The door at your back", "hint": "It opens onto the street, at this "

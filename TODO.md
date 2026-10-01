@@ -27,6 +27,17 @@
 - `lane-shot` street / toronto → 0 FAIL（截圖在 `.preview/lane/`，gitignore）。
 - `npx impeccable detect` → **0 findings**。
 
+## 0b. 第二輪回饋（同日）：「環境要漂亮、有動畫、辨識度、門看不清」
+
+處理結果（已做、已驗證）：
+- **動畫**（全部走 frame clock `T`、`prefers-reduced-motion` 時靜止，idle pulse 11fps 站著也動）：
+  瀑布水紋＋霧呼吸、CN Tower 頂紅燈閃爍＋pod 窗帶、天際線窗戶慢閃、湖面光帶漂移、
+  渡輪改成 `boat` 形狀來回渡湖帶尾跡、市場攤位雨棚下暖燈微閃。
+- **辨識度**：城市桌移到廳尾正中當主展品（塔 260 cm、天際線 120、圓頂 44，背景是整城圖）；
+  瀑布加大（220×84）；湖桌移到門口左；每桌加窄 spot；廳牆改深色平滑 gallery 牆。
+- **門**：door 形狀加兩側 lit jamb、fanlight 加亮、門前地面灑光池；街上三門的 over-door glow 加強。
+- 驗證：walk 166/166、chain 0、e2e 0、probe 4500<4700、impeccable 0、lane-shot 兩頁 0 FAIL。
+
 ## 1. 需求總表與現況
 
 | # | 需求 | 現況 | 交付 |
@@ -35,7 +46,8 @@
 | 2 | 相簿＝一個容器三張卡、卡即門 | ✅ | 早期 commits |
 | 3 | 走出房門落在街上該房門口、街加長有路程 | ✅ | 本輪 |
 | 4 | Canada 房改成 Toronto（Little Canada 式：景點/瀑布/市場） | ✅ | 本輪 |
-| 5 | 門真美術、walk guide、HUD 無字等合約 | ✅ 維持 | — |
+| 5 | Toronto 廳漂亮＋動畫＋辨識度；門要看得清 | ✅ | 本輪 0b |
+| 6 | 門真美術、walk guide、HUD 無字等合約 | ✅ 維持 | — |
 
 ## 2. 環境陷阱（接手必讀）
 
@@ -54,5 +66,5 @@
 
 ## 4. 給下一位的觀察
 
-- Toronto 暗廳的固定視角截圖不容易帶到 CN Tower（它在城市桌、靠左、進門時在視角外）；真機可以拖曳轉頭，e2e 已驗證幾何與可達性。若使用者覺得「進門看不到塔」，可把城市桌往街心/深處搬，或加一個朝它的 station。
+- CN Tower 原本是進門視角外的左前桌——已於 0b 輪搬成廳尾正中主展品，進門即見塔＋天際線對著整城圖。若還要更「明信片」，可加一個正對城市桌的 station。
 - 迷你比例靠 record 的 `w/h/d` override；新形狀必須在 `js/site.js` 的 SHAPE/PROP_TINT 有 entry，否則落回平面。
