@@ -862,13 +862,17 @@ function leaveOverlay(root, trigger) {
                                     [0, 64, 128, 1], [0, 80, 128, 1], [0, 96, 128, 1], [0, 112, 128, 1]]);
   };
   const paintRock = (c) => {
-    c.fillStyle = "#5d6068"; c.fillRect(0, 0, 128, 128);
-    const strata = [];
-    for (let y = 0; y < 128; y += 12) strata.push([0, y, 128, 3 + (y / 12) % 3]);
-    blob(c, "rgba(38,40,48,0.5)", strata);
-    const moss = [];
-    for (let i = 0; i < 40; i++) moss.push([(i * 47) % 128, (i * 71) % 128, 4, 3]);
-    blob(c, "rgba(84,110,64,0.5)", moss);
+    // Gorge stone: irregular chips, not boards — short dark breaks and lichen, no long lines.
+    c.fillStyle = "#565a63"; c.fillRect(0, 0, 128, 128);
+    const chip = [], litc = [], moss = [];
+    for (let i = 0; i < 90; i++) {
+      const x = (i * 47) % 128, y = (i * 71) % 128, w = 6 + (i % 3) * 5, h = 3 + (i % 2) * 2;
+      (i % 2 ? chip : litc).push([x, y, w, h]);
+    }
+    for (let i = 0; i < 34; i++) moss.push([(i * 83) % 128, (i * 37) % 128, 4, 3]);
+    blob(c, "rgba(34,36,44,0.45)", chip);
+    blob(c, "rgba(148,152,162,0.35)", litc);
+    blob(c, "rgba(84,110,64,0.45)", moss);
   };
   const paintSand = (c) => {
     c.fillStyle = "#b7a98c"; c.fillRect(0, 0, 128, 128);
@@ -876,6 +880,30 @@ function leaveOverlay(root, trigger) {
     for (let i = 0; i < 90; i++) sp.push([(i * 53) % 128, (i * 37) % 128, 2, 1]);
     blob(c, "rgba(90,80,62,0.4)", sp);
     blob(c, "rgba(240,232,210,0.35)", [[0, 0, 128, 2]]);
+  };
+  const paintHallPlaster = (c) => {
+    // A gallery wall is a quiet wall: warm grey, a trowel's whisper of noise, one faint shadow
+    // line where the light gives up — no bricks, no pins, nothing to read at an angle.
+    c.fillStyle = "#8e94a2"; c.fillRect(0, 0, 128, 128);
+    const hi = [], lo = [];
+    for (let i = 0; i < 130; i++) {
+      const r = [(i * 53) % 128, (i * 29) % 128, 3, 2];
+      (i % 2 ? hi : lo).push(r);
+    }
+    blob(c, "rgba(255,255,255,0.028)", hi);
+    blob(c, "rgba(24,32,50,0.035)", lo);
+    c.strokeStyle = "rgba(24,32,50,0.10)"; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(0, 96.5); c.lineTo(128, 96.5); c.stroke();
+    c.fillStyle = "rgba(255,255,255,0.03)"; c.fillRect(0, 0, 128, 10);
+  };
+  const paintHallBase = (c) => {
+    // The hall's dado: a painted charcoal plinth, scuffed at the height a stretcher cart would.
+    c.fillStyle = "#3a4150"; c.fillRect(0, 0, 128, 128);
+    blob(c, "rgba(255,255,255,0.03)", [[0, 0, 128, 4]]);
+    const scuff = [];
+    for (let i = 0; i < 40; i++) scuff.push([(i * 67) % 128, 60 + (i * 13) % 40, 4, 2]);
+    blob(c, "rgba(16,22,34,0.25)", scuff);
+    c.fillStyle = "rgba(10,14,24,0.5)"; c.fillRect(0, 116, 128, 12);
   };
   const paintDomeP = (c) => {
     c.fillStyle = "#c8ccd2"; c.fillRect(0, 0, 128, 128);
@@ -1043,6 +1071,8 @@ function leaveOverlay(root, trigger) {
     PATS.cobble = mkTile(paintCobble);
     PATS.rock = mkTile(paintRock);
     PATS.sand = mkTile(paintSand);
+    PATS.hallplaster = mkTile(paintHallPlaster);
+    PATS.hallbase = mkTile(paintHallBase);
     PATS.corrugated = mkTile(paintCorrugated);
     PATS.hoarding = mkTile(paintHoarding);
     PATS.plaster = tilePat;
@@ -1057,6 +1087,18 @@ function leaveOverlay(root, trigger) {
     // a material it can see in this file.
     concretePat = PATS.concrete;
     galvPat = PATS.galv;
+    // When a grazing angle makes the affine solve give up, a textured quad must not fall back to
+    // the void's navy — it falls back to the flat colour of the stuff it is made of, and the wedge
+    // a thin slice leaves reads as shade, not as a hole.
+    PATKEY = new Map(Object.keys(PATS).map((k) => [PATS[k], k]));
+    FLATOF = { wall: "#465572", floor: "#37435c", shutter: "#4d5f5a", dado: "#3f5170",
+               brick: "#4a4038", glass: "#1d2b42", towerc: "#98a1ab", wood: "#77573a",
+               terrain: "#4c6a3a", pedestal: "#2a3242", water: "#27496a", track: "#3a3f4a",
+               domep: "#c8ccd2", cityg: "#8d94a0", cobble: "#6d6a62", rock: "#5d6068",
+               sand: "#b7a98c", hallplaster: "#8e94a2", hallbase: "#3a4150",
+               corrugated: "#5a6470", hoarding: "#4a5568", plaster: "#465572",
+               tactile: "#4a5568", lantern: "#e8b06a", kerb: "#5a6470", grate: "#3a4150",
+               concrete: "#6b7380", galv: "#79828f" };
   };
 
   /* Two shapes of island live inside the hit layer, and they answer two different questions: a list
@@ -1133,6 +1175,7 @@ function leaveOverlay(root, trigger) {
     }
     return out;
   };
+  let PATKEY = null, FLATOF = {};
   const affine = (p, uv) => {                    // three uv->screen pairs define the map
     const [a0, b0] = uv[0], [a1, b1] = uv[1], [a2, b2] = uv[2];
     const x0 = W * 0.5 + (focal * p[0].x) / p[0].z, y0 = H * 0.5 + (focal * p[0].y) / p[0].z;
@@ -1325,13 +1368,23 @@ function leaveOverlay(root, trigger) {
         const u0 = Math.min.apply(null, us), u1 = Math.max.apply(null, us);
         const v0 = Math.min.apply(null, vs), v1 = Math.max.apply(null, vs);
         g.save(); path(); g.clip(); g.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+        // A rect over the uv extent misses the wedge where perspective bends the fourth corner
+        // outside the affine parallelogram — thin slices at a grazing angle lost a triangle per
+        // panel. Filling the quad's own uv polygon, inflated a touch, covers the whole clip.
+        const cu = (u0 + u1) / 2, cv = (v0 + v1) / 2, EX = 1.35;
+        g.beginPath();
+        q.pts.forEach((p, i) => {
+          const uu = cu + (p.u - cu) * EX, vv = cv + (p.v - cv) * EX;
+          if (i) g.lineTo(uu, vv); else g.moveTo(uu, vv);
+        });
+        g.closePath();
         g.fillStyle = q.arg;
-        g.fillRect(u0 - 1, v0 - 1, u1 - u0 + 2, v1 - v0 + 2);
+        g.fill();
         g.restore();
         fitted = true;
       }
     }
-    if (!fitted) { g.fillStyle = q.mode === "flat" ? q.arg : "#2b3a56"; g.fill(); }
+    if (!fitted) { g.fillStyle = q.mode === "flat" ? q.arg : (FLATOF[PATKEY && PATKEY.get(q.arg)] || "#2b3a56"); g.fill(); }
     if (!fitted && q.mode === "pic" && q.img && q.img.complete && q.img.naturalWidth) {
       const m = affine(q.pts, q.pts.map((p) => [p.u, p.v]));
       if (m) {
@@ -1627,10 +1680,12 @@ function leaveOverlay(root, trigger) {
       const fl = add(C, [[-WALL, 0, z], [WALL, 0, z], [WALL, 0, z1], [-WALL, 0, z1]],
           [z * DPM, -WALL * DPM, z * DPM, WALL * DPM, z1 * DPM, WALL * DPM, z1 * DPM, -WALL * DPM],
           "pat", floorPat);
-      if (fl) { fl.lit = lightAt(0, 6, zc) * 1.15; fl.air = haze(fl.z) * 0.7; }
+      if (fl) { fl.lit = lightAt(0, 6, zc) * 1.15; fl.air = haze(fl.z) * 0.7;
+                fl.sz = fl.z + 4000; }   // the ground paints before anything standing on it
       const cl = add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
           [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#232f4a");
-      if (cl) cl.lit = AMBIENT * 0.8;   // out of the bulbs' reach, and it should look that way
+      if (cl) { cl.lit = AMBIENT * 0.8;   // out of the bulbs' reach, and it should look that way
+                cl.sz = cl.z + 4000; }   // and the lid paints before the walls it meets
     }
     /* The wall the lane runs into is the largest single surface in the deepest frame, and it was the
        lane's default tile: a pale grid with nothing in it, which read as the page having run out rather
@@ -1691,7 +1746,7 @@ function leaveOverlay(root, trigger) {
         // One lit value per full-height panel is the cardboard look, but the fill budget is real:
         // only bands that ask for it (`grad` in the record — the hall's tall plaster) are sliced
         // into steps, and every step asks the lamps for its own level.
-        const step = sc.grad ? 240 : sc.y1 - sc.y0;
+        const step = sc.grad ? (sc.y1 - sc.y0) / 2 : sc.y1 - sc.y0;
         for (let y = sc.y0; y < sc.y1; y += step) {
           const ya = y, yb = Math.min(y + step, sc.y1);
           const q = add(C, [[px, ya, z0], [px, ya, z1], [px, yb, z1], [px, yb, z0]],
@@ -2268,8 +2323,9 @@ function leaveOverlay(root, trigger) {
             const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                          + f.n[2] * (C.z - f.p[0][2]);
             if (toward <= 0) return;
-            const q = add(C, f.p, ZERO8, "flat", mix("#233150", f.k));
-            if (q) { q.lit = lit; drawn.push(q); }
+            const q = PATS.rock ? add(C, f.p, patUV(f), "pat", PATS.rock)
+                                : add(C, f.p, ZERO8, "flat", mix("#233150", f.k));
+            if (q) { q.lit = lit * 0.9; drawn.push(q); }
           });
         });
         // The sheet: three height slices, bright at the crest and shadowing toward the basin —
@@ -2278,8 +2334,8 @@ function leaveOverlay(root, trigger) {
           const y0 = m.y + (si / 3) * m.h, y1 = m.y + ((si + 1) / 3) * m.h;
           const sheet = add(C, [[m.x - hw * 0.76, y0, zf], [m.x + hw * 0.76, y0, zf],
                                 [m.x + hw * 0.76, y1, zf], [m.x - hw * 0.76, y1, zf]],
-                            ZERO8, "flat", "#5d84a8");
-          if (sheet) { sheet.lit = l * 0.8; drawn.push(sheet); }
+                            ZERO8, "flat", "#4a7096");
+          if (sheet) { sheet.lit = l * 0.78; drawn.push(sheet); }
         });
         for (let i = 0; i < 5; i++) {
           const sx = m.x - hw * 0.7 + (i + 0.5) * (hw * 1.4 / 5) + Math.sin(T * 2.2 + i * 1.7) * 2;
@@ -2291,9 +2347,9 @@ function leaveOverlay(root, trigger) {
         }
         // The crest the sheet comes over, and the mist it lands in.
         const crest = add(C, [[m.x - hw * 0.78, m.y + m.h, m.z - hd * 0.4], [m.x + hw * 0.78, m.y + m.h, m.z - hd * 0.4],
-                              [m.x + hw * 0.78, m.y + m.h + 3, m.z - hd * 0.4], [m.x - hw * 0.78, m.y + m.h + 3, m.z - hd * 0.4]],
-                          ZERO8, "flat", "#eef4fa");
-        if (crest) { crest.lit = 1.0; drawn.push(crest); }
+                              [m.x + hw * 0.78, m.y + m.h + 5, m.z - hd * 0.4], [m.x - hw * 0.78, m.y + m.h + 5, m.z - hd * 0.4]],
+                          ZERO8, "flat", "#f4f9fd");
+        if (crest) { crest.lit = 1.35; drawn.push(crest); }
         const mist = add(C, [[m.x - hw, m.y + 2, zf - 8], [m.x + hw, m.y + 2, zf - 8],
                              [m.x + hw, m.y + m.h * 0.3, zf - 8], [m.x - hw, m.y + m.h * 0.3, zf - 8]],
                          ZERO8, "flat", `rgba(238,244,250,${(0.26 + (ease ? 0.08 * Math.sin(T * 1.3) : 0)).toFixed(2)})`);
@@ -2509,7 +2565,7 @@ function leaveOverlay(root, trigger) {
     g.fillStyle = "#141e36";
     g.fillRect(0, 0, W, H);
     g.setTransform(1, 0, 0, 1, 0, 0);
-    quads.sort((p, q) => q.z - p.z);
+    quads.sort((p, q) => (q.sz ?? q.z) - (p.sz ?? p.z));
     quads.forEach(emit);
 
     // The bulbs and the machine are glows, not geometry: same projection, drawn afterwards, so the

@@ -138,6 +138,26 @@ Playwright 的 CDN（puppeteer/playwright 的 Chrome 都下載失敗），所以
 
 驗證：walk 166/166、chain 0、e2e 0、probe 4595<4700、impeccable []、冪等、兩頁 lane-shot 0 FAIL。
 
+## 0g. 第七輪（同日）：「紋理牆弄好、E2E 你絕對可以、物件精緻化」
+
+**E2E 真瀏覽器做到了**（使用者說得對）：Google/Playwright CDN 雖被擋，但
+`@sparticuz/chromium` 把 chromium 二進制打包在 npm 裡；系統 lib 用套件附的 al2023.tar.br
+解到 /tmp + `LD_LIBRARY_PATH`。新工具 `.verify/browser-shot.mjs`：真瀏覽器進房、走動、截圖，
+圖會真的載入。跑法：`LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/browser-shot.mjs <dir>`。
+
+**真瀏覽器一看就抓到的真 bug（牆上黑三角）**：emit 的紋理填充用「3 角 affine＋fillRect uv
+bbox」，透視下第四角彎出平行四邊形，clip 區域蓋不到→每片 60 cm 壁板在斜視角被削掉一個三角。
+修：改填「uv 四邊形外擴 35%」，clip 仍裁真輪廓。街與廳全癒合。
+
+**牆做到好**：廳牆原本偷用巷子的磚 tile 與螺孔混凝土→新 gallery 材質 `hallplaster`
+（平滑暖灰＋抹刀噪點）與 `hallbase`（炭色踢腳）；grad 光階改等分兩片消掉頂部薄碎片。
+
+**物件精緻/遠看辨識**：岩壁改碎石 chip＋苔（不再像木板）、瀑頂 crest 加亮加高、
+渡輪放大、天花板/地板加 sort bias（sz）確保先畫不被遠牆切片蓋。
+
+驗證：walk 166/166、chain 0、e2e 0、probe 4604<4700、impeccable []、冪等、
+lane-shot 兩頁 0 FAIL、browser-shot 真瀏覽器入口/斜視/走動帧乾淨。
+
 ## 1. 需求總表與現況
 
 | # | 需求 | 現況 | 交付 |

@@ -2838,7 +2838,7 @@ DISTRICTS = [
              "title": "A second island, small",
              "hint": "The second island, further out. Two bumps are an archipelago at this scale."},
             {"id": "ferry-1", "kind": "boat", "x": -228, "z": 118, "y": 83, "ry": 0,
-             "w": 26, "h": 10, "d": 10,
+             "w": 36, "h": 12, "d": 12,
              "title": "The ferry, small",
              "hint": "One white box crossing the sheet: the ferry, at a scale where it cannot be "
                      "anything more."},
@@ -2918,11 +2918,11 @@ DISTRICTS = [
         "surfaces": [
             # A hall, not a lane: concrete dado at hand height, dark hoarding above, both sides the
             # whole length, so the walls recede and the lit tables do the talking.
-            {"side": -1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "concrete", "tone": 0.5},
-            {"side": -1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "plaster", "tone": 0.42,
+            {"side": -1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "hallbase", "tone": 0.62},
+            {"side": -1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "hallplaster", "tone": 0.5,
              "grad": True},
-            {"side": 1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "concrete", "tone": 0.5},
-            {"side": 1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "plaster", "tone": 0.42,
+            {"side": 1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "hallbase", "tone": 0.62},
+            {"side": 1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "hallplaster", "tone": 0.5,
              "grad": True},
         ],
         "marks": [
