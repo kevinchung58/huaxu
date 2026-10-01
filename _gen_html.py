@@ -2745,7 +2745,7 @@ DISTRICTS = [
             # Table one — the city. A plinth with the skyline on it: the tower reads first because
             # it is the one silhouette nobody mistakes, then the blocks, then the dome.
             {"id": "plinth-sky", "kind": "plinth", "x": 0, "z": 396, "y": 0, "ry": 0,
-             "w": 300, "h": 80, "d": 150,
+             "w": 300, "h": 80, "d": 150, "top": "cityg",
              "glow": [{"r": 160, "k": 0.4, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
              "title": "The table the city stands on",
              "hint": "A lit plinth, table height. Everything on it is small; the light under the "
@@ -2779,7 +2779,7 @@ DISTRICTS = [
                      "the one table where something drives."},
             # Table two — the falls. The water is the one thing in the hall that moves.
             {"id": "plinth-falls", "kind": "plinth", "x": 230, "z": 170, "y": 0, "ry": 0,
-             "w": 260, "h": 80, "d": 160,
+             "w": 260, "h": 80, "d": 160, "top": "rock",
              "glow": [{"r": 160, "k": 0.4, "dy": 96, "tint": "rgba(190,220,245,0.36)"}],
              "title": "The table the falls stand on",
              "hint": "The same lit plinth, cooler light: the water gets a cold pool on the floor, "
@@ -2792,7 +2792,7 @@ DISTRICTS = [
                      "are here, not because a clock says so."},
             # Table three — the market. Stalls at model scale: awnings, crates, a warm lamp.
             {"id": "plinth-market", "kind": "plinth", "x": -230, "z": 320, "y": 0, "ry": 0,
-             "w": 260, "h": 80, "d": 150,
+             "w": 260, "h": 80, "d": 150, "top": "cobble",
              "glow": [{"r": 160, "k": 0.4, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
              "title": "The table the market stands on",
              "hint": "A stall row at table scale. No stall is named and no price is written; a "
@@ -2819,7 +2819,7 @@ DISTRICTS = [
              "hint": "The market's clutter, at a scale where clutter is a centimetre tall."},
             # Table four — the lake. The city's front door: water, islands, one small ferry.
             {"id": "plinth-lake", "kind": "plinth", "x": -230, "z": 120, "y": 0, "ry": 0,
-             "w": 260, "h": 80, "d": 140,
+             "w": 260, "h": 80, "d": 140, "top": "sand",
              "glow": [{"r": 160, "k": 0.38, "dy": 96, "tint": "rgba(190,220,245,0.34)"}],
              "title": "The table the lake lies on",
              "hint": "A flat sheet of water with low green islands: the view the skyline turns to "
@@ -2853,6 +2853,48 @@ DISTRICTS = [
             {"id": "bench-t", "kind": "bench", "x": 320, "z": 300, "y": 0, "ry": -90,
              "title": "A bench in the dark",
              "hint": "The one seat in the hall, between the city and the market, for looking."},
+            # Trees, the one thing a miniature plants by the thousand: two on the islands,
+            # a shore pair, corners of the city and the falls, one by the market.
+            {"id": "tree-i1", "kind": "tree", "x": -260, "z": 106, "y": 96, "ry": 0,
+             "w": 14, "h": 24, "d": 14,
+             "title": "A tree on the island",
+             "hint": "The island keeps a tree; at this scale a tree is a pinch of flock."},
+            {"id": "tree-i2", "kind": "tree", "x": -198, "z": 134, "y": 94, "ry": 0,
+             "w": 12, "h": 20, "d": 12,
+             "title": "A tree on the second island",
+             "hint": "The second island's tree, smaller, further out."},
+            {"id": "tree-s1", "kind": "tree", "x": -130, "z": 168, "y": 80, "ry": 0,
+             "w": 14, "h": 24, "d": 14,
+             "title": "A shore tree",
+             "hint": "The lake's near shore keeps a tree, the way the real one keeps a park."},
+            {"id": "tree-s2", "kind": "tree", "x": -340, "z": 72, "y": 80, "ry": 0,
+             "w": 14, "h": 24, "d": 14,
+             "title": "A second shore tree",
+             "hint": "The far corner of the lake table, a tree at the water's edge."},
+            {"id": "tree-c1", "kind": "tree", "x": -130, "z": 380, "y": 80, "ry": 0,
+             "w": 14, "h": 24, "d": 14,
+             "title": "A street tree by the city",
+             "hint": "The city table keeps street trees; downtown reads by them."},
+            {"id": "tree-c2", "kind": "tree", "x": -120, "z": 442, "y": 80, "ry": 0,
+             "w": 12, "h": 20, "d": 12,
+             "title": "A second street tree",
+             "hint": "The row continues round the table's left edge."},
+            {"id": "tree-c3", "kind": "tree", "x": 140, "z": 356, "y": 80, "ry": 0,
+             "w": 12, "h": 20, "d": 12,
+             "title": "A park tree at the city's corner",
+             "hint": "The city's right corner keeps a park's worth of one tree."},
+            {"id": "tree-f1", "kind": "tree", "x": 115, "z": 235, "y": 80, "ry": 0,
+             "w": 14, "h": 24, "d": 14,
+             "title": "A tree above the falls",
+             "hint": "The gorge's rim keeps trees; the real one does."},
+            {"id": "tree-f2", "kind": "tree", "x": 342, "z": 235, "y": 80, "ry": 0,
+             "w": 14, "h": 24, "d": 14,
+             "title": "A second tree above the falls",
+             "hint": "The rim's other side, a tree at the rail."},
+            {"id": "tree-m1", "kind": "tree", "x": -122, "z": 382, "y": 80, "ry": 0,
+             "w": 14, "h": 24, "d": 14,
+             "title": "A tree by the market",
+             "hint": "The market's corner keeps the one tree a market square allows."},
             {"id": "bollard-t", "kind": "bollard", "x": 140, "z": 24, "y": 0, "ry": 0,
              "title": "A bollard at the mouth",
              "hint": "The hall's entrance keeps an edge the way the street does."},
@@ -3117,6 +3159,8 @@ def walk_object(o):
     texture = f' data-tex="{escape(tex)}"' if tex else ""
     # A door may carry its own leaf colour: the street's three doors are three different doors.
     leaf_attr = f' data-leaf="{escape(o["leaf"])}"' if o.get("leaf") else ""
+    # A diorama table authors its own ground: the lid carries the terrain tile the record names.
+    top_attr = f' data-top="{escape(o["top"])}"' if o.get("top") else ""
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
@@ -3129,7 +3173,7 @@ def walk_object(o):
     return (f'<button type="button" class="walk-hit" data-obj="{escape(o["id"])}" '
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
-            f'data-d="{dep}" style="{style}"{frame}{texture}{leaf_attr}{states}{leave}></button>')
+            f'data-d="{dep}" style="{style}"{frame}{texture}{leaf_attr}{top_attr}{states}{leave}></button>')
 
 
 def walk_html(d, drawer):

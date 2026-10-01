@@ -105,6 +105,19 @@
 walk **166/166**、chain **0**、e2e **0**、probe peak **4582** < 4700、impeccable **[]**、冪等、
 lane-shot street+toronto **0 FAIL**。
 
+## 0e. 第五輪（同日，「繼續」）：桌面地形底座＋樹
+
+- 四張桌的頂面從奶油蓋改成 record 用 `top` 指定的地形 tile：城市桌 `cityg`（淡色街區線＋
+  兩塊公園綠）、瀑布桌 `rock`（岩層＋苔）、市場桌 `cobble`（鵝卵石）、湖桌 `sand`。
+  模型站在自己的地形上＝Little Canada 的底座工藝。
+- `top` 欄位原本不會到前端：`_gen_html.py` 的物件發射器只發固定欄位——補 `data-top` 發射＋
+  renderer meta 讀取。（接手者：record 新欄位要同時改發射器與 meta，兩邊缺一不可。）
+- 新 shape `tree`（樹幹＋兩層草皮 blob），種了 10 棵：島上兩棵、湖岸兩棵、城市桌三棵、
+  瀑布緣兩棵、市場角一棵。
+- 瀑布水幕基色加深（#9dbbd8→#86a8c8、lit ×0.92），不再發白。
+
+驗證：walk 166/166、chain 0、e2e 0、probe 4595<4700、impeccable []、冪等、兩頁 lane-shot 0 FAIL。
+
 ## 1. 需求總表與現況
 
 | # | 需求 | 現況 | 交付 |

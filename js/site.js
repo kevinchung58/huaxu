@@ -838,6 +838,43 @@ function leaveOverlay(root, trigger) {
     blob(c, "rgba(14,17,24,0.6)", ties);
     blob(c, "rgba(206,216,230,0.55)", [[0, 40, 128, 2], [0, 86, 128, 2]]);
   };
+  const paintCityG = (c) => {
+    // Pale city ground: block lines and two park patches, the way a downtown base is painted.
+    c.fillStyle = "#8d94a0"; c.fillRect(0, 0, 128, 128);
+    const lines = [];
+    for (let v = 0; v <= 128; v += 32) lines.push([v, 0, 1, 128], [0, v, 128, 1]);
+    blob(c, "rgba(58,66,82,0.5)", lines);
+    blob(c, "rgba(96,128,72,0.8)", [[8, 72, 24, 20], [96, 8, 22, 18]]);
+    const sp = [];
+    for (let i = 0; i < 60; i++) sp.push([(i * 61) % 128, (i * 41) % 128, 2, 2]);
+    blob(c, "rgba(255,255,255,0.05)", sp);
+  };
+  const paintCobble = (c) => {
+    c.fillStyle = "#6d6a62"; c.fillRect(0, 0, 128, 128);
+    const st = [];
+    for (let y = 0; y < 128; y += 16) for (let x = 0; x < 128; x += 16) {
+      st.push([x + 2 + (y / 16 % 2 ? 4 : 0), y + 2, 11, 11]);
+    }
+    blob(c, "rgba(122,118,108,0.9)", st);
+    blob(c, "rgba(40,38,34,0.55)", [[0, 0, 128, 1], [0, 16, 128, 1], [0, 32, 128, 1], [0, 48, 128, 1],
+                                    [0, 64, 128, 1], [0, 80, 128, 1], [0, 96, 128, 1], [0, 112, 128, 1]]);
+  };
+  const paintRock = (c) => {
+    c.fillStyle = "#5d6068"; c.fillRect(0, 0, 128, 128);
+    const strata = [];
+    for (let y = 0; y < 128; y += 12) strata.push([0, y, 128, 3 + (y / 12) % 3]);
+    blob(c, "rgba(38,40,48,0.5)", strata);
+    const moss = [];
+    for (let i = 0; i < 40; i++) moss.push([(i * 47) % 128, (i * 71) % 128, 4, 3]);
+    blob(c, "rgba(84,110,64,0.5)", moss);
+  };
+  const paintSand = (c) => {
+    c.fillStyle = "#b7a98c"; c.fillRect(0, 0, 128, 128);
+    const sp = [];
+    for (let i = 0; i < 90; i++) sp.push([(i * 53) % 128, (i * 37) % 128, 2, 1]);
+    blob(c, "rgba(90,80,62,0.4)", sp);
+    blob(c, "rgba(240,232,210,0.35)", [[0, 0, 128, 2]]);
+  };
   const paintDomeP = (c) => {
     c.fillStyle = "#c8ccd2"; c.fillRect(0, 0, 128, 128);
     c.strokeStyle = "rgba(90,100,116,0.5)"; c.lineWidth = 1;
@@ -1000,6 +1037,10 @@ function leaveOverlay(root, trigger) {
     PATS.water = mkTile(paintWater);
     PATS.track = mkTile(paintTrack);
     PATS.domep = mkTile(paintDomeP);
+    PATS.cityg = mkTile(paintCityG);
+    PATS.cobble = mkTile(paintCobble);
+    PATS.rock = mkTile(paintRock);
+    PATS.sand = mkTile(paintSand);
     PATS.corrugated = mkTile(paintCorrugated);
     PATS.hoarding = mkTile(paintHoarding);
     PATS.plaster = tilePat;
@@ -1037,7 +1078,7 @@ function leaveOverlay(root, trigger) {
     try { return JSON.parse(node.textContent); } catch (err) { return null; }
   };
   const meta = objs.map((el) => ({
-    el, kind: el.dataset.obj, leaf: el.dataset.leaf || null,
+    el, kind: el.dataset.obj, leaf: el.dataset.leaf || null, top: el.dataset.top || null,
     ry: num(el, "data-ry") || parseFloat(el.dataset.ry || 0),
     w: parseFloat(el.dataset.w) || 100, h: parseFloat(el.dataset.h) || 140,
     d: parseFloat(el.dataset.d) || 12, x: num(el, "--x"), z: num(el, "--z"), y: num(el, "--y"),
@@ -1138,7 +1179,7 @@ function leaveOverlay(root, trigger) {
                   mailbox: "flap", signA: "aboard", banner: "cloth", front: "front", pane: "pane",
                   bin: "box", bollard: "box", steps: "box", pipe: "box", awning: "box",
                   sign: "box", drain: "plate", noren: "cloth", poster: "plane", frame: "plane",
-                  track: "track", tram: "tram",
+                  track: "track", tram: "tram", tree: "tree",
                   mirror: "mirror", ladder: "ladder", hydrant: "hydrant", recycle: "flap",
                   meter: "box", camera: "camera",
                   // A door draws itself now (see the `door` branch): recess, leaf, panels, handle,
@@ -2130,9 +2171,15 @@ function leaveOverlay(root, trigger) {
         for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
           const x0 = m.x + (sx < 0 ? -hx : 0), x1 = m.x + (sx > 0 ? hx : 0);
           const z0 = m.z + (sz < 0 ? -hz : 0), z1 = m.z + (sz > 0 ? hz : 0);
-          const q = add(C, [[x0, m.y + m.h, z0], [x1, m.y + m.h, z0], [x1, m.y + m.h, z1], [x0, m.y + m.h, z1]],
-                        ZERO8, "flat", "#d9c9a6");
-          if (q) { q.lit = lightAt((x0 + x1) / 2, m.y + m.h, (z0 + z1) / 2) * 1.15; drawn.push(q); }
+          // The lid is the table's ground — city blocks, rock, cobbles or sand, whichever the
+          // record authors — so the model stands on its terrain, not on a cream lid.
+          const gq = m.top && PATS[m.top]
+            ? add(C, [[x0, m.y + m.h, z0], [x1, m.y + m.h, z0], [x1, m.y + m.h, z1], [x0, m.y + m.h, z1]],
+                  [x0 * DPM, z0 * DPM, x1 * DPM, z0 * DPM, x1 * DPM, z1 * DPM, x0 * DPM, z1 * DPM],
+                  "pat", PATS[m.top])
+            : add(C, [[x0, m.y + m.h, z0], [x1, m.y + m.h, z0], [x1, m.y + m.h, z1], [x0, m.y + m.h, z1]],
+                  ZERO8, "flat", "#d9c9a6");
+          if (gq) { gq.lit = lightAt((x0 + x1) / 2, m.y + m.h, (z0 + z1) / 2) * 1.15; drawn.push(gq); }
         }
       } else if (shape === "tower") {
         /* The one silhouette the city is known by, at table scale: splayed base, a tapering shaft
@@ -2229,8 +2276,8 @@ function leaveOverlay(root, trigger) {
           const y0 = m.y + (si / 3) * m.h, y1 = m.y + ((si + 1) / 3) * m.h;
           const sheet = add(C, [[m.x - hw * 0.76, y0, zf], [m.x + hw * 0.76, y0, zf],
                                 [m.x + hw * 0.76, y1, zf], [m.x - hw * 0.76, y1, zf]],
-                            ZERO8, "flat", "#9dbbd8");
-          if (sheet) { sheet.lit = l; drawn.push(sheet); }
+                            ZERO8, "flat", "#86a8c8");
+          if (sheet) { sheet.lit = l * 0.92; drawn.push(sheet); }
         });
         for (let i = 0; i < 5; i++) {
           const sx = m.x - hw * 0.7 + (i + 0.5) * (hw * 1.4 / 5) + Math.sin(T * 2.2 + i * 1.7) * 2;
@@ -2355,6 +2402,26 @@ function leaveOverlay(root, trigger) {
                               P(7, m.d * 0.42, m.h * 0.66), P(-7, m.d * 0.42, m.h * 0.66)],
                           ZERO8, "flat", `rgba(255,196,120,${fl})`);
         if (lampq) { lampq.lit = 1.6; drawn.push(lampq); }
+      } else if (shape === "tree") {
+        /* A model tree: a trunk and two terrain blobs, the way a diorama tree is a pinch of
+           flock on a wire. Trees are the one thing Little Canada plants by the thousand. */
+        facesOf({ ...m, w: 4, d: 4, h: m.h * 0.45 }).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const q = add(C, f.p, ZERO8, "flat", "#5a4630");
+          if (q) { q.lit = lit * 0.9; drawn.push(q); }
+        });
+        [[0.35, 0.9], [0.62, 0.6]].forEach(([y0, wf]) => {
+          facesOf({ ...m, y: m.y + m.h * y0, w: m.w * wf, d: m.w * wf, h: m.h * 0.42 }).forEach((f) => {
+            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                         + f.n[2] * (C.z - f.p[0][2]);
+            if (toward <= 0) return;
+            const q = PATS.terrain ? add(C, f.p, patUV(f), "pat", PATS.terrain)
+                                   : add(C, f.p, ZERO8, "flat", "#4c6a3a");
+            if (q) { q.lit = lit * 1.05; drawn.push(q); }
+          });
+        });
       } else if (shape === "track") {
         // Ballast and rails along the table's front edge: the strip the streetcar runs on.
         const q = add(C, [[m.x - m.w / 2, m.y + 1, m.z - m.d / 2], [m.x + m.w / 2, m.y + 1, m.z - m.d / 2],
