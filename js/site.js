@@ -763,7 +763,9 @@ function leaveOverlay(root, trigger) {
     c.fill();
   };
   const paintGlass = (c) => {
-    c.fillStyle = "#26364f"; c.fillRect(0, 0, 128, 128);
+    // Solid glass at night: an opaque near-navy body, opaque pane variation, a few opaque lit
+    // floors. Nothing on a tower is see-through; the old pale grid read as a veil.
+    c.fillStyle = "#1d2b42"; c.fillRect(0, 0, 128, 128);
     const lit = [], dark = [];
     for (let y = 0; y < 128; y += 16) for (let x = 0; x < 128; x += 16) {
       const cx = x / 16, cy = y / 16;
@@ -771,9 +773,9 @@ function leaveOverlay(root, trigger) {
       if (((cx * 53 + cy * 97 + cx * cy * 31) % 89) < 12) lit.push([x + 1, y + 1, 14, 14]);
       else dark.push([x + 1, y + 1, 14, 14]);
     }
-    blob(c, "rgb(44,62,96)", dark);
-    blob(c, "rgba(240,196,122,0.8)", lit);
-    c.strokeStyle = "rgba(10,16,30,0.85)"; c.lineWidth = 2;
+    blob(c, "rgb(38,54,84)", dark);
+    blob(c, "rgb(242,196,124)", lit);
+    c.strokeStyle = "rgb(10,16,30)"; c.lineWidth = 3;
     for (let v = 0; v <= 128; v += 16) {
       c.beginPath(); c.moveTo(v, 0); c.lineTo(v, 128); c.stroke();
       c.beginPath(); c.moveTo(0, v); c.lineTo(128, v); c.stroke();
@@ -2272,16 +2274,16 @@ function leaveOverlay(root, trigger) {
         });
         // The sheet: three height slices, bright at the crest and shadowing toward the basin —
         // one flat lit value was what made it a glowing white board — then moving stripes over it.
-        [[0, 0.72], [1, 0.88], [2, 1.08]].forEach(([si, l]) => {
+        [[0, 0.62], [1, 0.78], [2, 0.95]].forEach(([si, l]) => {
           const y0 = m.y + (si / 3) * m.h, y1 = m.y + ((si + 1) / 3) * m.h;
           const sheet = add(C, [[m.x - hw * 0.76, y0, zf], [m.x + hw * 0.76, y0, zf],
                                 [m.x + hw * 0.76, y1, zf], [m.x - hw * 0.76, y1, zf]],
-                            ZERO8, "flat", "#86a8c8");
-          if (sheet) { sheet.lit = l * 0.92; drawn.push(sheet); }
+                            ZERO8, "flat", "#5d84a8");
+          if (sheet) { sheet.lit = l * 0.8; drawn.push(sheet); }
         });
         for (let i = 0; i < 5; i++) {
           const sx = m.x - hw * 0.7 + (i + 0.5) * (hw * 1.4 / 5) + Math.sin(T * 2.2 + i * 1.7) * 2;
-          const a = 0.20 + 0.12 * Math.sin(T * 3.1 + i * 2.3);
+          const a = 0.34 + 0.14 * Math.sin(T * 3.1 + i * 2.3);
           const st = add(C, [[sx - 2, m.y, zf - 1], [sx + 2, m.y, zf - 1],
                              [sx + 2, m.y + m.h, zf - 1], [sx - 2, m.y + m.h, zf - 1]],
                          ZERO8, "flat", `rgba(255,255,255,${a.toFixed(2)})`);
@@ -2294,7 +2296,7 @@ function leaveOverlay(root, trigger) {
         if (crest) { crest.lit = 1.0; drawn.push(crest); }
         const mist = add(C, [[m.x - hw, m.y + 2, zf - 8], [m.x + hw, m.y + 2, zf - 8],
                              [m.x + hw, m.y + m.h * 0.3, zf - 8], [m.x - hw, m.y + m.h * 0.3, zf - 8]],
-                         ZERO8, "flat", `rgba(238,244,250,${(0.42 + (ease ? 0.14 * Math.sin(T * 1.3) : 0)).toFixed(2)})`);
+                         ZERO8, "flat", `rgba(238,244,250,${(0.26 + (ease ? 0.08 * Math.sin(T * 1.3) : 0)).toFixed(2)})`);
         if (mist) { mist.lit = 0.95; mist.air = 0.08; drawn.push(mist); }
         const basin = add(C, [[m.x - hw, m.y + 1, zf - 10], [m.x + hw, m.y + 1, zf - 10],
                               [m.x + hw, m.y + 1, m.z + hd * 0.4], [m.x - hw, m.y + 1, m.z + hd * 0.4]],
@@ -2315,7 +2317,7 @@ function leaveOverlay(root, trigger) {
         const fogx = ease ? Math.sin(T * 0.12) * hw * 0.3 : 0;
         const fog = add(C, [[m.x - hw + fogx, m.y + m.h * 0.22, zf - 12], [m.x + hw + fogx, m.y + m.h * 0.22, zf - 12],
                             [m.x + hw + fogx, m.y + m.h * 0.48, zf - 12], [m.x - hw + fogx, m.y + m.h * 0.48, zf - 12]],
-                        ZERO8, "flat", `rgba(236,242,248,${(0.10 + (ease ? 0.05 * Math.sin(T * 0.7) : 0)).toFixed(2)})`);
+                        ZERO8, "flat", `rgba(236,242,248,${(0.06 + (ease ? 0.03 * Math.sin(T * 0.7) : 0)).toFixed(2)})`);
         if (fog) { fog.lit = 1.0; fog.air = 0.1; drawn.push(fog); }
       } else if (shape === "pool") {
         /* Still water on a table: two depth slices — the far water catches the spot, the near
@@ -2332,7 +2334,7 @@ function leaveOverlay(root, trigger) {
         const drift = ease ? Math.sin(T * 0.5) * m.w * 0.22 : 0;
         const sheen = add(C, [[m.x - m.w * 0.2 + drift, m.y + 2, m.z - m.d * 0.3], [m.x + m.w * 0.1 + drift, m.y + 2, m.z - m.d * 0.3],
                               [m.x + m.w * 0.2 + drift, m.y + 2, m.z - m.d * 0.1], [m.x - m.w * 0.1 + drift, m.y + 2, m.z - m.d * 0.1]],
-                          ZERO8, "flat", "rgba(214,230,244,0.5)");
+                          ZERO8, "flat", "rgba(214,230,244,0.7)");
         if (sheen) { sheen.lit = 1.1; drawn.push(sheen); }
       } else if (shape === "boat") {
         /* The ferry crosses the sheet on the frame clock: a hull, a cabin, a wake. Reduced
@@ -2377,11 +2379,17 @@ function leaveOverlay(root, trigger) {
                             P(a1, -m.d * 0.18, m.h * 1.0), P(a0, -m.d * 0.18, m.h * 1.0)],
                         ZERO8, "flat", i % 2 ? "#b8433c" : "#e6ddca");
           if (q) { q.lit = lit * 1.2; drawn.push(q); }
+          if (i === 0 || i === n - 1) {
+            const v = add(C, [P(a0, m.d * 0.5, m.h * 0.68), P(a1, m.d * 0.5, m.h * 0.68),
+                              P(a1, m.d * 0.5, m.h * 0.56), P(a0, m.d * 0.5, m.h * 0.56)],
+                          ZERO8, "flat", i % 2 ? "#a03832" : "#d6cdba");
+            if (v) { v.lit = lit * 1.1; drawn.push(v); }
+          }
         }
         // Steam off the produce: two thin quads that rise and thin out on the frame clock.
         for (let j = 0; j < 2; j++) {
           const ph = ease ? (T * 0.35 + j * 0.5) % 1 : 0.3;
-          const sy = m.h * 0.7 + ph * 22, sa = (1 - ph) * 0.22;
+          const sy = m.h * 0.7 + ph * 22, sa = (1 - ph) * 0.12;
           const sx = (j ? 0.3 : -0.3) * hw;
           const q = add(C, [P(sx - 3, m.d * 0.16, sy), P(sx + 3, m.d * 0.16, sy),
                             P(sx + 3, m.d * 0.16, sy + 7), P(sx - 3, m.d * 0.16, sy + 7)],
@@ -2397,7 +2405,7 @@ function leaveOverlay(root, trigger) {
                         ZERO8, "flat", col);
           if (q) { q.lit = lit * 1.15; drawn.push(q); }
         });
-        const fl = (0.5 + (ease ? 0.1 * Math.sin(T * 5.2 + m.z * 0.1) : 0)).toFixed(2);
+        const fl = (0.75 + (ease ? 0.1 * Math.sin(T * 5.2 + m.z * 0.1) : 0)).toFixed(2);
         const lampq = add(C, [P(-7, m.d * 0.42, m.h * 0.58), P(7, m.d * 0.42, m.h * 0.58),
                               P(7, m.d * 0.42, m.h * 0.66), P(-7, m.d * 0.42, m.h * 0.66)],
                           ZERO8, "flat", `rgba(255,196,120,${fl})`);
@@ -2444,7 +2452,7 @@ function leaveOverlay(root, trigger) {
         [[-1], [1]].forEach(([sd]) => {
           const q = add(C, [[m.x + dx - 12, m.y + 5, m.z + sd * 4.6], [m.x + dx + 12, m.y + 5, m.z + sd * 4.6],
                             [m.x + dx + 12, m.y + 9, m.z + sd * 4.6], [m.x + dx - 12, m.y + 9, m.z + sd * 4.6]],
-                        ZERO8, "flat", "rgba(240,220,170,0.9)");
+                        ZERO8, "flat", "#f2dc9e");
           if (q) { q.lit = 1.4; drawn.push(q); }
         });
       } else {
@@ -2617,7 +2625,7 @@ function leaveOverlay(root, trigger) {
       const bx = W * 0.5 + (focal * bot.x) / bot.z, by = H * 0.5 + (focal * bot.y) / bot.z;
       const wa = (focal * 16) / top.z, wb = (focal * (L.r || 46) * 1.7) / bot.z;
       const gr = g.createLinearGradient(ax, ay, bx, by);
-      gr.addColorStop(0, "rgba(255,226,178,0.13)");
+      gr.addColorStop(0, "rgba(255,226,178,0.05)");
       gr.addColorStop(1, "rgba(255,226,178,0)");
       g.beginPath();
       g.moveTo(ax - wa, ay); g.lineTo(ax + wa, ay); g.lineTo(bx + wb, by); g.lineTo(bx - wb, by);

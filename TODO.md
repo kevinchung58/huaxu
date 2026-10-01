@@ -118,6 +118,26 @@ lane-shot street+toronto **0 FAIL**。
 
 驗證：walk 166/166、chain 0、e2e 0、probe 4595<4700、impeccable []、冪等、兩頁 lane-shot 0 FAIL。
 
+## 0f. 第六輪（同日）：「太透、看不到正確的、做成3D」→ 實心化審計
+
+使用者回饋物件「太透」、很多看不到正確的，建議做成 3D。
+
+**先說誠實的限制**：這輪我試圖裝無頭瀏覽器親眼看瀏覽器畫面，但 sandbox 擋了 Google 與
+Playwright 的 CDN（puppeteer/playwright 的 Chrome 都下載失敗），所以改為**逐行審計 code 裡
+所有半透明來源**。renderer 本身就是真 3D 投影（體積盒、背面剔除、painter sort）——物件從來
+都是 3D；「透」的來源是半透明 veil 與太淺的材質：
+
+- 半透明 veil 全部變薄或變實：spot 光錐 0.13→0.05、攤位蒸汽 0.22→0.12、瀑霧 0.42→0.26、
+  rolling fog 0.10→0.06。
+- 材質改不透明：玻璃帷幕基色 #26364f→#1d2b42、窗格與亮窗全不透明、grid 線加粗；
+  電車窗帶 rgba→#f2dc9e；瀑水紋 alpha 提高成泡沫；湖光帶 0.5→0.7；瀑布水幕基色再加深
+  （#5d84a8、lit 上限 0.95）。
+- 「看不到正確的」＝太小：迷你物放大——塔 260→300、天際線 120→150、瀑布 84→100、
+  攤位 78×60→84×70。
+- 雨棚加 valance（前緣下垂裙邊）， canopy 從飄著的片面變實體。
+
+驗證：walk 166/166、chain 0、e2e 0、probe 4595<4700、impeccable []、冪等、兩頁 lane-shot 0 FAIL。
+
 ## 1. 需求總表與現況
 
 | # | 需求 | 現況 | 交付 |

@@ -2751,13 +2751,13 @@ DISTRICTS = [
              "hint": "A lit plinth, table height. Everything on it is small; the light under the "
                      "edge is what makes a model read as a model."},
             {"id": "tower-cn", "kind": "tower", "x": -70, "z": 372, "y": 80, "ry": 0,
-             "w": 54, "h": 260, "d": 54,
+             "w": 58, "h": 300, "d": 58,
              "title": "The tower, small",
              "hint": "Tapered shaft, a round pod two thirds up, a needle above: the one silhouette "
                      "the whole city is known by, drawn at table scale. No lettering, no claim — "
                      "a shape, not a postcard."},
             {"id": "skyline-cn", "kind": "skyline", "x": 55, "z": 400, "y": 80, "ry": 0,
-             "w": 200, "h": 120, "d": 90,
+             "w": 210, "h": 150, "d": 95,
              "title": "The skyline, small",
              "hint": "A row of blocky towers with a few lit windows, the way a downtown reads from "
                      "the lake at night. Drawn small; the windows are the only words it has."},
@@ -2785,7 +2785,7 @@ DISTRICTS = [
              "hint": "The same lit plinth, cooler light: the water gets a cold pool on the floor, "
                      "the way real spray cools the air at the rail."},
             {"id": "falls-n", "kind": "falls", "x": 230, "z": 170, "y": 80, "ry": 0,
-             "w": 220, "h": 84, "d": 70,
+             "w": 220, "h": 100, "d": 70,
              "title": "The falls, small",
              "hint": "A sheet of water over a ledge into mist, small enough to step over and loud "
                      "enough to imagine. The one moving thing in the hall; it moves because you "
@@ -2798,15 +2798,15 @@ DISTRICTS = [
              "hint": "A stall row at table scale. No stall is named and no price is written; a "
                      "market reads by its awnings and its crates, not its lettering."},
             {"id": "stall-m1", "kind": "stall", "x": -290, "z": 288, "y": 80, "ry": 90,
-             "w": 78, "h": 60, "d": 46,
+             "w": 84, "h": 70, "d": 50,
              "title": "A stall, small",
              "hint": "Awning over a counter, drawn the size of a hand. The market's first stall."},
             {"id": "stall-m2", "kind": "stall", "x": -220, "z": 306, "y": 80, "ry": 90,
-             "w": 78, "h": 60, "d": 46,
+             "w": 84, "h": 70, "d": 50,
              "title": "A second stall, small",
              "hint": "The row continues. Two stalls facing is a market; one is a table."},
             {"id": "stall-m3", "kind": "stall", "x": -290, "z": 350, "y": 80, "ry": 90,
-             "w": 78, "h": 60, "d": 46,
+             "w": 84, "h": 70, "d": 50,
              "title": "A third stall, small",
              "hint": "The last stall before the table's edge, awning lower than the rest."},
             {"id": "crate-m1", "kind": "crate", "x": -180, "z": 340, "y": 80, "ry": 12,
