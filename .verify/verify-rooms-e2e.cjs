@@ -159,7 +159,7 @@ async function sidleToReach(env, objId, dir = -1, maxFrames = 400) {
 /* Hold W until the walker is deep enough (door z minus a body's width), with a
    hard frame cap. Fixed frame counts lie: forward speed saturates, so the same
    285 frames that cross the lane's mid-depth stop well short of the far door. */
-async function walkToDepth(env, target, maxFrames = 600) {
+async function walkToDepth(env, target, maxFrames = 1500) {
   env.key("w");
   for (let i = 0; i < maxFrames; i += 5) {
     await env.pump(5);
@@ -196,32 +196,32 @@ async function main() {
      !!backdrop && JSON.parse(backdrop.textContent).city.length >= 3
        && JSON.parse(backdrop.textContent).sky.length >= 2,
      backdrop ? "sky+city present" : "missing");
-  ok("street carries all three room doors as objects",
-     ["door-canada", "door-tokyo", "door-fukuoka"].every((id) => env.doc.querySelector(`[data-obj="${id}"]`)));
+  ok("street carries all four room doors as objects",
+     ["door-toronto", "door-tokyo", "door-fukuoka"].every((id) => env.doc.querySelector(`[data-obj="${id}"]`)));
   ok("no room door on the street is wired to another street door",
-     ["door-canada", "door-tokyo", "door-fukuoka"].every((id) => {
+     ["door-toronto", "door-tokyo", "door-fukuoka"].every((id) => {
        const el = env.doc.querySelector(`[data-obj="${id}"]`);
        return el && el.dataset.leave && el.dataset.leave !== "street.html";
      }));
 
-  /* ---- 2. Canada by foot: walk beside the first door, face it, press E ---- */
-  out.push("\n-- Street -> Canada on foot: E on the lit door --");
+  /* ---- 2. Toronto by foot: walk beside the first door, face it, press E ---- */
+  out.push("\n-- Street -> Toronto on foot: E on the lit door --");
   env.close();
   env = await boot("street.html");
-  await walkToDepth(env, 290);                            // door walk-z 348: stop just short of it
-  const cReach = await sidleToReach(env, "door-canada", -1);
-  ok("street: the Canada door comes into reach (ring on it)", cReach,
+  await walkToDepth(env, 430);                            // door walk-z 464: stop just short of it
+  const cReach = await sidleToReach(env, "door-toronto", -1);
+  ok("street: the Toronto door comes into reach (ring on it)", cReach,
      env.reach() ? env.reach().dataset.obj : "nothing in reach");
   env.navs.length = 0;
   env.key("e"); await env.pump(10); await sleep(60);
-  ok("street: E on the Canada door leaves for rooms-canada.html", env.navs.length === 1,
+  ok("street: E on the Toronto door leaves for rooms-toronto.html", env.navs.length === 1,
      env.navs[0] || "no navigation");
   env.close();
 
   /* ---- 3. Tokyo by foot: further up the street, right-hand side ---- */
   out.push("\n-- Street -> Tokyo on foot: E on the middle door --");
   env = await boot("street.html");
-  await walkToDepth(env, 810);                            // door walk-z 870: the middle of the street
+  await walkToDepth(env, 1330);                           // door walk-z 1363: the middle of the street
   const tReach = await sidleToReach(env, "door-tokyo", 1);
   ok("street: the Tokyo door comes into reach", tReach,
      env.reach() ? env.reach().dataset.obj : "nothing in reach");
@@ -234,7 +234,7 @@ async function main() {
   /* ---- 4. Fukuoka by foot: the far stretch, left-hand side ---- */
   out.push("\n-- Street -> Fukuoka on foot: E on the last door --");
   env = await boot("street.html");
-  await walkToDepth(env, 1040);                           // door walk-z 1102: the far stretch
+  await walkToDepth(env, 2230);                           // door walk-z 2262: the far stretch
   const fReach = await sidleToReach(env, "door-fukuoka", -1);
   ok("street: the Fukuoka door comes into reach", fReach,
      env.reach() ? env.reach().dataset.obj : "nothing in reach");
@@ -243,6 +243,7 @@ async function main() {
   ok("street: E on the Fukuoka door leaves for rooms-fukuoka.html", env.navs.length === 1,
      env.navs[0] || "no navigation");
   env.close();
+
 
   /* ---- 5. The street's own back door opens the album ---- */
   out.push("\n-- Street back door: the album, not another room --");
@@ -259,17 +260,17 @@ async function main() {
   /* ---- 6. Every room exits to the street, by attribute and by Esc ---- */
   out.push("\n-- Rooms: every way out lands on the street --");
   for (const [file, objId, label] of [
-    ["rooms-canada.html", "door-back", "Canada"],
     ["rooms.html", "noren", "Tokyo"],
     ["rooms-fukuoka.html", "curtain-back", "Fukuoka"],
+    ["rooms-toronto.html", "door-back", "Toronto"],
   ]) {
     const e1 = await boot(file);
     ok(`${label}: boots with the walk view`, !!e1.doc.querySelector("[data-walk]"));
     ok(`${label}: no onward door exists (the hub carries the doors)`,
        !e1.doc.querySelector('[data-obj="way-on"]'));
     const back = e1.doc.querySelector(`[data-obj="${objId}"]`);
-    ok(`${label}: the way you came in points at the street`,
-       back && back.dataset.leave === "street.html", back?.dataset.leave || "missing");
+    ok(`${label}: the way you came in points at the street (at its own door)`,
+       back && back.dataset.leave.split("#")[0] === "street.html", back?.dataset.leave || "missing");
     e1.navs.length = 0;
     e1.key("escape"); await e1.pump(6); await sleep(60);
     ok(`${label}: Esc leaves for the street`, e1.navs.length === 1, e1.navs[0] || "no nav");
@@ -311,12 +312,12 @@ async function main() {
   /* ---- 9. The doors are painted geometry: walk in, turn, click, leave ---- */
   out.push("\n-- The hub doors are painted geometry, and clicking one leaves --");
   for (const [file, objId, expect, prep] of [
-    ["street.html", "door-canada", "rooms-canada.html", { fwd: 250, side: -1 }],
-    ["street.html", "door-tokyo", "rooms.html", { fwd: 750, side: 1 }],
-    ["street.html", "door-fukuoka", "rooms-fukuoka.html", { fwd: 1000, side: -1 }],
-    ["rooms-canada.html", "door-back", "street.html", { fwd: 300, side: 0 }],
+    ["street.html", "door-toronto", "rooms-toronto.html", { fwd: 420, side: -1 }],
+    ["street.html", "door-tokyo", "rooms.html", { fwd: 1200, side: 1 }],
+    ["street.html", "door-fukuoka", "rooms-fukuoka.html", { fwd: 2000, side: -1 }],
     ["rooms.html", "noren", "street.html", { fwd: 300, side: 0 }],
     ["rooms-fukuoka.html", "curtain-back", "street.html", { fwd: 300, side: 0 }],
+    ["rooms-toronto.html", "door-back", "street.html", { fwd: 300, side: 0 }],
   ]) {
     const e2 = await boot(file);
     const el = e2.doc.querySelector(`[data-obj="${objId}"]`);

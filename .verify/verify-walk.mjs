@@ -496,8 +496,10 @@ const noren = q('[data-obj="noren"]');
    What this asserts is not the destination — that is the hub block's business — it is that the chrome
    and the prop read the same authored value, so the two ways out of a room cannot point different
    ways, whichever room they are on. */
+/* The leave may carry `#at-<room>` — the spawn beside the room's own door on the street — but it
+   is still one authored value read twice: the curtain and the chrome cannot point different ways. */
 ok("the way out is authored in the record, and the chrome reads the same link",
-   /^[a-z-]+\.html$/.test(noren.dataset.leave)
+   /^[a-z-]+\.html(#at-[a-z]+)?$/.test(noren.dataset.leave)
      && q("[data-walk-exit]").getAttribute("href") === noren.dataset.leave);
 const navs = () => ctx.navs.filter((m) => /navigation/.test(m)).length;
 click(noren);
@@ -781,18 +783,25 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   const streetRow = built.find((r) => r.id === "street");
   const roomRows = built.filter((r) => r.id !== "street");
   const problems = [];
+  /* A room's way out is the street page, optionally carrying `#at-<room>`: the hash is the spawn
+     point beside that room's own door, so it must name the room the leave is on — a hash that
+     names another room would land you at the wrong door. */
+  const pageOf = (t) => t.split("#")[0];
   for (const r of roomRows) {
     const html = fs.readFileSync(r.page, "utf8");
     const leaves = Array.from(html.matchAll(/data-leave="([^"]+)"/g)).map((m) => m[1]);
     if (!leaves.length) problems.push(`${r.id}: no way out at all`);
-    for (const t of new Set(leaves))
-      if (t !== streetRow.page) problems.push(`${r.id}: a leave to ${t}, not the street`);
+    for (const t of new Set(leaves)) {
+      if (pageOf(t) !== streetRow.page) problems.push(`${r.id}: a leave to ${t}, not the street`);
+      const h = t.split("#")[1];
+      if (h && h !== `at-${r.id}`) problems.push(`${r.id}: a leave hash #${h}, not #at-${r.id}`);
+    }
     if (/id="way-on"/.test(html)) problems.push(`${r.id}: still carries a chain door`);
     if (html.includes(streetRow.page) === false) problems.push(`${r.id}: the street is not named on it`);
   }
   {
     const html = fs.readFileSync(streetRow.page, "utf8");
-    const leaves = Array.from(html.matchAll(/data-leave="([^"]+)"/g)).map((m) => m[1]);
+    const leaves = Array.from(html.matchAll(/data-leave="([^"]+)"/g)).map((m) => pageOf(m[1]));
     for (const r of roomRows)
       if (!leaves.includes(r.page)) problems.push(`street: no door onto ${r.id}`);
     if (!leaves.includes("activities.html")) problems.push("street: no door onto the album");

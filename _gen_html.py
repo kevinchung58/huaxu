@@ -43,7 +43,10 @@ PUBLIC_PAGES = ["index.html", "about.html", "research.html", "teaching.html",
 # ground, not one more place in the archive.
 ROOMS = [
     ("street", "The street", "street.html", [], "open"),
-    ("canada", "Canada", "rooms-canada.html", ["canada-"], "open"),
+    # The snow walkway became the little city: the owner asked for the Canada room to be the
+    # Toronto hall, Little-Canada style, so the row the album and the street both read now says
+    # Toronto where it used to say Canada.
+    ("toronto", "Toronto", "rooms-toronto.html", ["toronto-"], "open"),
     ("tokyo", "Tokyo", "rooms.html", ["tokyo-"], "open"),
     ("fukuoka", "Fukuoka", "rooms-fukuoka.html", ["fukuoka-"], "open"),
 ]
@@ -1304,8 +1307,8 @@ IMG_RULES = [
     ("tokyo-", "field-notes", "generated"),
     # The two rooms built after Tokyo. Same block, same kind: drawn plates, from the walkable
     # districts, never a record that anyone stood anywhere.
-    ("canada-", "field-notes", "generated"),
     ("fukuoka-", "field-notes", "generated"),
+    ("toronto-", "field-notes", "generated"),
     ("act-", "classroom", "record"),
     ("practice-", "figures", "figure"), ("principle-", "figures", "figure"),
     ("grid-", "figures", "figure"), ("diverge-", "figures", "figure"),
@@ -1432,14 +1435,14 @@ PLACE_TITLES = {
     "IMG/tokyo-poster-wires.jpg": "The wires over the lane",
     "IMG/tokyo-poster-ticket.jpg": "The ticket machine",
     "IMG/tokyo-cover.jpg": "Tokyo, the lane in one sheet",
-    "IMG/canada-1.jpg": "The walkway at dusk",
-    "IMG/canada-2.jpg": "Bare trees over the path",
-    "IMG/canada-3.jpg": "The lit door at the end",
-    "IMG/canada-cover.jpg": "Canada, the walk in one sheet",
     "IMG/fukuoka-1.jpg": "The stall row",
     "IMG/fukuoka-2.jpg": "Lanterns over the wires",
     "IMG/fukuoka-3.jpg": "The water at the end",
     "IMG/fukuoka-cover.jpg": "Fukuoka, the alley in one sheet",
+    "IMG/toronto-1.jpg": "The skyline, small",
+    "IMG/toronto-2.jpg": "The falls, small",
+    "IMG/toronto-3.jpg": "The market, small",
+    "IMG/toronto-cover.jpg": "Toronto, the little city in one sheet",
 }
 
 
@@ -1558,9 +1561,9 @@ for it, tile in zip(ALBUM_ITEMS, album_tiles):
 # group names come from the ROOMS table, which does exist by here, so the wall and the walk pages
 # cannot disagree about what a place is called or where its door goes.
 PLACE_GROUP_NOTES = {
-    "canada": "A campus walkway after snow, walked at dusk toward the one lit door.",
     "tokyo": "A night lane with shutters, lanterns, and a vending machine keeping the far end.",
     "fukuoka": "A stall alley, lanterns low over the counters, water at the end of it.",
+    "toronto": "A dark hall of lit tables: the city, its falls and its markets, drawn small.",
 }
 
 
@@ -1827,34 +1830,37 @@ DISTRICTS = [
         "id": "street", "label": "The street",
         "page": ROOM_BY_ID["street"]["page"],
         "plates": ROOM_BY_ID["street"]["plates"],
-        "lane": {"w": 700, "d": 560, "ceil": 620, "back": 300, "max_d": 2400},
+        # Longer than it used to be on purpose: the rooms now stand a walk apart, so stepping out
+        # of one and into the next is a journey with the other doors ahead of you, not three doors
+        # in a row. max_d runs past the far wall so the open end is still open ground.
+        "lane": {"w": 700, "d": 1040, "ceil": 620, "back": 300, "max_d": 3400},
         "purpose": "The street the three rooms stand on, walked under a night sky",
         "status": "open",
         "kind": "personal",
-        "blurb": "One straight street at night. Three lit doors, one per room, and the open end "
-                 "of the street for a skyline.",
+        "blurb": "One straight street at night. Three lit doors, one per room, a walk apart, and "
+                 "the open end of the street for a skyline.",
         "objects": [
             # The three doors. Each names the room it opens onto — that is navigation, not a claim —
             # and each carries a lamp over it, because on a night street a door you can read is a
             # door with light on it. Reachability is a rendering fact the records must respect: the
-            # walker's z clamps at MAX_D (1200 in walk units) and the reach ring is 190 cm, so a
-            # door authored deeper than record z ~479 (1200+190, over Z_SCALE) could be seen but
-            # never opened. The last door sits at 380 with room to spare.
-            {"id": "door-canada", "kind": "door", "x": -346, "z": 120, "y": 0, "ry": 90,
-             "leaf": "#3e5c66",
-             "glow": [{"r": 130, "k": 0.58, "dy": 235}],
-             "leave": ROOM_BY_ID["canada"]["page"],
-             "title": "The door onto Canada",
-             "hint": "It opens onto Canada: a campus walkway after snow, drawn at the same scale "
-                     "as this street. Everything between here and there is one step through."},
-            {"id": "door-tokyo", "kind": "door", "x": 346, "z": 300, "y": 0, "ry": -90,
+            # walker's z clamps at MAX_D (3400 in walk units) and the reach ring is 190 cm, so a
+            # door authored deeper than record z ~1238 (3400+190, over Z_SCALE) could be seen but
+            # never opened. The last door sits at 780 with room to spare.
+            {"id": "door-toronto", "kind": "door", "x": -346, "z": 160, "y": 0, "ry": 90,
+             "leaf": "#274b66",
+             "glow": [{"r": 130, "k": 0.66, "dy": 235, "tint": "rgba(255,178,102,0.55)"}],
+             "leave": ROOM_BY_ID["toronto"]["page"],
+             "title": "The door onto Toronto",
+             "hint": "It opens onto the little city: a dark hall of lit tables where Toronto, its "
+                     "falls and its markets stand small enough to walk around."},
+            {"id": "door-tokyo", "kind": "door", "x": 346, "z": 470, "y": 0, "ry": -90,
              "leaf": "#5c4434",
              "glow": [{"r": 130, "k": 0.62, "dy": 235}],
              "leave": ROOM_BY_ID["tokyo"]["page"],
              "title": "The door onto Tokyo",
              "hint": "It opens onto the lane: shutters, lanterns, a vending machine at its end. "
                      "The curtain inside parts the other way."},
-            {"id": "door-fukuoka", "kind": "door", "x": -346, "z": 380, "y": 0, "ry": 90,
+            {"id": "door-fukuoka", "kind": "door", "x": -346, "z": 780, "y": 0, "ry": 90,
              "leaf": "#4b4368",
              "glow": [{"r": 130, "k": 0.58, "dy": 235}],
              "leave": ROOM_BY_ID["fukuoka"]["page"],
@@ -1862,37 +1868,37 @@ DISTRICTS = [
              "hint": "It opens onto the stall alley: lanterns low over the counters, and water at "
                      "the end of it."},
             # The street's own furniture, and the two poles the wires run from.
-            {"id": "pole-west", "kind": "utility", "x": -330, "z": 140, "y": 0, "ry": 90,
+            {"id": "pole-west", "kind": "utility", "x": -330, "z": 180, "y": 0, "ry": 90,
              "title": "The pole the wires are strung from",
              "hint": "Every wire overhead starts or ends on one of the two poles: a cable has to "
                      "be anchored somewhere you can point at."},
-            {"id": "pole-east", "kind": "utility", "x": 330, "z": 400, "y": 0, "ry": -90,
+            {"id": "pole-east", "kind": "utility", "x": 330, "z": 800, "y": 0, "ry": -90,
              "title": "The pole at the far crossing",
              "hint": "The second anchor. Between them the wires carry the street's two bulbs."},
             {"id": "bollard-s", "kind": "bollard", "x": -160, "z": 24, "y": 0, "ry": 0,
              "title": "A bollard at the mouth of the street",
              "hint": "Drawn rather than surveyed: it is here so the entrance has an edge."},
-            {"id": "bench-s", "kind": "bench", "x": -300, "z": 250, "y": 0, "ry": 90,
+            {"id": "bench-s", "kind": "bench", "x": -300, "z": 320, "y": 0, "ry": 90,
              "title": "A bench under the dark half of the street",
              "hint": "The one seat on the street. It sits in the gap between two doors, where a "
                      "walker is allowed to stop."},
-            {"id": "bin-s", "kind": "bin", "x": 322, "z": 210, "y": 0, "ry": -90,
+            {"id": "bin-s", "kind": "bin", "x": 322, "z": 540, "y": 0, "ry": -90,
              "title": "A bin by the middle door",
              "hint": "Lid shut, nothing implied about what is in it."},
-            {"id": "planter-s1", "kind": "planter", "x": -300, "z": 370, "y": 0, "ry": 90,
+            {"id": "planter-s1", "kind": "planter", "x": -300, "z": 880, "y": 0, "ry": 90,
              "title": "A planter of dark leaves",
              "hint": "Set dressing: the one green thing on the street, drawn as a silhouette."},
             {"id": "planter-s2", "kind": "planter", "x": 296, "z": 60, "y": 0, "ry": -90,
              "title": "A second planter, by the wall",
              "hint": "The street's edges need a rhythm more than they need symmetry."},
-            {"id": "board-s", "kind": "signA", "x": 300, "z": 120, "y": 150, "ry": -90,
+            {"id": "board-s", "kind": "signA", "x": 300, "z": 90, "y": 150, "ry": -90,
              "title": "A folding board, blank",
              "hint": "Both faces blank: the lettering would be a shop's to write, and no shop here "
                      "is real."},
-            {"id": "drain-s", "kind": "drain", "x": 60, "z": 300, "y": 0, "ry": 0,
+            {"id": "drain-s", "kind": "drain", "x": 60, "z": 620, "y": 0, "ry": 0,
              "title": "A drain in the asphalt",
              "hint": "The street's one piece of water kit, at the crossing point."},
-            {"id": "front-s", "kind": "front", "x": 346, "z": 380, "y": 0, "ry": -90,
+            {"id": "front-s", "kind": "front", "x": 346, "z": 700, "y": 0, "ry": -90,
              "glow": [{"r": 120, "k": 0.45, "dy": 190}],
              "title": "A shut front with a light behind it",
              "hint": "Shutter down, light on in the transom: a building with nobody in it and a "
@@ -1905,7 +1911,7 @@ DISTRICTS = [
                  {"say": "Down again. The street keeps its shuttered half.", "k": 0.45,
                   "shut": 0},
              ]},
-            {"id": "front-n", "kind": "front", "x": -346, "z": 300, "y": 0, "ry": 90,
+            {"id": "front-n", "kind": "front", "x": -346, "z": 620, "y": 0, "ry": 90,
              "glow": [{"r": 120, "k": 0.45, "dy": 190}],
              "title": "Another shut front, across the crossing",
              "hint": "Same story from the other side of the street: shutter down, transom lit. "
@@ -1916,7 +1922,7 @@ DISTRICTS = [
                  {"say": "Still shut. The lamp behind it stays on regardless.", "k": 0.5,
                   "shut": 0},
              ]},
-            {"id": "ac-s", "kind": "ac", "x": -344, "z": 250, "y": 262, "ry": 90,
+            {"id": "ac-s", "kind": "ac", "x": -344, "z": 300, "y": 262, "ry": 90,
              "title": "An air conditioner over the first door",
              "hint": "High on the wall, dripping nothing: the street's one horizontal above head "
                      "height."},
@@ -1925,42 +1931,48 @@ DISTRICTS = [
         # broad cool skylight (bulb:false — it is the night sky dome, not a fitting), and the doors'
         # own glows from the objects list. All of it is data; the renderer only multiplies.
         "lamps": [
-            {"x": 0, "y": 505, "z": 140, "r": 46, "k": 0.6},
-            {"x": 0, "y": 500, "z": 400, "r": 46, "k": 0.6},
-            {"x": 0, "y": 502, "z": 268, "r": 44, "k": 0.55},
+            {"x": 0, "y": 505, "z": 180, "r": 46, "k": 0.6},
+            {"x": 0, "y": 502, "z": 470, "r": 44, "k": 0.58},
+            {"x": 0, "y": 500, "z": 780, "r": 46, "k": 0.6},
+            {"x": 0, "y": 503, "z": 980, "r": 44, "k": 0.58},
             # The city's own light, standing in the opening: the far wall of the street faces a lit
             # skyline through it, and without this the last stretch reads as a dead end. Cool, soft,
             # no bulb — it is the glow of somewhere open, not a fitting on the street.
-            {"x": 0, "y": 190, "z": 536, "r": 135, "k": 0.5, "tint": "#9fb2d8", "bulb": False},
+            {"x": 0, "y": 190, "z": 1016, "r": 135, "k": 0.5, "tint": "#9fb2d8", "bulb": False},
         ],
         "wires": [
-            {"a": [-350, 512, 140], "b": [350, 504, 140], "sag": 42},
-            {"a": [-350, 512, 268], "b": [350, 504, 268], "sag": 40},
-            {"a": [-350, 508, 400], "b": [350, 512, 400], "sag": 38},
+            {"a": [-350, 512, 180], "b": [350, 504, 180], "sag": 42},
+            {"a": [-350, 512, 470], "b": [350, 504, 470], "sag": 40},
+            {"a": [-350, 508, 780], "b": [350, 512, 780], "sag": 38},
+            {"a": [-350, 510, 980], "b": [350, 506, 980], "sag": 38},
         ],
         "beams": [],
         "surfaces": [
             # Building fronts, band by band, both sides. The materials repeat the rooms' own kit so
             # the whole walk reads as one drawn world.
-            {"side": -1, "z0": -1400, "z1": 200, "y0": 0, "y1": 140, "kind": "dado", "tone": 1.16},
-            {"side": -1, "z0": -1400, "z1": 200, "y0": 140, "y1": 620, "kind": "plaster", "tone": 1.14},
-            {"side": -1, "z0": 200, "z1": 440, "y0": 0, "y1": 300, "kind": "shutter", "tone": 1.26},
-            {"side": -1, "z0": 200, "z1": 440, "y0": 300, "y1": 620, "kind": "brick", "tone": 1.22},
-            {"side": -1, "z0": 440, "z1": 560, "y0": 0, "y1": 620, "kind": "brick", "tone": 1.3},
+            {"side": -1, "z0": -1400, "z1": 240, "y0": 0, "y1": 140, "kind": "dado", "tone": 1.16},
+            {"side": -1, "z0": -1400, "z1": 240, "y0": 140, "y1": 620, "kind": "plaster", "tone": 1.14},
+            {"side": -1, "z0": 240, "z1": 700, "y0": 0, "y1": 300, "kind": "shutter", "tone": 1.26},
+            {"side": -1, "z0": 240, "z1": 700, "y0": 300, "y1": 620, "kind": "brick", "tone": 1.22},
+            {"side": -1, "z0": 700, "z1": 860, "y0": 0, "y1": 620, "kind": "brick", "tone": 1.3},
+            {"side": -1, "z0": 860, "z1": 1040, "y0": 0, "y1": 140, "kind": "dado", "tone": 1.16},
+            {"side": -1, "z0": 860, "z1": 1040, "y0": 140, "y1": 620, "kind": "plaster", "tone": 1.18},
             {"side": 1, "z0": -1400, "z1": 80, "y0": 0, "y1": 620, "kind": "brick", "tone": 1.12},
-            {"side": 1, "z0": 80, "z1": 320, "y0": 0, "y1": 130, "kind": "dado", "tone": 1.18},
-            {"side": 1, "z0": 80, "z1": 320, "y0": 130, "y1": 620, "kind": "plaster", "tone": 1.12},
-            {"side": 1, "z0": 320, "z1": 560, "y0": 0, "y1": 300, "kind": "shutter", "tone": 1.32},
-            {"side": 1, "z0": 320, "z1": 560, "y0": 300, "y1": 620, "kind": "plaster", "tone": 1.26},
+            {"side": 1, "z0": 80, "z1": 390, "y0": 0, "y1": 130, "kind": "dado", "tone": 1.18},
+            {"side": 1, "z0": 80, "z1": 390, "y0": 130, "y1": 620, "kind": "plaster", "tone": 1.12},
+            {"side": 1, "z0": 390, "z1": 550, "y0": 0, "y1": 300, "kind": "shutter", "tone": 1.32},
+            {"side": 1, "z0": 390, "z1": 550, "y0": 300, "y1": 620, "kind": "plaster", "tone": 1.26},
+            {"side": 1, "z0": 550, "z1": 900, "y0": 0, "y1": 620, "kind": "plaster", "tone": 1.2},
+            {"side": 1, "z0": 900, "z1": 1040, "y0": 0, "y1": 620, "kind": "brick", "tone": 1.28},
         ],
         "marks": [
-            {"kind": "tactile", "x0": -330, "x1": -306, "z0": -1400, "z1": 560},
-            {"kind": "tactile", "x0": 306, "x1": 330, "z0": -1400, "z1": 560},
+            {"kind": "tactile", "x0": -330, "x1": -306, "z0": -1400, "z1": 1040},
+            {"kind": "tactile", "x0": 306, "x1": 330, "z0": -1400, "z1": 1040},
             {"kind": "gutter", "x0": -368, "x1": 368, "z0": -1400, "z1": 14},
-            {"kind": "grate", "x0": -80, "x1": 80, "z0": 296, "z1": 304},
-            {"kind": "manhole", "x0": -40, "x1": 40, "z0": 210, "z1": 250},
-            {"kind": "kerb", "x0": -368, "x1": -306, "z0": -1400, "z1": 560, "y1": 6},
-            {"kind": "kerb", "x0": 306, "x1": 368, "z0": -1400, "z1": 560, "y1": 6},
+            {"kind": "grate", "x0": -80, "x1": 80, "z0": 616, "z1": 624},
+            {"kind": "manhole", "x0": -40, "x1": 40, "z0": 540, "z1": 580},
+            {"kind": "kerb", "x0": -368, "x1": -306, "z0": -1400, "z1": 1040, "y1": 6},
+            {"kind": "kerb", "x0": 306, "x1": 368, "z0": -1400, "z1": 1040, "y1": 6},
         ],
         # The far end is not a window but the way on: the opening runs nearly wall to wall and floor
         # to sky, and the clamp is authored past it (max_d above) — walk out of the street and the
@@ -1996,23 +2008,23 @@ DISTRICTS = [
         },
         "slots_title": "Rooms on this street",
         "slots": [
-            {"label": "Canada", "note": "A campus walkway after snow, walked at dusk toward the "
-                                        "one lit door.",
-             "state": "Open — the left-hand door, lit."},
+            {"label": "Toronto", "note": "A dark hall of lit tables: the city, its falls and its "
+                                         "markets, drawn small.",
+             "state": "Open — the first door on the left."},
             {"label": "Tokyo", "note": "A night lane with shutters, lanterns, and a vending "
                                        "machine keeping the far end.",
-             "state": "Open — the right-hand door."},
+             "state": "Open — the middle door, on the right."},
             {"label": "Fukuoka", "note": "A stall alley, lanterns low over the counters, water at "
                                          "the end of it.",
              "state": "Open — the last door on the left."},
         ],
         "stations": [
             {"z": 0, "label": "the mouth of the street"},
-            {"z": 120, "label": "by the first door"},
-            {"z": 300, "label": "at the crossing"},
-            {"z": 380, "label": "by the last door"},
-            {"z": 540, "label": "the end of the street"},
-            {"z": 700, "label": "out in the open"},
+            {"z": 160, "label": "by the Toronto door"},
+            {"z": 470, "label": "by the Tokyo door"},
+            {"z": 780, "label": "by the Fukuoka door"},
+            {"z": 1040, "label": "the end of the street"},
+            {"z": 1150, "label": "out in the open"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
                  "title": "The door at your back", "hint": "It opens onto the album, where the "
@@ -2495,258 +2507,6 @@ DISTRICTS = [
                   "visited.",
     },
     {
-        "id": "canada", "label": "Canada",
-        "page": ROOM_BY_ID["canada"]["page"],
-        "plates": ROOM_BY_ID["canada"]["plates"],
-        # A walkway is wider and lower-shouldered than the Tokyo lane, and it is outdoors: the roof is
-        # four and a half metres up so that looking up reads as sky, not as a corridor. No onward
-        # door — the hub street carries every door but its own.
-        "lane": {"w": 720, "d": 400, "ceil": 470, "back": 300},
-        "purpose": "A campus walkway after snow, walked at dusk toward the one lit door",
-        "status": "open",
-        "kind": "personal",
-        "cover": "IMG/canada-cover.jpg",
-        "cover_caption": "The walkway in one sheet: banked snow, bare trees, one lit doorway at the end.",
-        "blurb": "Dusk after snow. Two buildings, a path between them, and the only warm light is a "
-                 "door at the far end.",
-        # Everything here is drawn. The reference photographs read a walkway's proportions, the way
-        # snow banks against a wall, and which way the one warm light points; nothing in the lane is
-        # a photograph, and nothing claims a date, a name or an event.
-        "objects": [
-            {"id": "bank-left", "kind": "bank", "x": -250, "z": 60, "y": 0, "ry": 0,
-             "title": "Snow banked against the left wall",
-             "hint": "The first thing snow does: it is pushed to the edges and left there. It is the "
-                     "walkway's only soft edge."},
-            {"id": "bank-left-2", "kind": "bank", "x": -240, "z": 240, "y": 0, "ry": 0,
-             "title": "A second bank further down",
-             "hint": "Drawn. The far half of the walk needs the same edge as the near half, or the "
-                     "snow reads as paint that stopped."},
-            {"id": "bank-right", "kind": "bank", "x": 248, "z": 170, "y": 0, "ry": 0,
-             "title": "Snow banked against the right wall",
-             "hint": "Drawn, and deliberately not symmetrical with the left: snow is cleared by "
-                     "people, and people are not symmetrical."},
-            {"id": "bench", "kind": "bench", "x": -262, "z": 78, "y": 0, "ry": 90,
-             "title": "A bench under the snow",
-             "hint": "A campus has benches and nobody brushes them. Set dressing: nothing to open."},
-            {"id": "rack", "kind": "rack", "x": 268, "z": 118, "y": 0, "ry": -90,
-             "title": "A bicycle rack, empty",
-             "hint": "Empty in the drawing because there is no bicycle in the reference. A rack "
-                     "with nothing in it is a fact about winter."},
-            {"id": "lamp-post", "kind": "utility", "x": 300, "z": 150, "y": 0, "ry": -90,
-             "glow": [{"r": 200, "k": 0.42, "dy": 300}],
-             "title": "A lamp post",
-             "hint": "The walkway's second light, and the reason the snow has a blue side. The glow "
-                     "is authored here; nothing else lights this lane."},
-            {"id": "crate", "kind": "crate", "x": -244, "z": 300, "y": 0, "ry": 20,
-             "title": "A crate by the wall",
-             "hint": "Whatever it held is gone. Drawn for silhouette, not for a story."},
-            {"id": "bin", "kind": "bin", "x": 262, "z": 250, "y": 0, "ry": -90,
-             "title": "A bin with a lid",
-             "hint": "The kind of thing every walkway has at its halfway point. Nothing to open."},
-            {"id": "hydrant", "kind": "hydrant", "x": 240, "z": 84, "y": 0, "ry": 0,
-             "title": "A hydrant, cleared",
-             "hint": "Snow is shovelled off hydrants first: it is the one object on the walk that has "
-                     "been dug out, which is why it reads as cared for."},
-            {"id": "sign", "kind": "sign", "x": 300, "z": 300, "y": 210, "ry": -90,
-             "title": "A sign with nothing written on it",
-             "hint": "Blank on purpose. Lettering in the scene would be invented, and this site does "
-                     "not invent lettering."},
-            {"id": "ac", "kind": "ac", "x": 336, "z": 210, "y": 240, "ry": -90,
-             "title": "A vent on the wall",
-             "hint": "A wall with nothing on it reads as a diagram; this is the smallest thing that "
-                     "makes it a building."},
-            {"id": "pipe", "kind": "pipe", "x": 336, "z": 340, "y": 0, "ry": -90,
-             "title": "A downpipe",
-             "hint": "Drawn to the wall's own height so the eye has a vertical in a lane of "
-                     "horizontals."},
-            {"id": "door-lit", "kind": "door", "x": -300, "z": 372, "y": 0, "ry": 90,
-             "leaf": "#4a3a2c",
-             "glow": [{"r": 260, "k": 0.5, "dy": 130}],
-             "title": "The lit door",
-             "hint": "The one warm light at the end of the walk, and the reason the whole lane is "
-                     "walked toward it. It is scenery: the way on is the door on the other side. "
-                     "Done, it stands ajar and the light steps down when it is shut again.",
-             "states": [
-                 {"say": "Ajar, and the light lies down the snow past the step.", "k": 1.0,
-                  "door": 0.6},
-                 {"say": "Shut again. The light under it stays, whoever is behind it stays.",
-                  "k": 0.45, "door": 0},
-             ]},
-            {"id": "planter", "kind": "planter", "x": -300, "z": 160, "y": 0, "ry": 90,
-             "title": "A planter under snow",
-             "hint": "Set dressing. What is planted in it is not visible and is not claimed."},
-            {"id": "cones", "kind": "cones", "x": -120, "z": 12, "y": 0, "ry": 0,
-             "title": "Two cones at the mouth of the walk",
-             "hint": "Where the walkway meets the road: something has to mark the edge between them."},
-            {"id": "board-a", "kind": "signA", "x": -336, "z": 200, "y": 150, "ry": 90,
-             "states": [
-                 {"say": "The board turns over. The other face is blank too.", "k": 1.05,
-                  "flip": 1},
-                 {"say": "Turned back. Still nothing written on it, by the same rule that keeps "
-                         "every sign here blank.", "k": 0.8, "flip": 0},
-             ],
-             "title": "A notice board, pinned empty",
-             "hint": "The board is drawn and its paper is not: a notice would be a claim about what "
-                     "this campus announced."},
-        ],
-        # Dusk: a lamp post, the lit door, and a cold bounce off the snow itself. Nothing else glows,
-        # and the cool one is authored here rather than invented by the renderer.
-        # Three sources and no more: the lamp post, the lit door, and a *weak* bounce off the snow.
-        # The bounce was authored at 0.32 over a 24 m radius first, which lit the far plane as hard as
-        # the lamp post lit the walk and turned the aperture into a flat white panel — snow reflects,
-        # it does not emit, and a room outdoors at dusk is dimmer than it looks in a photograph.
-        # Every entry carries `bulb: False`, and that flag is the difference between light and a lamp:
-        # a bulb is a fixture the renderer draws a body and a cord for, and these four are *spill* —
-        # the lamp post's pool, the open door's warmth, the snow's weak bounce, the wall light over the
-        # far end. Authored without the flag, four white bulbs were hung in the middle of the air over
-        # a walkway that has one lamp post in it.
-        "lamps": [
-            {"x": 300, "y": 330, "z": 150, "r": 240, "k": 0.34, "bulb": False,
-             "tint": "rgba(190,210,255,0.22)"},
-            {"x": -300, "y": 236, "z": 372, "r": 280, "k": 0.4, "bulb": False},
-            {"x": 0, "y": 30, "z": 200, "r": 1400, "k": 0.11, "bulb": False,
-             "tint": "rgba(206,222,255,0.24)"},
-            # A wall light over the far end of the walk, authored in scene centimetres like the rest of
-            # this list. Without it the last stop stands in the dark: the lit door is on a side wall
-            # and by then it is behind you, which is true of the place and unusable in the room.
-            {"x": 140, "y": 318, "z": 1112, "r": 460, "k": 0.62, "bulb": False,
-             "tint": "rgba(255,224,186,0.28)"},
-            # The last of the spill is the sky's: an outdoor room sees more of it at its far end than
-            # anywhere else, and without this the wall the walk runs into was the darkest thing in it.
-            {"x": 0, "y": 300, "z": 1150, "r": 520, "k": 0.42, "bulb": False,
-             "tint": "rgba(180,204,255,0.26)"},
-            # Just past the end wall, where the near roof row stands: the light that makes the view
-            # through the opening a lit street rather than a dark hole in a bright wall.
-            {"x": -300, "y": 260, "z": 1420, "r": 900, "k": 0.5, "bulb": False,
-             "tint": "rgba(255,226,186,0.26)"},
-            # And the dusk sky itself, standing in the opening: the end wall faces the last of the
-            # light, and the falloff means only a source this close to the opening lights it.
-            {"x": 0, "y": 300, "z": 3350, "r": 900, "k": 0.5, "bulb": False,
-             "tint": "rgba(190,214,255,0.30)"},
-        ],
-        "beams": [],
-        "surfaces": [
-            # Brick below, siding above, and one replacement panel of corrugated steel where the wall
-            # was opened and closed again. A campus is patched the same way a lane is.
-            {"side": -1, "z0": -300, "z1": 90, "y0": 0, "y1": 470, "kind": "brick", "tone": 0.94},
-            {"side": -1, "z0": 90, "z1": 340, "y0": 0, "y1": 200, "kind": "dado", "tone": 1.02},
-            {"side": -1, "z0": 90, "z1": 340, "y0": 200, "y1": 470, "kind": "plaster", "tone": 1.1},
-            {"side": -1, "z0": 340, "z1": 400, "y0": 0, "y1": 470, "kind": "brick", "tone": 1.05},
-            {"side": 1, "z0": -300, "z1": 150, "y0": 0, "y1": 470, "kind": "plaster", "tone": 0.92},
-            {"side": 1, "z0": 150, "z1": 330, "y0": 0, "y1": 240, "kind": "corrugated", "tone": 0.96},
-            {"side": 1, "z0": 150, "z1": 330, "y0": 240, "y1": 470, "kind": "plaster", "tone": 1.08},
-            {"side": 1, "z0": 330, "z1": 400, "y0": 0, "y1": 470, "kind": "brick", "tone": 1.05},
-        ],
-        # Snow is a ground mark, not a wall: it lies where it was pushed, and the middle of the path
-        # is where it is not. One ice patch, glossy, in the low corner where water went.
-        "marks": [
-            {"kind": "snow", "x0": -360, "x1": -150, "z0": -300, "z1": 400},
-            {"kind": "snow", "x0": 150, "x1": 360, "z0": -300, "z1": 400},
-            {"kind": "snow", "x0": -150, "x1": 150, "z0": -300, "z1": -120},
-            {"kind": "wet", "x0": -150, "x1": -40, "z0": 180, "z1": 260},
-            {"kind": "grate", "x0": -60, "x1": 60, "z0": 356, "z1": 376},
-            {"kind": "kerb", "x0": -360, "x1": -326, "z0": -300, "z1": 400, "y1": 8},
-            {"kind": "kerb", "x0": 326, "x1": 360, "z0": -300, "z1": 400, "y1": 8},
-        ],
-        "lanterns": [],
-        # The aperture at the end of the walk: the lit door and the buildings past it.
-        # The aperture: 4 m of a 7.2 m wall, which is what a walkway between buildings actually opens
-        # onto. It was 5.6 m first, and the deepest frame came back as a screen of city with a strip of
-        # wall under it — the end of the walk read as a window, not as the end of a walk.
-        "vista": {"x": 0, "y0": 170, "y1": 320, "w": 340},
-        "wires": [
-            {"a": [-360, 438, 40], "b": [360, 428, 66], "sag": 88},
-            {"a": [-360, 430, 220], "b": [360, 442, 250], "sag": 74},
-        ],
-        "backdrop": {
-            # Dusk, so the bands carry their own glow: the aperture frames the horizon, and an
-            # unlit band paints at lit 0 — a hairline of night where the record says the sky was
-            # still light.
-            "sky": [{"y0": -400, "y1": 8000, "c": "#41507a", "glow": 0.82},
-                    {"y0": 8000, "y1": 21000, "c": "#26314d", "glow": 0.4},
-                    {"y0": 21000, "y1": 40000, "c": "#141e36", "glow": 0.16}],
-            "mountain": [{"x": -900, "y": 520, "w": 2600, "h": 380, "c": "#1b2740"},
-                         {"x": 1200, "y": 460, "w": 2000, "h": 300, "c": "#1e2a44"}],
-            "plaza": {"y": -160, "z0": 900, "z1": 9000, "half": 4200},
-            # The near row is what the aperture actually frames, so it carries the light: a walkway
-            # at dusk ends on other buildings' walls, not on a skyline. Tones here are dull greys by
-            # design — the city behind them is the thing with lit windows.
-            "roofs": [
-                {"x": -900, "y": 0, "z": 1360, "w": 1300, "h": 620, "tone": 0.8},
-                {"x": 1000, "y": 0, "z": 1420, "w": 1200, "h": 700, "tone": 0.62},
-                {"x": 200, "y": 0, "z": 1300, "w": 700, "h": 420, "tone": 0.9},
-            ],
-            "city": [
-                {"x": -2100, "z": 3400, "w": 1500, "h": 1700, "win": 0.62, "tone": 0.9},
-                {"x": -400, "z": 3900, "w": 1300, "h": 1400, "win": 0.58, "tone": 0.82},
-                {"x": 900, "z": 3600, "w": 1200, "h": 1900, "win": 0.66, "tone": 0.95},
-                {"x": 2400, "z": 4200, "w": 1400, "h": 1200, "win": 0.52, "tone": 0.72},
-            ],
-        },
-        "frames": [
-            # The walk's sub-places, one drawn plate each: the proportion, the vertical, the end.
-            {"id": "walk", "src": "IMG/canada-1.jpg", "x": 354, "z": 96, "y": 150, "ry": -90,
-             "title": "The walkway at dusk",
-             "alt": "Illustration of a wide snow-covered walkway between two buildings at dusk, "
-                    "snow banked at both edges and one lit doorway far down it.",
-             "caption": "The proportion the room is built from: how wide the walk is, how the snow "
-                        "sits against the walls, and where the warm light is. Drawn, not photographed."},
-            {"id": "trees", "src": "IMG/canada-2.jpg", "x": -354, "z": 210, "y": 150, "ry": 90,
-             "title": "Bare trees over the path",
-             "alt": "Illustration of leafless trees leaning over a snow-covered path, their trunks "
-                    "dark against a pale winter sky.",
-             "caption": "Leafless, drawn: the shape a winter campus has and the reason the lane has a "
-                        "vertical in it."},
-            {"id": "door", "src": "IMG/canada-3.jpg", "x": 354, "z": 322, "y": 150, "ry": -90,
-             "title": "The lit door at the end",
-             "alt": "Illustration of a single glass door with warm light behind it at the end of a "
-                    "snow-covered path, seen from a distance.",
-             "caption": "The end of the walk, as a picture of a door. The room walks toward it; the "
-                        "picture does not claim anyone went through."},
-        ],
-        # Sub-areas, same rule as the lane: one little place per Field notes plate, a drawn frame
-        # holding the place until a photograph arrives.
-        "slots_title": "Places on the walk",
-        "slots": [
-            {"label": "Canada, the walk in one sheet", "note": "The album's cover plate for this "
-                                                               "room. On the walk it is the mouth "
-                                                               "itself: the whole walkway in one "
-                                                               "look.",
-             "state": "Held by the walk itself, until a photograph of the mouth takes the slot."},
-            {"label": "The walkway at dusk", "note": "The first stretch of path, where the light "
-                                                     "is still in the trees.",
-             "state": "Held by a drawn frame; a photograph of the walkway takes the slot when one "
-                      "arrives."},
-            {"label": "Bare trees over the path", "note": "The bend of the snow, where the branches "
-                                                          "close overhead.",
-             "state": "Held by a drawn frame; a photograph of the trees takes the slot when one "
-                      "arrives."},
-            {"label": "The lit door at the end", "note": "The far end, where the walk was always "
-                                                         "going.",
-             "state": "Held by a drawn frame; a photograph of the door takes the slot when one "
-                      "arrives."},
-            {"label": "Clips and the walk at dusk", "note": "Vertical clips and one sound, when "
-                                                            "material exists.",
-             "state": "Empty by design. A clip needs its caption before it can play here."},
-        ],
-        "stations": [
-            {"z": 0, "label": "the mouth of the walk"},
-            {"z": 110, "label": "by the bench and the rack"},
-            {"z": 220, "label": "at the bend of the snow"},
-            {"z": 280, "label": "by the sign and the pipe"},
-            # Two metres short of the end wall. At 368 the stop was 93 cm from it: the frame was the
-            # aperture and nothing else, which is true of standing with your nose to a wall and useless
-            # as the last thing a room shows you.
-            {"z": 330, "label": "at the far end of the walk"},
-        ],
-        "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
-                 "title": "The door at your back", "hint": "It opens onto the street."},
-        "caveat": "The walkway is drawn, not surveyed: its proportions come from the owner's own "
-                  "photographs of a campus winter, and every object in it is a drawn prop. The wall "
-                  "holds three drawn sights and no photograph, no venue is named and no date is "
-                  "claimed. Nothing here says the owner was anywhere.",
-    },
-    {
         "id": "fukuoka", "label": "Fukuoka",
         "page": ROOM_BY_ID["fukuoka"]["page"],
         "plates": ROOM_BY_ID["fukuoka"]["plates"],
@@ -2960,6 +2720,211 @@ DISTRICTS = [
                   "Nothing here says the owner was in any of these places.",
     },
     {
+        # Toronto, small. The owner's brief was Little Canada — the Toronto attraction where the
+        # province stands on lit tables at model scale — so that is exactly the room: a dark hall,
+        # a walk between plinths, and the city's landmarks drawn small enough to look down on. The
+        # shapes are the site's own (boxes, fronts, plates) shrunk by per-record sizes, plus a few
+        # new silhouettes the city is known by: the tower, the falls, a skyline, a dome. Nothing is
+        # named in the scene; the landmarks read by silhouette, the way a model does.
+        "id": "toronto", "label": "Toronto",
+        "page": ROOM_BY_ID["toronto"]["page"],
+        "plates": ROOM_BY_ID["toronto"]["plates"],
+        # Indoors and low-ceilinged on purpose: this is a hall, not a street. The light is the
+        # tables' own; the ceiling fittings are dim spots over the walk, so the dioramas outshine
+        # the room they stand in — the same trick Little Canada's dark hall uses.
+        "lane": {"w": 760, "d": 480, "ceil": 400, "back": 260},
+        "purpose": "Toronto as a tabletop: the city, its falls and its markets drawn small, the "
+                   "way Little Canada keeps Ontario on lit tables",
+        "status": "open",
+        "kind": "personal",
+        "cover": "IMG/toronto-cover.jpg",
+        "cover_caption": "The little city in one sheet: a lit table, a small tower, a smaller falls.",
+        "blurb": "A dark hall of lit tables. Toronto stands small enough to walk around: the "
+                 "tower and the skyline, the falls, the market, the lake.",
+        "objects": [
+            # Table one — the city. A plinth with the skyline on it: the tower reads first because
+            # it is the one silhouette nobody mistakes, then the blocks, then the dome.
+            {"id": "plinth-sky", "kind": "plinth", "x": -230, "z": 100, "y": 0, "ry": 0,
+             "w": 260, "h": 80, "d": 150,
+             "glow": [{"r": 150, "k": 0.34, "dy": 96, "tint": "rgba(255,214,170,0.34)"}],
+             "title": "The table the city stands on",
+             "hint": "A lit plinth, table height. Everything on it is small; the light under the "
+                     "edge is what makes a model read as a model."},
+            {"id": "tower-cn", "kind": "tower", "x": -270, "z": 78, "y": 80, "ry": 0,
+             "w": 44, "h": 220, "d": 44,
+             "title": "The tower, small",
+             "hint": "Tapered shaft, a round pod two thirds up, a needle above: the one silhouette "
+                     "the whole city is known by, drawn at table scale. No lettering, no claim — "
+                     "a shape, not a postcard."},
+            {"id": "skyline-cn", "kind": "skyline", "x": -205, "z": 118, "y": 80, "ry": 0,
+             "w": 170, "h": 96, "d": 90,
+             "title": "The skyline, small",
+             "hint": "A row of blocky towers with a few lit windows, the way a downtown reads from "
+                     "the lake at night. Drawn small; the windows are the only words it has."},
+            {"id": "dome-rc", "kind": "dome", "x": -235, "z": 152, "y": 80, "ry": 0,
+             "w": 76, "h": 34, "d": 76,
+             "title": "The dome, small",
+             "hint": "A low white dome among the blocks: the stadium the skyline keeps making room "
+                     "for. Nothing on it but its own curve."},
+            # Table two — the falls. The water is the one thing in the hall that moves.
+            {"id": "plinth-falls", "kind": "plinth", "x": 230, "z": 170, "y": 0, "ry": 0,
+             "w": 260, "h": 80, "d": 160,
+             "glow": [{"r": 150, "k": 0.34, "dy": 96, "tint": "rgba(190,220,245,0.34)"}],
+             "title": "The table the falls stand on",
+             "hint": "The same lit plinth, cooler light: the water gets a cold pool on the floor, "
+                     "the way real spray cools the air at the rail."},
+            {"id": "falls-n", "kind": "falls", "x": 230, "z": 170, "y": 80, "ry": 0,
+             "w": 190, "h": 64, "d": 70,
+             "title": "The falls, small",
+             "hint": "A sheet of water over a ledge into mist, small enough to step over and loud "
+                     "enough to imagine. The one moving thing in the hall; it moves because you "
+                     "are here, not because a clock says so."},
+            # Table three — the market. Stalls at model scale: awnings, crates, a warm lamp.
+            {"id": "plinth-market", "kind": "plinth", "x": -230, "z": 320, "y": 0, "ry": 0,
+             "w": 260, "h": 80, "d": 150,
+             "glow": [{"r": 150, "k": 0.34, "dy": 96, "tint": "rgba(255,214,170,0.34)"}],
+             "title": "The table the market stands on",
+             "hint": "A stall row at table scale. No stall is named and no price is written; a "
+                     "market reads by its awnings and its crates, not its lettering."},
+            {"id": "stall-m1", "kind": "stall", "x": -290, "z": 288, "y": 80, "ry": 90,
+             "w": 64, "h": 52, "d": 40,
+             "title": "A stall, small",
+             "hint": "Awning over a counter, drawn the size of a hand. The market's first stall."},
+            {"id": "stall-m2", "kind": "stall", "x": -220, "z": 306, "y": 80, "ry": 90,
+             "w": 64, "h": 52, "d": 40,
+             "title": "A second stall, small",
+             "hint": "The row continues. Two stalls facing is a market; one is a table."},
+            {"id": "stall-m3", "kind": "stall", "x": -290, "z": 350, "y": 80, "ry": 90,
+             "w": 64, "h": 52, "d": 40,
+             "title": "A third stall, small",
+             "hint": "The last stall before the table's edge, awning lower than the rest."},
+            {"id": "crate-m1", "kind": "crate", "x": -180, "z": 340, "y": 80, "ry": 12,
+             "w": 26, "h": 20, "d": 26,
+             "title": "Crates by the stalls",
+             "hint": "Whatever the market sells arrives in crates. Drawn small, stacked once."},
+            {"id": "crate-m2", "kind": "crate", "x": -172, "z": 276, "y": 80, "ry": -18,
+             "w": 22, "h": 16, "d": 22,
+             "title": "A second crate",
+             "hint": "The market's clutter, at a scale where clutter is a centimetre tall."},
+            # Table four — the lake. The city's front door: water, islands, one small ferry.
+            {"id": "plinth-lake", "kind": "plinth", "x": 230, "z": 370, "y": 0, "ry": 0,
+             "w": 260, "h": 80, "d": 140,
+             "glow": [{"r": 150, "k": 0.32, "dy": 96, "tint": "rgba(190,220,245,0.32)"}],
+             "title": "The table the lake lies on",
+             "hint": "A flat sheet of water with low green islands: the view the skyline turns to "
+                     "face. The ferry is one white box, because at this scale it is."},
+            {"id": "pool-lake", "kind": "pool", "x": 230, "z": 370, "y": 80, "ry": 0,
+             "w": 210, "h": 4, "d": 100,
+             "title": "The lake, small",
+             "hint": "Still water on a table. It reflects the hall's spots the way the real one "
+                     "reflects the city."},
+            {"id": "isle-1", "kind": "planter", "x": 200, "z": 356, "y": 82, "ry": 0,
+             "w": 44, "h": 16, "d": 30,
+             "title": "An island, small",
+             "hint": "A low green bump in the water: the islands, reduced to their silhouette."},
+            {"id": "isle-2", "kind": "planter", "x": 262, "z": 384, "y": 82, "ry": 0,
+             "w": 38, "h": 14, "d": 26,
+             "title": "A second island, small",
+             "hint": "The second island, further out. Two bumps are an archipelago at this scale."},
+            {"id": "ferry-1", "kind": "box", "x": 236, "z": 368, "y": 83, "ry": 20,
+             "w": 26, "h": 10, "d": 10,
+             "title": "The ferry, small",
+             "hint": "One white box crossing the sheet: the ferry, at a scale where it cannot be "
+                     "anything more."},
+            # The far wall carries the city in one sheet: the hall ends on its own cover plate,
+            # so the deepest stop in the room is the whole model at a glance, not a blank hoarding.
+            {"id": "mural-cover", "kind": "poster frame", "x": 0, "z": 474, "y": 140, "ry": 0,
+             "w": 320, "h": 180, "d": 10, "img": "IMG/toronto-cover.jpg",
+             "title": "The city in one sheet",
+             "hint": "The hall's own cover plate, hung on the far wall: tower, falls and market "
+                     "in a single look, the way the room ends."},
+            # The hall's own furniture: a bench between tables and the rope line of a model room.
+            {"id": "bench-t", "kind": "bench", "x": -320, "z": 210, "y": 0, "ry": 90,
+             "title": "A bench in the dark",
+             "hint": "The one seat in the hall, between the city and the market, for looking."},
+            {"id": "bollard-t", "kind": "bollard", "x": 140, "z": 24, "y": 0, "ry": 0,
+             "title": "A bollard at the mouth",
+             "hint": "The hall's entrance keeps an edge the way the street does."},
+        ],
+        # Dim spots over the walk; the tables carry their own glows from the objects list, so the
+        # dioramas are the brightest things in the room and the walk stays a dark hall around them.
+        "lamps": [
+            {"x": 0, "y": 366, "z": 90, "r": 30, "k": 0.34},
+            {"x": 0, "y": 366, "z": 240, "r": 30, "k": 0.32},
+            {"x": 0, "y": 366, "z": 390, "r": 30, "k": 0.34},
+            # A picture light over the cover plate on the far wall: the hall ends on the city in
+            # one sheet, and a plate you walk toward is a plate you can read.
+            {"x": 0, "y": 320, "z": 452, "r": 130, "k": 0.7},
+        ],
+        "wires": [],
+        "beams": [120, 260, 400],
+        "surfaces": [
+            # A hall, not a lane: concrete dado at hand height, dark hoarding above, both sides the
+            # whole length, so the walls recede and the lit tables do the talking.
+            {"side": -1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "concrete", "tone": 0.9},
+            {"side": -1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "hoarding", "tone": 0.8},
+            {"side": 1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "concrete", "tone": 0.9},
+            {"side": 1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "hoarding", "tone": 0.8},
+        ],
+        "marks": [
+            {"kind": "gutter", "x0": -380, "x1": 380, "z0": -260, "z1": -246},
+        ],
+        "lanterns": [],
+        "frames": [
+            {"id": "skyline", "src": "IMG/toronto-1.jpg", "x": -374, "z": 100, "y": 150, "ry": 90,
+             "title": "The skyline, small",
+             "alt": "Illustration of a miniature Toronto skyline on a lit table: a small CN Tower "
+                    "with a round pod among blocky navy towers with a few amber windows.",
+             "caption": "The city as a model: the tower first, the blocks behind it. Drawn, not "
+                        "photographed; nothing on it is named."},
+            {"id": "falls", "src": "IMG/toronto-2.jpg", "x": 374, "z": 170, "y": 150, "ry": -90,
+             "title": "The falls, small",
+             "alt": "Illustration of a miniature waterfall spilling over a navy ledge into white "
+                    "mist on a lit table, a tiny railing along the top.",
+             "caption": "The falls at table scale: a sheet of water, a ledge, and mist. The model "
+                        "moves; the picture holds still."},
+            {"id": "market", "src": "IMG/toronto-3.jpg", "x": -374, "z": 320, "y": 150, "ry": 90,
+             "title": "The market, small",
+             "alt": "Illustration of a miniature market street on a lit table: small stalls with "
+                    "striped awnings, stacked crates, and warm hanging lamps.",
+             "caption": "A market reduced to awnings, crates and warm light. No stall is named; a "
+                        "market reads without lettering."},
+        ],
+        "slots_title": "Places in the hall",
+        "slots": [
+            {"label": "Toronto, the little city in one sheet",
+             "note": "The album's cover plate for this room: the whole hall in one look.",
+             "state": "Held by the hall itself, until a photograph of the mouth takes the slot."},
+            {"label": "The skyline, small",
+             "note": "The first table, where the tower stands.",
+             "state": "Held by a drawn frame; a photograph of the model takes the slot when one "
+                      "arrives."},
+            {"label": "The falls, small",
+             "note": "The second table, where the water moves.",
+             "state": "Held by a drawn frame; a photograph of the model takes the slot when one "
+                      "arrives."},
+            {"label": "The market, small",
+             "note": "The third table, where the stalls stand.",
+             "state": "Held by a drawn frame; a photograph of the model takes the slot when one "
+                      "arrives."},
+        ],
+        "stations": [
+            {"z": 0, "label": "the mouth of the hall"},
+            {"z": 100, "label": "by the city table"},
+            {"z": 170, "label": "by the falls table"},
+            {"z": 320, "label": "by the market table"},
+            {"z": 370, "label": "by the lake table"},
+            {"z": 440, "label": "the far wall"},
+        ],
+        "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
+                 "title": "The door at your back", "hint": "It opens onto the street, at this "
+                 "room's own door."},
+        "caveat": "The hall is drawn, not surveyed, and the city in it is a model: proportions "
+                  "are the artist's, the landmarks read by silhouette alone, and nothing on any "
+                  "table carries a name, a date or a claim that the owner stood in Toronto. The "
+                  "model is the point, not the trip.",
+    },
+    {
         "id": "undeclared", "label": "Next district", "purpose": "Purpose not declared",
         "status": "soon",
         "blurb": "This one stays shut until its purpose is declared — travel, a conference, "
@@ -3067,6 +3032,7 @@ def walk_islands(d, placed):
     for o in placed:
         for g in o.get("glow", []):
             w, h, _dep = OBJ_SIZE.get(o["kind"], (120, 160, 12))
+            h = o.get("h", h)
             lights.append({"x": o["x"], "y": o.get("y", 0) + g.get("dy", h - 18), "z": o["z"],
                            "r": g["r"], "k": g["k"], "bulb": False, "of": o["id"],
                            **({"tint": g["tint"]} if "tint" in g else {})})
@@ -3121,6 +3087,10 @@ def walk_object(o):
     can never drift away from the thing it stands for.
     """
     w, h, dep = OBJ_SIZE.get(o["kind"], (120, 160, 12))
+    # A record may shrink or grow a prop — the miniature tables in the Toronto hall reuse the
+    # site's shapes at tabletop scale. The override rides the same data-w/-h/-d attributes the
+    # renderer already reads, so the hit box and the picture cannot disagree about the size.
+    w, h, dep = o.get("w", w), o.get("h", h), o.get("d", dep)
     tex = o.get("img", "")
     style = (f'--x:{o["x"]}px;--z:{o["z"]}px;--y:{o.get("y", 0)}px;--ry:{o.get("ry", 0)}deg;'
              f'--w:{w}px;--h:{h}px;--d:{dep}px')
@@ -3365,7 +3335,11 @@ def district_drawer(d):
 # by the same rule. There is no onward wiring: doors between rooms live in the street's record.
 # The street itself is the one exception — its back door opens the album, not itself.
 for d in open_districts:
-    d["back_to"] = ALBUM_PAGE if d["id"] == "street" else CHAIN_ENTRY
+    # Walking out of a room must land you on the street *at that room's own door*, not at the
+    # mouth a whole street away — the connection between rooms is a place you stand, not a link
+    # you follow. The renderer reads the `#at-` hash and spawns beside the door it names, facing
+    # down the street at the other doors.
+    d["back_to"] = ALBUM_PAGE if d["id"] == "street" else f"{CHAIN_ENTRY}#at-{d['id']}"
 
 rooms_pages = {}
 for d in open_districts:

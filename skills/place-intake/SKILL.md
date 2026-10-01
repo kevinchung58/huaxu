@@ -26,7 +26,7 @@ Four questions are blocking. Ask them before reading anything.
 1. **The place and its door on the street.** The site is a hub: a walkable street
    (`street.html`) with a door per room, so a new place is a new door on the street, not a link in a
    chain. Ask where on the street the door stands (the street is walked mouth to far end; the doors
-   so far sit at Canada/Tokyo/Fukuoka), and remember the album reads plates in `ROOMS` table order.
+   so far sit at Toronto/Tokyo/Fukuoka), and remember the album reads plates in `ROOMS` table order.
 2. **The photographs.** How many, of what, and which ones are of the *space* rather than of a subject?
    A lane needs at least one picture that shows the ground, one that shows the walls' height, and one
    that shows what is at the far end. If those do not exist, the room is not buildable yet — say so,

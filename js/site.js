@@ -954,6 +954,17 @@ function leaveOverlay(root, trigger) {
   const bd = readOne("[data-walk-backdrop]");
   const surfaces = readIsland("[data-walk-surfaces]");
   const marks = readIsland("[data-walk-marks]");
+  /* Walking out of a room lands you on the street at that room's own door, not at the mouth a
+     whole street away: every room's exit link carries `#at-<room>`, and the renderer spawns
+     beside the door it names, facing down the street at the other doors. The connection between
+     rooms is then a place you stand — you see the next door ahead and walk to it — instead of a
+     teleport to the top of the street. With no hash (the album, the nav) the spawn is the mouth,
+     as it always was. */
+  const atId = (location.hash.match(/^#at-([a-z]+)$/) || [])[1];
+  if (atId) {
+    const dm = meta.find((o) => o.kind === "door-" + atId);
+    if (dm) { depth = clamp(dm.z, MIN_D + 40, MAX_D - 20); yaw = 0; pitch = -2; x = 0; }
+  }
   const cam = () => {
     const ry = (yaw * Math.PI) / 180, rp = ((pitch + (ease ? roll * 0.35 : 0)) * Math.PI) / 180;
     return { x, z: depth, eye: EYE + height + bob, sy: Math.sin(ry), cy: Math.cos(ry),
@@ -1002,7 +1013,9 @@ function leaveOverlay(root, trigger) {
                   meter: "#5f6a78", camera: "#4a566a", door: "#33405c",
                   pole: "#5c6a80", barrel: "#6a5340", stool: "#4a3f36", lamp: "#4a566a",
                   curtain: "#24406b", stall: "#6e4f38",
-                  bank: "#dfe8f2", bench: "#4a3f36", rack: "#6a6f78" };
+                  bank: "#dfe8f2", bench: "#4a3f36", rack: "#6a6f78",
+                  plinth: "#2b2733", tower: "#6b7a92", skyline: "#1c2740", dome: "#93a3b8",
+                  falls: "#dfe9f2", pool: "#1d3a55" };
   /* Props are named `kind`, `kind-2`, `kind-left`, `kind-s1`… and the shape/tint tables were keyed
      by the *whole* id — so `front-a` was a flat plane while `front` was a painted recess, and whole
      families of props (banners, crates, snow banks, stall curtains) lost their bodies to a fallback.
@@ -1030,10 +1043,15 @@ function leaveOverlay(root, trigger) {
                   // fanlight. It still needs its door-height `data-h` from the record — a plate is
                   // flat on the floor and fails the press-box floor.
                   door: "door",
-                  bank: "bank", bench: "box", rack: "box" };
+                  bank: "bank", bench: "box", rack: "box",
+                  // The little city's kit: a diorama table and the silhouettes a model city is
+                  // known by. Each is its own branch below; without one the prop falls back to a
+                  // plane, so a new shape that never shipped would show as a card, not a crash.
+                  plinth: "plinth", tower: "tower", skyline: "skyline", dome: "dome",
+                  falls: "falls", pool: "pool" };
   // A few props are named for what they are, not for the kind that draws them; these are the aliases.
   Object.assign(SHAPE, { pole: "box", barrel: "box", stool: "box", lamp: "box",
-                         curtain: "cloth", stall: "front", ledge: "plane" });
+                         curtain: "cloth", stall: "stall", ledge: "plane" });
   const mix = (hex, k) => {
     const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
     const to = k >= 0 ? [255, 238, 208] : [10, 17, 40];
@@ -1952,6 +1970,147 @@ function leaveOverlay(root, trigger) {
                           [m.x + m.w / 2, m.y + 1, m.z + m.d / 2], [m.x - m.w / 2, m.y + 1, m.z + m.d / 2]],
                       ZERO8, "flat", base);
         if (q) { q.lit = lit * 0.5; drawn.push(q); }
+      } else if (shape === "plinth") {
+        /* A diorama table: a dark cabinet whose top is the one face brighter than its own light —
+           the lamp under the model shines up through it, and that glow is authored in the record.
+           The sides stay in the hall's dark so the table reads as furniture, not a light box. */
+        facesOf(m).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const top = f.n[1] === 1;
+          const q = add(C, f.p, ZERO8, "flat", top ? "#d9c9a6" : mix(base, f.k - 0.12));
+          if (q) { q.lit = top ? 1.18 : lit * 0.8; drawn.push(q); }
+        });
+      } else if (shape === "tower") {
+        /* The one silhouette the city is known by, at table scale: splayed base, a tapering shaft
+           in two stacks, the wide main pod, a smaller pod above it, and the needle. Nothing on it
+           is lettered; the pod keeps a warm band because at night that is what the pod is. */
+        [[0, 0.12, 1, -0.08], [0.12, 0.5, 0.4, 0], [0.62, 0.12, 1, 0.18],
+         [0.74, 0.06, 0.45, 0.06], [0.8, 0.2, 0.1, 0.22]].forEach(([y0, hf, wf, k]) => {
+          facesOf({ ...m, y: m.y + m.h * y0, h: m.h * hf, w: m.w * wf, d: m.d * wf }).forEach((f) => {
+            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                         + f.n[2] * (C.z - f.p[0][2]);
+            if (toward <= 0) return;
+            const q = add(C, f.p, ZERO8, "flat", mix(base, f.k + k));
+            if (q) { q.lit = lit * (k > 0.1 ? 1.5 : 1); drawn.push(q); }
+          });
+        });
+      } else if (shape === "skyline") {
+        /* A row of blocky towers of different heights; a few lit windows are the only words it has.
+           The blocks share the table's footprint and sit at staggered depths so the row has a
+           silhouette instead of a fence line. */
+        const blocks = [[-0.36, 0.55, 0.3, -0.1], [-0.1, 0.95, 0.32, 0.12], [0.16, 0.7, 0.3, -0.06],
+                        [0.4, 0.5, 0.26, 0.08]];
+        blocks.forEach(([cx, hf, wf, dz]) => {
+          facesOf({ ...m, x: m.x + cx * m.w, z: m.z + dz * m.d, h: m.h * hf, w: m.w * wf,
+                    d: m.d * 0.5 }).forEach((f) => {
+            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                         + f.n[2] * (C.z - f.p[0][2]);
+            if (toward <= 0) return;
+            const q = add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.2));
+            if (q) { q.lit = lit; drawn.push(q); }
+          });
+        });
+        // A handful of lit windows on the two tall blocks, on the face turned to the walk.
+        [[-0.1, 0.95], [0.16, 0.7]].forEach(([cx, hf], bi) => {
+          for (let i = 0; i < 4; i++) {
+            const wy = m.y + m.h * hf * (0.3 + 0.16 * i), wx = m.x + cx * m.w + (i % 2 ? 4 : -5);
+            const q = add(C, [[wx, wy, m.z - m.d * 0.26], [wx + 4, wy, m.z - m.d * 0.26],
+                              [wx + 4, wy + 5, m.z - m.d * 0.26], [wx, wy + 5, m.z - m.d * 0.26]],
+                          ZERO8, "flat", "#f0c27a");
+            if (q) { q.lit = 1.6; drawn.push(q); }
+          }
+        });
+      } else if (shape === "dome") {
+        /* A hemisphere in three stacks: the stadium the skyline keeps making room for. */
+        [[0, 0.5, 1], [0.5, 0.3, 0.78], [0.8, 0.2, 0.46]].forEach(([y0, hf, wf]) => {
+          facesOf({ ...m, y: m.y + m.h * y0, h: m.h * hf, w: m.w * wf, d: m.d * wf }).forEach((f) => {
+            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                         + f.n[2] * (C.z - f.p[0][2]);
+            if (toward <= 0) return;
+            const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
+            if (q) { q.lit = lit * 1.1; drawn.push(q); }
+          });
+        });
+      } else if (shape === "falls") {
+        /* The falls at table scale: a pale sheet over a ledge into mist, held between two dark
+           headlands. The sheet's stripes shimmer with the frame clock — they move because the
+           walker is here, and hold still when the lane rests, which is the house rule for time. */
+        const hw = m.w / 2, hd = m.d / 2, zf = m.z - hd;
+        // The two headlands the water falls between.
+        [[-1], [1]].forEach(([s]) => {
+          facesOf({ ...m, x: m.x + s * (hw - m.w * 0.11), w: m.w * 0.22, h: m.h }).forEach((f) => {
+            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                         + f.n[2] * (C.z - f.p[0][2]);
+            if (toward <= 0) return;
+            const q = add(C, f.p, ZERO8, "flat", mix("#233150", f.k));
+            if (q) { q.lit = lit; drawn.push(q); }
+          });
+        });
+        // The sheet: one pale quad, then moving stripes over it.
+        const sheet = add(C, [[m.x - hw * 0.76, m.y, zf], [m.x + hw * 0.76, m.y, zf],
+                              [m.x + hw * 0.76, m.y + m.h, zf], [m.x - hw * 0.76, m.y + m.h, zf]],
+                          ZERO8, "flat", "#a8c4de");
+        if (sheet) { sheet.lit = 0.95; drawn.push(sheet); }
+        for (let i = 0; i < 5; i++) {
+          const sx = m.x - hw * 0.7 + (i + 0.5) * (hw * 1.4 / 5) + Math.sin(T * 2.2 + i * 1.7) * 2;
+          const a = 0.20 + 0.12 * Math.sin(T * 3.1 + i * 2.3);
+          const st = add(C, [[sx - 2, m.y, zf - 1], [sx + 2, m.y, zf - 1],
+                             [sx + 2, m.y + m.h, zf - 1], [sx - 2, m.y + m.h, zf - 1]],
+                         ZERO8, "flat", `rgba(255,255,255,${a.toFixed(2)})`);
+          if (st) { st.lit = 1.15; drawn.push(st); }
+        }
+        // The crest the sheet comes over, and the mist it lands in.
+        const crest = add(C, [[m.x - hw * 0.78, m.y + m.h, m.z - hd * 0.4], [m.x + hw * 0.78, m.y + m.h, m.z - hd * 0.4],
+                              [m.x + hw * 0.78, m.y + m.h + 3, m.z - hd * 0.4], [m.x - hw * 0.78, m.y + m.h + 3, m.z - hd * 0.4]],
+                          ZERO8, "flat", "#eef4fa");
+        if (crest) { crest.lit = 1.0; drawn.push(crest); }
+        const mist = add(C, [[m.x - hw, m.y + 2, zf - 8], [m.x + hw, m.y + 2, zf - 8],
+                             [m.x + hw, m.y + m.h * 0.3, zf - 8], [m.x - hw, m.y + m.h * 0.3, zf - 8]],
+                         ZERO8, "flat", "rgba(238,244,250,0.5)");
+        if (mist) { mist.lit = 0.95; mist.air = 0.08; drawn.push(mist); }
+        const basin = add(C, [[m.x - hw, m.y + 1, zf - 10], [m.x + hw, m.y + 1, zf - 10],
+                              [m.x + hw, m.y + 1, m.z + hd * 0.4], [m.x - hw, m.y + 1, m.z + hd * 0.4]],
+                          ZERO8, "flat", "#5f7d99");
+        if (basin) { basin.lit = 0.9; drawn.push(basin); }
+      } else if (shape === "pool") {
+        /* Still water on a table: one deep quad with a sheen the hall's spots put on it. */
+        const q = add(C, [[m.x - m.w / 2, m.y + 1, m.z - m.d / 2], [m.x + m.w / 2, m.y + 1, m.z - m.d / 2],
+                          [m.x + m.w / 2, m.y + 1, m.z + m.d / 2], [m.x - m.w / 2, m.y + 1, m.z + m.d / 2]],
+                      ZERO8, "flat", base);
+        if (q) { q.lit = 0.9; drawn.push(q); }
+        const sheen = add(C, [[m.x - m.w * 0.2, m.y + 2, m.z - m.d * 0.3], [m.x + m.w * 0.1, m.y + 2, m.z - m.d * 0.3],
+                              [m.x + m.w * 0.2, m.y + 2, m.z - m.d * 0.1], [m.x - m.w * 0.1, m.y + 2, m.z - m.d * 0.1]],
+                          ZERO8, "flat", "rgba(214,230,244,0.5)");
+        if (sheen) { sheen.lit = 1.1; drawn.push(sheen); }
+      } else if (shape === "stall") {
+        /* A market stall at table scale: a counter, a dark opening under a striped awning. The
+           awning slopes the way an awning does and carries the stripes a market reads by; nothing
+           on it is lettered. */
+        const along = Math.abs(m.ry) > 45;
+        const dir = along ? (m.x < 0 ? 1 : -1) : -1;
+        const P = (u, v, y) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
+        const hw = m.w / 2;
+        facesOf({ ...m, h: m.h * 0.55 }).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
+          if (q) { q.lit = lit; drawn.push(q); }
+        });
+        const open = add(C, [P(-hw * 0.7, m.d * 0.3, m.h * 0.2), P(hw * 0.7, m.d * 0.3, m.h * 0.2),
+                             P(hw * 0.7, m.d * 0.3, m.h * 0.55), P(-hw * 0.7, m.d * 0.3, m.h * 0.55)],
+                         ZERO8, "flat", mix(base, -0.42));
+        if (open) { open.lit = lit * 0.6; drawn.push(open); }
+        const n = 4;
+        for (let i = 0; i < n; i++) {
+          const a0 = (i / n) * m.w - hw, a1 = ((i + 1) / n) * m.w - hw - 1.5;
+          const q = add(C, [P(a0, m.d * 0.55, m.h * 0.62), P(a1, m.d * 0.55, m.h * 0.62),
+                            P(a1, -m.d * 0.15, m.h), P(a0, -m.d * 0.15, m.h)],
+                        ZERO8, "flat", i % 2 ? "#b8433c" : "#e6ddca");
+          if (q) { q.lit = lit * 1.2; drawn.push(q); }
+        }
       } else {
         const q = add(C, corners, uv.flat(), face, base, m.pic);
         if (q) {
@@ -1963,6 +2122,11 @@ function leaveOverlay(root, trigger) {
           drawn.push(q);
         }
       }
+      /* A prop carried above the floor — a model on a table, a frame or a vent on a wall — has to
+         paint after the surface that carries it: the painter sorts by camera depth alone, and one
+         big tabletop or wall quad otherwise swallows the thing standing on it. The bias is a nudge
+         in the sort key, not in the geometry; floor props (y 0) keep the plain order. */
+      if (m.y > 40) drawn.forEach((q) => { q.z -= 70; });
       m.shown = false;
       if (!drawn.length) { m.el.style.visibility = "hidden"; m.el.tabIndex = -1; return; }
       const q = drawn[0];
