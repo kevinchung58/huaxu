@@ -2766,6 +2766,17 @@ DISTRICTS = [
              "title": "The dome, small",
              "hint": "A low white dome among the blocks: the stadium the skyline keeps making room "
                      "for. Nothing on it but its own curve."},
+            # A track along the table's front edge and the streetcar that works it: the city's
+            # table is the one table where something drives, the way the real one never stops.
+            {"id": "track-c", "kind": "track", "x": 0, "z": 336, "y": 80, "ry": 0,
+             "w": 280, "h": 2, "d": 12,
+             "title": "The track, small",
+             "hint": "Ballast and two rails along the front edge: the strip the streetcar runs on."},
+            {"id": "tram-t", "kind": "tram", "x": 0, "z": 336, "y": 80, "ry": 0,
+             "w": 280, "h": 12, "d": 12,
+             "title": "The streetcar, small",
+             "hint": "A red streetcar shuttling the track, lit from within. The city's table is "
+                     "the one table where something drives."},
             # Table two — the falls. The water is the one thing in the hall that moves.
             {"id": "plinth-falls", "kind": "plinth", "x": 230, "z": 170, "y": 0, "ry": 0,
              "w": 260, "h": 80, "d": 160,

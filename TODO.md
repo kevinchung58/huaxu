@@ -65,6 +65,46 @@
   lane-shot street+toronto **0 FAIL**。
 - node_modules 被沙箱清過：jsdom / @napi-rs/canvas / impeccable 都用 `npm --no-save` 裝回（不進 repo）。
 
+## 0d. 第四輪回饋（同日）：「物件建構很失敗」→ 調研＋技術評估＋材質/動態大修
+
+使用者要求：先調研 GitHub repo 相關專案/skills 怎麼教、評估多個可用技術、自行決定全做完，
+要「真的可以有真實的美觀物件」且「有些物件有明顯動態像 Little Canada」。
+
+### 調研與技術評估（結論）
+
+- **repo 自己的 skill**：`skills/place-intake` 的教誡——prop 是 silhouette、光是模型的一部分、
+  一切以公分計；已裝的 `frontend-design`：截圖→critique→修的迴圈。
+- **Little Canada 本体**（[Yahoo](https://www.yahoo.com/lifestyle/articles/kid-friendly-tourist-attraction-toronto-023000432.html)、
+  [Travelweek](https://www.travelweek.ca/news/little-canadas-latest-wonder-exploring-the-west-coast-in-miniature/)、
+  [Destination Toronto](https://www.destinationtoronto.com/listing/little-canada/31083/)）：動態語言＝
+  移動的車/火車/船、流動的水、rolling fog、窗內閃爍的電視、日與夜循環；工藝語言＝手工上色、
+  幾千棵樹、分層細節。
+- **技術選項評估**：
+  1. three.js/WebGL——硬約束排除（零依賴、禁 WebGL）。
+  2. 逐像素軟體光柵（[software-rasterizer-canvas](https://github.com/NeedFulCabin3/software-rasterizer-canvas)、EASEL.js scanline）——
+      per-pixel 光照真實但等於換架構，效能風險高，否決。
+  3. **Canvas2D affine-texture quad + painter sort（現有架構）**——與
+     [sub3d](https://github.com/nrshvch/sub3d) 同路線（UV→context transform + CanvasPattern +
+     deferred shade），方向被驗證；借它的「pattern = material」材質語言繼續深化。採納。
+  4. acko projective-texturing 三角細分——等同現有 60 cm 切片慣例，不引入。
+
+### 做了什麼
+
+- **8 種程序化材質貼圖**（128 px tile，affine 貼上面）：玻璃帷幕（窗格＋散點亮窗）、
+  肋紋混凝土（塔身）、木紋（攤位/木箱/長椅）、草皮（植栽）、展台櫃體（trim＋kick）、
+  水面波紋（湖/瀑潭）、軌道道碴＋雙軌、圓頂板縫。
+- **動態（Little Canada 語言）**：紅色電車在城市桌軌道來回（窗帶內透光）、瀑布潭巡迴船、
+  瀑面 rolling fog、攤位蒸汽上升變淡；原有：渡輪、水紋、霧呼吸、窗閃、塔燈。
+- **踩到的坑（重要）**：verify-walk 的 4700 fill 上限是**含 boot 的總量**；8 張材質 tile 啟動時
+  畫 ~875 個 fillRect 直接爆預算。解法：tile 改 batched path（同色多 rect() 一次 fill()），
+  boot 成本降到 ~25 fills。接手者畫任何程序化貼圖都要記得這條。
+- 亮窗原本線性公式排成對角線，改非線性雜湊散開。
+
+### 驗證（本輪結束時）
+
+walk **166/166**、chain **0**、e2e **0**、probe peak **4582** < 4700、impeccable **[]**、冪等、
+lane-shot street+toronto **0 FAIL**。
+
 ## 1. 需求總表與現況
 
 | # | 需求 | 現況 | 交付 |
