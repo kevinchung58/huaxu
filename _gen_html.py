@@ -2787,15 +2787,15 @@ DISTRICTS = [
              "hint": "A stall row at table scale. No stall is named and no price is written; a "
                      "market reads by its awnings and its crates, not its lettering."},
             {"id": "stall-m1", "kind": "stall", "x": -290, "z": 288, "y": 80, "ry": 90,
-             "w": 64, "h": 52, "d": 40,
+             "w": 78, "h": 60, "d": 46,
              "title": "A stall, small",
              "hint": "Awning over a counter, drawn the size of a hand. The market's first stall."},
             {"id": "stall-m2", "kind": "stall", "x": -220, "z": 306, "y": 80, "ry": 90,
-             "w": 64, "h": 52, "d": 40,
+             "w": 78, "h": 60, "d": 46,
              "title": "A second stall, small",
              "hint": "The row continues. Two stalls facing is a market; one is a table."},
             {"id": "stall-m3", "kind": "stall", "x": -290, "z": 350, "y": 80, "ry": 90,
-             "w": 64, "h": 52, "d": 40,
+             "w": 78, "h": 60, "d": 46,
              "title": "A third stall, small",
              "hint": "The last stall before the table's edge, awning lower than the rest."},
             {"id": "crate-m1", "kind": "crate", "x": -180, "z": 340, "y": 80, "ry": 12,
@@ -2852,10 +2852,10 @@ DISTRICTS = [
             {"x": 0, "y": 366, "z": 90, "r": 30, "k": 0.3},
             {"x": 0, "y": 366, "z": 240, "r": 30, "k": 0.3},
             # One spot per table, close and narrow: the diorama outshines the hall it stands in.
-            {"x": -230, "y": 300, "z": 120, "r": 46, "k": 0.5},
-            {"x": 230, "y": 300, "z": 170, "r": 46, "k": 0.5},
-            {"x": -230, "y": 300, "z": 320, "r": 46, "k": 0.5},
-            {"x": 0, "y": 300, "z": 396, "r": 52, "k": 0.55},
+            {"x": -230, "y": 300, "z": 120, "r": 46, "k": 0.5, "spot": True},
+            {"x": 230, "y": 300, "z": 170, "r": 46, "k": 0.5, "spot": True},
+            {"x": -230, "y": 300, "z": 320, "r": 46, "k": 0.5, "spot": True},
+            {"x": 0, "y": 300, "z": 396, "r": 52, "k": 0.55, "spot": True},
             # A picture light over the cover plate on the far wall: the hall ends on the city in
             # one sheet, and a plate you walk toward is a plate you can read.
             {"x": 0, "y": 320, "z": 452, "r": 130, "k": 0.7},
@@ -2866,9 +2866,11 @@ DISTRICTS = [
             # A hall, not a lane: concrete dado at hand height, dark hoarding above, both sides the
             # whole length, so the walls recede and the lit tables do the talking.
             {"side": -1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "concrete", "tone": 0.5},
-            {"side": -1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "plaster", "tone": 0.42},
+            {"side": -1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "plaster", "tone": 0.42,
+             "grad": True},
             {"side": 1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "concrete", "tone": 0.5},
-            {"side": 1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "plaster", "tone": 0.42},
+            {"side": 1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "plaster", "tone": 0.42,
+             "grad": True},
         ],
         "marks": [
             {"kind": "gutter", "x0": -380, "x1": 380, "z0": -260, "z1": -246},
@@ -2917,7 +2919,7 @@ DISTRICTS = [
             {"z": 120, "label": "by the lake table"},
             {"z": 170, "label": "by the falls table"},
             {"z": 320, "label": "by the market table"},
-            {"z": 396, "label": "by the city table"},
+            {"z": 296, "label": "by the city table"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
                  "title": "The door at your back", "hint": "It opens onto the street, at this "

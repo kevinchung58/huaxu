@@ -1543,16 +1543,23 @@ function leaveOverlay(root, trigger) {
       for (let z = Math.floor(from / SEG) * SEG; z < to; z += SEG) {
         const z0 = Math.max(z, from), z1 = Math.min(z + SEG, to);
         if (z1 - z0 < 1) continue;
-        const q = add(C, [[px, sc.y0, z0], [px, sc.y0, z1], [px, sc.y1, z1], [px, sc.y1, z0]],
-            [z0 * DPM, -sc.y0 * DPM, z1 * DPM, -sc.y0 * DPM, z1 * DPM, -sc.y1 * DPM, z0 * DPM, -sc.y1 * DPM],
-            "pat", pat);
-        if (q) {
-          // `tone` is authored dirt: a band can be brighter or duller than the material it is cut from,
-          // which is what a wall that has been patched and repainted once actually looks like.
-          q.lit = lightAt(px, (sc.y0 + sc.y1) / 2, (z0 + z1) / 2)
-                  * (sc.kind === "shutter" ? 1.12 : 1) * (sc.tone === undefined ? 1 : sc.tone);
-          // A shutter is metal and catches the light; plywood and brick mostly do not.
-          if (sc.kind === "hoarding") q.lit *= 0.86;
+        // One lit value per full-height panel is the cardboard look, but the fill budget is real:
+        // only bands that ask for it (`grad` in the record — the hall's tall plaster) are sliced
+        // into steps, and every step asks the lamps for its own level.
+        const step = sc.grad ? 240 : sc.y1 - sc.y0;
+        for (let y = sc.y0; y < sc.y1; y += step) {
+          const ya = y, yb = Math.min(y + step, sc.y1);
+          const q = add(C, [[px, ya, z0], [px, ya, z1], [px, yb, z1], [px, yb, z0]],
+              [z0 * DPM, -ya * DPM, z1 * DPM, -ya * DPM, z1 * DPM, -yb * DPM, z0 * DPM, -yb * DPM],
+              "pat", pat);
+          if (q) {
+            // `tone` is authored dirt: a band can be brighter or duller than the material it is cut
+            // from, which is what a wall that has been patched and repainted once actually looks like.
+            q.lit = lightAt(px, (ya + yb) / 2, (z0 + z1) / 2)
+                    * (sc.kind === "shutter" ? 1.12 : 1) * (sc.tone === undefined ? 1 : sc.tone);
+            // A shutter is metal and catches the light; plywood and brick mostly do not.
+            if (sc.kind === "hoarding") q.lit *= 0.86;
+          }
         }
       }
     });
@@ -1615,6 +1622,15 @@ function leaveOverlay(root, trigger) {
       const shape = SHAPE[kind] || "plane";
       const S = m.states ? (m.states[m.st] || m.states[0]) : null;
       const drawn = [];
+      /* Contact shadow: anything standing on a floor or a tabletop throws a soft dark quad at its
+         base, or it floats. Wall-hung things are exempt — their shadow is the wall's own darkness. */
+      if (Math.abs(m.x) < WALL - 40) {
+        const fw = (onSide ? m.d : m.w) * 0.68, fd = (onSide ? m.w : m.d) * 0.68;
+        const cs = add(C, [[m.x - fw / 2, m.y + 1, m.z - fd / 2], [m.x + fw / 2, m.y + 1, m.z - fd / 2],
+                           [m.x + fw / 2, m.y + 1, m.z + fd / 2], [m.x - fw / 2, m.y + 1, m.z + fd / 2]],
+                       ZERO8, "flat", "rgba(4,8,18,0.34)");
+        if (cs) { cs.lit = 0.5; drawn.push(cs); }
+      }
       if (shape === "box") {
         // Only the faces turned toward the eye are painted, and each carries its own tint: that is
         // the whole trick of volume here, and it costs three quads instead of one.
@@ -1985,10 +2001,21 @@ function leaveOverlay(root, trigger) {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
           if (toward <= 0) return;
-          const top = f.n[1] === 1;
-          const q = add(C, f.p, ZERO8, "flat", top ? "#d9c9a6" : mix(base, f.k - 0.12));
-          if (q) { q.lit = top ? 1.18 : lit * 0.8; drawn.push(q); }
+          if (f.n[1] !== 1) {
+            const q = add(C, f.p, ZERO8, "flat", mix(base, f.k - 0.12));
+            if (q) { q.lit = lit * 0.8; drawn.push(q); }
+          }
         });
+        // The top is four quads, not one lid: the spot over the table then paints a pool that
+        // falls off toward the edges, which is the whole difference between a table and a box.
+        const hx = m.w / 2, hz = m.d / 2;
+        for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+          const x0 = m.x + (sx < 0 ? -hx : 0), x1 = m.x + (sx > 0 ? hx : 0);
+          const z0 = m.z + (sz < 0 ? -hz : 0), z1 = m.z + (sz > 0 ? hz : 0);
+          const q = add(C, [[x0, m.y + m.h, z0], [x1, m.y + m.h, z0], [x1, m.y + m.h, z1], [x0, m.y + m.h, z1]],
+                        ZERO8, "flat", "#d9c9a6");
+          if (q) { q.lit = lightAt((x0 + x1) / 2, m.y + m.h, (z0 + z1) / 2) * 1.15; drawn.push(q); }
+        }
       } else if (shape === "tower") {
         /* The one silhouette the city is known by, at table scale: splayed base, a tapering shaft
            in two stacks, the wide main pod, a smaller pod above it, and the needle. Nothing on it
@@ -2034,11 +2061,12 @@ function leaveOverlay(root, trigger) {
         });
         // A handful of lit windows on the two tall blocks, on the face turned to the walk.
         [[-0.1, 0.95], [0.16, 0.7]].forEach(([cx, hf], bi) => {
-          for (let i = 0; i < 4; i++) {
+          for (let i = 0; i < 6; i++) {
             // A slow twinkle: which windows are lit drifts on the frame clock; reduced motion
             // keeps them all on.
             if (ease && ((i * 7 + bi * 3 + Math.floor(T * 0.7)) % 5) === 0) continue;
-            const wy = m.y + m.h * hf * (0.3 + 0.16 * i), wx = m.x + cx * m.w + (i % 2 ? 4 : -5);
+            const row = Math.floor(i / 2), col = i % 2;
+            const wy = m.y + m.h * hf * (0.25 + 0.22 * row), wx = m.x + cx * m.w + (col ? 5 : -8);
             const q = add(C, [[wx, wy, m.z - m.d * 0.26], [wx + 4, wy, m.z - m.d * 0.26],
                               [wx + 4, wy + 5, m.z - m.d * 0.26], [wx, wy + 5, m.z - m.d * 0.26]],
                           ZERO8, "flat", "#f0c27a");
@@ -2071,11 +2099,15 @@ function leaveOverlay(root, trigger) {
             if (q) { q.lit = lit; drawn.push(q); }
           });
         });
-        // The sheet: one pale quad, then moving stripes over it.
-        const sheet = add(C, [[m.x - hw * 0.76, m.y, zf], [m.x + hw * 0.76, m.y, zf],
-                              [m.x + hw * 0.76, m.y + m.h, zf], [m.x - hw * 0.76, m.y + m.h, zf]],
-                          ZERO8, "flat", "#a8c4de");
-        if (sheet) { sheet.lit = 0.95; drawn.push(sheet); }
+        // The sheet: three height slices, bright at the crest and shadowing toward the basin —
+        // one flat lit value was what made it a glowing white board — then moving stripes over it.
+        [[0, 0.72], [1, 0.88], [2, 1.08]].forEach(([si, l]) => {
+          const y0 = m.y + (si / 3) * m.h, y1 = m.y + ((si + 1) / 3) * m.h;
+          const sheet = add(C, [[m.x - hw * 0.76, y0, zf], [m.x + hw * 0.76, y0, zf],
+                                [m.x + hw * 0.76, y1, zf], [m.x - hw * 0.76, y1, zf]],
+                            ZERO8, "flat", "#9dbbd8");
+          if (sheet) { sheet.lit = l; drawn.push(sheet); }
+        });
         for (let i = 0; i < 5; i++) {
           const sx = m.x - hw * 0.7 + (i + 0.5) * (hw * 1.4 / 5) + Math.sin(T * 2.2 + i * 1.7) * 2;
           const a = 0.20 + 0.12 * Math.sin(T * 3.1 + i * 2.3);
@@ -2098,11 +2130,15 @@ function leaveOverlay(root, trigger) {
                           ZERO8, "flat", "#5f7d99");
         if (basin) { basin.lit = 0.9; drawn.push(basin); }
       } else if (shape === "pool") {
-        /* Still water on a table: one deep quad with a sheen the hall's spots put on it. */
-        const q = add(C, [[m.x - m.w / 2, m.y + 1, m.z - m.d / 2], [m.x + m.w / 2, m.y + 1, m.z - m.d / 2],
-                          [m.x + m.w / 2, m.y + 1, m.z + m.d / 2], [m.x - m.w / 2, m.y + 1, m.z + m.d / 2]],
-                      ZERO8, "flat", base);
-        if (q) { q.lit = 0.9; drawn.push(q); }
+        /* Still water on a table: two depth slices — the far water catches the spot, the near
+           water stays deep — with a sheen the hall's spots put on it. */
+        [[-1, 0.82], [1, 1.0]].forEach(([sz, l]) => {
+          const z0 = m.z + (sz < 0 ? -m.d / 2 : 0), z1 = m.z + (sz > 0 ? m.d / 2 : 0);
+          const q = add(C, [[m.x - m.w / 2, m.y + 1, z0], [m.x + m.w / 2, m.y + 1, z0],
+                            [m.x + m.w / 2, m.y + 1, z1], [m.x - m.w / 2, m.y + 1, z1]],
+                        ZERO8, "flat", base);
+          if (q) { q.lit = l; drawn.push(q); }
+        });
         const drift = ease ? Math.sin(T * 0.5) * m.w * 0.22 : 0;
         const sheen = add(C, [[m.x - m.w * 0.2 + drift, m.y + 2, m.z - m.d * 0.3], [m.x + m.w * 0.1 + drift, m.y + 2, m.z - m.d * 0.3],
                               [m.x + m.w * 0.2 + drift, m.y + 2, m.z - m.d * 0.1], [m.x - m.w * 0.1 + drift, m.y + 2, m.z - m.d * 0.1]],
@@ -2131,7 +2167,7 @@ function leaveOverlay(root, trigger) {
         const dir = along ? (m.x < 0 ? 1 : -1) : -1;
         const P = (u, v, y) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
         const hw = m.w / 2;
-        facesOf({ ...m, h: m.h * 0.55 }).forEach((f) => {
+        facesOf({ ...m, h: m.h * 0.62 }).forEach((f) => {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
           if (toward <= 0) return;
@@ -2139,17 +2175,26 @@ function leaveOverlay(root, trigger) {
           if (q) { q.lit = lit; drawn.push(q); }
         });
         const open = add(C, [P(-hw * 0.7, m.d * 0.3, m.h * 0.2), P(hw * 0.7, m.d * 0.3, m.h * 0.2),
-                             P(hw * 0.7, m.d * 0.3, m.h * 0.55), P(-hw * 0.7, m.d * 0.3, m.h * 0.55)],
+                             P(hw * 0.7, m.d * 0.3, m.h * 0.6), P(-hw * 0.7, m.d * 0.3, m.h * 0.6)],
                          ZERO8, "flat", mix(base, -0.42));
         if (open) { open.lit = lit * 0.6; drawn.push(open); }
         const n = 4;
         for (let i = 0; i < n; i++) {
           const a0 = (i / n) * m.w - hw, a1 = ((i + 1) / n) * m.w - hw - 1.5;
-          const q = add(C, [P(a0, m.d * 0.55, m.h * 0.62), P(a1, m.d * 0.55, m.h * 0.62),
-                            P(a1, -m.d * 0.15, m.h), P(a0, -m.d * 0.15, m.h)],
+          const q = add(C, [P(a0, m.d * 0.5, m.h * 0.68), P(a1, m.d * 0.5, m.h * 0.68),
+                            P(a1, -m.d * 0.18, m.h * 1.0), P(a0, -m.d * 0.18, m.h * 1.0)],
                         ZERO8, "flat", i % 2 ? "#b8433c" : "#e6ddca");
           if (q) { q.lit = lit * 1.2; drawn.push(q); }
         }
+        // Produce on the counter: three small heaps in market colours. No stall is lettered,
+        // so colour does the selling.
+        [["#7da05a", -0.44], ["#d08a3e", -0.06], ["#a04a3c", 0.32]].forEach(([col, cx]) => {
+          const gx = cx * hw;
+          const q = add(C, [P(gx - 8, m.d * 0.16, m.h * 0.62), P(gx + 8, m.d * 0.16, m.h * 0.62),
+                            P(gx + 8, m.d * 0.16, m.h * 0.62 + 8), P(gx - 8, m.d * 0.16, m.h * 0.62 + 8)],
+                        ZERO8, "flat", col);
+          if (q) { q.lit = lit * 1.15; drawn.push(q); }
+        });
         const fl = (0.5 + (ease ? 0.1 * Math.sin(T * 5.2 + m.z * 0.1) : 0)).toFixed(2);
         const lampq = add(C, [P(-7, m.d * 0.42, m.h * 0.58), P(7, m.d * 0.42, m.h * 0.58),
                               P(7, m.d * 0.42, m.h * 0.66), P(-7, m.d * 0.42, m.h * 0.66)],
@@ -2309,6 +2354,24 @@ function leaveOverlay(root, trigger) {
       const gr = g.createLinearGradient(ax, ay, bx, by);
       gr.addColorStop(0, "rgba(255,198,128,0.15)");
       gr.addColorStop(1, "rgba(255,168,96,0)");
+      g.beginPath();
+      g.moveTo(ax - wa, ay); g.lineTo(ax + wa, ay); g.lineTo(bx + wb, by); g.lineTo(bx - wb, by);
+      g.closePath();
+      g.fillStyle = gr; g.fill();
+    });
+
+    // A spot over a diorama table puts a visible cone in the air, the way the lanterns do: the
+    // fitting, the pool on the table and the haze between are one light, read three ways.
+    lamps.forEach((L) => {
+      if (!L.spot) return;
+      const top = camPt(C, L.x, L.y, L.z), bot = camPt(C, L.x, 90, L.z);
+      if (top.z < NEAR || bot.z < NEAR) return;
+      const ax = W * 0.5 + (focal * top.x) / top.z, ay = H * 0.5 + (focal * top.y) / top.z;
+      const bx = W * 0.5 + (focal * bot.x) / bot.z, by = H * 0.5 + (focal * bot.y) / bot.z;
+      const wa = (focal * 16) / top.z, wb = (focal * (L.r || 46) * 1.7) / bot.z;
+      const gr = g.createLinearGradient(ax, ay, bx, by);
+      gr.addColorStop(0, "rgba(255,226,178,0.13)");
+      gr.addColorStop(1, "rgba(255,226,178,0)");
       g.beginPath();
       g.moveTo(ax - wa, ay); g.lineTo(ax + wa, ay); g.lineTo(bx + wb, by); g.lineTo(bx - wb, by);
       g.closePath();

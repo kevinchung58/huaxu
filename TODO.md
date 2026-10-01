@@ -38,6 +38,33 @@
 - **門**：door 形狀加兩側 lit jamb、fanlight 加亮、門前地面灑光池；街上三門的 over-door glow 加強。
 - 驗證：walk 166/166、chain 0、e2e 0、probe 4500<4700、impeccable 0、lane-shot 兩頁 0 FAIL。
 
+## 0c. 第三輪回饋（同日）：「整個物件真實度太差」＋ skills 調查
+
+使用者懷疑缺了 repo 要求的 skills。調查結果：**`.claude/skills` 整個不存在**——AGENTS.md 規定的
+設計 skill 包（anthropics/skills 的 frontend-design、theme-factory；pbakaus/impeccable；mattpocock/skills）
+是 local-only、gitignored，所以這份 checkout 從來沒裝過。已照 AGENTS.md 的來源清單全部裝回
+`.claude/skills/`（含 `.claude/agents/`）。
+
+接著照 frontend-design 的流程「自己進去看、截圖、critique、修」，用 lane-shot 重拍兩頁逐格看，
+找出真實度差的具體原因並修掉（都在 `js/site.js` renderer 與 `_gen_html.py` record）：
+
+- **紙板感的根源＝一大片 quad 只有一個光照值**：
+  - 牆面：record 標 `grad: true` 的高牆（Toronto 廳的 plaster）垂直切成 240 cm 切片，每片各自問 lamp 要光照→高度方向有光的衰減。（grad-gated：不標的帶不切，fill 預算才守得住。）
+  - 桌面：plinth 頂面從一片蓋子改成 2×2 四片，spot 在桌面畫出會往邊緣衰減的光池。
+  - 瀑布水幕：一片發光白板→三段高度切片（頂亮、底暗）＋原有動的水紋。
+  - 湖桌水面：前後兩片、遠水較亮＋原有 drift 光帶。
+- **物件浮空＝沒有接地陰影**：所有站在地板或桌面的物件（|x| < WALL−40）在腳下畫一片 contact shadow。
+- **燈只有亮點沒有體積**：每盞桌上 spot 加空中光錐（同 lantern 的 cone 手法）。
+- **市場攤位太弱**：record 攤位放大（64/52/40→78/60/46）、雨棚接到櫃面（後高前低）、櫃上加三堆貨色。
+- **天際線窗戶**：每棟 2×3 窗格慢閃，代替原本的零星點。
+- **窒息視角**：最深站點 396 原本站在城市桌正中間（塔身充滿畫面），拉回 296 站在桌前。
+
+### 驗證（本輪結束時）
+
+- walk **166/166**、chain **0**、e2e **0**、probe peak **4557** < 4700、impeccable **[]**、冪等、
+  lane-shot street+toronto **0 FAIL**。
+- node_modules 被沙箱清過：jsdom / @napi-rs/canvas / impeccable 都用 `npm --no-save` 裝回（不進 repo）。
+
 ## 1. 需求總表與現況
 
 | # | 需求 | 現況 | 交付 |
