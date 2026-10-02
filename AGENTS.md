@@ -274,15 +274,19 @@ Reinstall sources:
     and whether it is open. The street row **is** the hub — a walkable outdoor page whose record
     carries one door object per room — and `DISTRICTS` holds each place, taking its page and plates
     from its row so the album and the walk cannot disagree about which room a plate opens onto.
-    Walking out of any room puts you on the street, and the street's doors put you in any room; the
+    Walking out of any room puts you on the street **at that room's own door** — the exit link
+    carries `#at-<room>` and the renderer spawns beside the door it names, facing down the street
+    at the others, so the connection between rooms is a walk, not a teleport — and the street's
+    doors put you in any room; the
     street's own back door opens the album, which is the picker. There is no onward wiring: the old
     Canada→Tokyo→Fukuoka chain is retired, and a `way-on` door anywhere is a regression. Never stack
     two open districts into one page: the renderer reads one island per key, so the second room's
     objects would float in the first room's lane. Adding a place means adding a row, a record, a page
     write, **a door object on the street**, and a gate run — `skills/place-intake` is the checklist.
 
-- **The hub street and three rooms are open:** `street.html` (the hub, outdoors), Canada
-    (`rooms-canada.html`), Tokyo (`rooms.html`), Fukuoka (`rooms-fukuoka.html`). The album's Field
+- **The hub street and three rooms are open:** `street.html` (the hub, outdoors), Toronto
+    (`rooms-toronto.html`, the Little-Canada-style hall of lit tables that replaced the snow
+    walkway), Tokyo (`rooms.html`), Fukuoka (`rooms-fukuoka.html`). The album's Field
     notes wall is **one container of three cards, and the card itself is the door** (`_place_card`
     → `data-place-cards`): press a card, be inside the place. Each card carries the place's cover
     sheet, name and note. The sub-area plates — the gate, the stall row, the lanterns — do **not**

@@ -82,12 +82,11 @@ const click = (w, el) => el && el.dispatchEvent(new w.MouseEvent("click", { bubb
 
 const STREET = "street.html";
 const ROOMS = [
-  { file: "rooms-canada.html",   id: "canada",  backObj: "door-back" },
   { file: "rooms.html",          id: "tokyo",   backObj: "noren" },
   { file: "rooms-fukuoka.html",  id: "fukuoka", backObj: "curtain-back" },
+  { file: "rooms-toronto.html",  id: "toronto", backObj: "door-back" },
 ];
 const STREET_DOORS = [
-  { obj: "door-canada",   expect: "rooms-canada.html" },
   { obj: "door-tokyo",    expect: "rooms.html" },
   { obj: "door-fukuoka",  expect: "rooms-fukuoka.html" },
 ];
@@ -141,12 +140,12 @@ async function main() {
     ok(`${r.id}: boots without console errors`, errors.length === 0, errors.slice(0, 2).join(" | "));
 
     const hud = doc.querySelector("[data-walk-exit]");
-    ok(`${r.id}: HUD exit button exists and has an href`, !!hud && /\.html$/.test(hud?.getAttribute("href") || ""),
+    ok(`${r.id}: HUD exit button exists and has an href`, !!hud && /\.html(#at-[a-z]+)?$/.test(hud?.getAttribute("href") || ""),
        hud ? hud.getAttribute("href") : "missing");
 
     const back = doc.querySelector(`[data-obj="${r.backObj}"]`);
     ok(`${r.id}: back prop "${r.backObj}" exists and leaves for the street`,
-       !!back && back.dataset.leave === STREET, back?.dataset.leave || "missing");
+       !!back && back.dataset.leave.split("#")[0] === STREET, back?.dataset.leave || "missing");
 
     if (hud && back) {
       ok(`${r.id}: HUD exit href matches back curtain leave`,
@@ -161,7 +160,10 @@ async function main() {
     // "walk out of any room, you are on the street" guarantee.
     const leaves = [...doc.querySelectorAll("[data-leave]")].map((e) => e.dataset.leave);
     ok(`${r.id}: every leave on the page is the street`,
-       leaves.length > 0 && leaves.every((t) => t === STREET), [...new Set(leaves)].join(", "));
+       leaves.length > 0 && leaves.every((t) => t.split("#")[0] === STREET), [...new Set(leaves)].join(", "));
+    ok(`${r.id}: the leave's spawn hash names its own room`,
+       leaves.every((t) => !t.split("#")[1] || t.split("#")[1] === `at-${r.id}`),
+       [...new Set(leaves)].join(", "));
 
     if (back) {
       navs.length = 0;
@@ -187,7 +189,8 @@ async function main() {
   out.push("\n-- activities album --");
   const act = fs.readFileSync("activities.html", "utf8");
   /* The Field notes wall is ONE container of three cards, the card itself the door. */
-  const WANT = { canada: "rooms-canada.html", tokyo: "rooms.html", fukuoka: "rooms-fukuoka.html" };
+  const WANT = { toronto: "rooms-toronto.html", tokyo: "rooms.html",
+                 fukuoka: "rooms-fukuoka.html" };
   const wrapAt = act.indexOf("data-place-cards");
   ok("album: the place-card container exists", wrapAt >= 0);
   for (const [id, page] of Object.entries(WANT)) {
@@ -199,7 +202,8 @@ async function main() {
     ok(`album: the ${id} card is the door to ${page}`, href === page, href || "missing");
     ok(`album: the ${id} card carries its cover sheet`, card.includes(`IMG/${id}-cover.jpg`));
   }
-  ok("album: three cards in one container", (act.match(/data-place-card="/g) || []).length === 3);
+  ok("album: one card per place in one container",
+     (act.match(/data-place-card="/g) || []).length === Object.keys(WANT).length);
   ok("album: plates carry no doors of their own", !/<a class="ig-room"/.test(act));
   ok("album: no field-notes frames in the roll (the cards replaced them)",
      !/id="ig-field-notes-/.test(act));
