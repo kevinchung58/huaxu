@@ -2,6 +2,63 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-02 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0i. 第九輪（2026-10-02）：Toronto 廳「物件站回桌上、廳會動了」→ 五個真 bug
+
+使用者選「繼續修 Toronto 廳的物件真實度」。先把**動態**當成第一個量測目標（業主要過 Little Canada
+那種明顯動態，但 gate 從來沒驗證過「動畫看不看得到」）：真瀏覽器在每一站、每一個視角各拍兩張
+間隔 1.6 s 的圖，算「有多少 % 的像素變了」。結果：**整個廳幾乎是靜止的**（0.04%–2.1%）。往回追出五個 bug：
+
+1. **沒有一個模型站在它的桌上**（最嚴重）。emitter 把物件的 **z 位置**乘 `Z_SCALE`（2.9），
+   但**自己的尺寸 w/h/d 不乘**——所以 record 裡排好的一組東西會被「拉開」：城市桌的內容散在
+   ±174 walk cm，桌子卻只有 150 深（±75）。結果電車＋軌道**浮在桌前方 99 cm 的空中**、圓頂在桌後
+   24 cm、市場三攤＋兩個木箱＋七棵樹全部懸空。修法：**桌子的佔地面積才是 props 被定位的依據**，
+   所以改的是桌子（`plinth-sky`/`plinth-market` 的 `d` 150→300），少數 props 微調 z。
+   兩張 3 m 桌因此會在轉角互穿，於是把市場桌整組（桌子＋攤位＋木箱＋樹＋spot 燈＋frame＋station）
+   一起往後退 30 record cm 讓開。
+2. **畫面正中央拖曳不能轉頭**。`pointerdown` 遇到 `.walk-hit` 就 `return`，而一間有內容的房間
+   **畫面中央通常就是某個物件的 press box**——於是不會建立 drag、pointerup 也判定不成 tap，
+   **整個手勢什麼都不會發生**。量到：拖 188 px（26°）只有 **0.33%** 的畫面變化。
+   改成「有位移就是轉頭、沒位移才是按壓」；**抓到物件時不做 `setPointerCapture`**——有了 capture
+   target override，後續的 `click` 會被丟給 capture 的元素，那顆按鈕就永遠收不到它應得的按壓。
+   修完 **83.9%**；tap 物件仍然開卡片 ✓，轉頭不會誤開 ✓。
+3. **任何拖曳都會把 idle pump 掐死**。`pointermove` 直接 `draw()` 不請 frame，而 tick 只在身體移動時
+   才排下一個——所以一轉頭就停在那一格，**整個房間凍結**。修法：`release()` 把 pumping 交回去。
+4. **水根本沒有在流**。瀑布的條紋是「釘在幕上、左右晃 2 cm」——2 cm 是幕寬的 1%、從最近的站看是
+   4 px，所以量起來就是一張靜圖。改成條紋**由上往下走完整個高度再從頂端重來**。渡輪（週期 29 s）
+   與電車（21 s）也都約砍半。
+5. **城市桌那一站把 CN Tower 切掉了**。從 858 walk cm 看，塔頂投影在視窗上方 210 px——也就是說
+   「by the city table」這一站看不到全場的主角。站點退到 652，塔／天際線／圓頂／電車同框。
+
+### 這輪學到的量測方法（重要，下次直接抄）
+- **「動態看不看得到」＝同視角間隔 1.6 s 兩張圖的像素差異 %**。全廳 0.04% 就是「根本沒在動」。
+- **`_vis.mjs` 是最好用的一支**：renderer 每幀會把每個物件的 hit box 定位/隱藏，所以
+  `document.querySelectorAll('[data-obj]')` 的 rect + `visibility` 就能知道**這一站到底看得到什麼**
+  ——不需要眼睛就能發現「站點看不到它自己命名的桌子」。
+- **拖曳手勢要用真 `page.mouse`，而且要先確認 `elementFromPoint(512,384)` 不是 `.walk-hit`**——
+  在做完 bug 2 之前，我所有「左右轉 79°」的量測**全部是無效的**（轉不動，量到的只是 idle 動畫）。
+  這也解釋了為什麼更早期 browser-shot 的 `-right`/`-left` 幀跟 `-ahead` 數字幾乎一樣。
+- `lane-shot.mjs` 的 frame gate 一直過，因為它只檢查「有沒有畫出東西」，不檢查「有沒有在動」。
+
+### 新增的永久關卡
+`.verify/browser-shot.mjs` 多一個 **turn gate**：從畫面正中央拖 188 px，斷言畫面變化 > 5%
+（0.33% 就是手勢被吃掉的特徵）。jsdom 沒有 hit-testing，所以這個 bug 只能靠真瀏覽器抓——
+這正是為什麼它能活到現在。四頁全過：94% / 84% / 84% / 56%。
+（gate 會先按 Esc 關掉可能開著的 card，否則中心點是 card 不是場景。）
+
+### ⚠️ 沙箱陷阱（這輪真的踩到）
+**branch 會在你回合中途被重設**。我這輪第一次 push 被 reject：本地的 `arena/01a0fb1d-huaxu`
+被退回 `018315b`，而 0h 那兩個 story commit 只剩在 remote 上；**但工作樹的內容還在**。
+所以我 `git add -A` 出來的 commit 同時含「story 修復 + Toronto 修改」，parent 卻是 018315b → 歷史分岔。
+修法（安全、不丟東西）：`git branch backup <old>` → `git reset --soft origin/arena/01a0fb1d-huaxu`
+→ staged 的就會**正好只剩 Toronto 那段**（用 `git diff --cached` 確認 story 相關行數 = 0）→ 重新 commit。
+`reset --soft` 不動工作樹與 index，所以不會掉任何東西。下一位遇到「push rejected」**不要**直接 pull/merge。
+
+### 驗證（本輪結束時）
+walk **167/167**、chain **0**、e2e **0**、probe **4604** < 4700、impeccable **[]**、冪等；
+lane-shot toronto **0 FAIL**；browser-shot 四頁 turn + story gate **全 PASS**。
+
+---
+
 ## 0h. 第八輪（2026-10-02）：「讀完 skills/AGENTS.md 做該做的事」→ 真瀏覽器量測抓到三個 story plate 的 bug
 
 先做完 onboarding（讀 `AGENTS.md`、`skills/district-author`、`skills/place-intake`、`SPEC-gallery-3d.md`、
