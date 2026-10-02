@@ -158,6 +158,34 @@ bbox」，透視下第四角彎出平行四邊形，clip 區域蓋不到→每�
 驗證：walk 166/166、chain 0、e2e 0、probe 4604<4700、impeccable []、冪等、
 lane-shot 兩頁 0 FAIL、browser-shot 真瀏覽器入口/斜視/走動帧乾淨。
 
+## 0g. 第七輪（同日）：E2E 真瀏覽器到位＋「看不到正確的」真根因
+
+使用者：「toronto 物件有沒有調整好？你肯定可以進去 e2e 看。」
+
+### E2E 真瀏覽器（可以做到，做到了）
+
+- 路線：`puppeteer-core` + `@sparticuz/chromium`（chromium 二進制**裝在 npm 包裡**，不走被擋的
+  Google/Playwright CDN）＋包內附的 `al2023.tar.br` 共享庫（brotli 解壓到 /tmp/al2023，
+  `LD_LIBRARY_PATH` 指過去）。不需要 apt。
+- `.verify/browser-shot.mjs`：真瀏覽器開房間頁、截圖；本輪升級成**點頁面自己的 station chips**
+  （`[data-walk-stop]`，同 lane-shot）每站拍 ahead/right/left——不再盲走撞牆。
+- 沙箱重置後重跑只需：npm 裝依賴、解壓 al2023、起 8080、`LD_LIBRARY_PATH=... node .verify/browser-shot.mjs <dir>`。
+
+### 「看不到正確的」真根因（用 E2E instrument 抓到的）
+
+**pic 面的 uv v 是負的（跟牆同慣例），但 emit 的 drawImage 把圖畫在正 v 區**——圖與 clip 區只交
+一條邊，於是**所有房間的畫板/cover 在真瀏覽器裡永遠是空白灰板**（lane-shot 沒有圖，所以我的
+截圖也一直看不出來）。修：9 參數 drawImage 畫到 quad 的 uv bounding box。這修的是全站所有
+房間的 plates，不只 Toronto。
+
+同輪一併修掉的：affine 在掠射角失敗時 pat 面 fallback 成 void  navy 的黑三角（改 fallback 成
+該材質的平色）；廳牆換 gallery 材質（hallplaster/hallbase，不再是巷弄磚＋螺絲孔混凝土）。
+
+### 驗證
+
+walk 166/166、chain 0、e2e 0、probe 4604<4700、impeccable []、冪等、兩頁 lane-shot 0 FAIL；
+E2E 22 格真瀏覽器截圖確認：畫板出現、背景畫與前景模型同框、牆完整無鋸齒。
+
 ## 1. 需求總表與現況
 
 | # | 需求 | 現況 | 交付 |

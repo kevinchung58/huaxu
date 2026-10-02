@@ -1388,8 +1388,15 @@ function leaveOverlay(root, trigger) {
     if (!fitted && q.mode === "pic" && q.img && q.img.complete && q.img.naturalWidth) {
       const m = affine(q.pts, q.pts.map((p) => [p.u, p.v]));
       if (m) {
+        // The image must land on the quad's own uv box: the authored uv runs v-negative (the
+        // wall's convention), so drawing it at 0..h painted it onto the mirror side of the clip
+        // and every plate in every room rendered as a blank slab.
+        const us = q.pts.map((p) => p.u), vs = q.pts.map((p) => p.v);
+        const u0 = Math.min.apply(null, us), u1 = Math.max.apply(null, us);
+        const v0 = Math.min.apply(null, vs), v1 = Math.max.apply(null, vs);
         g.save(); path(); g.clip(); g.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
-        g.drawImage(q.img, 0, 0, q.img.naturalWidth, q.img.naturalHeight); g.restore();
+        g.drawImage(q.img, 0, 0, q.img.naturalWidth, q.img.naturalHeight, u0, v0, u1 - u0, v1 - v0);
+        g.restore();
       }
     }
     // Warm where a source reaches, then the air. The murk is navy rather than black on purpose:

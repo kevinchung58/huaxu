@@ -54,14 +54,20 @@ await sleep(400); await shot("03-mouth-yaw-left");
 await page.mouse.down(); await page.mouse.move(512, 384, { steps: 8 }); await page.mouse.up();
 await sleep(300);
 
-// walk in stages, shooting what a visitor meets on the way
-await page.click("[data-walk-view]").catch(() => {});
-for (const [name, ms] of [["04-walk-1", 1600], ["05-walk-2", 1600], ["06-walk-3", 1600], ["07-deep", 1600]]) {
-  await page.keyboard.down("ArrowUp");
-  await sleep(ms);
-  await page.keyboard.up("ArrowUp");
-  await sleep(350);
-  await shot(name);
+// the page's own station chips: stand where the room publishes stops, look three ways
+const stops = await page.$$("[data-walk-stop]");
+let n = 3;
+for (let i = 0; i < stops.length; i++) {
+  await stops[i].click();
+  await sleep(1500);
+  await shot(`${String(n).padStart(2, "0")}-stop-${i}-ahead`); n++;
+  await page.mouse.move(512, 384);
+  await page.mouse.down(); await page.mouse.move(700, 384, { steps: 6 }); await page.mouse.up();
+  await sleep(400); await shot(`${String(n).padStart(2, "0")}-stop-${i}-right`); n++;
+  await page.mouse.down(); await page.mouse.move(320, 384, { steps: 8 }); await page.mouse.up();
+  await sleep(400); await shot(`${String(n).padStart(2, "0")}-stop-${i}-left`); n++;
+  await page.mouse.down(); await page.mouse.move(512, 384, { steps: 6 }); await page.mouse.up();
+  await sleep(300);
 }
 await browser.close();
 console.log(`browser-shot: frames in ${OUT}`);
