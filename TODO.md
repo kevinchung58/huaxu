@@ -374,7 +374,7 @@ walk 167/167 · chain 0 · e2e 0 · cost peak 4604/4700 · impeccable `[]` ·
 turn gate：toronto **84.89%**（原 78.17%）／rooms 93.12%／fukuoka 83.73%／street 5.46%
 （`index` 不適用此 gate：它是落地頁，沒有可走的房間。）
 新增兩個常駐 harness：`.verify/verify-tables.mjs`（每站取景）、`.verify/verify-motion.mjs`（逐物件動作）。
-`VER` 由 sha1(css+js) 自動更新，本輪 `253e6fc1ca`。
+`VER` 由 sha1(css+js) 自動更新，本輪 **`2929633fbc`**（五個頁面一致；0i 輪的 `b2aa3d0a2e` 已過期）。
 
 ### 量測方法（下一位別再踩）
 
