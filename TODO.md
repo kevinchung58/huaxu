@@ -1,6 +1,55 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-01 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-02 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0h. 第八輪（2026-10-02）：「讀完 skills/AGENTS.md 做該做的事」→ 真瀏覽器量測抓到三個 story plate 的 bug
+
+先做完 onboarding（讀 `AGENTS.md`、`skills/district-author`、`skills/place-intake`、`SPEC-gallery-3d.md`、
+`.impeccable/config.json`），確認既有 gate 全綠（walk 166/166、chain 0、e2e 0、probe 4604<4700、
+impeccable []、冪等），才去「看」站點。
+
+**重要：本輪我沒有視覺能力**，看不到 PNG。所以改用**量測代替眼睛**：真瀏覽器（`puppeteer-core` +
+`@sparticuz/chromium`，見 §0g 的跑法）跑每一站的每一個視角，逐格算 mean luminance／色彩數／
+最大單色占比／壓黑比例，再對數字挑異常。這套方法一次就抓到三個 jsdom 門檻永遠抓不到的 bug
+（jsdom 沒有 layout，所以它只能證明「renderer 要求畫什麼」）：
+
+1. **story reel 六格全部留在排版裡**（最嚴重）。`#room-plate.is-rail .story-frame { display: grid }`
+   的權重壓過 UA 的 `[hidden]{display:none}`，所以 `paint()` 對其他五格下的 `hidden` 完全無效。
+   結果每一格被拉成 3665 px 高、該看的那一格被推到畫面外約 3500 px 處，按「Play from here」
+   或在巷子裡走到畫框前按 E，開出來的是一整片空白的黑板。修法：`#room-plate .story-frame[hidden]
+   { display:none }`——**要帶 id 權重，而且要寫在那條 display:grid 之後**，因為平手時是順序決定勝負。
+   修完：365×500 在畫面上、panel rows 3px/630.7px/32.4px/43.5px（=768，正確）。
+2. **story 的背景圖 404**。`--fill` 用相對路徑 `url("IMG/x.jpg")` 設在 inline style，但
+   `background-image: var(--fill)` 宣告在 `css/site.css`——**自訂屬性裡的相對 URL 是在「被使用的地方」
+   解析**，所以瀏覽器去要 `css/IMG/x.jpg`，每一格都 404，故事背後永遠是空的。
+   修法：`new URL(raw, document.baseURI).href` 在 JS 端就解析成絕對。
+   （注意：`verify-walk.mjs` 原本有一條 assert 在**斷言這個相對寫法**，等於在斷言 bug——已改成斷言
+   意圖：必須是絕對 URL 且以當下那一格的檔名結尾。）
+3. **故事沒有佔滿螢幕**。`#room-plate.is-rail .modal-panel { max-width: min(36rem, 92vw) }`（上一輪才加的，
+   壓過前面那條 `max-width:none`）把全版型 panel 鎖在 576 px，1024 寬的螢幕左右兩側露出兩條裸 backdrop
+   `#05080f`，模糊背景在 panel 邊界就斷掉。改成 `max-width: none`：背景 flatTop 43.8%→11.7%、
+   mean 47.7→65.1，左右兩側開始出現該格自己影像的模糊色。
+4. 承 3，背景變大之後多倫多那幾格（夜間暗圖）有 39.4% 的畫面落在 L≈15，低於本站自己寫的
+   「任何被畫出來的表面 L*20 起跳」（`skills/district-author` §3）。`brightness(0.5)`→`0.7`，
+   最大單色占比 39.4%→20.5%、暗部 L≈15→≈18–22；最亮的東京那格仍在中間調沒爆白。
+   （這條是**美感判斷**，不是硬 bug——若使用者不喜歡，改回 0.5 即可，gate 不會抗議。）
+
+### 本輪加的検證（因為這三個 bug 全是 166 條 assert 抓不到的）
+- `.verify/verify-walk.mjs`：新增「`[hidden]` 規則必須寫在 display:grid 之後」的結構 assert（+1 條，
+  現 167/167）；`--fill` 那條改成斷言絕對 URL。
+- `.verify/browser-shot.mjs`：新增**真瀏覽器 layout gate**（原本它只是拍照工具）。跑完各站之後開
+  story plate，斷言「畫面上那一格必須真的在畫面內、真的載入、且只有一格在 flow 裡」，失敗才 exit 1；
+  沒有 reel 的頁面（street）跳過不算通過。這是全站唯一能證明 layout 的關卡。
+
+### 量測腳本（用過即刪，做法記在這裡）
+- `frame-metrics`：逐格算 mean/p05/p95/colours/flatTop/crushed，`mean<90 || colours<12 || flatTop>45%
+  || crushed>25%` 就標旗。異常格再用 `px-probe` 取九宮格 RGB＋前四名顏色占比定位。
+- 兩支都放 `.verify/` 下（`@napi-rs/canvas` 要在 repo 的 node_modules 裡才 import 得到），用完刪除。
+
+### 驗證（本輪結束時）
+walk **167/167**、chain **0**、e2e **0**、probe **4604** < 4700、impeccable **[]**、冪等；
+browser-shot 四頁 story gate **全 PASS**（street 無 reel 跳過）；lane-shot street / toronto **0 FAIL**
+（街道最遠兩站 mean 65、130 colours，被 gate 標為 "open night ground"，是設計如此不是 bug）。
 
 ## 0. 本輪（2026-10-01）使用者需求與處理結果
 
