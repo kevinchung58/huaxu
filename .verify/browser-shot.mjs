@@ -42,6 +42,18 @@ await sleep(1200);   // let the plates arrive and the first frames settle
 const imgs = await page.evaluate(() => Array.from(document.images).map((i) => [i.src.split("/").pop(), i.complete, i.naturalWidth]));
 console.log("IMAGES", JSON.stringify(imgs));
 
+const diffPct = async (a, b) => {
+  const { createCanvas, loadImage } = await import("@napi-rs/canvas");
+  const ia = await loadImage(a), ib = await loadImage(b);
+  const c = createCanvas(ia.width, ia.height), g = c.getContext("2d");
+  g.drawImage(ia, 0, 0); const A = g.getImageData(0, 0, ia.width, ia.height).data;
+  g.clearRect(0, 0, ia.width, ia.height); g.drawImage(ib, 0, 0);
+  const B = g.getImageData(0, 0, ia.width, ia.height).data;
+  let n = 0;
+  for (let i = 0; i < A.length; i += 4)
+    if (Math.abs(A[i]-B[i]) + Math.abs(A[i+1]-B[i+1]) + Math.abs(A[i+2]-B[i+2]) > 8) n++;
+  return +(n / (A.length / 4) * 100).toFixed(2);
+};
 const shot = (n) => page.screenshot({ path: `${OUT}/${n}.png` });
 await shot("01-mouth");
 
@@ -75,6 +87,37 @@ for (let i = 0; i < stops.length; i++) {
    six frames stayed in flow at thousands of pixels each, and every story opened on an empty
    field while the harness reported 166/166. Skipped (not passed) on a page with no reel. */
 let layoutFail = 0;
+
+/* Turning is the one verb with no keyboard twin that a click cannot fake, and it is the one jsdom
+   cannot test: it has no hit-testing, so a pointerdown dispatched at an element always lands on
+   that element. In a real browser the centre of a dressed room is usually a thing — an object's
+   press box — and for a whole release the turn bailed out on exactly that, so grabbing the middle
+   of the screen did nothing: no drag was created and no tap was left to press with either. The
+   measurement is deliberately crude (how much of the frame moved) because any real turn moves
+   almost all of it; 0.33% is what a swallowed gesture looks like. */
+{
+  /* A card left open sits in the middle of the screen and is the right thing to grab-proof; the
+     turn under test is the space's, so unwind first. Esc closes one layer at a time and only then
+     leaves, which is the contract the walk keeps. */
+  await page.keyboard.press("Escape");
+  await sleep(500);
+  const before = `${OUT}/90-turn-before.png`, after = `${OUT}/90-turn-after.png`;
+  const centre = await page.evaluate(() => {
+    const e = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+    return e ? (e.dataset && e.dataset.obj) || e.className || e.tagName : "nothing";
+  });
+  await page.screenshot({ path: before });
+  await page.mouse.move(512, 384); await page.mouse.down();
+  await page.mouse.move(700, 384, { steps: 6 }); await page.mouse.up();
+  await sleep(700);
+  await page.screenshot({ path: after });
+  const d = await diffPct(before, after);
+  if (!(d > 5)) { layoutFail++; console.log(`FAIL turn from the centre: only ${d}% moved (grabbed ${centre})`); }
+  else console.log(`PASS turn from the centre: ${d}% moved (grabbed ${centre})`);
+  await page.mouse.move(512, 384); await page.mouse.down();
+  await page.mouse.move(324, 384, { steps: 6 }); await page.mouse.up(); await sleep(500);
+}
+
 const playBtn = await page.$("[data-play]");
 if (playBtn) {
   await page.evaluate(() => document.querySelector("[data-play]").click());

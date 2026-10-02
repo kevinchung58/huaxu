@@ -647,6 +647,7 @@ function leaveOverlay(root, trigger) {
   let zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
   let vx = 0, vd = 0, phase = 0, bob = 0, roll = 0, raf = 0, last = 0, here = -1, reach = null;
   let gliding = null, keys = new Set(), stick = null, down = null, hereFar = Infinity, hereShown = -1;
+  let wasDrag = false;   // the last gesture travelled, so the click it leaves behind is not a press
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const num = (el, prop) => parseFloat(el.style.getPropertyValue(prop)) || 0;
@@ -2344,11 +2345,13 @@ function leaveOverlay(root, trigger) {
                             ZERO8, "flat", "#4a7096");
           if (sheet) { sheet.lit = l * 0.78; drawn.push(sheet); }
         });
-        for (let i = 0; i < 5; i++) {
-          const sx = m.x - hw * 0.7 + (i + 0.5) * (hw * 1.4 / 5) + Math.sin(T * 2.2 + i * 1.7) * 2;
+        for (let i = 0; i < 6; i++) {
+          const sx = m.x - hw * 0.7 + (i + 0.5) * (hw * 1.4 / 6);
+          const fall = ease ? ((T * 0.32 + i / 6) % 1) : 0.45;
+          const yTop = m.y + m.h * (1 - fall), yBot = Math.max(m.y, yTop - m.h * 0.32);
           const a = 0.34 + 0.14 * Math.sin(T * 3.1 + i * 2.3);
-          const st = add(C, [[sx - 2, m.y, zf - 1], [sx + 2, m.y, zf - 1],
-                             [sx + 2, m.y + m.h, zf - 1], [sx - 2, m.y + m.h, zf - 1]],
+          const st = add(C, [[sx - 2, yBot, zf - 1], [sx + 2, yBot, zf - 1],
+                             [sx + 2, yTop, zf - 1], [sx - 2, yTop, zf - 1]],
                          ZERO8, "flat", `rgba(255,255,255,${a.toFixed(2)})`);
           if (st) { st.lit = 1.15; drawn.push(st); }
         }
@@ -2368,7 +2371,7 @@ function leaveOverlay(root, trigger) {
                           "pat", PATS.water || "#5f7d99");
         if (basin) { basin.lit = 0.9; drawn.push(basin); }
         // A tour boat works the basin the way the real one works the mist, on the frame clock.
-        const bx = m.x + (ease ? Math.sin(T * 0.26) * hw * 0.55 : hw * 0.2);
+        const bx = m.x + (ease ? Math.sin(T * 0.4) * hw * 0.55 : hw * 0.2);
         facesOf({ x: bx, y: m.y + 2, z: zf - 6, w: 16, h: 5, d: 7, ry: 0 }).forEach((f) => {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
@@ -2402,7 +2405,7 @@ function leaveOverlay(root, trigger) {
       } else if (shape === "boat") {
         /* The ferry crosses the sheet on the frame clock: a hull, a cabin, a wake. Reduced
            motion moors it mid-lake. */
-        const dx = ease ? Math.sin(T * 0.22) * 52 : 8;
+        const dx = ease ? Math.sin(T * 0.4) * 78 : 10;
         facesOf({ ...m, x: m.x + dx }).forEach((f) => {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
@@ -2504,7 +2507,7 @@ function leaveOverlay(root, trigger) {
       } else if (shape === "tram") {
         /* A red streetcar shuttles the track on the frame clock; reduced motion parks it mid-run.
            The window band is lit from within — a tram at night is a lantern that moves. */
-        const dx = ease ? Math.sin(T * 0.3) * (m.w / 2 - 20) : 10;
+        const dx = ease ? Math.sin(T * 0.5) * (m.w / 2 - 20) : 10;
         facesOf({ ...m, x: m.x + dx, w: 30, d: 9, h: 11 }).forEach((f) => {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
@@ -3026,15 +3029,25 @@ function leaveOverlay(root, trigger) {
   });
 
   view.addEventListener("pointerdown", (event) => {
-    // A grab that starts on a wall thing is a press on a control, not a turn: the two gestures have
-    // to stay separable, or tapping the vending machine would swing the camera. And only the primary
-    // button turns the head — pointerdown fires for the right and middle buttons too, and a scroll
-    // widget or a context menu arriving mid-swing is the difference between a camera and a fight.
+    // Only the primary button turns the head — pointerdown fires for the right and middle buttons
+    // too, and a scroll widget or a context menu arriving mid-swing is the difference between a
+    // camera and a fight.
     if (event.button !== 0) return;
-    if (event.target.closest(".walk-hit")) return;
-    down = { x: event.clientX, y: event.clientY, yaw, pitch, id: event.pointerId, moved: 0 };
+    /* A grab that starts on a wall thing is still a turn; only the *tap* is a press.
+       Excluding the hit boxes here used to be the rule, and it made the camera unturnable from
+       most of the screen: in a dressed room something stands at the centre more often than not,
+       so the pointerdown was swallowed, no drag was ever created, and the pointerup found no tap
+       either — the gesture did nothing at all, and the visitor concluded the space was a picture.
+       The separation this was protecting lives one line down instead: a grab that travels is a
+       look, one that does not is a press on whatever was under it. */
+    down = { x: event.clientX, y: event.clientY, yaw, pitch, id: event.pointerId, moved: 0,
+             obj: event.target.closest(".walk-hit") };
+    wasDrag = false;
     view.classList.add("is-dragging");
-    if (view.setPointerCapture) view.setPointerCapture(event.pointerId);
+    /* No capture when the grab started on a thing: with a capture target override the browser
+       dispatches the follow-up `click` at the capturing element, and the thing's own button
+       would never see the press it earned. */
+    if (view.setPointerCapture && !down.obj) view.setPointerCapture(event.pointerId);
   });
   view.addEventListener("pointermove", (event) => {
     if (!down || event.pointerId !== down.id) return;
@@ -3046,20 +3059,37 @@ function leaveOverlay(root, trigger) {
     draw();
     checkReach();
   });
-  const release = () => { down = null; view.classList.remove("is-dragging"); };
+  /* Releasing a grab has to hand the pumping back, or the lane dies the first time somebody looks
+     around. `pointermove` paints directly and never asks for a frame, and the tick only schedules
+     its own successor when the body is moving — so a drag that ended at rest left nothing asking
+     for the next one, and the whole room froze on the frame the gesture happened to stop on.
+     Measured: two frames a second and a half apart were byte-identical from every station after
+     a turn, which is a screenshot wearing the clothes of a space. */
+  const release = () => { down = null; view.classList.remove("is-dragging"); startPulse(); };
   /* A tap that never became a look is a press. `E` has a key and no finger, so on a phone every wall
      thing was pressable and none of them could be pressed — which is what "the interaction is off"
      reported. A tap with a card open closes it instead, because the same finger that opened something
      should be able to put it down. */
   const up = () => {
     const tap = !!down && down.moved < 8;
+    const onObj = !!down && !!down.obj;
     release();
+    wasDrag = !tap;
     if (!tap) return;
+    if (onObj) return;              // the thing's own button gets the click, and it is the press
     if (card && !card.hidden) { hideCard(); return; }
     if (reach) act(reach);
   };
   view.addEventListener("pointerup", up);
   view.addEventListener("pointercancel", release);
+  /* A look that ended on the thing it started on is still a look, not a press: swallow the click a
+     drag happens to leave behind, or turning the camera would also open whatever you grabbed. */
+  view.addEventListener("click", (event) => {
+    if (!wasDrag) return;
+    wasDrag = false;
+    event.preventDefault();
+    event.stopPropagation();
+  }, true);
   // A menu opened over a drag would strand `is-dragging` on the layer and leave the cursor grabbing
   // forever, so the only right-click that is refused is the one that arrives while a turn is live.
   view.addEventListener("contextmenu", (event) => { if (down) event.preventDefault(); });
