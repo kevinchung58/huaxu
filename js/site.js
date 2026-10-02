@@ -2404,17 +2404,31 @@ function leaveOverlay(root, trigger) {
         if (sheen) { sheen.lit = 1.1; drawn.push(sheen); }
       } else if (shape === "boat") {
         /* The ferry crosses the sheet on the frame clock: a hull, a cabin, a wake. Reduced
-           motion moors it mid-lake. */
-        const dx = ease ? Math.sin(T * 0.4) * 78 : 10;
-        facesOf({ ...m, x: m.x + dx }).forEach((f) => {
+           motion moors it mid-lake.
+
+           The crossing runs along the hull's own long axis. A table stands beside the walk, so
+           the visitor sees it across its short side: a boat pointing down the lane would paddle
+           away from the camera and read as a bob, not a crossing. Moored at ninety degrees the
+           hull runs along the axis `facesOf` swaps in, which is the one the visitor reads as
+           left-to-right. */
+        const along = Math.abs(m.ry) > 45;
+        /* 62, not 78: the wake is drawn a hull and a half behind the boat, and at the end of a
+           longer crossing it would lie on the sand past the water's edge. */
+        const run = ease ? Math.sin(T * 0.4) * 62 : 10;
+        const dx = along ? 0 : run, dz = along ? run : 0;
+        facesOf({ ...m, x: m.x + dx, z: m.z + dz }).forEach((f) => {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
           if (toward <= 0) return;
           const q = add(C, f.p, ZERO8, "flat", mix(base, f.k + (f.n[1] === 1 ? 0.1 : 0)));
           if (q) { q.lit = lit * 1.15; drawn.push(q); }
         });
-        const wake = add(C, [[m.x + dx - m.w * 1.6, m.y + 1, m.z - 2], [m.x + dx - m.w * 0.6, m.y + 1, m.z - 2],
-                             [m.x + dx - m.w * 0.6, m.y + 1, m.z + 2], [m.x + dx - m.w * 1.6, m.y + 1, m.z + 2]],
+        const WX = m.x + dx, WZ = m.z + dz;   /* the wake trails the hull whichever way it runs */
+        const wake = add(C, along
+                         ? [[WX - 2, m.y + 1, WZ - m.w * 1.6], [WX + 2, m.y + 1, WZ - m.w * 1.6],
+                            [WX + 2, m.y + 1, WZ - m.w * 0.6], [WX - 2, m.y + 1, WZ - m.w * 0.6]]
+                         : [[WX - m.w * 1.6, m.y + 1, WZ - 2], [WX - m.w * 0.6, m.y + 1, WZ - 2],
+                            [WX - m.w * 0.6, m.y + 1, WZ + 2], [WX - m.w * 1.6, m.y + 1, WZ + 2]],
                          ZERO8, "flat", "rgba(226,238,248,0.4)");
         if (wake) { wake.lit = 1.1; drawn.push(wake); }
       } else if (shape === "stall") {
