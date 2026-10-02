@@ -1938,6 +1938,14 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   margin: 0;
   text-align: center;
 }
+/* `[hidden]` is a UA rule of one class; `#room-plate.is-rail .story-frame` is an id and a class, so
+   the reel's own `display: grid` was beating it and all six frames stayed in flow — every one of them
+   stretched to the height the blown-up row gave it, which pushed the frame you are meant to be
+   looking at thousands of pixels below the fold and left the screen showing an empty plate. A reel
+   shows one frame at a time, so a frame told to hide has to actually leave the layout. */
+#room-plate .story-frame[hidden] {
+  display: none;
+}
 .story-frame img {
   width: auto;
   max-width: 100%;

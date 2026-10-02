@@ -398,9 +398,25 @@ ok("a story's bars are one per frame, and the current one is the bar that fills"
    segEls.length === 6 && segEls[nowIdx].classList.contains("is-now")
      && segEls.every((sg) => !sg.firstChild.getAttribute("style")),
    segEls.map((sg) => sg.className.replace("story-seg", "·") || "pending").join(" "));
-ok("the ground behind the story is the frame's own pixels, so the screen changes with the frame",
-   /url\("IMG\//.test(panel0.style.getPropertyValue("--fill")),
-   panel0.style.getPropertyValue("--fill").slice(0, 40));
+const fillVal = panel0.style.getPropertyValue("--fill");
+const shownImg = plate.querySelector(`[data-story-frame="${nowIdx}"] img`);
+const shownFile = shownImg ? shownImg.getAttribute("src").split("/").pop() : "";
+/* Absolute, not relative: a relative `url()` parked in a custom property is resolved where the
+   property is *consumed*, and `background-image: var(--fill)` is written in `css/site.css` — so the
+   relative form was being asked for as `css/IMG/<file>.jpg` and every story played on an empty
+   field. This used to assert the relative form, which is to say it asserted the defect. */
+ok("the ground behind the story is the frame's own pixels, resolved against the document, not the stylesheet",
+   /^url\("(?:https?:\/\/|\/)/.test(fillVal) && !!shownFile && fillVal.endsWith(`${shownFile}")`),
+   fillVal.slice(0, 72));
+/* The reel shows one frame at a time by setting `hidden` on the others. `[hidden]` is a UA rule of
+   one class; the rail's `#room-plate.is-rail .story-frame { display: grid }` out-ranks it, so without
+   an id-qualified rule written *after* it every frame stays in flow and the one you are meant to be
+   looking at is pushed thousands of pixels below the fold. Presence is not enough — order is what
+   breaks the specificity tie, so the assertion is about both. */
+const gridAt = css.indexOf("#room-plate.is-rail .story-frame {");
+const hiddenAt = css.search(/#room-plate \.story-frame\[hidden\] \{[^}]*display: none/);
+ok("a frame the reel hides leaves the layout — `[hidden]` has to out-rank the rail's own display",
+   gridAt >= 0 && hiddenAt > gridAt, `grid@${gridAt} hidden@${hiddenAt}`);
 ok("全版型: the rail is the screen, not a card that the screen holds",
    /#room-plate\.is-rail \.modal-panel \{[^}]*min-height: 100dvh[^}]*border-radius: 0/.test(css)
      && /--col: min\(100%, calc\(\(100dvh - 7\.5rem\) \* 9 \/ 16\)\)/.test(css)

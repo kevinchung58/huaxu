@@ -69,5 +69,37 @@ for (let i = 0; i < stops.length; i++) {
   await page.mouse.down(); await page.mouse.move(512, 384, { steps: 6 }); await page.mouse.up();
   await sleep(300);
 }
+/* The one layout claim a real browser can make that jsdom cannot, so it is a gate and not a
+   photograph: the reel shows one frame at a time, so the frame on screen has to be *on screen*.
+   It failed here for a whole release — `[hidden]` was losing to the rail's own `display: grid`,
+   six frames stayed in flow at thousands of pixels each, and every story opened on an empty
+   field while the harness reported 166/166. Skipped (not passed) on a page with no reel. */
+let layoutFail = 0;
+const playBtn = await page.$("[data-play]");
+if (playBtn) {
+  await page.evaluate(() => document.querySelector("[data-play]").click());
+  await sleep(1500);
+  const shown = await page.evaluate(() => {
+    const f = document.querySelector("#room-plate .story-frame:not([hidden])");
+    if (!f) return null;
+    const im = f.querySelector("img");
+    const b = im.getBoundingClientRect();
+    return { w: Math.round(b.width), h: Math.round(b.height), top: Math.round(b.top),
+             bottom: Math.round(b.bottom), vh: window.innerHeight, vw: window.innerWidth,
+             inFlow: Array.from(document.querySelectorAll("#room-plate .story-frame"))
+               .filter((el) => getComputedStyle(el).display !== "none").length,
+             loaded: im.complete && im.naturalWidth > 0 };
+  });
+  await shot("99-story-plate");
+  const onScreen = !!shown && shown.w > 40 && shown.h > 40 && shown.loaded
+    && shown.top > -4 && shown.bottom <= shown.vh + 4;
+  if (!onScreen || (shown && shown.inFlow !== 1)) {
+    layoutFail++;
+    console.log(`FAIL story reel: ${JSON.stringify(shown)}`);
+  } else {
+    console.log(`PASS story reel: one frame on screen ${shown.w}x${shown.h} at y=${shown.top}`);
+  }
+}
 await browser.close();
 console.log(`browser-shot: frames in ${OUT}`);
+if (layoutFail) process.exit(1);

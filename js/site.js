@@ -3199,7 +3199,13 @@ function leaveOverlay(root, trigger) {
     // story; `url(...)` of an already-loaded file costs one decode and no bytes.
     if (panel) {
       const src = frames[fi] && frames[fi].querySelector("img");
-      panel.style.setProperty("--fill", src && src.getAttribute("src") ? `url("${src.getAttribute("src")}")` : "none");
+      /* The value is absolute, made from the document's own base. A relative `url()` parked in a
+         custom property is resolved where the property is *consumed* — `background-image:
+         var(--fill)` sits in `css/site.css` — so every frame's ground was being asked for as
+         `css/IMG/<file>.jpg`, 404, and the story played on an empty field instead of its own
+         pixels. Resolving here is the one place that knows which document the file belongs to. */
+      const raw = src && src.getAttribute("src");
+      panel.style.setProperty("--fill", raw ? `url("${new URL(raw, document.baseURI).href}")` : "none");
     }
     if (countEl) countEl.textContent = `${fi + 1} of ${frames.length}`;
   };
