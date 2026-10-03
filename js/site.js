@@ -647,6 +647,7 @@ function leaveOverlay(root, trigger) {
   let zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
   let vx = 0, vd = 0, phase = 0, bob = 0, roll = 0, raf = 0, last = 0, here = -1, reach = null;
   let gliding = null, keys = new Set(), stick = null, down = null, hereFar = Infinity, hereShown = -1;
+  let wasDrag = false;   // the last gesture travelled, so the click it leaves behind is not a press
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const num = (el, prop) => parseFloat(el.style.getPropertyValue(prop)) || 0;
@@ -762,6 +763,29 @@ function leaveOverlay(root, trigger) {
     rects.forEach(([x, y, w, h]) => c.rect(x, y, w, h));
     c.fill();
   };
+  /* The little city's towers at night. A tile is 128 px over 64 cm, so one cell is a 4 cm
+     window -- twice life size at 1:87, which is the cheat every model tower makes, and at the
+     distance this table is seen from it is two pixels of glow, which is what a window in a real
+     skyline is. `v` scatters a different set of lit floors per variant. */
+  const paintSkyline = (v) => (c) => {
+    const cell = 8, n = 128 / cell;
+    c.fillStyle = "#131c2e"; c.fillRect(0, 0, 128, 128);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const h = (x * 53 + y * 97 + x * y * 31 + v * 211) % 100;
+      if (h > 60) {                        // lit floors, warmer towards the top of the tile
+        c.fillStyle = h > 90 ? "rgb(255,242,208)" : "rgb(255,203,132)";
+        c.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 3);
+      } else if (h > 42) {                 // and the floors that are merely awake
+        c.fillStyle = "rgba(126,148,184,0.45)";
+        c.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 3);
+      }
+    }
+    c.strokeStyle = "rgba(8,12,24,0.55)"; c.lineWidth = 1;
+    for (let i = 0; i <= n; i++) {
+      c.beginPath(); c.moveTo(i * cell, 0); c.lineTo(i * cell, 128); c.stroke();
+      c.beginPath(); c.moveTo(0, i * cell); c.lineTo(128, i * cell); c.stroke();
+    }
+  };
   const paintGlass = (c) => {
     // Solid glass at night: an opaque near-navy body, opaque pane variation, a few opaque lit
     // floors. Nothing on a tower is see-through; the old pale grid read as a veil.
@@ -794,12 +818,37 @@ function leaveOverlay(root, trigger) {
     c.fillStyle = "#77573a"; c.fillRect(0, 0, 128, 128);
     const seam = [], glaze = [], grain = [];
     for (let y = 0; y < 128; y += 21) {
-      seam.push([0, y, 128, 2]); glaze.push([0, y + 3, 128, 1]);
-      for (let x = 0; x < 128; x += 8) grain.push([x, y + 6, 4, 10]);
+      seam.push([0, y, 128, 3]); glaze.push([0, y + 4, 128, 2]);
+      for (let x = 0; x < 128; x += 8) grain.push([x, y + 7, 4, 9]);
     }
-    blob(c, "rgba(28,16,6,0.6)", seam);
-    blob(c, "rgba(255,222,164,0.10)", glaze);
-    blob(c, "rgba(96,66,38,0.45)", grain);
+    // Planks, not a wash: a crate seen head-on is one flat face, and the only thing that makes it
+    // a crate rather than a brown rectangle is the boards it is made of.
+    for (let y = 0; y < 128; y += 21) {
+      c.fillStyle = (y / 21) % 2 ? "rgba(255,226,170,0.10)" : "rgba(30,18,8,0.16)";
+      c.fillRect(0, y + 3, 128, 18);
+    }
+    blob(c, "rgba(20,10,4,0.85)", seam);
+    blob(c, "rgba(255,226,164,0.16)", glaze);
+    blob(c, "rgba(70,46,24,0.6)", grain);
+  };
+  /* Foliage for a billboard crown: clumps of flock, transparent between them, soft at the edge.
+     A tree made of stacked boxes reads as a box whatever it is textured with, and a diorama tree is
+     a pinch of flock on a wire -- which is a shape a repeating tile can carry and a box cannot. */
+  const paintFoliage = (c) => {
+    // No clear: mkTile hands in a canvas it has just made, so it is already empty. (It also keeps
+    // this tile paintable under jsdom, whose 2d context has no clearRect.)
+    const clumps = [[64,58,33],[43,47,23],[85,49,22],[54,37,21],[77,35,19],[64,73,23],
+                    [39,66,17],[89,71,16],[64,45,25],[51,59,19],[79,61,18],[64,30,14]];
+    for (const [cx, cy, r] of clumps) {
+      const t = ((128 - cy) / 128) * 0.62 + (cx / 128) * 0.38;   // lit from above and to the right
+      const R = Math.round(44 + t * 58), G = Math.round(72 + t * 70), B = Math.round(36 + t * 36);
+      const g = c.createRadialGradient(cx - r * 0.32, cy - r * 0.36, r * 0.08, cx, cy, r);
+      g.addColorStop(0, `rgb(${Math.min(255,R+20)},${Math.min(255,G+24)},${Math.min(255,B+14)})`);
+      g.addColorStop(0.55, `rgb(${R},${G},${B})`);
+      g.addColorStop(1, `rgba(${R>>1},${Math.round(G*0.55)},${B>>1},0)`);
+      c.fillStyle = g;
+      c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill();
+    }
   };
   const paintTerrain = (c) => {
     c.fillStyle = "#4c6a3a"; c.fillRect(0, 0, 128, 128);
@@ -906,10 +955,15 @@ function leaveOverlay(root, trigger) {
     c.fillStyle = "rgba(10,14,24,0.5)"; c.fillRect(0, 116, 128, 12);
   };
   const paintDomeP = (c) => {
-    c.fillStyle = "#c8ccd2"; c.fillRect(0, 0, 128, 128);
-    c.strokeStyle = "rgba(90,100,116,0.5)"; c.lineWidth = 1;
-    for (let x = 0; x <= 128; x += 16) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 128); c.stroke(); }
-    for (let y = 0; y <= 128; y += 32) { c.beginPath(); c.moveTo(0, y); c.lineTo(128, y); c.stroke(); }
+    // Ribbed roof: bright panels with the joints between them cut in dark. The old version was a
+    // pale field with hairlines on it, which is why the dome measured as a white blob.
+    for (let y = 0; y < 128; y += 16) {
+      c.fillStyle = (y / 16) % 2 ? "#8296ae" : "#a8b8ca";
+      c.fillRect(0, y, 128, 14);
+      c.fillStyle = "rgba(20,28,44,0.78)"; c.fillRect(0, y + 14, 128, 2);
+    }
+    c.strokeStyle = "rgba(24,32,50,0.5)"; c.lineWidth = 2;
+    for (let x = 0; x <= 128; x += 32) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 128); c.stroke(); }
   };
   const paintBrick = (c) => {
     c.fillStyle = "#4a4038"; c.fillRect(0, 0, 128, 128);
@@ -1067,6 +1121,10 @@ function leaveOverlay(root, trigger) {
     PATS.water = mkTile(paintWater);
     PATS.track = mkTile(paintTrack);
     PATS.domep = mkTile(paintDomeP);
+    PATS.sky0 = mkTile(paintSkyline(0));
+    PATS.sky1 = mkTile(paintSkyline(1));
+    PATS.sky2 = mkTile(paintSkyline(2));
+    PATS.foliage = mkTile(paintFoliage);
     PATS.cityg = mkTile(paintCityG);
     PATS.cobble = mkTile(paintCobble);
     PATS.rock = mkTile(paintRock);
@@ -2280,96 +2338,124 @@ function leaveOverlay(root, trigger) {
            silhouette instead of a fence line. */
         const blocks = [[-0.36, 0.55, 0.3, -0.1], [-0.1, 0.95, 0.32, 0.12], [0.16, 0.7, 0.3, -0.06],
                         [0.4, 0.5, 0.26, 0.08]];
-        blocks.forEach(([cx, hf, wf, dz]) => {
+        blocks.forEach(([cx, hf, wf, dz], bi) => {
           facesOf({ ...m, x: m.x + cx * m.w, z: m.z + dz * m.d, h: m.h * hf, w: m.w * wf,
                     d: m.d * 0.5 }).forEach((f) => {
             const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                          + f.n[2] * (C.z - f.p[0][2]);
             if (toward <= 0) return;
-            const q = f.n[1] !== 1 && PATS.glass
-              ? add(C, f.p, patUV(f), "pat", PATS.glass)
+            const win = f.n[1] !== 1 ? PATS["sky" + ((bi + Math.floor(T * 0.7)) % 3)] : null;
+            const q = win
+              ? add(C, f.p, patUV(f), "pat", win)
               : add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.2));
-            if (q) { q.lit = lit; drawn.push(q); }
+            if (q) { q.lit = win ? Math.max(lit, 1.05) : lit; drawn.push(q); }
           });
         });
-        // A handful of lit windows on the two tall blocks, on the face turned to the walk.
-        [[-0.1, 0.95], [0.16, 0.7]].forEach(([cx, hf], bi) => {
-          for (let i = 0; i < 6; i++) {
-            // A slow twinkle: which windows are lit drifts on the frame clock; reduced motion
-            // keeps them all on.
-            if (ease && ((i * 7 + bi * 3 + Math.floor(T * 0.7)) % 5) === 0) continue;
-            const row = Math.floor(i / 2), col = i % 2;
-            const wy = m.y + m.h * hf * (0.25 + 0.22 * row), wx = m.x + cx * m.w + (col ? 5 : -8);
-            const q = add(C, [[wx, wy, m.z - m.d * 0.26], [wx + 4, wy, m.z - m.d * 0.26],
-                              [wx + 4, wy + 5, m.z - m.d * 0.26], [wx, wy + 5, m.z - m.d * 0.26]],
-                          ZERO8, "flat", "#f0c27a");
-            if (q) { q.lit = 1.6; drawn.push(q); }
-          }
-        });
       } else if (shape === "dome") {
-        /* A hemisphere in three stacks: the stadium the skyline keeps making room for. */
-        [[0, 0.5, 1], [0.5, 0.3, 0.78], [0.8, 0.2, 0.46]].forEach(([y0, hf, wf]) => {
+        /* The stadium: a low dark drum, and a ribbed cap over it.
+
+           It used to be three pale boxes lit 1.1x, which measured as the brightest object in the
+           whole hall (mean 233) and nearly the flattest (76 colours) -- a white blob with a faint
+           grid on it. A roof is ribbed, and a roof in a dark hall is not a lamp: the panels now cut
+           against dark joints and the drum under it is darker than anything on the table. */
+        facesOf({ ...m, h: m.h * 0.32 }).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k - 0.2));
+          if (q) { q.lit = lit * 0.66; drawn.push(q); }
+        });
+        [[0.32, 0.42, 0.95], [0.68, 0.34, 0.72], [0.94, 0.26, 0.44]].forEach(([y0, hf, wf]) => {
           facesOf({ ...m, y: m.y + m.h * y0, h: m.h * hf, w: m.w * wf, d: m.d * wf }).forEach((f) => {
             const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                          + f.n[2] * (C.z - f.p[0][2]);
             if (toward <= 0) return;
             const q = f.n[1] !== 1 && PATS.domep
               ? add(C, f.p, patUV(f), "pat", PATS.domep)
-              : add(C, f.p, ZERO8, "flat", mix(base, f.k));
-            if (q) { q.lit = lit * 1.1; drawn.push(q); }
+              : add(C, f.p, ZERO8, "flat", mix(base, f.k + 0.12));
+            if (q) { q.lit = lit * (f.n[1] === 1 ? 0.92 : 0.78); drawn.push(q); }
           });
         });
       } else if (shape === "falls") {
         /* The falls at table scale: a pale sheet over a ledge into mist, held between two dark
            headlands. The sheet's stripes shimmer with the frame clock — they move because the
            walker is here, and hold still when the lane rests, which is the house rule for time. */
-        const hw = m.w / 2, hd = m.d / 2, zf = m.z - hd;
+        const hw = m.w / 2, hd = m.d / 2;
+        /* Which way the water faces.
+
+           `facesOf` does not turn a box, it only swaps the box's width and depth -- so a face built
+           "at z minus half the depth, spanning x" is always that, whatever `ry` says. Built that way
+           the sheet lay in the plane the walker looks *along* from the falls stop: you stood beside
+           the waterfall and saw it edge on, a hundred-centimetre cliff with no water on it, and a
+           magenta probe put on the sheet to find it painted exactly zero pixels. The tables stand
+           off the lane and the lane is where the walker is, so the sheet turns out of its object to
+           face across: `P(a, y, t)` is a point on the face at `a` across it and `t` back into it. */
+        const along = Math.abs(m.ry) > 45, sgn = m.ry > 0 ? 1 : -1;
+        const P = (a, y, t) => along ? [m.x + sgn * (hd - t), y, m.z + a]
+                                     : [m.x + a, y, m.z - hd + t];
         // The two headlands the water falls between.
         [[-1], [1]].forEach(([s]) => {
-          facesOf({ ...m, x: m.x + s * (hw - m.w * 0.11), w: m.w * 0.22, h: m.h }).forEach((f) => {
+          const off = s * (hw - m.w * 0.11);
+          facesOf({ ...m, x: m.x + (along ? 0 : off), z: m.z + (along ? off : 0),
+                    w: m.w * 0.22, h: m.h }).forEach((f) => {
             const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                          + f.n[2] * (C.z - f.p[0][2]);
             if (toward <= 0) return;
             const q = PATS.rock ? add(C, f.p, patUV(f), "pat", PATS.rock)
                                 : add(C, f.p, ZERO8, "flat", mix("#233150", f.k));
-            if (q) { q.lit = lit * 0.9; drawn.push(q); }
+            // A gorge wall is dark and wet. `lit` was the wrong lever -- it only lays a warm wash
+            // over an unchanged base -- so the wall is darkened with air, which is the Navy overlay.
+            if (q) { q.lit = lit; q.air = 0.34; drawn.push(q); }
           });
         });
         // The sheet: three height slices, bright at the crest and shadowing toward the basin —
         // one flat lit value was what made it a glowing white board — then moving stripes over it.
-        [[0, 0.62], [1, 0.78], [2, 0.95]].forEach(([si, l]) => {
+        /* Three height slices, jade and brightening toward the crest. It measured sd 17 -- a flat
+           pale slab -- because the nine white stripes over it were 4 cm wide at up to 0.48 alpha
+           and washed the water out to near-white. The stripes are the water's texture, not its
+           colour: they go thin and half as opaque so the jade is what you see. */
+        [[0, 0.9, "#3f8fa4"], [1, 1.1, "#5aaeb4"], [2, 1.35, "#8ad2cc"]].forEach(([si, l, col]) => {
           const y0 = m.y + (si / 3) * m.h, y1 = m.y + ((si + 1) / 3) * m.h;
-          const sheet = add(C, [[m.x - hw * 0.76, y0, zf], [m.x + hw * 0.76, y0, zf],
-                                [m.x + hw * 0.76, y1, zf], [m.x - hw * 0.76, y1, zf]],
-                            ZERO8, "flat", "#4a7096");
-          if (sheet) { sheet.lit = l * 0.78; drawn.push(sheet); }
+          const sheet = add(C, [P(-hw * 0.76, y0, 0), P(hw * 0.76, y0, 0),
+                                P(hw * 0.76, y1, 0), P(-hw * 0.76, y1, 0)],
+                            ZERO8, "flat", col);
+          if (sheet) { sheet.lit = l; drawn.push(sheet); }
         });
-        for (let i = 0; i < 5; i++) {
-          const sx = m.x - hw * 0.7 + (i + 0.5) * (hw * 1.4 / 5) + Math.sin(T * 2.2 + i * 1.7) * 2;
-          const a = 0.34 + 0.14 * Math.sin(T * 3.1 + i * 2.3);
-          const st = add(C, [[sx - 2, m.y, zf - 1], [sx + 2, m.y, zf - 1],
-                             [sx + 2, m.y + m.h, zf - 1], [sx - 2, m.y + m.h, zf - 1]],
+        // Foam at the plunge line: the one place a waterfall is unambiguously white.
+        const foam = add(C, [P(-hw * 0.78, m.y + m.h * 0.06, -2), P(hw * 0.78, m.y + m.h * 0.06, -2),
+                             P(hw * 0.78, m.y + m.h * 0.2, -2), P(-hw * 0.78, m.y + m.h * 0.2, -2)],
+                         ZERO8, "flat", `rgba(246,253,252,${(0.46 + (ease ? 0.12 * Math.sin(T * 2.1) : 0)).toFixed(2)})`);
+        if (foam) { foam.lit = 1.7; drawn.push(foam); }
+        for (let i = 0; i < 12; i++) {
+          const sx = -hw * 0.7 + (i + 0.5) * (hw * 1.4 / 12);
+          const fall = ease ? ((T * 0.32 + i / 12) % 1) : 0.45;
+          const yTop = m.y + m.h * (1 - fall), yBot = Math.max(m.y, yTop - m.h * 0.32);
+          const a = 0.14 + 0.09 * Math.sin(T * 3.1 + i * 2.3);
+          const st = add(C, [P(sx - 1, yBot, -1), P(sx + 1, yBot, -1),
+                             P(sx + 1, yTop, -1), P(sx - 1, yTop, -1)],
                          ZERO8, "flat", `rgba(255,255,255,${a.toFixed(2)})`);
           if (st) { st.lit = 1.15; drawn.push(st); }
         }
         // The crest the sheet comes over, and the mist it lands in.
-        const crest = add(C, [[m.x - hw * 0.78, m.y + m.h, m.z - hd * 0.4], [m.x + hw * 0.78, m.y + m.h, m.z - hd * 0.4],
-                              [m.x + hw * 0.78, m.y + m.h + 5, m.z - hd * 0.4], [m.x - hw * 0.78, m.y + m.h + 5, m.z - hd * 0.4]],
-                          ZERO8, "flat", "#f4f9fd");
-        if (crest) { crest.lit = 1.35; drawn.push(crest); }
-        const mist = add(C, [[m.x - hw, m.y + 2, zf - 8], [m.x + hw, m.y + 2, zf - 8],
-                             [m.x + hw, m.y + m.h * 0.3, zf - 8], [m.x - hw, m.y + m.h * 0.3, zf - 8]],
-                         ZERO8, "flat", `rgba(238,244,250,${(0.26 + (ease ? 0.08 * Math.sin(T * 1.3) : 0)).toFixed(2)})`);
-        if (mist) { mist.lit = 0.95; mist.air = 0.08; drawn.push(mist); }
-        const basin = add(C, [[m.x - hw, m.y + 1, zf - 10], [m.x + hw, m.y + 1, zf - 10],
-                              [m.x + hw, m.y + 1, m.z + hd * 0.4], [m.x - hw, m.y + 1, m.z + hd * 0.4]],
-                          [(m.x - hw) * DPM, (zf - 10) * DPM, (m.x + hw) * DPM, (zf - 10) * DPM,
-                           (m.x + hw) * DPM, (m.z + hd * 0.4) * DPM, (m.x - hw) * DPM, (m.z + hd * 0.4) * DPM],
+        // The crest is a lip of water, not a strip light: at 1.35x it was the brightest thing on
+        // the table and it flattened the sheet behind it into a backdrop.
+        const crest = add(C, [P(-hw * 0.78, m.y + m.h, hd * 0.6), P(hw * 0.78, m.y + m.h, hd * 0.6),
+                              P(hw * 0.78, m.y + m.h + 5, hd * 0.6), P(-hw * 0.78, m.y + m.h + 5, hd * 0.6)],
+                          ZERO8, "flat", "#b9d3d6");
+        if (crest) { crest.lit = 0.98; drawn.push(crest); }
+        const mist = add(C, [P(-hw, m.y + 2, -8), P(hw, m.y + 2, -8),
+                             P(hw, m.y + m.h * 0.3, -8), P(-hw, m.y + m.h * 0.3, -8)],
+                         ZERO8, "flat", `rgba(214,232,238,${(0.16 + (ease ? 0.07 * Math.sin(T * 1.3) : 0)).toFixed(2)})`);
+        if (mist) { mist.lit = 0.8; mist.air = 0.08; drawn.push(mist); }
+        const basin = add(C, [P(-hw, m.y + 1, -10), P(hw, m.y + 1, -10),
+                              P(hw, m.y + 1, hd * 1.4), P(-hw, m.y + 1, hd * 1.4)],
+                          [0, 0, hw * 2 * DPM, 0, hw * 2 * DPM, hd * 1.5 * DPM, 0, hd * 1.5 * DPM],
                           "pat", PATS.water || "#5f7d99");
         if (basin) { basin.lit = 0.9; drawn.push(basin); }
         // A tour boat works the basin the way the real one works the mist, on the frame clock.
-        const bx = m.x + (ease ? Math.sin(T * 0.26) * hw * 0.55 : hw * 0.2);
-        facesOf({ x: bx, y: m.y + 2, z: zf - 6, w: 16, h: 5, d: 7, ry: 0 }).forEach((f) => {
+        const bxr = ease ? Math.sin(T * 0.4) * hw * 0.55 : hw * 0.2;
+        const bp = P(bxr, m.y + 2, -6);
+        facesOf({ x: bp[0], y: bp[1], z: bp[2], w: 16, h: 5, d: 7, ry: m.ry }).forEach((f) => {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
           if (toward <= 0) return;
@@ -2378,8 +2464,8 @@ function leaveOverlay(root, trigger) {
         });
         // Rolling fog over the water, the way the spray hangs at the rail.
         const fogx = ease ? Math.sin(T * 0.12) * hw * 0.3 : 0;
-        const fog = add(C, [[m.x - hw + fogx, m.y + m.h * 0.22, zf - 12], [m.x + hw + fogx, m.y + m.h * 0.22, zf - 12],
-                            [m.x + hw + fogx, m.y + m.h * 0.48, zf - 12], [m.x - hw + fogx, m.y + m.h * 0.48, zf - 12]],
+        const fog = add(C, [P(-hw + fogx, m.y + m.h * 0.22, -12), P(hw + fogx, m.y + m.h * 0.22, -12),
+                            P(hw + fogx, m.y + m.h * 0.48, -12), P(-hw + fogx, m.y + m.h * 0.48, -12)],
                         ZERO8, "flat", `rgba(236,242,248,${(0.06 + (ease ? 0.03 * Math.sin(T * 0.7) : 0)).toFixed(2)})`);
         if (fog) { fog.lit = 1.0; fog.air = 0.1; drawn.push(fog); }
       } else if (shape === "pool") {
@@ -2401,17 +2487,31 @@ function leaveOverlay(root, trigger) {
         if (sheen) { sheen.lit = 1.1; drawn.push(sheen); }
       } else if (shape === "boat") {
         /* The ferry crosses the sheet on the frame clock: a hull, a cabin, a wake. Reduced
-           motion moors it mid-lake. */
-        const dx = ease ? Math.sin(T * 0.22) * 52 : 8;
-        facesOf({ ...m, x: m.x + dx }).forEach((f) => {
+           motion moors it mid-lake.
+
+           The crossing runs along the hull's own long axis. A table stands beside the walk, so
+           the visitor sees it across its short side: a boat pointing down the lane would paddle
+           away from the camera and read as a bob, not a crossing. Moored at ninety degrees the
+           hull runs along the axis `facesOf` swaps in, which is the one the visitor reads as
+           left-to-right. */
+        const along = Math.abs(m.ry) > 45;
+        /* 62, not 78: the wake is drawn a hull and a half behind the boat, and at the end of a
+           longer crossing it would lie on the sand past the water's edge. */
+        const run = ease ? Math.sin(T * 0.4) * 62 : 10;
+        const dx = along ? 0 : run, dz = along ? run : 0;
+        facesOf({ ...m, x: m.x + dx, z: m.z + dz }).forEach((f) => {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
           if (toward <= 0) return;
           const q = add(C, f.p, ZERO8, "flat", mix(base, f.k + (f.n[1] === 1 ? 0.1 : 0)));
           if (q) { q.lit = lit * 1.15; drawn.push(q); }
         });
-        const wake = add(C, [[m.x + dx - m.w * 1.6, m.y + 1, m.z - 2], [m.x + dx - m.w * 0.6, m.y + 1, m.z - 2],
-                             [m.x + dx - m.w * 0.6, m.y + 1, m.z + 2], [m.x + dx - m.w * 1.6, m.y + 1, m.z + 2]],
+        const WX = m.x + dx, WZ = m.z + dz;   /* the wake trails the hull whichever way it runs */
+        const wake = add(C, along
+                         ? [[WX - 2, m.y + 1, WZ - m.w * 1.6], [WX + 2, m.y + 1, WZ - m.w * 1.6],
+                            [WX + 2, m.y + 1, WZ - m.w * 0.6], [WX - 2, m.y + 1, WZ - m.w * 0.6]]
+                         : [[WX - m.w * 1.6, m.y + 1, WZ - 2], [WX - m.w * 0.6, m.y + 1, WZ - 2],
+                            [WX - m.w * 0.6, m.y + 1, WZ + 2], [WX - m.w * 1.6, m.y + 1, WZ + 2]],
                          ZERO8, "flat", "rgba(226,238,248,0.4)");
         if (wake) { wake.lit = 1.1; drawn.push(wake); }
       } else if (shape === "stall") {
@@ -2474,25 +2574,35 @@ function leaveOverlay(root, trigger) {
                           ZERO8, "flat", `rgba(255,196,120,${fl})`);
         if (lampq) { lampq.lit = 1.6; drawn.push(lampq); }
       } else if (shape === "tree") {
-        /* A model tree: a trunk and two terrain blobs, the way a diorama tree is a pinch of
-           flock on a wire. Trees are the one thing Little Canada plants by the thousand. */
+        /* A model tree: a trunk, and a crown that is a pinch of flock on a wire.
+
+           The crown used to be two stacked boxes in a terrain texture, which is a box with grass
+           on it: measured, the trees were the flattest things in the hall (sd 10-35 against the
+           tower's 52). A diorama tree is planted by the thousand, so it is worth a billboard --
+           a quad turned to face the eye, carrying a soft-edged clump of foliage. The camera's right
+           is (cy, -sy) across the ground; pitch is left out, being a few degrees on a crown that
+           has no top face to lose. */
         facesOf({ ...m, w: 4, d: 4, h: m.h * 0.45 }).forEach((f) => {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
           if (toward <= 0) return;
-          const q = add(C, f.p, ZERO8, "flat", "#5a4630");
-          if (q) { q.lit = lit * 0.9; drawn.push(q); }
+          const q = add(C, f.p, ZERO8, "flat", "#4a3826");
+          if (q) { q.lit = lit * 0.85; drawn.push(q); }
         });
-        [[0.35, 0.9], [0.62, 0.6]].forEach(([y0, wf]) => {
-          facesOf({ ...m, y: m.y + m.h * y0, w: m.w * wf, d: m.w * wf, h: m.h * 0.42 }).forEach((f) => {
-            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
-                         + f.n[2] * (C.z - f.p[0][2]);
-            if (toward <= 0) return;
-            const q = PATS.terrain ? add(C, f.p, patUV(f), "pat", PATS.terrain)
-                                   : add(C, f.p, ZERO8, "flat", "#4c6a3a");
-            if (q) { q.lit = lit * 1.05; drawn.push(q); }
-          });
-        });
+        const clump = (cy0, wf, tone) => {
+          const yc = m.y + m.h * cy0, R = m.w * wf * 0.5;
+          const rx = C.cy * R, rz = -C.sy * R;
+          const q = PATS.foliage
+            ? add(C, [[m.x + rx, yc + R, m.z + rz], [m.x - rx, yc + R, m.z - rz],
+                      [m.x - rx, yc - R, m.z - rz], [m.x + rx, yc - R, m.z + rz]],
+                  [0, 0, 128, 0, 128, 128, 0, 128], "pat", PATS.foliage)
+            : add(C, [[m.x + rx, yc + R, m.z + rz], [m.x - rx, yc + R, m.z - rz],
+                      [m.x - rx, yc - R, m.z - rz], [m.x + rx, yc - R, m.z + rz]],
+                  ZERO8, "flat", "#4c6a3a");
+          if (q) { q.lit = lit * tone; drawn.push(q); }
+        };
+        clump(0.6, 1, 1.06);
+        clump(0.84, 0.66, 1.18);      // a smaller clump above: the silhouette is not a disc
       } else if (shape === "track") {
         // Ballast and rails along the table's front edge: the strip the streetcar runs on.
         const q = add(C, [[m.x - m.w / 2, m.y + 1, m.z - m.d / 2], [m.x + m.w / 2, m.y + 1, m.z - m.d / 2],
@@ -2503,8 +2613,21 @@ function leaveOverlay(root, trigger) {
         if (q) { q.lit = 0.9; drawn.push(q); }
       } else if (shape === "tram") {
         /* A red streetcar shuttles the track on the frame clock; reduced motion parks it mid-run.
-           The window band is lit from within — a tram at night is a lantern that moves. */
-        const dx = ease ? Math.sin(T * 0.3) * (m.w / 2 - 20) : 10;
+           The window band is lit from within — a tram at night is a lantern that moves.
+
+           It does not glide. A streetcar eases out of a stop, runs, eases into the next one and
+           stands there long enough to be seen standing — the schedule is the recognisable thing,
+           not the travel. A sine is a thing on a rail that is never anywhere in particular, and
+           the real one slows where it stops, which is the whole reason it reads as a vehicle. */
+        const A = m.w / 2 - 20;
+        const dwell = 0.12, leg = 0.5 - dwell;          // a twelfth of the cycle standing still
+        const smooth = (t) => t * t * (3 - 2 * t);
+        const phase = (T * 0.0796) % 1;                 // one out-and-back every 12.6 s
+        const at = phase < leg ? smooth(phase / leg)
+                 : phase < 0.5 ? 1
+                 : phase < 0.5 + leg ? 1 - smooth((phase - 0.5) / leg)
+                 : 0;
+        const dx = ease ? (at * 2 - 1) * A : 10;
         facesOf({ ...m, x: m.x + dx, w: 30, d: 9, h: 11 }).forEach((f) => {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
@@ -3026,15 +3149,25 @@ function leaveOverlay(root, trigger) {
   });
 
   view.addEventListener("pointerdown", (event) => {
-    // A grab that starts on a wall thing is a press on a control, not a turn: the two gestures have
-    // to stay separable, or tapping the vending machine would swing the camera. And only the primary
-    // button turns the head — pointerdown fires for the right and middle buttons too, and a scroll
-    // widget or a context menu arriving mid-swing is the difference between a camera and a fight.
+    // Only the primary button turns the head — pointerdown fires for the right and middle buttons
+    // too, and a scroll widget or a context menu arriving mid-swing is the difference between a
+    // camera and a fight.
     if (event.button !== 0) return;
-    if (event.target.closest(".walk-hit")) return;
-    down = { x: event.clientX, y: event.clientY, yaw, pitch, id: event.pointerId, moved: 0 };
+    /* A grab that starts on a wall thing is still a turn; only the *tap* is a press.
+       Excluding the hit boxes here used to be the rule, and it made the camera unturnable from
+       most of the screen: in a dressed room something stands at the centre more often than not,
+       so the pointerdown was swallowed, no drag was ever created, and the pointerup found no tap
+       either — the gesture did nothing at all, and the visitor concluded the space was a picture.
+       The separation this was protecting lives one line down instead: a grab that travels is a
+       look, one that does not is a press on whatever was under it. */
+    down = { x: event.clientX, y: event.clientY, yaw, pitch, id: event.pointerId, moved: 0,
+             obj: event.target.closest(".walk-hit") };
+    wasDrag = false;
     view.classList.add("is-dragging");
-    if (view.setPointerCapture) view.setPointerCapture(event.pointerId);
+    /* No capture when the grab started on a thing: with a capture target override the browser
+       dispatches the follow-up `click` at the capturing element, and the thing's own button
+       would never see the press it earned. */
+    if (view.setPointerCapture && !down.obj) view.setPointerCapture(event.pointerId);
   });
   view.addEventListener("pointermove", (event) => {
     if (!down || event.pointerId !== down.id) return;
@@ -3046,20 +3179,37 @@ function leaveOverlay(root, trigger) {
     draw();
     checkReach();
   });
-  const release = () => { down = null; view.classList.remove("is-dragging"); };
+  /* Releasing a grab has to hand the pumping back, or the lane dies the first time somebody looks
+     around. `pointermove` paints directly and never asks for a frame, and the tick only schedules
+     its own successor when the body is moving — so a drag that ended at rest left nothing asking
+     for the next one, and the whole room froze on the frame the gesture happened to stop on.
+     Measured: two frames a second and a half apart were byte-identical from every station after
+     a turn, which is a screenshot wearing the clothes of a space. */
+  const release = () => { down = null; view.classList.remove("is-dragging"); startPulse(); };
   /* A tap that never became a look is a press. `E` has a key and no finger, so on a phone every wall
      thing was pressable and none of them could be pressed — which is what "the interaction is off"
      reported. A tap with a card open closes it instead, because the same finger that opened something
      should be able to put it down. */
   const up = () => {
     const tap = !!down && down.moved < 8;
+    const onObj = !!down && !!down.obj;
     release();
+    wasDrag = !tap;
     if (!tap) return;
+    if (onObj) return;              // the thing's own button gets the click, and it is the press
     if (card && !card.hidden) { hideCard(); return; }
     if (reach) act(reach);
   };
   view.addEventListener("pointerup", up);
   view.addEventListener("pointercancel", release);
+  /* A look that ended on the thing it started on is still a look, not a press: swallow the click a
+     drag happens to leave behind, or turning the camera would also open whatever you grabbed. */
+  view.addEventListener("click", (event) => {
+    if (!wasDrag) return;
+    wasDrag = false;
+    event.preventDefault();
+    event.stopPropagation();
+  }, true);
   // A menu opened over a drag would strand `is-dragging` on the layer and leave the cursor grabbing
   // forever, so the only right-click that is refused is the one that arrives while a turn is live.
   view.addEventListener("contextmenu", (event) => { if (down) event.preventDefault(); });
@@ -3199,7 +3349,13 @@ function leaveOverlay(root, trigger) {
     // story; `url(...)` of an already-loaded file costs one decode and no bytes.
     if (panel) {
       const src = frames[fi] && frames[fi].querySelector("img");
-      panel.style.setProperty("--fill", src && src.getAttribute("src") ? `url("${src.getAttribute("src")}")` : "none");
+      /* The value is absolute, made from the document's own base. A relative `url()` parked in a
+         custom property is resolved where the property is *consumed* — `background-image:
+         var(--fill)` sits in `css/site.css` — so every frame's ground was being asked for as
+         `css/IMG/<file>.jpg`, 404, and the story played on an empty field instead of its own
+         pixels. Resolving here is the one place that knows which document the file belongs to. */
+      const raw = src && src.getAttribute("src");
+      panel.style.setProperty("--fill", raw ? `url("${new URL(raw, document.baseURI).href}")` : "none");
     }
     if (countEl) countEl.textContent = `${fi + 1} of ${frames.length}`;
   };
