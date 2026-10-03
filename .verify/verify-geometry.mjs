@@ -20,8 +20,13 @@ for (const f of ["rooms-toronto.html", "rooms.html", "rooms-fukuoka.html", "stre
              w: parseFloat(el.dataset.w) || 30, h: parseFloat(el.dataset.h) || 30,
              d: parseFloat(el.dataset.d) || 12 };
   });
+  // A box turned by any angle: the extent of the turned box along an axis is the projection of
+  // both half-extents onto it. This is the general case, and it has to be -- the old test was
+  // "|ry| > 45 so swap w and d", which is right at a quarter turn and wrong at a half turn,
+  // where a box's footprint is exactly what it was before it turned.
   const foot = (o) => {
-    const hx = (Math.abs(o.ry) > 45 ? o.d : o.w) / 2, hz = (Math.abs(o.ry) > 45 ? o.w : o.d) / 2;
+    const t = (o.ry * Math.PI) / 180, ca = Math.abs(Math.cos(t)), sa = Math.abs(Math.sin(t));
+    const hx = ca * (o.w / 2) + sa * (o.d / 2), hz = sa * (o.w / 2) + ca * (o.d / 2);
     return { id: o.id, x0: o.x - hx, x1: o.x + hx, z0: o.z - hz, z1: o.z + hz, top: o.y + o.h, y: o.y };
   };
   const F = new Map(objs.map((o) => [o.id, foot(o)]));

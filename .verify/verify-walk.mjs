@@ -302,9 +302,16 @@ ok("the backdrop adds its own fills to the room, not a second pass over it", ctx
    drawn as one flat card each, and now draw what their own records say they are -- a stack of crates,
    a planted trough, three A-boards, a sash window, a bicycle. Four of them live in `rooms.html` and
    an A/B of that one page reads 4604 before and 4758 after, so the ceiling goes to 4900: still far
-   short of the ~6 000 a second pass would cost. */
+   short of the ~6 000 a second pass would cost.
+
+   It moved once more when the city stop was walked in from z=230 to z=460: the hero table had been
+   a 289x295 px postage stamp and standing closer is what fixed it, but it also puts more of the
+   table's quads on screen. rooms-toronto reads 4758 before and 5194 after -- and the frame clock
+   was measured at every one of the five stops after the move and holds 60 fps (median 16.7 ms,
+   p95 under 21 ms), so this is a dressed room costing fills, not a room being redrawn. Ceiling
+   5600: still far short of the ~10 000 a second pass would now cost. */
 ok("one depth pass, dressed: the room costs fills, not passes",
-   ctx.fills > before && ctx.fills < 4900, `${ctx.fills} fills, one pass`);
+   ctx.fills > before && ctx.fills < 5600, `${ctx.fills} fills, one pass`);
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
 ok("the cladding is tiled into the wall's own panels, so an affine map stays exact",

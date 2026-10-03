@@ -2847,13 +2847,61 @@ DISTRICTS = [
              "title": "The ferry, small",
              "hint": "One white box crossing the sheet: the ferry, at a scale where it cannot be "
                      "anything more."},
-            # The far wall carries the city in one sheet: the hall ends on its own cover plate,
-            # so the deepest stop in the room is the whole model at a glance, not a blank hoarding.
-            {"id": "poster-cover", "kind": "poster", "x": 180, "z": 734, "y": 140, "ry": 0,
-             "w": 320, "h": 180, "d": 10, "img": "IMG/toronto-cover.jpg",
-             "title": "The city in one sheet",
-             "hint": "The hall's own cover plate, hung on the far wall: tower, falls and market "
-                     "in a single look, the way the room ends."},
+            # The far wall used to carry the hall's cover plate. It carries the city itself now:
+            # a lit case holding the tower, a row of blocks and the dome, built by the same shapes
+            # that build the tables, so the deepest stop in the room ends on the model at a glance
+            # instead of on a picture of it.
+            {"id": "plinth-cityshelf", "kind": "plinth", "x": 180, "z": 712, "y": 150, "ry": 180,
+             "w": 300, "h": 10, "d": 40, "tone": 0.34,
+             "title": "The city in one case",
+             "hint": "The room ends on a lit case holding the whole city: the tower, a row of "
+                     "blocks, the dome. Built of the same shapes as the tables, so it is the "
+                     "model at a glance rather than a picture of one."},
+            {"id": "tower-mini", "kind": "tower", "x": 200, "z": 712, "y": 160, "ry": 180,
+             "w": 30, "h": 168, "d": 22,
+             "title": "The tower, in the case",
+             "hint": "The same shape as the table's tower, a sixth of the size: a concrete shaft, "
+                     "a pod, and a mast that only the top of the case is tall enough for."},
+            {"id": "skyline-mini", "kind": "skyline", "x": 108, "z": 712, "y": 160, "ry": 180,
+             "w": 92, "h": 74, "d": 22, "tone": 0.5,
+             "title": "The blocks, in the case",
+             "hint": "Four blocks at staggered depths, lit from inside: at this size every window "
+                     "is two pixels, which is what a window in a real skyline is."},
+            {"id": "dome-mini", "kind": "dome", "x": 264, "z": 712, "y": 160, "ry": 180,
+             "w": 64, "h": 36, "d": 22, "tone": 0.5,
+             "title": "The dome, in the case",
+             "hint": "A ribbed cap on a low drum, the third thing the city is known by."},
+            # Where the walls carried drawn plates of the three areas, they carry small built
+            # cases now: a lit shelf, and on it the thing itself at a sixth of the size. A picture
+            # of the falls beside the falls was always the weaker of the two things on that wall.
+            {"id": "plinth-skyshelf", "kind": "plinth", "x": 354, "z": 396, "y": 150, "ry": -90,
+             "w": 120, "h": 10, "d": 40, "tone": 0.34,
+             "title": "A case of blocks",
+             "hint": "A lit shelf on the wall, holding a row of towers with their windows on: "
+                     "the city reduced to the one thing it is recognised by."},
+            {"id": "skyline-mini2", "kind": "skyline", "x": 354, "z": 396, "y": 160, "ry": -90,
+             "w": 96, "h": 72, "d": 24, "tone": 0.5,
+             "title": "The blocks, small",
+             "hint": "Four blocks, staggered in depth so the row has a silhouette, lit from "
+                     "inside the way the table's blocks are."},
+            {"id": "plinth-fallsshelf", "kind": "plinth", "x": 354, "z": 170, "y": 150, "ry": -90,
+             "w": 120, "h": 10, "d": 40, "tone": 0.34,
+             "title": "A case of water",
+             "hint": "A lit shelf on the wall, holding a ledge with water going over it."},
+            {"id": "falls-mini", "kind": "falls", "x": 354, "z": 170, "y": 160, "ry": -90,
+             "w": 96, "h": 72, "d": 24, "tone": 0.5,
+             "title": "The falls, small",
+             "hint": "A sheet over a ledge into mist, with the same shimmer the table's falls "
+                     "has, moving on the same clock."},
+            {"id": "plinth-marketshelf", "kind": "plinth", "x": -354, "z": 290, "y": 150, "ry": 90,
+             "w": 120, "h": 10, "d": 40, "tone": 0.34,
+             "title": "A case of stalls",
+             "hint": "A lit shelf on the wall, holding one stall under a striped awning."},
+            {"id": "stall-mini", "kind": "stall", "x": -354, "z": 290, "y": 160, "ry": 90,
+             "w": 88, "h": 56, "d": 24, "tone": 0.5,
+             "title": "A stall, small",
+             "hint": "An awning, a counter and the crates under it: a market reads at any size, "
+                     "which is the only reason a market is worth modelling."},
             # The hall's own furniture: a bench between tables and the rope line of a model room.
             {"id": "bench-t", "kind": "bench", "x": 320, "z": 380, "y": 0, "ry": -90,
              "title": "A bench in the dark",
@@ -2935,19 +2983,19 @@ DISTRICTS = [
         ],
         "lanterns": [],
         "frames": [
-            {"id": "skyline", "src": "IMG/toronto-1.jpg", "x": 374, "z": 396, "y": 150, "ry": -90,
+            {"id": "skyline", "wall": False, "src": "IMG/toronto-1.jpg", "x": 374, "z": 396, "y": 150, "ry": -90,
              "title": "The skyline, small",
              "alt": "Illustration of a miniature Toronto skyline on a lit table: a small CN Tower "
                     "with a round pod among blocky navy towers with a few amber windows.",
              "caption": "The city as a model: the tower first, the blocks behind it. Drawn, not "
                         "photographed; nothing on it is named."},
-            {"id": "falls", "src": "IMG/toronto-2.jpg", "x": 374, "z": 170, "y": 150, "ry": -90,
+            {"id": "falls", "wall": False, "src": "IMG/toronto-2.jpg", "x": 374, "z": 170, "y": 150, "ry": -90,
              "title": "The falls, small",
              "alt": "Illustration of a miniature waterfall spilling over a navy ledge into white "
                     "mist on a lit table, a tiny railing along the top.",
              "caption": "The falls at table scale: a sheet of water, a ledge, and mist. The model "
                         "moves; the picture holds still."},
-            {"id": "market", "src": "IMG/toronto-3.jpg", "x": -374, "z": 290, "y": 150, "ry": 90,
+            {"id": "market", "wall": False, "src": "IMG/toronto-3.jpg", "x": -374, "z": 290, "y": 150, "ry": 90,
              "title": "The market, small",
              "alt": "Illustration of a miniature market street on a lit table: small stalls with "
                     "striped awnings, stacked crates, and warm hanging lamps.",
@@ -2977,7 +3025,7 @@ DISTRICTS = [
             {"z": 140, "label": "by the lake table"},
             {"z": 200, "label": "by the falls table"},
             {"z": 400, "label": "by the market table"},
-            {"z": 230, "label": "by the city table"},
+            {"z": 460, "label": "by the city table"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
                  "title": "The door at your back", "hint": "It opens onto the street, at this "
@@ -3003,6 +3051,10 @@ def wall_frames(d):
     frame the owner deletes from the data simply stops being on the wall."""
     out = []
     for n, fr in enumerate(d.get("frames", [])):
+        # `wall: False` keeps a frame in the reel and the printed list but takes it off the wall,
+        # for a district whose walls are built rather than illustrated.
+        if fr.get("wall") is False:
+            continue
         out.append({
             "id": f'frame-{fr["id"]}',
             "kind": "poster frame",

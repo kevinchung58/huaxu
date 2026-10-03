@@ -14,7 +14,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const JOBS = [ {stop:1, deg:-90, id:"boat-lake", what:"the ferry crossing"},
                {stop:2, deg:90,  id:"falls-n",   what:"the falls running"},
                {stop:3, deg:-90, id:"crate-m1",  what:"the market (control: a crate)"},
-               {stop:4, deg:30,  id:"tram-t",    what:"the streetcar"} ];
+               // The city stop moved in to z=460, so the tram is framed dead ahead now, not at
+               // +30 deg. It is measured in its track's box, not its own: the car travels eight
+               // times its own length, so a box the width of the car would only prove that the
+               // car had left it.
+               {stop:4, deg:0,   id:"track-c",   what:"the streetcar"} ];
 const diff = async (a, b, box) => {
   const ia = await loadImage(a), ib = await loadImage(b);
   const c = createCanvas(box.w, box.h), g = c.getContext("2d");

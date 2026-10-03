@@ -763,6 +763,29 @@ function leaveOverlay(root, trigger) {
     rects.forEach(([x, y, w, h]) => c.rect(x, y, w, h));
     c.fill();
   };
+  /* The little city's towers at night. A tile is 128 px over 64 cm, so one cell is a 4 cm
+     window -- twice life size at 1:87, which is the cheat every model tower makes, and at the
+     distance this table is seen from it is two pixels of glow, which is what a window in a real
+     skyline is. `v` scatters a different set of lit floors per variant. */
+  const paintSkyline = (v) => (c) => {
+    const cell = 8, n = 128 / cell;
+    c.fillStyle = "#131c2e"; c.fillRect(0, 0, 128, 128);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const h = (x * 53 + y * 97 + x * y * 31 + v * 211) % 100;
+      if (h > 60) {                        // lit floors, warmer towards the top of the tile
+        c.fillStyle = h > 90 ? "rgb(255,242,208)" : "rgb(255,203,132)";
+        c.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 3);
+      } else if (h > 42) {                 // and the floors that are merely awake
+        c.fillStyle = "rgba(126,148,184,0.45)";
+        c.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 3);
+      }
+    }
+    c.strokeStyle = "rgba(8,12,24,0.55)"; c.lineWidth = 1;
+    for (let i = 0; i <= n; i++) {
+      c.beginPath(); c.moveTo(i * cell, 0); c.lineTo(i * cell, 128); c.stroke();
+      c.beginPath(); c.moveTo(0, i * cell); c.lineTo(128, i * cell); c.stroke();
+    }
+  };
   const paintGlass = (c) => {
     // Solid glass at night: an opaque near-navy body, opaque pane variation, a few opaque lit
     // floors. Nothing on a tower is see-through; the old pale grid read as a veil.
@@ -1068,6 +1091,9 @@ function leaveOverlay(root, trigger) {
     PATS.water = mkTile(paintWater);
     PATS.track = mkTile(paintTrack);
     PATS.domep = mkTile(paintDomeP);
+    PATS.sky0 = mkTile(paintSkyline(0));
+    PATS.sky1 = mkTile(paintSkyline(1));
+    PATS.sky2 = mkTile(paintSkyline(2));
     PATS.cityg = mkTile(paintCityG);
     PATS.cobble = mkTile(paintCobble);
     PATS.rock = mkTile(paintRock);
@@ -2281,31 +2307,18 @@ function leaveOverlay(root, trigger) {
            silhouette instead of a fence line. */
         const blocks = [[-0.36, 0.55, 0.3, -0.1], [-0.1, 0.95, 0.32, 0.12], [0.16, 0.7, 0.3, -0.06],
                         [0.4, 0.5, 0.26, 0.08]];
-        blocks.forEach(([cx, hf, wf, dz]) => {
+        blocks.forEach(([cx, hf, wf, dz], bi) => {
           facesOf({ ...m, x: m.x + cx * m.w, z: m.z + dz * m.d, h: m.h * hf, w: m.w * wf,
                     d: m.d * 0.5 }).forEach((f) => {
             const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                          + f.n[2] * (C.z - f.p[0][2]);
             if (toward <= 0) return;
-            const q = f.n[1] !== 1 && PATS.glass
-              ? add(C, f.p, patUV(f), "pat", PATS.glass)
+            const win = f.n[1] !== 1 ? PATS["sky" + ((bi + Math.floor(T * 0.7)) % 3)] : null;
+            const q = win
+              ? add(C, f.p, patUV(f), "pat", win)
               : add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.2));
-            if (q) { q.lit = lit; drawn.push(q); }
+            if (q) { q.lit = win ? Math.max(lit, 1.05) : lit; drawn.push(q); }
           });
-        });
-        // A handful of lit windows on the two tall blocks, on the face turned to the walk.
-        [[-0.1, 0.95], [0.16, 0.7]].forEach(([cx, hf], bi) => {
-          for (let i = 0; i < 6; i++) {
-            // A slow twinkle: which windows are lit drifts on the frame clock; reduced motion
-            // keeps them all on.
-            if (ease && ((i * 7 + bi * 3 + Math.floor(T * 0.7)) % 5) === 0) continue;
-            const row = Math.floor(i / 2), col = i % 2;
-            const wy = m.y + m.h * hf * (0.25 + 0.22 * row), wx = m.x + cx * m.w + (col ? 5 : -8);
-            const q = add(C, [[wx, wy, m.z - m.d * 0.26], [wx + 4, wy, m.z - m.d * 0.26],
-                              [wx + 4, wy + 5, m.z - m.d * 0.26], [wx, wy + 5, m.z - m.d * 0.26]],
-                          ZERO8, "flat", "#f0c27a");
-            if (q) { q.lit = 1.6; drawn.push(q); }
-          }
         });
       } else if (shape === "dome") {
         /* A hemisphere in three stacks: the stadium the skyline keeps making room for. */
@@ -2338,16 +2351,21 @@ function leaveOverlay(root, trigger) {
         });
         // The sheet: three height slices, bright at the crest and shadowing toward the basin —
         // one flat lit value was what made it a glowing white board — then moving stripes over it.
-        [[0, 0.62], [1, 0.78], [2, 0.95]].forEach(([si, l]) => {
+        [[0, 0.66], [1, 0.8], [2, 0.97]].forEach(([si, l]) => {
           const y0 = m.y + (si / 3) * m.h, y1 = m.y + ((si + 1) / 3) * m.h;
           const sheet = add(C, [[m.x - hw * 0.76, y0, zf], [m.x + hw * 0.76, y0, zf],
                                 [m.x + hw * 0.76, y1, zf], [m.x - hw * 0.76, y1, zf]],
-                            ZERO8, "flat", "#4a7096");
-          if (sheet) { sheet.lit = l * 0.78; drawn.push(sheet); }
+                            ZERO8, "flat", si === 2 ? "#4f8f82" : "#3f7f8f");
+          if (sheet) { sheet.lit = l * 0.82; drawn.push(sheet); }
         });
-        for (let i = 0; i < 6; i++) {
-          const sx = m.x - hw * 0.7 + (i + 0.5) * (hw * 1.4 / 6);
-          const fall = ease ? ((T * 0.32 + i / 6) % 1) : 0.45;
+        // Foam at the plunge line: the one place a waterfall is unambiguously white.
+        const foam = add(C, [[m.x - hw * 0.78, m.y + m.h * 0.06, zf - 2], [m.x + hw * 0.78, m.y + m.h * 0.06, zf - 2],
+                             [m.x + hw * 0.78, m.y + m.h * 0.2, zf - 2], [m.x - hw * 0.78, m.y + m.h * 0.2, zf - 2]],
+                         ZERO8, "flat", `rgba(240,252,250,${(0.3 + (ease ? 0.09 * Math.sin(T * 2.1) : 0)).toFixed(2)})`);
+        if (foam) { foam.lit = 1.3; foam.air = 0.05; drawn.push(foam); }
+        for (let i = 0; i < 9; i++) {
+          const sx = m.x - hw * 0.7 + (i + 0.5) * (hw * 1.4 / 9);
+          const fall = ease ? ((T * 0.32 + i / 9) % 1) : 0.45;
           const yTop = m.y + m.h * (1 - fall), yBot = Math.max(m.y, yTop - m.h * 0.32);
           const a = 0.34 + 0.14 * Math.sin(T * 3.1 + i * 2.3);
           const st = add(C, [[sx - 2, yBot, zf - 1], [sx + 2, yBot, zf - 1],
@@ -2520,8 +2538,21 @@ function leaveOverlay(root, trigger) {
         if (q) { q.lit = 0.9; drawn.push(q); }
       } else if (shape === "tram") {
         /* A red streetcar shuttles the track on the frame clock; reduced motion parks it mid-run.
-           The window band is lit from within — a tram at night is a lantern that moves. */
-        const dx = ease ? Math.sin(T * 0.5) * (m.w / 2 - 20) : 10;
+           The window band is lit from within — a tram at night is a lantern that moves.
+
+           It does not glide. A streetcar eases out of a stop, runs, eases into the next one and
+           stands there long enough to be seen standing — the schedule is the recognisable thing,
+           not the travel. A sine is a thing on a rail that is never anywhere in particular, and
+           the real one slows where it stops, which is the whole reason it reads as a vehicle. */
+        const A = m.w / 2 - 20;
+        const dwell = 0.12, leg = 0.5 - dwell;          // a twelfth of the cycle standing still
+        const smooth = (t) => t * t * (3 - 2 * t);
+        const phase = (T * 0.0796) % 1;                 // one out-and-back every 12.6 s
+        const at = phase < leg ? smooth(phase / leg)
+                 : phase < 0.5 ? 1
+                 : phase < 0.5 + leg ? 1 - smooth((phase - 0.5) / leg)
+                 : 0;
+        const dx = ease ? (at * 2 - 1) * A : 10;
         facesOf({ ...m, x: m.x + dx, w: 30, d: 9, h: 11 }).forEach((f) => {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
