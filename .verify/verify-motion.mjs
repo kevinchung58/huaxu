@@ -8,7 +8,7 @@ const require = createRequire("/home/user/huaxu/");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium").default || require("@sparticuz/chromium");
 const browser = await puppeteer.launch({ executablePath: await chromium.executablePath(),
-  args: [...chromium.args, "--no-sandbox"], headless: true, defaultViewport: { width: 1024, height: 768 } });
+  args: [...chromium.args, "--no-sandbox", "--disable-dev-shm-usage"], headless: true, defaultViewport: { width: 1024, height: 768 } });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 // stop, turn that frames the table, and the one thing on it that is supposed to move
 const JOBS = [ {stop:1, deg:-90, id:"boat-lake", what:"the ferry crossing"},
@@ -25,8 +25,8 @@ const diff = async (a, b, box) => {
     if (Math.abs(A[i]-B[i]) + Math.abs(A[i+1]-B[i+1]) + Math.abs(A[i+2]-B[i+2]) > 8) n++;
   return +(n / (box.w*box.h) * 100).toFixed(2);
 };
+const page = await browser.newPage();
 for (const j of JOBS) {
-  const page = await browser.newPage();
   await page.goto("http://127.0.0.1:8080/rooms-toronto.html", { waitUntil: "networkidle0" });
   await sleep(1300);
   await page.evaluate((s) => document.querySelectorAll("[data-walk-stop]")[s].click(), j.stop);
@@ -40,7 +40,7 @@ for (const j of JOBS) {
     const x = Math.max(0, Math.round(r.left)), y = Math.max(0, Math.round(r.top));
     return { x, y, w: Math.min(1024-x, Math.round(r.width)), h: Math.min(768-y, Math.round(r.height)) };
   }, j.id);
-  if (!box || box.w < 4 || box.h < 4) { console.log(`  ${j.what.padEnd(34)} off-screen`); await page.close(); continue; }
+  if (!box || box.w < 4 || box.h < 4) { console.log(`  ${j.what.padEnd(34)} off-screen`); continue; }
   const out = [];
   for (let k = 0; k < 4; k++) {
     await page.screenshot({ path: "/tmp/mv-a.png" }); await sleep(1600);
@@ -48,6 +48,5 @@ for (const j of JOBS) {
     out.push(await diff("/tmp/mv-a.png", "/tmp/mv-b.png", box));
   }
   console.log(`  ${j.what.padEnd(34)} box ${box.w}x${box.h}px  2-frame diff: ${out.join("%  ")}%`);
-  await page.close();
 }
 await browser.close();

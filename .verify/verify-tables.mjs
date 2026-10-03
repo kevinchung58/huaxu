@@ -7,7 +7,7 @@ const require = createRequire("/home/user/huaxu/");
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium").default || require("@sparticuz/chromium");
 const browser = await puppeteer.launch({ executablePath: await chromium.executablePath(),
-  args: [...chromium.args, "--no-sandbox"], headless: true, defaultViewport: { width: 1024, height: 768 } });
+  args: [...chromium.args, "--no-sandbox", "--disable-dev-shm-usage"], headless: true, defaultViewport: { width: 1024, height: 768 } });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const T = {
   1: { name: "lake",   ids: ["plinth-lake","pool-lake","planter-i1","planter-i2","boat-lake","tree-i1","tree-i2","tree-s1","tree-s2"] },

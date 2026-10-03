@@ -99,16 +99,38 @@ let layoutFail = 0;
   /* A card left open sits in the middle of the screen and is the right thing to grab-proof; the
      turn under test is the space's, so unwind first. Esc closes one layer at a time and only then
      leaves, which is the contract the walk keeps. */
-  await page.keyboard.press("Escape");
-  await sleep(500);
-  const before = `${OUT}/90-turn-before.png`, after = `${OUT}/90-turn-after.png`;
-  const centre = await page.evaluate(() => {
-    const e = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-    return e ? (e.dataset && e.dataset.obj) || e.className || e.tagName : "nothing";
+  /* Esc unwinds one level and only then leaves (site.js): with no card and no list open it walks
+     you out of the space entirely, and there is no view left to turn. So only press it when there
+     is something to unwind -- a card left open is the right thing to grab-proof, but pressing the
+     key blind used to navigate the harness off the page mid-test. */
+  const had = await page.evaluate(() => {
+    const c = document.querySelector("[data-walk-card]");
+    const l = document.querySelector(".walk-list");
+    return { card: !!(c && !c.hidden), list: !!(l && !l.classList.contains("is-closed")) };
   });
+  if (had.card || had.list) { await page.keyboard.press("Escape"); await sleep(500); }
+  /* Clicking a walk-stop scrolls it into view -- a real browser does that to any element you
+     click, and the stop chips sit below the space -- so by now the middle of the window can be a
+     content block rather than the room. The turn under test is the space's, so bring the space
+     back and aim at the middle of *it*, not of the window. Without this the street reported
+     4-5% on one run and 5.46% on the next, which is the gesture landing on a block title. */
+  const pt = await page.evaluate(() => {
+    const v = document.querySelector("[data-walk-view]");
+    if (!v) return null;
+    v.scrollIntoView({ block: "center", inline: "center" });
+    const r = v.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  });
+  await sleep(500);
+  if (!pt) { layoutFail++; console.log("FAIL turn from the centre: no walk view left to turn"); }
+  const before = `${OUT}/90-turn-before.png`, after = `${OUT}/90-turn-after.png`;
+  const centre = await page.evaluate((p) => {
+    const e = document.elementFromPoint(p.x, p.y);
+    return e ? (e.dataset && e.dataset.obj) || e.className || e.tagName : "nothing";
+  }, pt);
   await page.screenshot({ path: before });
-  await page.mouse.move(512, 384); await page.mouse.down();
-  await page.mouse.move(700, 384, { steps: 6 }); await page.mouse.up();
+  await page.mouse.move(pt.x, pt.y); await page.mouse.down();
+  await page.mouse.move(pt.x + 188, pt.y, { steps: 6 }); await page.mouse.up();
   await sleep(700);
   await page.screenshot({ path: after });
   const d = await diffPct(before, after);
