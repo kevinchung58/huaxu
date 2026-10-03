@@ -2784,7 +2784,7 @@ DISTRICTS = [
              "title": "The table the falls stand on",
              "hint": "The same lit plinth, cooler light: the water gets a cold pool on the floor, "
                      "the way real spray cools the air at the rail."},
-            {"id": "falls-n", "kind": "falls", "x": 290, "z": 200, "y": 80, "ry": 0,
+            {"id": "falls-n", "kind": "falls", "x": 290, "z": 200, "y": 80, "ry": -90,
              "w": 130, "h": 100, "d": 70,
              "title": "The falls, small",
              "hint": "A sheet of water over a ledge into mist, small enough to step over and loud "
