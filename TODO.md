@@ -774,3 +774,77 @@ impeccable `[]` · idempotent · 五站 60 fps。
   卻從來沒檢查過**這個東西的形狀對不對**。形狀錯了，對比跟動態再好也不像。
 - 廳內其他物件也該做同一件事：`tower-cn` 58×300 = 0.19:1，真實 CN Tower 高 553 m、
   塔身寬約 30–40 m → 大概 15:1，我們的還算接近；但 `dome-rc`、`skyline-cn` 的比例都還沒查。
+
+---
+
+## 0o. 第十三輪之五（2026-10-04）：聖勞倫斯市場 —— 沒有，而且從來沒做過
+
+使用者問「你 canada little 聖勞倫斯市場這到底有沒有做完整？」
+
+**答案是：沒有。而且它本來就沒有要做成聖勞倫斯市場。**
+
+### 查到的事實
+
+- 站上**從來沒有出現過 "Lawrence" 這個字**（grep 全站為 0）。文案自己就寫
+  "No stall is named; a market reads without lettering"——是刻意匿名的。
+- 實景：
+  - **South Market 建於 1845，是多倫多第一座市政廳**；1899 年起改建為市場。
+    紅磚＋石造裝飾、喬治亞式 [5](https://torontobuildings.wordpress.com/2010/10/18/st-lawrence-south-market/)
+  - **大型拱窗、鐘塔／圓頂（cupola）** [3](https://www.welove-toronto.com/item/st-lawrence-market/)
+  - **120 家以上攤商**，兩層樓，上層是挑廊（gallery）可俯瞰一樓
+    [1](https://www.destinationtoronto.com/things-to-do/attractions/must-see-attractions/st-lawrence-market-complex/)
+    [2](https://www.nomadotravel.app/en/attractions/st-lawrence-market)
+  - 2012 年被 National Geographic 評為世界最佳食物市場 [1]
+- **Little Canada 的 Little Toronto 確實把 St. Lawrence Market 列為地標之一**
+  （與 Distillery District、Royal York Hotel、Prince Edward Viaduct 並列）
+  [wiki](https://en.wikipedia.org/wiki/Little_Canada_(attraction))
+
+### 原來的狀態（量出來的）
+
+市場那桌 = plinth + **3 個一模一樣的攤子** + 2 個木箱：
+- 桌面 **43.6% 被佔用，56% 是空的石板**
+- 三個攤子的 `w/h/d` 完全相同、貨品顏色也完全相同 → 像「同一個攤子印三次」
+- **完全沒有建築物**——而建築物才是聖勞倫斯市場的辨識特徵
+
+對照其他桌的佔用率：lake 74.8% · sky 55.4% · **market 43.6%** · falls 36.8%（單一大件）
+
+### 使用者選了：做成聖勞倫斯市場（加建築）
+
+新增 shape `markethall`（`kind: "hall"`）：
+- 紅磚主體＋砌磚橫縫、兩端轉角面（不是一塊看板）
+- **地面層拱廊** 7 開間，每間石拱＋內部暗處＋會呼吸的暖光
+- **上層挑廊** 7 扇高拱窗，各有自己的亮度（不是一排相同亮度的條燈），有窗櫺
+- 石簷口＋女兒牆
+- **鐘塔**：塔身＋**鐘面是一個圓盤，沒有指針也沒有數字**（場內不放任何字）
+  上面是圓頂（cupola）＋塔尖
+- 攤子改成 **4 種配色**（蔬果／肉／魚／起司），用 `m.z % 4` 挑
+  （`meta` 不帶任意欄位，所以不能加 data 屬性，只能從既有值推）
+
+### 結果
+
+| | 修前 | 修後 |
+|---|---|---|
+| 攤子動態 mean\|d\| | 1.8 / 3.5 / 2.0 | **5.4 / 15.8 / 16.0** |
+| 攤子對比 sd | — | 33 / 45 / 43，308–478 色 |
+| 新建築 hall-sl | （不存在）| sd 37，452 色 |
+| 樹 | 22（被我移到看不到）| **29.2** |
+
+### 兩個我自己踩的坑
+
+1. **我把三個攤子排成一條直線，結果互相擋住**，stall-m3 掉到 sd 27／100 色。
+   改成兩個深度交錯才回來。**動位置一定要重測，不能假設。**
+2. **tree-m1 量到 0.00** 我一度以為是程式壞了，結果單獨測：
+   換回原位 **25.30**。**是位置（被擋／不在畫面），不是程式。**
+   「量到 0」要先懷疑取樣框，不要先改 code。
+3. crate-m2 旋轉 18° 後腳印比 `d` 寬，多出 4 cm 懸空 → geometry 檢查抓到。
+
+### 量測
+
+shapes 119/119 · geometry OK · clash 4（仍是原本那 4 組）· walk 167/167 ·
+impeccable `[]` · idempotent · 五站 60 fps。
+
+### 給下一位
+
+- **做場景前先查實景尺寸跟辨識特徵。** 這輪跟瀑布輪是同一個教訓：
+  我做了好幾輪對比跟動態，卻沒問過「這東西的形狀／有沒有主體建築對不對」。
+- 廳內還沒查實景比例的：`dome-rc`、`skyline-cn`、`tower-cn`（0.19:1，真實約 15:1，尚接近）。

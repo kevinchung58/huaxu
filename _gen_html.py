@@ -2801,24 +2801,31 @@ DISTRICTS = [
              "title": "The table the market stands on",
              "hint": "A stall row at table scale. No stall is named and no price is written; a "
                      "market reads by its awnings and its crates, not its lettering."},
-            {"id": "stall-m1", "kind": "stall", "x": -330, "z": 385, "y": 80, "ry": 90,
-             "w": 84, "h": 70, "d": 50,
+            {"id": "hall-sl", "kind": "hall", "x": -345, "z": 400, "y": 80, "ry": 90,
+             "w": 170, "h": 130, "d": 48,
+             "title": "St. Lawrence Market, the South Market hall",
+             "hint": "Toronto's first City Hall, built 1845 in red brick, gutted and reopened as a "
+                     "market from 1899. An arcade at street level, a gallery floor of arched "
+                     "windows over it, and a cupola with a clock in it. Nothing on it is lettered: "
+                     "the clock is a disc, and no vendor is named."},
+            {"id": "stall-m1", "kind": "stall", "x": -300, "z": 350, "y": 80, "ry": 90,
+             "w": 76, "h": 70, "d": 36,
              "title": "A stall, small",
              "hint": "Awning over a counter, drawn the size of a hand. The market's first stall."},
-            {"id": "stall-m2", "kind": "stall", "x": -265, "z": 400, "y": 80, "ry": 90,
-             "w": 84, "h": 70, "d": 50,
+            {"id": "stall-m2", "kind": "stall", "x": -252, "z": 400, "y": 80, "ry": 90,
+             "w": 76, "h": 70, "d": 36,
              "title": "A second stall, small",
              "hint": "The row continues. Two stalls facing is a market; one is a table."},
-            {"id": "stall-m3", "kind": "stall", "x": -330, "z": 415, "y": 80, "ry": 90,
-             "w": 84, "h": 70, "d": 50,
+            {"id": "stall-m3", "kind": "stall", "x": -300, "z": 448, "y": 80, "ry": 90,
+             "w": 76, "h": 70, "d": 36,
              "title": "A third stall, small",
              "hint": "The last stall before the table's edge, awning lower than the rest."},
-            {"id": "crate-m1", "kind": "crate", "x": -225, "z": 380, "y": 80, "ry": 12,
-             "w": 26, "h": 20, "d": 26,
+            {"id": "crate-m1", "kind": "crate", "x": -227, "z": 345, "y": 80, "ry": 12,
+             "w": 26, "h": 20, "d": 20,
              "title": "Crates by the stalls",
              "hint": "Whatever the market sells arrives in crates. Drawn small, stacked once."},
-            {"id": "crate-m2", "kind": "crate", "x": -225, "z": 400, "y": 80, "ry": -18,
-             "w": 22, "h": 16, "d": 22,
+            {"id": "crate-m2", "kind": "crate", "x": -227, "z": 372, "y": 80, "ry": -18,
+             "w": 22, "h": 16, "d": 20,
              "title": "A second crate",
              "hint": "The market's clutter, at a scale where clutter is a centimetre tall."},
             # Table four — the lake. The city's front door: water, islands, one small ferry.
@@ -3003,11 +3010,12 @@ DISTRICTS = [
              "caption": "The falls at table scale: a sheet of water, a ledge, and mist. The model "
                         "moves; the picture holds still."},
             {"id": "market", "wall": False, "src": "IMG/toronto-3.jpg", "x": -374, "z": 290, "y": 150, "ry": 90,
-             "title": "The market, small",
+             "title": "St. Lawrence Market, small",
              "alt": "Illustration of a miniature market street on a lit table: small stalls with "
                     "striped awnings, stacked crates, and warm hanging lamps.",
-             "caption": "A market reduced to awnings, crates and warm light. No stall is named; a "
-                        "market reads without lettering."},
+             "caption": "The South Market hall, which was Toronto's first City Hall before it was a "
+                        "market, with a stall row under it. No vendor is named and nothing is "
+                        "lettered: a market reads by its awnings, its crates and its warm light."},
         ],
         "slots_title": "Places in the hall",
         "slots": [
@@ -3022,8 +3030,8 @@ DISTRICTS = [
              "note": "The second table, where the water moves.",
              "state": "Held by a drawn frame; a photograph of the model takes the slot when one "
                       "arrives."},
-            {"label": "The market, small",
-             "note": "The third table, where the stalls stand.",
+            {"label": "St. Lawrence Market, small",
+             "note": "The third table: the South Market hall and the stall row under it.",
              "state": "Held by a drawn frame; a photograph of the model takes the slot when one "
                       "arrives."},
         ],

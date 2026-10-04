@@ -1294,7 +1294,11 @@ function leaveOverlay(root, trigger) {
                   // known by. Each is its own branch below; without one the prop falls back to a
                   // plane, so a new shape that never shipped would show as a card, not a crash.
                   plinth: "plinth", tower: "tower", skyline: "skyline", dome: "dome",
-                  falls: "falls", pool: "pool", boat: "boat" };
+                  falls: "falls", pool: "pool", boat: "boat",
+                  // The market's hall: a brick nave with an arcade under a gallery floor, and a
+                  // cupola with a clock in it. A market that is only stalls is a market in the
+                  // abstract -- this one is a building and the stalls belong to it.
+                  hall: "markethall" };
   // A few props are named for what they are, not for the kind that draws them; these are the aliases.
   Object.assign(SHAPE, { pole: "box", barrel: "box", stool: "box", lamp: "box",
                          curtain: "cloth", stall: "stall", ledge: "plane" });
@@ -2622,9 +2626,18 @@ function leaveOverlay(root, trigger) {
                         ZERO8, "flat", `rgba(232,232,226,${sa.toFixed(2)})`);
           if (q) { q.lit = 1.1; drawn.push(q); }
         }
-        // Produce on the counter: three small heaps in market colours. No stall is lettered,
-        // so colour does the selling.
-        [["#7da05a", -0.44], ["#d08a3e", -0.06], ["#a04a3c", 0.32]].forEach(([col, cx]) => {
+        /* Produce on the counter: three small heaps in market colours. No stall is lettered, so
+           colour does the selling -- and every stall used to sell the same three heaps, which made
+           three stalls look like one stall printed three times. St. Lawrence is a market of
+           trades, so each stall draws from its own palette, picked by where it stands: greengrocer,
+           butcher, fishmonger, cheesemonger. */
+        const PALETTES = [
+          [["#7da05a", -0.44], ["#d08a3e", -0.06], ["#a04a3c", 0.32]],   // greengrocer
+          [["#c9705e", -0.42], ["#b8543f", -0.04], ["#8e3b30", 0.3]],    // butcher
+          [["#7fb6c4", -0.44], ["#a8cdd4", -0.06], ["#dce9e8", 0.3]],     // fishmonger
+          [["#e0c47a", -0.44], ["#cba85c", -0.06], ["#b8924a", 0.3]],     // cheesemonger
+        ];
+        PALETTES[Math.abs(Math.round(m.z)) % PALETTES.length].forEach(([col, cx]) => {
           const gx = cx * hw;
           const q = add(C, [P(gx - 8, m.d * 0.16, m.h * 0.62), P(gx + 8, m.d * 0.16, m.h * 0.62),
                             P(gx + 8, m.d * 0.16, m.h * 0.62 + 8), P(gx - 8, m.d * 0.16, m.h * 0.62 + 8)],
@@ -2644,6 +2657,135 @@ function leaveOverlay(root, trigger) {
                          ZERO8, "flat",
                          `rgba(255,188,116,${(0.16 + (ease ? 0.15 * Math.sin(T * 5.2 + m.z * 0.1) : 0)).toFixed(3)})`);
         if (glow) { glow.lit = 1.45; drawn.push(glow); }
+      } else if (shape === "markethall") {
+        /* St. Lawrence Market, the South Market hall.
+
+           It is a building before it is a market. This hall went up in 1845 as Toronto's first
+           City Hall -- red brick with stone dressings, Georgian -- and was gutted and reopened
+           as a market from 1899. What identifies it from the street is not the trade inside but
+           the shell: a long brick nave, an arcade at street level, a row of arched windows on
+           the gallery floor, a stone cornice, and a cupola with a clock in it. What stood here
+           before was three stalls and two crates on bare cobbles, which is a market only in the
+           abstract, and 56% of the table was empty stone.
+
+           Nothing on it is lettered. No vendor is named, no price is written, and the clock is a
+           disc with no hands and no numerals, because a face with numbers on it is a sign, and
+           the rule in this hall is that nothing is written. */
+        const along = Math.abs(m.ry) > 45;
+        const dir = along ? (m.x < 0 ? 1 : -1) : -1;
+        const P = (u, v, y) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
+        const hw = m.w / 2, hd = m.d / 2, F = hd;
+        const Z = (n) => new Array(n * 2).fill(0);
+        /* An opening with a head on it: two jambs and a semicircle. `rise` is the head's height,
+           kept separate from the half-width so a wide arch and a tall window are not the same
+           shape -- an arch forced to a semicircle of its own width is a tunnel. */
+        const arch = (uc, ar, rise, yS, yP, v, seg = 7) => {
+          const p = [P(uc - ar, v, yS), P(uc + ar, v, yS), P(uc + ar, v, yP)];
+          for (let i = 0; i <= seg; i++) {
+            const t = (i / seg) * Math.PI;
+            p.push(P(uc + ar * Math.cos(t), v, yP + rise * Math.sin(t)));
+          }
+          return p;
+        };
+        const brickTop = m.h * 0.78, BAYS = 7, uOf = (i) => -hw + (i + 0.5) * (m.w / BAYS);
+        // Brick. The street face catches the market's warm lamp; the returns do not.
+        const body = add(C, [P(-hw, F, 0), P(hw, F, 0), P(hw, F, brickTop), P(-hw, F, brickTop)],
+                         ZERO8, "flat", mix("#7d4034", -0.04));
+        if (body) { body.lit = lit * 0.95; drawn.push(body); }
+        [-1, 1].forEach((sd) => {
+          const e = add(C, [P(sd * hw, F, 0), P(sd * hw, -hd, 0),
+                            P(sd * hw, -hd, brickTop), P(sd * hw, F, brickTop)],
+                         ZERO8, "flat", mix("#7d4034", -0.24));
+          if (e) { e.lit = lit * 0.78; drawn.push(e); }
+        });
+        // Courses: brick is laid in lines, and a flat wall of one red is a painted board.
+        for (let k = 1; k < 9; k++) {
+          const cy = (k / 9) * brickTop;
+          const q = add(C, [P(-hw, F + 0.2, cy), P(hw, F + 0.2, cy),
+                            P(hw, F + 0.2, cy + m.h * 0.008), P(-hw, F + 0.2, cy + m.h * 0.008)],
+                        ZERO8, "flat", "rgba(30,16,12,0.16)");
+          if (q) { q.lit = 0.6; drawn.push(q); }
+        }
+        // Ground arcade: open to the street, and the shade inside is warmer than the brick.
+        for (let i = 0; i < BAYS; i++) {
+          const uc = uOf(i), ar = (m.w / BAYS) * 0.3;
+          const head = add(C, arch(uc, ar * 1.3, ar * 1.25, m.h * 0.03, m.h * 0.32, F + 0.3),
+                           Z(11), "flat", mix("#c9bda6", -0.12));
+          if (head) { head.lit = lit * 0.9; drawn.push(head); }
+          const p = arch(uc, ar, ar * 1.1, m.h * 0.07, m.h * 0.32, F + 0.6);
+          const q = add(C, p, Z(p.length), "flat", mix("#241a16", 0.08));
+          if (q) { q.lit = lit * 0.45; drawn.push(q); }
+          // something is being sold in there, and it is lit
+          const g2 = add(C, [P(uc - ar * 0.8, F + 0.9, m.h * 0.07),
+                             P(uc + ar * 0.8, F + 0.9, m.h * 0.07),
+                             P(uc + ar * 0.8, F + 0.9, m.h * 0.2),
+                             P(uc - ar * 0.8, F + 0.9, m.h * 0.2)],
+                         ZERO8, "flat",
+                         `rgba(255,196,126,${(0.2 + (ease ? 0.07 * Math.sin(T * 1.6 + i * 1.1) : 0)).toFixed(3)})`);
+          if (g2) { g2.lit = 1.4; drawn.push(g2); }
+        }
+        // The gallery floor: tall arched windows, lit from inside, and lit unevenly -- a hall of
+        // windows all at one brightness is a strip light.
+        for (let i = 0; i < BAYS; i++) {
+          const uc = uOf(i), ar = (m.w / BAYS) * 0.24;
+          const yS = m.h * 0.44, yP = m.h * 0.62;
+          const st = add(C, arch(uc, ar * 1.32, ar * 1.32, yS - ar * 0.3, yP, F + 0.3),
+                         Z(11), "flat", mix("#c9bda6", -0.06));
+          if (st) { st.lit = lit * 0.94; drawn.push(st); }
+          const p = arch(uc, ar, ar * 1.15, yS, yP, F + 0.6);
+          const q = add(C, p, Z(p.length), "flat",
+                        `rgba(255,214,150,${(0.6 + (ease ? 0.12 * Math.sin(T * 0.9 + i * 0.7) : 0)).toFixed(3)})`);
+          if (q) { q.lit = 1.55; drawn.push(q); }
+          // a mullion, because an undivided arched window at this size is a hole
+          const mu = add(C, [P(uc - 0.9, F + 0.7, yS), P(uc + 0.9, F + 0.7, yS),
+                             P(uc + 0.9, F + 0.7, yP + ar * 1.15), P(uc - 0.9, F + 0.7, yP + ar * 1.15)],
+                         ZERO8, "flat", "rgba(52,38,30,0.5)");
+          if (mu) { mu.lit = 1.1; drawn.push(mu); }
+        }
+        // Cornice and parapet: the hall is finished at the top, not cut off.
+        const co = add(C, [P(-hw, F + 0.4, brickTop), P(hw, F + 0.4, brickTop),
+                           P(hw, F + 0.4, m.h * 0.85), P(-hw, F + 0.4, m.h * 0.85)],
+                       ZERO8, "flat", mix("#c9bda6", 0.06));
+        if (co) { co.lit = lit * 1.05; drawn.push(co); }
+        const pa = add(C, [P(-hw, F, m.h * 0.85), P(hw, F, m.h * 0.85),
+                           P(hw, F, m.h * 0.93), P(-hw, F, m.h * 0.93)],
+                       ZERO8, "flat", mix("#3f4a58", -0.1));
+        if (pa) { pa.lit = lit * 0.85; drawn.push(pa); }
+        /* The cupola. It is the one part of the hall the eye finds from across the room, and a
+           market that has lost its clock is a market you cannot place. */
+        const tu = hw * 0.6, tw = m.w * 0.11, tTop = m.h * 1.04;
+        const sh = add(C, [P(tu - tw, F, brickTop), P(tu + tw, F, brickTop),
+                           P(tu + tw, F, tTop), P(tu - tw, F, tTop)],
+                       ZERO8, "flat", mix("#8a5240", 0.06));
+        if (sh) { sh.lit = lit * 1.0; drawn.push(sh); }
+        [-1, 1].forEach((sd) => {
+          const e = add(C, [P(tu + sd * tw, F, brickTop), P(tu + sd * tw, -hd * 0.8, brickTop),
+                            P(tu + sd * tw, -hd * 0.8, tTop), P(tu + sd * tw, F, tTop)],
+                         ZERO8, "flat", mix("#8a5240", -0.2));
+          if (e) { e.lit = lit * 0.82; drawn.push(e); }
+        });
+        // The clock: a disc. No hands, no numerals, nothing written.
+        const cr = tw * 0.66, cc = brickTop + (tTop - brickTop) * 0.6, disc = [];
+        for (let i = 0; i < 14; i++) {
+          const ang = (i / 14) * Math.PI * 2;
+          disc.push(P(tu + cr * Math.cos(ang), F + 0.8, cc + cr * Math.sin(ang)));
+        }
+        const dq = add(C, disc, Z(disc.length), "flat",
+                       `rgba(238,230,212,${(0.92 + (ease ? 0.06 * Math.sin(T * 0.5) : 0)).toFixed(2)})`);
+        if (dq) { dq.lit = 1.6; drawn.push(dq); }
+        // Cap over it, then a finial.
+        const capR = tw * 1.15, capB = tTop, capH = m.h * 0.15, cap = [P(tu - capR, F, capB)];
+        for (let i = 0; i <= 9; i++) {
+          const t = Math.PI - (i / 9) * Math.PI;
+          cap.push(P(tu + capR * Math.cos(t), F, capB + capH * Math.sin(t)));
+        }
+        cap.push(P(tu + capR, F, capB));
+        const cq = add(C, cap, Z(cap.length), "flat", mix("#3f4a58", 0.12));
+        if (cq) { cq.lit = lit * 1.1; drawn.push(cq); }
+        const fin = add(C, [P(tu - 1.6, F, capB + capH), P(tu + 1.6, F, capB + capH),
+                            P(tu + 1.6, F, capB + capH + m.h * 0.08), P(tu - 1.6, F, capB + capH + m.h * 0.08)],
+                       ZERO8, "flat", "#c9bda6");
+        if (fin) { fin.lit = 1.35; drawn.push(fin); }
       } else if (shape === "tree") {
         /* A model tree: a trunk, and a crown that is a pinch of flock on a wire.
 
