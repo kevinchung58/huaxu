@@ -2418,12 +2418,22 @@ function leaveOverlay(root, trigger) {
           });
         });
       } else if (shape === "dome") {
-        /* The stadium: a low dark drum, and a ribbed cap over it.
+        /* The stadium, and the reason it is on the table at all: the roof opens.
 
-           It used to be three pale boxes lit 1.1x, which measured as the brightest object in the
-           whole hall (mean 233) and nearly the flattest (76 colours) -- a white blob with a faint
-           grid on it. A roof is ribbed, and a roof in a dark hall is not a lamp: the panels now cut
-           against dark joints and the drum under it is darker than anything on the table. */
+           It used to be three pale boxes with no motion anywhere in them -- measured 1.3 out of
+           765, the deadest object in the hall, with 0.7% of its pixels changing between frames. At
+           Little Canada this is the exhibit people name, Rogers Centre with its lid going back, so
+           that is what it does now: the upper tiers are in two halves on a 42-second cycle, slow
+           at the ends the way a real roof is, and when the lid is off you look down into the bowl,
+           which is the only reason to open one. */
+        const sm = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+        const cyc = (T / 42) % 1;
+        const op = cyc < 0.12 ? sm(cyc / 0.12)
+                 : cyc < 0.46 ? 1
+                 : cyc < 0.58 ? sm(1 - (cyc - 0.46) / 0.12) : 0;
+        const along = Math.abs(m.ry) > 45;
+
+        // The drum it all stands on.
         facesOf({ ...m, h: m.h * 0.32 }).forEach((f) => {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
@@ -2431,17 +2441,55 @@ function leaveOverlay(root, trigger) {
           const q = add(C, f.p, ZERO8, "flat", mix(base, f.k - 0.2));
           if (q) { q.lit = lit * 0.66; drawn.push(q); }
         });
-        [[0.32, 0.42, 0.95], [0.68, 0.34, 0.72], [0.94, 0.26, 0.44]].forEach(([y0, hf, wf]) => {
-          facesOf({ ...m, y: m.y + m.h * y0, h: m.h * hf, w: m.w * wf, d: m.d * wf }).forEach((f) => {
-            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
-                         + f.n[2] * (C.z - f.p[0][2]);
-            if (toward <= 0) return;
-            const q = f.n[1] !== 1 && PATS.domep
-              ? add(C, f.p, patUV(f), "pat", PATS.domep)
-              : add(C, f.p, ZERO8, "flat", mix(base, f.k + 0.12));
-            if (q) { q.lit = lit * (f.n[1] === 1 ? 0.92 : 0.78); drawn.push(q); }
-          });
+
+        /* The bowl: tiers of seating stepping down to the field, painted with the lid shut too
+           because the roof is what hides them, not the code. They are the reward for arriving
+           while it is open. */
+        [0, 1, 2].forEach((i) => {
+          const w = m.w * 0.84 * (1 - i * 0.17);
+          facesOf({ ...m, y: m.y + m.h * (0.30 + i * 0.05), h: m.h * 0.055, w, d: w })
+            .forEach((f) => {
+              const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                           + f.n[2] * (C.z - f.p[0][2]);
+              if (toward <= 0) return;
+              const q = add(C, f.p, ZERO8, "flat", mix(base, f.k - 0.58 + i * 0.07));
+              if (q) { q.lit = lit * (0.34 + i * 0.05); drawn.push(q); }
+            });
         });
+        // The field, and its floodlights: the bright thing at the bottom of the bowl.
+        {
+          const fw = m.w * 0.40;
+          facesOf({ ...m, y: m.y + m.h * 0.46, h: m.h * 0.02, w: fw, d: fw * 0.72 })
+            .forEach((f) => {
+              const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                           + f.n[2] * (C.z - f.p[0][2]);
+              if (toward <= 0) return;
+              const q = add(C, f.p, ZERO8, "flat", "#4f6b46");
+              if (q) { q.lit = lit * 0.7 + 0.35 * NIGHT() + 0.3 * op; q.nolite = true;
+                       drawn.push(q); }
+            });
+        }
+
+        /* The roof. The bottom ring is fixed -- that much of a roof really does stay put -- and
+           the two tiers above it are each in two halves that slide out and back. */
+        [[0.32, 0.42, 0.95, 0], [0.68, 0.34, 0.72, 1], [0.94, 0.26, 0.44, 1]]
+          .forEach(([y0, hf, wf, slides]) => {
+            (slides ? [-1, 1] : [0]).forEach((side) => {
+              const off = side * op * m.w * wf * 0.54;
+              facesOf({ ...m,
+                        x: m.x + (along ? 0 : off), z: m.z + (along ? off : 0),
+                        y: m.y + m.h * y0, h: m.h * hf,
+                        w: slides ? m.w * wf * 0.5 : m.w * wf, d: m.d * wf }).forEach((f) => {
+                const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                             + f.n[2] * (C.z - f.p[0][2]);
+                if (toward <= 0) return;
+                const q = f.n[1] !== 1 && PATS.domep
+                  ? add(C, f.p, patUV(f), "pat", PATS.domep)
+                  : add(C, f.p, ZERO8, "flat", mix(base, f.k + 0.12));
+                if (q) { q.lit = lit * (f.n[1] === 1 ? 0.92 : 0.78); drawn.push(q); }
+              });
+            });
+          });
       } else if (shape === "falls") {
         /* The falls at table scale: a pale sheet over a ledge into mist, held between two dark
            headlands. The sheet's stripes shimmer with the frame clock — they move because the
