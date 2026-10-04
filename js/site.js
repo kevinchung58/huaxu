@@ -1339,7 +1339,10 @@ function leaveOverlay(root, trigger) {
        kept, so nothing that used to be drawn has stopped being drawn. */
     if (bx1 < -80 || bx0 > W + 80 || by1 < -80 || by0 > H + 80) return null;
     let z = 0; cp.forEach((q) => { z += q.z; });
-    const quad = { z: z / cp.length, pts: cp, mode, arg, img };
+    const quad = { z: z / cp.length, pts: cp, mode, arg, img,
+                   // Kept so the night can skip quads too small for it to matter: darkening a
+                   // 4-pixel speck costs a fill and changes nothing anyone can see.
+                   area: (bx1 - bx0) * (by1 - by0) };
     quads.push(quad);
     return quad;
   };
@@ -1393,14 +1396,35 @@ function leaveOverlay(root, trigger) {
   // Time, sampled once per frame: a lantern that swings on a clock of its own while everything else
   // uses another is how a scene starts to shimmer.
   let T = 0;
+  /* The hall's own day.
+
+     Little Canada runs every exhibit on one synchronised day-night cycle -- a show-control system
+     coordinating moving vehicles, projections and thousands of channels of building illumination,
+     so that at "sunset" thousands of tiny window lights come up at once. It is the single thing
+     that most makes a model hall feel inhabited, and until now this hall had one fixed lighting
+     state, which is a diorama in a shop window.
+
+     Its cycle is fifteen minutes. Ours is four: a visitor to a web page does not stay fifteen
+     minutes, and a cycle nobody sees is decoration rather than day. The walk opens in the late
+     afternoon so the lamps come up while you are standing there instead of after you have gone. */
+  const DAYLEN = 240;                                  // seconds for one full day
+  const dayPhase = () => ((T + 78) / DAYLEN) % 1;      // 0 midnight · 0.25 dawn · 0.5 noon · 0.75 dusk
+  const SUN = () => clamp(Math.sin((dayPhase() - 0.25) * Math.PI * 2) * 0.5 + 0.5, 0, 1);
+  const NIGHT = () => 1 - SUN();
   const swayOf = (L) => (!L.swing || reduce() ? 0 : Math.sin(T * 6.28319 / L.period + L.phase) * L.swing);
   const lightAt = (px, py, pz) => {
-    let v = AMBIENT;
+    let v = AMBIENT * (0.18 + 0.82 * SUN());
+    let lit = 0;
     for (let i = 0; i < lamps.length; i++) {
       const L = lamps[i];
       const d2 = (px - L.x) * (px - L.x) + (pz - L.z) * (pz - L.z) + (py - L.y) * (py - L.y) * 0.4;
-      v += L.k / (1 + d2 / 44000);            // half-light at 210 cm: a bulb, not a searchlight
+      lit += L.k / (1 + d2 / 44000);          // half-light at 210 cm: a bulb, not a searchlight
     }
+    /* A bulb is worth more after dark. By day the hall is lit by its own roof and the tables read
+       as furniture; after dusk the roof goes and the models are the only things still bright, which
+       is why a model hall is kept dim. The two terms move in opposite directions on purpose --
+       raising everything at once would be a brightness slider, not a day. */
+    v += lit * (1.0 - 0.22 * NIGHT());
     return Math.min(1.7, v);
   };
   const haze = (z) => clamp((z - 420) / 2450, 0, 1) * FOG_MAX;
@@ -1465,7 +1489,17 @@ function leaveOverlay(root, trigger) {
     // distance should look like something you are seeing through, not like the picture ending.
     const warm = clamp((q.lit || 0) - 0.55, 0, 1.15);
     if (warm > 0.02) { path(); g.fillStyle = `rgba(255,228,186,${(warm * 0.24).toFixed(3)})`; g.fill(); }
-    const dark = q.air === undefined ? haze(q.z) : q.air;
+    /* The night is folded into the air rather than laid as a second fill over the quad.
+
+       `lit` cannot carry darkness: a lit quad tops out at a 28% warm wash over its own base colour,
+       so turning `lit` down does not turn the hall dark, it only removes a wash. Darkness has to be
+       painted on, and `air` is the paint. Laid as its own fill it cost the room 600 fills and broke
+       its fill budget; added to the darkening pass that already runs, it costs nothing.
+
+       Lit windows opt out (`nolite`). That is the whole effect: the hall goes dark and the models
+       keep their own light, which is why a model hall is dim in the first place. */
+    const dark = Math.min(0.6, (q.air === undefined ? haze(q.z) : q.air)
+                               + (q.nolite ? 0 : NIGHT() * 0.34));
     if (dark > 0.01) { path(); g.fillStyle = `rgba(22,34,60,${dark.toFixed(3)})`; g.fill(); }
   };
 
@@ -2305,7 +2339,8 @@ function leaveOverlay(root, trigger) {
                   "pat", PATS[m.top])
             : add(C, [[x0, m.y + m.h, z0], [x1, m.y + m.h, z0], [x1, m.y + m.h, z1], [x0, m.y + m.h, z1]],
                   ZERO8, "flat", "#d9c9a6");
-          if (gq) { gq.lit = lightAt((x0 + x1) / 2, m.y + m.h, (z0 + z1) / 2) * 1.15; drawn.push(gq); }
+          if (gq) { gq.lit = lightAt((x0 + x1) / 2, m.y + m.h, (z0 + z1) / 2)
+                             * (0.8 + 0.55 * NIGHT()); drawn.push(gq); }
         }
       } else if (shape === "tower") {
         /* The one silhouette the city is known by, at table scale: splayed base, a tapering shaft
@@ -2360,7 +2395,26 @@ function leaveOverlay(root, trigger) {
             const q = win
               ? add(C, f.p, patUV(f), "pat", win)
               : add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.2));
-            if (q) { q.lit = win ? Math.max(lit, 1.05) : lit; drawn.push(q); }
+            /* Windows are the whole point of the cycle: dark glass reflecting the sky all day, and
+               at dusk thousands of them coming on at once. Held at a constant 1.05 they were always
+               on, which is a building with the lights left on in daylight. */
+            if (q) {
+              q.lit = win ? Math.max(lit, 0.9) : lit;
+              drawn.push(q);
+              /* Windows are the point of the cycle: dark glass all day, and at dusk thousands of
+                 them coming on at once. They need an overlay of their own rather than a turn of
+                 `lit`, which cannot make anything brighter than a warm wash over its base. Nudged
+                 along the face normal so it does not fight the pattern it sits on. */
+              if (win) {
+                const gg = 0.52 * NIGHT();
+                if (gg > 0.01) {
+                  const gl = add(C, f.p.map((pt) => [pt[0] + f.n[0] * 0.6, pt[1] + f.n[1] * 0.6,
+                                                     pt[2] + f.n[2] * 0.6]),
+                                ZERO8, "flat", `rgba(255,206,142,${gg.toFixed(3)})`);
+                  if (gl) { gl.nolite = true; gl.lit = 1.5; drawn.push(gl); }
+                }
+              }
+            }
           });
         });
       } else if (shape === "dome") {
@@ -2648,7 +2702,7 @@ function leaveOverlay(root, trigger) {
         const lampq = add(C, [P(-7, m.d * 0.42, m.h * 0.58), P(7, m.d * 0.42, m.h * 0.58),
                               P(7, m.d * 0.42, m.h * 0.66), P(-7, m.d * 0.42, m.h * 0.66)],
                           ZERO8, "flat", `rgba(255,196,120,${fl})`);
-        if (lampq) { lampq.lit = 1.6; drawn.push(lampq); }
+        if (lampq) { lampq.lit = 1.6; lampq.nolite = true; drawn.push(lampq); }
         /* What the lamp lights. A market at night is lit by its own lamps, and this is the largest
            area on a stall that can change -- which matters, because a flat quad only registers as
            moving where its edges are until its brightness moves too. */
@@ -2656,7 +2710,7 @@ function leaveOverlay(root, trigger) {
                              P(hw * 0.88, m.d * 0.32, m.h * 0.62), P(-hw * 0.88, m.d * 0.32, m.h * 0.62)],
                          ZERO8, "flat",
                          `rgba(255,188,116,${(0.16 + (ease ? 0.15 * Math.sin(T * 5.2 + m.z * 0.1) : 0)).toFixed(3)})`);
-        if (glow) { glow.lit = 1.45; drawn.push(glow); }
+        if (glow) { glow.lit = 1.45; glow.nolite = true; drawn.push(glow); }
       } else if (shape === "markethall") {
         /* St. Lawrence Market, the South Market hall.
 
@@ -2721,8 +2775,8 @@ function leaveOverlay(root, trigger) {
                              P(uc + ar * 0.8, F + 0.9, m.h * 0.2),
                              P(uc - ar * 0.8, F + 0.9, m.h * 0.2)],
                          ZERO8, "flat",
-                         `rgba(255,196,126,${(0.2 + (ease ? 0.07 * Math.sin(T * 1.6 + i * 1.1) : 0)).toFixed(3)})`);
-          if (g2) { g2.lit = 1.4; drawn.push(g2); }
+                         `rgba(255,196,126,${(0.06 + 0.3 * NIGHT() + (ease ? 0.07 * Math.sin(T * 1.6 + i * 1.1) : 0)).toFixed(3)})`);
+          if (g2) { g2.lit = 1.4; g2.nolite = true; drawn.push(g2); }
         }
         // The gallery floor: tall arched windows, lit from inside, and lit unevenly -- a hall of
         // windows all at one brightness is a strip light.
@@ -2734,8 +2788,8 @@ function leaveOverlay(root, trigger) {
           if (st) { st.lit = lit * 0.94; drawn.push(st); }
           const p = arch(uc, ar, ar * 1.15, yS, yP, F + 0.6);
           const q = add(C, p, Z(p.length), "flat",
-                        `rgba(255,214,150,${(0.6 + (ease ? 0.12 * Math.sin(T * 0.9 + i * 0.7) : 0)).toFixed(3)})`);
-          if (q) { q.lit = 1.55; drawn.push(q); }
+                        `rgba(255,214,150,${(0.12 + 0.62 * NIGHT() + (ease ? 0.12 * Math.sin(T * 0.9 + i * 0.7) : 0)).toFixed(3)})`);
+          if (q) { q.lit = 1.55; q.nolite = true; drawn.push(q); }
           // a mullion, because an undivided arched window at this size is a hole
           const mu = add(C, [P(uc - 0.9, F + 0.7, yS), P(uc + 0.9, F + 0.7, yS),
                              P(uc + 0.9, F + 0.7, yP + ar * 1.15), P(uc - 0.9, F + 0.7, yP + ar * 1.15)],
