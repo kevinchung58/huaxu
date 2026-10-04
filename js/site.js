@@ -2326,12 +2326,20 @@ function leaveOverlay(root, trigger) {
                            [m.x + m.w * 0.42, m.y + m.h * 0.72, m.z - m.d * 0.5 - 1],
                            [m.x - m.w * 0.42, m.y + m.h * 0.72, m.z - m.d * 0.5 - 1]],
                        ZERO8, "flat", "#f0c27a");
-        if (pb) { pb.lit = 1.5; drawn.push(pb); }
+        // The band breathes rather than sitting at one value: at a flat 1.5 the whole tower measured
+        // 1.5% motion, which is a still picture with one dot on it.
+        if (pb) { pb.lit = 1.5 + (ease ? 0.34 * Math.sin(T * 0.8) : 0); drawn.push(pb); }
         const blink = ease ? (Math.sin(T * 2.4) > 0.2 ? 0.85 : 0.15) : 0.6;
         const bc = add(C, [[m.x - 3, m.y + m.h - 8, m.z - 1], [m.x + 3, m.y + m.h - 8, m.z - 1],
                            [m.x + 3, m.y + m.h - 1, m.z - 1], [m.x - 3, m.y + m.h - 1, m.z - 1]],
                        ZERO8, "flat", `rgba(255,72,56,${blink.toFixed(2)})`);
         if (bc) { bc.lit = 1.7; drawn.push(bc); }
+        // ...and the halo the light puts into the air around it, which at that height is most of
+        // what you actually see of a warning light.
+        const halo = add(C, [[m.x - 22, m.y + m.h - 30, m.z - 1], [m.x + 22, m.y + m.h - 30, m.z - 1],
+                             [m.x + 22, m.y + m.h + 12, m.z - 1], [m.x - 22, m.y + m.h + 12, m.z - 1]],
+                         ZERO8, "flat", `rgba(255,86,64,${(blink * 0.3).toFixed(3)})`);
+        if (halo) { halo.lit = 1.6; drawn.push(halo); }
       } else if (shape === "skyline") {
         /* A row of blocky towers of different heights; a few lit windows are the only words it has.
            The blocks share the table's footprint and sit at staggered depths so the row has a
@@ -2419,7 +2427,10 @@ function leaveOverlay(root, trigger) {
           const sheet = add(C, [P(-hw * 0.76, y0, 0), P(hw * 0.76, y0, 0),
                                 P(hw * 0.76, y1, 0), P(-hw * 0.76, y1, 0)],
                             ZERO8, "flat", col);
-          if (sheet) { sheet.lit = l; drawn.push(sheet); }
+          // A surge: water does not fall evenly, a body of it comes down and passes. The wave runs
+          // down the three slices, so the brightness travels with it instead of pulsing in place.
+          const surge = ease ? 1 + 0.2 * Math.sin(T * 0.55 - si * 0.8) : 1;
+          if (sheet) { sheet.lit = l * surge; drawn.push(sheet); }
         });
         // Foam at the plunge line: the one place a waterfall is unambiguously white.
         const foam = add(C, [P(-hw * 0.78, m.y + m.h * 0.06, -2), P(hw * 0.78, m.y + m.h * 0.06, -2),
@@ -2535,19 +2546,36 @@ function leaveOverlay(root, trigger) {
                              P(hw * 0.7, m.d * 0.3, m.h * 0.6), P(-hw * 0.7, m.d * 0.3, m.h * 0.6)],
                          ZERO8, "flat", mix(base, -0.42));
         if (open) { open.lit = lit * 0.6; drawn.push(open); }
-        const n = 4;
+        /* The awning is the biggest thing on a stall and canvas on a frame is the only part of a
+           stall that can move, so it is the awning that moves: each panel's front edge lifts and
+           falls out of step with its neighbours, and the valance hangs off whatever the edge is
+           doing. A thin strip of rippling cloth under a rigid awning -- which was the first attempt
+           -- measured 1.6% of the stall, because it was 1.6% of the stall. */
+        const n = 6;
+        const edge = (i) => (ease ? Math.sin(T * 1.7 + i * 0.9 + m.z * 0.02) * 3.4 : 0);
         for (let i = 0; i < n; i++) {
           const a0 = (i / n) * m.w - hw, a1 = ((i + 1) / n) * m.w - hw - 1.5;
-          const q = add(C, [P(a0, m.d * 0.5, m.h * 0.68), P(a1, m.d * 0.5, m.h * 0.68),
+          const q = add(C, [P(a0, m.d * 0.5, m.h * 0.68 + edge(i)),
+                            P(a1, m.d * 0.5, m.h * 0.68 + edge(i + 1)),
                             P(a1, -m.d * 0.18, m.h * 1.0), P(a0, -m.d * 0.18, m.h * 1.0)],
                         ZERO8, "flat", i % 2 ? "#b8433c" : "#e6ddca");
-          if (q) { q.lit = lit * 1.2; drawn.push(q); }
-          if (i === 0 || i === n - 1) {
-            const v = add(C, [P(a0, m.d * 0.5, m.h * 0.68), P(a1, m.d * 0.5, m.h * 0.68),
-                              P(a1, m.d * 0.5, m.h * 0.56), P(a0, m.d * 0.5, m.h * 0.56)],
-                          ZERO8, "flat", i % 2 ? "#a03832" : "#d6cdba");
-            if (v) { v.lit = lit * 1.1; drawn.push(v); }
-          }
+          // Canvas catches light as it moves. A flat-coloured quad whose corner moves only changes
+          // the pixels near that corner, which is why the ripple alone still measured 2%: the panels
+          // have to change brightness across their whole area for the awning to read as moving.
+          if (q) { q.lit = lit * (1.2 + (ease ? 0.26 * Math.sin(T * 2.1 + i * 0.9 + m.z * 0.02) : 0));
+                   drawn.push(q); }
+        }
+        /* The valance: a strip of canvas hanging off the awning's front edge, in the stall's two
+           colours, rippling along its length on the frame clock. This is what makes a market move.
+           Until this the stall's only animation was two 6x7 cm puffs of steam at 0.12 alpha, which
+           measured 0.7% of the stall's pixels -- invisible, and the reason the market read as dead. */
+        for (let i = 0; i < n; i++) {
+          const v0 = (i / n) * m.w - hw, v1 = ((i + 1) / n) * m.w - hw - 1.5;
+          const v = add(C, [P(v0, m.d * 0.5, m.h * 0.68 + edge(i)),
+                            P(v1, m.d * 0.5, m.h * 0.68 + edge(i + 1)),
+                            P(v1, m.d * 0.5, m.h * 0.54), P(v0, m.d * 0.5, m.h * 0.54)],
+                        ZERO8, "flat", i % 2 ? "#a03832" : "#d6cdba");
+          if (v) { v.lit = lit * 1.1; drawn.push(v); }
         }
         // Steam off the produce: two thin quads that rise and thin out on the frame clock.
         for (let j = 0; j < 2; j++) {
@@ -2573,6 +2601,14 @@ function leaveOverlay(root, trigger) {
                               P(7, m.d * 0.42, m.h * 0.66), P(-7, m.d * 0.42, m.h * 0.66)],
                           ZERO8, "flat", `rgba(255,196,120,${fl})`);
         if (lampq) { lampq.lit = 1.6; drawn.push(lampq); }
+        /* What the lamp lights. A market at night is lit by its own lamps, and this is the largest
+           area on a stall that can change -- which matters, because a flat quad only registers as
+           moving where its edges are until its brightness moves too. */
+        const glow = add(C, [P(-hw * 0.88, m.d * 0.32, m.h * 0.2), P(hw * 0.88, m.d * 0.32, m.h * 0.2),
+                             P(hw * 0.88, m.d * 0.32, m.h * 0.62), P(-hw * 0.88, m.d * 0.32, m.h * 0.62)],
+                         ZERO8, "flat",
+                         `rgba(255,188,116,${(0.15 + (ease ? 0.1 * Math.sin(T * 5.2 + m.z * 0.1) : 0)).toFixed(3)})`);
+        if (glow) { glow.lit = 1.45; drawn.push(glow); }
       } else if (shape === "tree") {
         /* A model tree: a trunk, and a crown that is a pinch of flock on a wire.
 
@@ -2589,15 +2625,22 @@ function leaveOverlay(root, trigger) {
           const q = add(C, f.p, ZERO8, "flat", "#4a3826");
           if (q) { q.lit = lit * 0.85; drawn.push(q); }
         });
+        /* A tree in a model hall is wired to a fan: the crown leans and settles, slowly, and it
+           does it out of step with its neighbours because the phase comes from where the tree
+           stands rather than from one shared clock. The high clump leans further than the low one,
+           which is the whole trick -- a crown that moves as one disc is a cardboard cut-out. */
+        const ph = T * 0.85 + m.z * 0.013 + m.x * 0.021;
         const clump = (cy0, wf, tone) => {
           const yc = m.y + m.h * cy0, R = m.w * wf * 0.5;
-          const rx = C.cy * R, rz = -C.sy * R;
+          const sway = ease ? Math.sin(ph + cy0 * 2.2) * R * 0.55 * cy0 : 0;
+          const lift = ease ? Math.cos(ph * 0.8 + cy0) * R * 0.1 : 0;
+          const rx = C.cy * R + C.cy * sway, rz = -C.sy * R - C.sy * sway;
           const q = PATS.foliage
-            ? add(C, [[m.x + rx, yc + R, m.z + rz], [m.x - rx, yc + R, m.z - rz],
-                      [m.x - rx, yc - R, m.z - rz], [m.x + rx, yc - R, m.z + rz]],
+            ? add(C, [[m.x + rx, yc + R + lift, m.z + rz], [m.x - rx, yc + R + lift, m.z - rz],
+                      [m.x - rx, yc - R + lift, m.z - rz], [m.x + rx, yc - R + lift, m.z + rz]],
                   [0, 0, 128, 0, 128, 128, 0, 128], "pat", PATS.foliage)
-            : add(C, [[m.x + rx, yc + R, m.z + rz], [m.x - rx, yc + R, m.z - rz],
-                      [m.x - rx, yc - R, m.z - rz], [m.x + rx, yc - R, m.z + rz]],
+            : add(C, [[m.x + rx, yc + R + lift, m.z + rz], [m.x - rx, yc + R + lift, m.z - rz],
+                      [m.x - rx, yc - R + lift, m.z - rz], [m.x + rx, yc - R + lift, m.z + rz]],
                   ZERO8, "flat", "#4c6a3a");
           if (q) { q.lit = lit * tone; drawn.push(q); }
         };
