@@ -2416,6 +2416,24 @@ function leaveOverlay(root, trigger) {
             if (q) { q.lit = lit; q.air = 0.34; drawn.push(q); }
           });
         });
+        /* Horseshoe.
+
+           These are the Horseshoe Falls and a horseshoe is a curve: the crest bows upstream at the
+           centre, so the middle of the sheet stands further from the walker than either end. Built
+           as one flat quad from end to end it read as a tall narrow ribbon down a slot gorge, which
+           is a different waterfall entirely -- and at 130 x 100 it was that ribbon nine times over,
+           when the falls it is named for run 670 m of crest to a 57 m drop. Breadth is what
+           identifies this place, so the model is 228 x 52 and the crest is laid as nine panels at
+           nine depths, which is enough for the bow to read as a curve and not as a fold. */
+        const NA = 9;
+        const bow = (a) => hd * 0.9 * Math.max(0, 1 - (a / (hw * 0.8)) ** 2);
+        const across = (t, fn) => {
+          for (let k = 0; k < NA; k++) {
+            const a0 = -hw * 0.76 + (k / NA) * hw * 1.52;
+            const a1 = -hw * 0.76 + ((k + 1) / NA) * hw * 1.52;
+            fn(a0, a1, bow((a0 + a1) / 2) + t);
+          }
+        };
         // The sheet: three height slices, bright at the crest and shadowing toward the basin —
         // one flat lit value was what made it a glowing white board — then moving stripes over it.
         /* Three height slices, jade and brightening toward the crest. It measured sd 17 -- a flat
@@ -2428,38 +2446,51 @@ function leaveOverlay(root, trigger) {
              down the three slices, so the brightness travels with it instead of pulsing in place.
              It is the water's colour that surges, not its `lit`, for the reason above: a warm wash
              gated above 0.55 cannot carry a body of moving water. */
-          const surge = ease ? 0.16 * Math.sin(T * 0.55 - si * 0.8) : 0;
-          const sheet = add(C, [P(-hw * 0.76, y0, 0), P(hw * 0.76, y0, 0),
-                                P(hw * 0.76, y1, 0), P(-hw * 0.76, y1, 0)],
-                            ZERO8, "flat", mix(col, surge));
-          if (sheet) { sheet.lit = l; drawn.push(sheet); }
+          /* 0.2, not 0.16: there is less water now. Broadening the crest and halving its height cut
+             the sheet from 9,880 cm2 to 8,996, and the surge is spread over the water there is. */
+          const surge = ease ? 0.2 * Math.sin(T * 0.55 - si * 0.8) : 0;
+          across(0, (a0, a1, tt) => {
+            const sheet = add(C, [P(a0, y0, tt), P(a1, y0, tt),
+                                  P(a1, y1, tt), P(a0, y1, tt)],
+                              ZERO8, "flat", mix(col, surge));
+            if (sheet) { sheet.lit = l; drawn.push(sheet); }
+          });
         });
         // Foam at the plunge line: the one place a waterfall is unambiguously white.
-        const foam = add(C, [P(-hw * 0.78, m.y + m.h * 0.06, -2), P(hw * 0.78, m.y + m.h * 0.06, -2),
-                             P(hw * 0.78, m.y + m.h * 0.2, -2), P(-hw * 0.78, m.y + m.h * 0.2, -2)],
-                         ZERO8, "flat", `rgba(246,253,252,${(0.46 + (ease ? 0.12 * Math.sin(T * 2.1) : 0)).toFixed(2)})`);
-        if (foam) { foam.lit = 1.7; drawn.push(foam); }
-        for (let i = 0; i < 12; i++) {
-          const sx = -hw * 0.7 + (i + 0.5) * (hw * 1.4 / 12);
+        across(-2, (a0, a1, tt) => {
+          const foam = add(C, [P(a0, m.y + m.h * 0.06, tt), P(a1, m.y + m.h * 0.06, tt),
+                               P(a1, m.y + m.h * 0.2, tt), P(a0, m.y + m.h * 0.2, tt)],
+                           ZERO8, "flat", `rgba(246,253,252,${(0.46 + (ease ? 0.12 * Math.sin(T * 2.1) : 0)).toFixed(2)})`);
+          if (foam) { foam.lit = 1.7; drawn.push(foam); }
+        });
+        /* Twenty, not twelve. Widening the crest from 130 to 228 spread the old twelve stripes to
+           nearly twice the pitch, and the water thinned out with them: the same number of streaks
+           over a broader curtain has to be more of them. */
+        for (let i = 0; i < 20; i++) {
+          const sx = -hw * 0.7 + (i + 0.5) * (hw * 1.4 / 20);
           const fall = ease ? ((T * 0.32 + i / 12) % 1) : 0.45;
           const yTop = m.y + m.h * (1 - fall), yBot = Math.max(m.y, yTop - m.h * 0.32);
           const a = 0.14 + 0.09 * Math.sin(T * 3.1 + i * 2.3);
-          const st = add(C, [P(sx - 1, yBot, -1), P(sx + 1, yBot, -1),
-                             P(sx + 1, yTop, -1), P(sx - 1, yTop, -1)],
+          const st = add(C, [P(sx - 1, yBot, bow(sx) - 1), P(sx + 1, yBot, bow(sx) - 1),
+                             P(sx + 1, yTop, bow(sx) - 1), P(sx - 1, yTop, bow(sx) - 1)],
                          ZERO8, "flat", `rgba(255,255,255,${a.toFixed(2)})`);
           if (st) { st.lit = 1.15; drawn.push(st); }
         }
         // The crest the sheet comes over, and the mist it lands in.
         // The crest is a lip of water, not a strip light: at 1.35x it was the brightest thing on
         // the table and it flattened the sheet behind it into a backdrop.
-        const crest = add(C, [P(-hw * 0.78, m.y + m.h, hd * 0.6), P(hw * 0.78, m.y + m.h, hd * 0.6),
-                              P(hw * 0.78, m.y + m.h + 5, hd * 0.6), P(-hw * 0.78, m.y + m.h + 5, hd * 0.6)],
-                          ZERO8, "flat", "#b9d3d6");
-        if (crest) { crest.lit = 0.98; drawn.push(crest); }
-        const mist = add(C, [P(-hw, m.y + 2, -8), P(hw, m.y + 2, -8),
-                             P(hw, m.y + m.h * 0.3, -8), P(-hw, m.y + m.h * 0.3, -8)],
-                         ZERO8, "flat", `rgba(214,232,238,${(0.16 + (ease ? 0.07 * Math.sin(T * 1.3) : 0)).toFixed(2)})`);
-        if (mist) { mist.lit = 0.8; mist.air = 0.08; drawn.push(mist); }
+        across(hd * 0.6, (a0, a1, tt) => {
+          const crest = add(C, [P(a0, m.y + m.h, tt), P(a1, m.y + m.h, tt),
+                                P(a1, m.y + m.h + 5, tt), P(a0, m.y + m.h + 5, tt)],
+                            ZERO8, "flat", "#b9d3d6");
+          if (crest) { crest.lit = 0.98; drawn.push(crest); }
+        });
+        across(-8, (a0, a1, tt) => {
+          const mist = add(C, [P(a0, m.y + 2, tt), P(a1, m.y + 2, tt),
+                               P(a1, m.y + m.h * 0.3, tt), P(a0, m.y + m.h * 0.3, tt)],
+                           ZERO8, "flat", `rgba(214,232,238,${(0.16 + (ease ? 0.07 * Math.sin(T * 1.3) : 0)).toFixed(2)})`);
+          if (mist) { mist.lit = 0.8; mist.air = 0.08; drawn.push(mist); }
+        });
         const basin = add(C, [P(-hw, m.y + 1, -10), P(hw, m.y + 1, -10),
                               P(hw, m.y + 1, hd * 1.4), P(-hw, m.y + 1, hd * 1.4)],
                           [0, 0, hw * 2 * DPM, 0, hw * 2 * DPM, hd * 1.5 * DPM, 0, hd * 1.5 * DPM],

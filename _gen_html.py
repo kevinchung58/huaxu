@@ -2784,8 +2784,12 @@ DISTRICTS = [
              "title": "The table the falls stand on",
              "hint": "The same lit plinth, cooler light: the water gets a cold pool on the floor, "
                      "the way real spray cools the air at the rail."},
+            # 228 x 52, not 130 x 100. The Horseshoe Falls run some 670 m of crest to a 57 m drop,
+            # so breadth is the thing that identifies them, and at 1.3:1 the model read as a narrow
+            # ribbon down a slot gorge -- a different waterfall. This is 4.4:1, as wide as the table
+            # it stands on allows without overhanging the plinth.
             {"id": "falls-n", "kind": "falls", "x": 290, "z": 200, "y": 80, "ry": -90,
-             "w": 130, "h": 100, "d": 70,
+             "w": 228, "h": 52, "d": 62,
              "title": "The falls, small",
              "hint": "A sheet of water over a ledge into mist, small enough to step over and loud "
                      "enough to imagine. The one moving thing in the hall; it moves because you "
@@ -2888,8 +2892,11 @@ DISTRICTS = [
              "w": 120, "h": 10, "d": 40, "tone": 0.34,
              "title": "A case of water",
              "hint": "A lit shelf on the wall, holding a ledge with water going over it."},
+            # A shelf model has to be a model. At 96 x 72 it stood three quarters the size of the
+            # falls on the table below it, so the two read as a duplicated waterfall rather than as a
+            # diorama and the case it is displayed in.
             {"id": "falls-mini", "kind": "falls", "x": 354, "z": 170, "y": 160, "ry": -90,
-             "w": 96, "h": 72, "d": 24, "tone": 0.5,
+             "w": 68, "h": 30, "d": 20, "tone": 0.5,
              "title": "The falls, small",
              "hint": "A sheet over a ledge into mist, with the same shimmer the table's falls "
                      "has, moving on the same clock."},
