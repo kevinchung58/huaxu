@@ -1,0 +1,37 @@
+#!/bin/sh
+# Start the site preview, undoing a sandbox wipe first if there was one.
+#
+# The sandbox periodically reverts git's refs to the branch point while leaving the working tree
+# alone. When that happens the branch looks like it lost all its commits; the commits are on the
+# remote and the files are on disk, so re-pointing the branch at the remote fixes it with no loss.
+# This does that check every time, so restarting the preview never costs a round-trip.
+set -e
+
+BRANCH=${BRANCH:-arena/01a0fb1d-huaxu}
+PORT=${PORT:-8080}
+
+cd "$(dirname "$0")/.."
+
+# If refs were wiped, HEAD is behind the remote. Re-point only when the tree is clean, so unpushed
+# work is never reset out from under you -- in that case say so and let a human decide.
+if [ -n "$(git rev-list "HEAD..origin/$BRANCH" 2>/dev/null)" ]; then
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "!! HEAD is behind origin/$BRANCH but the tree has uncommitted changes."
+    echo "!! Refusing to reset. Commit or stash first, then re-run."
+    exit 1
+  fi
+  echo "== re-pointing $BRANCH at origin (refs reverted, files kept)"
+  git reset --soft "origin/$BRANCH"
+  git reset -q
+fi
+
+echo "== $(git log --oneline -1)"
+
+# The pages are generated from _gen_html.py; regenerate if they are stale so the preview shows the
+# code that is actually on disk. Idempotent, so a no-op when nothing changed.
+if command -v python3 >/dev/null 2>&1; then
+  python3 _gen_html.py
+fi
+
+echo "== serving http://0.0.0.0:$PORT  (index.html to start)"
+exec python3 -m http.server "$PORT" --bind 0.0.0.0
