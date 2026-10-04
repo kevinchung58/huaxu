@@ -2424,13 +2424,15 @@ function leaveOverlay(root, trigger) {
            colour: they go thin and half as opaque so the jade is what you see. */
         [[0, 0.9, "#3f8fa4"], [1, 1.1, "#5aaeb4"], [2, 1.35, "#8ad2cc"]].forEach(([si, l, col]) => {
           const y0 = m.y + (si / 3) * m.h, y1 = m.y + ((si + 1) / 3) * m.h;
+          /* A surge: water does not fall evenly, a body of it comes down and passes. The wave runs
+             down the three slices, so the brightness travels with it instead of pulsing in place.
+             It is the water's colour that surges, not its `lit`, for the reason above: a warm wash
+             gated above 0.55 cannot carry a body of moving water. */
+          const surge = ease ? 0.16 * Math.sin(T * 0.55 - si * 0.8) : 0;
           const sheet = add(C, [P(-hw * 0.76, y0, 0), P(hw * 0.76, y0, 0),
                                 P(hw * 0.76, y1, 0), P(-hw * 0.76, y1, 0)],
-                            ZERO8, "flat", col);
-          // A surge: water does not fall evenly, a body of it comes down and passes. The wave runs
-          // down the three slices, so the brightness travels with it instead of pulsing in place.
-          const surge = ease ? 1 + 0.2 * Math.sin(T * 0.55 - si * 0.8) : 1;
-          if (sheet) { sheet.lit = l * surge; drawn.push(sheet); }
+                            ZERO8, "flat", mix(col, surge));
+          if (sheet) { sheet.lit = l; drawn.push(sheet); }
         });
         // Foam at the plunge line: the one place a waterfall is unambiguously white.
         const foam = add(C, [P(-hw * 0.78, m.y + m.h * 0.06, -2), P(hw * 0.78, m.y + m.h * 0.06, -2),
@@ -2552,18 +2554,20 @@ function leaveOverlay(root, trigger) {
            doing. A thin strip of rippling cloth under a rigid awning -- which was the first attempt
            -- measured 1.6% of the stall, because it was 1.6% of the stall. */
         const n = 6;
-        const edge = (i) => (ease ? Math.sin(T * 1.7 + i * 0.9 + m.z * 0.02) * 3.4 : 0);
+        const edge = (i) => (ease ? Math.sin(T * 1.7 + i * 0.9 + m.z * 0.02) * 5.5 : 0);
+        /* Canvas moving under light changes colour, and it is the base colour that has to change.
+           `lit` only lays a warm wash over an unchanged base, and that wash is gated at lit > 0.55 --
+           which in a dim hall the stalls never clear, so the first attempt swung `lit` by a quarter
+           and moved nothing: mean pixel change 2 out of 765, a still photograph. `mix` shifts the
+           colour itself toward light or shade with no gate. */
+        const shim = (i) => (ease ? 0.24 * Math.sin(T * 2.1 + i * 0.9 + m.z * 0.02) : 0);
         for (let i = 0; i < n; i++) {
           const a0 = (i / n) * m.w - hw, a1 = ((i + 1) / n) * m.w - hw - 1.5;
           const q = add(C, [P(a0, m.d * 0.5, m.h * 0.68 + edge(i)),
                             P(a1, m.d * 0.5, m.h * 0.68 + edge(i + 1)),
                             P(a1, -m.d * 0.18, m.h * 1.0), P(a0, -m.d * 0.18, m.h * 1.0)],
-                        ZERO8, "flat", i % 2 ? "#b8433c" : "#e6ddca");
-          // Canvas catches light as it moves. A flat-coloured quad whose corner moves only changes
-          // the pixels near that corner, which is why the ripple alone still measured 2%: the panels
-          // have to change brightness across their whole area for the awning to read as moving.
-          if (q) { q.lit = lit * (1.2 + (ease ? 0.26 * Math.sin(T * 2.1 + i * 0.9 + m.z * 0.02) : 0));
-                   drawn.push(q); }
+                        ZERO8, "flat", mix(i % 2 ? "#b8433c" : "#e6ddca", shim(i)));
+          if (q) { q.lit = lit * 1.2; drawn.push(q); }
         }
         /* The valance: a strip of canvas hanging off the awning's front edge, in the stall's two
            colours, rippling along its length on the frame clock. This is what makes a market move.
@@ -2574,7 +2578,7 @@ function leaveOverlay(root, trigger) {
           const v = add(C, [P(v0, m.d * 0.5, m.h * 0.68 + edge(i)),
                             P(v1, m.d * 0.5, m.h * 0.68 + edge(i + 1)),
                             P(v1, m.d * 0.5, m.h * 0.54), P(v0, m.d * 0.5, m.h * 0.54)],
-                        ZERO8, "flat", i % 2 ? "#a03832" : "#d6cdba");
+                        ZERO8, "flat", mix(i % 2 ? "#a03832" : "#d6cdba", -shim(i + 1)));
           if (v) { v.lit = lit * 1.1; drawn.push(v); }
         }
         // Steam off the produce: two thin quads that rise and thin out on the frame clock.
@@ -2607,7 +2611,7 @@ function leaveOverlay(root, trigger) {
         const glow = add(C, [P(-hw * 0.88, m.d * 0.32, m.h * 0.2), P(hw * 0.88, m.d * 0.32, m.h * 0.2),
                              P(hw * 0.88, m.d * 0.32, m.h * 0.62), P(-hw * 0.88, m.d * 0.32, m.h * 0.62)],
                          ZERO8, "flat",
-                         `rgba(255,188,116,${(0.15 + (ease ? 0.1 * Math.sin(T * 5.2 + m.z * 0.1) : 0)).toFixed(3)})`);
+                         `rgba(255,188,116,${(0.16 + (ease ? 0.15 * Math.sin(T * 5.2 + m.z * 0.1) : 0)).toFixed(3)})`);
         if (glow) { glow.lit = 1.45; drawn.push(glow); }
       } else if (shape === "tree") {
         /* A model tree: a trunk, and a crown that is a pinch of flock on a wire.
