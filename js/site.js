@@ -2911,6 +2911,26 @@ function leaveOverlay(root, trigger) {
         const dq = add(C, disc, Z(disc.length), "flat",
                        `rgba(238,230,212,${(0.92 + (ease ? 0.06 * Math.sin(T * 0.5) : 0)).toFixed(2)})`);
         if (dq) { dq.lit = 1.6; drawn.push(dq); }
+        /* The clock keeps the hall's time.
+
+           It was a blank disc -- "no hands, no numerals, nothing written" -- and that was the safe
+           reading of the rule against lettering. But a clock face that never moves is the one
+           object in the room that promises it is telling you something and then does not, and the
+           hall has had a day since this round. So the hands are here, and they read `dayPhase`:
+           the light in the room and the clock on the market are the same clock, which is the sort
+           of thing you only notice if you look, and noticing is the point of a hall this size.
+           Still no numerals, nothing written. Nothing here is lettered. */
+        [[0.52, dayPhase() * 12], [0.82, (dayPhase() * 12 % 1) * 60]].forEach(([lf, turn]) => {
+          const a = (turn / (lf > 0.6 ? 12 : 60)) * Math.PI * 2 - Math.PI / 2;
+          const ax = Math.cos(a), ay = Math.sin(a), px = -ay, py = ax;
+          const L = cr * lf, t = Math.max(0.6, cr * 0.085);
+          const q = add(C, [P(tu + px * t,               F + 1.4, cc + py * t),
+                            P(tu + px * t + ax * L,      F + 1.4, cc + py * t + ay * L),
+                            P(tu - px * t + ax * L,      F + 1.4, cc - py * t + ay * L),
+                            P(tu - px * t,               F + 1.4, cc - py * t)],
+                        ZERO8, "flat", "#2b3038");
+          if (q) { q.lit = 1.25; drawn.push(q); }
+        });
         // Cap over it, then a finial.
         const capR = tw * 1.15, capB = tTop, capH = m.h * 0.15, cap = [P(tu - capR, F, capB)];
         for (let i = 0; i <= 9; i++) {
