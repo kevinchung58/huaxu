@@ -3,7 +3,8 @@
    Which angle is best is only answerable once every angle is in, so the batches are joined first
    and judged after. */
 import fs from "node:fs";
-const IDS = [...new Set((fs.readFileSync("rooms-toronto.html","utf8")
+const PAGE = process.env.PAGE || "rooms-toronto.html";
+const IDS = [...new Set((fs.readFileSync(PAGE,"utf8")
   .match(/data-obj="[^"]*"/g)||[]).map(s=>s.slice(10,-1)))];
 const all = {};
 for (const f of process.argv.slice(2)) {

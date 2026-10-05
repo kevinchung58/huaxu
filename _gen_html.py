@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import hashlib
+import re
+import subprocess
 import json
 from fnmatch import fnmatch
 from pathlib import Path
@@ -29,6 +31,42 @@ CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
 DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking."
+
+# Every page used to carry that one line as its description, all fourteen of them. Google treats
+# identical descriptions across a site as a single blurred page and ignores them, which is most of
+# why searching the name surfaces nothing useful -- the site was telling the crawler the same
+# sentence fourteen times and so, in effect, telling it nothing about what is on each page.
+# Each line below is drawn from the page's own content. No page is described as something it is not.
+DESCS = {
+    "index.html":    "Hua-Xu Zhong, PhD. Researcher in educational technology, AI in education, "
+                     "and design thinking, working on what happens when learning technologies are "
+                     "actually put into use.",
+    "about.html":    "The academic path behind the research: an interdisciplinary start, a turn "
+                     "through instructional theory and media design, design thinking, and a "
+                     "postdoctoral fellowship building a generative-AI tutoring system.",
+    "research.html": "Research in educational technology and AI in education: what actually "
+                     "happens when educational technologies and AI systems are put into use.",
+    "teaching.html": "Teaching and practice in educational technology, learning design, "
+                     "information literacy and media education.",
+    "position.html": "AI in education: where I stand. What large language models and generative AI "
+                     "can do for learning, and where they overwhelm the learner.",
+    "thinking.html": "Dots, shapes, and one line: how the work gets framed, from information "
+                     "literacy and design thinking to generative AI.",
+    "practice.html": "From principles to practice: putting educational technology and design "
+                     "thinking to work in real learning environments.",
+    "activities.html": "Academic activities: talks, workshops and participation in educational "
+                       "technology and AI in education.",
+    "service.html":   "Academic service and contribution to the educational technology community.",
+    "links.html":     "Resources: reports, reading, and tools for text generation and LLM "
+                      "assistance in education.",
+}
+def desc_for(path: str, room=None) -> str:
+    """The description for a page. Rooms carry their own authored purpose, so they use that."""
+    if room and room.get("purpose"):
+        blurb = (room.get("blurb") or "").strip().rstrip(".")
+        return (room["purpose"].strip().rstrip(".") + ". " + blurb).strip() if blurb \
+               else room["purpose"].strip().rstrip(".") + "."
+    return DESCS.get(path, DESC)
 PUBLIC_PAGES = ["index.html", "about.html", "research.html", "teaching.html",
                 "position.html", "thinking.html", "practice.html",
                 "activities.html", "rooms.html", "service.html", "links.html"]
@@ -178,6 +216,32 @@ FOOT = f"""<footer>
 <script src="js/site.js?v={VER}"></script>"""
 
 
+# Structured data. Google resolves a person's name largely from schema.org markup, and the site had
+# none at all -- so the crawler was left to guess who "Hua-Xu Zhong" is from prose alone.
+#
+# Everything here is either already on the site or a safe restatement of it. Nothing is invented:
+# no employer, no institution, no ORCID, no Scholar. Those need the owner to supply them, because a
+# wrong identifier published about a researcher is worse than no identifier at all. The hyphenless
+# spelling is here because that is how the name is typed in a search box.
+PERSON_LD = """<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Person","name":"Hua-Xu Zhong",
+"alternateName":["Huaxu Zhong"],
+"url":"https://kevinchung58.github.io/huaxu/index.html",
+"jobTitle":"Postdoctoral Research Fellow",
+"description":"Researcher in educational technology and AI in education, working on what happens when learning technologies and generative AI are put into use.",
+"knowsAbout":["Educational technology","Artificial intelligence in education","Design thinking","Learning design","Generative artificial intelligence","Information literacy","Media education"]}
+</script>"""
+
+
+def ld_for(canonical: str) -> str:
+    """A Breadcrumb + WebPage for the page itself, alongside the Person on every page."""
+    return (PERSON_LD + "\n" + '<script type="application/ld+json">'
+            + '{"@context":"https://schema.org","@type":"WebPage","@id":"' + canonical + '",'
+            + '"url":"' + canonical + '","isPartOf":{"@type":"WebSite",'
+            + '"name":"Hua-Xu Zhong","url":"https://kevinchung58.github.io/huaxu/index.html"}}'
+            + '</script>')
+
+
 def page(title: str, active: str, body: str, path: str = "", extra: str = "") -> str:
     # path defaults to "<active>.html" ("home" is index.html);
     # 404 passes path="404" to stay unindexed.
@@ -190,9 +254,10 @@ def page(title: str, active: str, body: str, path: str = "", extra: str = "") ->
   <meta property="og:site_name" content="Hua-Xu Zhong" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="{escape(title)}" />
-  <meta property="og:description" content="{DESC}" />
+  <meta property="og:description" content="{escape(desc_for(path))}" />
   <meta property="og:url" content="{canonical}" />
   <meta property="og:image" content="{SITE}/IMG/1.jpg" />
+  <meta property="og:locale" content="en" />
   <meta name="twitter:card" content="summary" />
 '''
     return f"""<!DOCTYPE html>
@@ -200,8 +265,9 @@ def page(title: str, active: str, body: str, path: str = "", extra: str = "") ->
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="{DESC}" />
-{meta}  <title>{escape(title)}</title>
+  <meta name="description" content="{escape(desc_for(path))}" />
+{meta}{ld_for(canonical) if path != "404" else ""}
+  <title>{escape(title)}</title>
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
   <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
   <link rel="stylesheet" href="{CSS}" />
@@ -218,7 +284,8 @@ def page(title: str, active: str, body: str, path: str = "", extra: str = "") ->
 """
 
 
-def shell_page(title: str, body: str, path: str, cover: str = "IMG/1.jpg") -> str:
+def shell_page(title: str, body: str, path: str, cover: str = "IMG/1.jpg",
+               desc: str = "", room=None) -> str:
     """A page that is not an article: no masthead, no footer, no prose stacked under the view.
 
     A walkable space is an application, and the reference proves the point by refusing to be a
@@ -236,16 +303,18 @@ def shell_page(title: str, body: str, path: str, cover: str = "IMG/1.jpg") -> st
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0d1526" />
-  <meta name="description" content="{DESC}" />
+  <meta name="description" content="{escape(desc or desc_for(path, room))}" />
   <link rel="canonical" href="{canonical}" />
   <meta property="og:site_name" content="Hua-Xu Zhong" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="{escape(title)}" />
-  <meta property="og:description" content="{DESC}" />
+  <meta property="og:description" content="{escape(desc or desc_for(path, room))}" />
   <meta property="og:url" content="{canonical}" />
   <meta property="og:image" content="{SITE}/{cover}" />
+  <meta property="og:locale" content="en" />
   <meta name="twitter:card" content="summary" />
   <title>{escape(title)}</title>
+{ld_for(canonical)}
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
   <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
   <link rel="stylesheet" href="{CSS}" />
@@ -3477,17 +3546,33 @@ rooms_pages = {}
 for d in open_districts:
     body = walk_html(d, district_drawer(d)) + "\n" + rooms_plate_html([d])
     rooms_pages[d["page"]] = shell_page(f'{d["label"]} · Rooms · Hua-Xu Zhong', body, d["page"],
-                                         d.get("cover", "IMG/1.jpg"))
+                                         d.get("cover", "IMG/1.jpg"), room=d)
 
 for _path, _html in rooms_pages.items():
     (ROOT / _path).write_text(_html, encoding="utf-8")
 
 (ROOT / "robots.txt").write_text(
     f"User-agent: *\nAllow: /\n\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")
+# The lastmod was pinned to 2026-08-31 by hand, so the sitemap had been telling crawlers the site
+# had not changed in five weeks while the branch moved on underneath it. It now comes from the HEAD
+# commit's date, which is both true and stable: the same content produces the same file, so the
+# build stays idempotent instead of stamping itself with today and churning on every run.
+try:
+    LASTMOD = subprocess.run(["git", "log", "-1", "--format=%cs"], cwd=ROOT,
+                             capture_output=True, text=True, check=True).stdout.strip()
+except Exception:
+    LASTMOD = "2026-08-31"
+if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", LASTMOD or ""):
+    LASTMOD = "2026-08-31"
+# The homepage is the one a name search should land on; the rooms come after it.
+PRIORITY = {"index.html": "1.0", "about.html": "0.9", "research.html": "0.9",
+            "position.html": "0.8", "publications": "0.8"}
 (ROOT / "sitemap.xml").write_text(
     '<?xml version="1.0" encoding="UTF-8"?>\n'
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    + "".join(f"  <url><loc>{SITE}/{p}</loc><lastmod>2026-08-31</lastmod></url>\n"
+    + "".join(f"  <url><loc>{SITE}/{p}</loc><lastmod>{LASTMOD}</lastmod>"
+              + (f"<priority>{PRIORITY[p]}</priority>" if p in PRIORITY else "")
+              + "</url>\n"
               for p in PUBLIC_PAGES + [d["page"] for d in open_districts
                                        if d["page"] not in PUBLIC_PAGES])
     + "</urlset>\n", encoding="utf-8")

@@ -13,7 +13,10 @@ const chromium = require("@sparticuz/chromium").default || require("@sparticuz/c
 const fs = require("fs");
 const V0 = Number(process.argv[2] || 0), V1 = Number(process.argv[3] || 10);
 const OUT = process.argv[4] || "/tmp/audit_part.json";
-const IDS = [...new Set((fs.readFileSync("rooms-toronto.html","utf8")
+/* Any room, not just Toronto: pass a page and how many walk stops it has. */
+const PAGE = process.argv[5] || "rooms-toronto.html";
+const NSTOP = Number(process.argv[6] || 5);
+const IDS = [...new Set((fs.readFileSync(PAGE,"utf8")
   .match(/data-obj="[^"]*"/g)||[]).map(s=>s.slice(10,-1)))];
 /* Every angle, not just the two extremes.
 
@@ -22,7 +25,7 @@ const IDS = [...new Set((fs.readFileSync("rooms-toronto.html","utf8")
    frontal or oblique angle it reads 400 to 530. The honest set is the range of angles a visitor
    actually stops at. */
 const VIEWS = [];
-for (const st of [0,1,2,3,4]) for (const dg of [-90,-45,0,45,90]) VIEWS.push([st,dg]);
+for (let st=0; st<NSTOP; st++) for (const dg of [-90,-45,0,45,90]) VIEWS.push([st,dg]);
 const browser = await puppeteer.launch({ executablePath: await chromium.executablePath(),
   args:[...chromium.args,"--no-sandbox","--disable-dev-shm-usage"], headless:true,
   defaultViewport:{width:1024,height:768}});
@@ -31,7 +34,7 @@ const out = {};
 for (let vi=V0; vi<V1 && vi<VIEWS.length; vi++) {
   const [stop,deg] = VIEWS[vi];
   const page = await browser.newPage();
-  await page.goto("http://127.0.0.1:8080/rooms-toronto.html",{waitUntil:"networkidle0"});
+  await page.goto(`http://127.0.0.1:8080/${PAGE}`,{waitUntil:"networkidle0"});
   await sleep(900);
   await page.evaluate(s=>document.querySelectorAll("[data-walk-stop]")[s].click(), stop);
   await sleep(1700);
