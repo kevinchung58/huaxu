@@ -15,7 +15,14 @@ const V0 = Number(process.argv[2] || 0), V1 = Number(process.argv[3] || 10);
 const OUT = process.argv[4] || "/tmp/audit_part.json";
 const IDS = [...new Set((fs.readFileSync("rooms-toronto.html","utf8")
   .match(/data-obj="[^"]*"/g)||[]).map(s=>s.slice(10,-1)))];
-const VIEWS = [[0,-90],[0,90],[1,-90],[1,90],[2,-90],[2,90],[3,-90],[3,90],[4,-90],[4,90]];
+/* Every angle, not just the two extremes.
+
+   This list used to be -90 and +90 only, and that alone produced two wrong conclusions in a row:
+   at the full turn an object is edge-on, so the city table read 33 to 73 colours when from a
+   frontal or oblique angle it reads 400 to 530. The honest set is the range of angles a visitor
+   actually stops at. */
+const VIEWS = [];
+for (const st of [0,1,2,3,4]) for (const dg of [-90,-45,0,45,90]) VIEWS.push([st,dg]);
 const browser = await puppeteer.launch({ executablePath: await chromium.executablePath(),
   args:[...chromium.args,"--no-sandbox","--disable-dev-shm-usage"], headless:true,
   defaultViewport:{width:1024,height:768}});
