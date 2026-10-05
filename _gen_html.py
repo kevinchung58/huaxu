@@ -2775,6 +2775,37 @@ DISTRICTS = [
                                                                 "material exists.",
              "state": "Empty by design. A clip needs its caption before it can play here."},
         ],
+        # The lanterns.
+        #
+        # Fukuoka is the city of the yatai, and a yatai is unreadable without its chochin: a paper
+        # lantern about 30 cm across, strung in a line along the counter side of the stall row and
+        # hanging low, under the awnings, so the light falls on the counter rather than the street.
+        # They are the reason the riverfront is the most photographed thing in the city -- the
+        # lanterns and their reflection on the water, together.
+        #
+        # This alley had none. `body="lantern"` appeared exactly once in the whole site and it was in
+        # Tokyo, so the one thing a visitor comes to this district for was the one thing missing from
+        # it. The room's own plates even name the subject -- "Lanterns over the wires ... where the
+        # light is strung lowest" -- as a picture on the wall, standing in for the thing itself.
+        #
+        # Strung low on purpose: the awning sits at 250 and a stall's counter is chest high, so 236
+        # puts the paper just under the eave and the light where a stall actually wants it.
+        "lanterns": [
+            {"x": -214, "y": 236, "z": 26,  "r": 15},
+            {"x": -214, "y": 232, "z": 76,  "r": 14},
+            {"x": -214, "y": 237, "z": 126, "r": 15},
+            {"x": -214, "y": 231, "z": 176, "r": 14},
+            {"x": -214, "y": 236, "z": 226, "r": 15},
+            {"x": -214, "y": 233, "z": 276, "r": 14},
+            {"x": -214, "y": 237, "z": 326, "r": 15},
+            {"x":  214, "y": 234, "z": 50,  "r": 14},
+            {"x":  214, "y": 238, "z": 100, "r": 15},
+            {"x":  214, "y": 232, "z": 150, "r": 14},
+            {"x":  214, "y": 236, "z": 200, "r": 15},
+            {"x":  214, "y": 233, "z": 250, "r": 14},
+            {"x":  214, "y": 238, "z": 300, "r": 15},
+            {"x":  214, "y": 234, "z": 348, "r": 14},
+        ],
         "stations": [
             {"z": 0, "label": "the mouth of the alley"},
             {"z": 90, "label": "at the first stall"},

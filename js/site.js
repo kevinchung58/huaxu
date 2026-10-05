@@ -1888,7 +1888,15 @@ function leaveOverlay(root, trigger) {
       [[L.x - R, L.z, L.x + R, L.z], [L.x, L.z - R, L.x, L.z + R]].forEach(([ax, az, bx, bz]) => {
         const q = add(C, [[ax + dx, L.y - hh, az], [bx + dx, L.y - hh, bz], [bx + dx, L.y + hh, bz],
                           [ax + dx, L.y + hh, az]], UV, "pat", PATS.lantern);
-        if (q) { q.lit = 1.5; q.air = haze(q.z) * 0.5; }
+        /* A paper lantern is the whole point of a night, and it used to be lit 1.5 in the middle of
+           the afternoon -- a red tube burning in daylight. It is paper with a candle in it: by day
+           it is a red thing hanging on a wire, and after dark it is the light the street is lit by.
+           `nolite` keeps it out of the night's darkening, so it is the last thing still bright. */
+        if (q) {
+          q.lit = 0.72 + 1.05 * NIGHT();
+          q.nolite = NIGHT() > 0.3;
+          q.air = haze(q.z) * 0.5;
+        }
       });
     });
     if (bd) drawFar(C);
