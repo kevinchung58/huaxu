@@ -2663,9 +2663,27 @@ function leaveOverlay(root, trigger) {
            hull runs along the axis `facesOf` swaps in, which is the one the visitor reads as
            left-to-right. */
         const along = Math.abs(m.ry) > 45;
-        /* 62, not 78: the wake is drawn a hull and a half behind the boat, and at the end of a
+        /* The crossing is a timetable, not a sine wave.
+
+           `sin` reverses the instant it reaches the end, which is a boat on a spring: it touches
+           the dock and bounces straight back. A ferry berths, stands alongside while it loads, and
+           then gets under way -- and the standing still is most of what makes it read as a boat
+           rather than a box sliding on a rail. Little Canada's Maid of the Mist does this, easing
+           for the dock and then accelerating once it is clear of it.
+
+           62, not 78: the wake is drawn a hull and a half behind the boat, and at the end of a
            longer crossing it would lie on the sand past the water's edge. */
-        const run = ease ? Math.sin(T * 0.4) * 62 : 10;
+        const SAIL = 13, BERTH = 4, REACH = 62;   // seconds sailing, seconds alongside, half the run
+        const sm = (u) => u * u * (3 - 2 * u);    // eases off the dock and onto the far one
+        let run = 10, berthed = true;
+        if (ease) {
+          const t = T % (2 * (SAIL + BERTH));
+          berthed = t >= SAIL && t < SAIL + BERTH;
+          if (t < SAIL)                       run = -REACH + 2 * REACH * sm(t / SAIL);
+          else if (t < SAIL + BERTH)          run =  REACH;
+          else if (t < 2 * SAIL + BERTH)      run =  REACH - 2 * REACH * sm((t - SAIL - BERTH) / SAIL);
+          else                                run = -REACH;
+        }
         const dx = along ? 0 : run, dz = along ? run : 0;
         facesOf({ ...m, x: m.x + dx, z: m.z + dz }).forEach((f) => {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
@@ -2680,7 +2698,7 @@ function leaveOverlay(root, trigger) {
                             [WX + 2, m.y + 1, WZ - m.w * 0.6], [WX - 2, m.y + 1, WZ - m.w * 0.6]]
                          : [[WX - m.w * 1.6, m.y + 1, WZ - 2], [WX - m.w * 0.6, m.y + 1, WZ - 2],
                             [WX - m.w * 0.6, m.y + 1, WZ + 2], [WX - m.w * 1.6, m.y + 1, WZ + 2]],
-                         ZERO8, "flat", "rgba(226,238,248,0.4)");
+                         ZERO8, "flat", `rgba(226,238,248,${berthed ? 0.1 : 0.4})`);
         if (wake) { wake.lit = 1.1; drawn.push(wake); }
       } else if (shape === "stall") {
         /* A market stall at table scale: a counter, a dark opening under a striped awning. The
