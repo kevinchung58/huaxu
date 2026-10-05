@@ -767,16 +767,25 @@ function leaveOverlay(root, trigger) {
      window -- twice life size at 1:87, which is the cheat every model tower makes, and at the
      distance this table is seen from it is two pixels of glow, which is what a window in a real
      skyline is. `v` scatters a different set of lit floors per variant. */
-  const paintSkyline = (v) => (c) => {
+  /* The skyline, by day and by night.
+
+     The night variant is a second texture rather than a warm wash laid over the day one, which is
+     what it was and it was wrong: a flat tint over a varied window grid does not light the windows,
+     it only removes the variation that made them read as windows. Measured, the city table fell
+     from 466 colours to 34. The night has to be its own texture, with more floors lit and lit
+     warmer, so the city gains detail when the light goes rather than losing it. */
+  const paintSkyline = (v, nite) => (c) => {
     const cell = 8, n = 128 / cell;
     c.fillStyle = "#131c2e"; c.fillRect(0, 0, 128, 128);
+    const on = nite ? 28 : 60, hot = nite ? 74 : 90, stir = nite ? 20 : 42;
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
       const h = (x * 53 + y * 97 + x * y * 31 + v * 211) % 100;
-      if (h > 60) {                        // lit floors, warmer towards the top of the tile
-        c.fillStyle = h > 90 ? "rgb(255,242,208)" : "rgb(255,203,132)";
+      if (h > on) {                        // lit floors, warmer towards the top of the tile
+        c.fillStyle = h > hot ? (nite ? "rgb(255,249,226)" : "rgb(255,242,208)")
+                              : (nite ? "rgb(255,216,152)" : "rgb(255,203,132)");
         c.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 3);
-      } else if (h > 42) {                 // and the floors that are merely awake
-        c.fillStyle = "rgba(126,148,184,0.45)";
+      } else if (h > stir) {               // and the floors that are merely awake
+        c.fillStyle = nite ? "rgba(150,174,210,0.55)" : "rgba(126,148,184,0.45)";
         c.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 3);
       }
     }
@@ -1121,9 +1130,12 @@ function leaveOverlay(root, trigger) {
     PATS.water = mkTile(paintWater);
     PATS.track = mkTile(paintTrack);
     PATS.domep = mkTile(paintDomeP);
-    PATS.sky0 = mkTile(paintSkyline(0));
-    PATS.sky1 = mkTile(paintSkyline(1));
-    PATS.sky2 = mkTile(paintSkyline(2));
+    PATS.sky0 = mkTile(paintSkyline(0, 0));
+    PATS.sky1 = mkTile(paintSkyline(1, 0));
+    PATS.sky2 = mkTile(paintSkyline(2, 0));
+    PATS.skyn0 = mkTile(paintSkyline(0, 1));
+    PATS.skyn1 = mkTile(paintSkyline(1, 1));
+    PATS.skyn2 = mkTile(paintSkyline(2, 1));
     PATS.foliage = mkTile(paintFoliage);
     PATS.cityg = mkTile(paintCityG);
     PATS.cobble = mkTile(paintCobble);
@@ -2391,7 +2403,9 @@ function leaveOverlay(root, trigger) {
             const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                          + f.n[2] * (C.z - f.p[0][2]);
             if (toward <= 0) return;
-            const win = f.n[1] !== 1 ? PATS["sky" + ((bi + Math.floor(T * 0.7)) % 3)] : null;
+            const win = f.n[1] !== 1
+              ? PATS[(NIGHT() > 0.45 ? "skyn" : "sky") + ((bi + Math.floor(T * 0.7)) % 3)]
+              : null;
             const q = win
               ? add(C, f.p, patUV(f), "pat", win)
               : add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.2));
@@ -2400,20 +2414,8 @@ function leaveOverlay(root, trigger) {
                on, which is a building with the lights left on in daylight. */
             if (q) {
               q.lit = win ? Math.max(lit, 0.9) : lit;
+              if (win) q.nolite = true;   // the city keeps its own light after dark
               drawn.push(q);
-              /* Windows are the point of the cycle: dark glass all day, and at dusk thousands of
-                 them coming on at once. They need an overlay of their own rather than a turn of
-                 `lit`, which cannot make anything brighter than a warm wash over its base. Nudged
-                 along the face normal so it does not fight the pattern it sits on. */
-              if (win) {
-                const gg = 0.52 * NIGHT();
-                if (gg > 0.01) {
-                  const gl = add(C, f.p.map((pt) => [pt[0] + f.n[0] * 0.6, pt[1] + f.n[1] * 0.6,
-                                                     pt[2] + f.n[2] * 0.6]),
-                                ZERO8, "flat", `rgba(255,206,142,${gg.toFixed(3)})`);
-                  if (gl) { gl.nolite = true; gl.lit = 1.5; drawn.push(gl); }
-                }
-              }
             }
           });
         });

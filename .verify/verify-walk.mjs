@@ -309,9 +309,16 @@ ok("the backdrop adds its own fills to the room, not a second pass over it", ctx
    table's quads on screen. rooms-toronto reads 4758 before and 5194 after -- and the frame clock
    was measured at every one of the five stops after the move and holds 60 fps (median 16.7 ms,
    p95 under 21 ms), so this is a dressed room costing fills, not a room being redrawn. Ceiling
-   5600: still far short of the ~10 000 a second pass would now cost. */
+   5600: still far short of the ~10 000 a second pass would now cost.
+
+   It moved again for the day-night cycle, and this one is worth reading before the next person
+   trusts the number. Darkness is painted on with `air`, and by day only distant quads are hazy
+   enough to earn that fill -- so at noon the room costs 5573 fills and after dark, when every quad
+   needs darkening, it costs 6164. The ceiling now has to cover the expensive hour, not the cheap
+   one, and it goes to 6300. A reading taken at a different time of day will differ by about 600
+   fills; that is the cycle working, not a regression. Still far short of a second pass. */
 ok("one depth pass, dressed: the room costs fills, not passes",
-   ctx.fills > before && ctx.fills < 5600, `${ctx.fills} fills, one pass`);
+   ctx.fills > before && ctx.fills < 6300, `${ctx.fills} fills, one pass`);
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
 ok("the cladding is tiled into the wall's own panels, so an affine map stays exact",
