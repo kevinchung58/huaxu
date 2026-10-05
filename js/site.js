@@ -2370,16 +2370,32 @@ function leaveOverlay(root, trigger) {
             if (q) { q.lit = lit * (k > 0.1 ? 1.5 : 1); drawn.push(q); }
           });
         });
-        // The pod keeps a warm band of windows, and the needle carries the city's red blink —
-        // both on the frame clock, so they hold still for a reduced-motion eye.
-        const pb = add(C, [[m.x - m.w * 0.42, m.y + m.h * 0.64, m.z - m.d * 0.5 - 1],
-                           [m.x + m.w * 0.42, m.y + m.h * 0.64, m.z - m.d * 0.5 - 1],
-                           [m.x + m.w * 0.42, m.y + m.h * 0.72, m.z - m.d * 0.5 - 1],
-                           [m.x - m.w * 0.42, m.y + m.h * 0.72, m.z - m.d * 0.5 - 1]],
-                       ZERO8, "flat", "#f0c27a");
-        // The band breathes rather than sitting at one value: at a flat 1.5 the whole tower measured
-        // 1.5% motion, which is a still picture with one dot on it.
-        if (pb) { pb.lit = 1.5 + (ease ? 0.34 * Math.sin(T * 0.8) : 0); drawn.push(pb); }
+        /* The pod is ringed with glass.
+
+           It used to be one warm quad on the front face, which meant the tower read as a grey
+           column from three of its four sides -- measured 73 colours and sd 17.5, the flattest
+           thing on the table after the dome. A rotating restaurant is glass on every side, so the
+           band goes round, and the SkyPod above it gets a narrower one. Both come up after dark
+           and opt out of the night, because a lit tower against a dark hall is the point.
+
+           All four are drawn and left to the depth sort: the two on the far side end up behind the
+           pod they belong to, which is cheaper and safer than working out which way is forward. */
+        [[0.645, 0.715, 0.5, 1], [0.755, 0.792, 0.225, 0.62]].forEach(([a0, a1, hwf, lvl]) => {
+          const py0 = m.y + m.h * a0, py1 = m.y + m.h * a1;
+          const hw = m.w * hwf + 0.8, hd = m.d * hwf + 0.8;
+          [[-hw, -hw, -hd, hd], [hw, hw, hd, -hd], [-hw, hw, -hd, -hd], [hw, -hw, hd, hd]]
+            .forEach(([x0, x1, z0, z1]) => {
+              const q = add(C, [[m.x + x0, py0, m.z + z0], [m.x + x1, py0, m.z + z1],
+                                [m.x + x1, py1, m.z + z1], [m.x + x0, py1, m.z + z0]],
+                            ZERO8, "flat", "#f0c27a");
+              if (q) {
+                // It breathes rather than sitting at one value: at a flat 1.5 the whole tower
+                // measured 1.5% motion, which is a still picture with one dot on it.
+                q.lit = 1.15 + 0.75 * NIGHT() + (ease ? 0.34 * Math.sin(T * 0.8) : 0);
+                q.nolite = true; drawn.push(q);
+              }
+            });
+        });
         const blink = ease ? (Math.sin(T * 2.4) > 0.2 ? 0.85 : 0.15) : 0.6;
         const bc = add(C, [[m.x - 3, m.y + m.h - 8, m.z - 1], [m.x + 3, m.y + m.h - 8, m.z - 1],
                            [m.x + 3, m.y + m.h - 1, m.z - 1], [m.x - 3, m.y + m.h - 1, m.z - 1]],
