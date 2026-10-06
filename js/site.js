@@ -1280,7 +1280,11 @@ function leaveOverlay(root, trigger) {
                   // cream under a hall's lighting, not in daylight: at #c9bda6 the whole facade
                   // measured 246/255 on screen and the building was a white rectangle with no
                   // windows in it, because everything it was made of had already blown out.
-                  stationfront: "#8a7d67" };
+                  stationfront: "#8a7d67",
+                  // The three far-bank buildings, each the colour it is known by: the customhouse
+                  // is red brick, Osaka Shosen is pale render, the Dalian hall is brick again and
+                  // darker, so the three do not read as one building stamped four times.
+                  customhouse: "#8f4a3c", osakashosen: "#b0a488", dalianhall: "#7e4b39" };
   /* Props are named `kind`, `kind-2`, `kind-left`, `kind-s1`… and the shape/tint tables were keyed
      by the *whole* id — so `front-a` was a flat plane while `front` was a painted recess, and whole
      families of props (banners, crates, snow banks, stall curtains) lost their bodies to a fallback.
@@ -1317,6 +1321,7 @@ function leaveOverlay(root, trigger) {
                   falls: "falls", pool: "pool", boat: "boat",
                   // Moji's kit: the drawbridge the district is known by, and the ships it opens for.
                   drawbridge: "drawbridge", ship: "ship", stationfront: "stationfront",
+                  customhouse: "customhouse", osakashosen: "osakashosen", dalianhall: "dalianhall",
                   // The market's hall: a brick nave with an arcade under a gallery floor, and a
                   // cupola with a clock in it. A market that is only stalls is a market in the
                   // abstract -- this one is a building and the stalls belong to it.
@@ -2894,6 +2899,171 @@ function leaveOverlay(root, trigger) {
           if (u + ww / 2 > w / 2 - w * 0.02) continue;
           win(-u, h * 0.14, ww, hh); win(u, h * 0.14, ww, hh);
           win(-u, h * 0.60, ww, hh * 0.82); win(u, h * 0.60, ww, hh * 0.82);
+        }
+      } else if (shape === "customhouse") {
+        /*
+           The former Moji Customhouse, 1912.
+
+           Red brick over a timber frame, in the Renaissance manner, and one of the three giants of
+           Meiji architecture -- 妻木頼黄, of Tokyo's Nihonbashi and the Yokohama Red Brick
+           Warehouse -- had a hand in it. Customs moved out in 1927 and it was a private building
+           until the city restored it in 1994.
+
+           The third floor is an observation room and the first an exhibition room, which is why
+           the top storey here is glazed all along its face while the two below it are punctured
+           by round arches. A Renaissance building is read by its arches before anything else, so
+           the arches are built as arches: two jambs and a semicircular head, with the head's
+           height kept separate from its width, because an arch forced to a semicircle of its own
+           width is a tunnel and not a window. */
+        const w = m.w, h = m.h;
+        facesOf(m).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
+          if (q) { q.lit = lit * 0.86; drawn.push(q); }
+        });
+        const zf = m.z - m.d / 2 - 0.6;
+        const F = (u, y) => [m.x + u, m.y + y, zf];
+        const Q = (pts, col, l) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; drawn.push(q); }
+        };
+        const rect = (u0, u1, y0, y1, col, l) =>
+          Q([F(u0, y0), F(u1, y0), F(u1, y1), F(u0, y1)], col, l);
+        const N = NIGHT();
+        const lamp = (a) => `rgba(255,206,132,${(0.03 + a * N).toFixed(3)})`;
+        const arched = (uc, ar, yS, yP, a) => {
+          const p = [F(uc - ar, yS), F(uc + ar, yS), F(uc + ar, yP)];
+          for (let i = 0; i <= 6; i++) {
+            const t = (i / 6) * Math.PI;
+            p.push(F(uc + ar * Math.cos(t), yP + ar * 0.66 * Math.sin(t)));
+          }
+          Q(p, lamp(a), 1.0 + 0.4 * N);
+        };
+        const hw = w / 2, BAYS = 5;
+        for (let i = 0; i < BAYS; i++) {
+          const u = -hw + (i + 0.5) * (w / BAYS);
+          arched(u, w * 0.055, h * 0.11, h * 0.30, 0.26);     // the exhibition floor
+          arched(u, w * 0.05, h * 0.43, h * 0.57, 0.22);
+        }
+        // The observation room: glazed the length of the face, because that is the floor built
+        // to be looked out of.
+        rect(-hw * 0.9, hw * 0.9, h * 0.73, h * 0.93,
+             `rgba(255,214,150,${(0.04 + 0.30 * N).toFixed(3)})`, 1.0 + 0.3 * N);
+        // String courses and the eaves: the horizontal lines a Renaissance front is divided by.
+        rect(-hw, hw, h * 0.38, h * 0.41, mix(base, -0.30), lit * 0.9);
+        rect(-hw, hw, h * 0.71, h * 0.74, mix(base, -0.30), lit * 0.9);
+        rect(-hw, hw, h * 0.93, h * 0.99, mix(base, -0.40), lit * 0.85);
+      } else if (shape === "osakashosen") {
+        /*
+           The former Osaka Shosen building.
+
+           Its face is its big arches -- tall, round-headed, and taking most of the wall, the way
+           a shipping company's offices were built to look solid from the quay -- and its corner
+           carries an octagonal tower, which is the thing you recognise it by from across the
+           water. So the tower is built as an octagon and not suggested by one: eight sides
+           turned out of real trigonometry, and a roof of eight triangles meeting at a point. */
+        const w = m.w, h = m.h, d = m.d;
+        facesOf({ ...m, h: h * 0.86 }).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
+          if (q) { q.lit = lit * 0.88; drawn.push(q); }
+        });
+        const zf = m.z - d / 2 - 0.6;
+        const F = (u, y) => [m.x + u, m.y + y, zf];
+        const Q = (pts, col, l) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; drawn.push(q); }
+        };
+        const N = NIGHT();
+        const hw = w / 2, BAYS = 3;
+        for (let i = 0; i < BAYS; i++) {
+          const u = -hw * 0.78 + (i + 0.5) * (w * 0.78 / BAYS);
+          const ar = w * 0.105, yS = h * 0.12, yP = h * 0.46;
+          const p = [F(u - ar, yS), F(u + ar, yS), F(u + ar, yP)];
+          for (let k = 0; k <= 7; k++) {
+            const t = (k / 7) * Math.PI;
+            p.push(F(u + ar * Math.cos(t), yP + ar * 0.92 * Math.sin(t)));
+          }
+          Q(p, `rgba(255,208,140,${(0.03 + 0.32 * N).toFixed(3)})`, 1.0 + 0.3 * N);
+        }
+        Q([F(-hw, h * 0.80), F(hw, h * 0.80), F(hw, h * 0.86), F(-hw, h * 0.86)],
+          mix(base, -0.36), lit * 0.85);
+        // The octagonal tower on the corner nearest the basin.
+        const tr = w * 0.20, tx = m.x + hw - tr * 0.95, tz = m.z - d * 0.1;
+        const th = h * 1.42, SEG = 8, spin = Math.PI / SEG;
+        for (let i = 0; i < SEG; i++) {
+          const a0 = (i / SEG) * Math.PI * 2 + spin, a1 = ((i + 1) / SEG) * Math.PI * 2 + spin;
+          const c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+          const shade = -0.16 + 0.20 * Math.max(0, -s0);      // the face turned to the quay
+          const q = add(C, [[tx + tr * c0, m.y, tz + tr * s0], [tx + tr * c1, m.y, tz + tr * s1],
+                            [tx + tr * c1, m.y + th, tz + tr * s1],
+                            [tx + tr * c0, m.y + th, tz + tr * s0]], ZERO8, "flat", mix(base, shade));
+          if (q) { q.lit = lit * 0.92; drawn.push(q); }
+          // The roof: eight triangles to a point.
+          const rq = add(C, [[tx + tr * c0, m.y + th, tz + tr * s0],
+                             [tx + tr * c1, m.y + th, tz + tr * s1],
+                             [tx, m.y + th + tr * 0.9, tz]], ZERO8, "flat", mix(base, shade - 0.18));
+          if (rq) { rq.lit = lit * 0.8; drawn.push(rq); }
+        }
+      } else if (shape === "dalianhall") {
+        /*
+           Kitakyushu's Dalian Friendship Memorial Hall, 1995: brick, and carrying a composite
+           steeple -- a tower that steps from square to octagonal to round before it comes to a
+           point, which is the whole reason it reads as a landmark from the far side of the basin.
+           Each of the three stages is drawn, because a steeple sketched as one cone is a cone. */
+        const w = m.w, h = m.h, d = m.d;
+        facesOf({ ...m, h: h * 0.62 }).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
+          if (q) { q.lit = lit * 0.86; drawn.push(q); }
+        });
+        const zf = m.z - d / 2 - 0.6;
+        const F = (u, y) => [m.x + u, m.y + y, zf];
+        const Q = (pts, col, l) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; drawn.push(q); }
+        };
+        const N = NIGHT();
+        const hw = w / 2, BAYS = 3;
+        for (let i = 0; i < BAYS; i++) {
+          const u = -hw * 0.7 + (i + 0.5) * (w * 0.7 / BAYS);
+          Q([F(u - w * 0.075, h * 0.10), F(u + w * 0.075, h * 0.10),
+             F(u + w * 0.075, h * 0.40), F(u - w * 0.075, h * 0.40)],
+            `rgba(255,206,134,${(0.03 + 0.30 * N).toFixed(3)})`, 1.0 + 0.3 * N);
+        }
+        Q([F(-hw, h * 0.58), F(hw, h * 0.58), F(hw, h * 0.62), F(-hw, h * 0.62)],
+          mix(base, -0.34), lit * 0.85);
+        // The steeple: square drum, octagonal stage, then the spire.
+        const tx = m.x, tz = m.z;
+        const stack = (r0, y0, y1, seg, shade) => {
+          for (let i = 0; i < seg; i++) {
+            const a0 = (i / seg) * Math.PI * 2 + Math.PI / seg;
+            const a1 = ((i + 1) / seg) * Math.PI * 2 + Math.PI / seg;
+            const sh = shade + 0.18 * Math.max(0, -Math.sin(a0));
+            const q = add(C, [[tx + r0 * Math.cos(a0), m.y + y0, tz + r0 * Math.sin(a0)],
+                              [tx + r0 * Math.cos(a1), m.y + y0, tz + r0 * Math.sin(a1)],
+                              [tx + r0 * Math.cos(a1), m.y + y1, tz + r0 * Math.sin(a1)],
+                              [tx + r0 * Math.cos(a0), m.y + y1, tz + r0 * Math.sin(a0)]],
+                            ZERO8, "flat", mix(base, sh));
+            if (q) { q.lit = lit * 0.9; drawn.push(q); }
+          }
+        };
+        const r = w * 0.17;
+        stack(r, h * 0.62, h * 0.92, 4, -0.10);              // square
+        stack(r * 0.78, h * 0.92, h * 1.16, 8, -0.06);       // octagonal
+        for (let i = 0; i < 8; i++) {                        // the spire, eight faces to a point
+          const a0 = (i / 8) * Math.PI * 2 + Math.PI / 8, a1 = ((i + 1) / 8) * Math.PI * 2 + Math.PI / 8;
+          const rr = r * 0.78;
+          const q = add(C, [[tx + rr * Math.cos(a0), m.y + h * 1.16, tz + rr * Math.sin(a0)],
+                            [tx + rr * Math.cos(a1), m.y + h * 1.16, tz + rr * Math.sin(a1)],
+                            [tx, m.y + h * 1.62, tz]], ZERO8, "flat", mix(base, -0.02));
+          if (q) { q.lit = lit * 0.95; drawn.push(q); }
         }
       } else if (shape === "stall") {
         /* A market stall at table scale: a counter, a dark opening under a striped awning. The

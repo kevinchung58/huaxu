@@ -1504,10 +1504,10 @@ PLACE_TITLES = {
     "IMG/tokyo-poster-wires.jpg": "The wires over the lane",
     "IMG/tokyo-poster-ticket.jpg": "The ticket machine",
     "IMG/tokyo-cover.jpg": "Tokyo, the lane in one sheet",
-    "IMG/fukuoka-1.jpg": "The stall row",
-    "IMG/fukuoka-2.jpg": "Lanterns over the wires",
-    "IMG/fukuoka-3.jpg": "The water at the end",
-    "IMG/fukuoka-cover.jpg": "Fukuoka, the alley in one sheet",
+    "IMG/fukuoka-1.jpg": "Moji Port Station",
+    "IMG/fukuoka-2.jpg": "The Blue Wing, open",
+    "IMG/fukuoka-3.jpg": "The strait at dusk",
+    "IMG/fukuoka-cover.jpg": "Moji Port in one sheet",
     "IMG/toronto-1.jpg": "The skyline, small",
     "IMG/toronto-2.jpg": "The falls, small",
     "IMG/toronto-3.jpg": "The market, small",
@@ -1631,7 +1631,8 @@ for it, tile in zip(ALBUM_ITEMS, album_tiles):
 # cannot disagree about what a place is called or where its door goes.
 PLACE_GROUP_NOTES = {
     "tokyo": "A night lane with shutters, lanterns, and a vending machine keeping the far end.",
-    "fukuoka": "A stall alley, lanterns low over the counters, water at the end of it.",
+    "fukuoka": "Moji Port on a table: the station, the customhouse, the Blue Wing drawbridge "
+                "and the ships on the Kanmon Strait, at dusk.",
     "toronto": "A dark hall of lit tables: the city, its falls and its markets, drawn small.",
 }
 
@@ -1934,8 +1935,8 @@ DISTRICTS = [
              "glow": [{"r": 150, "k": 0.7, "dy": 235}],
              "leave": ROOM_BY_ID["fukuoka"]["page"],
              "title": "The door onto Fukuoka",
-             "hint": "It opens onto the stall alley: lanterns low over the counters, and water at "
-                     "the end of it."},
+             "hint": "It opens onto Moji Port: a harbour on a table, at dusk, with a drawbridge "
+                     "that stands open for a ship."},
             # The street's own furniture, and the two poles the wires run from.
             {"id": "pole-west", "kind": "utility", "x": -330, "z": 180, "y": 0, "ry": 90,
              "title": "The pole the wires are strung from",
@@ -2083,8 +2084,8 @@ DISTRICTS = [
             {"label": "Tokyo", "note": "A night lane with shutters, lanterns, and a vending "
                                        "machine keeping the far end.",
              "state": "Open — the middle door, on the right."},
-            {"label": "Fukuoka", "note": "A stall alley, lanterns low over the counters, water at "
-                                         "the end of it.",
+            {"label": "Fukuoka", "note": "Moji Port on a table: the station, the customhouse, the "
+                                         "Blue Wing and the ships, at dusk.",
              "state": "Open — the last door on the left."},
         ],
         "stations": [
@@ -2579,8 +2580,6 @@ DISTRICTS = [
         "id": "fukuoka", "label": "Fukuoka",
         "page": ROOM_BY_ID["fukuoka"]["page"],
         "plates": ROOM_BY_ID["fukuoka"]["plates"],
-        # A stall alley: narrower than the Tokyo lane and lower, because the lanterns hang close over
-        # the counters, and the far end is water rather than a street.
         # A hall, not an alley. Moji is a port panorama -- a 108 m drawbridge and a strait with ships
         # on it -- and you cannot stand in a lane and see a harbour. So the district is a table now,
         # the way Toronto is: the port stands small enough to look down on, which is also the only way
@@ -2591,7 +2590,8 @@ DISTRICTS = [
         "status": "open",
         "kind": "personal",
         "cover": "IMG/fukuoka-cover.jpg",
-        "cover_caption": "The alley in one sheet: noren, timber, lanterns on wires, and water at the end.",
+        "cover_caption": "Moji Port in one sheet: the wooden station, the brick customhouse, the "
+                        "Blue Wing standing open, and the strait beyond it.",
         "blurb": "The harbour at dusk, small enough to look down on. The bridge stands open for a "
                  "ship, the strait moves, and while you are there the buildings come alight one "
                  "after another.",
@@ -2630,6 +2630,25 @@ DISTRICTS = [
              "title": "A second ship, further out",
              "hint": "The strait is never empty. Smaller and further off, which is what makes the "
                      "near one read as nearer."},
+            {"id": "dalianhall-mj", "kind": "dalianhall", "x": -268, "z": 700, "y": 80, "ry": 0,
+             "w": 118, "h": 92, "d": 64,
+             "title": "The Dalian Friendship Memorial Hall",
+             "hint": "Built in 1995, brick, and carrying a composite steeple: square, then "
+                     "octagonal, then a spire. Every stage of it is drawn, because a steeple "
+                     "sketched as one cone is a cone and not a steeple."},
+            {"id": "customhouse-mj", "kind": "customhouse", "x": 86, "z": 706, "y": 80, "ry": 0,
+             "w": 172, "h": 108, "d": 78,
+             "title": "The former Moji Customhouse",
+             "hint": "1912, red brick over a timber frame, in the Renaissance manner. One of the "
+                     "three giants of Meiji architecture, \u59bb\u6728\u983c\u9ec4, had a hand "
+                     "in it. The top floor is glazed where the ones below are arched, because the "
+                     "third floor is an observation room and the first an exhibition room."},
+            {"id": "osakashosen-mj", "kind": "osakashosen", "x": 244, "z": 700, "y": 80, "ry": 0,
+             "w": 140, "h": 92, "d": 66,
+             "title": "The former Osaka Shosen building",
+             "hint": "Known by two things, and both are drawn: the tall round-headed arches that "
+                     "take most of its face, and the octagonal tower on its corner, eight sides "
+                     "turned out of real trigonometry with a roof of eight triangles."},
             {"id": "stationfront-mj", "kind": "stationfront", "x": -104, "z": 706, "y": 80, "ry": 0,
              "w": 196, "h": 118, "d": 84,
              "title": "Moji Port Station",
@@ -2702,9 +2721,16 @@ DISTRICTS = [
             "mountain": [{"x": 600, "y": 420, "w": 2200, "h": 300, "c": "#1c2740"}],
             "plaza": {"y": -300, "z0": 700, "z1": 7000, "half": 4000},
             "roofs": [
-                {"x": -1200, "y": 0, "z": 1300, "w": 700, "h": 420, "tone": 0.55},
-                {"x": 1300, "y": 0, "z": 1400, "w": 800, "h": 500, "tone": 0.4},
-                {"x": 300, "y": 0, "z": 1250, "w": 620, "h": 360, "tone": 0.68},
+                # A backdrop's z is not scaled the way a prop's is -- a prop's z is multiplied by
+                # 2.9 on its way out, a roof's is not. These were authored for the alley, where the
+                # props stopped at record z 350 and a roof at 1250 was safely behind them. The port
+                # table reaches record z 790, which is 2291 once scaled, so every roof here stood in
+                # FRONT of the far bank and hid it: the customhouse and the Osaka Shosen building
+                # were both behind the middle roof and drew nothing at all, and only the Dalian
+                # hall, off to the left of it, was ever visible. Pushed past the table's far edge.
+                {"x": -1200, "y": 0, "z": 2500, "w": 700, "h": 420, "tone": 0.55},
+                {"x": 1300, "y": 0, "z": 2600, "w": 800, "h": 500, "tone": 0.4},
+                {"x": 300, "y": 0, "z": 2450, "w": 620, "h": 360, "tone": 0.68},
             ],
             "city": [
                 {"x": -1600, "z": 2800, "w": 1200, "h": 1500, "win": 0.5, "tone": 0.66},
@@ -2714,49 +2740,52 @@ DISTRICTS = [
                 {"x": 2600, "z": 3000, "w": 900, "h": 1400, "win": 0.5, "tone": 0.62},
             ],
         },
-        "frames": [
-            # The alley's sub-places: the counters, the overhead layer, and what it ends in.
-            {"id": "stalls", "src": "IMG/fukuoka-1.jpg", "x": -284, "z": 120, "y": 96, "ry": 90,
-             "title": "The stall row",
-             "alt": "Illustration of a row of small stall fronts along a narrow alley at night, "
-                    "counters drawn in outline and nothing written on any of them.",
-             "caption": "The alley's proportion and its first light, drawn: how narrow it is, and how "
-                        "close the counters come."},
-            {"id": "lanterns", "src": "IMG/fukuoka-2.jpg", "x": 284, "z": 240, "y": 150, "ry": -90,
-             "title": "Lanterns over the wires",
-             "alt": "Illustration of paper lanterns hanging in a row from wires across a narrow "
-                    "alley, warm against a dark sky.",
-             "caption": "The overhead layer, drawn: where the light comes from and how low it hangs."},
+                "frames": [
+            # The port's sub-places: the building it is named for, the bridge it is known for, and
+            # the water it stands on. The alley's three frames were replaced rather than reworded,
+            # because a picture of a stall row is not a picture of a harbour.
+            {"id": "station", "src": "IMG/fukuoka-1.jpg", "x": -284, "z": 120, "y": 96, "ry": 90,
+             "title": "Moji Port Station",
+             "alt": "Illustration of a small wooden two-storey railway station at dusk, symmetric, "
+                    "its centre shaped like a gate and a few windows lit.",
+             "caption": "The building the district is named after, drawn: two storeys of painted "
+                        "timber, dead symmetric, and a centre that reads as a gate."},
+            {"id": "bridge", "src": "IMG/fukuoka-2.jpg", "x": 284, "z": 240, "y": 150, "ry": -90,
+             "title": "The Blue Wing, open",
+             "alt": "Illustration of a blue pedestrian drawbridge over a harbour basin at dusk, its "
+                    "two leaves raised like wings and lit from below.",
+             "caption": "The bridge, drawn at the moment it is worth looking at: both leaves up, "
+                        "floodlit against a dark harbour."},
             {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 284, "z": 350, "y": 96, "ry": -90,
-             "title": "The water at the end",
-             "alt": "Illustration of dark water at the end of an alley with amber light reflected "
-                    "along its surface.",
-             "caption": "What the alley ends in. Drawn: the room walks toward it, and the picture "
-                        "claims nothing about what is on the far bank."},
+             "title": "The strait at dusk",
+             "alt": "Illustration of a wide strait at dusk seen from a quay, two low cargo ships "
+                    "crossing it and lights along the far shore.",
+             "caption": "What the basin opens onto. Drawn: the room walks toward it, and the "
+                        "picture claims nothing about what is on the far shore."},
         ],
         # Sub-areas, same rule as the other rooms: one little place per Field notes plate, a drawn
         # frame holding the place until a photograph arrives.
-        "slots_title": "Places in the alley",
+        "slots_title": "Places in the port",
         "slots": [
-            {"label": "Fukuoka, the alley in one sheet", "note": "The album's cover plate for this "
-                                                                 "room. In the alley it is the "
-                                                                 "mouth: the whole stall row in one "
-                                                                 "look.",
-             "state": "Held by the alley itself, until a photograph of the mouth takes the slot."},
-            {"label": "The stall row", "note": "The first stalls, where the counters start and the "
-                                               "steam is.",
-             "state": "Held by a drawn frame; a photograph of the stalls takes the slot when one "
+            {"label": "Fukuoka, the port in one sheet", "note": "The album's cover plate for this "
+                                                                "room. In the port it is the "
+                                                                "whole panorama in one look: the "
+                                                                "quay, the basin and the strait.",
+             "state": "Held by the port itself, until a photograph of the quay takes the slot."},
+            {"label": "Moji Port Station", "note": "The far bank, left of the middle: the building "
+                                                   "the district is named after.",
+             "state": "Held by a drawn frame; a photograph of the station takes the slot when one "
                       "arrives."},
-            {"label": "Lanterns over the wires", "note": "Between the stalls, where the light is "
-                                                         "strung lowest.",
-             "state": "Held by a drawn frame; a photograph of the lanterns takes the slot when one "
+            {"label": "The Blue Wing, open", "note": "The middle of the basin, where the bridge "
+                                                     "stands open for a ship.",
+             "state": "Held by a drawn frame; a photograph of the bridge takes the slot when one "
                       "arrives."},
-            {"label": "The water at the end", "note": "The end of the alley, where the counters "
-                                                      "stop and the surface starts.",
-             "state": "Held by a drawn frame; a photograph of the water takes the slot when one "
+            {"label": "The strait at dusk", "note": "Beyond the basin, where the water opens out "
+                                                    "and the ships cross.",
+             "state": "Held by a drawn frame; a photograph of the strait takes the slot when one "
                       "arrives."},
-            {"label": "Clips and the alley at closing", "note": "Vertical clips and one sound, when "
-                                                                "material exists.",
+            {"label": "Clips and the port after dark", "note": "Vertical clips and one sound, when "
+                                                               "material exists.",
              "state": "Empty by design. A clip needs its caption before it can play here."},
         ],
         # The lanterns.
