@@ -2696,21 +2696,6 @@ DISTRICTS = [
             {"kind": "kerb", "x0": -260, "x1": -230, "z0": -260, "z1": 380, "y1": 7},
             {"kind": "kerb", "x0": 230, "x1": 260, "z0": -260, "z1": 380, "y1": 7},
         ],
-        # Six lanterns on three crossings: the alley is lit by paper and nothing else that is warm.
-        # The lanterns, re-strung. They hung down both sides of an alley at 236; the near edge is an
-        # open quay now, so they run along it over the water, at the height a mooring is tied off.
-        "lanterns": [
-            {"x": -262, "y": 150, "z": 150, "r": 13},
-            {"x": -262, "y": 147, "z": 208, "r": 12},
-            {"x": -262, "y": 152, "z": 266, "r": 13},
-            {"x": -262, "y": 148, "z": 324, "r": 12},
-            {"x": -262, "y": 151, "z": 382, "r": 13},
-            {"x":  262, "y": 149, "z": 172, "r": 12},
-            {"x":  262, "y": 152, "z": 230, "r": 13},
-            {"x":  262, "y": 147, "z": 288, "r": 12},
-            {"x":  262, "y": 151, "z": 346, "r": 13},
-            {"x":  262, "y": 148, "z": 404, "r": 12},
-        ],
         "vista": {"x": 0, "y0": 96, "y1": 300, "w": 460},
         "wires": [
             {"a": [-260, 344, 40], "b": [260, 338, 40], "sag": 46},
@@ -2795,34 +2780,37 @@ DISTRICTS = [
         ],
         # The lanterns.
         #
-        # Fukuoka is the city of the yatai, and a yatai is unreadable without its chochin: a paper
-        # lantern about 30 cm across, strung in a line along the counter side of the stall row and
-        # hanging low, under the awnings, so the light falls on the counter rather than the street.
-        # They are the reason the riverfront is the most photographed thing in the city -- the
-        # lanterns and their reflection on the water, together.
+        # One list, and it lives here. This record used to carry a second `"lanterns"` key up
+        # under `backdrop`; in a dict literal the later key wins silently, so the row that was
+        # being edited was dead and the row on screen was the other one. A duplicate key that
+        # Python accepts without complaint is the sort of thing that eats an afternoon, so now
+        # there is exactly one here and the generator asserts on the count below.
         #
-        # This alley had none. `body="lantern"` appeared exactly once in the whole site and it was in
-        # Tokyo, so the one thing a visitor comes to this district for was the one thing missing from
-        # it. The room's own plates even name the subject -- "Lanterns over the wires ... where the
-        # light is strung lowest" -- as a picture on the wall, standing in for the thing itself.
+        # Re-strung off the walk and onto the table. They ran from z 26 to 348, which is the
+        # floor of the hall you walk down, not the port: a camera standing at z 957 had most of
+        # the row behind it and the nearest lantern 53 units from the lens. Measured against an
+        # empty list, that row was 92% of every warm pixel on screen at the first two stops and
+        # nothing at all at the last three. The brightness this room has been carrying was a
+        # paper lantern pressed against the glass.
         #
-        # Strung low on purpose: the awning sits at 250 and a stall's counter is chest high, so 236
-        # puts the paper just under the eave and the light where a stall actually wants it.
+        # They run down both flanks of the quay now at x +-300, clear of the buildings (x -268
+        # to 244) so each one is a warm point against water or sky rather than against brick,
+        # from the near edge of the table to the far bank. From the furthest stop the row is
+        # 900 units off and a lantern is about 21 px across; from the near stop, 24 px.
         "lanterns": [
-            {"x": -214, "y": 236, "z": 26,  "r": 15},
-            {"x": -214, "y": 232, "z": 76,  "r": 14},
-            {"x": -214, "y": 237, "z": 126, "r": 15},
-            {"x": -214, "y": 231, "z": 176, "r": 14},
-            {"x": -214, "y": 236, "z": 226, "r": 15},
-            {"x": -214, "y": 233, "z": 276, "r": 14},
-            {"x": -214, "y": 237, "z": 326, "r": 15},
-            {"x":  214, "y": 234, "z": 50,  "r": 14},
-            {"x":  214, "y": 238, "z": 100, "r": 15},
-            {"x":  214, "y": 232, "z": 150, "r": 14},
-            {"x":  214, "y": 236, "z": 200, "r": 15},
-            {"x":  214, "y": 233, "z": 250, "r": 14},
-            {"x":  214, "y": 238, "z": 300, "r": 15},
-            {"x":  214, "y": 234, "z": 348, "r": 14},
+            {"x": -300, "y": 212, "z": 390, "r": 15},
+            {"x": -300, "y": 205, "z": 440, "r": 17},
+            {"x": -300, "y": 213, "z": 490, "r": 15},
+            {"x": -300, "y": 204, "z": 540, "r": 17},
+            {"x": -300, "y": 214, "z": 590, "r": 15},
+            {"x": -300, "y": 206, "z": 640, "r": 17},
+            {"x": -300, "y": 212, "z": 690, "r": 15},
+            {"x":  300, "y": 206, "z": 415, "r": 16},
+            {"x":  300, "y": 213, "z": 465, "r": 15},
+            {"x":  300, "y": 205, "z": 515, "r": 17},
+            {"x":  300, "y": 214, "z": 565, "r": 15},
+            {"x":  300, "y": 207, "z": 615, "r": 16},
+            {"x":  300, "y": 213, "z": 665, "r": 15},
         ],
         # The stations walk up to the table and stop at its edge. Toronto's do the same: each stop
         # stands 90-170 short of the table it is looking at, because a diorama is looked at from
@@ -3604,6 +3592,33 @@ for d in open_districts:
     body = walk_html(d, district_drawer(d)) + "\n" + rooms_plate_html([d])
     rooms_pages[d["page"]] = shell_page(f'{d["label"]} · Rooms · Hua-Xu Zhong', body, d["page"],
                                          d.get("cover", "IMG/1.jpg"), room=d)
+
+# A duplicate key in a dict literal is legal Python and silently keeps the last one, so a row of
+# lanterns can sit in this file looking authored while another list, further down the same record,
+# is the one that reaches the page. This record had exactly that: two `"lanterns"` keys, and the
+# edits were going into the dead one. It costs one parse of this file to catch the whole class.
+def _assert_no_duplicate_keys():
+    import ast as _ast
+    _tree = _ast.parse((ROOT / "_gen_html.py").read_text(encoding="utf-8"))
+    _bad = []
+    for _node in _ast.walk(_tree):
+        if not isinstance(_node, _ast.Dict):
+            continue
+        _seen, _dupes = set(), set()
+        for _k in _node.keys:
+            if isinstance(_k, _ast.Constant) and isinstance(_k.value, str):
+                if _k.value in _seen:
+                    _dupes.add(_k.value)
+                _seen.add(_k.value)
+        if _dupes:
+            _bad.append((getattr(_node, "lineno", 0), sorted(_dupes)))
+    if _bad:
+        raise SystemExit(
+            "duplicate dict keys in _gen_html.py (later ones win, silently):\n" +
+            "\n".join(f"  line {ln}: {', '.join(repr(k) for k in ks)}" for ln, ks in _bad))
+
+
+_assert_no_duplicate_keys()
 
 for _path, _html in rooms_pages.items():
     (ROOT / _path).write_text(_html, encoding="utf-8")

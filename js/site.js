@@ -1529,8 +1529,32 @@ function leaveOverlay(root, trigger) {
 
        Lit windows opt out (`nolite`). That is the whole effect: the hall goes dark and the models
        keep their own light, which is why a model hall is dim in the first place. */
-    const dark = Math.min(0.6, (q.air === undefined ? haze(q.z) : q.air)
-                               + (q.nolite ? 0 : NIGHT() * 0.34));
+    /* Haze and night are both something standing between you and the surface, so they compose the
+       way two thicknesses of the same glass do: each takes a share of what the last one left, and
+       neither can take more than all of it.
+
+       Added together and then clipped at 0.6 they were not: the far bank sits at z 2030, where haze
+       alone is 0.393, so the night had 0.207 of alpha left to darken an entire port with. That is
+       the whole reason this room's day was a six-luma wobble -- measured, midnight 105 against noon
+       112 -- while the brief asks for a port that starts at dusk and falls to night while you stand
+       there. Composed multiplicatively, the night always gets its share of whatever the haze left,
+       near or far. */
+    /* Two ceilings, and the fact that there used to be one is the bug.
+
+       `AIR_MAX` is the old number: standing air may take at most 0.6 of a surface, so the far end
+       of a hall never fogs into flat nothing. It still holds, and still means what it meant.
+
+       What it cannot also be is the ceiling on the night, because the two spend the same budget:
+       the far bank sits at z 2030 where haze alone is 0.393, so with one shared cap of 0.6 the
+       night had 0.207 left to darken an entire port with. Capping the sum at 0.6 and composing
+       multiplicatively gives 1 - 0.607 x 0.66 = 0.599 -- arithmetically the same 0.206 swing the
+       additive version managed, because the ceiling and not the formula was what bound. The night
+       needs its own ceiling, high enough to actually be night, low enough that a surface keeps
+       better than a quarter of its own colour and the compound stays readable. */
+    const AIR_MAX = 0.6, NIGHT_MAX = 0.72;
+    const air = Math.min(AIR_MAX, q.air === undefined ? haze(q.z) : q.air);
+    const night = q.nolite ? 0 : NIGHT() * 0.5;
+    const dark = Math.min(NIGHT_MAX, 1 - (1 - air) * (1 - night));
     if (dark > 0.01) { path(); g.fillStyle = `rgba(22,34,60,${dark.toFixed(3)})`; g.fill(); }
   };
 
@@ -3512,6 +3536,32 @@ function leaveOverlay(root, trigger) {
     // The bulbs and the machine are glows, not geometry: same projection, drawn afterwards, so the
     // amber pool cannot disagree with where the machine actually is.
     g.globalCompositeOperation = "lighter";
+    /* A pool of light on the air, scaled by how strongly the record says this source burns.
+
+       `k` is authored on every lamp and every object glow -- 0.24 for the city's bounce through a
+       window, 0.6 for a lit front standing in the near ground -- and it used to reach only
+       `lightAt`, which decides how bright a *surface* is. The additive pool, the thing you actually
+       see hanging in the air, ignored it entirely, so a 24%-strength bounce painted exactly as hard
+       as a 60%-strength shopfront and there was no dial to turn. Scaling the tint's alpha by `k`
+       here is what makes the authored number mean anything on screen. */
+    const scaleTint = (col, m) => {
+      const mm = /rgba?\(([^)]+)\)/.exec(col);
+      if (!mm) return col;
+      const p = mm[1].split(",").map(Number);
+      const a = (p.length > 3 ? p[3] : 1) * m;
+      return `rgba(${Math.round(p[0])},${Math.round(p[1])},${Math.round(p[2])},${a.toFixed(3)})`;
+    };
+    /* And scaled by the hour, which is the whole point of a port at dusk.
+
+       Drawn at a constant strength, this pass is an additive floor that sits under every surface at
+       every hour: the hall can only ever get *lighter* from it, never darker, so the day-night
+       cycle is a 13% wobble on top of a wash instead of a day. Measured over a full cycle, the
+       whole frame moved 132 -> 151 luma in this room while Tokyo managed 89 -> 99. A lamp's pool is
+       the thing that should come up as the sky goes, so it rises with `NIGHT()` and keeps a floor
+       at noon -- a bulb is still a bulb in daylight, just not a searchlight. */
+    const GLOW_GAIN = 1.0, GLOW_DAY = 0.12;
+    const glowStrength = (L) =>
+      (L.k === undefined ? 0.5 : L.k) * GLOW_GAIN * (GLOW_DAY + (1 - GLOW_DAY) * NIGHT());
     const glow = (px, py, pz, r, col) => {
       const p = camPt(C, px, py, pz);
       if (p.z < NEAR) return;
@@ -3542,7 +3592,7 @@ function leaveOverlay(root, trigger) {
 
     lamps.forEach((L) => {
       const dx = swayOf(L);
-      glow(L.x + dx, L.y, L.z, L.r, L.tint);
+      glow(L.x + dx, L.y, L.z, L.r, scaleTint(L.tint, glowStrength(L)));
       if (L.wet) reflect(L.x + dx, L.z, L.r * 3.6);   // each bulb's pool, thrown back by the asphalt
       /* Only a lamp the record calls a bulb gets a bulb drawn. Everything else already has a body in
          the scene — a lantern's paper, a machine's panel, a camera's lens — and drawing a white dot at

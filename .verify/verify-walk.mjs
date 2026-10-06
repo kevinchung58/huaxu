@@ -348,8 +348,16 @@ ok("and the swing moves the lamp, its cord, its pool and its light together",
 ok("a lantern's period and amplitude are authored, not random",
    lanterns.every((L) => L.swing > 0 && L.period > 1 && L.phase !== undefined));
 ok("textures are mapped, not stretched photographs", ctx.imgs >= 6, `${ctx.imgs} drawImage`);
+/* The air and the night used to share one ceiling of 0.6, which is why the far half of a room
+   could never get dark: haze alone spends 0.393 of the 0.6 at z 2030, leaving the night 0.207.
+   They are separate things and now have separate ceilings, so the air's legibility floor is
+   asserted on its own instead of being whatever the night happened to leave. */
 ok("the air never exceeds a murk of 0.6, so the compound stays readable",
-   ctx.darkMax <= 0.6 + 1e-6, `max ${ctx.darkMax}`);
+   /const AIR_MAX = 0\.6, NIGHT_MAX = 0\.72;/.test(js)
+   && /const air = Math\.min\(AIR_MAX, q\.air/.test(js), `AIR_MAX ${(js.match(/AIR_MAX = ([\d.]+)/) || [])[1]}`);
+ok("the night composes with the air rather than sharing its budget, and stops at 0.72",
+   /const dark = Math\.min\(NIGHT_MAX, 1 - \(1 - air\) \* \(1 - night\)\)/.test(js)
+   && ctx.darkMax <= 0.72 + 1e-6, `max ${ctx.darkMax}`);
 ok("the amber pool is drawn where a source reaches", ctx.warm > 0, `${ctx.warm} warm fills`);
 ok("the city's windows use a pattern like every other surface",
    /paintWindows/.test(js) && /winPat = mkTile\(paintWindows\)/.test(js));
