@@ -1272,7 +1272,10 @@ function leaveOverlay(root, trigger) {
                   curtain: "#24406b", stall: "#6e4f38",
                   bank: "#dfe8f2", bench: "#4a3f36", rack: "#6a6f78",
                   plinth: "#2b2733", tower: "#6b7a92", skyline: "#1c2740", dome: "#93a3b8",
-                  falls: "#dfe9f2", pool: "#1d3a55", boat: "#e8eef4" };
+                  falls: "#dfe9f2", pool: "#1d3a55", boat: "#e8eef4",
+                  // Blue Wing Moji is painted blue, and that is the whole reason people photograph
+                  // it: a blue bascule against red brick and a dark harbour.
+                  drawbridge: "#3f6ea8", ship: "#5a6472" };
   /* Props are named `kind`, `kind-2`, `kind-left`, `kind-s1`… and the shape/tint tables were keyed
      by the *whole* id — so `front-a` was a flat plane while `front` was a painted recess, and whole
      families of props (banners, crates, snow banks, stall curtains) lost their bodies to a fallback.
@@ -1307,6 +1310,8 @@ function leaveOverlay(root, trigger) {
                   // plane, so a new shape that never shipped would show as a card, not a crash.
                   plinth: "plinth", tower: "tower", skyline: "skyline", dome: "dome",
                   falls: "falls", pool: "pool", boat: "boat",
+                  // Moji's kit: the drawbridge the district is known by, and the ships it opens for.
+                  drawbridge: "drawbridge", ship: "ship",
                   // The market's hall: a brick nave with an arcade under a gallery floor, and a
                   // cupola with a clock in it. A market that is only stalls is a market in the
                   // abstract -- this one is a building and the stalls belong to it.
@@ -2708,6 +2713,123 @@ function leaveOverlay(root, trigger) {
                             [WX - m.w * 0.6, m.y + 1, WZ + 2], [WX - m.w * 1.6, m.y + 1, WZ + 2]],
                          ZERO8, "flat", `rgba(226,238,248,${berthed ? 0.1 : 0.4})`);
         if (wake) { wake.lit = 1.1; drawn.push(wake); }
+      } else if (shape === "drawbridge" || shape === "ship") {
+        /* The Blue Wing.
+
+           Moji's is the largest pedestrian drawbridge in Japan and the only one of its kind: 108 m
+           across the No. 1 boat basin, two leaves that rise like the wings it is named for, opening
+           six times a day and taking about twenty minutes over it, floodlit after dark. It is the
+           reason this district is worth a table -- a bridge that does something is the whole
+           exhibit, the way a roof that opens is the reason Little Canada builds Rogers Centre.
+
+           `facesOf` cannot rotate a box, so the leaves are built by hand and lifted with real
+           trigonometry: each swings about its own hinge on the near bank, and the tip rises through
+           `LIFT` (about 72 degrees at full open, which is what a bascule actually manages). Both
+           leaves and the deck they meet over are drawn every frame; the depth sort puts the far one
+           behind the water it belongs to.
+
+           The schedule is read from `dayPhase`, so the bridge is on the same clock as the light in
+           the room. It opens once each evening: a slow swing up, a long stand while the ships have
+           the channel, then down again. */
+        const along = Math.abs(m.ry) > 45;
+        const p = dayPhase();
+        const sm = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
+        if (shape === "ship") {
+          /*
+             The ships work the channel on the house clock, and they are timed rather than merely
+             moving: they are the reason the bridge opens, so a ship that crosses whenever it likes
+             makes the bridge a coincidence instead of a machine. It clears the channel during the
+             bridge's long stand and is out of the way before the leaves come down. */
+          const u = p > 0.72 && p < 0.94 ? sm((p - 0.72) / 0.22) : (p < 0.72 ? 0 : 1);
+          const run = ease ? (u * 2 - 1) * (m.w / 2) : 0;
+          const x = m.x + (along ? 0 : run), z = m.z + (along ? run : 0);
+          const hw = m.w * 0.5, hd = m.d * 0.5, h = m.h;
+          // The hull: a shallow box, because a ship's deck is not where a ship's bulk is.
+          facesOf({ ...m, x, z, h: h * 0.42 }).forEach((f) => {
+            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                         + f.n[2] * (C.z - f.p[0][2]);
+            if (toward <= 0) return;
+            const q = add(C, f.p, ZERO8, "flat", mix(base, f.k - 0.12));
+            if (q) { q.lit = lit * 0.95; drawn.push(q); }
+          });
+          // The deckhouse, set back so the foredeck reads as a foredeck.
+          facesOf({ ...m, x: x - (along ? 0 : hw * 0.22), z: z - (along ? hw * 0.22 : 0),
+                    y: m.y + h * 0.42, h: h * 0.34, w: m.w * 0.34, d: m.d * 0.72 }).forEach((f) => {
+            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                         + f.n[2] * (C.z - f.p[0][2]);
+            if (toward <= 0) return;
+            const q = add(C, f.p, ZERO8, "flat", mix(base, f.k + 0.22));
+            if (q) { q.lit = lit * 1.1; drawn.push(q); }
+          });
+          /* Her lights after dark: a warm row along the deckhouse and a white at the masthead.
+             These are what a ship on water actually is at night -- two lights and a dark hull. */
+          if (NIGHT() > 0.15) {
+            const lq = add(C, along
+              ? [[x - hd * 0.6, m.y + h * 0.5, z - hw * 0.3], [x + hd * 0.6, m.y + h * 0.5, z - hw * 0.3],
+                 [x + hd * 0.6, m.y + h * 0.62, z - hw * 0.3], [x - hd * 0.6, m.y + h * 0.62, z - hw * 0.3]]
+              : [[x - hw * 0.3, m.y + h * 0.5, z - hd * 0.6], [x - hw * 0.3, m.y + h * 0.5, z + hd * 0.6],
+                 [x - hw * 0.3, m.y + h * 0.62, z + hd * 0.6], [x - hw * 0.3, m.y + h * 0.62, z - hd * 0.6]],
+              ZERO8, "flat", `rgba(255,214,160,${(0.72 * NIGHT()).toFixed(3)})`);
+            if (lq) { lq.lit = 1.6; lq.nolite = true; drawn.push(lq); }
+            const mq = add(C, [[x - 1.6, m.y + h * 0.96, z], [x + 1.6, m.y + h * 0.96, z],
+                               [x + 1.6, m.y + h * 1.06, z], [x - 1.6, m.y + h * 1.06, z]],
+                           ZERO8, "flat", `rgba(255,250,238,${(0.9 * NIGHT()).toFixed(3)})`);
+            if (mq) { mq.lit = 1.7; mq.nolite = true; drawn.push(mq); }
+          }
+        } else {
+        let lift = 0;
+        if (p > 0.72 && p < 0.94) {
+          const t = (p - 0.72) / 0.22;
+          lift = t < 0.18 ? sm(t / 0.18) : t < 0.72 ? 1 : sm(1 - (t - 0.72) / 0.28);
+        }
+        const MAXA = 1.26;                       // ~72 degrees, the real leaf's reach
+        const ang = lift * MAXA;
+        const L = m.w / 2, Wd = m.d, hw = Wd / 2;
+        // A point on a leaf: `u` out from the hinge, `v` across the walkway, `s` the side.
+        const leaf = (s, u, v) => {
+          const r = u * L;
+          return along
+            ? [m.x + v,              m.y + Math.sin(ang) * r, m.z + s * (Math.cos(ang) * r)]
+            : [m.x + s * (Math.cos(ang) * r), m.y + Math.sin(ang) * r, m.z + v];
+        };
+        [-1, 1].forEach((s) => {
+          const q = add(C, [leaf(s, 0, -hw), leaf(s, 1, -hw), leaf(s, 1, hw), leaf(s, 0, hw)],
+                        ZERO8, "flat", mix(base, 0));
+          if (q) { q.lit = lit * 1.05; drawn.push(q); }
+          // The rail along the outer edge, so a deck has a profile and not just a face.
+          const r0 = 4.5;
+          [-1, 1].forEach((e) => {
+            const rq = add(C, [leaf(s, 0, e * hw), leaf(s, 1, e * hw),
+                               [leaf(s, 1, e * hw)[0], leaf(s, 1, e * hw)[1] + r0, leaf(s, 1, e * hw)[2]],
+                               [leaf(s, 0, e * hw)[0], leaf(s, 0, e * hw)[1] + r0, leaf(s, 0, e * hw)[2]]],
+                            ZERO8, "flat", mix(base, -0.34));
+            if (rq) { rq.lit = lit * 0.9; drawn.push(rq); }
+          });
+          /* The counterweight pit at the hinge: the chunk a bascule needs to lift its own leaf,
+             and the thing that tells you this bridge is a machine and not a ramp. */
+          const px = along ? m.x : m.x + s * (L * 0.16);
+          const pz = along ? m.z + s * (L * 0.16) : m.z;
+          facesOf({ ...m, x: px, z: pz, y: m.y, h: m.h, w: Wd * 1.5, d: along ? L * 0.3 : Wd * 1.5 })
+            .forEach((f) => {
+              const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                           + f.n[2] * (C.z - f.p[0][2]);
+              if (toward <= 0) return;
+              const qq = add(C, f.p, ZERO8, "flat", mix(base, f.k - 0.3));
+              if (qq) { qq.lit = lit * 0.8; drawn.push(qq); }
+            });
+        });
+        /* The lit edge: a line of light along the walkway that comes up after dark, because the
+           bridge is floodlit and a blue bridge at night is lit, not merely visible. */
+        if (NIGHT() > 0.15) {
+          [-1, 1].forEach((s) => {
+            const gq = add(C, [leaf(s, 0.06, -hw + 0.6), leaf(s, 0.97, -hw + 0.6),
+                               leaf(s, 0.97, hw - 0.6), leaf(s, 0.06, hw - 0.6)],
+                            ZERO8, "flat",
+                            `rgba(150,206,255,${(0.34 * NIGHT()).toFixed(3)})`);
+            if (gq) { gq.lit = 1.5 + 0.5 * lift; gq.nolite = true; drawn.push(gq); }
+          });
+        }
+        }
       } else if (shape === "stall") {
         /* A market stall at table scale: a counter, a dark opening under a striped awning. The
            awning slopes the way an awning does and carries the stripes a market reads by; nothing

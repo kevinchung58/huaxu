@@ -2581,92 +2581,62 @@ DISTRICTS = [
         "plates": ROOM_BY_ID["fukuoka"]["plates"],
         # A stall alley: narrower than the Tokyo lane and lower, because the lanterns hang close over
         # the counters, and the far end is water rather than a street.
-        "lane": {"w": 520, "d": 380, "ceil": 380, "back": 260},
-        "purpose": "A stall alley at night, walked toward the water at its end",
+        # A hall, not an alley. Moji is a port panorama -- a 108 m drawbridge and a strait with ships
+        # on it -- and you cannot stand in a lane and see a harbour. So the district is a table now,
+        # the way Toronto is: the port stands small enough to look down on, which is also the only way
+        # a visitor sees the bridge open at all.
+        "lane": {"w": 700, "d": 900, "ceil": 620, "back": 300},
+        "purpose": "Moji Port on a table: the station, the customhouse, the Blue Wing drawbridge "
+                   "and the ships on the Kanmon Strait, seen as a panorama",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/fukuoka-cover.jpg",
         "cover_caption": "The alley in one sheet: noren, timber, lanterns on wires, and water at the end.",
-        "blurb": "Warm and narrow. Stalls on both sides, lanterns the whole way down, and a canal at "
-                 "the end of it.",
-        # The alley is drawn. Its proportions come from the reference photographs; every object is a
-        # prop, every sign is blank, and no stall is named or said to be open.
+        "blurb": "The harbour at dusk, small enough to look down on. The bridge stands open for a "
+                 "ship, the strait moves, and while you are there the buildings come alight one "
+                 "after another.",
+        # The port is drawn. Its proportions come from the reference photographs; every object is a
+        # prop, every sign is blank, and no stall is named or said to be open. The basin sits back
+        # from the table's near edge so there is a quay to stand the stall and the bridge approach
+        # on, and the deck is lifted clear of the waterline -- at the water's own height the closed
+        # bridge was a plane under the surface, and drew nothing at all.
         "objects": [
-            {"id": "stall-a", "kind": "front", "x": -240, "z": 96, "y": 0, "ry": 90,
-             "glow": [{"r": 145, "k": 0.68, "dy": 190}],
-             "title": "A stall front, shutters half up",
-             "hint": "The alley's first lit front. The counter is drawn and nothing on it is named; "
-                     "the glow is authored here because a stall is where the light comes from. "
-                     "Done, the shutter runs up to serve and down to close.",
-             "states": [
-                 {"say": "Up. Light on the counter, and the alley gets brighter by one stall.",
-                  "k": 1.0, "shut": 1},
-                 {"say": "Down for the night. The transom keeps a lamp burning.", "k": 0.45,
-                  "shut": 0},
-             ]},
-            {"id": "stall-b", "kind": "front", "x": 240, "z": 208, "y": 0, "ry": -90,
-             "glow": [{"r": 135, "k": 0.62, "dy": 190}],
-             "title": "The second stall, further down",
-             "states": [
-                 {"say": "Up here too — two stalls serving is most of what this alley is.",
-                  "k": 1.0, "shut": 1},
-                 {"say": "Down. One stall still lit, further up the alley.", "k": 0.45, "shut": 0},
-             ],
-             "hint": "Drawn so the alley has a middle. Its light is dimmer than the first, which is "
-                     "what makes the near one read as nearer."},
-            {"id": "noren-a", "kind": "noren", "x": -236, "z": 60, "y": 168, "ry": 90,
-             "title": "A curtain over a doorway",
-             "hint": "Blank cloth: a name on it would be invented lettering, and this site does not "
-                     "invent lettering."},
-            {"id": "noren-b", "kind": "noren", "x": 236, "z": 168, "y": 168, "ry": -90,
-             "title": "A shorter curtain, hung lower",
-             "hint": "Drawn to the alley's own height rather than a standard door's, because a stall "
-                     "alley is built to whatever the frame allowed."},
-            {"id": "stool", "kind": "crate", "x": -190, "z": 128, "y": 0, "ry": 30,
-             "title": "A stool at the counter",
-             "hint": "Low, round-ish, empty: the two things a stall has in front of it are a counter "
-                     "and somewhere to sit, and neither implies anybody did."},
-            {"id": "crate-f", "kind": "crate", "x": 196, "z": 250, "y": 0, "ry": -20,
-             "title": "A crate stacked by the second stall",
-             "hint": "Set dressing: something has to break the long line where the stalls end."},
-            {"id": "bin-f", "kind": "bin", "x": 210, "z": 300, "y": 0, "ry": -90,
-             "title": "A bin at the turning",
-             "hint": "Drawn where the alley widens toward the water. Done, its lid swings.",
-             "states": [
-                 {"say": "The lid swings open, and swings back by itself a moment later.",
-                  "k": 1.0, "flap": 1},
-                 {"say": "Shut. The alley keeps its own counsel.", "k": 1.0, "flap": 0},
-             ]},
-            {"id": "barrel", "kind": "bin", "x": -206, "z": 268, "y": 0, "ry": 0,
-             "title": "A barrel against the wall",
-             "hint": "The alley's own furniture. Nothing is claimed about what is in it."},
-            {"id": "pole-f", "kind": "utility", "x": 214, "z": 84, "y": 0, "ry": -90,
-             "title": "The pole the cables are strung from",
-             "hint": "Every wire overhead is anchored here or on the walls: a cable has to start "
-                     "somewhere you can point at."},
-            {"id": "lamp-post-f", "kind": "utility", "x": -212, "z": 330, "y": 0, "ry": 90,
-             "glow": [{"r": 140, "k": 0.4, "dy": 320}],
-             "title": "A lamp post near the water",
-             "hint": "Cooler than the lanterns, and the reason the water at the end has a colour."},
-            {"id": "signA-f", "kind": "signA", "x": 226, "z": 42, "y": 150, "ry": -90,
-             "title": "A board, pinned empty",
-             "hint": "A stall wall always has one. Blank, because its paper would be a claim."},
-            {"id": "awning-f", "kind": "awning", "x": -250, "z": 178, "y": 250, "ry": 90,
-             "title": "An awning over the second doorway",
-             "hint": "Drawn, and deliberately lower than the Tokyo lane's: the alley is smaller."},
-            {"id": "pipe-f", "kind": "pipe", "x": 226, "z": 320, "y": 0, "ry": -90,
-             "title": "A drainpipe at the water end",
-             "hint": "The last vertical before the alley stops being an alley."},
-            {"id": "planter-f", "kind": "planter", "x": -222, "z": 226, "y": 0, "ry": 90,
-             "title": "A planter of dark leaves",
-             "hint": "Set dressing: the one green thing, and it is drawn as a silhouette."},
-            {"id": "bikes-1", "kind": "bikes", "x": 200, "z": 136, "y": 0, "ry": -90,
-             "title": "A bicycle left against the wall",
-             "hint": "Parked in the drawing because the alley is too narrow to pass one comfortably, "
-                     "which is exactly why bicycles are left along it."},
+            {"id": "plinth-moji", "kind": "plinth", "x": 0, "z": 540, "y": 0, "ry": 0,
+             "w": 660, "h": 80, "d": 500, "top": "cityg",
+             "glow": [{"r": 170, "k": 0.42, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
+             "title": "The table the port stands on",
+             "hint": "A lit plinth, table height. Everything on it is small; the light under the "
+                     "edge is what makes a model read as a model."},
+            {"id": "pool-moji", "kind": "pool", "x": 0, "z": 500, "y": 80, "ry": 0,
+             "w": 640, "h": 6, "d": 260,
+             "title": "The basin, and the strait beyond it",
+             "hint": "The No. 1 boat basin the Blue Wing crosses, opening onto the Kanmon Strait. "
+                     "Nothing is claimed about the tide."},
+            {"id": "drawbridge-mj", "kind": "drawbridge", "x": 0, "z": 540, "y": 92, "ry": 90,
+             "w": 360, "h": 30, "d": 54,
+             "glow": [{"r": 120, "k": 0.34, "dy": 22}],
+             "title": "The Blue Wing",
+             "hint": "Blue Wing Moji: 108 m of pedestrian drawbridge, the largest in Japan and the "
+                     "only one of its kind. Two leaves that rise like the wings it is named for, "
+                     "opening six times a day and taking about twenty minutes over it. Here it "
+                     "opens once each evening, for the ship."},
+            {"id": "ship-mj", "kind": "ship", "x": 0, "z": 470, "y": 84, "ry": 0,
+             "w": 300, "h": 34, "d": 44,
+             "title": "A ship on the strait",
+             "hint": "Timed rather than merely moving: it is the reason the bridge opens, so it "
+                     "clears the channel while the leaves stand and is gone before they come down."},
+            {"id": "ship-mj2", "kind": "ship", "x": 0, "z": 590, "y": 84, "ry": 0,
+             "w": 240, "h": 26, "d": 34,
+             "title": "A second ship, further out",
+             "hint": "The strait is never empty. Smaller and further off, which is what makes the "
+                     "near one read as nearer."},
+            {"id": "front-mj", "kind": "front", "x": -252, "z": 360, "y": 80, "ry": 90,
+             "w": 78, "h": 66, "d": 62,
+             "glow": [{"r": 110, "k": 0.6, "dy": 44, "tint": "rgba(255,180,110,0.5)"}],
+             "title": "One yatai, on the quay",
+             "hint": "Kept, because the owner asked for one. Nothing is claimed about what it "
+                     "sells: the counter is drawn and the cloth is blank."},
         ],
-        # Spill again, not fixtures: the lamp post near the water, and the water's own amber bounce.
-        # The alley's lamps are its lanterns, and those travel in the `lanterns` list where they belong.
         "lamps": [
             {"x": -212, "y": 330, "z": 330, "r": 240, "k": 0.36, "bulb": False,
              "tint": "rgba(186,208,255,0.20)"},
@@ -2695,13 +2665,19 @@ DISTRICTS = [
             {"kind": "kerb", "x0": 230, "x1": 260, "z0": -260, "z1": 380, "y1": 7},
         ],
         # Six lanterns on three crossings: the alley is lit by paper and nothing else that is warm.
+        # The lanterns, re-strung. They hung down both sides of an alley at 236; the near edge is an
+        # open quay now, so they run along it over the water, at the height a mooring is tied off.
         "lanterns": [
-            {"x": -90, "y": 258, "z": 40, "r": 24, "swing": 3.0, "period": 3.3, "phase": 0.2},
-            {"x": 70, "y": 252, "z": 40, "r": 26, "swing": 2.6, "period": 3.8, "phase": 1.4},
-            {"x": -110, "y": 254, "z": 150, "r": 25, "swing": 3.2, "period": 3.5, "phase": 0.8},
-            {"x": 100, "y": 250, "z": 150, "r": 23, "swing": 2.8, "period": 4.0, "phase": 2.2},
-            {"x": -60, "y": 254, "z": 280, "r": 26, "swing": 3.4, "period": 3.2, "phase": 1.1},
-            {"x": 120, "y": 252, "z": 280, "r": 24, "swing": 2.4, "period": 3.9, "phase": 2.9},
+            {"x": -262, "y": 150, "z": 150, "r": 13},
+            {"x": -262, "y": 147, "z": 208, "r": 12},
+            {"x": -262, "y": 152, "z": 266, "r": 13},
+            {"x": -262, "y": 148, "z": 324, "r": 12},
+            {"x": -262, "y": 151, "z": 382, "r": 13},
+            {"x":  262, "y": 149, "z": 172, "r": 12},
+            {"x":  262, "y": 152, "z": 230, "r": 13},
+            {"x":  262, "y": 147, "z": 288, "r": 12},
+            {"x":  262, "y": 151, "z": 346, "r": 13},
+            {"x":  262, "y": 148, "z": 404, "r": 12},
         ],
         "vista": {"x": 0, "y0": 96, "y1": 300, "w": 460},
         "wires": [
@@ -2806,12 +2782,16 @@ DISTRICTS = [
             {"x":  214, "y": 238, "z": 300, "r": 15},
             {"x":  214, "y": 234, "z": 348, "r": 14},
         ],
+        # The stations walk up to the table and stop at its edge. Toronto's do the same: each stop
+        # stands 90-170 short of the table it is looking at, because a diorama is looked at from
+        # outside it. The first version of this put the stops at 60-600 with a table spanning
+        # 170-690, so three of the five stood inside the port or past it, looking at nothing.
         "stations": [
-            {"z": 0, "label": "the mouth of the alley"},
-            {"z": 90, "label": "at the first stall"},
-            {"z": 190, "label": "between the stalls"},
-            {"z": 280, "label": "by the bin and the lamp"},
-            {"z": 320, "label": "at the water"},
+            {"z": 60,  "label": "the far end of the hall"},
+            {"z": 170, "label": "coming up to the table"},
+            {"z": 260, "label": "at the near edge"},
+            {"z": 330, "label": "over the water"},
+            {"z": 330, "label": "close, over the basin"},
         ],
         "exit": {"id": "curtain-back", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
                  "title": "The curtain at your back", "hint": "It parts onto the street."},

@@ -41,7 +41,14 @@ for (const f of ["rooms-toronto.html", "rooms.html", "rooms-fukuoka.html", "stre
     // camera underneath it and is not therefore a prop falling off a camera.
     // and a thing cannot rest on something smaller than itself: a wall awning over a wall camera
     // is two fittings on the same wall, not a prop falling off a bracket.
+    // Water is not a shelf. A bridge spans its basin and lands on both banks, and a ship floats
+    // inside it rather than resting on top of it, so "fully over the surface" is the wrong claim
+    // for anything standing in water. The plinth under the water is still checked: a table model
+    // that overhangs its own base is a real defect, and the Blue Wing did overhang by 46 cm until
+    // it was centred.
+    const isWater = (s) => s.id.startsWith("pool-") || s.id.startsWith("water-");
     const sup = objs.filter((s) => s.id !== o.id && s.y + s.h <= o.y + 1 && o.y - (s.y + s.h) <= 12
+                                   && !isWater(s)
                                    && centre(p, F.get(s.id))
                                    && (s.w >= o.w && s.d >= o.d)).map((s) => F.get(s.id));
     for (const s of sup) {
