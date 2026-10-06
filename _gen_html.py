@@ -2631,12 +2631,14 @@ DISTRICTS = [
              "hint": "The strait is never empty. Smaller and further off, which is what makes the "
                      "near one read as nearer."},
             {"id": "dalianhall-mj", "kind": "dalianhall", "x": -268, "z": 700, "y": 80, "ry": 0,
+             "liton": 0.88,
              "w": 118, "h": 92, "d": 64,
              "title": "The Dalian Friendship Memorial Hall",
              "hint": "Built in 1995, brick, and carrying a composite steeple: square, then "
                      "octagonal, then a spire. Every stage of it is drawn, because a steeple "
                      "sketched as one cone is a cone and not a steeple."},
             {"id": "customhouse-mj", "kind": "customhouse", "x": 86, "z": 706, "y": 80, "ry": 0,
+             "liton": 0.80,
              "w": 172, "h": 108, "d": 78,
              "title": "The former Moji Customhouse",
              "hint": "1912, red brick over a timber frame, in the Renaissance manner. One of the "
@@ -2644,12 +2646,14 @@ DISTRICTS = [
                      "in it. The top floor is glazed where the ones below are arched, because the "
                      "third floor is an observation room and the first an exhibition room."},
             {"id": "osakashosen-mj", "kind": "osakashosen", "x": 244, "z": 700, "y": 80, "ry": 0,
+             "liton": 0.84,
              "w": 140, "h": 92, "d": 66,
              "title": "The former Osaka Shosen building",
              "hint": "Known by two things, and both are drawn: the tall round-headed arches that "
                      "take most of its face, and the octagonal tower on its corner, eight sides "
                      "turned out of real trigonometry with a roof of eight triangles."},
             {"id": "stationfront-mj", "kind": "stationfront", "x": -104, "z": 706, "y": 80, "ry": 0,
+             "liton": 0.76,
              "w": 196, "h": 118, "d": 84,
              "title": "Moji Port Station",
              "hint": "Opened in 1914 and still the station it was: a wooden two-storey in the "
@@ -2658,6 +2662,7 @@ DISTRICTS = [
                      "the first station building in Japan to be designated an Important Cultural "
                      "Property. Restored 2012 to 2019. Nothing here claims a train or a platform."},
             {"id": "front-mj", "kind": "front", "x": -252, "z": 360, "y": 80, "ry": 90,
+             "liton": 0.74,
              "w": 78, "h": 66, "d": 62,
              "glow": [{"r": 110, "k": 0.6, "dy": 44, "tint": "rgba(255,180,110,0.5)"}],
              "title": "One yatai, on the quay",
@@ -3350,6 +3355,9 @@ def walk_object(o):
     leaf_attr = f' data-leaf="{escape(o["leaf"])}"' if o.get("leaf") else ""
     # A diorama table authors its own ground: the lid carries the terrain tile the record names.
     top_attr = f' data-top="{escape(o["top"])}"' if o.get("top") else ""
+    # `liton` is the phase in the room's own day at which this prop's lights come up, so the
+    # district can light one building after another instead of switching the whole quay on at once.
+    liton_attr = f' data-liton="{o["liton"]}"' if o.get("liton") is not None else ""
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
@@ -3362,7 +3370,8 @@ def walk_object(o):
     return (f'<button type="button" class="walk-hit" data-obj="{escape(o["id"])}" '
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
-            f'data-d="{dep}" style="{style}"{frame}{texture}{leaf_attr}{top_attr}{states}{leave}></button>')
+            f'data-d="{dep}" style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
+            f'{states}{leave}></button>')
 
 
 def walk_html(d, drawer):

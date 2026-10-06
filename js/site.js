@@ -1193,6 +1193,10 @@ function leaveOverlay(root, trigger) {
   };
   const meta = objs.map((el) => ({
     el, kind: el.dataset.obj, leaf: el.dataset.leaf || null, top: el.dataset.top || null,
+    // `liton` is the phase at which this prop's own windows come up. The district lights its
+    // buildings one after another, and without a per-prop moment they all came on together, which
+    // is a switch and not a dusk.
+    liton: parseFloat(el.dataset.liton) || 0,
     ry: num(el, "data-ry") || parseFloat(el.dataset.ry || 0),
     w: parseFloat(el.dataset.w) || 100, h: parseFloat(el.dataset.h) || 140,
     d: parseFloat(el.dataset.d) || 12, x: num(el, "--x"), z: num(el, "--z"), y: num(el, "--y"),
@@ -2868,19 +2872,35 @@ function leaveOverlay(root, trigger) {
         const F = (u, y) => [m.x + u, m.y + y, zf];
         const Q = (pts, col, l) => {
           const q = add(C, pts, ZERO8, "flat", col);
-          if (q) { q.lit = l; drawn.push(q); }
+          /* A lit window is its own light and must not be darkened by the night that makes it
+             visible: `nolite` keeps it out of the murk, which is the only reason a model hall
+             goes dim in the first place and the reason its windows still read. */
+          if (q) { q.lit = l; if (String(col).charAt(0) === "r") q.nolite = true; drawn.push(q); }
         };
         const rect = (u0, u1, y0, y1, col, l) =>
           Q([F(u0, y0), F(u1, y0), F(u1, y1), F(u0, y1)], col, l);
         const tri = (u0, u1, yb, yt, col, l) =>
           Q([F(u0, yb), F(u1, yb), F((u0 + u1) / 2, yt)], col, l);
-        const N = NIGHT();
+        /* The buildings come alight one after another, which is the whole reason to stand
+           here at dusk rather than at noon: `liton` is this building's own moment on the room's
+           clock, read from the record, and a prop without one simply follows the night. */
+        const p = dayPhase();
+        const ease01 = (v) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
+        /* Night is one span and it crosses midnight, so "how far past this building's moment" has
+           to be measured round the clock and not along it. Measured straight, a building lit at
+           0.88 went dark again the moment the phase wrapped to 0.00, because 0.00 - 0.88 is
+           negative -- the port switched itself off at midnight and came back on at dawn. Counted
+           from nightfall at 0.70 instead, a building stays lit from its own moment until the
+           daylight takes it back. */
+        const np = ((((p - 0.70) % 1) + 1) % 1) / 0.60;
+        const at = (m.liton - 0.70) / 0.60;
+        const N = m.liton ? NIGHT() * ease01((np - at) / 0.05) : NIGHT();
         // A window: dark glass by day, a lit rectangle after dark, which is what the district's
         // illumination actually reads as from across the basin.
         const win = (uc, yc, ww, hh) =>
           Q([F(uc - ww / 2, yc), F(uc + ww / 2, yc), F(uc + ww / 2, yc + hh), F(uc - ww / 2, yc + hh)],
-            `rgba(255,216,158,${(0.06 + 0.44 * N).toFixed(3)})`,
-            1.15 + 0.35 * N);
+            `rgba(255,216,158,${(0.06 + 0.62 * N).toFixed(3)})`,
+            1.15 + 0.4 * N);
         const gw = w * 0.17;                                  // half the gate's width
         const cap = h * 0.80;                                  // where the eaves sit
         // String courses: the horizontal lines a Renaissance building is divided by.
@@ -2927,12 +2947,28 @@ function leaveOverlay(root, trigger) {
         const F = (u, y) => [m.x + u, m.y + y, zf];
         const Q = (pts, col, l) => {
           const q = add(C, pts, ZERO8, "flat", col);
-          if (q) { q.lit = l; drawn.push(q); }
+          /* A lit window is its own light and must not be darkened by the night that makes it
+             visible: `nolite` keeps it out of the murk, which is the only reason a model hall
+             goes dim in the first place and the reason its windows still read. */
+          if (q) { q.lit = l; if (String(col).charAt(0) === "r") q.nolite = true; drawn.push(q); }
         };
         const rect = (u0, u1, y0, y1, col, l) =>
           Q([F(u0, y0), F(u1, y0), F(u1, y1), F(u0, y1)], col, l);
-        const N = NIGHT();
-        const lamp = (a) => `rgba(255,206,132,${(0.03 + a * N).toFixed(3)})`;
+        /* The buildings come alight one after another, which is the whole reason to stand
+           here at dusk rather than at noon: `liton` is this building's own moment on the room's
+           clock, read from the record, and a prop without one simply follows the night. */
+        const p = dayPhase();
+        const ease01 = (v) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
+        /* Night is one span and it crosses midnight, so "how far past this building's moment" has
+           to be measured round the clock and not along it. Measured straight, a building lit at
+           0.88 went dark again the moment the phase wrapped to 0.00, because 0.00 - 0.88 is
+           negative -- the port switched itself off at midnight and came back on at dawn. Counted
+           from nightfall at 0.70 instead, a building stays lit from its own moment until the
+           daylight takes it back. */
+        const np = ((((p - 0.70) % 1) + 1) % 1) / 0.60;
+        const at = (m.liton - 0.70) / 0.60;
+        const N = m.liton ? NIGHT() * ease01((np - at) / 0.05) : NIGHT();
+        const lamp = (a) => `rgba(255,206,132,${(0.04 + a * N).toFixed(3)})`;
         const arched = (uc, ar, yS, yP, a) => {
           const p = [F(uc - ar, yS), F(uc + ar, yS), F(uc + ar, yP)];
           for (let i = 0; i <= 6; i++) {
@@ -2944,13 +2980,13 @@ function leaveOverlay(root, trigger) {
         const hw = w / 2, BAYS = 5;
         for (let i = 0; i < BAYS; i++) {
           const u = -hw + (i + 0.5) * (w / BAYS);
-          arched(u, w * 0.055, h * 0.11, h * 0.30, 0.26);     // the exhibition floor
-          arched(u, w * 0.05, h * 0.43, h * 0.57, 0.22);
+          arched(u, w * 0.055, h * 0.11, h * 0.30, 0.5);     // the exhibition floor
+          arched(u, w * 0.05, h * 0.43, h * 0.57, 0.44);
         }
         // The observation room: glazed the length of the face, because that is the floor built
         // to be looked out of.
         rect(-hw * 0.9, hw * 0.9, h * 0.73, h * 0.93,
-             `rgba(255,214,150,${(0.04 + 0.30 * N).toFixed(3)})`, 1.0 + 0.3 * N);
+             `rgba(255,214,150,${(0.05 + 0.55 * N).toFixed(3)})`, 1.0 + 0.35 * N);
         // String courses and the eaves: the horizontal lines a Renaissance front is divided by.
         rect(-hw, hw, h * 0.38, h * 0.41, mix(base, -0.30), lit * 0.9);
         rect(-hw, hw, h * 0.71, h * 0.74, mix(base, -0.30), lit * 0.9);
@@ -2976,9 +3012,25 @@ function leaveOverlay(root, trigger) {
         const F = (u, y) => [m.x + u, m.y + y, zf];
         const Q = (pts, col, l) => {
           const q = add(C, pts, ZERO8, "flat", col);
-          if (q) { q.lit = l; drawn.push(q); }
+          /* A lit window is its own light and must not be darkened by the night that makes it
+             visible: `nolite` keeps it out of the murk, which is the only reason a model hall
+             goes dim in the first place and the reason its windows still read. */
+          if (q) { q.lit = l; if (String(col).charAt(0) === "r") q.nolite = true; drawn.push(q); }
         };
-        const N = NIGHT();
+        /* The buildings come alight one after another, which is the whole reason to stand
+           here at dusk rather than at noon: `liton` is this building's own moment on the room's
+           clock, read from the record, and a prop without one simply follows the night. */
+        const p = dayPhase();
+        const ease01 = (v) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
+        /* Night is one span and it crosses midnight, so "how far past this building's moment" has
+           to be measured round the clock and not along it. Measured straight, a building lit at
+           0.88 went dark again the moment the phase wrapped to 0.00, because 0.00 - 0.88 is
+           negative -- the port switched itself off at midnight and came back on at dawn. Counted
+           from nightfall at 0.70 instead, a building stays lit from its own moment until the
+           daylight takes it back. */
+        const np = ((((p - 0.70) % 1) + 1) % 1) / 0.60;
+        const at = (m.liton - 0.70) / 0.60;
+        const N = m.liton ? NIGHT() * ease01((np - at) / 0.05) : NIGHT();
         const hw = w / 2, BAYS = 3;
         for (let i = 0; i < BAYS; i++) {
           const u = -hw * 0.78 + (i + 0.5) * (w * 0.78 / BAYS);
@@ -2988,7 +3040,7 @@ function leaveOverlay(root, trigger) {
             const t = (k / 7) * Math.PI;
             p.push(F(u + ar * Math.cos(t), yP + ar * 0.92 * Math.sin(t)));
           }
-          Q(p, `rgba(255,208,140,${(0.03 + 0.32 * N).toFixed(3)})`, 1.0 + 0.3 * N);
+          Q(p, `rgba(255,208,140,${(0.04 + 0.58 * N).toFixed(3)})`, 1.0 + 0.35 * N);
         }
         Q([F(-hw, h * 0.80), F(hw, h * 0.80), F(hw, h * 0.86), F(-hw, h * 0.86)],
           mix(base, -0.36), lit * 0.85);
@@ -3027,15 +3079,31 @@ function leaveOverlay(root, trigger) {
         const F = (u, y) => [m.x + u, m.y + y, zf];
         const Q = (pts, col, l) => {
           const q = add(C, pts, ZERO8, "flat", col);
-          if (q) { q.lit = l; drawn.push(q); }
+          /* A lit window is its own light and must not be darkened by the night that makes it
+             visible: `nolite` keeps it out of the murk, which is the only reason a model hall
+             goes dim in the first place and the reason its windows still read. */
+          if (q) { q.lit = l; if (String(col).charAt(0) === "r") q.nolite = true; drawn.push(q); }
         };
-        const N = NIGHT();
+        /* The buildings come alight one after another, which is the whole reason to stand
+           here at dusk rather than at noon: `liton` is this building's own moment on the room's
+           clock, read from the record, and a prop without one simply follows the night. */
+        const p = dayPhase();
+        const ease01 = (v) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
+        /* Night is one span and it crosses midnight, so "how far past this building's moment" has
+           to be measured round the clock and not along it. Measured straight, a building lit at
+           0.88 went dark again the moment the phase wrapped to 0.00, because 0.00 - 0.88 is
+           negative -- the port switched itself off at midnight and came back on at dawn. Counted
+           from nightfall at 0.70 instead, a building stays lit from its own moment until the
+           daylight takes it back. */
+        const np = ((((p - 0.70) % 1) + 1) % 1) / 0.60;
+        const at = (m.liton - 0.70) / 0.60;
+        const N = m.liton ? NIGHT() * ease01((np - at) / 0.05) : NIGHT();
         const hw = w / 2, BAYS = 3;
         for (let i = 0; i < BAYS; i++) {
           const u = -hw * 0.7 + (i + 0.5) * (w * 0.7 / BAYS);
           Q([F(u - w * 0.075, h * 0.10), F(u + w * 0.075, h * 0.10),
              F(u + w * 0.075, h * 0.40), F(u - w * 0.075, h * 0.40)],
-            `rgba(255,206,134,${(0.03 + 0.30 * N).toFixed(3)})`, 1.0 + 0.3 * N);
+            `rgba(255,206,134,${(0.04 + 0.55 * N).toFixed(3)})`, 1.0 + 0.35 * N);
         }
         Q([F(-hw, h * 0.58), F(hw, h * 0.58), F(hw, h * 0.62), F(-hw, h * 0.62)],
           mix(base, -0.34), lit * 0.85);
