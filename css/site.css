@@ -1823,7 +1823,12 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   background-image: var(--fill, none);
   background-size: cover;
   background-position: center;
-  filter: blur(2.6rem) saturate(1.15) brightness(0.5);
+  /* 0.7, not 0.5. A ground at half brightness is not a copy of anything: measured against the
+     darkest frame in the set (Toronto's night hall), 0.5 put 39% of a full-screen story at L≈15,
+     under the L*20 floor this site holds any painted surface to (`skills/district-author` §3).
+     0.7 lifts that to L≈22 and leaves the brightest frame's ground mid-tone rather than white.
+     The caption never sits on it — it rides the frame's own scrim — so no text contrast moves. */
+  filter: blur(2.6rem) saturate(1.15) brightness(0.7);
   transform: scale(1.12);
   pointer-events: none;
 }
@@ -1938,6 +1943,14 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   margin: 0;
   text-align: center;
 }
+/* `[hidden]` is a UA rule of one class; `#room-plate.is-rail .story-frame` is an id and a class, so
+   the reel's own `display: grid` was beating it and all six frames stayed in flow — every one of them
+   stretched to the height the blown-up row gave it, which pushed the frame you are meant to be
+   looking at thousands of pixels below the fold and left the screen showing an empty plate. A reel
+   shows one frame at a time, so a frame told to hide has to actually leave the layout. */
+#room-plate .story-frame[hidden] {
+  display: none;
+}
 .story-frame img {
   width: auto;
   max-width: 100%;
@@ -1958,8 +1971,13 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   font-size: 0.78rem;
   letter-spacing: 0.06em;
 }
+/* A story is the screen, so the panel is not a column the screen holds: this rule used to cap the
+   rail at `min(36rem, 92vw)`, which put the plate in a 576 px box centred on a 1024 px viewport and
+   left a band of bare backdrop down either side of a full-format story — the ground the frame is
+   supposed to fill stopped at the panel's edge. The column is `--col`'s job and it already knows the
+   width of a 9:16 frame; the panel's job is to be the whole screen so its blurred ground can be. */
 #room-plate.is-rail .modal-panel {
-  max-width: min(36rem, 92vw);
+  max-width: none;
 }
 .frame-list {
   display: grid;

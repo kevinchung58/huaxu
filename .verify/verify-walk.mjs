@@ -225,7 +225,7 @@ ok("a state's light multiplier is a number, and every stop has one or none, neve
      props.some((pr) => pr.x === L.x && pr.z === L.z) || L.z === 1247),
    `${lights.filter((L) => L.bulb === false && L.body !== "lantern").length} non-bulb sources`);
 ok("the street kit is in the tab order, so it is part of the space and not a painted backdrop",
-   ["front-a", "front-b", "booth", "bikes", "planters", "planter-2", "cones", "mailbox", "board-a",
+   ["front-a", "front-b", "booth", "bikes", "planter-1", "planter-2", "cones", "mailbox", "signA-a",
     "banner-left", "banner-right", "mirror", "meter", "hydrant", "ladder", "camera", "recycle"]
      .every((id) => ids.includes(id)));
 ok("the board stays blank and the copy says why: no lettering is ours to invent",
@@ -296,9 +296,29 @@ ok("the backdrop adds its own fills to the room, not a second pass over it", ctx
    for the same reason the walls are, and the crossing, eight city blocks, the tower, the mountain and
    three sky bands are ~48 quads that were previously invisible. The number to watch is a *second
    depth pass*, which doubles the room and lands near 6 000; if this ever reads that, the day's change
-   put the scene through twice. */
+   put the scene through twice.
+
+   It moved again for the same reason: seven props whose ids `kindOf()` could not resolve were being
+   drawn as one flat card each, and now draw what their own records say they are -- a stack of crates,
+   a planted trough, three A-boards, a sash window, a bicycle. Four of them live in `rooms.html` and
+   an A/B of that one page reads 4604 before and 4758 after, so the ceiling goes to 4900: still far
+   short of the ~6 000 a second pass would cost.
+
+   It moved once more when the city stop was walked in from z=230 to z=460: the hero table had been
+   a 289x295 px postage stamp and standing closer is what fixed it, but it also puts more of the
+   table's quads on screen. rooms-toronto reads 4758 before and 5194 after -- and the frame clock
+   was measured at every one of the five stops after the move and holds 60 fps (median 16.7 ms,
+   p95 under 21 ms), so this is a dressed room costing fills, not a room being redrawn. Ceiling
+   5600: still far short of the ~10 000 a second pass would now cost.
+
+   It moved again for the day-night cycle, and this one is worth reading before the next person
+   trusts the number. Darkness is painted on with `air`, and by day only distant quads are hazy
+   enough to earn that fill -- so at noon the room costs 5573 fills and after dark, when every quad
+   needs darkening, it costs 6164. The ceiling now has to cover the expensive hour, not the cheap
+   one, and it goes to 6300. A reading taken at a different time of day will differ by about 600
+   fills; that is the cycle working, not a regression. Still far short of a second pass. */
 ok("one depth pass, dressed: the room costs fills, not passes",
-   ctx.fills > before && ctx.fills < 4700, `${ctx.fills} fills, one pass`);
+   ctx.fills > before && ctx.fills < 6300, `${ctx.fills} fills, one pass`);
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
 ok("the cladding is tiled into the wall's own panels, so an affine map stays exact",
@@ -328,8 +348,16 @@ ok("and the swing moves the lamp, its cord, its pool and its light together",
 ok("a lantern's period and amplitude are authored, not random",
    lanterns.every((L) => L.swing > 0 && L.period > 1 && L.phase !== undefined));
 ok("textures are mapped, not stretched photographs", ctx.imgs >= 6, `${ctx.imgs} drawImage`);
+/* The air and the night used to share one ceiling of 0.6, which is why the far half of a room
+   could never get dark: haze alone spends 0.393 of the 0.6 at z 2030, leaving the night 0.207.
+   They are separate things and now have separate ceilings, so the air's legibility floor is
+   asserted on its own instead of being whatever the night happened to leave. */
 ok("the air never exceeds a murk of 0.6, so the compound stays readable",
-   ctx.darkMax <= 0.6 + 1e-6, `max ${ctx.darkMax}`);
+   /const AIR_MAX = 0\.6, NIGHT_MAX = 0\.72;/.test(js)
+   && /const air = Math\.min\(AIR_MAX, q\.air/.test(js), `AIR_MAX ${(js.match(/AIR_MAX = ([\d.]+)/) || [])[1]}`);
+ok("the night composes with the air rather than sharing its budget, and stops at 0.72",
+   /const dark = Math\.min\(NIGHT_MAX, 1 - \(1 - air\) \* \(1 - night\)\)/.test(js)
+   && ctx.darkMax <= 0.72 + 1e-6, `max ${ctx.darkMax}`);
 ok("the amber pool is drawn where a source reaches", ctx.warm > 0, `${ctx.warm} warm fills`);
 ok("the city's windows use a pattern like every other surface",
    /paintWindows/.test(js) && /winPat = mkTile\(paintWindows\)/.test(js));
@@ -398,9 +426,25 @@ ok("a story's bars are one per frame, and the current one is the bar that fills"
    segEls.length === 6 && segEls[nowIdx].classList.contains("is-now")
      && segEls.every((sg) => !sg.firstChild.getAttribute("style")),
    segEls.map((sg) => sg.className.replace("story-seg", "·") || "pending").join(" "));
-ok("the ground behind the story is the frame's own pixels, so the screen changes with the frame",
-   /url\("IMG\//.test(panel0.style.getPropertyValue("--fill")),
-   panel0.style.getPropertyValue("--fill").slice(0, 40));
+const fillVal = panel0.style.getPropertyValue("--fill");
+const shownImg = plate.querySelector(`[data-story-frame="${nowIdx}"] img`);
+const shownFile = shownImg ? shownImg.getAttribute("src").split("/").pop() : "";
+/* Absolute, not relative: a relative `url()` parked in a custom property is resolved where the
+   property is *consumed*, and `background-image: var(--fill)` is written in `css/site.css` — so the
+   relative form was being asked for as `css/IMG/<file>.jpg` and every story played on an empty
+   field. This used to assert the relative form, which is to say it asserted the defect. */
+ok("the ground behind the story is the frame's own pixels, resolved against the document, not the stylesheet",
+   /^url\("(?:https?:\/\/|\/)/.test(fillVal) && !!shownFile && fillVal.endsWith(`${shownFile}")`),
+   fillVal.slice(0, 72));
+/* The reel shows one frame at a time by setting `hidden` on the others. `[hidden]` is a UA rule of
+   one class; the rail's `#room-plate.is-rail .story-frame { display: grid }` out-ranks it, so without
+   an id-qualified rule written *after* it every frame stays in flow and the one you are meant to be
+   looking at is pushed thousands of pixels below the fold. Presence is not enough — order is what
+   breaks the specificity tie, so the assertion is about both. */
+const gridAt = css.indexOf("#room-plate.is-rail .story-frame {");
+const hiddenAt = css.search(/#room-plate \.story-frame\[hidden\] \{[^}]*display: none/);
+ok("a frame the reel hides leaves the layout — `[hidden]` has to out-rank the rail's own display",
+   gridAt >= 0 && hiddenAt > gridAt, `grid@${gridAt} hidden@${hiddenAt}`);
 ok("全版型: the rail is the screen, not a card that the screen holds",
    /#room-plate\.is-rail \.modal-panel \{[^}]*min-height: 100dvh[^}]*border-radius: 0/.test(css)
      && /--col: min\(100%, calc\(\(100dvh - 7\.5rem\) \* 9 \/ 16\)\)/.test(css)

@@ -1,0 +1,34 @@
+#!/bin/sh
+# Restore a wiped sandbox.
+#
+# The environment is rebuilt from nothing between turns, and sometimes in the middle of one:
+# node_modules goes, /tmp goes, and the git graph sometimes comes back pointing at master's head
+# while the working tree still holds the branch's files. Everything below is idempotent, so run it
+# at the start of a turn and again whenever a tool call fails with a missing package.
+#
+# The git graph is reset with --soft, never --hard: the files are usually fine and only the
+# branch pointer is wrong, and a hard reset would throw away uncommitted work.
+set -e
+cd "$(dirname "$0")/.."
+
+git fetch -q origin arena/01a0fb1d-huaxu 2>/dev/null || true
+git reset --soft origin/arena/01a0fb1d-huaxu 2>/dev/null || true
+git reset -q 2>/dev/null || true
+echo "HEAD $(git log --oneline -1)"
+
+npm install --no-save --silent jsdom @napi-rs/canvas impeccable@4.1.0 puppeteer-core @sparticuz/chromium
+
+# Chromium's prebuilt binaries ship brotli-compressed, and `brotli` is not installed here, so the
+# unpacking is done in node.
+node -e '
+const z = require("zlib"), fs = require("fs");
+for (const f of ["al2023", "fonts", "swiftshader"]) {
+  const p = `${process.cwd()}/node_modules/@sparticuz/chromium/bin/${f}.tar.br`;
+  if (fs.existsSync(p)) fs.writeFileSync(`/tmp/${f}.tar`, z.brotliDecompressSync(fs.readFileSync(p)));
+}'
+mkdir -p /tmp/al2023
+for t in al2023 swiftshader fonts; do
+  [ -f "/tmp/$t.tar" ] && tar -x -f "/tmp/$t.tar" -C /tmp/al2023 2>/dev/null || true
+done
+chmod -R 755 /tmp/al2023
+test -f /tmp/al2023/lib/libnspr4.so && echo "LIBS OK" || echo "LIBS MISSING"

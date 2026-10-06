@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import hashlib
+import re
+import subprocess
 import json
 from fnmatch import fnmatch
 from pathlib import Path
@@ -29,6 +31,42 @@ CSS = f"css/site.css?v={VER}"
 
 SITE = "https://kevinchung58.github.io/huaxu"
 DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking."
+
+# Every page used to carry that one line as its description, all fourteen of them. Google treats
+# identical descriptions across a site as a single blurred page and ignores them, which is most of
+# why searching the name surfaces nothing useful -- the site was telling the crawler the same
+# sentence fourteen times and so, in effect, telling it nothing about what is on each page.
+# Each line below is drawn from the page's own content. No page is described as something it is not.
+DESCS = {
+    "index.html":    "Hua-Xu Zhong, PhD. Researcher in educational technology, AI in education, "
+                     "and design thinking, working on what happens when learning technologies are "
+                     "actually put into use.",
+    "about.html":    "The academic path behind the research: an interdisciplinary start, a turn "
+                     "through instructional theory and media design, design thinking, and a "
+                     "postdoctoral fellowship building a generative-AI tutoring system.",
+    "research.html": "Research in educational technology and AI in education: what actually "
+                     "happens when educational technologies and AI systems are put into use.",
+    "teaching.html": "Teaching and practice in educational technology, learning design, "
+                     "information literacy and media education.",
+    "position.html": "AI in education: where I stand. What large language models and generative AI "
+                     "can do for learning, and where they overwhelm the learner.",
+    "thinking.html": "Dots, shapes, and one line: how the work gets framed, from information "
+                     "literacy and design thinking to generative AI.",
+    "practice.html": "From principles to practice: putting educational technology and design "
+                     "thinking to work in real learning environments.",
+    "activities.html": "Academic activities: talks, workshops and participation in educational "
+                       "technology and AI in education.",
+    "service.html":   "Academic service and contribution to the educational technology community.",
+    "links.html":     "Resources: reports, reading, and tools for text generation and LLM "
+                      "assistance in education.",
+}
+def desc_for(path: str, room=None) -> str:
+    """The description for a page. Rooms carry their own authored purpose, so they use that."""
+    if room and room.get("purpose"):
+        blurb = (room.get("blurb") or "").strip().rstrip(".")
+        return (room["purpose"].strip().rstrip(".") + ". " + blurb).strip() if blurb \
+               else room["purpose"].strip().rstrip(".") + "."
+    return DESCS.get(path, DESC)
 PUBLIC_PAGES = ["index.html", "about.html", "research.html", "teaching.html",
                 "position.html", "thinking.html", "practice.html",
                 "activities.html", "rooms.html", "service.html", "links.html"]
@@ -178,6 +216,32 @@ FOOT = f"""<footer>
 <script src="js/site.js?v={VER}"></script>"""
 
 
+# Structured data. Google resolves a person's name largely from schema.org markup, and the site had
+# none at all -- so the crawler was left to guess who "Hua-Xu Zhong" is from prose alone.
+#
+# Everything here is either already on the site or a safe restatement of it. Nothing is invented:
+# no employer, no institution, no ORCID, no Scholar. Those need the owner to supply them, because a
+# wrong identifier published about a researcher is worse than no identifier at all. The hyphenless
+# spelling is here because that is how the name is typed in a search box.
+PERSON_LD = """<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Person","name":"Hua-Xu Zhong",
+"alternateName":["Huaxu Zhong"],
+"url":"https://kevinchung58.github.io/huaxu/index.html",
+"jobTitle":"Postdoctoral Research Fellow",
+"description":"Researcher in educational technology and AI in education, working on what happens when learning technologies and generative AI are put into use.",
+"knowsAbout":["Educational technology","Artificial intelligence in education","Design thinking","Learning design","Generative artificial intelligence","Information literacy","Media education"]}
+</script>"""
+
+
+def ld_for(canonical: str) -> str:
+    """A Breadcrumb + WebPage for the page itself, alongside the Person on every page."""
+    return (PERSON_LD + "\n" + '<script type="application/ld+json">'
+            + '{"@context":"https://schema.org","@type":"WebPage","@id":"' + canonical + '",'
+            + '"url":"' + canonical + '","isPartOf":{"@type":"WebSite",'
+            + '"name":"Hua-Xu Zhong","url":"https://kevinchung58.github.io/huaxu/index.html"}}'
+            + '</script>')
+
+
 def page(title: str, active: str, body: str, path: str = "", extra: str = "") -> str:
     # path defaults to "<active>.html" ("home" is index.html);
     # 404 passes path="404" to stay unindexed.
@@ -190,9 +254,10 @@ def page(title: str, active: str, body: str, path: str = "", extra: str = "") ->
   <meta property="og:site_name" content="Hua-Xu Zhong" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="{escape(title)}" />
-  <meta property="og:description" content="{DESC}" />
+  <meta property="og:description" content="{escape(desc_for(path))}" />
   <meta property="og:url" content="{canonical}" />
   <meta property="og:image" content="{SITE}/IMG/1.jpg" />
+  <meta property="og:locale" content="en" />
   <meta name="twitter:card" content="summary" />
 '''
     return f"""<!DOCTYPE html>
@@ -200,8 +265,9 @@ def page(title: str, active: str, body: str, path: str = "", extra: str = "") ->
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="{DESC}" />
-{meta}  <title>{escape(title)}</title>
+  <meta name="description" content="{escape(desc_for(path))}" />
+{meta}{ld_for(canonical) if path != "404" else ""}
+  <title>{escape(title)}</title>
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
   <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
   <link rel="stylesheet" href="{CSS}" />
@@ -218,7 +284,8 @@ def page(title: str, active: str, body: str, path: str = "", extra: str = "") ->
 """
 
 
-def shell_page(title: str, body: str, path: str, cover: str = "IMG/1.jpg") -> str:
+def shell_page(title: str, body: str, path: str, cover: str = "IMG/1.jpg",
+               desc: str = "", room=None) -> str:
     """A page that is not an article: no masthead, no footer, no prose stacked under the view.
 
     A walkable space is an application, and the reference proves the point by refusing to be a
@@ -236,16 +303,18 @@ def shell_page(title: str, body: str, path: str, cover: str = "IMG/1.jpg") -> st
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0d1526" />
-  <meta name="description" content="{DESC}" />
+  <meta name="description" content="{escape(desc or desc_for(path, room))}" />
   <link rel="canonical" href="{canonical}" />
   <meta property="og:site_name" content="Hua-Xu Zhong" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="{escape(title)}" />
-  <meta property="og:description" content="{DESC}" />
+  <meta property="og:description" content="{escape(desc or desc_for(path, room))}" />
   <meta property="og:url" content="{canonical}" />
   <meta property="og:image" content="{SITE}/{cover}" />
+  <meta property="og:locale" content="en" />
   <meta name="twitter:card" content="summary" />
   <title>{escape(title)}</title>
+{ld_for(canonical)}
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
   <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
   <link rel="stylesheet" href="{CSS}" />
@@ -1435,10 +1504,10 @@ PLACE_TITLES = {
     "IMG/tokyo-poster-wires.jpg": "The wires over the lane",
     "IMG/tokyo-poster-ticket.jpg": "The ticket machine",
     "IMG/tokyo-cover.jpg": "Tokyo, the lane in one sheet",
-    "IMG/fukuoka-1.jpg": "The stall row",
-    "IMG/fukuoka-2.jpg": "Lanterns over the wires",
-    "IMG/fukuoka-3.jpg": "The water at the end",
-    "IMG/fukuoka-cover.jpg": "Fukuoka, the alley in one sheet",
+    "IMG/fukuoka-1.jpg": "Moji Port Station",
+    "IMG/fukuoka-2.jpg": "The Blue Wing, open",
+    "IMG/fukuoka-3.jpg": "The strait at dusk",
+    "IMG/fukuoka-cover.jpg": "Moji Port in one sheet",
     "IMG/toronto-1.jpg": "The skyline, small",
     "IMG/toronto-2.jpg": "The falls, small",
     "IMG/toronto-3.jpg": "The market, small",
@@ -1562,7 +1631,8 @@ for it, tile in zip(ALBUM_ITEMS, album_tiles):
 # cannot disagree about what a place is called or where its door goes.
 PLACE_GROUP_NOTES = {
     "tokyo": "A night lane with shutters, lanterns, and a vending machine keeping the far end.",
-    "fukuoka": "A stall alley, lanterns low over the counters, water at the end of it.",
+    "fukuoka": "Moji Port on a table: the station, the customhouse, the Blue Wing drawbridge "
+                "and the ships on the Kanmon Strait, at dusk.",
     "toronto": "A dark hall of lit tables: the city, its falls and its markets, drawn small.",
 }
 
@@ -1865,8 +1935,8 @@ DISTRICTS = [
              "glow": [{"r": 150, "k": 0.7, "dy": 235}],
              "leave": ROOM_BY_ID["fukuoka"]["page"],
              "title": "The door onto Fukuoka",
-             "hint": "It opens onto the stall alley: lanterns low over the counters, and water at "
-                     "the end of it."},
+             "hint": "It opens onto Moji Port: a harbour on a table, at dusk, with a drawbridge "
+                     "that stands open for a ship."},
             # The street's own furniture, and the two poles the wires run from.
             {"id": "pole-west", "kind": "utility", "x": -330, "z": 180, "y": 0, "ry": 90,
              "title": "The pole the wires are strung from",
@@ -1891,7 +1961,7 @@ DISTRICTS = [
             {"id": "planter-s2", "kind": "planter", "x": 296, "z": 60, "y": 0, "ry": -90,
              "title": "A second planter, by the wall",
              "hint": "The street's edges need a rhythm more than they need symmetry."},
-            {"id": "board-s", "kind": "signA", "x": 300, "z": 90, "y": 150, "ry": -90,
+            {"id": "signA-s", "kind": "signA", "x": 300, "z": 90, "y": 150, "ry": -90,
              "title": "A folding board, blank",
              "hint": "Both faces blank: the lettering would be a shop's to write, and no shop here "
                      "is real."},
@@ -2014,8 +2084,8 @@ DISTRICTS = [
             {"label": "Tokyo", "note": "A night lane with shutters, lanterns, and a vending "
                                        "machine keeping the far end.",
              "state": "Open — the middle door, on the right."},
-            {"label": "Fukuoka", "note": "A stall alley, lanterns low over the counters, water at "
-                                         "the end of it.",
+            {"label": "Fukuoka", "note": "Moji Port on a table: the station, the customhouse, the "
+                                         "Blue Wing and the ships, at dusk.",
              "state": "Open — the last door on the left."},
         ],
         "stations": [
@@ -2156,7 +2226,7 @@ DISTRICTS = [
              "title": "Utility pole",
              "hint": "The lane's notice board: what this district is for, and what it does "
                      "not have yet."},
-            {"id": "crates-2", "kind": "crate", "x": 250, "z": 300, "y": 0, "ry": -90,
+            {"id": "crate-2", "kind": "crate", "x": 250, "z": 300, "y": 0, "ry": -90,
              "title": "Two crates, one on top",
              "hint": "Set dressing with a shadow under it, which is the whole reason it is here."},
             {"id": "ac-right", "kind": "ac", "x": 302, "z": 336, "y": 262, "ry": -90,
@@ -2198,7 +2268,7 @@ DISTRICTS = [
              "title": "Two bicycles, leaned against the wall",
              "hint": "Drawn bicycles. Nobody is claimed as their owner, and nothing is said about why "
                      "they are there — a lane has bicycles in it, that is all this asserts."},
-            {"id": "planters", "kind": "planter", "x": 236, "z": 148, "y": 0, "ry": -90,
+            {"id": "planter-1", "kind": "planter", "x": 236, "z": 148, "y": 0, "ry": -90,
              "title": "Two planters by a closed front",
              "hint": "Set dressing with something growing in it, because an alley with only grey in it "
                      "is a drawing of an alley rather than one."},
@@ -2215,7 +2285,7 @@ DISTRICTS = [
              "title": "A post box at the corner",
              "hint": "Red, boxy, at a corner: the shape that says Tokyo louder than any signage could, "
                      "and it carries no lettering because none is ours to invent."},
-            {"id": "board-a", "kind": "signA", "x": -236, "z": 300, "y": 0, "ry": 0,
+            {"id": "signA-a", "kind": "signA", "x": -236, "z": 300, "y": 0, "ry": 0,
              "states": [
                  {"say": "Blank. This face would carry a menu.", "flip": 0.0},
                  {"say": "Turned over, and blank again: both faces of a board like this are the shop's "
@@ -2231,7 +2301,7 @@ DISTRICTS = [
             {"id": "banner-right", "kind": "banner", "x": 316, "z": 372, "y": 244, "ry": -90,
              "title": "A second banner, further down",
              "hint": "Two of them is what a lane has; three would be a set design."},
-            {"id": "window-a", "kind": "pane", "x": 316, "z": 338, "y": 186, "ry": -90,
+            {"id": "pane-a", "kind": "pane", "x": 316, "z": 338, "y": 186, "ry": -90,
              "glow": [{"r": 150, "k": 0.5, "tint": "rgba(255,196,124,0.34)", "dy": 40}],
              "title": "A window on the brick",
              "hint": "Somebody's room, at the height a lane sees it at: the sill, the sash, the curtain "
@@ -2510,94 +2580,95 @@ DISTRICTS = [
         "id": "fukuoka", "label": "Fukuoka",
         "page": ROOM_BY_ID["fukuoka"]["page"],
         "plates": ROOM_BY_ID["fukuoka"]["plates"],
-        # A stall alley: narrower than the Tokyo lane and lower, because the lanterns hang close over
-        # the counters, and the far end is water rather than a street.
-        "lane": {"w": 520, "d": 380, "ceil": 380, "back": 260},
-        "purpose": "A stall alley at night, walked toward the water at its end",
+        # A hall, not an alley. Moji is a port panorama -- a 108 m drawbridge and a strait with ships
+        # on it -- and you cannot stand in a lane and see a harbour. So the district is a table now,
+        # the way Toronto is: the port stands small enough to look down on, which is also the only way
+        # a visitor sees the bridge open at all.
+        "lane": {"w": 700, "d": 900, "ceil": 620, "back": 300},
+        "purpose": "Moji Port on a table: the station, the customhouse, the Blue Wing drawbridge "
+                   "and the ships on the Kanmon Strait, seen as a panorama",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/fukuoka-cover.jpg",
-        "cover_caption": "The alley in one sheet: noren, timber, lanterns on wires, and water at the end.",
-        "blurb": "Warm and narrow. Stalls on both sides, lanterns the whole way down, and a canal at "
-                 "the end of it.",
-        # The alley is drawn. Its proportions come from the reference photographs; every object is a
-        # prop, every sign is blank, and no stall is named or said to be open.
+        "cover_caption": "Moji Port in one sheet: the wooden station, the brick customhouse, the "
+                        "Blue Wing standing open, and the strait beyond it.",
+        "blurb": "The harbour at dusk, small enough to look down on. The bridge stands open for a "
+                 "ship, the strait moves, and while you are there the buildings come alight one "
+                 "after another.",
+        # The port is drawn. Its proportions come from the reference photographs; every object is a
+        # prop, every sign is blank, and no stall is named or said to be open. The basin sits back
+        # from the table's near edge so there is a quay to stand the stall and the bridge approach
+        # on, and the deck is lifted clear of the waterline -- at the water's own height the closed
+        # bridge was a plane under the surface, and drew nothing at all.
         "objects": [
-            {"id": "stall-a", "kind": "front", "x": -240, "z": 96, "y": 0, "ry": 90,
-             "glow": [{"r": 145, "k": 0.68, "dy": 190}],
-             "title": "A stall front, shutters half up",
-             "hint": "The alley's first lit front. The counter is drawn and nothing on it is named; "
-                     "the glow is authored here because a stall is where the light comes from. "
-                     "Done, the shutter runs up to serve and down to close.",
-             "states": [
-                 {"say": "Up. Light on the counter, and the alley gets brighter by one stall.",
-                  "k": 1.0, "shut": 1},
-                 {"say": "Down for the night. The transom keeps a lamp burning.", "k": 0.45,
-                  "shut": 0},
-             ]},
-            {"id": "stall-b", "kind": "front", "x": 240, "z": 208, "y": 0, "ry": -90,
-             "glow": [{"r": 135, "k": 0.62, "dy": 190}],
-             "title": "The second stall, further down",
-             "states": [
-                 {"say": "Up here too — two stalls serving is most of what this alley is.",
-                  "k": 1.0, "shut": 1},
-                 {"say": "Down. One stall still lit, further up the alley.", "k": 0.45, "shut": 0},
-             ],
-             "hint": "Drawn so the alley has a middle. Its light is dimmer than the first, which is "
-                     "what makes the near one read as nearer."},
-            {"id": "noren-a", "kind": "noren", "x": -236, "z": 60, "y": 168, "ry": 90,
-             "title": "A curtain over a doorway",
-             "hint": "Blank cloth: a name on it would be invented lettering, and this site does not "
-                     "invent lettering."},
-            {"id": "noren-b", "kind": "noren", "x": 236, "z": 168, "y": 168, "ry": -90,
-             "title": "A shorter curtain, hung lower",
-             "hint": "Drawn to the alley's own height rather than a standard door's, because a stall "
-                     "alley is built to whatever the frame allowed."},
-            {"id": "stool", "kind": "crate", "x": -190, "z": 128, "y": 0, "ry": 30,
-             "title": "A stool at the counter",
-             "hint": "Low, round-ish, empty: the two things a stall has in front of it are a counter "
-                     "and somewhere to sit, and neither implies anybody did."},
-            {"id": "crate-f", "kind": "crate", "x": 196, "z": 250, "y": 0, "ry": -20,
-             "title": "A crate stacked by the second stall",
-             "hint": "Set dressing: something has to break the long line where the stalls end."},
-            {"id": "bin-f", "kind": "bin", "x": 210, "z": 300, "y": 0, "ry": -90,
-             "title": "A bin at the turning",
-             "hint": "Drawn where the alley widens toward the water. Done, its lid swings.",
-             "states": [
-                 {"say": "The lid swings open, and swings back by itself a moment later.",
-                  "k": 1.0, "flap": 1},
-                 {"say": "Shut. The alley keeps its own counsel.", "k": 1.0, "flap": 0},
-             ]},
-            {"id": "barrel", "kind": "bin", "x": -206, "z": 268, "y": 0, "ry": 0,
-             "title": "A barrel against the wall",
-             "hint": "The alley's own furniture. Nothing is claimed about what is in it."},
-            {"id": "pole-f", "kind": "utility", "x": 214, "z": 84, "y": 0, "ry": -90,
-             "title": "The pole the cables are strung from",
-             "hint": "Every wire overhead is anchored here or on the walls: a cable has to start "
-                     "somewhere you can point at."},
-            {"id": "lamp-post-f", "kind": "utility", "x": -212, "z": 330, "y": 0, "ry": 90,
-             "glow": [{"r": 140, "k": 0.4, "dy": 320}],
-             "title": "A lamp post near the water",
-             "hint": "Cooler than the lanterns, and the reason the water at the end has a colour."},
-            {"id": "board-f", "kind": "signA", "x": 226, "z": 42, "y": 150, "ry": -90,
-             "title": "A board, pinned empty",
-             "hint": "A stall wall always has one. Blank, because its paper would be a claim."},
-            {"id": "awning-f", "kind": "awning", "x": -250, "z": 178, "y": 250, "ry": 90,
-             "title": "An awning over the second doorway",
-             "hint": "Drawn, and deliberately lower than the Tokyo lane's: the alley is smaller."},
-            {"id": "pipe-f", "kind": "pipe", "x": 226, "z": 320, "y": 0, "ry": -90,
-             "title": "A drainpipe at the water end",
-             "hint": "The last vertical before the alley stops being an alley."},
-            {"id": "planter-f", "kind": "planter", "x": -222, "z": 226, "y": 0, "ry": 90,
-             "title": "A planter of dark leaves",
-             "hint": "Set dressing: the one green thing, and it is drawn as a silhouette."},
-            {"id": "wheel", "kind": "bikes", "x": 200, "z": 136, "y": 0, "ry": -90,
-             "title": "A bicycle left against the wall",
-             "hint": "Parked in the drawing because the alley is too narrow to pass one comfortably, "
-                     "which is exactly why bicycles are left along it."},
+            {"id": "plinth-moji", "kind": "plinth", "x": 0, "z": 540, "y": 0, "ry": 0,
+             "w": 660, "h": 80, "d": 500, "top": "cityg",
+             "glow": [{"r": 170, "k": 0.42, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
+             "title": "The table the port stands on",
+             "hint": "A lit plinth, table height. Everything on it is small; the light under the "
+                     "edge is what makes a model read as a model."},
+            {"id": "pool-moji", "kind": "pool", "x": 0, "z": 500, "y": 80, "ry": 0,
+             "w": 640, "h": 6, "d": 260,
+             "title": "The basin, and the strait beyond it",
+             "hint": "The No. 1 boat basin the Blue Wing crosses, opening onto the Kanmon Strait. "
+                     "Nothing is claimed about the tide."},
+            {"id": "drawbridge-mj", "kind": "drawbridge", "x": 0, "z": 540, "y": 92, "ry": 90,
+             "w": 360, "h": 30, "d": 54,
+             "glow": [{"r": 120, "k": 0.34, "dy": 22}],
+             "title": "The Blue Wing",
+             "hint": "Blue Wing Moji: 108 m of pedestrian drawbridge, the largest in Japan and the "
+                     "only one of its kind. Two leaves that rise like the wings it is named for, "
+                     "opening six times a day and taking about twenty minutes over it. Here it "
+                     "opens once each evening, for the ship."},
+            {"id": "ship-mj", "kind": "ship", "x": 0, "z": 470, "y": 84, "ry": 0,
+             "w": 300, "h": 34, "d": 44,
+             "title": "A ship on the strait",
+             "hint": "Timed rather than merely moving: it is the reason the bridge opens, so it "
+                     "clears the channel while the leaves stand and is gone before they come down."},
+            {"id": "ship-mj2", "kind": "ship", "x": 0, "z": 590, "y": 84, "ry": 0,
+             "w": 240, "h": 26, "d": 34,
+             "title": "A second ship, further out",
+             "hint": "The strait is never empty. Smaller and further off, which is what makes the "
+                     "near one read as nearer."},
+            {"id": "dalianhall-mj", "kind": "dalianhall", "x": -268, "z": 700, "y": 80, "ry": 0,
+             "liton": 0.88,
+             "w": 118, "h": 92, "d": 64,
+             "title": "The Dalian Friendship Memorial Hall",
+             "hint": "Built in 1995, brick, and carrying a composite steeple: square, then "
+                     "octagonal, then a spire. Every stage of it is drawn, because a steeple "
+                     "sketched as one cone is a cone and not a steeple."},
+            {"id": "customhouse-mj", "kind": "customhouse", "x": 86, "z": 706, "y": 80, "ry": 0,
+             "liton": 0.80,
+             "w": 172, "h": 108, "d": 78,
+             "title": "The former Moji Customhouse",
+             "hint": "1912, red brick over a timber frame, in the Renaissance manner. One of the "
+                     "three giants of Meiji architecture, \u59bb\u6728\u983c\u9ec4, had a hand "
+                     "in it. The top floor is glazed where the ones below are arched, because the "
+                     "third floor is an observation room and the first an exhibition room."},
+            {"id": "osakashosen-mj", "kind": "osakashosen", "x": 244, "z": 700, "y": 80, "ry": 0,
+             "liton": 0.84,
+             "w": 140, "h": 92, "d": 66,
+             "title": "The former Osaka Shosen building",
+             "hint": "Known by two things, and both are drawn: the tall round-headed arches that "
+                     "take most of its face, and the octagonal tower on its corner, eight sides "
+                     "turned out of real trigonometry with a roof of eight triangles."},
+            {"id": "stationfront-mj", "kind": "stationfront", "x": -104, "z": 706, "y": 80, "ry": 0,
+             "liton": 0.76,
+             "w": 196, "h": 118, "d": 84,
+             "title": "Moji Port Station",
+             "hint": "Opened in 1914 and still the station it was: a wooden two-storey in the "
+                     "neo-Renaissance manner, symmetric, its centre shaped like the character "
+                     "\u9580 -- a gate, the first half of the port's own name. In 1988 it became "
+                     "the first station building in Japan to be designated an Important Cultural "
+                     "Property. Restored 2012 to 2019. Nothing here claims a train or a platform."},
+            {"id": "front-mj", "kind": "front", "x": -252, "z": 360, "y": 80, "ry": 90,
+             "liton": 0.74,
+             "w": 78, "h": 66, "d": 62,
+             "glow": [{"r": 110, "k": 0.6, "dy": 44, "tint": "rgba(255,180,110,0.5)"}],
+             "title": "One yatai, on the quay",
+             "hint": "Kept, because the owner asked for one. Nothing is claimed about what it "
+                     "sells: the counter is drawn and the cloth is blank."},
         ],
-        # Spill again, not fixtures: the lamp post near the water, and the water's own amber bounce.
-        # The alley's lamps are its lanterns, and those travel in the `lanterns` list where they belong.
         "lamps": [
             {"x": -212, "y": 330, "z": 330, "r": 240, "k": 0.36, "bulb": False,
              "tint": "rgba(186,208,255,0.20)"},
@@ -2625,15 +2696,6 @@ DISTRICTS = [
             {"kind": "kerb", "x0": -260, "x1": -230, "z0": -260, "z1": 380, "y1": 7},
             {"kind": "kerb", "x0": 230, "x1": 260, "z0": -260, "z1": 380, "y1": 7},
         ],
-        # Six lanterns on three crossings: the alley is lit by paper and nothing else that is warm.
-        "lanterns": [
-            {"x": -90, "y": 258, "z": 40, "r": 24, "swing": 3.0, "period": 3.3, "phase": 0.2},
-            {"x": 70, "y": 252, "z": 40, "r": 26, "swing": 2.6, "period": 3.8, "phase": 1.4},
-            {"x": -110, "y": 254, "z": 150, "r": 25, "swing": 3.2, "period": 3.5, "phase": 0.8},
-            {"x": 100, "y": 250, "z": 150, "r": 23, "swing": 2.8, "period": 4.0, "phase": 2.2},
-            {"x": -60, "y": 254, "z": 280, "r": 26, "swing": 3.4, "period": 3.2, "phase": 1.1},
-            {"x": 120, "y": 252, "z": 280, "r": 24, "swing": 2.4, "period": 3.9, "phase": 2.9},
-        ],
         "vista": {"x": 0, "y0": 96, "y1": 300, "w": 460},
         "wires": [
             {"a": [-260, 344, 40], "b": [260, 338, 40], "sag": 46},
@@ -2649,9 +2711,16 @@ DISTRICTS = [
             "mountain": [{"x": 600, "y": 420, "w": 2200, "h": 300, "c": "#1c2740"}],
             "plaza": {"y": -300, "z0": 700, "z1": 7000, "half": 4000},
             "roofs": [
-                {"x": -1200, "y": 0, "z": 1300, "w": 700, "h": 420, "tone": 0.55},
-                {"x": 1300, "y": 0, "z": 1400, "w": 800, "h": 500, "tone": 0.4},
-                {"x": 300, "y": 0, "z": 1250, "w": 620, "h": 360, "tone": 0.68},
+                # A backdrop's z is not scaled the way a prop's is -- a prop's z is multiplied by
+                # 2.9 on its way out, a roof's is not. These were authored for the alley, where the
+                # props stopped at record z 350 and a roof at 1250 was safely behind them. The port
+                # table reaches record z 790, which is 2291 once scaled, so every roof here stood in
+                # FRONT of the far bank and hid it: the customhouse and the Osaka Shosen building
+                # were both behind the middle roof and drew nothing at all, and only the Dalian
+                # hall, off to the left of it, was ever visible. Pushed past the table's far edge.
+                {"x": -1200, "y": 0, "z": 2500, "w": 700, "h": 420, "tone": 0.55},
+                {"x": 1300, "y": 0, "z": 2600, "w": 800, "h": 500, "tone": 0.4},
+                {"x": 300, "y": 0, "z": 2450, "w": 620, "h": 360, "tone": 0.68},
             ],
             "city": [
                 {"x": -1600, "z": 2800, "w": 1200, "h": 1500, "win": 0.5, "tone": 0.66},
@@ -2661,57 +2730,98 @@ DISTRICTS = [
                 {"x": 2600, "z": 3000, "w": 900, "h": 1400, "win": 0.5, "tone": 0.62},
             ],
         },
-        "frames": [
-            # The alley's sub-places: the counters, the overhead layer, and what it ends in.
-            {"id": "stalls", "src": "IMG/fukuoka-1.jpg", "x": -284, "z": 120, "y": 96, "ry": 90,
-             "title": "The stall row",
-             "alt": "Illustration of a row of small stall fronts along a narrow alley at night, "
-                    "counters drawn in outline and nothing written on any of them.",
-             "caption": "The alley's proportion and its first light, drawn: how narrow it is, and how "
-                        "close the counters come."},
-            {"id": "lanterns", "src": "IMG/fukuoka-2.jpg", "x": 284, "z": 240, "y": 150, "ry": -90,
-             "title": "Lanterns over the wires",
-             "alt": "Illustration of paper lanterns hanging in a row from wires across a narrow "
-                    "alley, warm against a dark sky.",
-             "caption": "The overhead layer, drawn: where the light comes from and how low it hangs."},
+                "frames": [
+            # The port's sub-places: the building it is named for, the bridge it is known for, and
+            # the water it stands on. The alley's three frames were replaced rather than reworded,
+            # because a picture of a stall row is not a picture of a harbour.
+            {"id": "station", "src": "IMG/fukuoka-1.jpg", "x": -284, "z": 120, "y": 96, "ry": 90,
+             "title": "Moji Port Station",
+             "alt": "Illustration of a small wooden two-storey railway station at dusk, symmetric, "
+                    "its centre shaped like a gate and a few windows lit.",
+             "caption": "The building the district is named after, drawn: two storeys of painted "
+                        "timber, dead symmetric, and a centre that reads as a gate."},
+            {"id": "bridge", "src": "IMG/fukuoka-2.jpg", "x": 284, "z": 240, "y": 150, "ry": -90,
+             "title": "The Blue Wing, open",
+             "alt": "Illustration of a blue pedestrian drawbridge over a harbour basin at dusk, its "
+                    "two leaves raised like wings and lit from below.",
+             "caption": "The bridge, drawn at the moment it is worth looking at: both leaves up, "
+                        "floodlit against a dark harbour."},
             {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 284, "z": 350, "y": 96, "ry": -90,
-             "title": "The water at the end",
-             "alt": "Illustration of dark water at the end of an alley with amber light reflected "
-                    "along its surface.",
-             "caption": "What the alley ends in. Drawn: the room walks toward it, and the picture "
-                        "claims nothing about what is on the far bank."},
+             "title": "The strait at dusk",
+             "alt": "Illustration of a wide strait at dusk seen from a quay, two low cargo ships "
+                    "crossing it and lights along the far shore.",
+             "caption": "What the basin opens onto. Drawn: the room walks toward it, and the "
+                        "picture claims nothing about what is on the far shore."},
         ],
         # Sub-areas, same rule as the other rooms: one little place per Field notes plate, a drawn
         # frame holding the place until a photograph arrives.
-        "slots_title": "Places in the alley",
+        "slots_title": "Places in the port",
         "slots": [
-            {"label": "Fukuoka, the alley in one sheet", "note": "The album's cover plate for this "
-                                                                 "room. In the alley it is the "
-                                                                 "mouth: the whole stall row in one "
-                                                                 "look.",
-             "state": "Held by the alley itself, until a photograph of the mouth takes the slot."},
-            {"label": "The stall row", "note": "The first stalls, where the counters start and the "
-                                               "steam is.",
-             "state": "Held by a drawn frame; a photograph of the stalls takes the slot when one "
+            {"label": "Fukuoka, the port in one sheet", "note": "The album's cover plate for this "
+                                                                "room. In the port it is the "
+                                                                "whole panorama in one look: the "
+                                                                "quay, the basin and the strait.",
+             "state": "Held by the port itself, until a photograph of the quay takes the slot."},
+            {"label": "Moji Port Station", "note": "The far bank, left of the middle: the building "
+                                                   "the district is named after.",
+             "state": "Held by a drawn frame; a photograph of the station takes the slot when one "
                       "arrives."},
-            {"label": "Lanterns over the wires", "note": "Between the stalls, where the light is "
-                                                         "strung lowest.",
-             "state": "Held by a drawn frame; a photograph of the lanterns takes the slot when one "
+            {"label": "The Blue Wing, open", "note": "The middle of the basin, where the bridge "
+                                                     "stands open for a ship.",
+             "state": "Held by a drawn frame; a photograph of the bridge takes the slot when one "
                       "arrives."},
-            {"label": "The water at the end", "note": "The end of the alley, where the counters "
-                                                      "stop and the surface starts.",
-             "state": "Held by a drawn frame; a photograph of the water takes the slot when one "
+            {"label": "The strait at dusk", "note": "Beyond the basin, where the water opens out "
+                                                    "and the ships cross.",
+             "state": "Held by a drawn frame; a photograph of the strait takes the slot when one "
                       "arrives."},
-            {"label": "Clips and the alley at closing", "note": "Vertical clips and one sound, when "
-                                                                "material exists.",
+            {"label": "Clips and the port after dark", "note": "Vertical clips and one sound, when "
+                                                               "material exists.",
              "state": "Empty by design. A clip needs its caption before it can play here."},
         ],
+        # The lanterns.
+        #
+        # One list, and it lives here. This record used to carry a second `"lanterns"` key up
+        # under `backdrop`; in a dict literal the later key wins silently, so the row that was
+        # being edited was dead and the row on screen was the other one. A duplicate key that
+        # Python accepts without complaint is the sort of thing that eats an afternoon, so now
+        # there is exactly one here and the generator asserts on the count below.
+        #
+        # Re-strung off the walk and onto the table. They ran from z 26 to 348, which is the
+        # floor of the hall you walk down, not the port: a camera standing at z 957 had most of
+        # the row behind it and the nearest lantern 53 units from the lens. Measured against an
+        # empty list, that row was 92% of every warm pixel on screen at the first two stops and
+        # nothing at all at the last three. The brightness this room has been carrying was a
+        # paper lantern pressed against the glass.
+        #
+        # They run down both flanks of the quay now at x +-300, clear of the buildings (x -268
+        # to 244) so each one is a warm point against water or sky rather than against brick,
+        # from the near edge of the table to the far bank. From the furthest stop the row is
+        # 900 units off and a lantern is about 21 px across; from the near stop, 24 px.
+        "lanterns": [
+            {"x": -300, "y": 212, "z": 390, "r": 15},
+            {"x": -300, "y": 205, "z": 440, "r": 17},
+            {"x": -300, "y": 213, "z": 490, "r": 15},
+            {"x": -300, "y": 204, "z": 540, "r": 17},
+            {"x": -300, "y": 214, "z": 590, "r": 15},
+            {"x": -300, "y": 206, "z": 640, "r": 17},
+            {"x": -300, "y": 212, "z": 690, "r": 15},
+            {"x":  300, "y": 206, "z": 415, "r": 16},
+            {"x":  300, "y": 213, "z": 465, "r": 15},
+            {"x":  300, "y": 205, "z": 515, "r": 17},
+            {"x":  300, "y": 214, "z": 565, "r": 15},
+            {"x":  300, "y": 207, "z": 615, "r": 16},
+            {"x":  300, "y": 213, "z": 665, "r": 15},
+        ],
+        # The stations walk up to the table and stop at its edge. Toronto's do the same: each stop
+        # stands 90-170 short of the table it is looking at, because a diorama is looked at from
+        # outside it. The first version of this put the stops at 60-600 with a table spanning
+        # 170-690, so three of the five stood inside the port or past it, looking at nothing.
         "stations": [
-            {"z": 0, "label": "the mouth of the alley"},
-            {"z": 90, "label": "at the first stall"},
-            {"z": 190, "label": "between the stalls"},
-            {"z": 280, "label": "by the bin and the lamp"},
-            {"z": 320, "label": "at the water"},
+            {"z": 60,  "label": "the far end of the hall"},
+            {"z": 170, "label": "coming up to the table"},
+            {"z": 260, "label": "at the near edge"},
+            {"z": 330, "label": "over the water"},
+            {"z": 330, "label": "close, over the basin"},
         ],
         "exit": {"id": "curtain-back", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
                  "title": "The curtain at your back", "hint": "It parts onto the street."},
@@ -2732,7 +2842,7 @@ DISTRICTS = [
         # Indoors and low-ceilinged on purpose: this is a hall, not a street. The light is the
         # tables' own; the ceiling fittings are dim spots over the walk, so the dioramas outshine
         # the room they stand in — the same trick Little Canada's dark hall uses.
-        "lane": {"w": 760, "d": 480, "ceil": 400, "back": 260},
+        "lane": {"w": 760, "d": 740, "ceil": 400, "back": 260},
         "purpose": "Toronto as a tabletop: the city, its falls and its markets drawn small, the "
                    "way Little Canada keeps Ontario on lit tables",
         "status": "open",
@@ -2744,158 +2854,225 @@ DISTRICTS = [
         "objects": [
             # Table one — the city. A plinth with the skyline on it: the tower reads first because
             # it is the one silhouette nobody mistakes, then the blocks, then the dome.
-            {"id": "plinth-sky", "kind": "plinth", "x": 0, "z": 396, "y": 0, "ry": 0,
-             "w": 300, "h": 80, "d": 150, "top": "cityg",
+            {"id": "plinth-sky", "kind": "plinth", "x": 0, "z": 630, "y": 0, "ry": 0,
+             "w": 320, "h": 80, "d": 160, "top": "cityg",
              "glow": [{"r": 160, "k": 0.4, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
              "title": "The table the city stands on",
              "hint": "A lit plinth, table height. Everything on it is small; the light under the "
                      "edge is what makes a model read as a model."},
-            {"id": "tower-cn", "kind": "tower", "x": -70, "z": 372, "y": 80, "ry": 0,
+            {"id": "tower-cn", "kind": "tower", "x": -120, "z": 628, "y": 80, "ry": 0,
              "w": 58, "h": 300, "d": 58,
              "title": "The tower, small",
              "hint": "Tapered shaft, a round pod two thirds up, a needle above: the one silhouette "
                      "the whole city is known by, drawn at table scale. No lettering, no claim — "
                      "a shape, not a postcard."},
-            {"id": "skyline-cn", "kind": "skyline", "x": 55, "z": 400, "y": 80, "ry": 0,
-             "w": 210, "h": 150, "d": 95,
+            {"id": "skyline-cn", "kind": "skyline", "x": 85, "z": 630, "y": 80, "ry": 0,
+             "w": 140, "h": 150, "d": 80,
              "title": "The skyline, small",
              "hint": "A row of blocky towers with a few lit windows, the way a downtown reads from "
                      "the lake at night. Drawn small; the windows are the only words it has."},
-            {"id": "dome-rc", "kind": "dome", "x": -10, "z": 430, "y": 80, "ry": 0,
+            {"id": "dome-rc", "kind": "dome", "x": -40, "z": 630, "y": 80, "ry": 0,
              "w": 84, "h": 44, "d": 84,
              "title": "The dome, small",
              "hint": "A low white dome among the blocks: the stadium the skyline keeps making room "
                      "for. Nothing on it but its own curve."},
             # A track along the table's front edge and the streetcar that works it: the city's
             # table is the one table where something drives, the way the real one never stops.
-            {"id": "track-c", "kind": "track", "x": 0, "z": 336, "y": 80, "ry": 0,
+            {"id": "track-c", "kind": "track", "x": 0, "z": 610, "y": 80, "ry": 0,
              "w": 280, "h": 2, "d": 12,
              "title": "The track, small",
              "hint": "Ballast and two rails along the front edge: the strip the streetcar runs on."},
-            {"id": "tram-t", "kind": "tram", "x": 0, "z": 336, "y": 80, "ry": 0,
+            {"id": "tram-t", "kind": "tram", "x": 0, "z": 610, "y": 80, "ry": 0,
              "w": 280, "h": 12, "d": 12,
              "title": "The streetcar, small",
              "hint": "A red streetcar shuttling the track, lit from within. The city's table is "
                      "the one table where something drives."},
             # Table two — the falls. The water is the one thing in the hall that moves.
-            {"id": "plinth-falls", "kind": "plinth", "x": 230, "z": 170, "y": 0, "ry": 0,
-             "w": 260, "h": 80, "d": 160, "top": "rock",
+            {"id": "plinth-falls", "kind": "plinth", "x": 290, "z": 200, "y": 0, "ry": 0,
+             "w": 160, "h": 80, "d": 240, "top": "rock",
              "glow": [{"r": 160, "k": 0.4, "dy": 96, "tint": "rgba(190,220,245,0.36)"}],
              "title": "The table the falls stand on",
              "hint": "The same lit plinth, cooler light: the water gets a cold pool on the floor, "
                      "the way real spray cools the air at the rail."},
-            {"id": "falls-n", "kind": "falls", "x": 230, "z": 170, "y": 80, "ry": 0,
-             "w": 220, "h": 100, "d": 70,
+            # 228 x 52, not 130 x 100. The Horseshoe Falls run some 670 m of crest to a 57 m drop,
+            # so breadth is the thing that identifies them, and at 1.3:1 the model read as a narrow
+            # ribbon down a slot gorge -- a different waterfall. This is 4.4:1, as wide as the table
+            # it stands on allows without overhanging the plinth.
+            {"id": "falls-n", "kind": "falls", "x": 290, "z": 200, "y": 80, "ry": -90,
+             "w": 228, "h": 52, "d": 62,
              "title": "The falls, small",
              "hint": "A sheet of water over a ledge into mist, small enough to step over and loud "
                      "enough to imagine. The one moving thing in the hall; it moves because you "
                      "are here, not because a clock says so."},
             # Table three — the market. Stalls at model scale: awnings, crates, a warm lamp.
-            {"id": "plinth-market", "kind": "plinth", "x": -230, "z": 320, "y": 0, "ry": 0,
-             "w": 260, "h": 80, "d": 150, "top": "cobble",
+            {"id": "plinth-market", "kind": "plinth", "x": -290, "z": 400, "y": 0, "ry": 0,
+             "w": 160, "h": 80, "d": 200, "top": "cobble",
              "glow": [{"r": 160, "k": 0.4, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
              "title": "The table the market stands on",
              "hint": "A stall row at table scale. No stall is named and no price is written; a "
                      "market reads by its awnings and its crates, not its lettering."},
-            {"id": "stall-m1", "kind": "stall", "x": -290, "z": 288, "y": 80, "ry": 90,
-             "w": 84, "h": 70, "d": 50,
+            {"id": "hall-sl", "kind": "hall", "x": -345, "z": 400, "y": 80, "ry": 90,
+             "w": 170, "h": 130, "d": 48,
+             "title": "St. Lawrence Market, the South Market hall",
+             "hint": "Toronto's first City Hall, built 1845 in red brick, gutted and reopened as a "
+                     "market from 1899. An arcade at street level, a gallery floor of arched "
+                     "windows over it, and a cupola with a clock in it. Nothing on it is lettered: "
+                     "the clock is a disc, and no vendor is named."},
+            {"id": "stall-m1", "kind": "stall", "x": -300, "z": 350, "y": 80, "ry": 90,
+             "w": 76, "h": 70, "d": 36,
              "title": "A stall, small",
              "hint": "Awning over a counter, drawn the size of a hand. The market's first stall."},
-            {"id": "stall-m2", "kind": "stall", "x": -220, "z": 306, "y": 80, "ry": 90,
-             "w": 84, "h": 70, "d": 50,
+            {"id": "stall-m2", "kind": "stall", "x": -252, "z": 400, "y": 80, "ry": 90,
+             "w": 76, "h": 70, "d": 36,
              "title": "A second stall, small",
              "hint": "The row continues. Two stalls facing is a market; one is a table."},
-            {"id": "stall-m3", "kind": "stall", "x": -290, "z": 350, "y": 80, "ry": 90,
-             "w": 84, "h": 70, "d": 50,
+            {"id": "stall-m3", "kind": "stall", "x": -300, "z": 448, "y": 80, "ry": 90,
+             "w": 76, "h": 70, "d": 36,
              "title": "A third stall, small",
              "hint": "The last stall before the table's edge, awning lower than the rest."},
-            {"id": "crate-m1", "kind": "crate", "x": -180, "z": 340, "y": 80, "ry": 12,
-             "w": 26, "h": 20, "d": 26,
+            {"id": "crate-m1", "kind": "crate", "x": -227, "z": 345, "y": 80, "ry": 12,
+             "w": 26, "h": 20, "d": 20,
              "title": "Crates by the stalls",
              "hint": "Whatever the market sells arrives in crates. Drawn small, stacked once."},
-            {"id": "crate-m2", "kind": "crate", "x": -172, "z": 276, "y": 80, "ry": -18,
-             "w": 22, "h": 16, "d": 22,
+            {"id": "crate-m2", "kind": "crate", "x": -227, "z": 372, "y": 80, "ry": -18,
+             "w": 22, "h": 16, "d": 20,
              "title": "A second crate",
              "hint": "The market's clutter, at a scale where clutter is a centimetre tall."},
             # Table four — the lake. The city's front door: water, islands, one small ferry.
-            {"id": "plinth-lake", "kind": "plinth", "x": -230, "z": 120, "y": 0, "ry": 0,
-             "w": 260, "h": 80, "d": 140, "top": "sand",
+            {"id": "plinth-lake", "kind": "plinth", "x": -290, "z": 140, "y": 0, "ry": 0,
+             "w": 160, "h": 80, "d": 240, "top": "sand",
              "glow": [{"r": 160, "k": 0.38, "dy": 96, "tint": "rgba(190,220,245,0.34)"}],
              "title": "The table the lake lies on",
              "hint": "A flat sheet of water with low green islands: the view the skyline turns to "
                      "face. The ferry is one white box, because at this scale it is."},
-            {"id": "pool-lake", "kind": "pool", "x": -230, "z": 120, "y": 80, "ry": 0,
-             "w": 210, "h": 4, "d": 100,
+            {"id": "pool-lake", "kind": "pool", "x": -290, "z": 140, "y": 80, "ry": 0,
+             "w": 130, "h": 4, "d": 200,
              "title": "The lake, small",
              "hint": "Still water on a table. It reflects the hall's spots the way the real one "
                      "reflects the city."},
-            {"id": "isle-1", "kind": "planter", "x": -260, "z": 106, "y": 82, "ry": 0,
+            # Ids are `kind-n` because that is how the renderer finds the branch that draws them:
+            # `kindOf()` strips the suffix, so `planter-i1` reaches the planter's tub and its
+            # planting, and `boat-lake` reaches the hull, the cabin and the crossing. An id the
+            # table has never heard of resolves to nothing and draws as a flat plane — which is
+            # how these two islands and the ferry spent a while being cards on the water.
+            {"id": "planter-i1", "kind": "planter", "x": -320, "z": 112, "y": 82, "ry": 0,
              "w": 44, "h": 16, "d": 30,
              "title": "An island, small",
              "hint": "A low green bump in the water: the islands, reduced to their silhouette."},
-            {"id": "isle-2", "kind": "planter", "x": -198, "z": 134, "y": 82, "ry": 0,
+            {"id": "planter-i2", "kind": "planter", "x": -260, "z": 168, "y": 82, "ry": 0,
              "w": 38, "h": 14, "d": 26,
              "title": "A second island, small",
              "hint": "The second island, further out. Two bumps are an archipelago at this scale."},
-            {"id": "ferry-1", "kind": "boat", "x": -228, "z": 118, "y": 83, "ry": 0,
+            {"id": "boat-lake", "kind": "boat", "x": -290, "z": 140, "y": 83, "ry": 90,
              "w": 36, "h": 12, "d": 12,
              "title": "The ferry, small",
              "hint": "One white box crossing the sheet: the ferry, at a scale where it cannot be "
                      "anything more."},
-            # The far wall carries the city in one sheet: the hall ends on its own cover plate,
-            # so the deepest stop in the room is the whole model at a glance, not a blank hoarding.
-            {"id": "mural-cover", "kind": "poster frame", "x": 0, "z": 474, "y": 140, "ry": 0,
-             "w": 320, "h": 180, "d": 10, "img": "IMG/toronto-cover.jpg",
-             "title": "The city in one sheet",
-             "hint": "The hall's own cover plate, hung on the far wall: tower, falls and market "
-                     "in a single look, the way the room ends."},
+            # The far wall used to carry the hall's cover plate. It carries the city itself now:
+            # a lit case holding the tower, a row of blocks and the dome, built by the same shapes
+            # that build the tables, so the deepest stop in the room ends on the model at a glance
+            # instead of on a picture of it.
+            {"id": "plinth-cityshelf", "kind": "plinth", "x": 180, "z": 712, "y": 150, "ry": 180,
+             "w": 300, "h": 10, "d": 40, "tone": 0.34,
+             "title": "The city in one case",
+             "hint": "The room ends on a lit case holding the whole city: the tower, a row of "
+                     "blocks, the dome. Built of the same shapes as the tables, so it is the "
+                     "model at a glance rather than a picture of one."},
+            {"id": "tower-mini", "kind": "tower", "x": 200, "z": 712, "y": 160, "ry": 180,
+             "w": 30, "h": 168, "d": 22,
+             "title": "The tower, in the case",
+             "hint": "The same shape as the table's tower, a sixth of the size: a concrete shaft, "
+                     "a pod, and a mast that only the top of the case is tall enough for."},
+            {"id": "skyline-mini", "kind": "skyline", "x": 108, "z": 712, "y": 160, "ry": 180,
+             "w": 92, "h": 74, "d": 22, "tone": 0.5,
+             "title": "The blocks, in the case",
+             "hint": "Four blocks at staggered depths, lit from inside: at this size every window "
+                     "is two pixels, which is what a window in a real skyline is."},
+            {"id": "dome-mini", "kind": "dome", "x": 264, "z": 712, "y": 160, "ry": 180,
+             "w": 64, "h": 36, "d": 22, "tone": 0.5,
+             "title": "The dome, in the case",
+             "hint": "A ribbed cap on a low drum, the third thing the city is known by."},
+            # Where the walls carried drawn plates of the three areas, they carry small built
+            # cases now: a lit shelf, and on it the thing itself at a sixth of the size. A picture
+            # of the falls beside the falls was always the weaker of the two things on that wall.
+            {"id": "plinth-skyshelf", "kind": "plinth", "x": 354, "z": 396, "y": 150, "ry": -90,
+             "w": 120, "h": 10, "d": 40, "tone": 0.34,
+             "title": "A case of blocks",
+             "hint": "A lit shelf on the wall, holding a row of towers with their windows on: "
+                     "the city reduced to the one thing it is recognised by."},
+            {"id": "skyline-mini2", "kind": "skyline", "x": 354, "z": 396, "y": 160, "ry": -90,
+             "w": 96, "h": 72, "d": 24, "tone": 0.5,
+             "title": "The blocks, small",
+             "hint": "Four blocks, staggered in depth so the row has a silhouette, lit from "
+                     "inside the way the table's blocks are."},
+            {"id": "plinth-fallsshelf", "kind": "plinth", "x": 354, "z": 170, "y": 150, "ry": -90,
+             "w": 120, "h": 10, "d": 40, "tone": 0.34,
+             "title": "A case of water",
+             "hint": "A lit shelf on the wall, holding a ledge with water going over it."},
+            # A shelf model has to be a model. At 96 x 72 it stood three quarters the size of the
+            # falls on the table below it, so the two read as a duplicated waterfall rather than as a
+            # diorama and the case it is displayed in.
+            {"id": "falls-mini", "kind": "falls", "x": 354, "z": 170, "y": 160, "ry": -90,
+             "w": 68, "h": 30, "d": 20, "tone": 0.5,
+             "title": "The falls, small",
+             "hint": "A sheet over a ledge into mist, with the same shimmer the table's falls "
+                     "has, moving on the same clock."},
+            {"id": "plinth-marketshelf", "kind": "plinth", "x": -354, "z": 290, "y": 150, "ry": 90,
+             "w": 120, "h": 10, "d": 40, "tone": 0.34,
+             "title": "A case of stalls",
+             "hint": "A lit shelf on the wall, holding one stall under a striped awning."},
+            {"id": "stall-mini", "kind": "stall", "x": -354, "z": 290, "y": 160, "ry": 90,
+             "w": 88, "h": 56, "d": 24, "tone": 0.5,
+             "title": "A stall, small",
+             "hint": "An awning, a counter and the crates under it: a market reads at any size, "
+                     "which is the only reason a market is worth modelling."},
             # The hall's own furniture: a bench between tables and the rope line of a model room.
-            {"id": "bench-t", "kind": "bench", "x": 320, "z": 300, "y": 0, "ry": -90,
+            {"id": "bench-t", "kind": "bench", "x": 320, "z": 380, "y": 0, "ry": -90,
              "title": "A bench in the dark",
              "hint": "The one seat in the hall, between the city and the market, for looking."},
             # Trees, the one thing a miniature plants by the thousand: two on the islands,
             # a shore pair, corners of the city and the falls, one by the market.
-            {"id": "tree-i1", "kind": "tree", "x": -260, "z": 106, "y": 96, "ry": 0,
+            {"id": "tree-i1", "kind": "tree", "x": -320, "z": 112, "y": 96, "ry": 0,
              "w": 14, "h": 24, "d": 14,
              "title": "A tree on the island",
              "hint": "The island keeps a tree; at this scale a tree is a pinch of flock."},
-            {"id": "tree-i2", "kind": "tree", "x": -198, "z": 134, "y": 94, "ry": 0,
+            {"id": "tree-i2", "kind": "tree", "x": -260, "z": 168, "y": 94, "ry": 0,
              "w": 12, "h": 20, "d": 12,
              "title": "A tree on the second island",
              "hint": "The second island's tree, smaller, further out."},
-            {"id": "tree-s1", "kind": "tree", "x": -130, "z": 168, "y": 80, "ry": 0,
+            {"id": "tree-s1", "kind": "tree", "x": -217, "z": 108, "y": 80, "ry": 0,
              "w": 14, "h": 24, "d": 14,
              "title": "A shore tree",
              "hint": "The lake's near shore keeps a tree, the way the real one keeps a park."},
-            {"id": "tree-s2", "kind": "tree", "x": -340, "z": 72, "y": 80, "ry": 0,
+            {"id": "tree-s2", "kind": "tree", "x": -217, "z": 175, "y": 80, "ry": 0,
              "w": 14, "h": 24, "d": 14,
              "title": "A second shore tree",
              "hint": "The far corner of the lake table, a tree at the water's edge."},
-            {"id": "tree-c1", "kind": "tree", "x": -130, "z": 380, "y": 80, "ry": 0,
+            {"id": "tree-c1", "kind": "tree", "x": -150, "z": 612, "y": 80, "ry": 0,
              "w": 14, "h": 24, "d": 14,
              "title": "A street tree by the city",
              "hint": "The city table keeps street trees; downtown reads by them."},
-            {"id": "tree-c2", "kind": "tree", "x": -120, "z": 442, "y": 80, "ry": 0,
+            {"id": "tree-c2", "kind": "tree", "x": 145, "z": 648, "y": 80, "ry": 0,
              "w": 12, "h": 20, "d": 12,
              "title": "A second street tree",
              "hint": "The row continues round the table's left edge."},
-            {"id": "tree-c3", "kind": "tree", "x": 140, "z": 356, "y": 80, "ry": 0,
+            {"id": "tree-c3", "kind": "tree", "x": 150, "z": 612, "y": 80, "ry": 0,
              "w": 12, "h": 20, "d": 12,
              "title": "A park tree at the city's corner",
              "hint": "The city's right corner keeps a park's worth of one tree."},
-            {"id": "tree-f1", "kind": "tree", "x": 115, "z": 235, "y": 80, "ry": 0,
+            {"id": "tree-f1", "kind": "tree", "x": 218, "z": 165, "y": 80, "ry": 0,
              "w": 14, "h": 24, "d": 14,
              "title": "A tree above the falls",
              "hint": "The gorge's rim keeps trees; the real one does."},
-            {"id": "tree-f2", "kind": "tree", "x": 342, "z": 235, "y": 80, "ry": 0,
+            {"id": "tree-f2", "kind": "tree", "x": 350, "z": 235, "y": 80, "ry": 0,
              "w": 14, "h": 24, "d": 14,
              "title": "A second tree above the falls",
              "hint": "The rim's other side, a tree at the rail."},
-            {"id": "tree-m1", "kind": "tree", "x": -122, "z": 382, "y": 80, "ry": 0,
+            {"id": "tree-m1", "kind": "tree", "x": -225, "z": 425, "y": 80, "ry": 0,
              "w": 14, "h": 24, "d": 14,
              "title": "A tree by the market",
              "hint": "The market's corner keeps the one tree a market square allows."},
-            {"id": "bollard-t", "kind": "bollard", "x": 140, "z": 24, "y": 0, "ry": 0,
+            {"id": "bollard-t", "kind": "bollard", "x": 100, "z": 40, "y": 0, "ry": 0,
              "title": "A bollard at the mouth",
              "hint": "The hall's entrance keeps an edge the way the street does."},
         ],
@@ -2907,7 +3084,7 @@ DISTRICTS = [
             # One spot per table, close and narrow: the diorama outshines the hall it stands in.
             {"x": -230, "y": 300, "z": 120, "r": 46, "k": 0.5, "spot": True},
             {"x": 230, "y": 300, "z": 170, "r": 46, "k": 0.5, "spot": True},
-            {"x": -230, "y": 300, "z": 320, "r": 46, "k": 0.5, "spot": True},
+            {"x": -230, "y": 300, "z": 290, "r": 46, "k": 0.5, "spot": True},
             {"x": 0, "y": 300, "z": 396, "r": 52, "k": 0.55, "spot": True},
             # A picture light over the cover plate on the far wall: the hall ends on the city in
             # one sheet, and a plate you walk toward is a plate you can read.
@@ -2930,24 +3107,25 @@ DISTRICTS = [
         ],
         "lanterns": [],
         "frames": [
-            {"id": "skyline", "src": "IMG/toronto-1.jpg", "x": 374, "z": 396, "y": 150, "ry": -90,
+            {"id": "skyline", "wall": False, "src": "IMG/toronto-1.jpg", "x": 374, "z": 396, "y": 150, "ry": -90,
              "title": "The skyline, small",
              "alt": "Illustration of a miniature Toronto skyline on a lit table: a small CN Tower "
                     "with a round pod among blocky navy towers with a few amber windows.",
              "caption": "The city as a model: the tower first, the blocks behind it. Drawn, not "
                         "photographed; nothing on it is named."},
-            {"id": "falls", "src": "IMG/toronto-2.jpg", "x": 374, "z": 170, "y": 150, "ry": -90,
+            {"id": "falls", "wall": False, "src": "IMG/toronto-2.jpg", "x": 374, "z": 170, "y": 150, "ry": -90,
              "title": "The falls, small",
              "alt": "Illustration of a miniature waterfall spilling over a navy ledge into white "
                     "mist on a lit table, a tiny railing along the top.",
              "caption": "The falls at table scale: a sheet of water, a ledge, and mist. The model "
                         "moves; the picture holds still."},
-            {"id": "market", "src": "IMG/toronto-3.jpg", "x": -374, "z": 320, "y": 150, "ry": 90,
-             "title": "The market, small",
+            {"id": "market", "wall": False, "src": "IMG/toronto-3.jpg", "x": -374, "z": 290, "y": 150, "ry": 90,
+             "title": "St. Lawrence Market, small",
              "alt": "Illustration of a miniature market street on a lit table: small stalls with "
                     "striped awnings, stacked crates, and warm hanging lamps.",
-             "caption": "A market reduced to awnings, crates and warm light. No stall is named; a "
-                        "market reads without lettering."},
+             "caption": "The South Market hall, which was Toronto's first City Hall before it was a "
+                        "market, with a stall row under it. No vendor is named and nothing is "
+                        "lettered: a market reads by its awnings, its crates and its warm light."},
         ],
         "slots_title": "Places in the hall",
         "slots": [
@@ -2962,17 +3140,17 @@ DISTRICTS = [
              "note": "The second table, where the water moves.",
              "state": "Held by a drawn frame; a photograph of the model takes the slot when one "
                       "arrives."},
-            {"label": "The market, small",
-             "note": "The third table, where the stalls stand.",
+            {"label": "St. Lawrence Market, small",
+             "note": "The third table: the South Market hall and the stall row under it.",
              "state": "Held by a drawn frame; a photograph of the model takes the slot when one "
                       "arrives."},
         ],
         "stations": [
             {"z": 0, "label": "the mouth of the hall"},
-            {"z": 120, "label": "by the lake table"},
-            {"z": 170, "label": "by the falls table"},
-            {"z": 320, "label": "by the market table"},
-            {"z": 296, "label": "by the city table"},
+            {"z": 140, "label": "by the lake table"},
+            {"z": 200, "label": "by the falls table"},
+            {"z": 400, "label": "by the market table"},
+            {"z": 460, "label": "by the city table"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
                  "title": "The door at your back", "hint": "It opens onto the street, at this "
@@ -2998,6 +3176,10 @@ def wall_frames(d):
     frame the owner deletes from the data simply stops being on the wall."""
     out = []
     for n, fr in enumerate(d.get("frames", [])):
+        # `wall: False` keeps a frame in the reel and the printed list but takes it off the wall,
+        # for a district whose walls are built rather than illustrated.
+        if fr.get("wall") is False:
+            continue
         out.append({
             "id": f'frame-{fr["id"]}',
             "kind": "poster frame",
@@ -3161,6 +3343,9 @@ def walk_object(o):
     leaf_attr = f' data-leaf="{escape(o["leaf"])}"' if o.get("leaf") else ""
     # A diorama table authors its own ground: the lid carries the terrain tile the record names.
     top_attr = f' data-top="{escape(o["top"])}"' if o.get("top") else ""
+    # `liton` is the phase in the room's own day at which this prop's lights come up, so the
+    # district can light one building after another instead of switching the whole quay on at once.
+    liton_attr = f' data-liton="{o["liton"]}"' if o.get("liton") is not None else ""
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
@@ -3173,7 +3358,8 @@ def walk_object(o):
     return (f'<button type="button" class="walk-hit" data-obj="{escape(o["id"])}" '
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
-            f'data-d="{dep}" style="{style}"{frame}{texture}{leaf_attr}{top_attr}{states}{leave}></button>')
+            f'data-d="{dep}" style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
+            f'{states}{leave}></button>')
 
 
 def walk_html(d, drawer):
@@ -3405,17 +3591,60 @@ rooms_pages = {}
 for d in open_districts:
     body = walk_html(d, district_drawer(d)) + "\n" + rooms_plate_html([d])
     rooms_pages[d["page"]] = shell_page(f'{d["label"]} · Rooms · Hua-Xu Zhong', body, d["page"],
-                                         d.get("cover", "IMG/1.jpg"))
+                                         d.get("cover", "IMG/1.jpg"), room=d)
+
+# A duplicate key in a dict literal is legal Python and silently keeps the last one, so a row of
+# lanterns can sit in this file looking authored while another list, further down the same record,
+# is the one that reaches the page. This record had exactly that: two `"lanterns"` keys, and the
+# edits were going into the dead one. It costs one parse of this file to catch the whole class.
+def _assert_no_duplicate_keys():
+    import ast as _ast
+    _tree = _ast.parse((ROOT / "_gen_html.py").read_text(encoding="utf-8"))
+    _bad = []
+    for _node in _ast.walk(_tree):
+        if not isinstance(_node, _ast.Dict):
+            continue
+        _seen, _dupes = set(), set()
+        for _k in _node.keys:
+            if isinstance(_k, _ast.Constant) and isinstance(_k.value, str):
+                if _k.value in _seen:
+                    _dupes.add(_k.value)
+                _seen.add(_k.value)
+        if _dupes:
+            _bad.append((getattr(_node, "lineno", 0), sorted(_dupes)))
+    if _bad:
+        raise SystemExit(
+            "duplicate dict keys in _gen_html.py (later ones win, silently):\n" +
+            "\n".join(f"  line {ln}: {', '.join(repr(k) for k in ks)}" for ln, ks in _bad))
+
+
+_assert_no_duplicate_keys()
 
 for _path, _html in rooms_pages.items():
     (ROOT / _path).write_text(_html, encoding="utf-8")
 
 (ROOT / "robots.txt").write_text(
     f"User-agent: *\nAllow: /\n\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")
+# The lastmod was pinned to 2026-08-31 by hand, so the sitemap had been telling crawlers the site
+# had not changed in five weeks while the branch moved on underneath it. It now comes from the HEAD
+# commit's date, which is both true and stable: the same content produces the same file, so the
+# build stays idempotent instead of stamping itself with today and churning on every run.
+try:
+    LASTMOD = subprocess.run(["git", "log", "-1", "--format=%cs"], cwd=ROOT,
+                             capture_output=True, text=True, check=True).stdout.strip()
+except Exception:
+    LASTMOD = "2026-08-31"
+if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", LASTMOD or ""):
+    LASTMOD = "2026-08-31"
+# The homepage is the one a name search should land on; the rooms come after it.
+PRIORITY = {"index.html": "1.0", "about.html": "0.9", "research.html": "0.9",
+            "position.html": "0.8", "publications": "0.8"}
 (ROOT / "sitemap.xml").write_text(
     '<?xml version="1.0" encoding="UTF-8"?>\n'
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    + "".join(f"  <url><loc>{SITE}/{p}</loc><lastmod>2026-08-31</lastmod></url>\n"
+    + "".join(f"  <url><loc>{SITE}/{p}</loc><lastmod>{LASTMOD}</lastmod>"
+              + (f"<priority>{PRIORITY[p]}</priority>" if p in PRIORITY else "")
+              + "</url>\n"
               for p in PUBLIC_PAGES + [d["page"] for d in open_districts
                                        if d["page"] not in PUBLIC_PAGES])
     + "</urlset>\n", encoding="utf-8")
