@@ -2630,6 +2630,14 @@ DISTRICTS = [
              "title": "A second ship, further out",
              "hint": "The strait is never empty. Smaller and further off, which is what makes the "
                      "near one read as nearer."},
+            {"id": "stationfront-mj", "kind": "stationfront", "x": -104, "z": 706, "y": 80, "ry": 0,
+             "w": 196, "h": 118, "d": 84,
+             "title": "Moji Port Station",
+             "hint": "Opened in 1914 and still the station it was: a wooden two-storey in the "
+                     "neo-Renaissance manner, symmetric, its centre shaped like the character "
+                     "\u9580 -- a gate, the first half of the port's own name. In 1988 it became "
+                     "the first station building in Japan to be designated an Important Cultural "
+                     "Property. Restored 2012 to 2019. Nothing here claims a train or a platform."},
             {"id": "front-mj", "kind": "front", "x": -252, "z": 360, "y": 80, "ry": 90,
              "w": 78, "h": 66, "d": 62,
              "glow": [{"r": 110, "k": 0.6, "dy": 44, "tint": "rgba(255,180,110,0.5)"}],

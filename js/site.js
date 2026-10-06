@@ -1275,7 +1275,12 @@ function leaveOverlay(root, trigger) {
                   falls: "#dfe9f2", pool: "#1d3a55", boat: "#e8eef4",
                   // Blue Wing Moji is painted blue, and that is the whole reason people photograph
                   // it: a blue bascule against red brick and a dark harbour.
-                  drawbridge: "#3f6ea8", ship: "#5a6472" };
+                  drawbridge: "#3f6ea8", ship: "#5a6472",
+                  // Moji Port Station is timber painted cream over dark wood. It reads cream, but
+                  // cream under a hall's lighting, not in daylight: at #c9bda6 the whole facade
+                  // measured 246/255 on screen and the building was a white rectangle with no
+                  // windows in it, because everything it was made of had already blown out.
+                  stationfront: "#8a7d67" };
   /* Props are named `kind`, `kind-2`, `kind-left`, `kind-s1`… and the shape/tint tables were keyed
      by the *whole* id — so `front-a` was a flat plane while `front` was a painted recess, and whole
      families of props (banners, crates, snow banks, stall curtains) lost their bodies to a fallback.
@@ -1311,7 +1316,7 @@ function leaveOverlay(root, trigger) {
                   plinth: "plinth", tower: "tower", skyline: "skyline", dome: "dome",
                   falls: "falls", pool: "pool", boat: "boat",
                   // Moji's kit: the drawbridge the district is known by, and the ships it opens for.
-                  drawbridge: "drawbridge", ship: "ship",
+                  drawbridge: "drawbridge", ship: "ship", stationfront: "stationfront",
                   // The market's hall: a brick nave with an arcade under a gallery floor, and a
                   // cupola with a clock in it. A market that is only stalls is a market in the
                   // abstract -- this one is a building and the stalls belong to it.
@@ -2829,6 +2834,66 @@ function leaveOverlay(root, trigger) {
             if (gq) { gq.lit = 1.5 + 0.5 * lift; gq.nolite = true; drawn.push(gq); }
           });
         }
+        }
+      } else if (shape === "stationfront") {
+        /*
+           Moji Port Station, 1914.
+
+           A wooden two-storey in the neo-Renaissance manner, dead symmetric, and the thing said
+           about it more than anything else is that its centre is shaped like the character 門 --
+           a gate, which is also the first half of the port's own name. So the centre is built as
+           a gate and not drawn as one: two piers, a lintel across them, and a gable riding over,
+           with the entrance a dark opening between the piers where a building of this age would
+           have one. In 1988 it became the first station building in Japan to be designated an
+           Important Cultural Property, and it was restored again between 2012 and 2019.
+
+           Nothing here claims a train, a platform or a timetable. It is a facade on a table. */
+        const w = m.w, h = m.h, d = m.d;
+        // The volume first, so the building has a body before it has a face.
+        facesOf(m).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
+          if (q) { q.lit = lit * 0.86; drawn.push(q); }
+        });
+        // The elevation, laid on the face turned toward the walk. `u` runs across the facade,
+        // `y` runs up it, and everything is mirrored about u = 0 because the building is.
+        const zf = m.z - d / 2 - 0.6;
+        const F = (u, y) => [m.x + u, m.y + y, zf];
+        const Q = (pts, col, l) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; drawn.push(q); }
+        };
+        const rect = (u0, u1, y0, y1, col, l) =>
+          Q([F(u0, y0), F(u1, y0), F(u1, y1), F(u0, y1)], col, l);
+        const tri = (u0, u1, yb, yt, col, l) =>
+          Q([F(u0, yb), F(u1, yb), F((u0 + u1) / 2, yt)], col, l);
+        const N = NIGHT();
+        // A window: dark glass by day, a lit rectangle after dark, which is what the district's
+        // illumination actually reads as from across the basin.
+        const win = (uc, yc, ww, hh) =>
+          Q([F(uc - ww / 2, yc), F(uc + ww / 2, yc), F(uc + ww / 2, yc + hh), F(uc - ww / 2, yc + hh)],
+            `rgba(255,216,158,${(0.06 + 0.44 * N).toFixed(3)})`,
+            1.15 + 0.35 * N);
+        const gw = w * 0.17;                                  // half the gate's width
+        const cap = h * 0.80;                                  // where the eaves sit
+        // String courses: the horizontal lines a Renaissance building is divided by.
+        rect(-w / 2, w / 2, h * 0.46, h * 0.50, mix(base, -0.30), lit * 0.9);
+        rect(-w / 2, w / 2, cap, cap + h * 0.035, mix(base, -0.34), lit * 0.85);
+        // 門: two piers, the dark entrance between them, the lintel, and the gable over all.
+        rect(-gw - w * 0.045, -gw, 0, h * 0.55, mix(base, -0.16), lit);
+        rect(gw, gw + w * 0.045, 0, h * 0.55, mix(base, -0.16), lit);
+        rect(-gw, gw, 0, h * 0.55, mix(base, -0.62), lit * 0.8);
+        rect(-gw - w * 0.05, gw + w * 0.05, h * 0.55, h * 0.63, mix(base, -0.26), lit);
+        tri(-gw - w * 0.05, gw + w * 0.05, h * 0.63, cap, mix(base, -0.22), lit);
+        // The flanks: two storeys of windows, four a side, mirrored.
+        for (let i = 0; i < 4; i++) {
+          const u = gw + w * 0.115 + i * w * 0.105;
+          const ww = w * 0.072, hh = h * 0.20;
+          if (u + ww / 2 > w / 2 - w * 0.02) continue;
+          win(-u, h * 0.14, ww, hh); win(u, h * 0.14, ww, hh);
+          win(-u, h * 0.60, ww, hh * 0.82); win(u, h * 0.60, ww, hh * 0.82);
         }
       } else if (shape === "stall") {
         /* A market stall at table scale: a counter, a dark opening under a striped awning. The
