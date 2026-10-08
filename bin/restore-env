@@ -34,6 +34,11 @@ if [ -n "$BRANCH" ]; then
     git reset --soft "origin/$BRANCH"
     echo "== re-pointed $BRANCH at origin (refs reverted, files kept)"
   fi
+  # A wiped .git takes the branch's upstream with it, and a bare `git push` then fails with nothing
+  # a reader would notice as a failure -- the commit lands nowhere and the turn ends claiming it was
+  # pushed. Cheap to reassert, expensive to miss.
+  git rev-parse --abbrev-ref "$BRANCH@{upstream}" >/dev/null 2>&1 \
+    || git branch --set-upstream-to="origin/$BRANCH" "$BRANCH" >/dev/null 2>&1 || true
   git reset -q 2>/dev/null || true
 fi
 echo "HEAD $(git log --oneline -1)  [branch ${BRANCH:-unknown}]"

@@ -74,6 +74,10 @@ MIT、56 096 行 JS、26 個 district、**src/ 裡沒有一張圖片**（每個�
   然後放著不動。
 - **PyYAML 不在沙箱裡**（`quick_validate.py` 需要它）：`pip install --break-system-packages pyyaml`
   一次即可，但**不會**跟著 workspace 保存。沒有 `claude` CLI，所以 skill-creator 的 eval 那半沒跑。
+- **refs 被洗掉時，分支的 upstream 也一起不見**——而沒有 upstream 的 `git push` **不會失敗得很明顯**，
+  commit 根本沒出去，回合結束時卻像推過了。`bin/restore-env` 現在會在需要時
+  `git branch --set-upstream-to=origin/<branch>` 把它接回來（這次真的踩到：第一次 `git push`
+  只回了三行 autoSetupRemote 提示，remote 還停在舊 commit）。
 
 ### 驗證（本輪結束時）
 
