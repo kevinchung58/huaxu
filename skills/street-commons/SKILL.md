@@ -69,22 +69,46 @@ a run of props between. The layout math is in `references/street-system.md`; wha
 
 The scene's day/night is already a cycle: `dayPhase` over `DAYLEN = 240` seconds, `SUN()` and
 `NIGHT()` derived from it, `AMBIENT` and `FOG_MAX` as exposure, one `lightAt()` falloff everything
-obeys. **`(T + 78) % 240` is 78 s — night, and that is what the screenshot above is, and no record
-can change it, because the phase is a constant in `js/site.js`.**
+obeys. `street.html` opens at `(T + 78) / 240`, which is morning, and the cycle passes its own noon
+about 42 s after the page loads.
+
+**And that noon is not daylight.** Measured in a headless Chromium on the served page — mean luma of
+the whole frame, 0–255, at five points of the street's own day:
+
+| when | `dayPhase` | SUN | mean luma | top 12% (sky/lid) | mid | bottom 12% (floor) |
+|---|---|---|---|---|---|---|
+| page load | 0.33 | 0.73 | 76.9 | 59.1 | 85.1 | 86.1 |
+| +22 s | 0.42 | 0.97 | 83.1 | 63.3 | 89.6 | 94.6 |
+| **+42 s (noon)** | **0.50** | **1.00** | **83.2** | **63.4** | 89.6 | 95.0 |
+| +97 s (dusk) | 0.73 | 0.27 | 68.8 | 53.7 | 79.1 | 75.4 |
+| +152 s | 0.96 | 0.04 | 57.6 | 45.9 | 71.7 | 59.3 |
+
+**The sunniest moment of the street's day is a third of full brightness**, and six luma points above
+the frame the page opens on. So the street does not "start at night": the sun is real, it moves, and
+it is nearly invisible, because **almost nothing in the frame answers to it**. The sky over the lane
+is a record-authored night gradient (`#4a5a84` / `#2c3859` / `#1e2946`) under a flat `#232f4a` lid
+that `drawRoom()` paints at `CEIL`, and every material tile — asphalt, plaster, brick, shutter, water —
+is a night value. Turning `SUN` up cannot light a scene whose surfaces were authored for a lamp.
+
+Measure this before and after any daylight work — it is one page load and a screenshot, and a claim
+about "sun" that is not this table is an assertion.
 
 So "有陽光" is one of three changes, and they are not equivalent:
 
-1. **Start a page in the day** — offset the phase per page (`data-walk-day`), and the street opens at
-   noon. Cheapest, changes no material, and the street's own surfaces were authored for a night and
-   would now be read in daylight for the first time: some of them will be wrong, which is a finding
-   rather than a problem.
-2. **Make a place always-day** — a page that pins the phase, so the promenade has a sun and a shadow
-   and a blue water tile by day and a lamp-lit quay at dusk. This is the one that matches what the
-   owner described, and it needs the palette work below.
+1. **Give the lane its own day** — a per-page start phase and cycle length, so the street is at noon
+   when the visitor arrives and stays there instead of handing them dusk four minutes in (the cycle
+   is 240 s). Cheapest, changes no material, and the measurement above says what it buys: the frame
+   the page already opens on, plus six luma.
+2. **Make one place always-day** — pin the phase and give the palette its daylight values: the sky
+   painted as sky, a sunlit water tile, sand and shingle, and a shadow strategy. This is the one that
+   matches what the owner described, and it is a renderer change with a checklist rather than a
+   config line.
 3. **Change the site's day** — a decision about every room, including the two whose whole subject is
    dusk and a lit lane. Do not do this without asking.
 
-What any of them needs before it works, measured against the current files rather than guessed:
+All three start from the same deficit, and it is the reason option 1 is not enough on its own: the
+street's surfaces were authored for a lamp, so its noon is the night frame plus six luma points. What
+any of them needs, read off the current files rather than guessed:
 
 - **The sky is painted with a lintel over it.** `drawRoom()` paints a flat `#232f4a` quad over the
   whole lane at `CEIL` every panel (and the comment concedes "out of the bulbs' reach, and it should
