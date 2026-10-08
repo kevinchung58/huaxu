@@ -10,8 +10,9 @@ says what must be true of the repository, this file says how to get a district r
 The loadable halves of it live in `skills/`, and those are what an agent should open when the work
 starts: `district-author` (the record, the build rules, the gate), `place-intake` (photographs to a
 record), `japan-place` (what a Japanese place is made of — the object table in centimetres, the
-night, the prohibitions, and the sakura-crossing study note) and `lane-prop` (one object, light or
-state, and the measurement that proves it arrived). This file is the method behind all four.
+night, the prohibitions, and the sakura-crossing study note), `street-commons` (the hub street, a
+new region along it, a promenade, and the honest cost of daylight) and `lane-prop` (one object, light
+or state, and the measurement that proves it arrived). This file is the method behind all five.
 
 ---
 
