@@ -1903,12 +1903,21 @@ DISTRICTS = [
         # Longer than it used to be on purpose: the rooms now stand a walk apart, so stepping out
         # of one and into the next is a journey with the other doors ahead of you, not three doors
         # in a row. max_d runs past the far wall so the open end is still open ground.
+        # The night lane runs out of doors and the far end opens instead: 3400 walk units of open
+        # ground past the record's own 1040.
         "lane": {"w": 700, "d": 1040, "ceil": 620, "back": 300, "max_d": 3400},
-        "purpose": "The street the three rooms stand on, walked under a night sky",
+        # The street is walked in the day. Its record says so, and the renderer answers by giving the
+        # page its own clock (fifteen minutes rather than four, opening just before noon) and by
+        # adding the sun to every surface rather than washing the night tiles brighter — see the
+        # `DAY()`/`emit()` note in `js/site.js`. Four minutes handed a visitor dusk before they had
+        # walked to the first door, and the brief is a street you look around in.
+        "day": True,
+        "purpose": "The street the rooms stand on, walked in the afternoon sun",
         "status": "open",
         "kind": "personal",
-        "blurb": "One straight street at night. Three lit doors, one per room, a walk apart, and "
-                 "the open end of the street for a skyline.",
+        "blurb": "One straight street in the afternoon. Three lit doorways, one per room, a walk "
+                 "apart, a Japanese half under a lantern string at the far end, and open ground "
+                 "past the last wall.",
         "objects": [
             # The three doors. Each names the room it opens onto — that is navigation, not a claim —
             # and each carries a lamp over it, because on a night street a door you can read is a
@@ -1996,6 +2005,34 @@ DISTRICTS = [
              "title": "An air conditioner over the first door",
              "hint": "High on the wall, dripping nothing: the street's one horizontal above head "
                      "height."},
+            # The far half is the Japanese quarter, and these five props are what says so without a
+            # word: the machine every Japanese street has at its corner, the folding board and the
+            # bike against the shutters, a second bin, and the recycle crate. Their materials and
+            # proportions are the ones the Tokyo and Moji records already committed to
+            # (`skills/japan-place/references/japan-vocabulary.md`), so the three rooms cannot drift
+            # apart about how wide a vending machine is.
+            {"id": "vending-s", "kind": "vending", "x": 322, "z": 720, "y": 0, "ry": -90,
+             "glow": [{"r": 130, "k": 0.9, "dy": 150}],
+             "title": "The vending machine on the Japanese half",
+             "hint": "It is the one light that runs all day on this street: a machine with a lit "
+                     "shelf of cans is what tells you the far half is Japan, and it says it without "
+                     "a single character. Nothing is claimed about what it sells."},
+            {"id": "bikes-s", "kind": "bikes", "x": 320, "z": 660, "y": 0, "ry": -90,
+             "title": "Bicycles left against the shutters",
+             "hint": "Drawn. Two machines at a standstill are most of what a working street has to "
+                     "say about the people who are not in it."},
+            {"id": "signA-s2", "kind": "signA", "x": 318, "z": 620, "y": 150, "ry": -90,
+             "title": "A second folding board, blank",
+             "hint": "Both faces blank, like the first one: the lettering would belong to a shop, "
+                     "and there is no shop here to own it."},
+            {"id": "recycle-s", "kind": "recycle", "x": -318, "z": 560, "y": 0, "ry": 90,
+             "title": "A recycling crate by the wall",
+             "hint": "Lid down. The street's kit repeats the rooms' kit on purpose — one drawn "
+                     "world, whichever quarter you are standing in."},
+            {"id": "bin-s2", "kind": "bin", "x": -318, "z": 840, "y": 0, "ry": 90,
+             "title": "A bin past the last door",
+             "hint": "Where the far quarter runs out, so the walk to the open end has something "
+                     "at its edge."},
         ],
         # The street lights itself the way an open street does: two street lamps on the poles, a
         # broad cool skylight (bulb:false — it is the night sky dome, not a fitting), and the doors'
@@ -2009,6 +2046,32 @@ DISTRICTS = [
             # skyline through it, and without this the last stretch reads as a dead end. Cool, soft,
             # no bulb — it is the glow of somewhere open, not a fitting on the street.
             {"x": 0, "y": 190, "z": 1016, "r": 135, "k": 0.5, "tint": "#9fb2d8", "bulb": False},
+            # Lanterns on the two far wires, four to a wire and at slightly different heights: a
+            # string of lanterns reads as a street because they are a row, not a pair, and the drop
+            # varies the way a hand-tied one does. 22 cm across and 2.9-3.2 m up is a festival-size
+            # paper lantern hanging over a 7 m lane; two big ones read as signs. This is the Japanese
+            # half's own light: a lantern is a
+            # body that hangs on a cable (the local rule is that nothing may be lit by a source the
+            # data does not name, so each of these hangs from the wire at its own z — 470 and 780 —
+            # and the wire above it is authored a few lines down). They are warm and they swing,
+            # which is what makes the last stretch of the street a place rather than a corridor, and
+            # they cost one light each: `size` and `h` are the lantern's own centimetres.
+            {"x": -279, "y": 318, "z": 470, "r": 30, "k": 0.5, "body": "lantern",
+             "size": 22, "h": 318, "swing": 1.6, "period": 5.2, "phase": 0.4},
+            {"x": -99, "y": 306, "z": 470, "r": 30, "k": 0.5, "body": "lantern",
+             "size": 22, "h": 306, "swing": 1.7, "period": 4.6, "phase": 2.1},
+            {"x": 99, "y": 312, "z": 470, "r": 30, "k": 0.48, "body": "lantern",
+             "size": 22, "h": 312, "swing": 1.5, "period": 4.9, "phase": 1.1},
+            {"x": 279, "y": 300, "z": 470, "r": 30, "k": 0.48, "body": "lantern",
+             "size": 22, "h": 300, "swing": 1.6, "period": 5.4, "phase": 3.0},
+            {"x": -279, "y": 316, "z": 780, "r": 30, "k": 0.5, "body": "lantern",
+             "size": 22, "h": 316, "swing": 1.4, "period": 5.8, "phase": 1.2},
+            {"x": -99, "y": 302, "z": 780, "r": 30, "k": 0.5, "body": "lantern",
+             "size": 22, "h": 302, "swing": 1.5, "period": 5.1, "phase": 2.6},
+            {"x": 99, "y": 310, "z": 780, "r": 30, "k": 0.48, "body": "lantern",
+             "size": 22, "h": 310, "swing": 1.6, "period": 4.4, "phase": 0.7},
+            {"x": 279, "y": 298, "z": 780, "r": 30, "k": 0.48, "body": "lantern",
+             "size": 22, "h": 298, "swing": 1.4, "period": 5.6, "phase": 3.9},
         ],
         "wires": [
             {"a": [-350, 512, 180], "b": [350, 504, 180], "sag": 42},
@@ -2088,11 +2151,19 @@ DISTRICTS = [
                                          "Blue Wing and the ships, at dusk.",
              "state": "Open — the last door on the left."},
         ],
+        # The stations are the places the street is worth standing in, and the last four are the
+        # Japanese half: the lantern pair over the middle, the machine and the bicycles against the
+        # shutters, and the last door on the left. Six became eight because the far half is now a
+        # quarter with furniture in it rather than a stretch of wall, and a place worth dressing is
+        # worth a stop. The walk is the same length; nothing moved.
         "stations": [
             {"z": 0, "label": "the mouth of the street"},
             {"z": 160, "label": "by the Toronto door"},
-            {"z": 470, "label": "by the Tokyo door"},
+            {"z": 300, "label": "the middle of the street, under the wires"},
+            {"z": 470, "label": "by the Tokyo door, under the lanterns"},
+            {"z": 620, "label": "the boards and the bicycles"},
             {"z": 780, "label": "by the Fukuoka door"},
+            {"z": 880, "label": "the machine at the end of the shutters"},
             {"z": 1040, "label": "the end of the street"},
             {"z": 1150, "label": "out in the open"},
         ],
@@ -3430,9 +3501,22 @@ def walk_html(d, drawer):
     # An open-world far end: the record authors how far the walker may keep going (walk units), and
     # the renderer lets the world continue past the last wall. Absent, the clamp is the wall itself.
     max_d_attr = f' data-lane-max-d="{lane["max_d"]}"' if lane.get("max_d") else ""
+    # A place whose subject is the day: `"day": True` on the record, or a dict to author the cycle,
+    # where it opens in that cycle, and how strong the sun is (`{"cycle": 900, "start": 0.45,
+    # "gain": 1}`). The renderer reads all four off the layer, like the lane box and the eye — the
+    # day of a place belongs to the place, and the two rooms whose subject is dusk simply do not say
+    # it. `cycle` is seconds: four minutes hands a visitor dusk before they have looked around once,
+    # so a day page runs the hall's own fifteen.
+    day = d.get("day")
+    day_attr = ""
+    if day:
+        opts = day if isinstance(day, dict) else {}
+        day_attr = (f' data-lane-day="1" data-lane-day-cycle="{opts.get("cycle", 900)}"'
+                    f' data-lane-day-start="{opts.get("start", 0.45)}"'
+                    f' data-lane-day-gain="{opts.get("gain", 1)}"')
     return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}"
        data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
-       data-lane-back="{lane["back"]}"{max_d_attr} data-eye="{EYE}">
+       data-lane-back="{lane["back"]}"{max_d_attr}{day_attr} data-eye="{EYE}">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
        Space to jump, E to open what you are standing in front of, L for the list, I for this note.

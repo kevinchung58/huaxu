@@ -88,6 +88,15 @@ Dressing fails in one of two ways and both are boring to fix late:
   authored next to it, and its wire present in `data-walk-wires`.
 - `liton` on the prop is the phase at which *its* windows come up. Stagger it, and never let the
   interval cross midnight — `p - liton` goes negative and `ease01` puts the lights straight out.
+- **A place with a sun changes what a light is worth.** On a page whose record says `"day": True`
+  (`skills/street-commons` §3) every lit thing is dialled down by how high the sun is, so a lamp or a
+  machine keeps its body and loses its halo. Three fields decide what a surface or a source does with
+  the sun, and they go on the *quad*, not the record's props: `day: false` (this is not a lit surface
+  — sky, distant masses, paper lanterns), `daygain` (take this fraction of the sun: the compound at
+  the end of the street takes 0.45–0.72, because its own `lit` was authored for a night and a bright
+  surface that is then lifted is a blown-out one), and `nolite` (never darkened by night **and**
+  never lifted, which is what a lantern's paper wants). Getting these wrong is invisible in a diff
+  and obvious in a frame.
 
 ## 4. A prop that answers: `states`, and what a state may be
 

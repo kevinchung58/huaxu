@@ -32,7 +32,14 @@ Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo 
   matching one before doing the matching kind of work.
 - **The hub is a street with regions on it, and that is the owner's brief** (2026-10-08): one street
   to walk, a region for Japan and a region for Canada, a door into each room, and — not built —
-  sea or harbour views along the way in daylight. Do not turn that into a second page and do not put
+  sea or harbour views along the way in daylight.
+- **The street is a day, and a record says so.** `"day": True` (or `{"cycle", "start", "gain"}`) on a
+  district makes the page run its own clock and the renderer add the sun to every surface — the
+  mechanism, its measurements and its four consequences are in `skills/street-commons` §3, and the
+  per-quad vocabulary (`day: false`, `daygain`, `nolite`) is in `skills/lane-prop` §3. The two rooms
+  whose subject is dusk simply do not ask for it, and their frames are unchanged by it. Daylight
+  **cannot** be got by raising `SUN()`: `lit` tops out at a 28% wash over a tile that is a night
+  value, which moved the street's whole-frame luminance by six points and looked like nothing. Do not turn that into a second page and do not put
   the doors back into a chain: a region is a change of material, light and what is standing on the
   pavement, along the one spine, with a station that makes it a place worth standing in. The layout
   arithmetic is `skills/street-commons/references/street-system.md`.

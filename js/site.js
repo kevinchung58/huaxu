@@ -1333,11 +1333,22 @@ function leaveOverlay(root, trigger) {
   // A few props are named for what they are, not for the kind that draws them; these are the aliases.
   Object.assign(SHAPE, { pole: "box", barrel: "box", stool: "box", lamp: "box",
                          curtain: "cloth", stall: "stall", ledge: "plane" });
-  const mix = (hex, k) => {
-    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const mix = (hex, k) => {    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
     const to = k >= 0 ? [255, 238, 208] : [10, 17, 40];
     const a = Math.abs(k);
     return `rgb(${c.map((v, i) => Math.round(v + (to[i] - v) * a)).join(",")})`;
+  };
+  /* Two authored colours, blended. `mix` can only push a colour toward warm white or the void's navy,
+     which is enough for a shade and not enough for a sky: a sky that goes from a deep blue overhead to
+     a pale one at the horizon is two colours at either end of a gradient, and the gradient is the
+     sky. Returns hex, so a blend can be blended again (`blendHex(a, blendHex(b, c, t), u)`). */
+  const blendHex = (a, b, t) => {
+    const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
+    const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
+    return "#" + pa.map((v, i) => {
+      const x = Math.round(v + (pb[i] - v) * t);
+      return (x < 16 ? "0" : "") + x.toString(16);
+    }).join("");
   };
   const ZERO8 = [0, 0, 0, 0, 0, 0, 0, 0];
   const quads = [];
@@ -1441,10 +1452,31 @@ function leaveOverlay(root, trigger) {
   const DAYLEN = 240;                                  // seconds for one full day
   const dayPhase = () => ((T + 78) / DAYLEN) % 1;      // 0 midnight · 0.25 dawn · 0.5 noon · 0.75 dusk
   const SUN = () => clamp(Math.sin((dayPhase() - 0.25) * Math.PI * 2) * 0.5 + 0.5, 0, 1);
-  const NIGHT = () => 1 - SUN();
+  const NIGHT = () => 1 - sunNow();
+  /* A lane whose place is a day.
+
+     The street is walked in sunlight, and a cycle of four minutes hands a visitor dusk before they
+     have looked around once. So a record may say "this place is a day" and the page then runs its own
+     clock: a longer cycle (fifteen minutes, which is what the reference hall uses and the least a
+     visitor will actually stand in) starting a little before noon, so the light is already high when
+     they arrive and drifts slowly down. Night still happens; it is just no longer the first thing
+     that happens.
+
+     The numbers are authored in the record and stamped on the layer with everything else the
+     renderer reads (`data-lane-day-*`), because a place's own day belongs to the place. */
+  const DAYPAGE = attr("laneDay", 0) ? true : false;
+  const DAY_LEN = attr("laneDayCycle", 900);
+  const DAY_AT = attr("laneDayStart", 0.45);           // where the page opens in its own cycle
+  const DAY_GAIN = attr("laneDayGain", 1);
+  const phaseNow = () => (DAYPAGE ? ((T / DAY_LEN) + DAY_AT) % 1 : dayPhase());
+  const sunNow = () => clamp(Math.sin((phaseNow() - 0.25) * Math.PI * 2) * 0.5 + 0.5, 0, 1);
+  /* How much sun is on the place, as a factor rather than a truth: 0 from dusk to dawn, 1 at noon.
+     The floor is what decides whether a room reads as "lit by its own lamps" or "outdoors", and 0.45
+     is chosen so dawn and dusk are still dusk. */
+  const DAY = () => (DAYPAGE ? clamp((sunNow() - 0.45) / 0.45, 0, 1) : 0);
   const swayOf = (L) => (!L.swing || reduce() ? 0 : Math.sin(T * 6.28319 / L.period + L.phase) * L.swing);
   const lightAt = (px, py, pz) => {
-    let v = AMBIENT * (0.18 + 0.82 * SUN());
+    let v = AMBIENT * (0.18 + 0.82 * sunNow());
     let lit = 0;
     for (let i = 0; i < lamps.length; i++) {
       const L = lamps[i];
@@ -1458,7 +1490,11 @@ function leaveOverlay(root, trigger) {
     v += lit * (1.0 - 0.22 * NIGHT());
     return Math.min(1.7, v);
   };
-  const haze = (z) => clamp((z - 420) / 2450, 0, 1) * FOG_MAX;
+  /* Air. `FOG_MAX` is the hall's murk, and it is what made the first daylight pass read as a
+     foggy morning rather than a sunny street: measured at noon with the lift in and the haze
+     unchanged, the whole-frame luma was 180.7 while the floor and the middle of the frame differed
+     by 3 points. Where the record says the place is a day, the air clears as the sun rises. */
+  const haze = (z) => clamp((z - 420) / 2450, 0, 1) * FOG_MAX * (DAYPAGE ? 1 - 0.62 * DAY() : 1);
 
   const emit = (q) => {
     const path = () => {
@@ -1556,6 +1592,32 @@ function leaveOverlay(root, trigger) {
     const night = q.nolite ? 0 : NIGHT() * 0.5;
     const dark = Math.min(NIGHT_MAX, 1 - (1 - air) * (1 - night));
     if (dark > 0.01) { path(); g.fillStyle = `rgba(22,34,60,${dark.toFixed(3)})`; g.fill(); }
+    /* Sun, which is light *added* to a surface rather than a wash laid over it.
+
+       Every tile in this file is a night value: asphalt is #37435c, dado #3f5170, concrete #6b7380.
+       That is right for a lane under lamps and it is why the sun could not be expressed through
+       `lit` — `lit` tops out at a 28% warm wash over the tile's own colour, so turning the sun up
+       changed the street's whole-frame luminance by six points (measured 76.9 at load against 83.2
+       at its own noon) while the visitor saw no daylight at all. Daylight is additive: the same quad
+       is filled again under `lighter`, in a warm near-white, by how high the sun is. Tinting the lift
+       warm rather than neutral is the whole difference between "outside" and "a brighter lamp".
+
+       `q.day === false` opts a quad out — used by nothing yet, and kept because the sky the lid
+       paints is the one surface the lift must not also light. */
+    /* `q.daygain` is how much of the sun a quad takes. Most surfaces take all of it; the compound
+       beyond the opening takes a fraction, because its own `lit` values were authored for a night and
+       a surface that is already bright and then lifted reads as blown out — the plaza at `lit: 1.1`
+       plus a full noon lift came back as a white smear where a paved square should be. Same mechanism
+       as `day: false`, one step gentler. */
+    const day = q.day === false || q.nolite ? 0
+      : DAY() * DAY_GAIN * (q.daygain === undefined ? 1 : q.daygain);
+    if (day > 0.01) {
+      path();
+      g.globalCompositeOperation = "lighter";
+      g.fillStyle = `rgba(146,136,116,${(day * 0.62).toFixed(3)})`;
+      g.fill();
+      g.globalCompositeOperation = "source-over";
+    }
   };
 
   const drawMarks = (C) => {
@@ -1636,24 +1698,36 @@ function leaveOverlay(root, trigger) {
        space that is 12 m long, and pretending it did is the sort of flourish this lane refuses. The
        air on these quads is authored instead of taken from `haze()`, because fog computed from a z of
        90000 would erase the very thing the window exists to show. */
+    /* The compound by day.
+
+       Its colours are the record's and they were authored for a night: a deep navy sky, a dark
+       mountain, a plaza that reads as wet asphalt. Sunlight does not fall on a mountain 1 200 m away
+       in this renderer — but *air* does, and what daylight does to a distance is wash it pale. So the
+       sky, the mountain and its cap are blended toward the day haze by how high the sun is, at a
+       strength of their own: the sky nearly all the way (it is the thing the light comes out of), the
+       mountain about half, and the cap almost not at all, because snow stays white. Everything here
+       that is a *surface* — the plaza, the crossing, the roofs, the city — takes the lane's own lift
+       instead, because the sun does fall on those. */
+    const dayC = (hex, k) => (DAYPAGE && DAY() > 0.01
+      ? blendHex(hex, blendHex(hex, "#d3e3f4", 0.62), DAY() * k) : hex);
     const band = (b) => {
       const q = add(C, [[-150000, b.y0, 120000], [150000, b.y0, 120000],
                         [150000, b.y1, 120000], [-150000, b.y1, 120000]],
-                    ZERO8, "flat", b.c, null);
-      if (q) { q.air = 0; q.lit = b.glow || 0; }
+                    ZERO8, "flat", dayC(b.c, 0.92), null);
+      if (q) { q.air = 0; q.lit = b.glow || 0; q.day = false; }
     };
     (bd.sky || []).forEach(band);
     const mt = bd.mountain;
     if (mt) {
       const q = add(C, [[mt.x - mt.half, mt.base, mt.z], [mt.x + mt.half, mt.base, mt.z],
                         [mt.x + mt.crown, mt.top, mt.z], [mt.x - mt.crown, mt.top, mt.z]],
-                    ZERO8, "flat", "#2e3d5c", null);
-      if (q) { q.air = 0.12; q.lit = 0.3; }
+                    ZERO8, "flat", dayC("#2e3d5c", 0.55), null);
+      if (q) { q.air = 0.12; q.lit = 0.3; q.day = false; }
       const line = mt.top - (mt.top - mt.base) * mt.snow;
       const cap = add(C, [[mt.x - mt.crown, mt.top, mt.z], [mt.x + mt.crown, mt.top, mt.z],
                           [mt.x + mt.crown * 1.9, line, mt.z], [mt.x - mt.crown * 1.9, line, mt.z]],
-                      ZERO8, "flat", "#c9d8f2", null);
-      if (cap) { cap.air = 0.14; cap.lit = 0.5; }
+                      ZERO8, "flat", dayC("#c9d8f2", 0.12), null);
+      if (cap) { cap.air = 0.14; cap.lit = 0.5; cap.day = false; }
     }
     const tw = bd.tower;
     if (tw) {
@@ -1702,7 +1776,12 @@ function leaveOverlay(root, trigger) {
         // surface whose far edge is allowed to dissolve into the sky, and FOG_MAX is what "far" is
         // defined as in this renderer. A hand-picked 0.65 here would be the renderer telling a
         // different story about distance than every other quad in the frame.
-        if (fl) { fl.air = 0.2 + ((z - plaza.z0) / span) * (FOG_MAX - 0.2); fl.lit = plaza.lit || 0.5; }
+        if (fl) {
+          fl.air = 0.2 + ((z - plaza.z0) / span) * (FOG_MAX - 0.2);
+          // Authored bright for a night under the city's own glow, and dialled back where there is a
+          // sun to do that job instead: a lit pavement plus a noon lift is white pavement.
+          fl.daygain = 0.72;
+        }
       }
     }
     const cross = bd.crossing;
@@ -1715,7 +1794,7 @@ function leaveOverlay(root, trigger) {
                           [cross.x1, cross.y + 1, z + cross.width / 2],
                           [cross.x0, cross.y + 1, z + cross.width / 2]],
                       ZERO8, "flat", "#c7d3e8", null);
-        if (q) { q.air = 0.18; q.lit = 0.72; }
+        if (q) { q.air = 0.18; q.lit = 0.72; q.daygain = 0.5; }
       }
       if (cross.diagonals) {
         // The scramble's own gesture: bands running along the crossing as well as across it, so the
@@ -1729,7 +1808,7 @@ function leaveOverlay(root, trigger) {
                             [cx + cross.width / 2, cross.y + 1, cz + cross.width / 2],
                             [cx - cross.width / 2, cross.y + 1, cz + cross.width / 2]],
                         ZERO8, "flat", "#b9c7de", null);
-          if (q) { q.air = 0.2; q.lit = 0.62; }
+          if (q) { q.air = 0.2; q.lit = 0.62; q.daygain = 0.5; }
         }
       }
     }
@@ -1745,13 +1824,13 @@ function leaveOverlay(root, trigger) {
                            [b.x - hw, b.h, b.z]],
           [(b.x - hw) * k, 0, (b.x + hw) * k, 0, (b.x + hw) * k, -b.h * k, (b.x - hw) * k, -b.h * k],
           "pat", winPat, null);
-      if (face) { face.air = 0.14; face.lit = glow; }
+      if (face) { face.air = 0.14; face.lit = glow * (DAYPAGE ? 1 - 0.55 * DAY() : 1); face.daygain = 0.45; }
       const side = b.x < 0 ? 1 : -1;
       const sf = add(C, [[b.x + side * hw, 0, b.z - hw], [b.x + side * hw, 0, b.z + hw],
                           [b.x + side * hw, b.h, b.z + hw], [b.x + side * hw, b.h, b.z - hw]],
           [(b.z - hw) * k, 0, (b.z + hw) * k, 0, (b.z + hw) * k, -b.h * k, (b.z - hw) * k, -b.h * k],
           "pat", winPat, null);
-      if (sf) { sf.air = 0.14; sf.lit = glow * 0.66; }
+      if (sf) { sf.air = 0.14; sf.lit = glow * 0.66 * (DAYPAGE ? 1 - 0.55 * DAY() : 1); sf.daygain = 0.45; }
       const lip = add(C, [[b.x - hw, b.h, b.z], [b.x + hw, b.h, b.z], [b.x + hw, b.h, b.z - 40],
                           [b.x - hw, b.h, b.z - 40]], ZERO8, "flat", "#0f1727", null);
       if (lip) lip.air = 0.1;
@@ -1765,11 +1844,11 @@ function leaveOverlay(root, trigger) {
       const face = add(C, [[r.x - hw, y0, r.z], [r.x + hw, y0, r.z],
                            [r.x + hw, y0 + r.h, r.z], [r.x - hw, y0 + r.h, r.z]],
           ZERO8, "flat", "#1d2740");
-      if (face) { face.air = 0.1; face.lit = tone; }
+      if (face) { face.air = 0.1; face.lit = tone; face.daygain = 0.55; }
       const eave = add(C, [[r.x - hw, y0 + r.h, r.z], [r.x + hw, y0 + r.h, r.z],
                            [r.x + hw, y0 + r.h, r.z - 140], [r.x - hw, y0 + r.h, r.z - 140]],
           ZERO8, "flat", "#2b3752");
-      if (eave) { eave.air = 0.08; eave.lit = tone * 1.5; }   // the edge the sky can still reach
+      if (eave) { eave.air = 0.08; eave.lit = tone * 1.5; eave.daygain = 0.55; }   // the edge the sky can still reach
     });
     /* And a raised road crossing the whole view, above the crossing below it: the one piece of
        infrastructure that says "this city is bigger than this window". The lane's own rule holds out
@@ -1781,7 +1860,7 @@ function leaveOverlay(root, trigger) {
       const deck = add(C, [[-ex.half, ex.y, ex.z], [ex.half, ex.y, ex.z],
                            [ex.half, ex.y + thick, ex.z], [-ex.half, ex.y + thick, ex.z]],
           ZERO8, "flat", "#39445c");
-      if (deck) { deck.air = 0.16; deck.lit = 0.34; }
+      if (deck) { deck.air = 0.16; deck.lit = 0.34; deck.daygain = 0.5; }
       const under = add(C, [[-ex.half, ex.y, ex.z], [ex.half, ex.y, ex.z],
                             [ex.half, ex.y, ex.z + depth], [-ex.half, ex.y, ex.z + depth]],
           ZERO8, "flat", "#1b2338");
@@ -1805,6 +1884,26 @@ function leaveOverlay(root, trigger) {
   const draw = () => {
     T = (window.performance && performance.now ? performance.now() : Date.now()) / 1000;
     if (!g) return;
+    /* The lid over the lane: night sky, or the sky this place actually has.
+
+       It is painted per panel, so colouring it by the panel's own depth gives a gradient in the one
+       direction a visitor looks — deeper overhead and at your feet, paler toward the far end, which is
+       where a sky's horizon is when you are standing in a street. Blended by how high the sun is
+       rather than switched, because a sky that changes colour in one frame is a light being switched
+       on, and the sun is not a switch.
+
+       The lift above is skipped for this quad (`day: false`): the sky is not a lit surface, it is
+       what the light comes out of, and adding the sun's colour to the sky makes the sky white. */
+    const lidAt = (z) => {
+      if (!DAYPAGE) return "#232f4a";
+      const d = DAY();
+      if (d <= 0.01) return "#232f4a";
+      const t = clamp((z - Z_BACK) / Math.max(1, Z_FAR - Z_BACK), 0, 1);
+      // Deep overhead, pale toward the far end, which is where the horizon is when you are standing
+      // in a street. Two named blues rather than `mix`, because `mix` would push it toward warm white
+      // and a sky washes out long before it goes white.
+      return blendHex("#232f4a", blendHex("#4a76ba", "#cfe2f2", 0.10 + 0.70 * t), d);
+    };
     // Recomputed per frame, not per resize: − / + are a field-of-view control, so the projection
     // has to answer them, and only the surface it is drawn on belongs to the device.
     const half = clamp(0.6 / zoom, 0.34, 0.92);
@@ -1841,7 +1940,7 @@ function leaveOverlay(root, trigger) {
       if (fl) { fl.lit = lightAt(0, 6, zc) * 1.15; fl.air = haze(fl.z) * 0.7;
                 fl.sz = fl.z + 4000; }   // the ground paints before anything standing on it
       const cl = add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
-          [0, 0, 0, 0, 0, 0, 0, 0], "flat", "#232f4a");
+          [0, 0, 0, 0, 0, 0, 0, 0], "flat", lidAt(zc));
       if (cl) { cl.lit = AMBIENT * 0.8;   // out of the bulbs' reach, and it should look that way
                 cl.sz = cl.z + 4000; }   // and the lid paints before the walls it meets
     }
@@ -1936,12 +2035,19 @@ function leaveOverlay(root, trigger) {
            it is a red thing hanging on a wire, and after dark it is the light the street is lit by.
            `nolite` keeps it out of the night's darkening, so it is the last thing still bright. */
         if (q) {
-          q.lit = 0.72 + 1.05 * NIGHT();
-          q.nolite = NIGHT() > 0.3;
+          q.lit = 0.62 + 1.15 * NIGHT();
+          q.nolite = true;            // paper and its candle: never darkened, never sunlit
           q.air = haze(q.z) * 0.5;
         }
       });
     });
+    /* The compound out there is a picture with its own exposure, and the daylight lift must not fall
+       on it. It is authored bright already (the sky bands carry `glow: 1.0`, the plaza 1.1), so lifting
+       it at noon did what adding white to a gradient always does: the band the opening frames became a
+       white blob 135 cm across and the gradient behind it disappeared. Sunlight does not fall on a
+       mountain 1 200 m away in this renderer; it falls on the lane, and the lane is where the lift is
+       for. Marked in one place rather than at each of the compound's own call sites, because every
+       quad `drawFar` authors is that picture, including the aperture it is seen through. */
     if (bd) drawFar(C);
     /* The wall at your back is a surface with no authored cladding, and the material model's own
        default for that is the wall's tiles — not a flat colour. It was a flat plank, which meant that
@@ -3560,8 +3666,14 @@ function leaveOverlay(root, trigger) {
        the thing that should come up as the sky goes, so it rises with `NIGHT()` and keeps a floor
        at noon -- a bulb is still a bulb in daylight, just not a searchlight. */
     const GLOW_GAIN = 1.0, GLOW_DAY = 0.12;
+    /* `GLOW_DAY` is the floor a lamp keeps in daylight, and for a place under lamps at noon that is
+       right: the machine is on, the lamp is on, they are simply not the brightest thing in the frame.
+       A place with a sun is the other case — the far end of the street was a white blob 135 cm across
+       at noon, because a "somewhere open" bounce authored at `k: 0.5` was still burning at the
+       daylight floor. Where the record says the place is a day, the sun takes the glows' share away. */
+    const dayFall = (v) => (DAYPAGE ? v * (1 - 0.88 * DAY()) : v);
     const glowStrength = (L) =>
-      (L.k === undefined ? 0.5 : L.k) * GLOW_GAIN * (GLOW_DAY + (1 - GLOW_DAY) * NIGHT());
+      (L.k === undefined ? 0.5 : L.k) * GLOW_GAIN * dayFall(GLOW_DAY + (1 - GLOW_DAY) * NIGHT());
     const glow = (px, py, pz, r, col) => {
       const p = camPt(C, px, py, pz);
       if (p.z < NEAR) return;
@@ -3646,7 +3758,7 @@ function leaveOverlay(root, trigger) {
     // in the same composite as the glow and by the same projection as everything else. It is four
     // quads for the whole lane, and it is the difference between four bright dots and four lamps.
     lamps.forEach((L) => {
-      if (L.body !== "lantern") return;
+      if (L.body !== "lantern" || dayFall(1) < 0.06) return;   // a cone of light is a night object
       const dx = swayOf(L), R = L.size || 24;
       const top = camPt(C, L.x + dx, L.y - R, L.z), bot = camPt(C, L.x + dx * 1.5, 2, L.z);
       if (top.z < NEAR || bot.z < NEAR) return;
@@ -3665,7 +3777,7 @@ function leaveOverlay(root, trigger) {
     // A spot over a diorama table puts a visible cone in the air, the way the lanterns do: the
     // fitting, the pool on the table and the haze between are one light, read three ways.
     lamps.forEach((L) => {
-      if (!L.spot) return;
+      if (!L.spot || dayFall(1) < 0.06) return;
       const top = camPt(C, L.x, L.y, L.z), bot = camPt(C, L.x, 90, L.z);
       if (top.z < NEAR || bot.z < NEAR) return;
       const ax = W * 0.5 + (focal * top.x) / top.z, ay = H * 0.5 + (focal * top.y) / top.z;

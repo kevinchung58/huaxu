@@ -65,73 +65,65 @@ a run of props between. The layout math is in `references/street-system.md`; wha
   is what the *side* opens onto. This is a real constraint of a one-point projection, not a rule;
   `references/street-system.md` §4 has what it means for the backdrop.
 
-## 3. Daylight is a stylesheet decision, and it is the owner's
+## 3. Daylight: built, measured, and what is still the owner's
 
-The scene's day/night is already a cycle: `dayPhase` over `DAYLEN = 240` seconds, `SUN()` and
-`NIGHT()` derived from it, `AMBIENT` and `FOG_MAX` as exposure, one `lightAt()` falloff everything
-obeys. `street.html` opens at `(T + 78) / 240`, which is morning, and the cycle passes its own noon
-about 42 s after the page loads.
+**It exists now.** A record says `"day": True` (or `{"cycle": 900, "start": 0.45, "gain": 1}`), the
+emitter stamps four `data-lane-day-*` attributes on the layer, and the renderer gives that page its
+own clock: a longer cycle (fifteen minutes, the reference hall's own, because four minutes hands a
+visitor dusk before they have looked around once) starting a little before noon. Night still comes.
 
-**And that noon is not daylight.** Measured in a headless Chromium on the served page — mean luma of
-the whole frame, 0–255, at five points of the street's own day:
+What that buys, measured on the served page in a headless Chromium — mean luma of the whole frame,
+and what fraction of the frame is near-white:
 
-| when | `dayPhase` | SUN | mean luma | top 12% (sky/lid) | mid | bottom 12% (floor) |
-|---|---|---|---|---|---|---|
-| page load | 0.33 | 0.73 | 76.9 | 59.1 | 85.1 | 86.1 |
-| +22 s | 0.42 | 0.97 | 83.1 | 63.3 | 89.6 | 94.6 |
-| **+42 s (noon)** | **0.50** | **1.00** | **83.2** | **63.4** | 89.6 | 95.0 |
-| +97 s (dusk) | 0.73 | 0.27 | 68.8 | 53.7 | 79.1 | 75.4 |
-| +152 s | 0.96 | 0.04 | 57.6 | 45.9 | 71.7 | 59.3 |
+| the street, before | | the street, `"day": True` | |
+|---|---|---|---|
+| page load (its clock at 08:00) | 76.9 | opens 11:50 | **184.3** |
+| its noon, `SUN 1.0` | 83.2 | dusk | 70.5 |
+| its dusk | 68.8 | night | 62.0 |
 
-**The sunniest moment of the street's day is a third of full brightness**, and six luma points above
-the frame the page opens on. So the street does not "start at night": the sun is real, it moves, and
-it is nearly invisible, because **almost nothing in the frame answers to it**. The sky over the lane
-is a record-authored night gradient (`#4a5a84` / `#2c3859` / `#1e2946`) under a flat `#232f4a` lid
-that `drawRoom()` paints at `CEIL`, and every material tile — asphalt, plaster, brick, shutter, water —
-is a night value. Turning `SUN` up cannot light a scene whose surfaces were authored for a lamp.
+Near-white stays at 0.06% at all three, so the sun is not washing the frame out — and the swing is
+122 luma from noon to night, which is a street that has a day rather than a bright room.
 
-Measure this before and after any daylight work — it is one page load and a screenshot, and a claim
-about "sun" that is not this table is an assertion.
+**Why it needed a mechanism and not a number.** `lit` cannot carry sunlight: it tops out at a 28%
+warm wash over a tile's own colour, and every tile in this file is a night value (asphalt `#37435c`,
+dado `#3f5170`). Daylight is *additive* — the quad is filled again under `lighter` in a warm
+near-white by how high the sun is — and it forced four other things to answer, each of which was
+found by looking at the frame rather than by reasoning about it:
 
-So "有陽光" is one of three changes, and they are not equivalent:
+- **the lid.** `drawRoom()` paints a flat `#232f4a` over the whole lane at `CEIL` every panel. It is
+  sky now on a day page: two authored blues blended by the panel's own depth, so it is deep overhead
+  and pale toward the far end, and it opts out of the lift (`day: false`) because adding the sun's
+  colour to the sky makes the sky white.
+- **the air.** `FOG_MAX` is the hall's murk, and unchanged it read as a foggy morning — 3 luma
+  between the floor and the middle of the frame. It clears to 38% of itself at noon.
+- **the glows.** A lamp keeps a floor of light in daylight, which is right for a machine. The far
+  end's "somewhere open" bounce at `k: 0.5` was a white blob 135 cm across at noon; on a day page the
+  sun takes the glows' share away. A lantern's cone of light is a night object and is not drawn.
+- **the far compound is a *picture* at its own exposure.** The sky and the distant masses wash pale
+  with the air (nearly all the way for the sky, half for the mountain, almost not at all for the snow
+  cap); everything out there that is a *surface* — the plaza, the crossing, the roofs — takes the
+  lane's lift at a reduced gain (`q.daygain`), because a surface that is already lit for a night and
+  then lifted is a surface that reads as blown out. Blanket-excluding the whole compound was the
+  first attempt and it left a dark wedge at the end of a sunny street.
+- **and a lantern's paper is neither.** It carries its own lit value and skips both the lift and the
+  night's darkening (`nolite`), or the sun washes its red to pastel — which is exactly what happened
+  once, in the first frame this feature produced.
 
-1. **Give the lane its own day** — a per-page start phase and cycle length, so the street is at noon
-   when the visitor arrives and stays there instead of handing them dusk four minutes in (the cycle
-   is 240 s). Cheapest, changes no material, and the measurement above says what it buys: the frame
-   the page already opens on, plus six luma.
-2. **Make one place always-day** — pin the phase and give the palette its daylight values: the sky
-   painted as sky, a sunlit water tile, sand and shingle, and a shadow strategy. This is the one that
-   matches what the owner described, and it is a renderer change with a checklist rather than a
-   config line.
-3. **Change the site's day** — a decision about every room, including the two whose whole subject is
-   dusk and a lit lane. Do not do this without asking.
+**What is still not built, and is therefore still the owner's to ask for:**
 
-All three start from the same deficit, and it is the reason option 1 is not enough on its own: the
-street's surfaces were authored for a lamp, so its noon is the night frame plus six luma points. What
-any of them needs, read off the current files rather than guessed:
+- **a cast-shadow pass.** There are contact shadows under props and no directional shadow anywhere. A
+  sunlit street without them is flat by construction. The alternative that needs no renderer change
+  is to author the day as *shade* — awnings, colonnades and the far side of the street darker than
+  the near side — and that is a texture job.
+- **day variants of the tiles that are still night.** The distant city's window grid and the water
+  tile are night values: a city of lit windows at noon is the one thing in that frame that still says
+  "night". The fix is the one the skyline already has (a second texture per variant, not a tint over
+  the first — a flat tint over a window grid removes the variation that makes it read as windows).
+- **the coast kit itself** — §4, and `references/promenade.md`.
 
-- **The sky is painted with a lintel over it.** `drawRoom()` paints a flat `#232f4a` quad over the
-  whole lane at `CEIL` every panel (and the comment concedes "out of the bulbs' reach, and it should
-  look that way"). A daylight street needs `CEIL` to be painted as *sky* — a gradient by
-  `dayPhase` — or raised until the lid is out of frame.
-- **Every material in the palette is a night colour.** `paintWater` is `#27496a` with a pale green
-  sheen: at noon under a lid it reads as wet slate, not sea. Daylight needs a sunlit water tile
-  (broken light, a horizon line), a sand and a shingle, and the concrete and asphalt tiles read in a
-  higher key than they do after dark.
-- **Nothing casts a shadow.** There are contact shadows under props (a soft dark quad at the base)
-  and no light-directional shadow anywhere. A sunlit street without cast shadows is flat by
-  construction, so either the renderer grows one directional shadow pass for the props that matter,
-  or the day is authored as *shade*: awnings, colonnades, tree canopies and the far side of the
-  street darker than the near side. The second is a texture job and is honest about what the renderer
-  can do; the first is a rendering change and is its own PR.
-- **`AMBIENT 0.42` means nothing is black**, and that number is what makes an unlit daytime surface
-  look like a dark room. A day is not `AMBIENT` raised; it is the sun term and the sky term, which
-  means `lightAt()` grows a sky contribution it does not have.
-
-None of that is in the skill's gift to decide. **Bring the owner the choice with the cost attached**
-— "the street opens at noon and we fix what that exposes" versus "this one place is built for
-daylight, which means a sun and a shadow in the renderer" — and do not quietly ship a bright room
-with a navy lid over it.
+Measure any of it the same way this was measured: mean luma and near-white share over a few points of
+the page's own cycle, on the page the server serves, before and after. A claim about sun that is not
+this table is an assertion.
 
 ## 4. The kit a sunlit coast needs, and what the renderer has
 
