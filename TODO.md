@@ -1,6 +1,86 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-02 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-08 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0p. 第十四輪（2026-10-08）：裝 skill-creator、讀 sakura-crossing、把技能變成一等公民
+
+使用者的四個要求，一條不漏：① 先讀完 `skills/` 與根的 `AGENTS.md`/`SKILLS.md` 再做；② 把
+[anthropics/skills 的 `skill-creator`](https://github.com/anthropics/skills/tree/main/skills/skill-creator)
+裝進來；③ 研究 [`Kenton-GMI/sakura-crossing`](https://github.com/Kenton-GMI/sakura-crossing)，因為
+「這有關於我們日本的建構」；④ 用 skill-creator 先建我們可能用到的 skills，並且在 AGENTS.md 加上
+「**要自動判斷使用者是不是在修改／新增 SKILLS**，該用 skill-creator 就用」。
+
+這一輪**沒有動任何 site 檔案**——`css/site.css`、`js/site.js`、`_gen_html.py`、任何 `*.html` 都
+沒改，所以 gate 的數字是拿來確認環境健康的，不是拿來確認改動的。
+
+### 裝了什麼
+
+- `.claude/skills/skill-creator`（本輪連 `frontend-design`、`theme-factory` 一起補齊，因為
+  AGENTS.md 的清單上它們本來就該在，而沙箱裡 `.claude/` 是空的）。`.claude/` 仍然 gitignored。
+- **`bin/restore-env` 現在會自己補 skill-creator**：只在 `.claude/skills/skill-creator` 不存在時
+  clone `anthropics/skills`（`--depth 1`）再複製，離線是支援狀態（clone 失敗只印一行、不中斷）。
+  這樣「技能包被沙箱洗掉」不再是每次開場都要人工處理的事。
+
+### 建了兩個 skill（在 `skills/`，**有進版控**）
+
+| Skill | 內容 |
+|---|---|
+| `skills/japan-place` | 日本地方的物件與比例。`SKILL.md` 講兩種房間格式（lane vs 檯面）、尺規、材質、夜、**不可以說的六件事**；`references/japan-vocabulary.md` 是物件表（公分，†＝在 sakura-crossing 量到的、⚑＝本 repo 已commit的數字）；`references/sakura-crossing.md` 是那個 repo 的研究筆記 |
+| `skills/lane-prop` | 動一個物件／一盞燈／一個 state／一個 stop 的機制：`SHAPE`×`OBJ_SIZE` 雙註冊表、**id 前綴就是 kind**、`Z_SCALE` 只拉 z、`y` 是底部、`glow`/`of:` 綁定、`states`/`leave`、以及「站位要在它命名的東西前面 90–170」 |
+
+用 skill-creator 的 `quick_validate.py` 驗過四個 skill（兩個新的＋既有的兩個）都 `Skill is valid!`——
+它檢查的是 frontmatter 的 key、kebab-case 名稱、description 的 1024 字上限。**skill-creator 的
+另一半（跑 subagent 做 with/without-skill 對照、`claude -p` 優化 description）這個沙箱做不到**：
+沒有 `claude` CLI。所以走的是 draft → validate → 讓使用者讀；**沒有跑 benchmark，就不要說有**。
+
+### AGENTS.md / SKILLS.md 改了什麼
+
+- `## Skills` 拆成兩個家：`skills/`（本 repo 的手藝，**納入版控**，四個 skill 一張表）與
+  `.claude/skills/`（第三方、local-only）。新增 `### Authoring a skill: when skill-creator runs`，
+  這是使用者要的那條：**觸發不是我說了才做，是我自己判斷**——使用者明講（「把這個做成 skill」、
+  新增/修改 SKILLS、「記下來給下一個 session」）；或**同一件事付過兩次學費**（同一個坑重踩、
+  同一個數字重測、流程又從程式碼反推一次）；或同類改動開始發生在第二個地方（一次性技巧在變成手藝）。
+  另外把 description 的角色（它是唯一的觸發器）、500 行上限、`references/`/`scripts/`/`assets/`
+  的分工、以及「`quick_validate.py` 需要 PyYAML（`pip install --break-system-packages pyyaml`）」寫進去。
+- `Reference packs` 加了 sakura-crossing，並寫明**只讀研究筆記**再決定要不要 clone，以及它是
+  「語彙、比例、禁令清單」的來源，不是招牌系統或技術棧的先例。
+- `## Conventions` 加一條：**skill 是產物，表格要同一個 commit 改**；`bin/` 腳本也算，理由寫在註解裡。
+- `SKILLS.md` 開頭加一段指標，指向四個可載入的 skill。
+
+### sakura-crossing 讀到什麼（重點，那個 repo 不會留在沙箱裡）
+
+MIT、56 096 行 JS、26 個 district、**src/ 裡沒有一張圖片**（每個材質、每個招牌都是 Canvas2D 現畫）、
+**裡面沒有人**。讀在 `de01898`（initial public release）。細節在
+`skills/japan-place/references/sakura-crossing.md`，這裡只記對我們兩個日本房間最要緊的三件事：
+
+1. **可以拿**：物件尺寸（自販機 112×195×72、提灯 r16、鳥居 340×330、石段 rise19/run46、路肩 13.5、
+   人行道 155、車道 630、巷子 240、後巷 210、商店街 6 m 寬）——它和我們 record 已經承諾的數字一致；
+   「一個地方只有一個會動的瞬間」的結構（警報→遮斷機→電車）；行為式動態（渡輪靠岸會停，不是
+   `sin()` 等速來回）；以及它的 **flood fill 驗證法**（回報「最近的可達格距離」而不是 boolean）。
+2. **不能拿**：它的**招牌系統**。那個 repo 的每一家店名都是**刻意發明的**（青空商店、さくら坂商店街…），
+   而且用 Canvas2D 把字畫在招牌上——在它虛構的小鎮是對的，在我們這裡是**禁止事項**（場景內不得有字）。
+   要拿的是**節奏**：整排店面在同一高度有 fascia 帶、一支直式招牌、視線高度一塊小牌，字全部留白。
+   也不能拿它的技術棧：npm/Vite/three.js 就是 AGENTS.md 的依賴規則，那不是先例。
+3. **它和我們獨立走到同一份禁令清單**（沒有任何人、沒有品牌、沒有霓虹、沒有寫實材質）——兩邊各自
+   蓋一個日本地方卻收斂到同樣的「不可以」，所以那是媒介的規則，不是某個專案的品味。
+
+### ⚠️ 這輪發現／修掉的沙箱問題
+
+- **`bin/restore-env` 與 `bin/preview` 的分支名是寫死的 `arena/01a0fb1d-huaxu`**。沙箱重設 refs 之後，
+  `restore-env` 會 `reset --soft` 到**上一個 session 的分支**——檔案不會掉，但 commit 指標會被吃掉，
+  下一個 commit 就從錯的 parent 分岔（就是第九輪那個「branch 會在你回合中途被重設」的形狀）。
+  兩支腳本改成**從 HEAD 推導**（HEAD 不是 `arena/*` 時，取 remote 上最新的 `arena/*`），
+  而且 `restore-env` 只在 **HEAD 沒有 remote 沒有的 commit** 時才動指標；有未推的 commit 就印一行
+  然後放著不動。
+- **PyYAML 不在沙箱裡**（`quick_validate.py` 需要它）：`pip install --break-system-packages pyyaml`
+  一次即可，但**不會**跟著 workspace 保存。沒有 `claude` CLI，所以 skill-creator 的 eval 那半沒跑。
+
+### 驗證（本輪結束時）
+
+`python3 _gen_html.py` **exit 0** 且**冪等**（`md5sum *.html` 前後相同）；impeccable detect **`[]`**；
+四個 skill `quick_validate.py` 全部 valid。沒有動 site，所以 walk/chain/e2e 沒有意義、也沒有跑。
+
+---
 
 ## 0i. 第九輪（2026-10-02）：Toronto 廳「物件站回桌上、廳會動了」→ 五個真 bug
 

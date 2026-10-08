@@ -14,7 +14,7 @@ Canada→Tokyo→Fukuoka corridor is retired.
 
 Work in this order. Do not skip the intake, and do not start with a library.
 
-## 0. Is there material?
+## 0. Is there material, and is it Japan?
 
 If the district comes from the owner's photographs of a real place — a trip, a site, an alley they
 walked — run `skills/place-intake` first. It reads the space off the pictures, decides whether the
@@ -22,6 +22,13 @@ place earns one lane or several, tells you where the reference photographs live 
 never shipped), and hands you back a record. Building directly from photographs without that step is
 how a room becomes a backdrop: this skill knows how to build a place, that one knows what the place
 was.
+
+If the place is in Japan, `skills/japan-place` goes with this one: it holds the object table with
+real centimetres for everything a Japanese lane or port is made of, the night the room ends up in,
+and the claims a Japanese room may not make — which are stricter here than in the reference
+material, because this site pins every sign blank. And once the record exists and the work is one
+object at a time, `skills/lane-prop` is the mechanics: the registers, the naming rule, `Z_SCALE`,
+the light binding and the measurement that proves the thing arrived.
 
 ## 1. Intake — ask before you build
 

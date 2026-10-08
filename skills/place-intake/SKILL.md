@@ -98,7 +98,11 @@ They are never committed, never added to `IMG_RULES`, and never rendered.
 The record you produce is a block in `DISTRICTS`, one row in `ROOMS` (id, label, page, plate
 prefixes, status), and **one door object on the street's record** (`"leave": ROOM_BY_ID[...]["page"]`,
 positioned inside the walker's reach — see `district-author` §9). Then `district-author`'s build rules
-apply unchanged, and so does its gate:
+apply unchanged, and so does its gate. If the place is in Japan, `skills/japan-place` carries the
+numbers this skill deliberately does not: what each Japanese object is in centimetres, which one
+identifies the place, and what it may not carry. Read its `references/japan-vocabulary.md` before
+reading the photographs for dimensions, so the room agrees with the two Japanese rooms already
+built rather than inventing a third set of proportions.
 
 - `node .verify/verify-walk.mjs` — the harness asserts, per room, that the walk stays inside the
   authored box, that every lantern hangs on a cable that exists, that the Field notes wall is the

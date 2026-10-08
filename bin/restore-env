@@ -11,10 +11,32 @@
 set -e
 cd "$(dirname "$0")/.."
 
-git fetch -q origin arena/01a0fb1d-huaxu 2>/dev/null || true
-git reset --soft origin/arena/01a0fb1d-huaxu 2>/dev/null || true
-git reset -q 2>/dev/null || true
-echo "HEAD $(git log --oneline -1)"
+# Which branch this checkout is on. It used to be a literal, and the literal outlived its session:
+# a sandbox that moved the pointer would reset --soft onto a branch nobody was working on any more,
+# which un-commits the session's work without touching a file and leaves the next commit forking
+# from the wrong parent (see TODO.md, "branch 會在你回合中途被重設"). Derive it instead: the branch
+# HEAD is on if that is an arena branch, otherwise the newest arena branch the remote has.
+BRANCH=${BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null)}
+case "$BRANCH" in
+  arena/*) ;;
+  *) BRANCH=$(git for-each-ref --sort=-committerdate --count=1 --format='%(refname:short)' \
+      'refs/remotes/origin/arena/*' 2>/dev/null | sed 's#^origin/##') ;;
+esac
+
+if [ -n "$BRANCH" ]; then
+  git fetch -q origin "$BRANCH" 2>/dev/null || true
+  # Re-point only when HEAD holds no commit the remote branch does not already have. The wiped-refs
+  # case is exactly that shape -- HEAD back at master, every file on disk -- and a branch carrying
+  # its own unpushed commits is not, so it is left alone and said out loud.
+  if [ -n "$(git rev-list "origin/$BRANCH..HEAD" 2>/dev/null)" ]; then
+    echo "!! HEAD carries commits origin/$BRANCH does not; leaving the pointer alone."
+  elif [ -n "$(git rev-list "HEAD..origin/$BRANCH" 2>/dev/null)" ]; then
+    git reset --soft "origin/$BRANCH"
+    echo "== re-pointed $BRANCH at origin (refs reverted, files kept)"
+  fi
+  git reset -q 2>/dev/null || true
+fi
+echo "HEAD $(git log --oneline -1)  [branch ${BRANCH:-unknown}]"
 
 npm install --no-save --silent jsdom @napi-rs/canvas impeccable@4.1.0 puppeteer-core @sparticuz/chromium
 
@@ -32,3 +54,22 @@ for t in al2023 swiftshader fonts; do
 done
 chmod -R 755 /tmp/al2023
 test -f /tmp/al2023/lib/libnspr4.so && echo "LIBS OK" || echo "LIBS MISSING"
+
+# skill-creator is the one third-party skill the repo's own skill-authoring rule depends on
+# (AGENTS.md, "Skills"), so it is restored here rather than left to whoever notices it is gone.
+# Only when missing: a sandbox that wipes .claude/ reliably does not touch it otherwise, and the
+# clone is the slow part of this script.
+if [ ! -d .claude/skills/skill-creator ]; then
+  echo "== restoring skill-creator (anthropics/skills)"
+  rm -rf /tmp/anthropic-skills
+  if git clone -q --depth 1 https://github.com/anthropics/skills.git /tmp/anthropic-skills 2>/dev/null; then
+    mkdir -p .claude/skills
+    cp -r /tmp/anthropic-skills/skills/skill-creator .claude/skills/
+    for s in frontend-design theme-factory; do
+      [ -d ".claude/skills/$s" ] || cp -r "/tmp/anthropic-skills/skills/$s" .claude/skills/
+    done
+    echo "   installed: $(ls .claude/skills | tr '\n' ' ')"
+  else
+    echo "   clone failed -- .claude/ stays as it is (offline is a supported state)"
+  fi
+fi
