@@ -39,7 +39,21 @@ Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo 
   per-quad vocabulary (`day: false`, `daygain`, `nolite`) is in `skills/lane-prop` §3. The two rooms
   whose subject is dusk simply do not ask for it, and their frames are unchanged by it. Daylight
   **cannot** be got by raising `SUN()`: `lit` tops out at a 28% wash over a tile that is a night
-  value, which moved the street's whole-frame luminance by six points and looked like nothing. Do not turn that into a second page and do not put
+  value, which moved the street's whole-frame luminance by six points and looked like nothing.
+- **The coast is decided and built (2026-10-09): the street ends at a harbour.** The owner asked
+  for beach-or-harbour scenery in sunlight and then delegated the choice; the choice is harbour,
+  because the street is likened to Moji Port and Moji Port is a harbour town, and one-point
+  projection puts water only at the end of the walk. The street walks out onto a quay and ends at
+  a rail; past it, water with a day tile, a ferry, a crane and the far shore (`bd.harbor`). The
+  beach was not built on purpose. The Japanese half is a shopping street now: `front` props with
+  an `awn` colour are shops at eye level — awnings, fascias, noren, display glass — per
+  `skills/lane-prop` §7. **Two traps from this round, both in the skills now:** record depths are
+  ×2.9 into walk space but backdrop depths and `max_d` are walk space as written
+  (`street-system` §6); and a record field the emitter does not stamp into a `data-*` attribute
+  never reaches the renderer (`lane-prop` §7).
+- **Process rule the owner directed (2026-10-09): build in one pass, verify in one pass.** It is
+  `SKILLS.md` §7 now. Interleaving screenshots with building made this round slow; the batch at
+  the end is the rule. Do not turn that into a second page and do not put
   the doors back into a chain: a region is a change of material, light and what is standing on the
   pavement, along the one spine, with a station that makes it a place worth standing in. The layout
   arithmetic is `skills/street-commons/references/street-system.md`.

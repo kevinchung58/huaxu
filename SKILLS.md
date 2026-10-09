@@ -171,3 +171,21 @@ whenever a tool call fails with a missing package.
 
 Scripts that need `node_modules` must live in `.verify/`, not `/tmp`. Puppeteer scripts need
 `LD_LIBRARY_PATH=/tmp/al2023/lib`.
+
+## 7. Build in one pass, verify in one pass
+
+**Interleaving slow visual checks with building is the round that takes all night.** A headless
+screenshot costs half a minute to a minute; a full gate suite costs minutes more. Done after every
+small change, they turn an hour of building into four. The owner said it plainly (2026-10-09):
+do the building first, all of it, and run the fixing and the testing together at the end.
+
+So the shape of a round is: author everything (renderer, record, generator, docs), then one
+verification batch — syntax, regenerate + idempotency, the walk/chain/shapes/geometry/clash/e2e
+gates, impeccable, the luminance probe, and the screenshots — and only then fix what the batch
+found, in one fixing pass, and re-run the batch once. Screenshots are for the batch, not for the
+build: while building, trust the arithmetic (the unit table in `street-system` §6) and the data,
+and look at the picture at the end.
+
+The exception that proves the rule: a load-time crash (an undefined function, a syntax error) is
+caught by `node -e "new Function(...)"` in milliseconds and is allowed after every edit. It is the
+slow *visual* round-trips that are batched, not the cheap static ones.

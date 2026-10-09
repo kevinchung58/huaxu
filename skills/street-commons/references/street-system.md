@@ -102,3 +102,21 @@ sea is in front of you".
 Its `hillSafety` is the other one worth copying in spirit: 13 263 sample points asserting the hills
 never cut a road. Ours is smaller — a promenade needs an assertion that the walkable surface is
 continuous from the street mouth to the quay, and that the quay edge is inside `max_d`.
+
+## 6. Two unit systems, and which fields live in which
+
+The record is authored in *record centimetres* — the old 4.3 m lane's numbers — and the emitter
+multiplies every record depth by `Z_SCALE = 2.9` into *walk space*: props' `z`, surfaces' `z0/z1`,
+marks, stations, lamps, wires, and the lane's own `d` (`walk_d = d * Z_SCALE`). Heights and widths
+are real centimetres and are not scaled.
+
+Two things are **not** scaled, because they are not record depths:
+
+- the **backdrop** (`sky`, `mountain`, `plaza`, `harbor`, `roofs`, `city`, `express`) — its `z`
+  values are walk space as written;
+- **`max_d`** — written straight into `data-lane-max-d`, walk space.
+
+So the street's lane ends at walk 3016, its quay runs 3000–4300, the rail stands at 4300 and the
+water 4360–12000, while `max_d` 4150 stops the walker a stride short of the rail. Author a backdrop
+number from a record number and the thing lands inside the lane — which is exactly where the first
+harbour's rail went, invisible behind the far wall.

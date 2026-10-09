@@ -192,10 +192,13 @@ async function main() {
   ok("street carries a far-end vista (the opening is authored, not implied)",
      !!vista && JSON.parse(vista.textContent).w >= 600,
      vista ? `w=${JSON.parse(vista.textContent).w}` : "missing");
-  ok("street carries a painted backdrop (sky, skyline, roofs)",
-     !!backdrop && JSON.parse(backdrop.textContent).city.length >= 3
-       && JSON.parse(backdrop.textContent).sky.length >= 2,
-     backdrop ? "sky+city present" : "missing");
+  // The far view's subject was the lit skyline until round 15; the street now ends at a harbour
+  // (the owner's coast, decided in skills/street-commons/references/promenade.md). The gate keeps
+  // its intent — the backdrop carries a sky and a named far-view subject, city or water.
+  const bd = backdrop ? JSON.parse(backdrop.textContent) : null;
+  ok("street carries a painted backdrop (sky, and a city or a harbour beyond)",
+     !!bd && bd.sky.length >= 2 && ((bd.city && bd.city.length >= 3) || (bd.harbor && bd.harbor.z1 > bd.harbor.z0)),
+     bd ? `sky+${bd.harbor ? "harbor" : "city"} present` : "missing");
   ok("street carries all four room doors as objects",
      ["door-toronto", "door-tokyo", "door-fukuoka"].every((id) => env.doc.querySelector(`[data-obj="${id}"]`)));
   ok("no room door on the street is wired to another street door",

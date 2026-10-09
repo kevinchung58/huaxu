@@ -1128,6 +1128,21 @@ function leaveOverlay(root, trigger) {
     PATS.terrain = mkTile(paintTerrain);
     PATS.pedestal = mkTile(paintPedestal);
     PATS.water = mkTile(paintWater);
+    /* The same water by day: the night tile is a deep blue with dark streaks, and a warm lift over it
+       reads as mud, not harbour. A day tile is its own texture — pale, horizontally struck, with the
+       glints a sun leaves on a surface — chosen per variant rather than tinted over the first, which
+       is the rule the skyline already earned. */
+    PATS.waterDay = mkTile((c) => {
+      c.fillStyle = "#5d89ac"; c.fillRect(0, 0, 128, 128);
+      c.fillStyle = "rgba(38,74,110,0.30)";
+      for (let y = 4; y < 128; y += 16) c.fillRect(0, y, 128, 3);
+      for (let y = 0; y < 128; y += 8) {
+        c.fillStyle = `rgba(214,232,244,${(0.10 + ((y / 8) % 3) * 0.05).toFixed(2)})`;
+        c.fillRect(0, y, 128, 2 + (y % 3));
+      }
+      c.fillStyle = "rgba(240,248,252,0.5)";
+      for (let i = 0; i < 26; i++) c.fillRect((i * 37) % 128, (i * 53) % 128, 6 + (i % 3) * 3, 1);
+    });
     PATS.track = mkTile(paintTrack);
     PATS.domep = mkTile(paintDomeP);
     PATS.sky0 = mkTile(paintSkyline(0, 0));
@@ -1193,6 +1208,7 @@ function leaveOverlay(root, trigger) {
   };
   const meta = objs.map((el) => ({
     el, kind: el.dataset.obj, leaf: el.dataset.leaf || null, top: el.dataset.top || null,
+    awn: el.dataset.awn || null, noren: el.dataset.noren || null, fascia: el.dataset.fascia || null,
     // `liton` is the phase at which this prop's own windows come up. The district lights its
     // buildings one after another, and without a per-prop moment they all came on together, which
     // is a switch and not a dusk.
@@ -1332,7 +1348,10 @@ function leaveOverlay(root, trigger) {
                   hall: "markethall" };
   // A few props are named for what they are, not for the kind that draws them; these are the aliases.
   Object.assign(SHAPE, { pole: "box", barrel: "box", stool: "box", lamp: "box",
-                         curtain: "cloth", stall: "stall", ledge: "plane" });
+                         curtain: "cloth", stall: "stall", ledge: "plane",
+                         // A shop is a front the record gave an awning: the id says shop, the
+                         // painter is the retail one.
+                         shop: "front" });
   const mix = (hex, k) => {    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
     const to = k >= 0 ? [255, 238, 208] : [10, 17, 40];
     const a = Math.abs(k);
@@ -1721,7 +1740,7 @@ function leaveOverlay(root, trigger) {
     if (mt) {
       const q = add(C, [[mt.x - mt.half, mt.base, mt.z], [mt.x + mt.half, mt.base, mt.z],
                         [mt.x + mt.crown, mt.top, mt.z], [mt.x - mt.crown, mt.top, mt.z]],
-                    ZERO8, "flat", dayC("#2e3d5c", 0.55), null);
+                    ZERO8, "flat", dayC(mt.c || "#2e3d5c", 0.45), null);
       if (q) { q.air = 0.12; q.lit = 0.3; q.day = false; }
       const line = mt.top - (mt.top - mt.base) * mt.snow;
       const cap = add(C, [[mt.x - mt.crown, mt.top, mt.z], [mt.x + mt.crown, mt.top, mt.z],
@@ -1783,6 +1802,95 @@ function leaveOverlay(root, trigger) {
           fl.daygain = 0.72;
         }
       }
+    }
+    /* A harbour, where the record asks for one: the street ends at a quay, and past the rail the
+       water runs to a far shore. The water is panelled like the plaza — one stretched quad would
+       bend the glints the way it bends paving — and it carries the day tile when the sun is up and
+       the night tile when it is not, the swap hidden inside the same hour the air is already
+       re-colouring everything. What floats on it is silhouette: a hull, a white house, a funnel,
+       and the crane a working quay keeps. Nothing out there is lettered, and nothing out there
+       lights the lane. */
+    const hb = bd.harbor;
+    if (hb) {
+      const wtile = DAY() > 0.35 ? PATS.waterDay : PATS.water;
+      const STEP = 1200, PU = 1 / 10, span = Math.max(1, hb.z1 - hb.z0);
+      for (let z = hb.z0; z < hb.z1; z += STEP) {
+        const z1 = Math.min(z + STEP, hb.z1);
+        const wq = add(C, [[-hb.half, hb.y, z], [hb.half, hb.y, z],
+                           [hb.half, hb.y, z1], [-hb.half, hb.y, z1]],
+            [z * PU, -hb.half * PU, z * PU, hb.half * PU,
+             z1 * PU, hb.half * PU, z1 * PU, -hb.half * PU],
+            "pat", wtile);
+        if (wq) {
+          wq.air = 0.22 + ((z - hb.z0) / span) * (FOG_MAX - 0.22);
+          wq.lit = 0.55; wq.daygain = 1.0;
+        }
+      }
+      // The sun's own column on the water: a pale reach of glint that only exists while the sun does.
+      if (DAY() > 0.05) {
+        const g = add(C, [[-240, hb.y + 2, hb.z0 + 300], [240, hb.y + 2, hb.z0 + 300],
+                          [460, hb.y + 2, hb.z1], [-460, hb.y + 2, hb.z1]],
+                      ZERO8, "flat", `rgba(242,247,251,${(0.30 * DAY()).toFixed(3)})`);
+        if (g) { g.air = 0.1; g.day = false; }
+      }
+      // The quay's rail: a top bar, a mid bar, and a post every couple of metres, all one dark line
+      // against the water. It is the edge of the walkable world, so it is the one thing out there
+      // drawn at the lane's own contrast.
+      const ry = hb.rail !== undefined ? hb.rail : hb.z0 - 60;
+      const railHalf = hb.half * 0.6;
+      [[62, 5], [40, 4]].forEach(([yy, th]) => {
+        const q = add(C, [[-railHalf, yy, ry], [railHalf, yy, ry],
+                          [railHalf, yy + th, ry], [-railHalf, yy + th, ry]],
+                      ZERO8, "flat", "#20293c");
+        if (q) { q.air = 0.16; q.lit = 0.5; q.daygain = 0.6; }
+      });
+      for (let px = -railHalf; px <= railHalf; px += 220) {
+        const q = add(C, [[px - 3, 0, ry], [px + 3, 0, ry], [px + 3, 66, ry], [px - 3, 66, ry]],
+                      ZERO8, "flat", "#20293c");
+        if (q) { q.air = 0.16; q.lit = 0.5; q.daygain = 0.6; }
+      }
+      // A ferry at moor: hull, white house, one funnel. By day the house is white and the hull takes
+      // the sun; by night the whole boat is a dark cut with a lit window row, which is what a ferry
+      // is from a quay after dark.
+      (hb.ships || []).forEach((sh) => {
+        const dl = DAY();
+        const hull = add(C, [[sh.x - sh.l / 2, hb.y + 26, sh.z], [sh.x + sh.l / 2, hb.y + 26, sh.z],
+                             [sh.x + sh.l / 2 - 26, hb.y + 92, sh.z], [sh.x - sh.l / 2 + 26, hb.y + 92, sh.z]],
+                         ZERO8, "flat", sh.hull || "#232c40");
+        if (hull) { hull.air = 0.14; hull.lit = 0.4 + 0.5 * dl; hull.daygain = 0.7; }
+        const house = add(C, [[sh.x - sh.l * 0.34, hb.y + 92, sh.z], [sh.x + sh.l * 0.34, hb.y + 92, sh.z],
+                              [sh.x + sh.l * 0.34, hb.y + 148, sh.z], [sh.x - sh.l * 0.34, hb.y + 148, sh.z]],
+                          ZERO8, "flat", sh.house || "#c9cfd8");
+        if (house) { house.air = 0.14; house.lit = 0.5 + 0.5 * dl; house.daygain = 0.7; }
+        const win = add(C, [[sh.x - sh.l * 0.3, hb.y + 108, sh.z - 1], [sh.x + sh.l * 0.3, hb.y + 108, sh.z - 1],
+                            [sh.x + sh.l * 0.3, hb.y + 122, sh.z - 1], [sh.x - sh.l * 0.3, hb.y + 122, sh.z - 1]],
+                        ZERO8, "flat", "#ffd9a0");
+        if (win) { win.air = 0.12; win.lit = 1.5 * (1 - 0.75 * dl); win.nolite = true; }
+        const fun = add(C, [[sh.x - 14, hb.y + 148, sh.z], [sh.x + 14, hb.y + 148, sh.z],
+                            [sh.x + 14, hb.y + 196, sh.z], [sh.x - 14, hb.y + 196, sh.z]],
+                        ZERO8, "flat", sh.funnel || "#8a4a3c");
+        if (fun) { fun.air = 0.14; fun.lit = 0.45 + 0.45 * dl; fun.daygain = 0.7; }
+      });
+      // The crane: two legs, a beam, a jib reaching over the water. A silhouette at any hour — a
+      // crane has no lit face anyone remembers.
+      (hb.cranes || []).forEach((cr) => {
+        const col = "#26304a";
+        const leg = (lx) => {
+          const q = add(C, [[lx - 6, hb.y + 20, cr.z], [lx + 6, hb.y + 20, cr.z],
+                            [lx + 6, hb.y + 300, cr.z], [lx - 6, hb.y + 300, cr.z]],
+                        ZERO8, "flat", col);
+          if (q) { q.air = 0.16; q.lit = 0.42; q.daygain = 0.55; }
+        };
+        leg(cr.x - 60); leg(cr.x + 60);
+        const beam = add(C, [[cr.x - 90, hb.y + 300, cr.z], [cr.x + 90, hb.y + 300, cr.z],
+                             [cr.x + 90, hb.y + 322, cr.z], [cr.x - 90, hb.y + 322, cr.z]],
+                         ZERO8, "flat", col);
+        if (beam) { beam.air = 0.16; beam.lit = 0.42; beam.daygain = 0.55; }
+        const jib = add(C, [[cr.x - 20, hb.y + 322, cr.z], [cr.x + 210, hb.y + 396, cr.z],
+                            [cr.x + 210, hb.y + 408, cr.z], [cr.x - 20, hb.y + 340, cr.z]],
+                        ZERO8, "flat", col);
+        if (jib) { jib.air = 0.16; jib.lit = 0.42; jib.daygain = 0.55; }
+      });
     }
     const cross = bd.crossing;
     if (cross) {
@@ -2177,40 +2285,90 @@ function leaveOverlay(root, trigger) {
           if (q) { q.lit = lit + 0.2; drawn.push(q); }
         }
       } else if (shape === "front") {
-        // A closed front with a light still burning behind it: the recess, its jambs, the transom, and
-        // nothing else. Every point goes through `P`, which takes the wall's own axes — a front on a
-        // side wall runs along z and one on the end wall along x, so a face built from either one
-        // outright is wrong the moment the other is authored.
+        // Two kinds of front. Without an `awn` colour this is the old closed front: a box standing
+        // proud of the wall, because a true recess would need a hole in a wall that is one surface.
+        // With one, it is a shop hugging the wall — display glass, mullions, a blank fascia and a
+        // canvas that stands out over the walk. A walker reads a proud box as a crate; the retail
+        // face of a shopping street has to be drawn at the wall, with only the canvas in the lane.
         const along = Math.abs(m.ry) > 45;
         const dir = m.x < 0 ? 1 : -1;                 // into the lane, whichever wall this is
         const half = m.w / 2, ins = m.d, head = m.h * 0.84;
+        // An interior that burns at noon reads as a lamp, not a shop: the sun takes most of it.
+        const dl = 1 - 0.62 * DAY();
         const P = (u, v, y) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
         const Q = (pts, col, l, air) => {
           const q = add(C, pts, ZERO8, "flat", col);
           if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); }
         };
-        // The interior: dark at the floor, lit above where the lamp hangs, and the whole thing brighter
-        // the further the shutter is up — the light is the same record the ground pool is read from.
         const up = S && S.shut !== undefined ? S.shut : 0;
-        Q([P(-half, ins, 0), P(half, ins, 0), P(half, ins, m.h), P(-half, ins, m.h)], mix(base, -0.14), lit);
-        Q([P(-half, ins, 0), P(half, ins, 0), P(half, ins, head * (0.34 + up * 0.66)),
-           P(-half, ins, head * (0.34 + up * 0.66))], "#e8b87a", 0.7 + up * 1.15, 0.05);
-        Q([P(-half, ins, head), P(half, ins, head), P(half, ins, m.h), P(-half, ins, m.h)], "#f0c98a",
-          1.35 + up * 0.5, 0.05);
-        // The blade itself, rolled up by `shut`: patterned with the same tile as the cladding, because
-        // it is the same shutter, in a recess instead of on a wall.
-        const bot = head * (1 - up * 0.95);
-        if (head - bot > 2) {
-          const blade = add(C, [P(-half, 8, bot), P(half, 8, bot), P(half, 8, head), P(-half, 8, head)],
-              [m.z * DPM - half * DPM, -bot * DPM, m.z * DPM + half * DPM, -bot * DPM,
-               m.z * DPM + half * DPM, -head * DPM, m.z * DPM - half * DPM, -head * DPM],
-              "pat", PATS.shutter);
-          if (blade) { blade.lit = lit * 1.15; drawn.push(blade); }
+        if (m.awn) {
+          const yA = m.h * 0.8, out = m.awnout || 130, yB = yA - 34, val = 20;
+          Q([P(-half, 2, 0), P(half, 2, 0), P(half, 2, 46), P(-half, 2, 46)], mix(base, -0.22), lit);
+          if (up > 0.5) {
+            // Open: display glass at the wall's own face, mullions over it, and one warm shelf of
+            // light that the sun mostly takes. The glass is pale by day and dark by night, so an
+            // open shop reads as glass in both, not as a hole.
+            Q([P(-half, 4, 46), P(half, 4, 46), P(half, 4, yA - 4), P(-half, 4, yA - 4)],
+              blendHex("#31405a", "#93a6b8", DAY()), 0.75 + 0.55 * DAY());
+            for (let i = 1; i < 3; i++) {
+              const u0 = -half + (i / 3) * 2 * half - 3;
+              Q([P(u0, 3, 46), P(u0 + 6, 3, 46), P(u0 + 6, 3, yA - 4), P(u0, 3, yA - 4)],
+                "#2a3448", lit * 0.8);
+            }
+            Q([P(-half * 0.7, 6, 60), P(half * 0.7, 6, 60), P(half * 0.7, 6, 120), P(-half * 0.7, 6, 120)],
+              "#e8b87a", (0.5 + up * 0.9) * dl, 0.05);
+          } else {
+            // Shut: the blade across the face, the same shutter as the cladding.
+            const blade = add(C, [P(-half, 6, 0), P(half, 6, 0), P(half, 6, yA - 4), P(-half, 6, yA - 4)],
+                [m.z * DPM - half * DPM, 0, m.z * DPM + half * DPM, 0,
+                 m.z * DPM + half * DPM, -(yA - 4) * DPM, m.z * DPM - half * DPM, -(yA - 4) * DPM],
+                "pat", PATS.shutter);
+            if (blade) { blade.lit = lit * 1.05; drawn.push(blade); }
+          }
+          // The shop's own weather: a blank fascia board, a canvas over the walk at shoulder height,
+          // a valance at its edge, and — if the record names one — a noren in the recess head. The
+          // units are the same unit; the variety is the canvas and the cloth, never the frame.
+          /* Canvas and board keep a low `lit`: the sun is already adding its share on a day page,
+             and a saturated cloth at lit 1.1 washes to pastel — the first awnings did. */
+          Q([P(-half - 4, 4, yA), P(half + 4, 4, yA), P(half + 4, 4, m.h), P(-half - 4, 4, m.h)],
+            m.fascia || "#b9ac8e", lit * 0.88);
+          Q([P(-half, 10, yA), P(half, 10, yA), P(half, out, yB), P(-half, out, yB)], m.awn, lit * 0.78);
+          // Stripes along the slope: a plain canvas reads as a lid, a striped one reads as a market.
+          for (let i = 0; i < 6; i += 2) {
+            const u0 = -half + (i / 6) * 2 * half, u1 = -half + ((i + 1) / 6) * 2 * half;
+            Q([P(u0, 9, yA), P(u1, 9, yA), P(u1, out, yB), P(u0, out, yB)], mix(m.awn, 0.3), lit * 0.82);
+          }
+          Q([P(-half, out, yB - val), P(half, out, yB - val), P(half, out, yB), P(-half, out, yB)],
+            m.awn, lit * 0.72);
+          if (m.noren) {
+            // Hung at the head of the doorway, below the canvas: under an awning the noren is the
+            // shop's colour at eye level, and the one retail cue a walker meets face on.
+            for (let i = 0; i < 5; i++) {
+              const a0 = (i / 5) * 2 * half - half, a1 = ((i + 1) / 5) * 2 * half - half - 5;
+              Q([P(a0, 12, 196), P(a1, 12, 196), P(a1, 12, 148), P(a0, 12, 148)],
+                mix(m.noren, i % 2 ? -0.14 : 0.04), lit * 0.85);
+            }
+          }
+        } else {
+          // The proud closed front: recess, jambs, transom — a building with nobody in it.
+          Q([P(-half, ins, 0), P(half, ins, 0), P(half, ins, m.h), P(-half, ins, m.h)], mix(base, -0.14), lit);
+          Q([P(-half, ins, 0), P(half, ins, 0), P(half, ins, head * (0.34 + up * 0.66)),
+             P(-half, ins, head * (0.34 + up * 0.66))], "#e8b87a", (0.7 + up * 1.15) * dl, 0.05);
+          Q([P(-half, ins, head), P(half, ins, head), P(half, ins, m.h), P(-half, ins, m.h)], "#f0c98a",
+            (1.35 + up * 0.5) * dl, 0.05);
+          const bot = head * (1 - up * 0.95);
+          if (head - bot > 2) {
+            const blade = add(C, [P(-half, 8, bot), P(half, 8, bot), P(half, 8, head), P(-half, 8, head)],
+                [m.z * DPM - half * DPM, -bot * DPM, m.z * DPM + half * DPM, -bot * DPM,
+                 m.z * DPM + half * DPM, -head * DPM, m.z * DPM - half * DPM, -head * DPM],
+                "pat", PATS.shutter);
+            if (blade) { blade.lit = lit * 1.15; drawn.push(blade); }
+          }
+          Q([P(-half, 0, 0), P(-half, 0, head), P(-half, ins, head), P(-half, ins, 0)], mix("#4d5f5a", -0.3), lit * 0.6);
+          Q([P(half, 0, 0), P(half, 0, head), P(half, ins, head), P(half, ins, 0)], mix("#4d5f5a", -0.3), lit * 0.6);
+          Q([P(-half, 0, head), P(-half, ins, head), P(-half, ins, m.h), P(-half, 0, m.h)], mix("#4d5f5a", -0.06), lit * 0.8);
+          Q([P(half, 0, head), P(half, ins, head), P(half, ins, m.h), P(half, 0, m.h)], mix("#4d5f5a", -0.06), lit * 0.8);
         }
-        Q([P(-half, 0, 0), P(-half, 0, head), P(-half, ins, head), P(-half, ins, 0)], mix("#4d5f5a", -0.3), lit * 0.6);
-        Q([P(half, 0, 0), P(half, 0, head), P(half, ins, head), P(half, ins, 0)], mix("#4d5f5a", -0.3), lit * 0.6);
-        Q([P(-half, 0, head), P(-half, ins, head), P(-half, ins, m.h), P(-half, 0, m.h)], mix("#4d5f5a", -0.06), lit * 0.8);
-        Q([P(half, 0, head), P(half, ins, head), P(half, ins, m.h), P(half, 0, m.h)], mix("#4d5f5a", -0.06), lit * 0.8);
       } else if (shape === "glass") {
         // A box you can see through: the frame first, then the panes at a fraction of the alpha an
         // opaque face would use, so the far side of the lane stays legible behind it. Painting glass
@@ -3651,6 +3809,16 @@ function leaveOverlay(root, trigger) {
        as a 60%-strength shopfront and there was no dial to turn. Scaling the tint's alpha by `k`
        here is what makes the authored number mean anything on screen. */
     const scaleTint = (col, m) => {
+      /* A hex tint used to slip past the regex and come back untouched — a glow drawn at full
+         alpha at any hour, which is how the city's bounce survived noon as a white blob while
+         every rgba glow obeyed the sun. On a day page hex is scaled like a colour with alpha 1.
+         On a page with no day the old full-alpha hex is the tuned look — the rooms were authored
+         against it, and darkening them now would re-author every dusk by accident. */
+      if (col[0] === "#") {
+        if (!DAYPAGE) return col;
+        const h = [1, 3, 5].map((i) => parseInt(col.slice(i, i + 2), 16));
+        return `rgba(${h[0]},${h[1]},${h[2]},${m.toFixed(3)})`;
+      }
       const mm = /rgba?\(([^)]+)\)/.exec(col);
       if (!mm) return col;
       const p = mm[1].split(",").map(Number);

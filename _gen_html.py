@@ -1902,10 +1902,11 @@ DISTRICTS = [
         "plates": ROOM_BY_ID["street"]["plates"],
         # Longer than it used to be on purpose: the rooms now stand a walk apart, so stepping out
         # of one and into the next is a journey with the other doors ahead of you, not three doors
-        # in a row. max_d runs past the far wall so the open end is still open ground.
+        # in a row. max_d stops a stride short of the quay rail: the street ends at the water's
+        # edge on purpose, and the walk is allowed to stand at the rail, not past it.
         # The night lane runs out of doors and the far end opens instead: 3400 walk units of open
         # ground past the record's own 1040.
-        "lane": {"w": 700, "d": 1040, "ceil": 620, "back": 300, "max_d": 3400},
+        "lane": {"w": 700, "d": 1040, "ceil": 620, "back": 300, "max_d": 4150},
         # The street is walked in the day. Its record says so, and the renderer answers by giving the
         # page its own clock (fifteen minutes rather than four, opening just before noon) and by
         # adding the sun to every surface rather than washing the night tiles brighter — see the
@@ -1957,10 +1958,11 @@ DISTRICTS = [
             {"id": "bollard-s", "kind": "bollard", "x": -160, "z": 24, "y": 0, "ry": 0,
              "title": "A bollard at the mouth of the street",
              "hint": "Drawn rather than surveyed: it is here so the entrance has an edge."},
-            {"id": "bench-s", "kind": "bench", "x": -300, "z": 320, "y": 0, "ry": 90,
+            {"id": "bench-s", "kind": "bench", "x": -300, "z": -250, "y": 0, "ry": 90,
              "title": "A bench under the dark half of the street",
-             "hint": "The one seat on the street. It sits in the gap between two doors, where a "
-                     "walker is allowed to stop."},
+             "hint": "The one seat on the street. It sits in the gap before the first door, where "
+                     "a walker is allowed to stop — the far half's wall is shops now, and a bench "
+                     "in front of a shopfront is a bench in the way."},
             {"id": "bin-s", "kind": "bin", "x": 322, "z": 540, "y": 0, "ry": -90,
              "title": "A bin by the middle door",
              "hint": "Lid shut, nothing implied about what is in it."},
@@ -1978,6 +1980,7 @@ DISTRICTS = [
              "title": "A drain in the asphalt",
              "hint": "The street's one piece of water kit, at the crossing point."},
             {"id": "front-s", "kind": "front", "x": 346, "z": 700, "y": 0, "ry": -90,
+             "awn": "#6a3226", "noren": "#2e4a7a",
              "glow": [{"r": 120, "k": 0.45, "dy": 190}],
              "title": "A shut front with a light behind it",
              "hint": "Shutter down, light on in the transom: a building with nobody in it and a "
@@ -1991,6 +1994,7 @@ DISTRICTS = [
                   "shut": 0},
              ]},
             {"id": "front-n", "kind": "front", "x": -346, "z": 620, "y": 0, "ry": 90,
+             "awn": "#2e4a52",
              "glow": [{"r": 120, "k": 0.45, "dy": 190}],
              "title": "Another shut front, across the crossing",
              "hint": "Same story from the other side of the street: shutter down, transom lit. "
@@ -2025,6 +2029,41 @@ DISTRICTS = [
              "title": "A second folding board, blank",
              "hint": "Both faces blank, like the first one: the lettering would belong to a shop, "
                      "and there is no shop here to own it."},
+            # The shopping street: four more open fronts, two a side, in the gaps the doors and the
+            # older pair leave. Same unit, different canvas and cloth — the variety on a shopping
+            # street is the awnings and the clutter, never the frame. Shutters stand up (states[0])
+            # so the quarter is open at whatever hour the page opens.
+            {"id": "shop-r1", "kind": "front", "x": 346, "z": 320, "y": 0, "ry": -90,
+             "w": 160, "awn": "#3f4d7a", "noren": "#6a2e2e",
+             "glow": [{"r": 110, "k": 0.4, "dy": 180}],
+             "title": "An open shop under an indigo awning",
+             "hint": "The first shop on the right: canvas out, noren in the recess head, and the "
+                     "shutter standing up. Nothing on the fascia, because the lettering would be "
+                     "a shop's to write.",
+             "states": [{"say": "The shutter stays up. An open shop is the street's own light.",
+                         "k": 0.8, "shut": 0.9}]},
+            {"id": "shop-r2", "kind": "front", "x": 346, "z": 900, "y": 0, "ry": -90,
+             "w": 240, "awn": "#7a4a26",
+             "glow": [{"r": 110, "k": 0.4, "dy": 180}],
+             "title": "A wider shop near the water end",
+             "hint": "A tan canvas over a wider recess. The last shop before the street gives "
+                     "up to the quay.",
+             "states": [{"say": "Open, like the rest of the quarter.", "k": 0.8, "shut": 0.9}]},
+            {"id": "shop-l1", "kind": "front", "x": -346, "z": 400, "y": 0, "ry": 90,
+             "w": 210, "awn": "#4a5a3a", "noren": "#2e4a7a",
+             "glow": [{"r": 110, "k": 0.4, "dy": 180}],
+             "title": "An open shop under a moss awning",
+             "hint": "The left side's first shop, across from the indigo one: two awnings "
+                     "facing is what makes the stretch a shopping street rather than a wall with "
+                     "a door in it.",
+             "states": [{"say": "Open.", "k": 0.8, "shut": 0.9}]},
+            {"id": "shop-l2", "kind": "front", "x": -346, "z": 950, "y": 0, "ry": 90,
+             "w": 170, "awn": "#7a3434",
+             "glow": [{"r": 110, "k": 0.4, "dy": 180}],
+             "title": "The last shop on the left",
+             "hint": "A rust canvas at the water end of the left wall. Past it the wall runs "
+                     "out and the rail begins.",
+             "states": [{"say": "Open.", "k": 0.8, "shut": 0.9}]},
             {"id": "recycle-s", "kind": "recycle", "x": -318, "z": 560, "y": 0, "ry": 90,
              "title": "A recycling crate by the wall",
              "hint": "Lid down. The street's kit repeats the rooms' kit on purpose — one drawn "
@@ -2085,7 +2124,7 @@ DISTRICTS = [
             # the whole walk reads as one drawn world.
             {"side": -1, "z0": -1400, "z1": 240, "y0": 0, "y1": 140, "kind": "dado", "tone": 1.16},
             {"side": -1, "z0": -1400, "z1": 240, "y0": 140, "y1": 620, "kind": "plaster", "tone": 1.14},
-            {"side": -1, "z0": 240, "z1": 700, "y0": 0, "y1": 300, "kind": "shutter", "tone": 1.26},
+            {"side": -1, "z0": 240, "z1": 700, "y0": 0, "y1": 300, "kind": "plaster", "tone": 1.24},
             {"side": -1, "z0": 240, "z1": 700, "y0": 300, "y1": 620, "kind": "brick", "tone": 1.22},
             {"side": -1, "z0": 700, "z1": 860, "y0": 0, "y1": 620, "kind": "brick", "tone": 1.3},
             {"side": -1, "z0": 860, "z1": 1040, "y0": 0, "y1": 140, "kind": "dado", "tone": 1.16},
@@ -2093,7 +2132,7 @@ DISTRICTS = [
             {"side": 1, "z0": -1400, "z1": 80, "y0": 0, "y1": 620, "kind": "brick", "tone": 1.12},
             {"side": 1, "z0": 80, "z1": 390, "y0": 0, "y1": 130, "kind": "dado", "tone": 1.18},
             {"side": 1, "z0": 80, "z1": 390, "y0": 130, "y1": 620, "kind": "plaster", "tone": 1.12},
-            {"side": 1, "z0": 390, "z1": 550, "y0": 0, "y1": 300, "kind": "shutter", "tone": 1.32},
+            {"side": 1, "z0": 390, "z1": 550, "y0": 0, "y1": 300, "kind": "plaster", "tone": 1.28},
             {"side": 1, "z0": 390, "z1": 550, "y0": 300, "y1": 620, "kind": "plaster", "tone": 1.26},
             {"side": 1, "z0": 550, "z1": 900, "y0": 0, "y1": 620, "kind": "plaster", "tone": 1.2},
             {"side": 1, "z0": 900, "z1": 1040, "y0": 0, "y1": 620, "kind": "brick", "tone": 1.28},
@@ -2122,29 +2161,30 @@ DISTRICTS = [
             "sky": [{"y0": -400, "y1": 8000, "c": "#4a5a84", "glow": 1.0},
                     {"y0": 8000, "y1": 30000, "c": "#2c3859", "glow": 0.62},
                     {"y0": 30000, "y1": 40000, "c": "#1e2946", "glow": 0.42}],
-            "mountain": [{"x": -900, "y": 380, "w": 2400, "h": 260, "c": "#1b2540"},
-                         {"x": 1400, "y": 340, "w": 1800, "h": 220, "c": "#1e2946"}],
-            "plaza": {"y": -6, "z0": 1624, "z1": 9000, "half": 4200, "lit": 1.1},
+            # The far shore of the strait: one long low hill, not a peak — a harbour street faces
+            # water and the land past it, and the hill is low enough that the sky, which is the
+            # point of the view, keeps most of the opening.
+            "mountain": {"x": 300, "z": 13500, "base": -120, "top": 260, "half": 6200, "crown": 2400, "snow": 0.06, "c": "#3f5a66"},
+            "plaza": {"y": -6, "z0": 3000, "z1": 4300, "half": 4200, "lit": 1.1},
             # Two low-rise, lit rooftops flank the opening — off the centre line, so they give the
             # open ground something human-sized at the edges without a slab over the skyline.
             "roofs": [
                 {"x": -1350, "y": 0, "z": 2050, "w": 700, "h": 300, "tone": 1.0},
                 {"x": 1350, "y": 0, "z": 2150, "w": 640, "h": 260, "tone": 1.05},
             ],
-            "city": [
-                {"x": -1500, "z": 5600, "w": 1100, "h": 1400, "win": 0.85, "tone": 1.8},
-                {"x": -300, "z": 6800, "w": 900, "h": 1000, "win": 0.75, "tone": 1.55},
-                {"x": 700, "z": 5200, "w": 1050, "h": 1600, "win": 0.9, "tone": 1.9},
-                {"x": 1800, "z": 7200, "w": 1150, "h": 950, "win": 0.72, "tone": 1.5},
-                {"x": 2650, "z": 6200, "w": 850, "h": 1300, "win": 0.8, "tone": 1.7},
-            ],
+            # Past the rail: water to the far shore, a ferry at moor and the crane a working quay
+            # keeps. The painter (`bd.harbor` in js/site.js) draws all of it; the record only places
+            # it, the way every other backdrop here is placed.
+            "harbor": {"y": -100, "z0": 4360, "z1": 12000, "half": 4200, "rail": 4300,
+                       "ships": [{"x": 260, "z": 6800, "l": 900}],
+                       "cranes": [{"x": -380, "z": 5200}]},
         },
         "slots_title": "Rooms on this street",
         "slots": [
             {"label": "Toronto", "note": "A dark hall of lit tables: the city, its falls and its "
                                          "markets, drawn small.",
              "state": "Open — the first door on the left."},
-            {"label": "Tokyo", "note": "A night lane with shutters, lanterns, and a vending "
+            {"label": "Tokyo", "note": "A lane of open shops and awnings, lanterns over it, "
                                        "machine keeping the far end.",
              "state": "Open — the middle door, on the right."},
             {"label": "Fukuoka", "note": "Moji Port on a table: the station, the customhouse, the "
@@ -2163,17 +2203,19 @@ DISTRICTS = [
             {"z": 470, "label": "by the Tokyo door, under the lanterns"},
             {"z": 620, "label": "the boards and the bicycles"},
             {"z": 780, "label": "by the Fukuoka door"},
-            {"z": 880, "label": "the machine at the end of the shutters"},
+            {"z": 880, "label": "the last shops before the water"},
             {"z": 1040, "label": "the end of the street"},
-            {"z": 1150, "label": "out in the open"},
+            {"z": 1240, "label": "out on the quay"},
+            {"z": 1420, "label": "the rail at the water's edge"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
                  "title": "The door at your back", "hint": "It opens onto the album, where the "
                  "same places are hung as pictures."},
         "caveat": "The street is the site's own ground, drawn: it names no city, carries no "
                   "lettering, and hangs no pictures. The three rooms stand along it, each one opens "
-                  "from a door you can walk to, and the far end is no wall — walk out of the street "
-                  "and it is open ground under the sky. Nothing here says the owner was anywhere.",
+                  "from a door you can walk to, and the far end is no wall — the street walks out "
+                  "onto a quay and ends at a rail, with water, a ferry and the far shore beyond. "
+                  "Nothing here says the owner was anywhere.",
     },
     {
         "id": "tokyo", "label": "Tokyo",
@@ -3417,6 +3459,11 @@ def walk_object(o):
     # `liton` is the phase in the room's own day at which this prop's lights come up, so the
     # district can light one building after another instead of switching the whole quay on at once.
     liton_attr = f' data-liton="{o["liton"]}"' if o.get("liton") is not None else ""
+    # The retail kit of a shopping-street front: the canvas colour, the noren cloth and the fascia
+    # board travel in the document like a door's leaf colour, or the renderer never sees them.
+    awn_attr = f' data-awn="{escape(o["awn"])}"' if o.get("awn") else ""
+    noren_attr = f' data-noren="{escape(o["noren"])}"' if o.get("noren") else ""
+    fascia_attr = f' data-fascia="{escape(o["fascia"])}"' if o.get("fascia") else ""
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
@@ -3430,7 +3477,7 @@ def walk_object(o):
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
             f'data-d="{dep}" style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
-            f'{states}{leave}></button>')
+            f'{states}{leave}{awn_attr}{noren_attr}{fascia_attr}></button>')
 
 
 def walk_html(d, drawer):

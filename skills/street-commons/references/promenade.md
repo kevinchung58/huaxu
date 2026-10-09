@@ -98,3 +98,30 @@ he actually described: water in front of you, the town beside you, sun over both
 - **A lake, a lagoon, a canal, a harbour and a river all at once.** The reference reached this note
   the hard way: "water finds the lowest point on the whole rim, and a 0.3 m notch drains the basin
   with no visual change at all". One body of water per district, and it holds.
+
+## The decision, and what was built (round 15)
+
+The owner delegated the choice (「你想一下合適我的規劃就推理幫我做完」), and the choice is:
+**the street ends at a harbour**. The street is likened to Moji Port, and Moji Port is a harbour
+town — its shopping streets run down to the water. One-point projection puts the sea only at the
+far end of the walk, so "scenery along the way" becomes "walk the shopping street and the harbour
+is what it walks to". The beach was not built: Moji has no beach at its retro waterfront, and a
+beach is the option with the most missing material. The corner canal was not built either: it is
+a stream, not the 「美麗的港」 the brief names.
+
+What exists now, all in `bd.harbor` (painter in `js/site.js`, data in `_gen_html.py`):
+
+- water from past the quay to a far shore, panelled like the plaza, night tile and **day tile**
+  (`PATS.waterDay` — pale, horizontally struck, glints; chosen per variant at `DAY() > 0.35`, the
+  second-texture rule the skyline earned), plus a sun-glint column that exists only while the sun
+  does;
+- a quay strip (the plaza, shortened), a rail with posts at its edge, and `max_d` a stride short
+  of the rail — the walk is allowed to stand at the water, not past it;
+- a ferry (hull, white house, one lit window row at night, funnel) and one portal crane, both
+  silhouette by the reference's rule;
+- the far shore as one long low hill (`mountain` now takes a colour, a strait green by day).
+
+**The numbers are walk units.** Read `street-system` §6 before moving any of them: backdrop depths
+and `max_d` are authored directly in walk space, while record depths (props, surfaces, stations,
+the lane) are multiplied by `Z_SCALE = 2.9`. The first harbour sat inside the lane because its
+rail was authored at a record number.

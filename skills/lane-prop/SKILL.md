@@ -162,3 +162,23 @@ If the change touched the stylesheet or the script, the cache-buster is derived 
 of `css/site.css` + `js/site.js` — so there is nothing to bump, but there *is* something to check:
 `curl -s http://127.0.0.1:8080/<page>.html | grep -o 'site\.\(css\|js\)?v=[0-9a-z]*' | sort -u` must
 show the value the generator wrote to disk.
+
+## 7. The retail kit: a shop is a `front` with an `awn`
+
+A shopping street (`skills/street-commons/references/shopfront.md`) is built here from the `front`
+shape plus three record fields the emitter must ship and the renderer must read — **`data-awn`,
+`data-noren`, `data-fascia`** — added to the document contract in round 15, next to `data-leaf`.
+A field that is not in the DOM does not exist: the first shops were invisible because `awn` lived
+only in the record.
+
+With `awn` (a canvas colour) the front is a shop hugging the wall: kickplate, display glass
+(pale by day, dark by night, via `blendHex`), two mullions, a blank fascia board, a canvas that
+stands out ~130 cm at 2.4 m with a valance at its edge and **stripes along the slope** (a plain
+canvas reads as a lid; a striped one reads as a market), and a noren at the doorway head when the
+record names one. Without `awn` it is the old proud closed box. `states[0].shut` decides open
+(display) or shut (shutter blade) at load.
+
+Under a sun, saturated cloth washes to pastel: canvas and valance keep `lit` at 0.72–0.85 because
+the day page adds its own lift. The first awnings at `lit` 1.1+ came back white. And the units are
+the same unit on purpose — the variety is the canvas colour, the cloth and the clutter, never the
+frame (`shopfront.md`'s rule, now enforced by one painter).

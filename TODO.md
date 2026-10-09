@@ -1,6 +1,44 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-08 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-09 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0r. 第十五輪續（2026-10-09）：街道盡頭是港，日本半是商店街
+
+站主說：「你可能想一下合適我的規劃你就推理幫我做完」，後來又指示流程：「先全面大多都做好，最後再全部
+去修與測試……這要修改 SKILLS」。
+
+### 決定（我推理的，理由寫進 skills/street-commons/references/promenade.md）
+
+**街道盡頭是港**。站主把這條街比門司港，而門司港是港町；單點透視下海只能在路的盡頭，所以「沿途的
+風景」=「穿过商店街，盡頭是海、太陽在水面上」。海灘不做（門司港 retro 沒有海灘，且缺最多材質）；
+轉角运河也不做（那是小溪，不是「美麗的港」）。
+
+### 做完的（working tree，尚未 commit）
+
+- **`bd.harbor` painter**（js/site.js）：水面（panel 化、夜 tile＋**白天 waterDay tile**、日光柱）、
+  堤岸（plaza 縮短）、欄杆＋柱、渡輪（船身／白船艙／夜間亮窗帶／煙囪）、門式起重機、對岸低丘
+  （`mountain` 現在吃資料色，海峽綠）。
+- **商店街**：`front` shape 重寫——有 `awn` 就是貼牆店面（kickplate、展示玻璃日間淡夜間深、mullions、
+  空白 fascia、斜出 130 cm 的**條紋**帆布＋valance、noren 掛在門頭高）；沒有 `awn` 維持舊的突出盒。
+  日本半共 6 個店面（4 新＋front-s／front-n 改裝），帆布六色、noren 三色。
+- **兩個大 bug**：(1) `scaleTint` 只認 `rgba()`，hex tint 原封不動回傳 → 那顆「城市反光」在正午以
+  alpha 1 全亮（白球真相），現已修；(2) emitter 沒把 `awn/noren/fascia` 寫進 DOM → 商店全隱形，現已
+  加進 document contract（`data-awn` 等，與 `data-leaf` 同级）。
+- **單位災難**：record 深度 ×2.9 進 walk space，但 **backdrop 與 max_d 是直接寫 walk space**。第一版
+  港的欄杆作者在某 record 數字、落在巷子裡面被遠牆擋住。已全改：plaza 3000–4300、rail 4300、
+  water 4360–12000、hill z 13500、max_d 4150、stations 改回 record（1240/1420）。
+- 長椅搬回加拿大半（-250）；日本半下段牆 shutter→plaster；slots note／caveat／stations 文字跟上。
+- **SKILLS 更新**：SKILLS.md §7（先建後測的流程規則，站主指示）、street-system §6（兩套單位）、
+  promenade 決定段、lane-prop §7（retail kit 的 DOM contract 與防曬 lit 預算）。
+
+### 還沒做（最後一批，站主指示的「最後全部修與測試」）
+
+- 完整驗證批：syntax／冪等／walk／chain／shapes／geometry／clash／e2e／impeccable／lane-shot
+  （rooms 回歸，因 scaleTint 修了所有 hex tint 的 glow）／白天 luma probe／三張截圖（shops、
+  quay-day、quay-night）。
+- commit + push + PR 更新。
+
+---
 
 ## 0q. 第十五輪（2026-10-08）：街道變成白天 + 日本區，太陽是量出來的
 
