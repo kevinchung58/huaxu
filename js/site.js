@@ -1493,6 +1493,13 @@ function leaveOverlay(root, trigger) {
      The floor is what decides whether a room reads as "lit by its own lamps" or "outdoors", and 0.45
      is chosen so dawn and dusk are still dusk. */
   const DAY = () => (DAYPAGE ? clamp((sunNow() - 0.45) / 0.45, 0, 1) : 0);
+  /* Where the sun stands across the lane, −1 east (left) at dawn through 0 at noon to +1 west at
+     dusk, and how high it is in degrees. The shadow system below is authored from these two: a
+     wall's shadow is as long as the wall is tall divided by the tangent of the altitude, and it
+     lies on whichever side the azimuth says — which is what makes a morning and an afternoon
+     different streets, without a shadow map. */
+  const sunAz = () => -Math.cos((phaseNow() - 0.25) * Math.PI * 2);
+  const sunAlt = () => (8 + 62 * sunNow()) * Math.PI / 180;
   const swayOf = (L) => (!L.swing || reduce() ? 0 : Math.sin(T * 6.28319 / L.period + L.phase) * L.swing);
   const lightAt = (px, py, pz) => {
     let v = AMBIENT * (0.18 + 0.82 * sunNow());
@@ -1828,8 +1835,9 @@ function leaveOverlay(root, trigger) {
       }
       // The sun's own column on the water: a pale reach of glint that only exists while the sun does.
       if (DAY() > 0.05) {
-        const g = add(C, [[-240, hb.y + 2, hb.z0 + 300], [240, hb.y + 2, hb.z0 + 300],
-                          [460, hb.y + 2, hb.z1], [-460, hb.y + 2, hb.z1]],
+        const gx = sunAz() * 420;                    // the glint stands under the sun, not under the lens
+        const g = add(C, [[gx - 240, hb.y + 2, hb.z0 + 300], [gx + 240, hb.y + 2, hb.z0 + 300],
+                          [gx + 460, hb.y + 2, hb.z1], [gx - 460, hb.y + 2, hb.z1]],
                       ZERO8, "flat", `rgba(242,247,251,${(0.30 * DAY()).toFixed(3)})`);
         if (g) { g.air = 0.1; g.day = false; }
       }
@@ -2129,7 +2137,13 @@ function leaveOverlay(root, trigger) {
                right face takes all of it. A street whose two walls share one noon has no sun
                direction, which is the flatness a shadow was meant to fix — and this fix is data
                the record could one day own. */
-            if (DAYPAGE) q.daygain = sc.side === -1 ? 0.35 : 1.0;
+            if (DAYPAGE) {
+              const az = sunAz(), k = Math.min(1, Math.abs(az));
+              // The face turned away from the sun takes a third of the lift; at noon the sun is up
+              // the lane and neither face is starved.
+              const shaded = (sc.side === -1) === (az < 0);
+              q.daygain = shaded ? 1 - 0.65 * k : 1;
+            }
           }
         }
       }
@@ -2351,7 +2365,11 @@ function leaveOverlay(root, trigger) {
           // directional cue a shopfront can give without a shadow pass. Skips the lift, or the
           // sun would wash its own shadow away.
           if (DAY() > 0.05) {
-            const sh = add(C, [P(-half, 3, 46), P(half, 3, 46), P(half, 3, yA - 4), P(-half, 3, yA - 4)],
+            // The canvas's shadow slides down the wall as the sun climbs and leans with the
+            // azimuth: a fixed shadow would be a decal of a shadow.
+            const drop = 46 + (1 - sunNow()) * 60, lean = sunAz() * 24;
+            const sh = add(C, [P(-half, 3 + lean, drop), P(half, 3 + lean, drop),
+                               P(half, 3 + lean, yA - 4), P(-half, 3 + lean, yA - 4)],
                            ZERO8, "flat", `rgba(10,16,30,${(0.32 * DAY()).toFixed(3)})`);
             if (sh) { sh.day = false; sh.air = 0; drawn.push(sh); }
           }
@@ -3905,15 +3923,22 @@ function leaveOverlay(root, trigger) {
        sun throws a short shadow home against the wall it comes from. Umbra hard, penumbra half,
        and both skip the lift (`day: false`) or the sun would wash its own shadow away. */
     if (DAYPAGE && DAY() > 0.05) {
-      const a = DAY();
-      const umbra = add(C, [[-WALL + 4, 2, Z_BACK], [-WALL * 0.55, 2, Z_BACK],
-                            [-WALL * 0.55, 2, Z_FAR], [-WALL + 4, 2, Z_FAR]],
-                        ZERO8, "flat", `rgba(12,18,34,${(0.30 * a).toFixed(3)})`);
-      if (umbra) { umbra.day = false; umbra.air = 0; }
-      const pen = add(C, [[-WALL * 0.55, 2, Z_BACK], [-WALL * 0.2, 2, Z_BACK],
-                          [-WALL * 0.2, 2, Z_FAR], [-WALL * 0.55, 2, Z_FAR]],
-                      ZERO8, "flat", `rgba(12,18,34,${(0.14 * a).toFixed(3)})`);
-      if (pen) { pen.day = false; pen.air = 0; }
+      const a = DAY(), az = sunAz(), k = Math.min(1, Math.abs(az));
+      // A wall of height H throws a shadow H / tan(altitude) long, scaled by how much the sun is
+      // across the lane rather than up it; the side is the azimuth's side. Long at the edges of
+      // the day, a sliver at noon, gone when the sun is up the lane.
+      const len = Math.min(WALL * 1.6, (620 / Math.tan(sunAlt())) * k);
+      if (len > 6) {
+        const sgn = az < 0 ? -1 : 1;                 // the wall the shadow comes from
+        const x0 = sgn * (WALL - 4), x1 = sgn * (WALL - 4) - sgn * len;
+        const um = add(C, [[x0, 2, Z_BACK], [x1, 2, Z_BACK], [x1, 2, Z_FAR], [x0, 2, Z_FAR]],
+                       ZERO8, "flat", `rgba(12,18,34,${(0.30 * a).toFixed(3)})`);
+        if (um) { um.day = false; um.air = 0; }
+        const x2 = x1 - sgn * len * 0.45;
+        const pe = add(C, [[x1, 2, Z_BACK], [x2, 2, Z_BACK], [x2, 2, Z_FAR], [x1, 2, Z_FAR]],
+                       ZERO8, "flat", `rgba(12,18,34,${(0.14 * a).toFixed(3)})`);
+        if (pe) { pe.day = false; pe.air = 0; }
+      }
     }
     // A wet patch holds whatever is standing above it, which is the only reason the patch is in the
     // data: a puddle that reflects nothing is a grey rectangle. The bulbs already throw their own pool

@@ -111,13 +111,16 @@ found by looking at the frame rather than by reasoning about it:
 
 **What is still not built, and is therefore still the owner's to ask for:**
 
-- **a cast-shadow pass** — *partially answered by authored shade (round 16).* The sun now stands to
-  the left: the left wall face takes a third of the lift (`q.daygain` per side in the surfaces
-  loop), the wall throws an umbra and a penumbra strip on the floor, and each awning throws a
-  shadow home on the wall under it — all `day: false`, so the sun cannot wash its own shadow away.
-  Noon on the street measured 193.1 luma uniform and 179.1 with the shade: the difference is the
-  direction. A true shadow pass (geometry casting, hours moving the shadow) is still the upgrade
-  path, and still the owner's to ask for.
+- **a cast-shadow pass** — *answered by a moving authored shadow (round 16).* The day page now
+  carries a sun with an azimuth and an altitude (`sunAz`, `sunAlt` from the page's own clock): a
+  wall's floor shadow is `H / tan(altitude)` long, on the azimuth's side, so it lies long across
+  the floor at the edges of the day, shrinks to a sliver at noon, and changes sides after noon;
+  the face turned from the sun takes a third of the lift; each awning's wall-shadow slides and
+  leans with the sun; and the harbour's glint column stands under the sun, not under the lens.
+  Every shadow quad is `day: false`, because the one way a shade system betrays itself is the sun
+  washing its own shadow away. Uniform noon measured 193.1; with shade 179–189 by the hour. What
+  remains for a true pass is per-prop cast geometry (a vending machine's shadow on the wall) —
+  an upgrade, not a missing truth.
 - **day variants of the tiles that are still night.** The distant city's window grid and the water
   tile are night values: a city of lit windows at noon is the one thing in that frame that still says
   "night". The fix is the one the skyline already has (a second texture per variant, not a tint over
