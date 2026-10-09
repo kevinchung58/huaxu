@@ -35,6 +35,12 @@ if (yaw) {
   await page.mouse.up();
   await new Promise((r) => setTimeout(r, 400));
 }
+const turns = Number(process.argv[6] || 0);          // arrow-key 7-degree steps, signed
+if (turns) {
+  const key = turns > 0 ? "ArrowRight" : "ArrowLeft";
+  for (let i = 0; i < Math.abs(turns); i++) { await page.keyboard.press(key); }
+  await new Promise((r) => setTimeout(r, 400));
+}
 await page.screenshot({ path: `.preview/day/${name}.png` });
 console.log("shot", name);
 await browser.close();
