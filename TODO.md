@@ -2,6 +2,22 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-09 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0t. 第十六輪續（2026-10-09）：把白天作者成有方向的陽光（authored shade）
+
+站主以「.」核准做 shade pass。走 skills 記的零新機制路線：
+
+- **牆**：太陽在左 → 左牆面 `daygain 0.35`、右牆面 1.0（surfaces loop 裡按 side）。
+- **地板**：左牆的影＝umbra（alpha 0.30×DAY）＋penumbra（0.14×DAY）兩條 quad，`day: false`
+  （否則太陽會把自己的影洗掉）。
+- **店**：帆布在牆上留下影（alpha 0.32×DAY）；展示玻璃吃 0.45 的陽光、暖 shelf 減半
+  （影側的窗不該發白）。
+
+量到的：中午 **193.1 → 179.1**（方向出來了，近白仍 0.05%）；夜 65.0、rooms 107.x 不變。
+lane-shot 0 FAIL、walk 168/168、其餘閘全綠、冪等。真正的 cast-shadow pass（幾何投影、影隨時刻移動）
+仍是升級項，記在 street-commons §3。
+
+---
+
 ## 0s. 第十六輪（2026-10-09）：Tokyo 巷尾的夜畫面，gate 終於量對東西
 
 上一輪留下的 3 個 lane-shot FAILED（Tokyo 深停 luma 74/61）這輪處理完。

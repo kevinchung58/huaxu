@@ -2124,6 +2124,12 @@ function leaveOverlay(root, trigger) {
                     * (sc.kind === "shutter" ? 1.12 : 1) * (sc.tone === undefined ? 1 : sc.tone);
             // A shutter is metal and catches the light; plywood and brick mostly do not.
             if (sc.kind === "hoarding") q.lit *= 0.86;
+            /* Authored shade, the stand-in for a cast-shadow pass: the sun stands to the left, so
+               the left wall face is turned away from it and takes a third of the lift, while the
+               right face takes all of it. A street whose two walls share one noon has no sun
+               direction, which is the flatness a shadow was meant to fix — and this fix is data
+               the record could one day own. */
+            if (DAYPAGE) q.daygain = sc.side === -1 ? 0.35 : 1.0;
           }
         }
       }
@@ -2308,15 +2314,16 @@ function leaveOverlay(root, trigger) {
             // Open: display glass at the wall's own face, mullions over it, and one warm shelf of
             // light that the sun mostly takes. The glass is pale by day and dark by night, so an
             // open shop reads as glass in both, not as a hole.
-            Q([P(-half, 4, 46), P(half, 4, 46), P(half, 4, yA - 4), P(-half, 4, yA - 4)],
-              blendHex("#31405a", "#93a6b8", DAY()), 0.75 + 0.55 * DAY());
+            const gl = add(C, [P(-half, 4, 46), P(half, 4, 46), P(half, 4, yA - 4), P(-half, 4, yA - 4)],
+              ZERO8, "flat", blendHex("#31405a", "#93a6b8", DAY()));
+            if (gl) { gl.lit = 0.75 + 0.55 * DAY(); gl.daygain = 0.45; drawn.push(gl); }
             for (let i = 1; i < 3; i++) {
               const u0 = -half + (i / 3) * 2 * half - 3;
               Q([P(u0, 3, 46), P(u0 + 6, 3, 46), P(u0 + 6, 3, yA - 4), P(u0, 3, yA - 4)],
                 "#2a3448", lit * 0.8);
             }
             Q([P(-half * 0.7, 6, 60), P(half * 0.7, 6, 60), P(half * 0.7, 6, 120), P(-half * 0.7, 6, 120)],
-              "#e8b87a", (0.5 + up * 0.9) * dl, 0.05);
+              "#e8b87a", (0.5 + up * 0.9) * dl * 0.5, 0.05);
           } else {
             // Shut: the blade across the face, the same shutter as the cladding.
             const blade = add(C, [P(-half, 6, 0), P(half, 6, 0), P(half, 6, yA - 4), P(-half, 6, yA - 4)],
@@ -2340,6 +2347,14 @@ function leaveOverlay(root, trigger) {
           }
           Q([P(-half, out, yB - val), P(half, out, yB - val), P(half, out, yB), P(-half, out, yB)],
             m.awn, lit * 0.72);
+          // The canvas throws a shadow home on the wall below it while the sun is up: the one
+          // directional cue a shopfront can give without a shadow pass. Skips the lift, or the
+          // sun would wash its own shadow away.
+          if (DAY() > 0.05) {
+            const sh = add(C, [P(-half, 3, 46), P(half, 3, 46), P(half, 3, yA - 4), P(-half, 3, yA - 4)],
+                           ZERO8, "flat", `rgba(10,16,30,${(0.32 * DAY()).toFixed(3)})`);
+            if (sh) { sh.day = false; sh.air = 0; drawn.push(sh); }
+          }
           if (m.noren) {
             // Hung at the head of the doorway, below the canvas: under an awning the noren is the
             // shop's colour at eye level, and the one retail cue a walker meets face on.
@@ -3885,6 +3900,21 @@ function leaveOverlay(root, trigger) {
         g.beginPath(); g.arc(sx, sy, Math.max(1.5, (focal * 9) / p.z), 0, 6.2832); g.fill();
       }
     });
+    /* The wall's own shadow on the ground, authored as two strips because a shadow that falls the
+       same way at every hour is a lie about the sun — but at the noon this page opens on, a high
+       sun throws a short shadow home against the wall it comes from. Umbra hard, penumbra half,
+       and both skip the lift (`day: false`) or the sun would wash its own shadow away. */
+    if (DAYPAGE && DAY() > 0.05) {
+      const a = DAY();
+      const umbra = add(C, [[-WALL + 4, 2, Z_BACK], [-WALL * 0.55, 2, Z_BACK],
+                            [-WALL * 0.55, 2, Z_FAR], [-WALL + 4, 2, Z_FAR]],
+                        ZERO8, "flat", `rgba(12,18,34,${(0.30 * a).toFixed(3)})`);
+      if (umbra) { umbra.day = false; umbra.air = 0; }
+      const pen = add(C, [[-WALL * 0.55, 2, Z_BACK], [-WALL * 0.2, 2, Z_BACK],
+                          [-WALL * 0.2, 2, Z_FAR], [-WALL * 0.55, 2, Z_FAR]],
+                      ZERO8, "flat", `rgba(12,18,34,${(0.14 * a).toFixed(3)})`);
+      if (pen) { pen.day = false; pen.air = 0; }
+    }
     // A wet patch holds whatever is standing above it, which is the only reason the patch is in the
     // data: a puddle that reflects nothing is a grey rectangle. The bulbs already throw their own pool
     // from the loop above; this is for the sources that are not bulbs — a machine, a closed front with
