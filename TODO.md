@@ -31,12 +31,16 @@
 - **SKILLS 更新**：SKILLS.md §7（先建後測的流程規則，站主指示）、street-system §6（兩套單位）、
   promenade 決定段、lane-prop §7（retail kit 的 DOM contract 與防曬 lit 預算）。
 
-### 還沒做（最後一批，站主指示的「最後全部修與測試」）
+### 最後驗證批結果（同一天稍後）
 
-- 完整驗證批：syntax／冪等／walk／chain／shapes／geometry／clash／e2e／impeccable／lane-shot
-  （rooms 回歸，因 scaleTint 修了所有 hex tint 的 glow）／白天 luma probe／三張截圖（shops、
-  quay-day、quay-night）。
-- commit + push + PR 更新。
+- syntax OK、冪等、**walk 168/168**、chain 0、**shapes 123/123**（加了 `shop: "front"` alias）、
+  geometry OK、clash 0、**e2e 0**（其中一個斷言從「backdrop 要有 city」更新為「city 或 harbor」，
+  因為設計改了）、impeccable `[]`、street-commons 與 lane-prop skill valid。
+- luma（伺服器實際吐出的頁面）：**中午 193.0**（近白 0.05%）、夜 65.0、**rooms.html 106.6**
+  （改前 106.7，未動）。
+- **lane-shot 有 3 個 FAILED，但對上一個 commit 跑同樣 3 個 FAILED（108.0 vs 107.8）——既存問題**：
+  Tokyo 巷深處太暗（deep stops luma 74/61，閘要求 >90）。下一輪處理，不要假裝是這輪弄壞的。
+- 已 commit `a5db8ef` 並 push；PR #11 已更新。
 
 ---
 
