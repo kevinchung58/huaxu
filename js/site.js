@@ -2242,6 +2242,33 @@ function leaveOverlay(root, trigger) {
                        ZERO8, "flat", "rgba(4,8,18,0.34)");
         if (cs) { cs.lit = 0.5; drawn.push(cs); }
       }
+      /* The prop's own cast shadow: the contact shadow says a prop stands, this one says where the
+         sun stands. The floor piece runs away from the sun for h / tan(altitude) times the
+         azimuth's strength, and where that run meets a wall it climbs it for the share it could
+         not cross — a vending machine against the lit wall wears its own shadow at the right
+         hour, and at noon the run is a sliver, because it is. */
+      if (DAYPAGE && DAY() > 0.05 && m.y < 20 &&
+          ["box", "bikes", "planter", "cones", "aboard", "glass"].includes(shape)) {
+        const az = sunAz(), k = Math.min(1, Math.abs(az));
+        const L = Math.min(420, (m.h / Math.tan(sunAlt())) * k);
+        if (L > 8) {
+          const sgn = az < 0 ? 1 : -1;                        // away from the sun
+          const fw = onSide ? m.d : m.w, fd = onSide ? m.w : m.d;
+          const z0 = m.z - fd / 2, z1 = m.z + fd / 2;
+          const x0 = m.x + sgn * fw * 0.4, wallX = sgn * (WALL - 3);
+          const xEnd = sgn > 0 ? Math.min(x0 + L, wallX) : Math.max(x0 - L, wallX);
+          const fs = add(C, [[x0, 3, z0], [xEnd, 3, z0], [xEnd, 3, z1], [x0, 3, z1]],
+                         ZERO8, "flat", `rgba(8,12,24,${(0.26 * DAY()).toFixed(3)})`);
+          if (fs) { fs.day = false; fs.air = 0; drawn.push(fs); }
+          const crossed = L - Math.abs(xEnd - x0);
+          if (crossed > 4) {
+            const ph = Math.min(m.h * 0.85, crossed * 0.9);
+            const ws = add(C, [[wallX, 2, z0], [wallX, 2, z1], [wallX, ph, z1], [wallX, ph, z0]],
+                           ZERO8, "flat", `rgba(8,12,24,${(0.24 * DAY()).toFixed(3)})`);
+            if (ws) { ws.day = false; ws.air = 0; drawn.push(ws); }
+          }
+        }
+      }
       if (shape === "box") {
         // Only the faces turned toward the eye are painted, and each carries its own tint: that is
         // the whole trick of volume here, and it costs three quads instead of one.

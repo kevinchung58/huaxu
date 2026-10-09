@@ -118,9 +118,12 @@ found by looking at the frame rather than by reasoning about it:
   the face turned from the sun takes a third of the lift; each awning's wall-shadow slides and
   leans with the sun; and the harbour's glint column stands under the sun, not under the lens.
   Every shadow quad is `day: false`, because the one way a shade system betrays itself is the sun
-  washing its own shadow away. Uniform noon measured 193.1; with shade 179–189 by the hour. What
-  remains for a true pass is per-prop cast geometry (a vending machine's shadow on the wall) —
-  an upgrade, not a missing truth.
+  washing its own shadow away. Uniform noon measured 193.1; with shade 179–189 by the hour.
+  Per-prop cast shadows joined in the same round: every body prop (boxes, bikes, planters, cones,
+  A-boards, booths) runs a floor shadow `h / tan(altitude) × |azimuth|` long away from the sun,
+  and where the run meets a wall it climbs it — so a crate against the lit wall wears its own
+  shadow at the right hour. The shadow system is complete as authored geometry; a shadow map
+  (soft edges, overlapping casters) would be a renderer, not a correction.
 - **day variants of the tiles that are still night.** The distant city's window grid and the water
   tile are night values: a city of lit windows at noon is the one thing in that frame that still says
   "night". The fix is the one the skyline already has (a second texture per variant, not a tint over

@@ -2,6 +2,23 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-09 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0v. 第十六輪三續（2026-10-09）：per-prop 投影——影子系統完成
+
+站主「.」核准最後一項。每個有身體的 prop（box/bikes/planter/cones/aboard/glass）在
+`meta.forEach` 的 contact shadow 旁得到自己的方向影：
+
+- 地板段：長 = h / tan(alt) × |az|，方向背陽；正午一條、傍晚一道。
+- 撞到牆就爬牆：爬牆高度 = 沒跨過去的那段 × 0.9（夾在 0.85h 內）。
+- 全部 `day: false`、alpha × DAY()，夜裡消失。
+
+傍晚截圖確認：右箱影左拖、左物影爬左牆。量測：中午 188.9、夜 65.0、rooms 107.6；
+walk 168/168、lane-shot 0、chain/e2e 0、shapes 123、geometry/clash 乾淨、impeccable []、冪等。
+
+§3 的影子系統至此完成（牆影、地板影、帆布影、日光柱、per-prop）。再上去是 shadow map
+（軟邊、多重投影）——那是換 renderer，不是修正。
+
+---
+
 ## 0u. 第十六輪再續（2026-10-09）：影會動了（sunAz / sunAlt）
 
 站主「..」核准下一件。把静态 shade 升級成**隨時刻移動的影**：
