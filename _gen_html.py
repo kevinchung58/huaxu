@@ -2533,7 +2533,11 @@ DISTRICTS = [
         # 900 m away, and the page does not pretend it is.
         "vista": {"x": 0, "y0": 108, "y1": 336, "w": 470},
         "backdrop": {
-            "plaza": {"y": -260, "z0": 1240, "z1": 12000, "half": 3600},
+            # The picture beyond the window used to hang its upper half on glow 0: a city at night
+            # with no air behind it, and the two deep stops — the ones that stand at the window and
+            # look through it — came back darker than the lane's own gate allows. The dusk bands
+            # below give the picture its air; the lane stays a night lane.
+            "plaza": {"y": -260, "z0": 1240, "z1": 12000, "half": 3600, "lit": 0.8},
             # A nearer row of rooftops, flanking the crossing rather than standing on it. Through the
             # aperture the first thing seen should be a silhouette at the height a lane sees roofs;
             # eight-storey facades straight out of the window would be a diagram of a city, not a view
@@ -2570,9 +2574,9 @@ DISTRICTS = [
                       "decks": [1500, 2600], "mast": 4700},
             "mountain": {"x": -18000, "z": 90000, "base": -260, "top": 14000,
                          "half": 30000, "crown": 5200, "snow": 0.3},
-            "sky": [{"y0": -260, "y1": 1400, "c": "#3a4666", "glow": 0.62},
-                    {"y0": 1400, "y1": 4200, "c": "#26314d"},
-                    {"y0": 4200, "y1": 40000, "c": "#141e36"}],
+            "sky": [{"y0": -260, "y1": 1400, "c": "#46587e", "glow": 0.95},
+                    {"y0": 1400, "y1": 4200, "c": "#2e3b5c"},
+                    {"y0": 4200, "y1": 40000, "c": "#1c2742"}],
         },
         # Cables, in the same units, strung wall to wall and to the pole they are bolted on to.
         # Five crossings spread down the lane at the record depths the lanterns are hung on, plus the

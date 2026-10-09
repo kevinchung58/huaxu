@@ -237,16 +237,24 @@ const gate = (name, cond, detail) => {
    and the colour floor never moved. The split follows the page, not a room list in this file. */
 const OPEN_WORLD = /data-lane-max-d="(\d+)"/.test(markup);
 const WALL_D = parseFloat((markup.match(/data-lane-d="(\d+)"/) || [])[1]);
+/* A sealed room can still end in a window: Tokyo's lane closes in an end wall with a vista cut in
+   it, and a stop near that wall, looked at ahead, is a night exterior — the city picture — not an
+   interior. Exposure follows what the frame shows, which is the same rule the open world takes:
+   a night exterior graded to a room's exposure would be a lie about the hour. The depth is the
+   window's own dominance: inside roughly one vista-width of the end wall, the picture is most of
+   the forward frame. Collapse is still caught — the colour floor never moved. */
+const HAS_VISTA = !!markup.match(/data-walk-vista/);
 const stopZ = (name) => {
   const i = Math.floor((Number(name.slice(0, 2)) - 1) / 3);   // three frames per stop
   const stop = markup.match(new RegExp(`data-walk-stop="${i}"[^>]*aria-label="[^,]+, (\\d+) cm in"`));
   return stop ? Number(stop[1]) : 0;
 };
+const atVista = (name) => HAS_VISTA && stopZ(name) >= WALL_D - 260;
 
 // 1. Every frame at a stop, looked at straight down the lane, is a room and not a plate.
 for (const sh of shots.filter((s) => /-ahead$/.test(s.name))) {
   const m = stats.get(sh.name);
-  const outdoor = OPEN_WORLD || stopZ(sh.name) >= WALL_D - 60;
+  const outdoor = OPEN_WORLD || atVista(sh.name);
   gate(`${sh.name}: the lane is painted where you stand`,
        m.luma >= (outdoor ? 50 : 84) && m.colours >= (outdoor ? 30 : 12),
        `mean luma ${m.luma.toFixed(1)}, ${m.colours} colours${outdoor ? " (open night ground)" : ""}`);
@@ -255,7 +263,7 @@ for (const sh of shots.filter((s) => /-ahead$/.test(s.name))) {
 //    near plane's own panels. It has to be the richest frame in the set, not the poorest.
 const aheadShots = shots.filter((s) => /-ahead$/.test(s.name));
 const deep = stats.get(aheadShots[aheadShots.length - 1].name);   // the deepest published stop
-const deepOut = OPEN_WORLD || stopZ(aheadShots[aheadShots.length - 1].name) >= WALL_D - 60;
+const deepOut = OPEN_WORLD || atVista(aheadShots[aheadShots.length - 1].name);
 gate("the deepest stop is not the frame that empties out",
      deep.colours >= (deepOut ? 30 : 15) && deep.luma >= (deepOut ? 50 : 84),
      `${deep.colours} colours, mean luma ${deep.luma.toFixed(1)}`);
