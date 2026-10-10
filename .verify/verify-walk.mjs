@@ -316,9 +316,15 @@ ok("the backdrop adds its own fills to the room, not a second pass over it", ctx
    enough to earn that fill -- so at noon the room costs 5573 fills and after dark, when every quad
    needs darkening, it costs 6164. The ceiling now has to cover the expensive hour, not the cheap
    one, and it goes to 6300. A reading taken at a different time of day will differ by about 600
-   fills; that is the cycle working, not a regression. Still far short of a second pass. */
+   fills; that is the cycle working, not a regression. Still far short of a second pass.
+
+   It moved once more, and the A/B is exact this time: the falls' promenade registered two
+   material tiles (hedge, mistview) that every boot draws once, the way every other tile is
+   drawn — HEAD reads 6298, the promenade build reads 6380, and 82 is precisely the two
+   painters' fillRects. The ceiling goes to 6600; a second depth pass would now read near
+   12 700, so the detector still has a whole pass of daylight. */
 ok("one depth pass, dressed: the room costs fills, not passes",
-   ctx.fills > before && ctx.fills < 6300, `${ctx.fills} fills, one pass`);
+   ctx.fills > before && ctx.fills < 6600, `${ctx.fills} fills, one pass`);
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
 ok("the cladding is tiled into the wall's own panels, so an affine map stays exact",

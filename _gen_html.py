@@ -88,6 +88,9 @@ ROOMS = [
     # The landmark space (landmark-space §2 link contract): the tower prop in the Toronto hall
     # owns this district; the hall stays the hub route in, the space owns the way back.
     ("cntower", "The tower", "rooms-cntower.html", ["toronto-tower-"], "open"),
+    # The falls own their space the same way the tower owns its: the hall's model is the prop,
+    # the story opens first, the space beside it, and the space unwinds to the hall.
+    ("niagara", "The falls", "rooms-niagara.html", ["niagara-"], "open"),
     ("tokyo", "Tokyo", "rooms.html", ["tokyo-"], "open"),
     ("fukuoka", "Fukuoka", "rooms-fukuoka.html", ["fukuoka-"], "open"),
 ]
@@ -1382,6 +1385,7 @@ IMG_RULES = [
     ("fukuoka-", "field-notes", "generated"),
     ("toronto-", "field-notes", "generated"),
     ("cntower-", "field-notes", "generated"),
+    ("niagara-", "field-notes", "generated"),
     ("act-", "classroom", "record"),
     ("practice-", "figures", "figure"), ("principle-", "figures", "figure"),
     ("grid-", "figures", "figure"), ("diverge-", "figures", "figure"),
@@ -1520,6 +1524,10 @@ PLACE_TITLES = {
     "IMG/toronto-tower-2.jpg": "The city from above",
     "IMG/toronto-tower-3.jpg": "342 m of drop",
     "IMG/cntower-cover.jpg": "The tower, the pod in one sheet",
+    "IMG/niagara-1.jpg": "The horseshoe from Table Rock",
+    "IMG/niagara-2.jpg": "The promenade, mist ahead",
+    "IMG/niagara-3.jpg": "The American Falls across",
+    "IMG/niagara-cover.jpg": "The falls in one sheet",
 }
 
 
@@ -1644,6 +1652,8 @@ PLACE_GROUP_NOTES = {
     "toronto": "A dark hall of lit tables: the city, its falls and its markets, drawn small.",
     "cntower": "The whole CN Tower as one space: the cab doors, the LookOut's city from "
                 "above, the glass underfoot, the higher band.",
+    "niagara": "The promenade at the falls: Table Rock at the lip, the horseshoe's mist, "
+                "the American Falls across, the gorge for an end.",
 }
 
 
@@ -1905,6 +1915,24 @@ LANE_FALLBACK = {"w": 640, "d": 430, "ceil": 420, "back": 240}
 # IG-story the prop opens first (landmark-space §2), and the `space` beside them is the district
 # the story leads into. The rasters ride the existing `toronto-` IMG rule — generated plates,
 # never a record that anyone stood anywhere.
+NIAGARA_STORY = {
+    "title": "The falls",
+    "space": "rooms-niagara.html",
+    "frames": [
+        {"src": "IMG/niagara-1.jpg", "title": "The horseshoe from Table Rock",
+         "alt": "Illustration of Horseshoe Falls from Table Rock: a curved green crest spilling "
+                "into white mist, a faint rainbow, the gorge bending away, a railing at the viewer's edge.",
+         "caption": "Table Rock: the water goes over the lip a few metres from the rail."},
+        {"src": "IMG/niagara-2.jpg", "title": "The promenade, mist ahead",
+         "alt": "Illustration of the Niagara promenade: iron railing right, hedges and lamp posts "
+                "left, a great column of white mist rising ahead.",
+         "caption": "The Canadian promenade: the falls announce themselves as weather."},
+        {"src": "IMG/niagara-3.jpg", "title": "The American Falls across",
+         "alt": "Illustration of the American Falls across the gorge: a straight white sheet onto "
+                "grey boulders, Luna and Goat Islands at the right.",
+         "caption": "Across the gorge: the American Falls on its talus, the islands between."},
+    ],
+}
 TOWER_STORY = {
     "title": "The tower",
     "space": "rooms-cntower.html",
@@ -3069,6 +3097,7 @@ DISTRICTS = [
             # it stands on allows without overhanging the plinth.
             {"id": "falls-n", "kind": "falls", "x": 290, "z": 200, "y": 80, "ry": -90,
              "w": 228, "h": 52, "d": 62,
+             "story": NIAGARA_STORY,
              "title": "The falls, small",
              "hint": "A sheet of water over a ledge into mist, small enough to step over and loud "
                      "enough to imagine. The one moving thing in the hall; it moves because you "
@@ -3328,6 +3357,121 @@ DISTRICTS = [
                   "are the artist's, the landmarks read by silhouette alone, and nothing on any "
                   "table carries a name, a date or a claim that the owner stood in Toronto. The "
                   "model is the point, not the trip.",
+    },
+    {
+        # Niagara, the Canadian edge (grounded-scene §6's second worked example). The lane is the
+        # promenade's last stretch, walked in the day, ending at the Table Rock rail; beyond it the
+        # niagara painter carries the whole fact: the horseshoe crest (670 m of brink, a 57 m drop,
+        # sources in TODO §0c) spilling into its mist, the American Falls on its talus across to the
+        # left, the islands between, the gorge river below, a rainbow when the sun stands right.
+        # What shrinks is detail; what must not: the crest's breadth-to-drop ratio, Table Rock at
+        # the lip, the river running north behind you, the mist as weather.
+        "id": "niagara", "label": "The falls",
+        "page": ROOM_BY_ID["niagara"]["page"],
+        "plates": ROOM_BY_ID["niagara"]["plates"],
+        # A promenade is narrower than a street and open to the sky: the ceiling is only there so
+        # the box closes overhead, and the day is authored the way the street's is.
+        "lane": {"w": 560, "d": 460, "ceil": 380, "back": 220, "max_d": 1500},
+        "day": {"cycle": 900, "start": 0.55, "gain": 1},
+        "purpose": "The promenade at Niagara Falls: Table Rock at the lip, the horseshoe's mist, the American Falls across, the gorge for an end",
+        "status": "open",
+        "kind": "personal",
+        "cover": "IMG/niagara-cover.jpg",
+        "cover_caption": "The horseshoe from Table Rock, drawn with its rainbow.",
+        "blurb": "One promenade walked in the day. Hedges and lamps on the park side, a parapet and "
+                 "the mist on the gorge side, and at the rail the whole falls: the crest, the drop, "
+                 "the mist, the rainbow, the American Falls across.",
+        "clad_note": " The lane is the promenade: a hedge and lamp posts on the park side, a stone "
+                     "parapet at hand height on the gorge side and the falls' own mist above it. "
+                     "Nothing on any of it carries a word.",
+        "sight_note": " At its far end the walk stops at the Table Rock rail, and beyond is the "
+                      "whole fact of the falls: the horseshoe crest spilling into mist, the "
+                      "American Falls across on its boulders, the gorge river below, a rainbow in "
+                      "the spray. Nothing out there is a record of anybody standing in it.",
+        "objects": [
+            # The park side keeps one bench and the hedge keeps it company: a promenade is walked
+            # slowly, and a bench facing the mist is the one furniture the view asks for.
+            {"id": "bench-ng", "kind": "bench", "x": -250, "z": 240, "y": 0, "ry": 90,
+             "title": "A bench at the hedge",
+             "hint": "It faces the gorge side. The mist is the view; the bench is the pause."},
+            # The falls themselves, stood at real scale in the site's own falls shape: the sheet,
+            # the ledge, the mist — the same draw that reads on the hall's table, at the crest's
+            # own breadth-to-drop ratio. The horseshoe wraps the view; the American Falls stands
+            # to the left on its talus, the islands between.
+            {"id": "falls-ng", "kind": "falls", "x": 300, "z": 2400, "y": -150, "ry": 0,
+             "w": 4200, "h": 900, "d": 120,
+             "title": "The horseshoe, at the rail",
+             "hint": "Six hundred and seventy metres of brink at model breadth, drawn at the "
+                     "rail's own distance: the water goes over the lip a few metres away."},
+            {"id": "falls-am", "kind": "falls", "x": -2600, "z": 3400, "y": -150, "ry": 20,
+             "w": 2600, "h": 600, "d": 90,
+             "title": "The American Falls across",
+             "hint": "A straight sheet onto its talus of boulders, east of the horseshoe, the "
+                     "islands between."},
+            {"id": "planter-go", "kind": "planter", "x": -1400, "z": 2600, "y": -150, "ry": 0,
+             "w": 900, "h": 140, "d": 500,
+             "title": "Goat Island at the crest",
+             "hint": "The green wedge that parts the horseshoe from the bridal veil, at the "
+                     "crest line."},
+            {"id": "planter-lu", "kind": "planter", "x": -1900, "z": 2900, "y": -150, "ry": 0,
+             "w": 460, "h": 100, "d": 300,
+             "title": "Luna Island, small",
+             "hint": "The smaller island, between the American and the bridal veil."},
+        ],
+        "surfaces": [
+            # Park side: a hedge at hand height and park greenery above it to the ceiling line.
+            {"side": -1, "z0": 30, "z1": 470, "y0": 0, "y1": 150, "kind": "hedge", "tone": 1},
+            {"side": -1, "z0": 30, "z1": 470, "y0": 150, "y1": 340, "kind": "hedge", "tone": 0.7},
+            # Gorge side: the stone parapet at hand height, and above it the falls' mist worn as
+            # cladding — the side view is weather, the way the pod's side view was the city.
+            {"side": 1, "z0": 30, "z1": 470, "y0": 0, "y1": 100, "kind": "dado", "tone": 0.9},
+            {"side": 1, "z0": 30, "z1": 470, "y0": 100, "y1": 340, "kind": "mistview", "tone": 1},
+        ],
+        "lamps": [
+            # The promenade's lamp posts, authored whole: they keep the hedge side honest at dusk
+            # and do almost nothing at noon, because the sun owns the day page.
+            {"x": -252, "y": 210, "z": 120, "r": 90, "k": 0.5},
+            {"x": -252, "y": 210, "z": 340, "r": 90, "k": 0.5},
+        ],
+        # The end wall is a frame, not a stop: one wide aperture over the stone sill, and the
+        # niagara painter carries everything past it from every stop on the promenade.
+        "vista": {"x": 0, "y0": 20, "y1": 340, "w": 520},
+        "backdrop": {
+            # The day sky, in the street's own idiom: bands from below the horizon up, glow near
+            # one at the light-bearing band, because the lighting model multiplies what glow gives.
+            "sky": [{"y0": -400, "y1": 3000, "c": "#7fa8cc", "glow": 1.0},
+                    {"y0": 3000, "y1": 30000, "c": "#5d82ac", "glow": 0.7},
+                    {"y0": 30000, "y1": 90000, "c": "#48688f", "glow": 0.5}],
+            "niagara": {"y": -60, "z0": 600, "z1": 20000, "half": 12000,
+                        "crest": {"x": 1000, "w": 14000, "drop": 1100},
+                        "american": {"x": -9000, "w": 6000, "drop": 1600},
+                        "islands": [{"x": -5200, "w": 2600}, {"x": -11000, "w": 3000}],
+                        "rail": 1450},
+        },
+        "slots_title": "Places at the falls",
+        "slots": [
+            {"label": "The horseshoe from Table Rock",
+             "note": "The story the hall's model opens first: the crest, the mist, the "
+                      "American Falls across.",
+             "state": "Held by three drawn story frames; a photograph takes the slot when one arrives."},
+            {"label": "The Table Rock rail",
+             "note": "The lip at the rail, where the water goes over a few metres away.",
+             "state": "Held by the rail itself; no plate can stand in for the drop."},
+        ],
+        "stations": [
+            {"z": 10, "label": "the mouth of the promenade"},
+            {"z": 140, "label": "the hedge and the rail"},
+            {"z": 300, "label": "the mist ahead"},
+            {"z": 480, "label": "the Table Rock rail"},
+        ],
+        "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
+                 "title": "The gate at your back", "hint": "It opens onto the hall, at the falls' "
+                                                           "own table."},
+        "back_to": "rooms-toronto.html",
+        "caveat": "The falls are drawn from public facts — the crest's breadth, the drop, the "
+                  "talus, the islands, the rainbow's habit — and simplified at the detail level "
+                  "only: no crowds, no lettering, no towers on the skyline, no claim that the owner "
+                  "stood at the rail. The mist is the weather the sources describe.",
     },
     {
         # The whole CN Tower as one walkable space (landmark-space §7, grounded-scene §6): one lane

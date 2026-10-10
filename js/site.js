@@ -1189,6 +1189,28 @@ function leaveOverlay(root, trigger) {
       c.fillStyle = "rgba(160,178,205,0.05)"; c.fillRect(4, 4, 60, 60);
     }
     PATS.podfloor = mkTile(paintPodFloor);
+    /* The park side of a promenade: a hedge is a mass of leaves, not a green wall — dark at the
+       body, a few lighter tips where the sun catches the top of the mass. */
+    function paintHedge(c) {
+      c.fillStyle = "#20362c"; c.fillRect(0, 0, 128, 128);
+      c.fillStyle = "#2a463a";
+      for (let i = 0; i < 40; i++) c.fillRect((i * 53) % 128, (i * 37) % 128, 7, 5);
+      c.fillStyle = "#3c5c4a";
+      for (let i = 0; i < 18; i++) c.fillRect((i * 71) % 128, (i * 29) % 128, 4, 3);
+    }
+    /* The falls' mist worn as a side view: soft horizontal streaks, pale over a cool grey, the
+       water's own weather standing in for the gorge the parapet hides. */
+    function paintMistView(c) {
+      c.fillStyle = "#9fb4c6"; c.fillRect(0, 0, 128, 128);
+      c.fillStyle = "rgba(235,244,250,0.5)";
+      for (let y = 6; y < 128; y += 18) c.fillRect(0, y, 128, 5 + (y % 3) * 2);
+      c.fillStyle = "rgba(120,145,168,0.35)";
+      for (let y = 14; y < 128; y += 26) c.fillRect(0, y, 128, 3);
+      c.fillStyle = "rgba(255,255,255,0.55)";
+      for (let i = 0; i < 10; i++) c.fillRect((i * 41) % 128, (i * 61) % 128, 18, 4);
+    }
+    PATS.hedge = mkTile(paintHedge);
+    PATS.mistview = mkTile(paintMistView);
     PATS.track = mkTile(paintTrack);
     PATS.domep = mkTile(paintDomeP);
     PATS.sky0 = mkTile(paintSkyline(0, 0));
@@ -1974,6 +1996,52 @@ function leaveOverlay(root, trigger) {
                            [cb.half, cb.y + 2, cb.z1], [-cb.half, cb.y + 2, cb.z1]],
                        ZERO8, "flat", "#0a1322");
         if (lq) { lq.air = 0.3; lq.lit = 0.4; lq.day = false; }
+      }
+    }
+    const ng = bd.niagara;
+    if (ng) {
+      /* The painter keeps only what no prop can carry: the gorge river running away below the
+         crest, the rainbow when the sun stands in the spray, and the Table Rock rail at the edge
+         of the walkable world. The falls themselves are the site's own falls shape, stood at real
+         scale as props — the same sheet-over-ledge-into-mist that reads on the hall's table. */
+      const STEP = 3000, PU = 1 / 10;
+      const crestZ = ng.z0 + 1200;
+      const footY = ng.y - ng.crest.drop;
+      for (let z = crestZ + 500; z < ng.z1; z += STEP) {
+        const z1 = Math.min(z + STEP, ng.z1);
+        const gq = add(C, [[-ng.half, footY, z], [ng.half, footY, z],
+                           [ng.half, footY, z1], [-ng.half, footY, z1]],
+          [z * PU, -ng.half * PU, z * PU, ng.half * PU,
+           z1 * PU, ng.half * PU, z1 * PU, -ng.half * PU],
+          "flat", "#1f384c");
+        if (gq) { gq.air = 0.16 + ((z - crestZ) / (ng.z1 - crestZ)) * 0.4; gq.lit = 0.7; gq.daygain = 0.9; }
+      }
+      if (DAY() > 0.25) {
+        const cols = ["rgba(255,120,110,0.20)", "rgba(255,200,120,0.20)", "rgba(150,220,150,0.20)", "rgba(140,190,255,0.24)"];
+        cols.forEach((col, i) => {
+          const r0 = 6000 + i * 400;
+          for (let a = 0; a < 7; a++) {
+            const t0 = (a / 6) * Math.PI, t1 = ((a + 1) / 6) * Math.PI;
+            const q = add(C, [[ng.crest.x - Math.cos(t0) * r0, footY + 400 + Math.sin(t0) * (r0 * 0.55), crestZ + 900],
+                              [ng.crest.x - Math.cos(t1) * r0, footY + 400 + Math.sin(t1) * (r0 * 0.55), crestZ + 900],
+                              [ng.crest.x - Math.cos(t1) * (r0 + 400), footY + 400 + Math.sin(t1) * ((r0 + 400) * 0.55), crestZ + 900],
+                              [ng.crest.x - Math.cos(t0) * (r0 + 400), footY + 400 + Math.sin(t0) * ((r0 + 400) * 0.55), crestZ + 900]],
+                          ZERO8, "flat", col);
+            if (q) { q.air = 0.08; q.day = false; }
+          }
+        });
+      }
+      const railHalf = ng.half * 0.55;
+      [[86, 6], [58, 5]].forEach(([yy, th]) => {
+        const q = add(C, [[-railHalf, yy, ng.rail], [railHalf, yy, ng.rail],
+                          [railHalf, yy + th, ng.rail], [-railHalf, yy + th, ng.rail]],
+                      ZERO8, "flat", "#20293c");
+        if (q) { q.air = 0.1; q.lit = 0.5; q.daygain = 0.6; }
+      });
+      for (let x = -railHalf; x <= railHalf; x += 900) {
+        const p = add(C, [[x - 4, 0, ng.rail], [x + 4, 0, ng.rail], [x + 4, 92, ng.rail], [x - 4, 92, ng.rail]],
+                      ZERO8, "flat", "#20293c");
+        if (p) { p.air = 0.1; p.lit = 0.5; p.daygain = 0.6; }
       }
     }
     const cross = bd.crossing;

@@ -88,6 +88,7 @@ const ROOMS = [
   // A landmark space owns its way back to the prop that owns it (landmark-space §2), not to
   // the street: the hall is the hub route in, the space returns to the hall.
   { file: "rooms-cntower.html",  id: "cntower", backObj: "door-back", home: "rooms-toronto.html" },
+  { file: "rooms-niagara.html",  id: "niagara", backObj: "door-back", home: "rooms-toronto.html" },
 ];
 const STREET_DOORS = [
   { obj: "door-tokyo",    expect: "rooms.html" },
@@ -197,7 +198,7 @@ async function main() {
   const WANT = { toronto: "rooms-toronto.html", tokyo: "rooms.html",
                  fukuoka: "rooms-fukuoka.html",
                  // the landmark space owns a card too: the album wall is an archive, not the hub
-                 cntower: "rooms-cntower.html" };
+                 cntower: "rooms-cntower.html", niagara: "rooms-niagara.html" };
   const wrapAt = act.indexOf("data-place-cards");
   ok("album: the place-card container exists", wrapAt >= 0);
   for (const [id, page] of Object.entries(WANT)) {

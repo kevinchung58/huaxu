@@ -66,6 +66,34 @@ await sleep(300);
 ok("the space unwinds to the prop's room, not the street",
    navs.some((u) => u.includes("rooms-toronto.html")), navs.join(","));
 
+/* The same contract at the falls: the hall's model opens its story first, and the space
+   unwinds to the hall. */
+await page.goto("http://127.0.0.1:8080/rooms-toronto.html", { waitUntil: "networkidle0" });
+await sleep(1500);
+await page.evaluate(() => document.querySelector("[data-obj='falls-n']").click());
+await sleep(600);
+ok("the falls prop opens its story rail first",
+   await page.evaluate(() => document.getElementById("room-plate")?.classList.contains("is-open") === true));
+ok("the falls rail carries three frames",
+   (await page.$$eval("#room-plate [data-story-frame]", (els) => els.length)) === 3);
+const enter2 = await page.evaluate(() => {
+  const a = document.querySelector("[data-enter-space]");
+  return a ? { hidden: a.hidden, href: a.getAttribute("href") } : null;
+});
+ok("the falls' enter verb leads into the falls' space",
+   !!enter2 && !enter2.hidden && enter2.href === "rooms-niagara.html", JSON.stringify(enter2));
+await page.goto("http://127.0.0.1:8080/rooms-niagara.html", { waitUntil: "networkidle0" });
+await sleep(1500);
+ok("the falls' space boots with its panorama",
+   await page.evaluate(() => !!document.querySelector("[data-walk-backdrop]")));
+ok("the falls' space is a day page",
+   await page.evaluate(() => document.querySelector("[data-walk]")?.dataset.laneDay === "1"));
+navs.length = 0;
+await page.evaluate(() => document.querySelector("[data-obj='door-back']").click());
+await sleep(300);
+ok("the falls' space unwinds to the hall",
+   navs.some((u) => u.includes("rooms-toronto.html")), navs.join(","));
+
 await browser.close();
 console.log(out.join("\n"));
 const fail = out.filter((l) => l.startsWith("FAIL")).length;

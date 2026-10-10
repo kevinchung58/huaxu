@@ -2,6 +2,37 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-10 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0d. 第二十二輪（2026-10-10）：Niagara 空間做完
+
+站主：「繼續都做完。」——Niagara promenade＋周邊環境，照 §0c 的測量表與規劃。
+
+**rooms-niagara.html**——day 頁（cycle 900／start 0.55），一條 promenade：左手 hedge＋燈柱
+（公園側），右手 dado 護牆＋mistview（霧當側景），盡頭 vista 框＋Table Rock rail。stations 四：
+mouth／hedge and rail／mist ahead／Table Rock rail（最後一站走穿端牆，同 street 的 open-end
+規矩，max_d 1500）。
+
+**瀑布本體＝toronto hall 的 falls shape 放大到真實尺度**（規劃原話）：falls-ng 4200×900
+（crest 寬深比 ~4.7:1，hall 記過 4.4:1 的教訓）、falls-am 2600×600 在左（東）落 talus、
+planter-go／planter-lu 兩島在 crest 線。Painter（bd.niagara）只畫 prop 畫不了的：gorge 河面
+向北退、彩虹（DAY()>0.25）、Table Rock 鐵欄。sky 帶用 street idiom（y0 -400、glow≈1、
+y1 90000 蓋滿上半——critique 第一讀抓到的洞）。
+
+**Link contract 同款**：falls-n prop 帶 NIAGARA_STORY（三張新 plates：niagara-1/2/3.jpg，
+`niagara-` IMG rule）；verify-story 延伸到 18/18（falls press→rail→enter→day 頁→unwind）。
+
+**Album**：niagara-cover.jpg＋PLACE_GROUP_NOTES 卡＋PLACE_TITLES。
+
+**Critique pass（兩讀，記實）**：(1) 端牆本是 concrete、霧面洗白、sky 蓋不滿、瀑布太遠角太小
+——逐一修；(2) 最終採「falls shape 實尺」而非自創 painter 全景——因為 hall 的 falls 畫法是
+站內已證明的讀法，painter 自創全景在仿射＋單色下洗白。承認：全景是站內畫的 idiom，不是
+survey；認得它靠寬 crest＋gorge＋rail＋霧，不靠 Skylon（規劃本就不建）、不靠人、不靠字。
+
+**Gates**：walk 168/168（fill 上限 A/B 重校：HEAD 6298→本輪 6380，差 82＝hedge+mistview 兩
+磁磚，上限 6600，二遍 pass 約 12 700）、chain 0、shapes/geometry/clash/objects/e2e 0、
+story 18/18、impeccable []、lane-shot niagara 全 PASS（182–196 luma day）。
+
+至此站主兩輪的 go-word 都完成：塔（§0c）＋瀑布與附近環境（本輪）。下一件等站主指定。
+
 ## 0c. 第二十一輪（2026-10-10）：CN Tower 空間做完＋Niagara 規劃
 
 站主 go-word：「全部規劃做完這塔。還有我建議尼加拉瓜瀑布，也應該做到那附近的環境結束。」
