@@ -88,6 +88,29 @@ ok("the falls' space boots with its panorama",
    await page.evaluate(() => !!document.querySelector("[data-walk-backdrop]")));
 ok("the falls' space is a day page",
    await page.evaluate(() => document.querySelector("[data-walk]")?.dataset.laneDay === "1"));
+ok("the promenade carries the Journey door at the rail end",
+   await page.evaluate(() => {
+     const d = document.querySelector("[data-obj='door-journey']");
+     return !!d && d.dataset.leave === "rooms-journey.html";
+   }));
+navs.length = 0;
+await page.evaluate(() => document.querySelector("[data-obj='door-journey']").click());
+await sleep(300);
+ok("the Journey door leads behind the falls",
+   navs.some((u) => u.includes("rooms-journey.html")), navs.join(","));
+await page.goto("http://127.0.0.1:8080/rooms-journey.html", { waitUntil: "networkidle0" });
+await sleep(1500);
+ok("behind the falls boots with the curtain overhead",
+   await page.evaluate(() => !!document.querySelector("[data-obj='falls-jb']")));
+navs.length = 0;
+await page.evaluate(() => document.querySelector("[data-obj='door-back']").click());
+await sleep(300);
+ok("behind the falls unwinds to the promenade",
+   navs.some((u) => u.includes("rooms-niagara.html")), navs.join(","));
+// The click already navigated; let that load finish on its own — a goto to the same URL here
+// would interrupt the walk's boot and the next press would find a half-built scene.
+await page.waitForNetworkIdle({ idleTime: 600, timeout: 10000 }).catch(() => {});
+await sleep(1800);
 navs.length = 0;
 await page.evaluate(() => document.querySelector("[data-obj='door-back']").click());
 await sleep(300);

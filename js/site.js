@@ -2031,6 +2031,33 @@ function leaveOverlay(root, trigger) {
           }
         });
       }
+      /* Downstream, the gorge runs to the city: the Skylon's dish on the Canadian bank and the
+         Rainbow Bridge spanning to the American side, both silhouettes in the haze — the view
+         every Table Rock visitor turns to after the brink. At night the floodlights spill their
+         held colour onto the water below the falls. */
+      /* The bridge spans the gorge well past the falls' own breadth, so only the two wings
+         beyond the curtain can ever show; the Skylon's dish stands out on the left bank. */
+      const sil = (y0, y1, x, z, w) => add(C, [[x - w / 2, y0, z], [x + w / 2, y0, z],
+                                               [x + w / 2, y1, z], [x - w / 2, y1, z]],
+                                           ZERO8, "flat", "#3a4d66");
+      const sky = sil(footY + 200, footY + 2600, -9500, 15000, 240);
+      if (sky) { sky.air = 0.55; sky.lit = 0.6; sky.daygain = 0.5; }
+      const dish = sil(footY + 2600, footY + 2950, -9500, 15000, 900);
+      if (dish) { dish.air = 0.55; sky.lit = 0.6; dish.daygain = 0.5; }
+      [[-12000, -7000], [7000, 12000]].forEach(([x0, x1]) => {
+        const q = add(C, [[x0, footY + 250, 16500], [x1, footY + 250, 16500],
+                          [x1, footY + 550, 16500], [x0, footY + 550, 16500]],
+                      ZERO8, "flat", "#42566f");
+        if (q) { q.air = 0.55; q.lit = 0.6; q.daygain = 0.5; }
+      });
+      if (DAY() < 0.25) {
+        const ILLUM = ["#37c46b", "#e0435c", "#3f7de0", "#b04de0", "#e0a13f"];
+        const held = ILLUM[Math.floor(T / 7) % ILLUM.length];
+        const glow = add(C, [[-ng.half * 0.8, footY + 4, crestZ + 500], [ng.half * 0.8, footY + 4, crestZ + 500],
+                             [ng.half * 0.8, footY + 4, crestZ + 6500], [-ng.half * 0.8, footY + 4, crestZ + 6500]],
+                         ZERO8, "flat", held);
+        if (glow) { glow.air = 0.3; glow.lit = 0.9; glow.day = false; }
+      }
       const railHalf = ng.half * 0.55;
       [[86, 6], [58, 5]].forEach(([yy, th]) => {
         const q = add(C, [[-railHalf, yy, ng.rail], [railHalf, yy, ng.rail],
@@ -2043,6 +2070,44 @@ function leaveOverlay(root, trigger) {
                       ZERO8, "flat", "#20293c");
         if (p) { p.air = 0.1; p.lit = 0.5; p.daygain = 0.6; }
       }
+    }
+    const jb = bd.journey;
+    if (jb) {
+      /* The deck at the foot: the gorge water below the curtain, the deck rail at the edge of
+         the walkable world, and after dark the floodlights' held colour spilled on the water —
+         the deck is one of the real places the illumination is watched from. */
+      const STEP = 2200, PU = 1 / 10;
+      for (let z = jb.z0; z < jb.z1; z += STEP) {
+        const z1 = Math.min(z + STEP, jb.z1);
+        const gq = add(C, [[-jb.half, jb.foot, z], [jb.half, jb.foot, z],
+                           [jb.half, jb.foot, z1], [-jb.half, jb.foot, z1]],
+          [z * PU, -jb.half * PU, z * PU, jb.half * PU,
+           z1 * PU, jb.half * PU, z1 * PU, -jb.half * PU],
+          "flat", "#16283a");
+        if (gq) { gq.air = 0.14 + ((z - jb.z0) / (jb.z1 - jb.z0)) * 0.3; gq.lit = 0.65; gq.daygain = 0.9; }
+      }
+      if (DAY() < 0.25) {
+        const ILLUM = ["#37c46b", "#e0435c", "#3f7de0", "#b04de0", "#e0a13f"];
+        const held = ILLUM[Math.floor(T / 7) % ILLUM.length];
+        const glow = add(C, [[-jb.half * 0.8, jb.foot + 4, jb.z0], [jb.half * 0.8, jb.foot + 4, jb.z0],
+                             [jb.half * 0.8, jb.foot + 4, jb.z1], [-jb.half * 0.8, jb.foot + 4, jb.z1]],
+                         ZERO8, "flat", held);
+        if (glow) { glow.air = 0.28; glow.lit = 0.9; glow.day = false; }
+      }
+      // The deck rail, hand height, at the edge of the walkable world.
+      [[86, 6], [58, 5]].forEach(([yy, th]) => {
+        const q = add(C, [[-jb.half * 0.5, yy, jb.rail], [jb.half * 0.5, yy, jb.rail],
+                          [jb.half * 0.5, yy + th, jb.rail], [-jb.half * 0.5, yy + th, jb.rail]],
+                      ZERO8, "flat", "#20293c");
+        if (q) { q.air = 0.1; q.lit = 0.5; q.daygain = 0.6; }
+      });
+      // The two portals in the tunnel's right wall: windows of falling water, bright behind rock.
+      [[150, 200], [235, 285]].forEach(([p0, p1]) => {
+        const q = add(C, [[jb.wall - 1, 40, p0], [jb.wall - 1, 40, p1],
+                          [jb.wall - 1, 190, p1], [jb.wall - 1, 190, p0]],
+                      ZERO8, "flat", "rgba(226,242,246,0.9)");
+        if (q) { q.lit = 1.35; q.air = 0.04; q.day = false; }
+      });
     }
     const cross = bd.crossing;
     if (cross) {
@@ -3099,6 +3164,12 @@ function leaveOverlay(root, trigger) {
             fn(a0, a1, bow((a0 + a1) / 2) + t);
           }
         };
+        /* The falls are floodlit after dark — every night, coloured lights played up the sheet.
+           The illumination cycles its colours slowly, so at night the jade becomes whichever
+           colour the lights hold, brightened the way a lit curtain is. Day keeps the jade. */
+        const nightfall = DAYPAGE && DAY() < 0.25;
+        const ILLUM = ["#37c46b", "#e0435c", "#3f7de0", "#b04de0", "#e0a13f"];
+        const illum = nightfall ? ILLUM[Math.floor(T / 7) % ILLUM.length] : null;
         // The sheet: three height slices, bright at the crest and shadowing toward the basin —
         // one flat lit value was what made it a glowing white board — then moving stripes over it.
         /* Three height slices, jade and brightening toward the crest. It measured sd 17 -- a flat
@@ -3106,6 +3177,7 @@ function leaveOverlay(root, trigger) {
            and washed the water out to near-white. The stripes are the water's texture, not its
            colour: they go thin and half as opaque so the jade is what you see. */
         [[0, 0.9, "#3f8fa4"], [1, 1.1, "#5aaeb4"], [2, 1.35, "#8ad2cc"]].forEach(([si, l, col]) => {
+          if (illum) { col = illum; l = 1.45; }
           const y0 = m.y + (si / 3) * m.h, y1 = m.y + ((si + 1) / 3) * m.h;
           /* A surge: water does not fall evenly, a body of it comes down and passes. The wave runs
              down the three slices, so the brightness travels with it instead of pulsing in place.

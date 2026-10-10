@@ -2,6 +2,30 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-10 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0f. 第二十四輪（2026-10-10）：站主問「你真的全面有做好瀑布的嗎？去查 google」
+
+查了。兩組搜尋（Table Rock 視點要素、Journey Behind the Falls 體驗），對照我做的，缺三件，
+都補上：
+
+1. **Journey Behind the Falls**——真實入口就在 Table Rock，是「點進去」最核心的一 beat，
+   我之前完全沒做。現為 `rooms-journey.html`：promenade 欄杆端的門（真實位置）→
+   bedrock tunnel（真實剖面 ~2.4×2.1 m，rock strata 牆、soft light）→ Cataract Portal
+   （牆上的落水光窗）→ open end 的 lower deck，falls shape 實尺高 30 m 頭頂
+   （13 層樓）。事實：下降 125–150 ft、tunnel 1889、兩 portal、deck 在瀑腳、
+   夜間照明（niagaraparks／visitingniagarafalls）。unwind 回 promenade；gates 改為跟
+   walk-exit 鏈（verify-walk）與 owned sub-space（verify-chain）。
+2. **夜間照明**——瀑布每晚打色光。falls shape 在 DAY()<0.25 時 sheet 換照明色
+   （五色慢循環），gorge 水面 spill 同色；niagara 與 journey 同步（同一 day cycle）。
+3. **下游天際線**——彩虹橋兩翼＋Skylon 碟盤，霧中剪影，只落在瀑布寬度之外
+   （第一版橫穿瀑面，critique 讀掉重畫）。caveat/sight_note 同步改寫。
+
+Critique 讀幀記實：deck 幀的欄杆一度在 walker 後（1250<1334）→ 1450；tunnel 第一版用
+dado 磚紋＋誤以為要暗——來源說 tunnel "wide, well-lit"，亮是對的，錯在磚紋→rock。
+album 加 journey 卡＋cover（新 `journey-` IMG rule、`.verify/make-cover.mjs`）。
+
+**Gates**：walk 168/168、chain 95 PASS、shapes/geometry/clash/objects/e2e 0、story 22/22
+（含 journey 五條新斷言）、impeccable []。
+
 ## 0e. 第二十三輪（2026-10-10）：「接下來通通都做好」——清倉
 
 站主：「你接下來通通都做好。」盤點 AGENTS backlog 與 skills 的未結項，能做的全做：

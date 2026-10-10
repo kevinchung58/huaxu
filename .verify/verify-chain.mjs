@@ -88,7 +88,11 @@ const ROOMS = [
   // A landmark space owns its way back to the prop that owns it (landmark-space §2), not to
   // the street: the hall is the hub route in, the space returns to the hall.
   { file: "rooms-cntower.html",  id: "cntower", backObj: "door-back", home: "rooms-toronto.html" },
-  { file: "rooms-niagara.html",  id: "niagara", backObj: "door-back", home: "rooms-toronto.html" },
+  { file: "rooms-niagara.html",  id: "niagara", backObj: "door-back", home: "rooms-toronto.html",
+    sub: ["rooms-journey.html"] },
+  // The space the real Table Rock owns: entered by the door at the rail end of the promenade,
+  // unwinding to the promenade, not the street.
+  { file: "rooms-journey.html",  id: "journey", backObj: "door-back", home: "rooms-niagara.html" },
 ];
 const STREET_DOORS = [
   { obj: "door-tokyo",    expect: "rooms.html" },
@@ -165,8 +169,11 @@ async function main() {
     // Every leave on the page must be the street: one wrong target breaks the
     // "walk out of any room, you are on the street" guarantee.
     const leaves = [...doc.querySelectorAll("[data-leave]")].map((e) => e.dataset.leave);
-    ok(`${r.id}: every leave on the page is ${HOME}`,
-       leaves.length > 0 && leaves.every((t) => t.split("#")[0] === HOME), [...new Set(leaves)].join(", "));
+    // A space may also own the door to a space beneath it — the way the real Table Rock owns
+    // Journey Behind the Falls — so a leave is right when it is the unwind home or an owned sub-space.
+    ok(`${r.id}: every leave on the page is ${HOME} or an owned sub-space`,
+       leaves.length > 0 && leaves.every((t) => t.split("#")[0] === HOME || (r.sub || []).includes(t.split("#")[0])),
+       [...new Set(leaves)].join(", "));
     ok(`${r.id}: the leave's spawn hash names its own room`,
        leaves.every((t) => !t.split("#")[1] || t.split("#")[1] === `at-${r.id}` || !r.home),
        [...new Set(leaves)].join(", "));
@@ -198,7 +205,8 @@ async function main() {
   const WANT = { toronto: "rooms-toronto.html", tokyo: "rooms.html",
                  fukuoka: "rooms-fukuoka.html",
                  // the landmark space owns a card too: the album wall is an archive, not the hub
-                 cntower: "rooms-cntower.html", niagara: "rooms-niagara.html" };
+                 cntower: "rooms-cntower.html", niagara: "rooms-niagara.html",
+                 journey: "rooms-journey.html" };
   const wrapAt = act.indexOf("data-place-cards");
   ok("album: the place-card container exists", wrapAt >= 0);
   for (const [id, page] of Object.entries(WANT)) {

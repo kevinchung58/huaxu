@@ -91,6 +91,10 @@ ROOMS = [
     # The falls own their space the same way the tower owns its: the hall's model is the prop,
     # the story opens first, the space beside it, and the space unwinds to the hall.
     ("niagara", "The falls", "rooms-niagara.html", ["niagara-"], "open"),
+    # The falls own a second space the way the real Table Rock owns it: Journey Behind the
+    # Falls descends from the terrace through the bedrock. The door stands at the Table Rock
+    # end of the promenade; the space unwinds to the promenade, not the street.
+    ("journey", "Behind the falls", "rooms-journey.html", [], "open"),
     ("tokyo", "Tokyo", "rooms.html", ["tokyo-"], "open"),
     ("fukuoka", "Fukuoka", "rooms-fukuoka.html", ["fukuoka-"], "open"),
 ]
@@ -1399,6 +1403,7 @@ IMG_RULES = [
     ("toronto-", "field-notes", "generated"),
     ("cntower-", "field-notes", "generated"),
     ("niagara-", "field-notes", "generated"),
+    ("journey-", "field-notes", "generated"),
     ("act-", "classroom", "record"),
     ("practice-", "figures", "figure"), ("principle-", "figures", "figure"),
     ("grid-", "figures", "figure"), ("diverge-", "figures", "figure"),
@@ -1667,6 +1672,8 @@ PLACE_GROUP_NOTES = {
                 "above, the glass underfoot, the higher band.",
     "niagara": "The promenade at the falls: Table Rock at the lip, the horseshoe's mist, "
                 "the American Falls across, the gorge for an end.",
+    "journey": "Behind the horseshoe: the bedrock tunnel, the portals, the deck at the foot "
+               "of the floodlit curtain.",
 }
 
 
@@ -3400,7 +3407,8 @@ DISTRICTS = [
         "sight_note": " At its far end the walk stops at the Table Rock rail, and beyond is the "
                       "whole fact of the falls: the horseshoe crest spilling into mist, the "
                       "American Falls across on its boulders, the gorge river below, a rainbow in "
-                      "the spray. Nothing out there is a record of anybody standing in it.",
+                      "the spray, and downstream in the haze the Rainbow Bridge's wings and the "
+                      "Skylon's dish. Nothing out there is a record of anybody standing in it.",
         "objects": [
             # The park side keeps one bench and the hedge keeps it company: a promenade is walked
             # slowly, and a bench facing the mist is the one furniture the view asks for.
@@ -3430,6 +3438,15 @@ DISTRICTS = [
              "w": 460, "h": 100, "d": 300,
              "title": "Luna Island, small",
              "hint": "The smaller island, between the American and the bridal veil."},
+            # The real Table Rock Centre is the entrance to Journey Behind the Falls; here the
+            # door stands at the rail end of the promenade, where the terraces stack down.
+            {"id": "door-journey", "kind": "door", "x": 262, "z": 430, "y": 0, "ry": -90,
+             "leaf": "#2b3852",
+             "glow": [{"r": 120, "k": 0.5, "dy": 200, "tint": "rgba(160,210,230,0.4)"}],
+             "title": "The Journey door",
+             "hint": "Journey Behind the Falls: the elevator drops through the bedrock to the "
+                     "tunnels, the portals, the deck at the foot of the curtain.",
+             "leave": ROOM_BY_ID["journey"]["page"]},
         ],
         "surfaces": [
             # Park side: a hedge at hand height and park greenery above it to the ceiling line.
@@ -3482,9 +3499,94 @@ DISTRICTS = [
                                                            "own table."},
         "back_to": "rooms-toronto.html",
         "caveat": "The falls are drawn from public facts — the crest's breadth, the drop, the "
-                  "talus, the islands, the rainbow's habit — and simplified at the detail level "
-                  "only: no crowds, no lettering, no towers on the skyline, no claim that the owner "
-                  "stood at the rail. The mist is the weather the sources describe.",
+                  "talus, the islands, the rainbow's habit, the nightly illumination — and "
+                  "simplified at the detail level only: no crowds, no lettering, the downstream "
+                  "skyline a silhouette, no claim that the owner stood at the rail. The mist is "
+                  "the weather the sources describe.",
+    },
+    {
+        # Journey Behind the Falls, compressed not deleted (round-20 fidelity directive): the
+        # elevator is the door on the promenade, the lane is the bedrock tunnel at its real
+        # section — the tunnels run about 2.4 m wide and 2.1 m high — and the far end opens onto
+        # the lower observation deck at the foot of the horseshoe, the curtain thirteen storeys
+        # overhead. Record facts, sources in TODO §0f: descent 125-150 ft through bedrock,
+        # tunnels bored 1889, the Cataract and Great Falls portals behind the sheet, ponchos at
+        # the door, and after dark the floodlit curtain from the deck.
+        "id": "journey", "label": "Behind the falls",
+        "page": ROOM_BY_ID["journey"]["page"],
+        "plates": ROOM_BY_ID["journey"]["plates"],
+        "lane": {"w": 240, "d": 470, "ceil": 213, "back": 160, "max_d": 1500},
+        "day": {"cycle": 900, "start": 0.55, "gain": 1},
+        "purpose": "Journey Behind the Falls: down through the bedrock, behind the horseshoe's curtain, to the deck at its foot",
+        "status": "open",
+        "kind": "personal",
+        "cover": "IMG/niagara-cover.jpg",
+        "cover_caption": "The horseshoe from its foot, floodlit after dark.",
+        "blurb": "One tunnel walked in the bedrock: strata on the walls, soft light, the roar "
+                 "rising; at the portal a window of falling water, and at the open end the deck "
+                 "at the foot of the curtain, thirteen storeys overhead.",
+        "clad_note": " The tunnel walls wear the bedrock's own strata in flat bands — limestone "
+                     "and dolostone pale, shale dark — the geology the descent exposes. Nothing "
+                     "on any of it carries a word.",
+        "sight_note": " At the portal the rock opens onto the back of the sheet; at the deck the "
+                      "whole curtain stands overhead into mist. After dark the floodlights hold "
+                      "their colour on the water, the way the real deck sees them.",
+        "objects": [
+            # The curtain from below: stood at real scale with its top above the frame, so the
+            # deck reads as the foot of a thirteen-storey wall of water, not a table model.
+            {"id": "falls-jb", "kind": "falls", "x": 0, "z": 2300, "y": -200, "ry": 0,
+             "w": 5200, "h": 3000, "d": 140,
+             "title": "The curtain, from the deck",
+             "hint": "Thirteen storeys of water overhead: the sheet's top stands above the "
+                     "frame, the mist at its foot is the deck's weather."},
+        ],
+        "surfaces": [
+            # The strata, pale over dark, both walls, for the tunnel's length only; the deck
+            # beyond stands open to the sky.
+            {"side": -1, "z0": 20, "z1": 300, "y0": 0, "y1": 70, "kind": "rock", "tone": 0.55},
+            {"side": -1, "z0": 20, "z1": 300, "y0": 70, "y1": 140, "kind": "rock", "tone": 0.8},
+            {"side": -1, "z0": 20, "z1": 300, "y0": 140, "y1": 213, "kind": "rock", "tone": 1},
+            {"side": 1, "z0": 20, "z1": 300, "y0": 0, "y1": 70, "kind": "rock", "tone": 0.55},
+            {"side": 1, "z0": 20, "z1": 300, "y0": 70, "y1": 140, "kind": "rock", "tone": 0.8},
+            {"side": 1, "z0": 20, "z1": 300, "y0": 140, "y1": 213, "kind": "rock", "tone": 1},
+        ],
+        "lamps": [
+            # The tunnels are lit soft and diffused: two low glows, no sun underground.
+            {"x": 0, "y": 200, "z": 90, "r": 70, "k": 0.55},
+            {"x": 0, "y": 200, "z": 230, "r": 70, "k": 0.55},
+        ],
+        # The tunnel mouth opens full-height onto the deck: the end wall is a frame with nothing
+        # left in it, and the painter carries the gorge and the rail past it.
+        "vista": {"x": 0, "y0": 0, "y1": 213, "w": 240},
+        "backdrop": {
+            "sky": [{"y0": -400, "y1": 3000, "c": "#7fa8cc", "glow": 1.0},
+                    {"y0": 3000, "y1": 30000, "c": "#5d82ac", "glow": 0.7},
+                    {"y0": 30000, "y1": 90000, "c": "#48688f", "glow": 0.5}],
+            "journey": {"y": -60, "foot": -700, "z0": 1200, "z1": 9000, "half": 6000,
+                        "wall": 120, "rail": 1450},
+        },
+        "slots_title": "Places behind the falls",
+        "slots": [
+            {"label": "The Cataract Portal",
+             "note": "The rock opens behind the sheet: water for a window, the roar for a wall.",
+             "state": "Held by the portal glow in the tunnel wall; a photograph takes the slot when one arrives."},
+            {"label": "The lower deck",
+             "note": "The foot of the curtain, thirteen storeys overhead, mist for weather.",
+             "state": "Held by the deck and the curtain; after dark the floodlights hold it."},
+        ],
+        "stations": [
+            {"z": 10, "label": "the elevator landing"},
+            {"z": 120, "label": "the storied tunnel"},
+            {"z": 230, "label": "the Cataract Portal"},
+            {"z": 460, "label": "the lower deck"},
+        ],
+        "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
+                 "title": "The tunnel back", "hint": "It climbs to the promenade at Table Rock."},
+        "back_to": "rooms-niagara.html",
+        "caveat": "Journey Behind the Falls is drawn from public facts — the 125-150 ft descent, "
+                  "the 1889 tunnels at their real section, the two portals, the deck at the foot, "
+                  "the nightly illumination — and simplified at the detail level only: no crowds, "
+                  "no lettering, no ponchos on rails, no claim that the owner stood at the deck.",
     },
     {
         # The whole CN Tower as one walkable space (landmark-space §7, grounded-scene §6): one lane

@@ -148,7 +148,12 @@ affine-plus-flat-colour math (the falls), while a city-from-above rides a wall c
 (the pod) — fidelity lives in the bearings and the ratios, not in the drawing technique; and
 sky bands must start below the horizon and end above the frame's top with glow near one, or
 the day sky reads as night murk (the street's idiom, reused). Each of these stayed inside the
-dependency rule: new tiles, one painter, no library.
+dependency rule: new tiles, one painter, no library. Round 24 added two more proven prices:
+a space may itself own a space the way the real Table Rock owns Journey Behind the Falls —
+the door stands where the real entrance stands, the sub-space unwinds to its owner, and the
+gates follow each page's walk-exit chain to the street; and a landmark's night is a fact of
+the landmark (the falls are floodlit every night), so the day cycle the page already carries
+switches the sheet to the illumination's held colour after dark, rather than adding a page.
 
 ## 5. The gate
 

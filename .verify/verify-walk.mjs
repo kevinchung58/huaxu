@@ -840,11 +840,17 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   // A landmark space is not a hub room: its every way out is the room whose prop owns it
   // (landmark-space §2), and the street carries no door to it. Hub rooms still leave only to
   // the street, one door each, as before.
-  const spaceOf = {};
+  const exitHref = (html) => {
+    const m = html.match(/class="walk-icon walk-exit" href="([^"]+)"/);
+    return m ? pageOf(m[1]) : null;
+  };
+  const spaceOf = {}, unwindOf = {};
   for (const r of roomRows) {
     const htmp = fs.readFileSync(r.page, "utf8");
     const ls = Array.from(htmp.matchAll(/data-leave="([^"]+)"/g)).map((m) => pageOf(m[1]));
-    if (ls.length && ls.every((t) => t !== streetRow.page)) spaceOf[r.id] = ls;
+    unwindOf[r.id] = exitHref(htmp);
+    if (unwindOf[r.id] && unwindOf[r.id] !== streetRow.page && ls.length && ls.every((t) => t !== streetRow.page))
+      spaceOf[r.id] = ls;
   }
   for (const r of roomRows) {
     const html = fs.readFileSync(r.page, "utf8");
@@ -862,10 +868,19 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
     }
     if (/id="way-on"/.test(html)) problems.push(`${r.id}: still carries a chain door`);
     if (spaceOf[r.id]) {
-      // A space names its home room, and the home room names the street: the hub is reached
-      // transitively, one unwind at a time.
-      const homeHtml = fs.readFileSync(spaceOf[r.id][0], "utf8");
-      if (!homeHtml.includes(streetRow.page)) problems.push(`${r.id}: its home room does not name the street`);
+      // A space unwinds through its walk-exit, and a space may own another space the way the
+      // real Table Rock owns Journey: follow the exit chain — each step a built room — until a
+      // page names the street. The hub is reached transitively, one unwind at a time.
+      let cur = r.id, guard = 0;
+      while (guard++ < 6) {
+        const u = unwindOf[cur];
+        if (u === streetRow.page) break;
+        const nr = roomRows.find((x) => x.page === u);
+        if (!nr) { problems.push(`${r.id}: unwind to ${u}, no built room`); cur = null; break; }
+        cur = nr.id;
+      }
+      if (cur && unwindOf[cur] !== streetRow.page)
+        problems.push(`${r.id}: the unwind never reaches the street`);
     } else if (html.includes(streetRow.page) === false) problems.push(`${r.id}: the street is not named on it`);
   }
   {
@@ -933,7 +948,7 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
     if (!card.includes(`IMG/${r.id}-cover.jpg`))
       cardProblems.push(`${r.id}: the card does not carry its own cover sheet`);
   }
-  ok("three cards, one door each, in ROOMS order, each holding its own cover",
+  ok("one place card per room, in ROOMS order, each holding its own cover",
      cardProblems.length === 0, cardProblems.join("; "));
   ok("a plate is not an entrance: no tile or text-arrow doors survive on this wall",
      !/<a class="ig-room"/.test(act) && !/class="text-arrow" href="rooms-/.test(act));

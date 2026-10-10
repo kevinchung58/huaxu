@@ -141,8 +141,11 @@ into-mist that reads on the hall's table — because the critique pass found a b
 panorama washes out under this renderer's affine-plus-flat-colour math, while the in-house
 draw reads. The painter keeps only what no prop can carry: the gorge river, the rainbow when
 the sun stands in the spray, the rail. Simplified: crowds, lettering, the skyline's towers,
-the clock of the mist. Not simplified: the crest's breadth-to-drop ratio, Table Rock at the
-lip, the river's north, the islands between the falls.
+the clock of the mist. Not simplified: the crest's breadth-to-drop ratio, Table Rock at the lip, the river's north,
+the islands between the falls. And the ticketed descent is compressed, not deleted: a door at
+the rail end opens Journey Behind the Falls — the bedrock tunnel at its real section, the
+portal a window of falling water, the open end the deck at the curtain's foot, floodlit
+after dark — one lane, four stations, every figure from the sources.
 
 ## 7. Refusals
 
