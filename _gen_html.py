@@ -85,6 +85,9 @@ ROOMS = [
     # Toronto hall, Little-Canada style, so the row the album and the street both read now says
     # Toronto where it used to say Canada.
     ("toronto", "Toronto", "rooms-toronto.html", ["toronto-"], "open"),
+    # The landmark space (landmark-space §2 link contract): the tower prop in the Toronto hall
+    # owns this district; the hall stays the hub route in, the space owns the way back.
+    ("cntower", "The tower", "rooms-cntower.html", ["toronto-tower-"], "open"),
     ("tokyo", "Tokyo", "rooms.html", ["tokyo-"], "open"),
     ("fukuoka", "Fukuoka", "rooms-fukuoka.html", ["fukuoka-"], "open"),
 ]
@@ -1378,6 +1381,7 @@ IMG_RULES = [
     # districts, never a record that anyone stood anywhere.
     ("fukuoka-", "field-notes", "generated"),
     ("toronto-", "field-notes", "generated"),
+    ("cntower-", "field-notes", "generated"),
     ("act-", "classroom", "record"),
     ("practice-", "figures", "figure"), ("principle-", "figures", "figure"),
     ("grid-", "figures", "figure"), ("diverge-", "figures", "figure"),
@@ -1512,6 +1516,10 @@ PLACE_TITLES = {
     "IMG/toronto-2.jpg": "The falls, small",
     "IMG/toronto-3.jpg": "The market, small",
     "IMG/toronto-cover.jpg": "Toronto, the little city in one sheet",
+    "IMG/toronto-tower-1.jpg": "The tower at dusk",
+    "IMG/toronto-tower-2.jpg": "The city from above",
+    "IMG/toronto-tower-3.jpg": "342 m of drop",
+    "IMG/cntower-cover.jpg": "The tower, the pod in one sheet",
 }
 
 
@@ -1634,6 +1642,8 @@ PLACE_GROUP_NOTES = {
     "fukuoka": "Moji Port on a table: the station, the customhouse, the Blue Wing drawbridge "
                 "and the ships on the Kanmon Strait, at dusk.",
     "toronto": "A dark hall of lit tables: the city, its falls and its markets, drawn small.",
+    "cntower": "The whole CN Tower as one space: the cab doors, the LookOut's city from "
+                "above, the glass underfoot, the higher band.",
 }
 
 
@@ -1866,6 +1876,7 @@ OBJ_SIZE = {
     "ac": (86, 30, 36), "crate": (62, 46, 52), "bin": (68, 86, 68),
     "pipe": (16, 300, 16), "awning": (170, 12, 110), "sign": (120, 40, 10),
     "ledge": (430, 12, 60),
+    "glassfloor": (220, 4, 180),
     "front": (170, 300, 40), "booth": (110, 215, 110), "bikes": (150, 102, 55),
     "planter": (104, 50, 46), "cones": (74, 70, 34), "mailbox": (52, 74, 36),
     "signA": (70, 86, 52), "banner": (56, 150, 6), "pane": (120, 86, 22),
@@ -1890,6 +1901,28 @@ Z_SCALE = 2.9                # records are authored in the old 4.3 m lane; the s
 # and the space you stand in needs the extra half metre or the bulbs hang at a walker's eyes.
 LANE_FALLBACK = {"w": 640, "d": 430, "ceil": 420, "back": 240}
 
+# The tower's own story: three drawn frames, the same hand as the hall's plates. They are the
+# IG-story the prop opens first (landmark-space §2), and the `space` beside them is the district
+# the story leads into. The rasters ride the existing `toronto-` IMG rule — generated plates,
+# never a record that anyone stood anywhere.
+TOWER_STORY = {
+    "title": "The tower",
+    "space": "rooms-cntower.html",
+    "frames": [
+        {"src": "IMG/toronto-tower-1.jpg", "title": "The tower at dusk",
+         "alt": "Illustration of the CN Tower at dusk: a white-cream silhouette over a low navy "
+                "skyline, one amber ring at the pod, a pale band of lake behind.",
+         "caption": "The one silhouette the city is known by, drawn at dusk."},
+        {"src": "IMG/toronto-tower-2.jpg", "title": "The city from above",
+         "alt": "Illustration of the night city seen from above through floor-to-ceiling pod "
+                "windows: an aerial grid of navy blocks with amber windows, a dark lake at the shore.",
+         "caption": "The LookOut glass at 346 m: the city below reads as a grid with a lake for an edge."},
+        {"src": "IMG/toronto-tower-3.jpg", "title": "342 m of drop",
+         "alt": "Illustration looking straight down through a glass floor panel to miniature "
+                "streets far below, the tower's shadow across them, shoe tips at the near edge.",
+         "caption": "The Glass Floor: the whole height of the tower read as the drop under your feet."},
+    ],
+}
 DISTRICTS = [
     {
         # The hub. The street is the site's own ground — it names no city, carries no lettering, and
@@ -2997,6 +3030,7 @@ DISTRICTS = [
                      "edge is what makes a model read as a model."},
             {"id": "tower-cn", "kind": "tower", "x": -120, "z": 628, "y": 80, "ry": 0,
              "w": 58, "h": 300, "d": 58,
+             "story": TOWER_STORY,
              "title": "The tower, small",
              "hint": "Tapered shaft, a round pod two thirds up, a needle above: the one silhouette "
                      "the whole city is known by, drawn at table scale. No lettering, no claim — "
@@ -3296,6 +3330,125 @@ DISTRICTS = [
                   "model is the point, not the trip.",
     },
     {
+        # The whole CN Tower as one walkable space (landmark-space §7, grounded-scene §6): one lane
+        # read as an ascent. The cab doors at the mouth, the LookOut's floor-to-ceiling glass carrying
+        # the city from above, the Glass Floor as the drop underfoot, the SkyPod's higher sky at the
+        # far window. Record facts, sources in TODO §0a/§0b: 553.3 m, opened 1976; LookOut 346 m;
+        # Glass Floor 342 m (the world's first, 1994); SkyPod 446.5 m; the ride, 58 seconds.
+        # Bearings are the real ones (grounded-scene §1 rung 3-4): Lake Ontario due south of the pod,
+        # Rogers Centre and the rail corridor at its base, the downtown grid north and east — the
+        # aerial tile is the city read from above, not a composed backdrop.
+        "id": "cntower", "label": "The tower",
+        "page": ROOM_BY_ID["cntower"]["page"],
+        "plates": ROOM_BY_ID["cntower"]["plates"],
+        # A pod is narrower than a street and lower than a hall: the ceiling is the pod's own, and
+        # the mouth holds the cab doors instead of a curtain.
+        "lane": {"w": 560, "d": 640, "ceil": 330, "back": 220},
+        "floor": "pod",
+        "purpose": "The whole CN Tower as one space: the cab doors, the LookOut, the glass underfoot, the higher band",
+        "status": "open",
+        "kind": "personal",
+        "cover": "IMG/cntower-cover.jpg",
+        "cover_caption": "The pod's own sheet: the city from above through the LookOut glass, drawn.",
+        "blurb": "One lane read as an ascent. The cab doors at the mouth, floor-to-ceiling glass "
+                 "carrying the city from above, a glass floor that is 342 m of drop, and the "
+                 "SkyPod's higher sky at the far window.",
+        "clad_note": " The lane is the pod at 346 m: floor-to-ceiling glass on both hands, the city "
+                     "from above worn as the wall's own material, a steel floor underfoot, and one "
+                     "square of it that is glass. Nothing on any of it carries a word.",
+        "sight_note": " At its far end a window holds a higher band of sky and the city three "
+                      "hundred and more metres below, running to a lake horizon. Nothing out there "
+                      "is a record of anybody standing in it.",
+        "objects": [
+            # The elevator is the door and the moment (landmark-space §7 beat 1): the ride is 58
+            # authored seconds in the real tower, here a press. The shaft's light runs past while
+            # the doors stand open.
+            {"id": "lift-cn", "kind": "door", "x": -278, "z": 60, "y": 0, "ry": 90,
+             "leaf": "#2b3852",
+             "glow": [{"r": 130, "k": 0.6, "dy": 210, "tint": "rgba(255,214,170,0.45)"}],
+             "states": [{"say": "The cab doors, shut. The real ride is 58 seconds; here it is a press."},
+                        {"door": 1, "say": "The doors stand open: the shaft's light runs past, and "
+                                          "the pod is the next room."}],
+             "title": "The cab doors",
+             "hint": "Six glass-fronted capsules run this shaft. Press to ride: the doors opening "
+                     "is the transition, not a cutscene."},
+            # The Glass Floor (beat 3): one panel of the floor that is 342 m of drop. `on` is the
+            # step-on state; the deep aerial tile carries the city below.
+            {"id": "glass-cn", "kind": "glassfloor", "x": 0, "z": 430, "y": 0, "ry": 0,
+             "w": 220, "h": 4, "d": 180,
+             "states": [{"say": "The Glass Floor at the rail: 342 m of drop under 64 mm of glass."},
+                        {"on": 1, "say": "On the glass. The plaza is 342 m below — the whole tower "
+                                         "is the drop under your feet."}],
+             "title": "The glass floor",
+             "hint": "The world's first, 1994: a square of floor that is a window straight down the "
+                     "length of the tower. Press to step on, press to step back."},
+            # The SkyPod as a band, not a room (beat 4): the far window's stop. Its real
+            # differentiator is the height — the horizon a shade further, the sky a band higher.
+            {"id": "sky-cn", "kind": "ledge", "x": 0, "z": 610, "y": 0, "ry": 0,
+             "w": 460, "h": 12, "d": 60,
+             "title": "The window at the higher band",
+             "hint": "Where the pod's glass ends and the SkyPod's sky begins: 446 m is mostly a "
+                     "further horizon and a higher band of dark."},
+        ],
+        # Floor-to-ceiling glass is a material band: the city from above rides the cladding the way
+        # every wall here wears its material. Both hands, from the cab to the far stop.
+        "surfaces": [
+            # Darker than the pod itself: the city below is night outside the glass, and a window
+            # as bright as the room it looks out of is a mirror, not a view.
+            {"side": -1, "z0": 150, "z1": 600, "y0": 12, "y1": 260, "kind": "aerial", "tone": 0.55},
+            {"side": 1, "z0": 150, "z1": 600, "y0": 12, "y1": 260, "kind": "aerial", "tone": 0.55},
+        ],
+        # The restaurant that rings the real pod is one warm light band at its own hour, never
+        # modelled — a room with people eating is a room with people.
+        "lamps": [
+            # The pod's own dim spots over the walk, the way the hall's tables outshine the room:
+            # the city below is the light this place is about, the fittings only keep the floor.
+            {"x": 0, "y": 296, "z": 100, "r": 240, "k": 0.8},
+            {"x": 0, "y": 296, "z": 260, "r": 240, "k": 0.8},
+            {"x": 0, "y": 296, "z": 420, "r": 240, "k": 0.8},
+            {"x": 0, "y": 296, "z": 580, "r": 240, "k": 0.8},
+            {"x": -250, "y": 252, "z": 300, "r": 140, "k": 0.6, "tint": "rgba(255,178,102,0.4)", "liton": 0.6},
+            {"x": 250, "y": 252, "z": 300, "r": 140, "k": 0.6, "tint": "rgba(255,178,102,0.4)", "liton": 0.6},
+        ],
+        "vista": {"x": 0, "y0": 30, "y1": 300, "w": 460},
+        "backdrop": {
+            # The higher band and the pale horizon the SkyPod stop faces; below the horizon the
+            # citybelow painter carries the city three hundred metres down.
+            "sky": [{"y0": 300, "y1": 4000, "c": "#0b1424", "glow": 0.10},
+                    {"y0": 236, "y1": 300, "c": "#22375a", "glow": 0.20},
+                    {"y0": 186, "y1": 236, "c": "#31486e", "glow": 0.30}],
+            "citybelow": {"y": -900, "z0": 6000, "z1": 120000, "half": 60000,
+                          "lake": {"d0": 90000}},
+        },
+        "slots_title": "Places in the tower",
+        "slots": [
+            {"label": "The tower at dusk",
+             "note": "The story the hall's model opens first: the silhouette, the pod's city "
+                      "from above, the drop under the glass.",
+             "state": "Held by three drawn story frames; a photograph takes the slot when one arrives."},
+            {"label": "The glass floor",
+             "note": "The one square of floor that is a window straight down.",
+             "state": "Held by the panel itself; no plate can stand in for 342 m."},
+        ],
+        "stations": [
+            {"z": 20, "label": "the cab doors"},
+            {"z": 180, "label": "the LookOut's glass"},
+            {"z": 340, "label": "the LookOut, mid"},
+            {"z": 430, "label": "on the glass floor"},
+            {"z": 560, "label": "the higher band"},
+        ],
+        "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
+                 "title": "The cab doors at your back", "hint": "They open onto the hall, at the "
+                                                                "tower's own table."},
+        # The landmark space owns its way back (the wiring loop respects an authored back_to): it
+        # returns to the prop that owns it, not to the street — the hall is the hub route in.
+        "back_to": "rooms-toronto.html",
+        "caveat": "The tower is drawn at the eye's own scale from public facts — heights, levels, "
+                  "bearings — and the city below is drawn from above, not surveyed. The ride is "
+                  "compressed, the detail is simplified, the experience is the real one's shape. "
+                  "Nothing here carries a name or a claim that the owner stood at 346 m.",
+    },
+    {
         "id": "undeclared", "label": "Next district", "purpose": "Purpose not declared",
         "status": "soon",
         "blurb": "This one stays shut until its purpose is declared — travel, a conference, "
@@ -3371,6 +3524,8 @@ def rooms_plate_html(districts):
   <div class="modal-backdrop" data-room-close></div>
   <div class="modal-panel">
     <button class="modal-close" type="button" data-room-close aria-label="Close">{ICON_X}</button>
+    <a class="modal-close story-enter" data-enter-space hidden href="#"
+       aria-label="Enter the space this story owns">{ICON_OUT}</a>
     <p class="eyebrow" data-room-where></p>
     <h2 data-room-title></h2>
     <p data-room-hint></p>{reel}
@@ -3451,7 +3606,10 @@ def walk_islands(d, placed):
     surfaces = [_scale_band(s) for s in d.get("surfaces", [])]
     marks    = [_scale_mark(m) for m in d.get("marks", [])]
     beams    = [round(b * Z_SCALE) for b in d.get("beams", [])]
+    # Story frames a prop carries: the rail they open is per prop, not per district.
+    stories = {o["id"]: o["story"] for o in placed if "story" in o}
     islands = [("data-walk-lights", lights), ("data-walk-wires", wires),
+               ("data-walk-stories", stories),
                ("data-walk-beams", beams),
                ("data-walk-surfaces", surfaces), ("data-walk-marks", marks)]
     if d.get("vista"):
@@ -3479,6 +3637,8 @@ def walk_object(o):
     style = (f'--x:{o["x"]}px;--z:{o["z"]}px;--y:{o.get("y", 0)}px;--ry:{o.get("ry", 0)}deg;'
              f'--w:{w}px;--h:{h}px;--d:{dep}px')
     frame = f' data-frame="{o["frame"]}"' if "frame" in o else ""
+    # A landmark prop owns a space: the story it opens first, and the district beside the story.
+    story_attr = f' data-story="{escape(o["id"])}"' if "story" in o else ""
     # The one prop that is not scenery: the record says where it goes and the renderer obeys, so the
     # curtain leaving the lane is a link in the data, not a special case in the script.
     leave = f' data-leave="{escape(o["leave"])}"' if o.get("leave") else ""
@@ -3508,7 +3668,7 @@ def walk_object(o):
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
             f'data-d="{dep}" style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
-            f'{states}{leave}{awn_attr}{noren_attr}{fascia_attr}></button>')
+            f'{states}{leave}{awn_attr}{noren_attr}{fascia_attr}{story_attr}></button>')
 
 
 def walk_html(d, drawer):
@@ -3561,6 +3721,11 @@ def walk_html(d, drawer):
             f'<li><button type="button" data-walk-to="{round(fr["z"] * Z_SCALE)}">'
             f'{escape(fr["title"])}</button> <span class="when">{side} wall, {depth:.1f} m in · '
             f'frame {n + 1} of {len(d.get("frames", []))}</span></li>')
+    for o in placed:
+        if "story" in o:
+            links.append(
+                f'<li><a href="{escape(o["story"]["space"])}">Step into {escape(o["title"])}</a>' 
+                f' <span class="when">the space the model owns, one press away in the lane</span></li>')
     label = escape(d["label"])
     did = escape(d["id"])
     # What a screen reader is told the space is, in the same breath as the controls. The room's own
@@ -3573,12 +3738,16 @@ def walk_html(d, drawer):
             "kerbs, and against the fronts a convex mirror, a meter box, a standpipe, a ladder, a "
             "telephone box, bicycles, planters, a litter crate and a blank folding board. Nothing on "
             "any of it carries a word." if d.get("surfaces") else "")
+    clad = d.get("clad_note", clad)
     sight = (" At its far end the lane opens onto a drawn compound: a crossing below it, a tower, and "
              "a mountain beyond. Nothing out there is a record of anybody standing in it."
              if d.get("vista") else "")
+    sight = d.get("sight_note", sight)
     # An open-world far end: the record authors how far the walker may keep going (walk units), and
     # the renderer lets the world continue past the last wall. Absent, the clamp is the wall itself.
     max_d_attr = f' data-lane-max-d="{lane["max_d"]}"' if lane.get("max_d") else ""
+    # A place may own its ground: the pod walks on dark steel, not the street's concrete.
+    floor_attr = f' data-floor="{d["floor"]}"' if d.get("floor") else ""
     # A place whose subject is the day: `"day": True` on the record, or a dict to author the cycle,
     # where it opens in that cycle, and how strong the sun is (`{"cycle": 900, "start": 0.45,
     # "gain": 1}`). The renderer reads all four off the layer, like the lane box and the eye — the
@@ -3594,7 +3763,7 @@ def walk_html(d, drawer):
                     f' data-lane-day-gain="{opts.get("gain", 1)}"')
     return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}"
        data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
-       data-lane-back="{lane["back"]}"{max_d_attr}{day_attr} data-eye="{EYE}">
+       data-lane-back="{lane["back"]}"{max_d_attr}{day_attr}{floor_attr} data-eye="{EYE}">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
        Space to jump, E to open what you are standing in front of, L for the list, I for this note.
@@ -3747,7 +3916,8 @@ for d in open_districts:
     # mouth a whole street away — the connection between rooms is a place you stand, not a link
     # you follow. The renderer reads the `#at-` hash and spawns beside the door it names, facing
     # down the street at the other doors.
-    d["back_to"] = ALBUM_PAGE if d["id"] == "street" else f"{CHAIN_ENTRY}#at-{d['id']}"
+    if not d.get("back_to"):
+        d["back_to"] = ALBUM_PAGE if d["id"] == "street" else f"{CHAIN_ENTRY}#at-{d['id']}"
 
 rooms_pages = {}
 for d in open_districts:

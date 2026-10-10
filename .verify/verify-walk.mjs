@@ -831,23 +831,44 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
      point beside that room's own door, so it must name the room the leave is on — a hash that
      names another room would land you at the wrong door. */
   const pageOf = (t) => t.split("#")[0];
+  // A landmark space is not a hub room: its every way out is the room whose prop owns it
+  // (landmark-space §2), and the street carries no door to it. Hub rooms still leave only to
+  // the street, one door each, as before.
+  const spaceOf = {};
+  for (const r of roomRows) {
+    const htmp = fs.readFileSync(r.page, "utf8");
+    const ls = Array.from(htmp.matchAll(/data-leave="([^"]+)"/g)).map((m) => pageOf(m[1]));
+    if (ls.length && ls.every((t) => t !== streetRow.page)) spaceOf[r.id] = ls;
+  }
   for (const r of roomRows) {
     const html = fs.readFileSync(r.page, "utf8");
     const leaves = Array.from(html.matchAll(/data-leave="([^"]+)"/g)).map((m) => m[1]);
     if (!leaves.length) problems.push(`${r.id}: no way out at all`);
-    for (const t of new Set(leaves)) {
-      if (pageOf(t) !== streetRow.page) problems.push(`${r.id}: a leave to ${t}, not the street`);
-      const h = t.split("#")[1];
-      if (h && h !== `at-${r.id}`) problems.push(`${r.id}: a leave hash #${h}, not #at-${r.id}`);
+    if (spaceOf[r.id]) {
+      for (const t of new Set(spaceOf[r.id]))
+        if (!roomRows.some((x) => x.page === t)) problems.push(`${r.id}: a space leaving to ${t}, no built room`);
+    } else {
+      for (const t of new Set(leaves)) {
+        if (pageOf(t) !== streetRow.page) problems.push(`${r.id}: a leave to ${t}, not the street`);
+        const h = t.split("#")[1];
+        if (h && h !== `at-${r.id}`) problems.push(`${r.id}: a leave hash #${h}, not #at-${r.id}`);
+      }
     }
     if (/id="way-on"/.test(html)) problems.push(`${r.id}: still carries a chain door`);
-    if (html.includes(streetRow.page) === false) problems.push(`${r.id}: the street is not named on it`);
+    if (spaceOf[r.id]) {
+      // A space names its home room, and the home room names the street: the hub is reached
+      // transitively, one unwind at a time.
+      const homeHtml = fs.readFileSync(spaceOf[r.id][0], "utf8");
+      if (!homeHtml.includes(streetRow.page)) problems.push(`${r.id}: its home room does not name the street`);
+    } else if (html.includes(streetRow.page) === false) problems.push(`${r.id}: the street is not named on it`);
   }
   {
     const html = fs.readFileSync(streetRow.page, "utf8");
     const leaves = Array.from(html.matchAll(/data-leave="([^"]+)"/g)).map((m) => pageOf(m[1]));
     for (const r of roomRows)
-      if (!leaves.includes(r.page)) problems.push(`street: no door onto ${r.id}`);
+      if (!spaceOf[r.id] && !leaves.includes(r.page)) problems.push(`street: no door onto ${r.id}`);
+    for (const r of roomRows)
+      if (spaceOf[r.id] && leaves.includes(r.page)) problems.push(`street: a door onto the space ${r.id}`);
     if (!leaves.includes("activities.html")) problems.push("street: no door onto the album");
     const doorTargets = new Set(leaves);
     for (const t of doorTargets)

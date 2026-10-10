@@ -2,6 +2,58 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-10 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0c. 第二十一輪（2026-10-10）：CN Tower 空間做完＋Niagara 規劃
+
+站主 go-word：「全部規劃做完這塔。還有我建議尼加拉瓜瀑布，也應該做到那附近的環境結束。」
+
+**塔已做完（本輪 commit）**——`rooms-cntower.html`，一個 district 一條 lane，垂直敘事四 beat：
+電梯門（press 即 ride，states door）、LookOut（兩側 floor-to-ceiling 玻璃＝aerial 磁磚的城市從
+上面看，tone 0.55 讓窗外比室內暗）、Glass Floor（glassfloor 新 shape：aerialdeep 磁磚＋鋼邊＋
+sheen，step on/off state）、SkyPod（遠端 vista＋citybelow painter：地面平面在 -900、湖帶在 horizon
+90000、sky 三帶）。出口回 rooms-toronto.html（link contract：space 回 prop 的房間，harness 已改
+承認這種 unwinding）。
+
+**Link contract 實裝**：tower-cn prop 帶 `story`（三張新畫的 plates：toronto-tower-1/2/3.jpg，走
+`toronto-` IMG rule）；site.js 的 rail 可依 prop 重建 reel；plate chrome 加 `data-enter-space`
+（ICON_OUT、aria-label、hidden 除非 story 有 space）；drawer 加 plain link。新 gate
+`.verify/verify-story.mjs` 12/12（press→rail→enter→states→unwind）。
+
+**Renderer 增量**（SPEC §9 梯子下、規劃內）：PATS.aerial／aerialdeep／podfloor（per-district
+`data-floor`）、glassfloor shape、bd.citybelow painter、surfaces/clad_note/sight_note 可覆寫、
+wiring loop 尊重 authored back_to。
+
+**Gates 全綠**：walk 168/168（harness 加 space 例外：space 的出口是 owning room、street 不門
+space、transitively 連到 hub）、chain 0 fail（album WANT 加 cntower 卡）、shapes 123+、geometry/
+clash/objects/e2e 0、impeccable []、lane-shot 全 PASS（sealed ≥70：96.7/98.1/81.5/74.1；critique
+兩讀：牆太亮→tone 0.55、湖帶浮在中間→d0 90000、亮磁磚閃爍→換 deep tile、地板太亮→pod floor）。
+
+**Album**：cntower-cover.jpg（＝toronto-tower-2 的副本）＋PLACE_GROUP_NOTES 卡；IMG_RULES 加
+`cntower-`。
+
+---
+
+**Niagara 測量表（grounded-scene §2，下輪開工的依據）**：
+
+| claim | value | bearing/facing | source |
+|---|---|---|---|
+| Horseshoe crest | ~670 m 弧 | 弧心朝加拿大岸 | [1][3] niagaratours/traditionaliconoclast（Niagara Parks 數字）|
+| Horseshoe drop | 平均 57 m， plunge pool ~35 m | 向下 | [1][3] |
+| 流量 | peak >2,800 m³/s（~90% 的河水）| — | [2][4] |
+| American Falls | ~290–320 m 寬、drop 21–34 m 落 talus | Horseshoe 之東、對岸 | [1][2][4][5] |
+| Bridal Veil＋Luna/Goat Island | 小瀑＋兩島分瀑 | American 與 Horseshoe 之間 | [1][5] |
+| Table Rock | 加拿大岸 crest 邊緣，最近的免費視點 | 看水翻過 lip | [1] |
+| Queen Victoria Park promenade | 最寬免費視點，Table Rock 之北 | 沿西岸向北 | [1] |
+| 國界 | 穿過瀑布；gorge 向南 | 河向北流 | [1][5] |
+| 霧與虹 | 常設霧柱；晴午後加拿大岸 Favor 虹 | 霧向上、虹隨日 | [1] |
+| 與 Toronto 關係 | ~121 km SSE | 塔上晴天可見霧 | [5] |
+
+**Niagara 空間規劃（下輪）**：prop＝hall 裡 `falls-n`，同款 link contract（story frames 待畫：
+Table Rock 視點、馬蹄弧、霧與虹）。District＝promenade lane：西岸欄杆在右手、Horseshoe 弧在
+前方偏右（水翻過 lip、霧柱上升＝falls shape 放大到真實尺度，toronto hall 的 falls kind 已有
+水片＋霧的畫法）、左前方對岸 American Falls＋talus＋島影、北端 gorge 天帶收尾（「到那附近的
+環境結束」＝promenade＋欄杆＋霧＋gorge，不建模 Skylon、不建人群、不写字）。簡化＝細節；
+不可縮＝弧的寬深比（4.4:1 的教訓 toronto hall 記過）、 Table Rock 在 crest 邊緣、河向北。
+
 ## 0b. 第二十輪（2026-10-10）：站主修正簡化doctrine → 新 skill `grounded-scene`
 
 站主的修正：「要不要根據實際 Google 地圖還是甚麼地去建構。我說的簡化是有些細節可簡化，但大部分

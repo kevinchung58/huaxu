@@ -149,9 +149,10 @@ districts in one page is the floating-objects regression `AGENTS.md` names.
   the exposure is one authored value (§3), so it gets measured from the first frame, not after.
 - the lane-shot sheet, read twice: by the gates, and by the critique pass (§3), with the ratings
   recorded in the commit message the way round numbers are.
-- the link contract asserted: the emitter fails if a `space:` prop has no frames or no row; the
-  e2e walk presses the prop, gets the rail, takes the enter action, arrives facing the landmark,
-  and `Esc`-walks back to the prop. Until that walk exists in `.verify`, the contract is a hope.
+- the link contract asserted by `node .verify/verify-story.mjs` (round 21, against a server on
+  :8080): the prop carries a story, pressing it opens the rail first with the story's frames, the
+  enter-space verb sits in the plate chrome and leads into the space, the space's states press,
+  and the way back unwinds to the prop's room. The contract is no longer a hope; it is a gate.
 
 ## 7. The whole structure, simplified — the vertical narrative
 

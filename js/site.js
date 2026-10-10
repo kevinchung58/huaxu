@@ -1117,7 +1117,7 @@ function leaveOverlay(root, trigger) {
     H = Math.max(1, Math.round(W * (ch / Math.max(1, cw))));
     cv.width = W; cv.height = H;
     tilePat = mkTile(paintWall);
-    floorPat = mkTile(paintFloor);
+    floorPat = mkTile(layer.dataset.floor === "pod" ? paintPodFloor : paintFloor);
     winPat = mkTile(paintWindows);
     PATS.shutter = mkTile(paintShutter);
     PATS.dado = mkTile(paintDado);
@@ -1143,6 +1143,52 @@ function leaveOverlay(root, trigger) {
       c.fillStyle = "rgba(240,248,252,0.5)";
       for (let i = 0; i < 26; i++) c.fillRect((i * 37) % 128, (i * 53) % 128, 6 + (i % 3) * 3, 1);
     });
+    /* The city from above — the material the pod's glass wears. A dark ground, a faint street
+       grid, blocks with a few amber windows, and the lake for an edge: read at a lane's distance
+       it is a city seen down, which is the one sightline a tower owns that a photograph of its
+       exterior cannot give. The deep twin is the same city 342 m further down: smaller blocks,
+       hazier grid, because the glass floor looks straight down the length of the shaft. */
+    const paintAerial = (c) => {
+      c.fillStyle = "#15223e"; c.fillRect(0, 0, 128, 128);
+      c.strokeStyle = "rgba(130,152,192,0.26)"; c.lineWidth = 2;
+      [32, 64, 96].forEach((p) => {
+        c.beginPath(); c.moveTo(p, 0); c.lineTo(p, 128); c.stroke();
+        c.beginPath(); c.moveTo(0, p); c.lineTo(128, p); c.stroke();
+      });
+      c.fillStyle = "#233457";
+      [[6,6,20,18],[40,10,16,14],[70,6,22,20],[100,12,18,16],[10,44,18,16],[44,40,14,20],
+       [76,44,20,14],[104,44,16,18],[12,78,16,14],[42,80,20,16],[78,76,16,18],[106,80,14,14],
+       [10,108,18,14],[46,110,14,12],[76,108,18,14],[104,110,16,12]]
+        .forEach(([x,y,w,h]) => c.fillRect(x,y,w,h));
+      c.fillStyle = "rgba(255,176,96,0.8)";
+      [[12,12],[48,16],[80,12],[106,18],[16,50],[50,46],[84,50],[110,52],[18,84],[52,86],
+       [84,82],[110,86],[16,114],[52,116],[82,114],[110,116]].forEach(([x,y]) => c.fillRect(x,y,3,3));
+      c.fillStyle = "#0a1222"; c.fillRect(0, 122, 128, 6);
+    };
+    const paintAerialDeep = (c) => {
+      c.fillStyle = "#0f1a30"; c.fillRect(0, 0, 128, 128);
+      c.strokeStyle = "rgba(120,140,180,0.17)"; c.lineWidth = 1;
+      [16, 48, 80, 112].forEach((p) => {
+        c.beginPath(); c.moveTo(p, 0); c.lineTo(p, 128); c.stroke();
+        c.beginPath(); c.moveTo(0, p); c.lineTo(128, p); c.stroke();
+      });
+      c.fillStyle = "#1d2c4c";
+      for (let y = 4; y < 128; y += 16) for (let x = 4; x < 128; x += 16)
+        if ((x + y) % 32 === 4) c.fillRect(x, y, 7, 6);
+      c.fillStyle = "rgba(255,176,96,0.5)";
+      [[20,20],[68,36],[100,68],[36,84],[84,100],[52,52]].forEach(([x,y]) => c.fillRect(x,y,2,2));
+    };
+    PATS.aerial = mkTile(paintAerial);
+    PATS.aerialdeep = mkTile(paintAerialDeep);
+    /* The pod's own ground: dark steel panels with a hairline seam, a shade brighter
+ where the spots stand over it. Concrete would put the street's pavement at 346 m. */
+    function paintPodFloor(c) {
+      c.fillStyle = "#1e2637"; c.fillRect(0, 0, 128, 128);
+      c.fillStyle = "rgba(10,15,28,0.6)";
+      c.fillRect(0, 0, 128, 2); c.fillRect(0, 64, 128, 2); c.fillRect(0, 0, 2, 128); c.fillRect(64, 0, 2, 128);
+      c.fillStyle = "rgba(160,178,205,0.05)"; c.fillRect(4, 4, 60, 60);
+    }
+    PATS.podfloor = mkTile(paintPodFloor);
     PATS.track = mkTile(paintTrack);
     PATS.domep = mkTile(paintDomeP);
     PATS.sky0 = mkTile(paintSkyline(0, 0));
@@ -1907,6 +1953,29 @@ function leaveOverlay(root, trigger) {
         if (jib) { jib.air = 0.16; jib.lit = 0.42; jib.daygain = 0.55; }
       });
     }
+    const cb = bd.citybelow;
+    if (cb) {
+      /* The city from above, past the pod's glass: a ground plane far below eye level, panelled
+         like the plaza because one stretched quad would bend the grid the way it bends paving.
+         The lake is the dark band at the far shore — due south of the real pod — and air ramps
+         toward the fog ceiling exactly like every other far surface here. */
+      const STEP = 4000, PU = 1 / 10, span = Math.max(1, cb.z1 - cb.z0);
+      for (let z = cb.z0; z < cb.z1; z += STEP) {
+        const z1 = Math.min(z + STEP, cb.z1);
+        const gq = add(C, [[-cb.half, cb.y, z], [cb.half, cb.y, z],
+                           [cb.half, cb.y, z1], [-cb.half, cb.y, z1]],
+          [z * PU, -cb.half * PU, z * PU, cb.half * PU,
+           z1 * PU, cb.half * PU, z1 * PU, -cb.half * PU],
+          "pat", PATS.aerialdeep);
+        if (gq) { gq.air = 0.18 + ((z - cb.z0) / span) * (FOG_MAX - 0.18); gq.lit = 0.62; gq.daygain = 0.4; }
+      }
+      if (cb.lake) {
+        const lq = add(C, [[-cb.half, cb.y + 2, cb.lake.d0], [cb.half, cb.y + 2, cb.lake.d0],
+                           [cb.half, cb.y + 2, cb.z1], [-cb.half, cb.y + 2, cb.z1]],
+                       ZERO8, "flat", "#0a1322");
+        if (lq) { lq.air = 0.3; lq.lit = 0.4; lq.day = false; }
+      }
+    }
     const cross = bd.crossing;
     if (cross) {
       const n = cross.stripes || 8, span = cross.x1 - cross.x0;
@@ -2242,7 +2311,7 @@ function leaveOverlay(root, trigger) {
 
       /* Contact shadow: anything standing on a floor or a tabletop throws a soft dark quad at its
          base, or it floats. Wall-hung things are exempt — their shadow is the wall's own darkness. */
-      if (Math.abs(m.x) < WALL - 40 && kind !== "track") {
+      if (Math.abs(m.x) < WALL - 40 && kind !== "track" && kind !== "glassfloor") {
         const fw = (onSide ? m.d : m.w) * 0.68, fd = (onSide ? m.w : m.d) * 0.68;
         const cs = add(C, [[m.x - fw / 2, m.y + 1, m.z - fd / 2], [m.x + fw / 2, m.y + 1, m.z - fd / 2],
                            [m.x + fw / 2, m.y + 1, m.z + fd / 2], [m.x - fw / 2, m.y + 1, m.z + fd / 2]],
@@ -2704,6 +2773,28 @@ function leaveOverlay(root, trigger) {
                           [m.x + m.w / 2, m.y + 1, m.z + m.d / 2], [m.x - m.w / 2, m.y + 1, m.z + m.d / 2]],
                       ZERO8, "flat", base);
         if (q) { q.lit = lit * 0.5; drawn.push(q); }
+      } else if (shape === "glassfloor") {
+        /* A square of floor that is a window straight down: the city 342 m below rides the deep
+           aerial tile behind a steel rim. `on` (step on) lifts the panel's own light the way a lit
+           pool does — standing on the glass is the moment, not the edge of it. */
+        const on = S && S.on ? S.on : 0;
+        const hw = m.w / 2, hd = m.d / 2;
+        const q = add(C, [[m.x - hw, m.y + 1, m.z - hd], [m.x + hw, m.y + 1, m.z - hd],
+                          [m.x + hw, m.y + 1, m.z + hd], [m.x - hw, m.y + 1, m.z + hd]],
+            [(m.z - hd) * 0.6, (m.x - hw) * 0.6, (m.z - hd) * 0.6, (m.x + hw) * 0.6,
+             (m.z + hd) * 0.6, (m.x + hw) * 0.6, (m.z + hd) * 0.6, (m.x - hw) * 0.6],
+            "pat", PATS.aerialdeep);
+        if (q) { q.lit = lit * (on ? 1.25 : 0.8); drawn.push(q); }
+        [[m.z - hd - 5, m.z - hd], [m.z + hd, m.z + hd + 5]].forEach(([z0, z1]) => {
+          const r = add(C, [[m.x - hw - 5, m.y, z0], [m.x + hw + 5, m.y, z0],
+                            [m.x + hw + 5, m.y + 3, z1], [m.x - hw - 5, m.y + 3, z1]],
+                        ZERO8, "flat", "#3a4763");
+          if (r) { r.lit = lit * 1.1; drawn.push(r); }
+        });
+        const sheen = add(C, [[m.x - hw, m.y + 2, m.z - hd], [m.x - hw * 0.2, m.y + 2, m.z - hd],
+                              [m.x + hw * 0.2, m.y + 2, m.z + hd], [m.x - hw * 0.6, m.y + 2, m.z + hd]],
+                          ZERO8, "flat", `rgba(210,228,248,${on ? 0.10 : 0.16})`);
+        if (sheen) { sheen.air = 0; sheen.day = false; drawn.push(sheen); }
       } else if (shape === "plinth") {
         /* A diorama table: a dark cabinet whose top is the one face brighter than its own light —
            the lamp under the model shines up through it, and that glow is authored in the record.
@@ -4509,8 +4600,9 @@ function leaveOverlay(root, trigger) {
     // which is the worst kind of dead end — a control that describes an exit instead of being one.
     const leave = m.el.dataset.leave;
     if (leave) { window.location.assign(leave); return; }
-    if (m.el.dataset.frame !== undefined && openRail(Number(m.el.dataset.frame), m.el)) return;
-    if (m.el.dataset.obj === "vending" && openRail(0, m.el)) return;
+    if (m.el.dataset.story && openStoryRail(m.el.dataset.story, m.el)) return;
+    if (m.el.dataset.frame !== undefined && openDistrictRail(Number(m.el.dataset.frame), m.el)) return;
+    if (m.el.dataset.obj === "vending" && openDistrictRail(0, m.el)) return;
     // A thing with stops is opened by being *used*: the shutter goes up, the flap swings, and the card
     // says what the lane looks like now. Pressing it again takes it to the next stop.
     if (m.states && m.states.length > 1) { setState(m, (m.st + 1) % m.states.length); draw(); }
@@ -4547,7 +4639,7 @@ function leaveOverlay(root, trigger) {
   }));
   rows.forEach((row) => {
     const play = row.querySelector("[data-play]");
-    if (play) play.addEventListener("click", () => openRail(Number(play.dataset.play), play));
+    if (play) play.addEventListener("click", () => openDistrictRail(Number(play.dataset.play), play));
   });
 
   view.addEventListener("pointerdown", (event) => {
@@ -4711,7 +4803,8 @@ function leaveOverlay(root, trigger) {
   boot();
 
   const railEl = plate && plate.querySelector("[data-story-reel]");
-  const frames = railEl ? Array.from(railEl.querySelectorAll("[data-story-frame]")) : [];
+  let frames = railEl ? Array.from(railEl.querySelectorAll("[data-story-frame]")) : [];
+  const setFrames = () => { frames = railEl ? Array.from(railEl.querySelectorAll("[data-story-frame]")) : []; };
   const segRow = plate && plate.querySelector("[data-story-segs]");
   const countEl = plate && plate.querySelector("[data-story-count]");
   const panel = plate && plate.querySelector(".modal-panel");
@@ -4767,25 +4860,48 @@ function leaveOverlay(root, trigger) {
     if (!ease || paused || frames.length < 2) return;
     timer = setTimeout(() => { fi = (fi + 1) % frames.length; paint(); schedule(); }, HOLD);
   };
-  const openRail = (n, trigger) => {
+  const openRail = (n, trigger, glide = true) => {
     if (!railEl || !frames.length) return false;
     fi = Math.max(0, Math.min(frames.length - 1, n));
     plate.classList.add("is-open", "is-rail");
     /* Standing in front of the frame while it plays is the point: the dialog is not a second place
-       to look, it is the same wall at reading distance. */
-    atFrame(n);
+       to look, it is the same wall at reading distance. A story rail glides nowhere: its frames are
+       the prop's, not hung on this lane's walls. */
+    if (glide) atFrame(n);
     paint();
     railOpener = enterOverlay(plate, ".modal-close", trigger);
     schedule();
     return true;
   };
+  const enterBtn = plate ? plate.querySelector("[data-enter-space]") : null;
   const closeRail = () => {
     if (!plate || !plate.classList.contains("is-open")) return;
     stopTimer();
     paused = false;
     plate.classList.remove("is-open", "is-rail");
+    if (enterBtn) enterBtn.hidden = true;
     leaveOverlay(plate, railOpener);
     railOpener = null;
+  };
+  /* The link contract (landmark-space §2): a landmark prop opens its own story first, and the
+     enter-the-space verb sits beside the story in the plate chrome. The reel is rebuilt from the
+     stories island, so one rail serves both the lane's hung frames and any prop's story. */
+  const stories = readOne("[data-walk-stories]") || {};
+  const homeReel = railEl ? railEl.innerHTML : "";
+  const openStoryRail = (id, trigger) => {
+    const st = stories[id];
+    if (!st || !railEl || !st.frames || !st.frames.length) return false;
+    railEl.innerHTML = st.frames.map((f, i) =>
+      `<figure class="story-frame" data-story-frame="${i}"><img src="${f.src}" alt="${f.alt}">` +
+      `<figcaption>${f.title} — ${f.caption}</figcaption></figure>`).join("");
+    setFrames();
+    if (enterBtn) { enterBtn.hidden = !st.space; if (st.space) enterBtn.href = st.space; }
+    return openRail(0, trigger, false);
+  };
+  const openDistrictRail = (n, trigger) => {
+    if (railEl && railEl.innerHTML !== homeReel) { railEl.innerHTML = homeReel; setFrames(); }
+    if (enterBtn) enterBtn.hidden = true;
+    return openRail(n, trigger);
   };
   if (panel && frames.length) {
     panel.addEventListener("pointerdown", (event) => {
