@@ -100,10 +100,13 @@ prefixes, status), and **one door object on the street's record** (`"leave": ROO
 positioned inside the walker's reach — see `district-author` §9). Then `district-author`'s build rules
 apply unchanged, and so does its gate. If the place is in Japan, `skills/japan-place` carries the
 numbers this skill deliberately does not: what each Japanese object is in centimetres, which one
-identifies the place, and what it may not carry. If the place is one landmark object rather than a walked place, hand the record to
-`skills/landmark-space` instead — its intake is which *part* of the object is the room. Read its `references/japan-vocabulary.md` before
+identifies the place, and what it may not carry. Read its `references/japan-vocabulary.md` before
 reading the photographs for dimensions, so the room agrees with the two Japanese rooms already
-built rather than inventing a third set of proportions.
+built rather than inventing a third set of proportions. If the place is one landmark object rather
+than a walked place, hand the record to `skills/landmark-space` instead — its intake is which
+*part* of the object is the room. And whenever the place is real and the owner wants the scene to
+feel nearly the same as being there (round-20 rule), `skills/grounded-scene` turns the record into
+a measurement table with a source behind every bearing before any geometry is written.
 
 - `node .verify/verify-walk.mjs` — the harness asserts, per room, that the walk stays inside the
   authored box, that every lantern hangs on a cable that exists, that the Field notes wall is the

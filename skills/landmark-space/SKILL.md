@@ -44,7 +44,8 @@ unless they name the panorama. Everything else — stops, materials, the night �
 reasons, per `district-author` §1 and `place-intake` §1.
 
 When the object is a tower — taller than the sky a lane can hold — the forms above
-are not enough; see §7 for the vertical-narrative doctrine and its worked CN Tower example.
+are not enough; see §7 for the vertical-narrative doctrine and its worked CN Tower example, and
+`skills/grounded-scene` for how faithfully any of it must be built (round-20 owner rule).
 
 Scale is authored, not solved. `Z_SCALE`, `OBJ_SIZE` and the hero-object rule (`lane-prop` §1)
 already say a 108 m bridge is authored at `w:360` because its real size projects to a line. A tower
@@ -200,6 +201,15 @@ Glass Floor 342 m, 24 m², the world's first (1994); SkyPod 446.5 m; the glass-f
 Build order inside this doctrine: the LookOut first (it owns the vista the elevator doors open
 onto), then the glass floor's tile and state, then the elevator stop, then the SkyPod band — each
 a measurable commit, the whole never blocked on its tallest part.
+
+**Round-20 correction (owner).** The simplification above was priced wrong. The owner's rule is
+stricter — 「有些細節可簡化，但大部分體驗必須差不多」 — and the build must be grounded in the real
+place (Google Maps-class sources), per `skills/grounded-scene`. So the beats stay as the
+*sequence*, but each beat is authored from the measurement table's real bearings (the lake south,
+the stadium at the base, the glass floor below the deck), no real level is deleted to shorten the
+lane, and what shrinks is detail — materials, decoration, window counts, the 58-second clock —
+never the experience. §7's drops are re-priced there: the exterior stays with the photograph
+because the IG-story plate *is* the real exterior, and everything else survives, grounded.
 
 ## 6. Refusals
 

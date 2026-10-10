@@ -2,6 +2,39 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-10 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0b. 第二十輪（2026-10-10）：站主修正簡化doctrine → 新 skill `grounded-scene`
+
+站主的修正：「要不要根據實際 Google 地圖還是甚麼地去建構。我說的簡化是有些細節可簡化，但大部分
+體驗必須差不多。這我建議你寫新 SKILLS 出來。我這規劃你到時候會做很多這種體驗場景。」——第十九輪
+§7 把簡化價定錯了（把 beat 刪掉），站主的規矩更嚴：**根據真實來源建，體驗差不多，只有細節可以縮**。
+而且這種體驗場景會很多，所以做成常設 skill。
+
+**新 skill `skills/grounded-scene/`**（quick_validate 過，139 行）：
+- **§1 證據階梯**：站主自己的照片/記憶 ＞ 官方資料（樓層表/平面圖/官方數字）＞ 衛星地圖
+  （Google Maps/Earth/OSM——足跡、方位、鄰接、真實距離）＞ Street View/官方全景（每個 facing
+  實際看到什麼）＞ 照片影片（光與材質 mood）。每個 authored fact 追到一個階梯；追不到＝發明，
+  不建。sandbox 到不了的階梯要誠實記錄，不假裝看過。
+- **§2 測量表**：claim｜value｜bearing/facing｜source——進 record，gate 查它。
+- **§3 忠誠契約**：可縮＝材質→色帶、裝飾→一個代表 prop、窗櫺→節奏、58 s→幾秒（鐘縮，旅程
+  不縮）、人→零。不可縮＝空間順序（真樓層序）、尺度關係、視線（真方位——湖在南就是南）、
+  辨識性幾何（pod 的外 flare、shaft 的 taper）、站主的時刻（黃昏記憶就 author 黃昏）。
+  **規則化 round-19 教訓：beat 可以壓縮，不可以為省事刪除。**
+- **§4 renderer 內的忠誠**：168 cm／±10°／一 aperture 不動——忠誠是「stop 的眼睛實際看到什麼」，
+  360° pod 的 facings 從測量表的真方位挑，不是挑最好構圖的。外觀仍是照片的 beat——IG story
+  就是真外觀，最高忠誠度，一鍵之遙。
+- **§5 忠誠 gate**：每視線追到表、每表行引階梯；critique pass 對照真全景；辨識測試（去過的人
+  看 lane-shot 說「這不是那裡」就 fail）；source 與 build 衝突時 build 錯。
+- **§6 CN Tower 修正版**：§7 beats 留作順序，但全部 grounded——LookOut facings 用真方位
+  （An大略：湖 S、Rogers Centre＋鐵道 NE 腳下、downtown N/E）、glass floor 真廣場 342 m 下、
+  電梯真 58 s 運動壓縮時間、SkyPod 保留真差異。沒有任何真樓層被刪。
+
+**同 commit**：`landmark-space` §7 加 round-20 correction 段＋§1 pointer；AGENTS.md 表格第七行
+＋intro「Those seven live in」；`district-author` §0、`place-intake` §4 pointers（順手修好
+round-18 插錯位置的 landmark-space 句——它被插進 japan-place 句子中間）。
+
+CN Tower 空間本體仍未開工，等站主 go-word；開工第一步是先做測量表（§2），不是畫幾何。
+相簿 CN Tower frames 有無仍要先確認（link contract）。
+
 ## 0a. 第十九輪（2026-10-10）：「整個CN塔」的簡化doctrine——垂直敘事
 
 站主：「我建構的是整個CN塔的空間，但你可以適當的簡化，你怎麼看？」我的看法（已寫進

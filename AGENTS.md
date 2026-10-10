@@ -27,7 +27,10 @@ Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo 
   `skills/district-author/SKILL.md`, with `skills/place-intake/` before it when the material is
   photographs of a real place, `skills/japan-place/` whenever the place is in Japan,
   `skills/street-commons/` for the hub street, a new promenade or anything that asks for daylight,
-  and `skills/lane-prop/` for a single object, light or state inside one. Those five live in
+  and `skills/lane-prop/` for a single object, light or state inside one, `skills/landmark-space/`
+  when one landmark object becomes its own walkable space, and `skills/grounded-scene/` whenever a
+  scene recreates a real place and must feel nearly the same as being there (the owner's round-20
+  fidelity rule). Those seven live in
   `skills/` and **are tracked** — unlike everything under `.claude/`, which is local-only. Follow the
   matching one before doing the matching kind of work.
 - **The hub is a street with regions on it, and that is the owner's brief** (2026-10-08): one street
@@ -291,6 +294,7 @@ change and gets committed with the work that motivated it.
 | **lane-prop** | `skills/lane-prop/SKILL.md` | One object, light, state or stop inside an existing district: the `SHAPE`/`OBJ_SIZE` registers, the id-prefix naming rule, `Z_SCALE`, `glow`/`of:`, `states`/`leave`, and the measurement that closes it. |
 | **street-commons** | `skills/street-commons/SKILL.md` | The street the rooms stand on: a second street or a new region along the hub, seaside/promenade/harbour/riverbank work, a commercial strip, **and anything that asks for daylight ("有太陽", 海邊, 港, 沿岸, 運河, 商店街)**. Carries the palette-and-sun constraint that makes a sunlit street a stylesheet decision rather than a scene one, and the arithmetic of opening one side of a lane. |
 | **landmark-space** | `skills/landmark-space/SKILL.md` | One landmark object becomes its own walkable space (CN Tower as a room, not a miniature), and the owner's link contract: press the prop, the IG-story plate opens first, an enter-the-space action beside it. Use when a prop should own a district, when the subject is one tall or huge object, or for the beauty gate on any 3D space. |
+| **grounded-scene** | `skills/grounded-scene/SKILL.md` | Any experience scene (體驗場景) that recreates a real place and must feel nearly the same as being there — the owner's round-20 rule. Carries the ladder of evidence (owner's photos → official material → satellite/map → Street View/panoramas → photographs), the measurement table, the fidelity contract (details shrink; sequence, scale, sightlines and distinctive geometry must not), and the fidelity gate. Runs under `district-author`/`landmark-space`, never instead of them. |
 
 **`.claude/skills/` — third-party skills, local-only, gitignored** (not tracked in this repo; the
 74k-line skill payloads were deliberately untracked in `3e2ccbc`). Load the relevant `SKILL.md`
