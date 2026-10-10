@@ -2,6 +2,38 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-10 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0a. 第十九輪（2026-10-10）：「整個CN塔」的簡化doctrine——垂直敘事
+
+站主：「我建構的是整個CN塔的空間，但你可以適當的簡化，你怎麼看？」我的看法（已寫進
+`skills/landmark-space` §7）：
+
+**renderer 永遠無法「仰望 553 m」（pitch ±10°），而外觀 silhouette 是真實相簿照片打得比
+renderer 好的beat。所以整個塔＝一段垂直敘事，一個 district、一條 lane：**
+
+1. **電梯＝門也是 moment**：58 s 壓縮成幾秒，shaft rib＋光條流動（motion on the body），
+   門開＝進下一beat；reduced-motion 得門不得跑。
+2. **LookOut 346 m＝主房間**：城市從上面看成為房間內容；360° 用幾個 facing 的 stop 折疊
+   （§4 一 aperture 規矩的老實用法）；360 餐廳只有一圈暖光帶（`liton`），不建模——
+   有人吃飯的房間就是有人的房間。
+3. **Glass Floor 342 m＝「整個塔」成立的瞬間**：往下看盡 553 m 的 shaft，塔的全高在腳下
+   讀到——CN Tower 版的「屋頂會開」。一個新 tile（向下城市，隔 64 mm 玻璃）＋一個 state。
+4. **SkyPod 折成一層更高的天帶＋一個 stop**，不做房間（霧天它與 LookOut 的差異小，
+   重複的房間是長度不是地方）。
+
+**簡化掉的是敘詞壓縮，不是換引擎**：外觀頁不做（照片的beat）、天線爬升不做（沒有新東西
+可看）、餐廳內不做、literal 垂直幾何不——高度是 texture 與 vista，永遠不是座標。全部現
+renderer 可建：一個新 tile、一個移動光條、一層天帶；不動依賴規則。
+
+公開事實（sources: torontocntowertour.com / kpax / whatthesaintsdidnext / art-facts）：553.3 m、
+1976、LookOut 346 m 360° 落地窗、Glass Floor 342 m 24 m² 1994 世界第一個、SkyPod 446.5 m、
+玻璃電梯 58 s。
+
+建序（每步可量測可 commit）：LookOut 先（它擁有電梯門打開對著的那個 vista）→ glass floor
+tile＋state → 電梯 stop → SkyPod 天帶。
+
+**等站主一句「繼續」就開工。** 開工前還需：IMG_RULES 裡有沒有 CN Tower 的 frames（link
+contract 規定 `space:` 要有 frame 又有 row）；若沒有，先問站主要照片或允許 generated plate。
+
 ## 0z. 第十八輪（2026-10-10）：調研「如何把 3D 空間做好看」→ 新 skill `landmark-space`
 
 站主的未來期望（本輪只做調研＋skill，不建空間）：進多倫多點 CN 塔 → 先開 IG 限時動態（真實

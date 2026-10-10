@@ -43,6 +43,9 @@ a miniature, because the owner's brief said *真的額外打造*, and the table 
 unless they name the panorama. Everything else — stops, materials, the night — you derive, with
 reasons, per `district-author` §1 and `place-intake` §1.
 
+When the object is a tower — taller than the sky a lane can hold — the forms above
+are not enough; see §7 for the vertical-narrative doctrine and its worked CN Tower example.
+
 Scale is authored, not solved. `Z_SCALE`, `OBJ_SIZE` and the hero-object rule (`lane-prop` §1)
 already say a 108 m bridge is authored at `w:360` because its real size projects to a line. A tower
 in the plaza form is authored by the screen presence the silhouette needs, and the record's comment
@@ -148,6 +151,55 @@ districts in one page is the floating-objects regression `AGENTS.md` names.
 - the link contract asserted: the emitter fails if a `space:` prop has no frames or no row; the
   e2e walk presses the prop, gets the rail, takes the enter action, arrives facing the landmark,
   and `Esc`-walks back to the prop. Until that walk exists in `.verify`, the contract is a hope.
+
+## 7. The whole structure, simplified — the vertical narrative
+
+The round-19 owner's brief: not one form of the landmark, *the whole of it* — 「整個CN塔的空間」 —
+with permission to simplify appropriately. This is the doctrine for that, and it is a doctrine about
+narrative, not geometry: **a renderer whose eye is at 168 cm and whose pitch stops at +10° can never
+show a 553 m object in one frame, so "the whole" must be compressed into the beats only a space can
+give, and the beats a photograph gives better are handed to the photograph.**
+
+The split falls out of the link contract (§2): the IG story carries the exterior — the silhouette,
+the skyline, the postcard — because a real photograph of a tower is evidence and reads at any scale;
+the space carries what a photograph cannot — the ascent, the height under your feet, the city as a
+floor. A plaza page that re-draws the silhouette in code would be a worse picture of the thing the
+album already holds, which is the backdrop-of-a-backdrop failure `place-intake` exists to prevent.
+
+So the whole structure becomes one district, one lane, read as a vertical journey:
+
+1. **The elevator is the door, and the door is the moment.** The entry from the story lands you in
+   the cab at the foot of the shaft; the shaft's ribs and a light stripe run past (motion on the
+   body of the ride, `SKILLS.md` §3), the real 58-second climb compressed to a few authored seconds,
+   and the doors opening *is* the transition into the next beat. The elevator is not a page and not
+   a cutscene: it is a stop with a state, and reduced-motion gets the doors without the run.
+2. **The LookOut is the main room.** The city below is the room's content: the backdrop's city,
+   read from above, wrapped as bands the stops face into (the one-aperture rule of §4, honestly
+   used: a 360° pod is three or four authored facings, not a renderer change). Floor-to-ceiling
+   glass is a material band, not a view; the restaurant that rings the pod is one warm light band
+   at its own `liton` and is never modelled — a room with people eating is a room with people.
+3. **The Glass Floor is the moment the whole tower exists.** Standing on 24 m² of glass and looking
+   straight down the length of the shaft is the CN Tower's roof-that-opens: the 553 m reads as the
+   drop under your feet, which is the one frame no photograph of the exterior can give. It is one
+   new tile (the city, seen down, through 64 mm of glass) and one state (step on, step off), which
+   is exactly the geometry-change contract `lane-prop` §4 already speaks.
+4. **The SkyPod is a band, not a room.** One higher sky band in the backdrop, one stop that faces
+   it, and the horizon a shade further — because the sources say the gain over the LookOut on a
+   hazy day is small, and a second room that repeats the first with a thinner horizon is length,
+   not a place (`street-commons` §1).
+
+What is dropped, and why each drop is the simplification rather than a loss: the exterior page
+(the photograph's beat), the antenna climb (nothing new to see above the SkyPod band), the
+restaurant interior (people), the SkyPod room (repetition), and the literal vertical geometry —
+the vertical is carried by the moving shaft, the drop under the glass and the city-from-above,
+because in a one-point lane *altitude is a texture and a vista, never a coordinate*. The facts
+the record cites, with sources: 553.3 m, opened 1976; LookOut 346 m floor-to-ceiling 360°;
+Glass Floor 342 m, 24 m², the world's first (1994); SkyPod 446.5 m; the glass-fronted elevator's
+58-second ride.
+
+Build order inside this doctrine: the LookOut first (it owns the vista the elevator doors open
+onto), then the glass floor's tile and state, then the elevator stop, then the SkyPod band — each
+a measurable commit, the whole never blocked on its tallest part.
 
 ## 6. Refusals
 
