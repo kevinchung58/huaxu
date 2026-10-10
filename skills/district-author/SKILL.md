@@ -14,6 +14,9 @@ Canada→Tokyo→Fukuoka corridor is retired.
 
 Work in this order. Do not skip the intake, and do not start with a library.
 
+This skill is the authoring phase of the whole pipeline; `skills/scene-system` conducts
+it — evidence to gates, with the proven renderer idioms and the critique failure table.
+
 ## 0. Is there material, and is it Japan?
 
 If the district comes from the owner's photographs of a real place — a trip, a site, an alley they

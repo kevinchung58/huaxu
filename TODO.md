@@ -2,6 +2,20 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-10 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0g. 第二十五輪（2026-10-10）：造場景的系統性 skill
+
+站主問：「要不要寫清楚造場景的系統性 skills？」——寫了 `skills/scene-system`：conductor，不複製
+子 skill 的內容，只指它們。八階段表（go-word→evidence→measure→form→author→critique→wire→
+verify），每階段列 governing skill／artefact／closes-when。內容：renderer contract（EYE 168、
+Z_SCALE 2.9、Z_FAR 1334、day clock、PATS fallback、WebKit 規則）；form 四選一（hub room／
+open district／landmark space／owned sub-space，含 Table Rock owns Journey 的例外規矩）；
+proven idioms 帶數字（sky idiom y0 -400/glow 1/y1 90000、open end max_d 1500、mistview 單帶、
+prop 實尺、night illumination、fill ceiling A/B）；critique 失敗表（七種症狀→原因→lever）；
+gate battery 每條 harness 證明什麼；refusals；shipped worked examples 索引。
+
+AGENTS 表加 scene-system row（最前）；district-author 開頭加一句指向 conductor。三者
+quick_validate 過。
+
 ## 0f. 第二十四輪（2026-10-10）：站主問「你真的全面有做好瀑布的嗎？去查 google」
 
 查了。兩組搜尋（Table Rock 視點要素、Journey Behind the Falls 體驗），對照我做的，缺三件，

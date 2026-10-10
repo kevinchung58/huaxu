@@ -290,6 +290,7 @@ change and gets committed with the work that motivated it.
 
 | Skill | Path | Use when |
 |---|---|---|
+| **scene-system** | `skills/scene-system/SKILL.md` | Starting any new place, or when the scene skills' order is unclear: the eight-phase pipeline that conducts place-intake / grounded-scene / district-author / landmark-space / lane-prop / street-commons, the renderer contract, the proven idioms with their numbers, the critique failure table, and the gate battery. Read first, then the phase skills. |
 | **district-author** | `skills/district-author/SKILL.md` | Adding or changing a district (a place whose frames, objects and clips hang in one lane), when the owner asks for "3D" or a stories-style viewer, or before choosing any renderer for one. |
 | **place-intake** | `skills/place-intake/SKILL.md` | The owner supplies photographs of a real place — a trip, a site, an alley they walked — and it is to become a room. Runs before `district-author`, before any geometry is written. |
 | **japan-place** | `skills/japan-place/SKILL.md` | The place is in Japan: Tokyo, 福岡/Moji, 屋台, 商店街, 踏切, 参道, 提灯, 自動販売機. Carries the object table with real centimetres (`references/japan-vocabulary.md`) and the sakura-crossing study note (`references/sakura-crossing.md`). |
