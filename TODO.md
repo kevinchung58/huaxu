@@ -25,7 +25,7 @@
 - **§5 忠誠 gate**：每視線追到表、每表行引階梯；critique pass 對照真全景；辨識測試（去過的人
   看 lane-shot 說「這不是那裡」就 fail）；source 與 build 衝突時 build 錯。
 - **§6 CN Tower 修正版**：§7 beats 留作順序，但全部 grounded——LookOut facings 用真方位
-  （An大略：湖 S、Rogers Centre＋鐵道 NE 腳下、downtown N/E）、glass floor 真廣場 342 m 下、
+  （大略：湖 S、Rogers Centre＋鐵道 NE 腳下、downtown N/E）、glass floor 真廣場 342 m 下、
   電梯真 58 s 運動壓縮時間、SkyPod 保留真差異。沒有任何真樓層被刪。
 
 **同 commit**：`landmark-space` §7 加 round-20 correction 段＋§1 pointer；AGENTS.md 表格第七行
