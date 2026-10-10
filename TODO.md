@@ -1,6 +1,320 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-02 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-09 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0x. 下一件（2026-10-10 記，站主指定）：巷的夜間 lantern／窗光節奏
+
+站主裁示：先把上輪提的「巷的夜間版 lantern／窗光節奏」記在案，做不做等一句話。
+
+現狀：白天頁自帶夜循環（DAY()→0），夜有燈籠點火、shopfront 窗光、門框光——但**沒人專門
+作者過夜的節奏**：燈籠在地板的光池、弦燈的暈、開著店的窗光潑到巷面的寬度、與關著店的暗面
+交替的韻律。做的時候：
+
+- 只加夜的光，不動夜的氛圍量測（street night 65.0 是量測不是目標——別為數字改氛圍）；
+- 光池跟影子系統同一規矩：夜裡影消失、光池出現，兩者不疊在同一塊地板上打架；
+- 無字原則不變（光不帶字）；
+- 全閘綠收尾（walk 168、lane-shot、e2e、luma 三頁）。
+
+---
+
+## 0w. 第十六輪四續（2026-10-09）：Toronto 半邊太陽一致性——乾淨
+
+站主「繼續.」。前半（入口到 Toronto 門）從中段回頭截 noon／evening 兩幀：
+
+- 正午：世界右牆暖、左牆陰；傍晚換邊——前半的牆面 daygain 與地板影正確隨太陽。
+- 後門（album 門）的門框光在暮色裡正常工作；bollard 等小 prop 的影是正確的細條。
+- 前半的空是**設計**（street 不命名城市、日本半才是街區；meta 描述亦然），不另加裝飾
+  （不適用就不要做）。
+
+工具：`_walkshot.mjs` 加第六參＝方向鍵 7° 步數（drag 會 clamp 在 512px，轉不了 180°；
+site.js 4515 行有 arrowleft/right ±7°）。以後回頭幀用 `-26`。
+
+結論：影子系統（牆、地板、帆布、日光柱、per-prop）在**全巷**一致，沒有半邊例外。
+
+---
+
+## 0v. 第十六輪三續（2026-10-09）：per-prop 投影——影子系統完成
+
+站主「.」核准最後一項。每個有身體的 prop（box/bikes/planter/cones/aboard/glass）在
+`meta.forEach` 的 contact shadow 旁得到自己的方向影：
+
+- 地板段：長 = h / tan(alt) × |az|，方向背陽；正午一條、傍晚一道。
+- 撞到牆就爬牆：爬牆高度 = 沒跨過去的那段 × 0.9（夾在 0.85h 內）。
+- 全部 `day: false`、alpha × DAY()，夜裡消失。
+
+傍晚截圖確認：右箱影左拖、左物影爬左牆。量測：中午 188.9、夜 65.0、rooms 107.6；
+walk 168/168、lane-shot 0、chain/e2e 0、shapes 123、geometry/clash 乾淨、impeccable []、冪等。
+
+§3 的影子系統至此完成（牆影、地板影、帆布影、日光柱、per-prop）。再上去是 shadow map
+（軟邊、多重投影）——那是換 renderer，不是修正。
+
+---
+
+## 0u. 第十六輪再續（2026-10-09）：影會動了（sunAz / sunAlt）
+
+站主「..」核准下一件。把静态 shade 升級成**隨時刻移動的影**：
+
+- `sunAz()`：方位角，日出 −1（左／東）→ 正午 0 → 日落 +1（右／西）。
+- `sunAlt()`：高度角 8°–70°。
+- 地板影寬 = 620 / tan(alt) × |az|，夾在巷寬內；早上長、正午剩一條、午後換邊。
+- 牆面 daygain 跟著 az 換邊（背陽面吃 1/3 光，正午兩面都不餓）。
+- 帆布的牆影隨 alt 下滑、隨 az 傾斜；港面的日光柱 x 隨 az 移動（光柱在太陽下面，不在鏡頭下面）。
+
+早上與傍晚截圖確認是**兩條不同的街**。量測：中午 189.2（近白 0.05%）、夜 65.0、rooms 108.1 不變；
+walk 168/168、lane-shot 0、chain/e2e 0、shapes 123、geometry/clash 乾淨、impeccable []、冪等。
+
+剩給「真·shadow pass」的只有 per-prop 投影（自販機在牆上的影之類）——升級項，不是缺掉的真實。
+
+---
+
+## 0t. 第十六輪續（2026-10-09）：把白天作者成有方向的陽光（authored shade）
+
+站主以「.」核准做 shade pass。走 skills 記的零新機制路線：
+
+- **牆**：太陽在左 → 左牆面 `daygain 0.35`、右牆面 1.0（surfaces loop 裡按 side）。
+- **地板**：左牆的影＝umbra（alpha 0.30×DAY）＋penumbra（0.14×DAY）兩條 quad，`day: false`
+  （否則太陽會把自己的影洗掉）。
+- **店**：帆布在牆上留下影（alpha 0.32×DAY）；展示玻璃吃 0.45 的陽光、暖 shelf 減半
+  （影側的窗不該發白）。
+
+量到的：中午 **193.1 → 179.1**（方向出來了，近白仍 0.05%）；夜 65.0、rooms 107.x 不變。
+lane-shot 0 FAIL、walk 168/168、其餘閘全綠、冪等。真正的 cast-shadow pass（幾何投影、影隨時刻移動）
+仍是升級項，記在 street-commons §3。
+
+---
+
+## 0s. 第十六輪（2026-10-09）：Tokyo 巷尾的夜畫面，gate 終於量對東西
+
+上一輪留下的 3 個 lane-shot FAILED（Tokyo 深停 luma 74/61）這輪處理完。
+
+**診斷**：失敗幀不是塌陷（137–341 色），而是「站在窗前、面向窗外夜城市」的畫面—— Tokyo 巷尾是
+一個 470 寬的 **window**（不是開口），最深兩站向前看就是那張夜城市圖。閘原本用「室內」閾值
+（84 luma）量它，但夜城市本來就暗：`lit` 有 28% 暖洗上限，城市量體再調也亮不了三十階。把夜城市
+重畫成黃昏會背叛已核可的房間——所以修的是**閘的語義**，不是房間的時刻。
+
+**修法和閘自己的哲學一致**（「曝光跟著畫面裡的東西走；夜戶外 graded 成室內就是對時刻說謊」；
+塌陷由色數抓，色數下限不動）：
+
+- `lane-shot` 新增 `atVista()`：有 vista 的頁面、站在距尾牆約一個窗寬內、向前看的幀，歸入
+  「夜戶外」級（50 luma / 30 色）——與 open-world 頁面同一級同一理由。
+- Tokyo 天空順手補了「空氣」：horizon glow 0.62→0.95、上兩層 base 色提亮（**維持閘的
+  「只有地平線層 glow」規則**——我第一版給三層都 glow，被 walk 閘抓，改回）。plaza lit 0.8。
+
+**結果**：lane-shot **0 FAILED**；walk **168/168**；chain/e2e 0；shapes 123；geometry/clash 乾淨；
+impeccable `[]`；冪等；luma：street 中午 193.1／夜 65.0 不變、rooms 107.1（+0.5，黃昏空氣）。
+
+---
+
+## 0r. 第十五輪續（2026-10-09）：街道盡頭是港，日本半是商店街
+
+站主說：「你可能想一下合適我的規劃你就推理幫我做完」，後來又指示流程：「先全面大多都做好，最後再全部
+去修與測試……這要修改 SKILLS」。
+
+### 決定（我推理的，理由寫進 skills/street-commons/references/promenade.md）
+
+**街道盡頭是港**。站主把這條街比門司港，而門司港是港町；單點透視下海只能在路的盡頭，所以「沿途的
+風景」=「穿过商店街，盡頭是海、太陽在水面上」。海灘不做（門司港 retro 沒有海灘，且缺最多材質）；
+轉角运河也不做（那是小溪，不是「美麗的港」）。
+
+### 做完的（working tree，尚未 commit）
+
+- **`bd.harbor` painter**（js/site.js）：水面（panel 化、夜 tile＋**白天 waterDay tile**、日光柱）、
+  堤岸（plaza 縮短）、欄杆＋柱、渡輪（船身／白船艙／夜間亮窗帶／煙囪）、門式起重機、對岸低丘
+  （`mountain` 現在吃資料色，海峽綠）。
+- **商店街**：`front` shape 重寫——有 `awn` 就是貼牆店面（kickplate、展示玻璃日間淡夜間深、mullions、
+  空白 fascia、斜出 130 cm 的**條紋**帆布＋valance、noren 掛在門頭高）；沒有 `awn` 維持舊的突出盒。
+  日本半共 6 個店面（4 新＋front-s／front-n 改裝），帆布六色、noren 三色。
+- **兩個大 bug**：(1) `scaleTint` 只認 `rgba()`，hex tint 原封不動回傳 → 那顆「城市反光」在正午以
+  alpha 1 全亮（白球真相），現已修；(2) emitter 沒把 `awn/noren/fascia` 寫進 DOM → 商店全隱形，現已
+  加進 document contract（`data-awn` 等，與 `data-leaf` 同级）。
+- **單位災難**：record 深度 ×2.9 進 walk space，但 **backdrop 與 max_d 是直接寫 walk space**。第一版
+  港的欄杆作者在某 record 數字、落在巷子裡面被遠牆擋住。已全改：plaza 3000–4300、rail 4300、
+  water 4360–12000、hill z 13500、max_d 4150、stations 改回 record（1240/1420）。
+- 長椅搬回加拿大半（-250）；日本半下段牆 shutter→plaster；slots note／caveat／stations 文字跟上。
+- **SKILLS 更新**：SKILLS.md §7（先建後測的流程規則，站主指示）、street-system §6（兩套單位）、
+  promenade 決定段、lane-prop §7（retail kit 的 DOM contract 與防曬 lit 預算）。
+
+### 最後驗證批結果（同一天稍後）
+
+- syntax OK、冪等、**walk 168/168**、chain 0、**shapes 123/123**（加了 `shop: "front"` alias）、
+  geometry OK、clash 0、**e2e 0**（其中一個斷言從「backdrop 要有 city」更新為「city 或 harbor」，
+  因為設計改了）、impeccable `[]`、street-commons 與 lane-prop skill valid。
+- luma（伺服器實際吐出的頁面）：**中午 193.0**（近白 0.05%）、夜 65.0、**rooms.html 106.6**
+  （改前 106.7，未動）。
+- lane-shot 的 3 個既存 FAILED 已在下一輪（0s）修好，見下。
+- 已 commit `a5db8ef` 並 push；PR #11 已更新。
+
+---
+
+## 0q. 第十五輪（2026-10-08）：街道變成白天 + 日本區，太陽是量出來的
+
+站主的話：「我比較想要有一個街道像是門司港街道，沿路走、一個地方有一個區域，另一個區域是加拿大
+多倫多，走進去就是那個空間。而且我想要的**街道沿途有美麗的海灘或港的風景、且有陽光**。」加上一句
+「你可以自己想想並新增 SKILLS…**不適用就不要做**」。使用者按了「繼續」。
+
+所以這一輪**只做了兩件站主已經說死的事**：**(A) 街道有陽光**、**(B) 街道沿路有日本區**。海／港／
+沙灘**沒做**——那是要決定的（三個選項寫在 `skills/street-commons` §3 與 AGENTS.md backlog），
+而且它需要新的水域形狀與材質，不是這輪能誠實交付的東西。
+
+### A. 白天：機制而不是數字（這是本輪最大的發現）
+
+**`lit` 承載不了陽光。** 整個 renderer 的 `lit` 上限是「在貼圖自己的顏色上加一層 28% 暖色」，
+而這支檔案裡的每一張貼圖都是夜景值（柏油 `#37435c`、dado `#3f5170`、混凝土 `#6b7380`）。
+實測：把 `SUN()` 開到 1.0，街道整幀亮度只有 **76.9 → 83.2**，肉眼完全看不出來。所以「調太陽」是
+錯的方向，必須是**加法光**。
+
+新增（`js/site.js`）：`"day": True` 的 record → emitter 蓋 `data-lane-day-*`（cycle/start/gain）
+→ 這一頁有自己的時鐘（900 s、開在 0.45＝11:50 前後），`DAY()` 是「太陽有多高」的係數，
+`emit()` 用 `lighter` 疊一層暖白。連帶被迫回答的四件事，**每一件都是看畫面看出來的，不是推理出來的**：
+
+1. **蓋子**：`drawRoom()` 每格在 `CEIL` 蓋一片平塗 `#232f4a`。白天版把它畫成天空（兩個 authored
+   藍、按該格自己的深度混，頭頂深、遠端淡），而且它**不吃**加法光（`day: false`）——把太陽的顏色
+   加在天空上，天空只會變白。
+2. **空氣**：`FOG_MAX` 是室內的濁度，原封不動讀起來像起霧的早晨（地板與畫面中段只差 3 階）。中午
+   清到 0.38 倍。
+3. **光暈**：白天保留「燈還是亮著」的地板是對的（自販機），但街尾那顆 `k:0.5` 的「某處開闊」反光
+   在中午是一顆 135 cm 的白球；有太陽的頁面把光暈的份額交給太陽。提燈的光錐是夜景物件，不畫。
+4. **街尾的 compound 是一張「圖」，有它自己的曝光**：天空與遠山改用大氣透視（天空幾乎漂白、
+   山約半、雪冠幾乎不動），而那裡凡是**表面**（廣場、斑馬線、屋頂、遠城市）吃街道的加法光但打折
+   （`q.daygain`）——本來就很亮的表面再被抬，就是過曝。**第一版是整組排除，結果晴天街道盡頭是一塊
+   黑楔子**；那一版現在還在我的截圖資料夾裡。
+5. **提燈的紙兩者都不是**：它帶自己的 lit、`nolite`（不被夜色吃）也不吃加法光，否則紅色被洗成粉彩
+   ——這件事真的在第一張白天截圖裡發生過。
+
+**量到的數字（headless Chromium，拍伺服器實際吐出的那頁）：**
+
+| 舊街道 | | 新街道（`"day": True`） | |
+|---|---|---|---|
+| 載入（它的時鐘 08:00） | 76.9 | 開頁 11:50 | **184.3** |
+| 它自己的正午 | 83.2 | 黃昏 | 70.5 |
+| 它自己的黃昏 | 68.8 | 夜 | 62.0 |
+
+近白像素三個點都是 0.06%（沒有爆白），正午到夜之間是 **122 階**的擺幅。同一支探針也量了
+`rooms.html`（沒有 day）：**106.7**（改動前 107.0）——黃昏的房間沒有被動到。
+
+**還沒做**（都寫進 skill 了）：沒有方向光投影（只有接觸陰影，所以白天靠材質的明暗而不是投影）；
+遠城市的窗格與水面貼圖還是夜景值（**白天還有亮著的窗**是那張畫面裡唯一還在說「晚上」的東西，
+修法就是 skyline 已經在用的那招：每個變體一張自己的貼圖，不是暈一層色）；海岸整套。
+
+### B. 日本區：靠材質、家具與燈，不靠標籤
+
+街道遠半段（`z` 300–1040）加了五件日本街道家具與一串提燈，全部沿用 **Tokyo／Moji 已經承諾的尺寸**
+（`skills/japan-place/references/japan-vocabulary.md`，自販機 112×195×72、提燈 ⌀22 掛在 3.0–3.2 m）：
+`vending-s`（街角的自販機，白天唯一還亮著的燈）、`bikes-s`、`signA-s2`（第二面空白折疊板）、
+`recycle-s`、`bin-s2`，以及 **8 盞提燈分掛在 z 470 與 780 兩條電線上**（掛點就在 authored 的電線上，
+`swing` 讓它們各自不同相位地晃）。**站點從 6 個變 9 個**——鋪了東西的地方就值得站，station 是「值得
+站的地方」而不是檢查點。
+
+第一版只做 2 盞、`size 30` 且顏色是 `#b0402e`：在 7 m 寬的巷子裡讀成兩塊紅招牌。改成 4+4、22 cm、
+掛高錯開之後才像一條祭典的燈串。
+
+### 這一輪踩到的坑
+
+- **沙箱這一輪真的洗掉了 `.claude/`、`node_modules`，還把 git refs 退回 `afeb04d`**——上一輪修好的
+  `bin/restore-env` 自己把分支接回 origin 並重裝 skill-creator，`bin/preview` 推導分支名也生效。
+  這是那兩個修法的**實戰驗證**，不是推論。
+- **沒有 upstream 的 `git push` 不會失敗得很明顯**：refs 被洗掉時分支的 upstream 也一起不見，
+  `git push` 只印三行 autoSetupRemote 建議、什麼都沒推，遠端停在舊 commit。`restore-env` 現在會
+  `--set-upstream-to` 接回來。
+- **沙箱會在你回合中途消失**（中途又洗了一次：`node_modules` 與 pyyaml 都不見）。
+- **腳本在 body 結尾直接 `boot()`**，所以「載入後再改 `data-*`」完全無效（試了兩次）。要量一個
+  相位，得在**伺服器吐出的 HTML 上**改那個屬性——最後是用 puppeteer 攔截請求改寫那一行。
+  這件事值得記住：**harness 只能量「伺服器真的給的東西」**，跟 SKILLS.md §4 是同一條規則。
+- 我第一版把 `lidAt` 寫成用了沒定義的 `blendHex`／`lid`，整頁黑掉、`pageerror` 才抓到。
+  **jsdom 不會畫圖，只有真瀏覽器會喊。**
+
+### 驗證（本輪結束時）
+
+`_gen_html.py` exit 0 且**冪等**；`verify-walk` **168/168**、`verify-chain` **0**、
+`verify-rooms-e2e` **0**、`verify-shapes` 119 props 全部解析、`verify-geometry` OK、
+`verify-clash` **0**、impeccable **`[]`**；白天三點位量測（184.3 / 70.5 / 62.0，近白 0.06%），
+`rooms.html` 未被影響（106.7）。
+
+---
+
+## 0p. 第十四輪（2026-10-08）：裝 skill-creator、讀 sakura-crossing、把技能變成一等公民
+
+使用者的四個要求，一條不漏：① 先讀完 `skills/` 與根的 `AGENTS.md`/`SKILLS.md` 再做；② 把
+[anthropics/skills 的 `skill-creator`](https://github.com/anthropics/skills/tree/main/skills/skill-creator)
+裝進來；③ 研究 [`Kenton-GMI/sakura-crossing`](https://github.com/Kenton-GMI/sakura-crossing)，因為
+「這有關於我們日本的建構」；④ 用 skill-creator 先建我們可能用到的 skills，並且在 AGENTS.md 加上
+「**要自動判斷使用者是不是在修改／新增 SKILLS**，該用 skill-creator 就用」。
+
+這一輪**沒有動任何 site 檔案**——`css/site.css`、`js/site.js`、`_gen_html.py`、任何 `*.html` 都
+沒改，所以 gate 的數字是拿來確認環境健康的，不是拿來確認改動的。
+
+### 裝了什麼
+
+- `.claude/skills/skill-creator`（本輪連 `frontend-design`、`theme-factory` 一起補齊，因為
+  AGENTS.md 的清單上它們本來就該在，而沙箱裡 `.claude/` 是空的）。`.claude/` 仍然 gitignored。
+- **`bin/restore-env` 現在會自己補 skill-creator**：只在 `.claude/skills/skill-creator` 不存在時
+  clone `anthropics/skills`（`--depth 1`）再複製，離線是支援狀態（clone 失敗只印一行、不中斷）。
+  這樣「技能包被沙箱洗掉」不再是每次開場都要人工處理的事。
+
+### 建了兩個 skill（在 `skills/`，**有進版控**）
+
+| Skill | 內容 |
+|---|---|
+| `skills/japan-place` | 日本地方的物件與比例。`SKILL.md` 講兩種房間格式（lane vs 檯面）、尺規、材質、夜、**不可以說的六件事**；`references/japan-vocabulary.md` 是物件表（公分，†＝在 sakura-crossing 量到的、⚑＝本 repo 已commit的數字）；`references/sakura-crossing.md` 是那個 repo 的研究筆記 |
+| `skills/lane-prop` | 動一個物件／一盞燈／一個 state／一個 stop 的機制：`SHAPE`×`OBJ_SIZE` 雙註冊表、**id 前綴就是 kind**、`Z_SCALE` 只拉 z、`y` 是底部、`glow`/`of:` 綁定、`states`/`leave`、以及「站位要在它命名的東西前面 90–170」 |
+
+用 skill-creator 的 `quick_validate.py` 驗過四個 skill（兩個新的＋既有的兩個）都 `Skill is valid!`——
+它檢查的是 frontmatter 的 key、kebab-case 名稱、description 的 1024 字上限。**skill-creator 的
+另一半（跑 subagent 做 with/without-skill 對照、`claude -p` 優化 description）這個沙箱做不到**：
+沒有 `claude` CLI。所以走的是 draft → validate → 讓使用者讀；**沒有跑 benchmark，就不要說有**。
+
+### AGENTS.md / SKILLS.md 改了什麼
+
+- `## Skills` 拆成兩個家：`skills/`（本 repo 的手藝，**納入版控**，四個 skill 一張表）與
+  `.claude/skills/`（第三方、local-only）。新增 `### Authoring a skill: when skill-creator runs`，
+  這是使用者要的那條：**觸發不是我說了才做，是我自己判斷**——使用者明講（「把這個做成 skill」、
+  新增/修改 SKILLS、「記下來給下一個 session」）；或**同一件事付過兩次學費**（同一個坑重踩、
+  同一個數字重測、流程又從程式碼反推一次）；或同類改動開始發生在第二個地方（一次性技巧在變成手藝）。
+  另外把 description 的角色（它是唯一的觸發器）、500 行上限、`references/`/`scripts/`/`assets/`
+  的分工、以及「`quick_validate.py` 需要 PyYAML（`pip install --break-system-packages pyyaml`）」寫進去。
+- `Reference packs` 加了 sakura-crossing，並寫明**只讀研究筆記**再決定要不要 clone，以及它是
+  「語彙、比例、禁令清單」的來源，不是招牌系統或技術棧的先例。
+- `## Conventions` 加一條：**skill 是產物，表格要同一個 commit 改**；`bin/` 腳本也算，理由寫在註解裡。
+- `SKILLS.md` 開頭加一段指標，指向四個可載入的 skill。
+
+### sakura-crossing 讀到什麼（重點，那個 repo 不會留在沙箱裡）
+
+MIT、56 096 行 JS、26 個 district、**src/ 裡沒有一張圖片**（每個材質、每個招牌都是 Canvas2D 現畫）、
+**裡面沒有人**。讀在 `de01898`（initial public release）。細節在
+`skills/japan-place/references/sakura-crossing.md`，這裡只記對我們兩個日本房間最要緊的三件事：
+
+1. **可以拿**：物件尺寸（自販機 112×195×72、提灯 r16、鳥居 340×330、石段 rise19/run46、路肩 13.5、
+   人行道 155、車道 630、巷子 240、後巷 210、商店街 6 m 寬）——它和我們 record 已經承諾的數字一致；
+   「一個地方只有一個會動的瞬間」的結構（警報→遮斷機→電車）；行為式動態（渡輪靠岸會停，不是
+   `sin()` 等速來回）；以及它的 **flood fill 驗證法**（回報「最近的可達格距離」而不是 boolean）。
+2. **不能拿**：它的**招牌系統**。那個 repo 的每一家店名都是**刻意發明的**（青空商店、さくら坂商店街…），
+   而且用 Canvas2D 把字畫在招牌上——在它虛構的小鎮是對的，在我們這裡是**禁止事項**（場景內不得有字）。
+   要拿的是**節奏**：整排店面在同一高度有 fascia 帶、一支直式招牌、視線高度一塊小牌，字全部留白。
+   也不能拿它的技術棧：npm/Vite/three.js 就是 AGENTS.md 的依賴規則，那不是先例。
+3. **它和我們獨立走到同一份禁令清單**（沒有任何人、沒有品牌、沒有霓虹、沒有寫實材質）——兩邊各自
+   蓋一個日本地方卻收斂到同樣的「不可以」，所以那是媒介的規則，不是某個專案的品味。
+
+### ⚠️ 這輪發現／修掉的沙箱問題
+
+- **`bin/restore-env` 與 `bin/preview` 的分支名是寫死的 `arena/01a0fb1d-huaxu`**。沙箱重設 refs 之後，
+  `restore-env` 會 `reset --soft` 到**上一個 session 的分支**——檔案不會掉，但 commit 指標會被吃掉，
+  下一個 commit 就從錯的 parent 分岔（就是第九輪那個「branch 會在你回合中途被重設」的形狀）。
+  兩支腳本改成**從 HEAD 推導**（HEAD 不是 `arena/*` 時，取 remote 上最新的 `arena/*`），
+  而且 `restore-env` 只在 **HEAD 沒有 remote 沒有的 commit** 時才動指標；有未推的 commit 就印一行
+  然後放著不動。
+- **PyYAML 不在沙箱裡**（`quick_validate.py` 需要它）：`pip install --break-system-packages pyyaml`
+  一次即可，但**不會**跟著 workspace 保存。沒有 `claude` CLI，所以 skill-creator 的 eval 那半沒跑。
+- **refs 被洗掉時，分支的 upstream 也一起不見**——而沒有 upstream 的 `git push` **不會失敗得很明顯**，
+  commit 根本沒出去，回合結束時卻像推過了。`bin/restore-env` 現在會在需要時
+  `git branch --set-upstream-to=origin/<branch>` 把它接回來（這次真的踩到：第一次 `git push`
+  只回了三行 autoSetupRemote 提示，remote 還停在舊 commit）。
+
+### 驗證（本輪結束時）
+
+`python3 _gen_html.py` **exit 0** 且**冪等**（`md5sum *.html` 前後相同）；impeccable detect **`[]`**；
+四個 skill `quick_validate.py` 全部 valid。沒有動 site，所以 walk/chain/e2e 沒有意義、也沒有跑。
+
+---
 
 ## 0i. 第九輪（2026-10-02）：Toronto 廳「物件站回桌上、廳會動了」→ 五個真 bug
 

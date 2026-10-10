@@ -7,7 +7,14 @@
 # This does that check every time, so restarting the preview never costs a round-trip.
 set -e
 
-BRANCH=${BRANCH:-arena/01a0fb1d-huaxu}
+# Derived, not hard-coded: the session branch is renamed every session, and a literal here silently
+# watched a branch that was no longer the one being worked on.
+BRANCH=${BRANCH:-$(git rev-parse --abbrev-ref HEAD)}
+case "$BRANCH" in
+  arena/*) ;;
+  *) BRANCH=$(git for-each-ref --sort=-committerdate --count=1 --format='%(refname:short)' \
+      'refs/remotes/origin/arena/*' 2>/dev/null | sed 's#^origin/##') ;;
+esac
 PORT=${PORT:-8080}
 
 cd "$(dirname "$0")/.."
