@@ -158,8 +158,10 @@ Unrelated to the above and still open:
    the existing `.btn` system. International search committees want a one-click CV.
 2. **ORCID iD link** — owner will provide their ORCID URL/id. Add to hero + footer social icons
    (define an ORCID inline SVG icon in `_gen_html.py`, Heroicons style), next to Scholar/email.
-3. *(Optional, no input needed — ask before doing)* Surface **corresponding-author / international
-   collaboration** more visibly on Research, since the data already exists in `pubs`.
+3. **Done 2026-10-10** (under the owner's blanket go-word): Research now carries a data-driven
+   glance strip above the publication filters — corresponding-author count, the NSTC
+   study-abroad period, and the international houses — every value computed from `pubs` and
+   `projects`, nothing asserted that the records do not already say.
 
 Context: owner is an NSTC postdoc (2025–2028) exploring international opportunities; these three
 help an international reviewer verify them quickly. Career actions (networking, conferences,

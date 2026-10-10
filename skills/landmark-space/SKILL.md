@@ -139,6 +139,17 @@ it makes the silhouette and the moment, and it is the room the owner's brief pic
 deck as the second district, once the day-variant city exists. Never both in one record: two open
 districts in one page is the floating-objects regression `AGENTS.md` names.
 
+**What the two shipped spaces taught (rounds 21-22).** The prices above held, and three new
+ones are now proven rather than predicted: a day page's open end works for a landmark exactly
+as it does for the hub street (the last stop walks past the end wall to a rail, and the
+backdrop painter owns the world beyond it); a landmark's signature object may reuse the
+site's proven small-scale shape at real scale when a bespoke panorama washes out under the
+affine-plus-flat-colour math (the falls), while a city-from-above rides a wall cladding tile
+(the pod) — fidelity lives in the bearings and the ratios, not in the drawing technique; and
+sky bands must start below the horizon and end above the frame's top with glow near one, or
+the day sky reads as night murk (the street's idiom, reused). Each of these stayed inside the
+dependency rule: new tiles, one painter, no library.
+
 ## 5. The gate
 
 `district-author` §4's gate unchanged, plus, for a landmark space:

@@ -130,6 +130,20 @@ decoration, window counts, the clock. Not simplified: which way you face, what i
 level comes next. The round-19 drops are re-priced under §3 — the exterior stays with the
 photograph (that is maximum fidelity, not a drop), and no real level is deleted.
 
+The same method, second place — Niagara Falls (round 22): the measurement table came first
+(crest ~670 m, drop 57 m, plunge pool 35 m; American Falls 21-34 m onto its talus; Table Rock
+at the lip; the promenade north; the gorge running north; mist and rainbows as weather —
+sources in TODO §0c). The lane is the promenade's last stretch walked in the day, park hedge
+on one hand, the falls' mist worn as the other wall's cladding, and the last stop walks past
+the end wall to the Table Rock rail, the way the hub street walks out onto its quay. The
+falls themselves reuse the site's proven falls shape at real scale — the sheet-over-ledge-
+into-mist that reads on the hall's table — because the critique pass found a bespoke aerial
+panorama washes out under this renderer's affine-plus-flat-colour math, while the in-house
+draw reads. The painter keeps only what no prop can carry: the gorge river, the rainbow when
+the sun stands in the spray, the rail. Simplified: crowds, lettering, the skyline's towers,
+the clock of the mist. Not simplified: the crest's breadth-to-drop ratio, Table Rock at the
+lip, the river's north, the islands between the falls.
+
 ## 7. Refusals
 
 Everything `district-author` §5 and `landmark-space` §6 refuse, plus: no invented bearing — north

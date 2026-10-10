@@ -2,6 +2,23 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-10 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0e. 第二十三輪（2026-10-10）：「接下來通通都做好」——清倉
+
+站主：「你接下來通通都做好。」盤點 AGENTS backlog 與 skills 的未結項，能做的全做：
+
+1. **Research 的 corresponding／international 凸顯（backlog #3）**——做完。Publications 標題下加
+   `data-glance` strip：corresponding author 篇數（flag 算）、NSTC 海外研修期間（projects 記錄拉）、
+   國際出版者清單（source 欄位解析：Elsevier/Springer/MDPI/Taylor & Francis/Frontiers/Emerald）。
+   全部既有資料計算，不新增任何主張。
+2. **skills 記實**——`grounded-scene` §6 加 Niagara 第二 worked example（測量表先行、promenade
+   lane、falls shape 實尺、painter 只畫 prop 畫不了的）；`landmark-space` §4 加「兩個 shipped
+   空間的教訓」：open-end day page、signature object 复用已證 shape、sky 帶 idiom（y0 低於
+   horizon、y1 蓋滿、glow≈1）。兩者 quick_validate 過。
+3. **backlog #1/#2（CV PDF、ORCID iD）**——仍需站主資料，不可代造（no-fabrication）。檔案／ID
+   一到就照 backlog 的接法做（hero action 加 CV 下載、hero+footer 加 ORCID icon）。
+
+Gates：gen exit 0、walk／e2e／impeccable 同跑（見本輪 commit）。
+
 ## 0d. 第二十二輪（2026-10-10）：Niagara 空間做完
 
 站主：「繼續都做完。」——Niagara promenade＋周邊環境，照 §0c 的測量表與規劃。

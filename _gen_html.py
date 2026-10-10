@@ -552,6 +552,14 @@ about = page("About · Hua-Xu Zhong", "about", f"""
 </section>
 """)
 
+# Backlog item 3 (2026-08), done 2026-10-10 under the owner's blanket go-word: surface the
+# corresponding-author and international-collaboration facts that already live in `pubs` and
+# `projects`, computed from those records — the strip below asserts nothing the list does not
+# already say.
+HOUSE_NAMES = ["Elsevier", "Springer", "MDPI", "Taylor & Francis", "Frontiers", "Emerald"]
+houses = sorted({h for p in pubs for h in HOUSE_NAMES if h in p["source"]})
+corr_pubs = [p for p in pubs if p.get("corresponding")]
+intl_proj = next((p for p in projects if "International Research Experience" in p[0]), None)
 j_count = sum(1 for p in pubs if p["type"] == "Journal")
 c_count = sum(1 for p in pubs if p["type"] == "Conference")
 years = sorted({p["year"] for p in pubs}, reverse=True)
@@ -609,6 +617,11 @@ research = page("Research · Hua-Xu Zhong", "research", f"""
 {pillar_sections}
     </div>
     {titled("h2", "Publications", ICON_BOOK, "block-title reveal spaced")}
+    <p class="when reveal" data-glance>
+      <span class="badge">Corresponding author</span> on {len(corr_pubs)} of the publications below ·
+      <span class="badge">International research experience</span> {escape(intl_proj[3]) if intl_proj else ""} abroad, per the project record ·
+      <span class="badge">International houses</span> every venue above is peer-reviewed and international: {", ".join(houses)}.
+    </p>
     <div class="filters reveal" data-filter-group>
       <button class="chip is-on" type="button" data-filter="all">All ({len(pubs)})</button>
       <button class="chip" type="button" data-filter="Journal">Journal ({j_count})</button>
