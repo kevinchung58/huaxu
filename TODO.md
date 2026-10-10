@@ -1,6 +1,54 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-09 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-10 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0y. 第十七輪（2026-10-10）：巷的夜間 lantern／窗光節奏——做完，且抓到一個死掉的影系統
+
+站主「讀完 skills 做該做的事」→ 0x 記在案的夜間節奏就是該做的事。做完，全閘綠。
+
+### 做的（night rhythm，street 夜）
+
+- **燈籠在地板的光池**：每個燈現在有第三個讀法——空裡的暈、燈體、地上的池。池是
+  ground-plane 四角＋自己的漸層（`groundLight()`，`js/site.js` 光路），大小來自燈高與 k
+  （5 m 街燈 ≈3.7 m 寬、3 m 紙燈籠 ≈2 m 軟光，clamp 46–330），alpha 跟 `glowStrength`
+  ——池跟暈同一個數，所以 `liton` 還沒到的燈沒有池，夜來池來、日去池去。
+- **開店的窗光潑到巷面**：emitter 把 `spill` 印在每個有 `awn` 的 front 的 glow 上
+  （`lane-prop` §7 的陷阱：沒印的欄位到不了 renderer）。潑是朝巷中線的淺梯形，長 clamp 到
+  2.1 m、寬是光源自己的 reach；販賣機沒有 spill，得一個冷的圓池（它的 tint 改成冷白）。
+- **開與關的韻律**：每個 front 與每個燈籠作者 `liton`（0.66–0.90，沿巷交錯），窗與它的潑一起
+  升起（emitter 把 prop 的 `liton` 交給它的 glow）。燈籠的 cone 強度也改成燈自己的
+  `glowStrength`，外加一層更寬更淡的暈（cone 畫兩次）；舊條件 `dayFall(1)<0.06` 在白天頁
+  正午是 0.12，cone 曾在白天畫——修成 `glowStrength < 0.05`。
+- **字串燈的暈**：就是上面那層外暈，每個燈籠隨自己的 k 與 liton 呼吸，弦成為一串而不是一排點。
+
+### 抓到的真 bug：牆的地板影從來沒畫過
+
+round 16 的「牆影」（兩條 `add()` 的 umbra/penumbra strip）加在 `quads.forEach(emit)` **之後**——
+進了陣列、沒人畫。我寫了 `.verify/_shadowdrawn.mjs`（jsdom＋recorder，報每個 fill 色的次數）
+量 HEAD：牆影 **NEVER**、per-prop 影 PAINTED、contact shadow PAINTED。修：牆影改由光路直接
+canvas 畫（`ground()`，先 far 後 near，source-over，alpha 與影同規矩乘 `DAY()`），用 `clipNear`
+裁 near plane。**影與池因此真的互斥**：影乘 `DAY()`、池乘 `NIGHT()`，不疊在同一塊地板。
+
+### 量到的（served page，headless Chromium）
+
+- `_nightrhythm.mjs`（新，量地板帶：luma、warm%、p10/p90 spread）：夜・巷口 spread
+  **13.8 → 21.8**、lantern 下 12.4 → 14.7、色數 113 → 157——池與暗的交替量得到。
+- `_lumacheck`：夜 65.0 → **67.3**（池在地板上的代價，近白 0.06% 不變；65.0 是量測不是
+  目標，氛圍沒為數字改）、noon 188.9 → **186.5**（牆影現在真的在畫）、rooms 107.6 → 106.9。
+- 全閘：walk 168/168、chain/e2e 0、shapes 123、geometry/clash 乾淨、objects exit 0、
+  impeccable `[]`、cost-probe peak 6248/huge 0、四頁 lane-shot 0 FAIL、冪等、VER 一致。
+
+### 閘的校準也動了一處（記清楚）
+
+Toronto 在 lane-shot 量 76.2–83.6，密封房門檻 84 → **HEAD 就 fail 六格**（base 跑兩次皆然）。
+那不是塌陷（490–671 色；塌陷是 71 luma **加 5 色**）。為數字把廳調亮是 SKILLS §4 禁止的
+「為數字改氛圍」，所以校準移動：密封房 luma 門檻 84 → 70（Toronto 最暗 stop 之下 6、仍在
+塌陷之上；塌陷由 15 色門檻抓）。門檻與理由寫在 `lane-shot.mjs` 的註解。
+
+### 下一件
+
+0x 的節奏做完。若站主想再上：Toronto 廳的暗現在是設計也是量測，門檻已跟它一致；或把夜間
+節奏推進兩個日本房（skyline 的 liton 已有，front/lantern 的 liton 機制現在是共通的）。
 
 ## 0x. 下一件（2026-10-10 記，站主指定）：巷的夜間 lantern／窗光節奏
 

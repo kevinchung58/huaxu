@@ -1979,9 +1979,18 @@ DISTRICTS = [
             {"id": "drain-s", "kind": "drain", "x": 60, "z": 620, "y": 0, "ry": 0,
              "title": "A drain in the asphalt",
              "hint": "The street's one piece of water kit, at the crossing point."},
+            # `liton` is the phase at which a front's own light comes up, and on this street it is
+            # authored per front rather than once for the row: eight fronts that all rise at the same
+            # instant are a switch, and the same field already staggers Moji's skyline (`0.74`–`0.88`
+            # there). The values below alternate down the walk — 0.72, 0.74, 0.80, 0.86, 0.78, 0.90 —
+            # so the evening arrives as a wave rather than a click, and the two shut fronts are not
+            # in step with the four open ones. What `liton` governs is the light and the light the
+            # front throws on the pavement, because the emitter hands the prop's `liton` to its glow:
+            # a window and its spill are one light seen twice. The night's own level is untouched —
+            # measured at 65.0 luma and left there on purpose.
             {"id": "front-s", "kind": "front", "x": 346, "z": 700, "y": 0, "ry": -90,
-             "awn": "#6a3226", "noren": "#2e4a7a",
-             "glow": [{"r": 120, "k": 0.45, "dy": 190}],
+             "awn": "#6a3226", "noren": "#2e4a7a", "liton": 0.72,
+             "glow": [{"r": 120, "k": 0.38, "dy": 190}],
              "title": "A shut front with a light behind it",
              "hint": "Shutter down, light on in the transom: a building with nobody in it and a "
                      "timer on its lamp. It keeps the far stretch of street from being empty. "
@@ -1989,13 +1998,13 @@ DISTRICTS = [
                      "all it gives up is more light.",
              "states": [
                  {"say": "Up. The transom lamp plus a room lamp: twice the light, none the wiser "
-                         "about who left it on.", "k": 1.15, "shut": 0.9},
-                 {"say": "Down again. The street keeps its shuttered half.", "k": 0.45,
+                         "about who left it on.", "k": 1.35, "shut": 0.9},
+                 {"say": "Down again. The street keeps its shuttered half.", "k": 0.7,
                   "shut": 0},
              ]},
             {"id": "front-n", "kind": "front", "x": -346, "z": 620, "y": 0, "ry": 90,
-             "awn": "#2e4a52",
-             "glow": [{"r": 120, "k": 0.45, "dy": 190}],
+             "awn": "#2e4a52", "liton": 0.90,
+             "glow": [{"r": 120, "k": 0.3, "dy": 190}],
              "title": "Another shut front, across the crossing",
              "hint": "Same story from the other side of the street: shutter down, transom lit. "
                      "Two closed fronts facing is most of what a night street is. Done, this one "
@@ -2016,7 +2025,12 @@ DISTRICTS = [
             # (`skills/japan-place/references/japan-vocabulary.md`), so the three rooms cannot drift
             # apart about how wide a vending machine is.
             {"id": "vending-s", "kind": "vending", "x": 322, "z": 720, "y": 0, "ry": -90,
-             "glow": [{"r": 130, "k": 0.9, "dy": 150}],
+             # No `liton` on purpose: the hint below is the claim, and a machine that runs all day
+             # is the one light on this street that does not wait for the evening. The tint is the
+             # machine's own — a fluorescent shelf is not a sodium lamp — and the pavement in front
+             # of it takes a cool splash rather than a warm one, which is how you can tell the two
+             # kinds of light apart with your back to them.
+             "glow": [{"r": 130, "k": 0.95, "dy": 150, "tint": "rgba(196,226,255,0.5)"}],
              "title": "The vending machine on the Japanese half",
              "hint": "It is the one light that runs all day on this street: a machine with a lit "
                      "shelf of cans is what tells you the far half is Japan, and it says it without "
@@ -2034,8 +2048,8 @@ DISTRICTS = [
             # street is the awnings and the clutter, never the frame. Shutters stand up (states[0])
             # so the quarter is open at whatever hour the page opens.
             {"id": "shop-r1", "kind": "front", "x": 346, "z": 320, "y": 0, "ry": -90,
-             "w": 160, "awn": "#3f4d7a", "noren": "#6a2e2e",
-             "glow": [{"r": 110, "k": 0.4, "dy": 180}],
+             "w": 160, "awn": "#3f4d7a", "noren": "#6a2e2e", "liton": 0.74,
+             "glow": [{"r": 110, "k": 0.55, "dy": 180}],
              "title": "An open shop under an indigo awning",
              "hint": "The first shop on the right: canvas out, noren in the recess head, and the "
                      "shutter standing up. Nothing on the fascia, because the lettering would be "
@@ -2043,23 +2057,23 @@ DISTRICTS = [
              "states": [{"say": "The shutter stays up. An open shop is the street's own light.",
                          "k": 0.8, "shut": 0.9}]},
             {"id": "shop-r2", "kind": "front", "x": 346, "z": 900, "y": 0, "ry": -90,
-             "w": 240, "awn": "#7a4a26",
-             "glow": [{"r": 110, "k": 0.4, "dy": 180}],
+             "w": 240, "awn": "#7a4a26", "liton": 0.86,
+             "glow": [{"r": 100, "k": 0.34, "dy": 180}],
              "title": "A wider shop near the water end",
              "hint": "A tan canvas over a wider recess. The last shop before the street gives "
                      "up to the quay.",
              "states": [{"say": "Open, like the rest of the quarter.", "k": 0.8, "shut": 0.9}]},
             {"id": "shop-l1", "kind": "front", "x": -346, "z": 400, "y": 0, "ry": 90,
-             "w": 210, "awn": "#4a5a3a", "noren": "#2e4a7a",
-             "glow": [{"r": 110, "k": 0.4, "dy": 180}],
+             "w": 210, "awn": "#4a5a3a", "noren": "#2e4a7a", "liton": 0.80,
+             "glow": [{"r": 120, "k": 0.46, "dy": 180}],
              "title": "An open shop under a moss awning",
              "hint": "The left side's first shop, across from the indigo one: two awnings "
                      "facing is what makes the stretch a shopping street rather than a wall with "
                      "a door in it.",
              "states": [{"say": "Open.", "k": 0.8, "shut": 0.9}]},
             {"id": "shop-l2", "kind": "front", "x": -346, "z": 950, "y": 0, "ry": 90,
-             "w": 170, "awn": "#7a3434",
-             "glow": [{"r": 110, "k": 0.4, "dy": 180}],
+             "w": 170, "awn": "#7a3434", "liton": 0.78,
+             "glow": [{"r": 110, "k": 0.38, "dy": 180}],
              "title": "The last shop on the left",
              "hint": "A rust canvas at the water end of the left wall. Past it the wall runs "
                      "out and the rail begins.",
@@ -2095,22 +2109,26 @@ DISTRICTS = [
             # and the wire above it is authored a few lines down). They are warm and they swing,
             # which is what makes the last stretch of the street a place rather than a corridor, and
             # they cost one light each: `size` and `h` are the lantern's own centimetres.
+            # Each also carries `liton`, so the string lights along itself — 0.66 to 0.75 on the
+            # near wire left to right, 0.71 to 0.80 on the far one — instead of snapping on as one
+            # row. That is the same field the shopfronts carry, and it governs the lantern's halo,
+            # its cone and the pool it puts on the asphalt, because all three are one light.
             {"x": -279, "y": 318, "z": 470, "r": 30, "k": 0.5, "body": "lantern",
-             "size": 22, "h": 318, "swing": 1.6, "period": 5.2, "phase": 0.4},
+             "size": 22, "h": 318, "swing": 1.6, "period": 5.2, "phase": 0.4, "liton": 0.66},
             {"x": -99, "y": 306, "z": 470, "r": 30, "k": 0.5, "body": "lantern",
-             "size": 22, "h": 306, "swing": 1.7, "period": 4.6, "phase": 2.1},
+             "size": 22, "h": 306, "swing": 1.7, "period": 4.6, "phase": 2.1, "liton": 0.69},
             {"x": 99, "y": 312, "z": 470, "r": 30, "k": 0.48, "body": "lantern",
-             "size": 22, "h": 312, "swing": 1.5, "period": 4.9, "phase": 1.1},
+             "size": 22, "h": 312, "swing": 1.5, "period": 4.9, "phase": 1.1, "liton": 0.72},
             {"x": 279, "y": 300, "z": 470, "r": 30, "k": 0.48, "body": "lantern",
-             "size": 22, "h": 300, "swing": 1.6, "period": 5.4, "phase": 3.0},
+             "size": 22, "h": 300, "swing": 1.6, "period": 5.4, "phase": 3.0, "liton": 0.75},
             {"x": -279, "y": 316, "z": 780, "r": 30, "k": 0.5, "body": "lantern",
-             "size": 22, "h": 316, "swing": 1.4, "period": 5.8, "phase": 1.2},
+             "size": 22, "h": 316, "swing": 1.4, "period": 5.8, "phase": 1.2, "liton": 0.71},
             {"x": -99, "y": 302, "z": 780, "r": 30, "k": 0.5, "body": "lantern",
-             "size": 22, "h": 302, "swing": 1.5, "period": 5.1, "phase": 2.6},
+             "size": 22, "h": 302, "swing": 1.5, "period": 5.1, "phase": 2.6, "liton": 0.74},
             {"x": 99, "y": 310, "z": 780, "r": 30, "k": 0.48, "body": "lantern",
-             "size": 22, "h": 310, "swing": 1.6, "period": 4.4, "phase": 0.7},
+             "size": 22, "h": 310, "swing": 1.6, "period": 4.4, "phase": 0.7, "liton": 0.77},
             {"x": 279, "y": 298, "z": 780, "r": 30, "k": 0.48, "body": "lantern",
-             "size": 22, "h": 298, "swing": 1.4, "period": 5.6, "phase": 3.9},
+             "size": 22, "h": 298, "swing": 1.4, "period": 5.6, "phase": 3.9, "liton": 0.8},
         ],
         "wires": [
             {"a": [-350, 512, 180], "b": [350, 504, 180], "sag": 42},
@@ -3390,9 +3408,18 @@ def walk_islands(d, placed):
         for g in o.get("glow", []):
             w, h, _dep = OBJ_SIZE.get(o["kind"], (120, 160, 12))
             h = o.get("h", h)
+            # Two fields a glow inherits from the prop it belongs to, because both are the prop's
+            # facts rather than the fitting's: `liton` (the phase at which this prop's windows come
+            # up) and `spill` (a front that wears an awning is a shop, and a shop's light lands on
+            # the pavement in front of it as a splash, not as a pool under a fitting). A record
+            # field the emitter does not stamp never reaches the renderer — the trap `lane-prop` §7
+            # records — so the inheritance happens here, in the one place that builds the island.
             lights.append({"x": o["x"], "y": o.get("y", 0) + g.get("dy", h - 18), "z": o["z"],
                            "r": g["r"], "k": g["k"], "bulb": False, "of": o["id"],
-                           **({"tint": g["tint"]} if "tint" in g else {})})
+                           **({"tint": g["tint"]} if "tint" in g else {}),
+                           **({"liton": o["liton"]} if o.get("liton") is not None else {}),
+                           **({"spill": g.get("spill", 1)} if o.get("awn") else {}),
+                           **({"spill": g["spill"]} if "spill" in g else {})})
     for L in d.get("lanterns", []):
         # The authored radius is the paper; how far the light reaches is a multiple of it. A glow with
         # no body is a smudge, so `size` and `h` travel with it and the renderer draws what it is told.

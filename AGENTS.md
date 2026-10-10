@@ -131,28 +131,22 @@ Owner will send materials later; **do not fabricate** any of this. When the asse
 edit `_gen_html.py` (+ add the file under `IMG/` if a download), rerun `python3 _gen_html.py`,
 and keep the detector at 0 findings — `VER` is derived, so there is nothing to bump.
 
-**A street that is a place to walk, with regions and a coast — asked 2026-10-08, three decisions
-outstanding.** The owner's brief: one street the visitor walks, a region for Japan and a region for
-Canada along it, a door into each room off it, and beautiful beach or harbour views along the way,
-**in sunlight**. The layout half is buildable now and is specified in
-`skills/street-commons/references/street-system.md`; it changes no renderer code. The other two halves
-are decisions, not tasks, and both are the owner's:
-
-1. **The day.** `(T + 78) % 240` is 78 s — the street always opens at night, and no record can change
-   it, because the phase is a constant in `js/site.js`. "有陽光" is either a per-page start phase (the
-   street opens at noon, and what that exposes in the night-authored palette is a finding), or a page
-   that pins the day (needs a sky instead of the flat `#232f4a` lid at `CEIL`, a sunlit water tile, and a
-   decision about cast shadows — the renderer has contact shadows under props and no directional pass),
-   or changing the whole site's day, which includes the two rooms whose subject is dusk. Cost and
-   consequences per option: `skills/street-commons/SKILL.md` §3.
-2. **Water, and which kind.** Sea is the one the owner named; a **river or canal promenade** is the
-   version that fits the lane's one-point projection without opening a second lane, and it can carry a
-   far bank — which is depth a sea cannot give. Either way one body of water, one quay, and a station
-   at the place the water first comes into view.
-3. **How many new places, and where the doors go.** A Toronto-side region and a Japan-side region along
-   the existing spine is the cheap version; a promenade entered at the street's open end (`max_d`,
-   already authored) is the ambitious one. Ask before building — a room is many hours and a second
-   street is more.
+**A street that is a place to walk, with regions and a coast — asked 2026-10-08, decided and built
+by 2026-10-09, its night authored 2026-10-10.** The owner's brief — one street, a Japan region and a
+Canada region, a door per room, coast views in sunlight — is the state of `street.html`: the record
+says `"day": True`, the far end walks out onto a quay at a harbour (`bd.harbor`), the Japanese half
+is a shopping street (`front` + `awn`, `skills/lane-prop` §7), and the sun is an authored moving
+shadow system (`street-commons` §3). The three decisions this backlog once left open were all taken:
+the day is a per-page clock starting before noon; the water is a **harbour**, because the owner
+likened the street to Moji Port and a one-point projection puts water only at the end of the walk;
+the regions are changes of material, light and furniture along the one spine, not new pages. What
+the seventeenth round added is the night the day had been hiding: a lamp now reads three ways after
+dark — halo, body, pool on the pavement — shopfronts spill their window light across the threshold,
+and every front and lantern carries a staggered `liton`, so the evening arrives as a wave
+(`street-commons` §3, "the night rhythm"). The same round found the one lie in the shadow system's
+history — the wall's floor shadow had been `add()`ed after the emit pass and was never painted; the
+light pass draws it now, and `.verify/_shadowdrawn.mjs` proves a shadow is on the screen rather than
+in the comments.
 
 Unrelated to the above and still open:
 

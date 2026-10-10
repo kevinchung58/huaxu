@@ -124,6 +124,29 @@ found by looking at the frame rather than by reasoning about it:
   and where the run meets a wall it climbs it — so a crate against the lit wall wears its own
   shadow at the right hour. The shadow system is complete as authored geometry; a shadow map
   (soft edges, overlapping casters) would be a renderer, not a correction.
+  One caveat the seventeenth round found and fixed: the *wall's* floor shadow — the two strips —
+  had been `add()`ed after `quads.forEach(emit)` in `drawRoom()`, which means it was pushed into
+  the array and never painted. The comments, the measurements and the commit message all claimed
+  a shadow the screen did not have, and no structural harness saw it, because the fill count is
+  unchanged either way. `.verify/_shadowdrawn.mjs` boots the served page and reports per fill
+  colour whether it was ever asked for; on the round-16 build the wall shadow reads NEVER. It is
+  now painted on the canvas in the light pass (`ground()`, far-to-near, alpha × `DAY()`), the
+  same pass the night's pools live in — and that is the rule to keep: a quad created after the
+  emit is a quad that does not exist, so anything the light system draws after it is drawn by
+  the light system, not queued for a pass that already ran.
+- **the night rhythm** — *built in round 17.* The street's night used to be four dots in a navy
+  tube: the halo and the paper were there, the light on the ground was not. A lamp now reads
+  three ways at night — halo in the air, body, and pool on the pavement (`groundLight()`), the
+  pool's size from the source's own height and `k` (5 m street lamp ≈ 3.7 m across, a paper
+  lantern ≈ 2 m of soft light), its alpha the same `glowStrength` the halo is drawn at, so a
+  light whose `liton` has not arrived has no pool. A fitting low on an awninged front does not
+  pool, it spills: a wide shallow trapezoid across the threshold, two metres out at most
+  (`spill`, stamped by the emitter on the glow of any `awn` front — an un-stamped field never
+  reaches the renderer). Shopfronts and lanterns carry `liton` (0.66–0.90, alternating down the
+  walk) so the evening arrives as a wave, and the lantern's cone is drawn at the lantern's own
+  strength with a wider fainter 暈 under it. Pools are night's the way shadows are the day's
+  (`day: false`): the two never share a patch of pavement. The night's floor luma moved 65.0 →
+  67.3 when the pools arrived; 65.0 was a measurement, not a target, and it stayed a measurement.
 - **day variants of the tiles that are still night.** The distant city's window grid and the water
   tile are night values: a city of lit windows at noon is the one thing in that frame that still says
   "night". The fix is the one the skyline already has (a second texture per variant, not a tint over

@@ -1453,6 +1453,13 @@ function leaveOverlay(root, trigger) {
     body: L.body || null, size: L.size || 0, h: L.h || 0,
     of: L.of || null, k0: L.k === undefined ? 0.5 : L.k,
     swing: L.swing || 0, period: L.period || 4, phase: L.phase || 0,
+    /* The night's two fields, and each of them has to be listed here or it does not exist: the
+       island is JSON and this map is the renderer's whole vocabulary. `liton` is the phase at which
+       this source comes up (inherited from its prop by the emitter, so a shop's windows and its
+       pavement rise together); `spill` makes the light on the ground a splash along a front rather
+       than a pool under a fitting. A field the emitter stamps and this map drops is the trap
+       `skills/lane-prop` §7 was written about, seen from the other end. */
+    liton: L.liton || 0, spill: L.spill || 0,
   }));
   // Time, sampled once per frame: a lantern that swings on a clock of its own while everything else
   // uses another is how a scene starts to shimmer.
@@ -3900,8 +3907,22 @@ function leaveOverlay(root, trigger) {
        at noon, because a "somewhere open" bounce authored at `k: 0.5` was still burning at the
        daylight floor. Where the record says the place is a day, the sun takes the glows' share away. */
     const dayFall = (v) => (DAYPAGE ? v * (1 - 0.88 * DAY()) : v);
+    /* A light's own moment in the evening.
+
+       `liton` is the phase at which this source comes up, and it is the same field a building's
+       windows already carry — a prop's windows and its pavement come up together, because they are
+       the same light seen twice. Without it every shop on the street rose at the same instant,
+       which is a switch and not a dusk (the reason `liton` exists at all, in Moji's skyline).
+
+       The window is 8% of the cycle rather than the 5% the skyline painters use because a street's
+       shops are walked past one at a time and a five-step rise is over before you reach them. The
+       clamp is what keeps a light from going out again at the end of the cycle: `ease01` of anything
+       above 1 is 1, so a `liton` of 0.9 is a light that comes up late and stays up. */
+    const ease01 = (v) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
+    const litOn = (L) => (L.liton ? ease01((phaseNow() - L.liton) / 0.08) : 1);
     const glowStrength = (L) =>
-      (L.k === undefined ? 0.5 : L.k) * GLOW_GAIN * dayFall(GLOW_DAY + (1 - GLOW_DAY) * NIGHT());
+      (L.k === undefined ? 0.5 : L.k) * GLOW_GAIN * dayFall(GLOW_DAY + (1 - GLOW_DAY) * NIGHT())
+      * litOn(L);
     const glow = (px, py, pz, r, col) => {
       const p = camPt(C, px, py, pz);
       if (p.z < NEAR) return;
@@ -3930,10 +3951,121 @@ function leaveOverlay(root, trigger) {
       g.restore();
     };
 
+    /* A light on the ground, which is the read the halo in the air cannot give.
+
+       The night's light had two of its three reads and no third: the halo hanging in the air, the
+       paper or the bulb that makes it, and nothing at all where the light lands. So the pavement
+       under a lantern was exactly as dark as the pavement under nothing, and a street at night read
+       as four bright dots in a navy tube. A pool is the same light a third time, on the surface it
+       actually falls on, and it is the read that puts the light *under* you.
+
+       Three rules, all of them measured rather than styled:
+
+       - **It is night's.** The condition is `glowStrength` — the same number the halo is drawn at —
+         so a pool arrives with its own light and leaves with it. At noon the sun is the pool, and a
+         warm ellipse on sunlit asphalt is a second sun. This is the night half of the day's shadow
+         rule: shadows are `day: false`, pools are night's, and the two therefore never share a patch
+         of pavement. A shadow at noon and a pool at midnight is one system, not two.
+       - **Its size comes from the source's own height and strength, not from a constant.** A 5 m
+         street lamp throws about 3.7 m across; a paper lantern at 3 m throws 2 m of soft light, and
+         the record's own `size` widens it for a bigger lantern. Everything is clamped, so a
+         mis-authored `k` cannot carpet the lane.
+       - **It is a quad, not a screen-space circle.** `reflect()` squashes a circle at the projected
+         centre, which lands in the right place and lies about its shape: a circle drawn on a
+         picture of a floor is a decal. This one is four corners on the ground plane through the
+         same projection as the shadows, so it foreshortens with distance the way the pavement does.
+         The gradient stays in screen space, centred on the quad's own projected centre and sized
+         from its projected radius, so the falloff is round where a pool is round.
+
+       Drawn under `lighter`, after the haloes: additive, so pools overlap honestly where two lamps
+       meet, and a pool can only ever add light to a surface, never paint over one. */
+    const poolR = (L) => clamp(138 * Math.sqrt(Math.max(40, L.y) / 300)
+      * (0.55 + 0.75 * (L.k === undefined ? 0.5 : L.k))
+      * (L.body === "lantern" ? Math.max(1, (L.size || 22) / 22) * 0.74 : 1), 46, 330);
+    /* Both of the ground lights are one clip and one gradient, so they share the plumbing. The path
+       is the polygon *after* near-plane clipping, never the corners it was handed: the walker can
+       stand between a pool and the far end, and a corner behind the camera projects to the wrong
+       side of the screen and smears the light across the frame. `clipNear` rather than `add()` on
+       purpose — `add()` also pushes into the frame's quad list, and the scene's paint pass has
+       already run by here, so those quads would be counted by the cost harness and painted by
+       nobody. The gradient's radius comes from the nearest surviving corner, for the same reason. */
+    const groundLight = (corners, centre, R, stops) => {
+      const pts = clipNear(corners.map((c) => camPt(C, c[0], c[1], c[2])));
+      if (pts.length < 3) return;
+      const c = camPt(C, centre[0], 3, centre[1]);
+      let zn = Infinity;
+      pts.forEach((p) => { zn = Math.min(zn, p.z); });
+      const zc = clamp(c.z, NEAR, zn);
+      const sx = W * 0.5 + (focal * c.x) / zc, sy = H * 0.5 + (focal * c.y) / zc;
+      const scr = pts.map((p) => [W * 0.5 + (focal * p.x) / p.z, H * 0.5 + (focal * p.y) / p.z]);
+      let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+      scr.forEach(([px2, py2]) => {
+        bx0 = Math.min(bx0, px2); bx1 = Math.max(bx1, px2);
+        by0 = Math.min(by0, py2); by1 = Math.max(by1, py2);
+      });
+      /* The fill is the clip's own box, and it is clamped to the canvas. Both halves matter. The
+         clip is what bounds the light, so a gradient that reaches a little past it is the same
+         picture — but a corner clipped onto the near plane projects to `focal / NEAR`, tens of
+         thousands of px off screen, and a box taken from those coordinates is a 7,742 px `fillRect`
+         for a pool two metres across, which is exactly the oversized fill the cost harness refuses.
+         Nothing off-canvas is being painted either way; the box is the canvas and the radius is the
+         light's own reach. */
+      const fx0 = Math.max(0, bx0 - 2), fy0 = Math.max(0, by0 - 2);
+      const fx1 = Math.min(W, bx1 + 2), fy1 = Math.min(H, by1 + 2);
+      if (fx1 <= fx0 || fy1 <= fy0) return;
+      const rad = Math.max(6, (focal * R) / zc);
+      const gr = g.createRadialGradient(sx, sy, 0, sx, sy, rad);
+      stops(gr);
+      g.save();
+      g.beginPath();
+      scr.forEach(([px2, py2], i) => { if (i) g.lineTo(px2, py2); else g.moveTo(px2, py2); });
+      g.closePath(); g.clip();
+      g.fillStyle = gr;
+      g.fillRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
+      g.restore();
+    };
+    const pool = (L, dx, s) => {
+      const R = poolR(L), sq = 0.34, cx = L.x + dx;
+      groundLight([[cx - R, 3, L.z - R * sq], [cx + R, 3, L.z - R * sq],
+                   [cx + R, 3, L.z + R * sq], [cx - R, 3, L.z + R * sq]], [cx, L.z], R,
+                  (gr) => {
+                    gr.addColorStop(0, `rgba(255,164,84,${(0.62 * s).toFixed(3)})`);
+                    gr.addColorStop(0.45, scaleTint(L.tint, 0.8 * s));
+                    gr.addColorStop(1, "rgba(255,150,70,0)");
+                  });
+    };
+    /* And the read a shop gives: window light spilled across the pavement in front of it.
+
+       A lamp low on a wall does not make a pool, it makes a splash — wide along the front and
+       shallow out into the lane, brightest at the threshold and gone within a couple of metres. The
+       record says which sources are of that kind (`spill`, stamped by the emitter on the glow of any
+       front that wears an awning, because a shopfront is the thing that has glass at knee height);
+       the trapezoid's own numbers come from the source: as wide as its reach, and out into the lane
+       by as much again. It faces the lane's centre line, which is the only direction a wall can
+       throw light, and it sways with nothing because a window does not swing. */
+    const spill = (L, s) => {
+      /* Wide along the front, and no more than two metres out: window light is a splash, and a
+         splash that reaches the other wall is a floodlight. The width is the source's own reach,
+         so a wide shop spills wide and a narrow one does not. */
+      const Rw = poolR(L), Len = Math.min(210, Rw * (L.spill || 1));
+      const sgn = L.x >= 0 ? -1 : 1;                  // toward the centre of the lane
+      const x0 = L.x + sgn * 8, x1 = L.x + sgn * (Len + 40);
+      groundLight([[x0, 3, L.z - Rw], [x0, 3, L.z + Rw], [x1, 3, L.z + Rw * 0.6],
+                   [x1, 3, L.z - Rw * 0.6]], [(x0 + x1) / 2, L.z], Len,
+                  (gr) => {
+                    gr.addColorStop(0, `rgba(255,196,120,${(0.60 * s).toFixed(3)})`);
+                    gr.addColorStop(0.5, scaleTint(L.tint, 0.7 * s));
+                    gr.addColorStop(1, "rgba(255,160,80,0)");
+                  });
+    };
+
     lamps.forEach((L) => {
       const dx = swayOf(L);
       glow(L.x + dx, L.y, L.z, L.r, scaleTint(L.tint, glowStrength(L)));
-      if (L.wet) reflect(L.x + dx, L.z, L.r * 3.6);   // each bulb's pool, thrown back by the asphalt
+      /* The asphalt's own throw-back stays what it was on a night-authored page: those rooms were
+         tuned against it and it is the wet-floor read, not the pool. On a day page the pool above
+         is the authored one and two warm ellipses on the same spot is one too many. */
+      if (L.wet && !DAYPAGE) reflect(L.x + dx, L.z, L.r * 3.6);
       /* Only a lamp the record calls a bulb gets a bulb drawn. Everything else already has a body in
          the scene — a lantern's paper, a machine's panel, a camera's lens — and drawing a white dot at
          the light's own coordinate put a floating bulb in the middle of the lane for every glow that
@@ -3944,12 +4076,42 @@ function leaveOverlay(root, trigger) {
         g.fillStyle = "rgba(255,240,206,0.92)";
         g.beginPath(); g.arc(sx, sy, Math.max(1.5, (focal * 9) / p.z), 0, 6.2832); g.fill();
       }
+      /* And the light on the ground, at the strength the halo was drawn at. Gated on the strength
+         rather than on the hour, so a light whose `liton` has not arrived yet has no pool either:
+         a pool with no light above it is the same lie as a bright wall with no lamp. */
+      const s = glowStrength(L);
+      if (s > 0.05) { if (L.spill) spill(L, s); else pool(L, dx, s); }
     });
-    /* The wall's own shadow on the ground, authored as two strips because a shadow that falls the
-       same way at every hour is a lie about the sun — but at the noon this page opens on, a high
-       sun throws a short shadow home against the wall it comes from. Umbra hard, penumbra half,
-       and both skip the lift (`day: false`) or the sun would wash its own shadow away. */
+    /* The wall's own shadow on the ground, as two strips because a shadow that falls the same way at
+       every hour is a lie about the sun — but at the noon this page opens on, a high sun throws a
+       short shadow home against the wall it comes from. Umbra hard, penumbra half.
+
+       It is painted here, on the canvas, rather than built as a quad, and the reason is a bug that
+       cost a round to find. `drawRoom()` paints its scene with one `quads.forEach(emit)` and these
+       strips were `add()`ed *after* that pass, so they went into the array and were never painted:
+       the shadows existed in the data, in the comments and in the commit message, and not on the
+       screen — `.verify/_shadowdrawn.mjs` boots the served page and reports `NEVER` for them on the
+       build that claimed them. A quad added after the emit is a quad that does not exist, which no
+       structural harness can see because the fill count is unchanged either way. Everything the
+       light pass draws — the haloes, the pools, the cones — is painted on the canvas for the same
+       reason, and this belongs with them.
+
+       Depth is honoured by drawing the far end first: both strips run the whole lane, so the only
+       overlap that matters is the penumbra over the umbra's far edge, and far-to-near is the order
+       the floor itself is painted in. */
+    const ground = (corners, col) => {
+      const pts = clipNear(corners.map((c) => camPt(C, c[0], c[1], c[2])));
+      if (pts.length < 3) return;
+      g.fillStyle = col;
+      g.beginPath();
+      pts.forEach((pt, i) => {
+        const sx = W * 0.5 + (focal * pt.x) / pt.z, sy = H * 0.5 + (focal * pt.y) / pt.z;
+        if (i) g.lineTo(sx, sy); else g.moveTo(sx, sy);
+      });
+      g.closePath(); g.fill();
+    };
     if (DAYPAGE && DAY() > 0.05) {
+      g.globalCompositeOperation = "source-over";
       const a = DAY(), az = sunAz(), k = Math.min(1, Math.abs(az));
       // A wall of height H throws a shadow H / tan(altitude) long, scaled by how much the sun is
       // across the lane rather than up it; the side is the azimuth's side. Long at the edges of
@@ -3958,14 +4120,13 @@ function leaveOverlay(root, trigger) {
       if (len > 6) {
         const sgn = az < 0 ? -1 : 1;                 // the wall the shadow comes from
         const x0 = sgn * (WALL - 4), x1 = sgn * (WALL - 4) - sgn * len;
-        const um = add(C, [[x0, 2, Z_BACK], [x1, 2, Z_BACK], [x1, 2, Z_FAR], [x0, 2, Z_FAR]],
-                       ZERO8, "flat", `rgba(12,18,34,${(0.30 * a).toFixed(3)})`);
-        if (um) { um.day = false; um.air = 0; }
         const x2 = x1 - sgn * len * 0.45;
-        const pe = add(C, [[x1, 2, Z_BACK], [x2, 2, Z_BACK], [x2, 2, Z_FAR], [x1, 2, Z_FAR]],
-                       ZERO8, "flat", `rgba(12,18,34,${(0.14 * a).toFixed(3)})`);
-        if (pe) { pe.day = false; pe.air = 0; }
+        ground([[x1, 2, Z_FAR], [x0, 2, Z_FAR], [x0, 2, Z_BACK], [x1, 2, Z_BACK]],
+               `rgba(12,18,34,${(0.30 * a).toFixed(3)})`);
+        ground([[x2, 2, Z_FAR], [x1, 2, Z_FAR], [x1, 2, Z_BACK], [x2, 2, Z_BACK]],
+               `rgba(12,18,34,${(0.14 * a).toFixed(3)})`);
       }
+      g.globalCompositeOperation = "lighter";
     }
     // A wet patch holds whatever is standing above it, which is the only reason the patch is in the
     // data: a puddle that reflects nothing is a grey rectangle. The bulbs already throw their own pool
@@ -4004,24 +4165,42 @@ function leaveOverlay(root, trigger) {
       // line that holds it and not only in the lamp.
       if (L.body === "lantern") strand([L.x, CEIL, L.z], [L.x + dx, L.h || (L.y + 14), L.z], 0);
     });
-    // What the lanterns put into the air: a shallow cone from the paper down to the ground it lights,
-    // in the same composite as the glow and by the same projection as everything else. It is four
-    // quads for the whole lane, and it is the difference between four bright dots and four lamps.
-    lamps.forEach((L) => {
-      if (L.body !== "lantern" || dayFall(1) < 0.06) return;   // a cone of light is a night object
-      const dx = swayOf(L), R = L.size || 24;
+    /* What the lanterns put into the air: a shallow cone from the paper down to the ground it
+       lights, in the same composite as the glow and by the same projection as everything else. It
+       is four quads for the whole lane, and it is the difference between four bright dots and four
+       lamps.
+
+       Two changes, both about the string reading as a string. The cone's strength is the lantern's
+       own — its `k`, its `liton`, the hour — instead of one constant 0.15 for every lantern on the
+       wire, so the two ends of a string that were tied with a dimmer candle in them actually look
+       dimmer, and a lantern whose light has not come up yet throws no cone at all (the condition is
+       `glowStrength`, the same number its halo and its pool are drawn at; it used to be `dayFall(1)`,
+       which is a property of the page and not of the lamp, and which on a day page still reads 0.12
+       at noon — so the cone was being drawn in daylight and only the paper knew better). And under
+       the cone is a second, wider, fainter one: the 暈, the soft edge a paper lantern makes in humid
+       air, which is what separates a lamp from a dot with a triangle under it. */
+    const cone = (L, R, wm, alpha) => {
+      const dx = swayOf(L);
       const top = camPt(C, L.x + dx, L.y - R, L.z), bot = camPt(C, L.x + dx * 1.5, 2, L.z);
       if (top.z < NEAR || bot.z < NEAR) return;
       const ax = W * 0.5 + (focal * top.x) / top.z, ay = H * 0.5 + (focal * top.y) / top.z;
       const bx = W * 0.5 + (focal * bot.x) / bot.z, by = H * 0.5 + (focal * bot.y) / bot.z;
-      const wa = (focal * R * 0.85) / top.z, wb = (focal * R * 2.9) / bot.z;
+      const wa = (focal * R * 0.85 * wm) / top.z, wb = (focal * R * 2.9 * wm) / bot.z;
       const gr = g.createLinearGradient(ax, ay, bx, by);
-      gr.addColorStop(0, "rgba(255,198,128,0.15)");
+      gr.addColorStop(0, scaleTint(L.tint, alpha));
       gr.addColorStop(1, "rgba(255,168,96,0)");
       g.beginPath();
       g.moveTo(ax - wa, ay); g.lineTo(ax + wa, ay); g.lineTo(bx + wb, by); g.lineTo(bx - wb, by);
       g.closePath();
       g.fillStyle = gr; g.fill();
+    };
+    lamps.forEach((L) => {
+      if (L.body !== "lantern") return;
+      const s = glowStrength(L);
+      if (s < 0.05) return;                          // a cone of light is a night object
+      const R = L.size || 24;
+      cone(L, R, 2.5, 0.30 * s);                     // the 暈: wide, faint, and the same tint
+      cone(L, R, 1, (0.15 + 0.22 * s));              // the cone the paper actually throws
     });
 
     // A spot over a diorama table puts a visible cone in the air, the way the lanterns do: the

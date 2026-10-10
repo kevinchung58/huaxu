@@ -88,6 +88,17 @@ Dressing fails in one of two ways and both are boring to fix late:
   authored next to it, and its wire present in `data-walk-wires`.
 - `liton` on the prop is the phase at which *its* windows come up. Stagger it, and never let the
   interval cross midnight — `p - liton` goes negative and `ease01` puts the lights straight out.
+- **The night's ground light rides on the same fields.** A lamp is drawn three ways at night —
+  halo, body, pool — and the pool (`groundLight()` in the renderer) is sized from the source's
+  own height and `k`, with its alpha at the same `glowStrength` as the halo, so `liton`, states
+  and the hour move pool and halo together. A light low on a front does not pool, it *spills*:
+  a wide shallow trapezoid across the threshold. Which it does is data, not renderer taste: the
+  emitter stamps `spill` on the glow of any prop that wears an `awn`, and hands the prop's
+  `liton` to that glow, because a shop's windows and its pavement are one light seen twice —
+  author `liton` on the **prop** and the glow inherits it; a glow's own `spill` or `liton` in
+  the record overrides. A light with neither pools (a bulb, a lantern, a machine — whose pool
+  is cool if its tint is). Pools are night's, shadows are day's, and neither is drawn on the
+  other's hour.
 - **A place with a sun changes what a light is worth.** On a page whose record says `"day": True`
   (`skills/street-commons` §3) every lit thing is dialled down by how high the sun is, so a lamp or a
   machine keeps its body and loses its halo. Three fields decide what a surface or a source does with
