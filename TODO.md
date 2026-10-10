@@ -2,6 +2,51 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-10 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0z. 第十八輪（2026-10-10）：調研「如何把 3D 空間做好看」→ 新 skill `landmark-space`
+
+站主的未來期望（本輪只做調研＋skill，不建空間）：進多倫多點 CN 塔 → 先開 IG 限時動態（真實
+相簿）→ 動態旁邊有「進入空間」→ 進到一個真的額外打造的 CN 塔空間。站主指示：先大量調研
+GitHub repo 的相關 skills.md，或用 skill-creator 新增。
+
+### 調研的來源（`skills/landmark-space/references/repo-survey.md`）
+
+- **Kenton-GMI/sakura-crossing**（重讀）：hero 物件的 silhouette 階層（outline 只給主角）、
+  toon＋紫影、moment 隨主角縮放。
+- **Nice-Wolf-Studio/claude-skills-threejs-ecs-ts**：three.js skill pack 的 checklist——分層光、
+  色溫一致、fog 是深度也是情緒、選擇性影、camera clamp。我們的 renderer  independently
+  走到同一半，這代表這些是媒介的規矩；新帶回兩條：一小時一個色溫家族（第二個色溫是事件）、
+  全幀曝光是單一作者值（新空間從第一幀就有 `_lumacheck` 行）。
+- **Owl-Listener/designer-skills**：`critique-composition`／`critique-color` 的
+  Observation→Problem→Fix 評級迴圈，換成空間維度（silhouette、光階層、深度、韻律、色盤一致）
+  套在 lane-shot sheet 上——數字抓塌陷、critique 抓醜，兩個都在閘裡。
+- **mpetroff/pannellum**（4.9k★）：tour 文法對照表——scene graph＝我們的 ROOMS、hotspot 帶
+  目標 yaw/pitch＝我們的 `#at-` spawn、preview＝相簿 plate 是房間的預覽（link contract 把這
+  變字面）。拒絕它的 auto-rotate 與 scene fade：我們的房間切換是走路。
+- **yoshifujidesign/3d-html-slide-skill**：小證人；parallax-on-photo 是另一個產品，站主已否兩次。
+
+### 產出：`skills/landmark-space/`（tracked，quick_validate 過）
+
+- §1 intake：553 m 的塔在 168 cm 眼高下是 silhouette 不是空間；三個誠實形式——**deck**（房間是
+  從塔看出去的景）、**plaza**（塔是巷尾的 vista）、**table**（Moji 式 miniature）——站主選，
+  預設建議 deck/plaza（「真的額外打造」否決 miniature 除非他要 panorama）。
+- §2 link contract：prop 第一下開 story（現有 rail 不動）；plate chrome 裡第二個動詞
+  `data-enter-space`（無字 icon、aria-label、無腳本是 drawer 的普通連結）；`space:` 必須有
+  frame 又有 row 否則 emitter fail；抵達時 `#at-<prop>` 面向地標；Esc 一路退回原 prop。
+- §3 beauty system：silhouette 階層、one moment（電梯／夜間點燈在 body 上）、一小時一色溫、
+  影與池（round 17 系統）、表面韻律、reward-looking 細節、critique pass。
+- §4 renderer 老實估價：plaza 形式現成；deck 需要「一個以上的 aperture」與「玻璃下的城市」
+  （day-variant 窗格紋理，`street-commons` §3 的 open item）——兩者都是 renderer 改動，
+  不偷渡；建序 plaza 先、deck 後。
+- §5 gate：既有閘＋`_shadowdrawn`＋新頁 luma 行＋lane-shot sheet 讀兩遍（閘＋critique）＋
+  link-contract 的 e2e 走一遍（尚未寫進 .verify，skill 裡標明「沒有它 contract 只是希望」）。
+
+AGENTS.md 表格加 row；district-author §0、place-intake §4 加指針（同 commit，repo 規矩）。
+
+### 未做（等站主一句話）
+
+CN 塔空間本身：intake 三形式選哪個、多倫多廳的 CN 塔 prop 現在有沒有 frames（`IMG_RULES`
+裡 toronto 前綴）、以及 deck 的 renderer 改動要不要開「依賴／renderer 談判」的獨立對話。
+
 ## 0y. 第十七輪（2026-10-10）：巷的夜間 lantern／窗光節奏——做完，且抓到一個死掉的影系統
 
 站主「讀完 skills 做該做的事」→ 0x 記在案的夜間節奏就是該做的事。做完，全閘綠。

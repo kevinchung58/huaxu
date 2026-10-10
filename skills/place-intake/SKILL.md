@@ -100,7 +100,8 @@ prefixes, status), and **one door object on the street's record** (`"leave": ROO
 positioned inside the walker's reach — see `district-author` §9). Then `district-author`'s build rules
 apply unchanged, and so does its gate. If the place is in Japan, `skills/japan-place` carries the
 numbers this skill deliberately does not: what each Japanese object is in centimetres, which one
-identifies the place, and what it may not carry. Read its `references/japan-vocabulary.md` before
+identifies the place, and what it may not carry. If the place is one landmark object rather than a walked place, hand the record to
+`skills/landmark-space` instead — its intake is which *part* of the object is the room. Read its `references/japan-vocabulary.md` before
 reading the photographs for dimensions, so the room agrees with the two Japanese rooms already
 built rather than inventing a third set of proportions.
 

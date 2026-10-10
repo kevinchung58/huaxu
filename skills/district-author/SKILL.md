@@ -23,6 +23,10 @@ never shipped), and hands you back a record. Building directly from photographs 
 how a room becomes a backdrop: this skill knows how to build a place, that one knows what the place
 was.
 
+If the district is a single landmark the owner wants to step into — a tower, a bridge,
+a station — `skills/landmark-space` decides its form (deck, plaza or table), wires the
+prop→story→enter-space contract, and carries the beauty gate. Read it before the intake.
+
 If the place is in Japan, `skills/japan-place` goes with this one: it holds the object table with
 real centimetres for everything a Japanese lane or port is made of, the night the room ends up in,
 and the claims a Japanese room may not make — which are stricter here than in the reference
