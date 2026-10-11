@@ -2,6 +2,26 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-10 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0h. 第二十六輪（2026-10-11）：站主問「瀑布全部做完整了嗎？都做好」——對帳＋夜驗
+
+對帳（第二十四輪的來源）：露台視點✓、Journey✓、照明✓、彩虹✓、下游天際線✓、American
+Falls／島✓。還缺兩個可見 beat：夜間煙火（in season, 10pm）與遊船。
+
+**煙火**——做了：ng painter 夜間三個 swell-and-fade bursts 在 crest 上，色取照明五色，
+caveat/sight_note 記「in season」。夜幀驗證：临时把 day start 設夜拍幀——niagara 的瀑面
+持照明色、gorge spill 同色；journey deck 的頭頂帘同樣持色（Journey at Night 的真實 beat）。
+兩幀讀過，day 設定還原。
+
+**遊船——誠實退場**。試了 boat shape 進 gorge：發現兩件 renderer 事實——(1) props 被 lane
+box clip，y<0 不畫；(2) 就算 painter 畫，Table Rock 的視點在 lip 高度，basin 水面被 lip／
+地板緣遮住（投影落在地板後方）——真實世界也一樣：露台高度看不見池裡的船，船塢在下游、
+獨立售票。所以船不進畫面，caveat/sight_note 明寫「cruise boat off-frame at its downstream
+landing」。這條教訓進 scene-system §4 失敗表新 row。
+
+**Gates**：walk 168/168、chain／shapes／geometry／clash／objects／e2e 0、story 22/22、
+impeccable []。sandbox 本輪清了 node_modules 與 /tmp/al2023 libs：重裝＋手動解
+al2023.tar.br 到 /tmp/al2023/lib。
+
 ## 0g. 第二十五輪（2026-10-10）：造場景的系統性 skill
 
 站主問：「要不要寫清楚造場景的系統性 skills？」——寫了 `skills/scene-system`：conductor，不複製

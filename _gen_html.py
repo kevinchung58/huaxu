@@ -3408,7 +3408,11 @@ DISTRICTS = [
                       "whole fact of the falls: the horseshoe crest spilling into mist, the "
                       "American Falls across on its boulders, the gorge river below, a rainbow in "
                       "the spray, and downstream in the haze the Rainbow Bridge's wings and the "
-                      "Skylon's dish. Nothing out there is a record of anybody standing in it.",
+                      "Skylon's dish. After dark the curtain holds the illumination's colour "
+                      "and, in season, fireworks swell over the crest. The cruise boat stays out "
+                      "of the frame: its landing is downstream, and from the lip the basin it "
+                      "works is hidden by the lip itself. Nothing out there is a record of "
+                      "anybody standing in it.",
         "objects": [
             # The park side keeps one bench and the hedge keeps it company: a promenade is walked
             # slowly, and a bench facing the mist is the one furniture the view asks for.
@@ -3499,10 +3503,11 @@ DISTRICTS = [
                                                            "own table."},
         "back_to": "rooms-toronto.html",
         "caveat": "The falls are drawn from public facts — the crest's breadth, the drop, the "
-                  "talus, the islands, the rainbow's habit, the nightly illumination — and "
-                  "simplified at the detail level only: no crowds, no lettering, the downstream "
-                  "skyline a silhouette, no claim that the owner stood at the rail. The mist is "
-                  "the weather the sources describe.",
+                  "talus, the islands, the rainbow's habit, the nightly illumination and the "
+                  "seasonal fireworks — and simplified at the detail level only: no crowds, no "
+                  "lettering, the downstream skyline a silhouette, the cruise boat off-frame at "
+                  "its downstream landing, no claim that the owner stood at the rail. The mist "
+                  "is the weather the sources describe.",
     },
     {
         # Journey Behind the Falls, compressed not deleted (round-20 fidelity directive): the

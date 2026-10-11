@@ -108,6 +108,7 @@ a visitor, twice**. The harness proves paint; only a read proves place. Known fa
 | alley where a tunnel should be | brick kind on bedrock | `rock`, tones as strata |
 | silhouette floating | monochrome quad without a dark anchor | anchor against gorge/sky |
 | nothing painted | quad `add()`ed after the emit pass | painters run in the draw list |
+| subject below the floor | the lane box clips props at y<0, and the lip occludes the basin from a lip-height eye | the painter carries what the eye can see; what the lip hides stays off-frame, and the caveat says so |
 
 Write what each read caught into TODO with the round; a critique pass that reports no catches
 is a pass that was not read.

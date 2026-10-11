@@ -2057,6 +2057,23 @@ function leaveOverlay(root, trigger) {
                              [ng.half * 0.8, footY + 4, crestZ + 6500], [-ng.half * 0.8, footY + 4, crestZ + 6500]],
                          ZERO8, "flat", held);
         if (glow) { glow.air = 0.3; glow.lit = 0.9; glow.day = false; }
+        /* Fireworks over the crest in season, at ten: three bursts that swell and fade on the
+           frame clock, small against a thirteen-storey curtain, which is the scale they keep. */
+        [[-3000, 3400, 0], [1500, 4100, 2.1], [4500, 3700, 4.2]].forEach(([bx, by, ph]) => {
+          const life = Math.max(0, Math.sin(T * 0.45 + ph));
+          if (life < 0.05) return;
+          const col = ILLUM[Math.floor(ph * 2) % ILLUM.length];
+          for (let k = 0; k < 8; k++) {
+            const t0 = (k / 8) * Math.PI * 2, t1 = ((k + 0.5) / 8) * Math.PI * 2;
+            const r0 = 260 + life * 620, r1 = r0 + 90;
+            const q = add(C, [[bx + Math.cos(t0) * r0, footY + by + Math.sin(t0) * r0 * 0.8, crestZ + 900],
+                              [bx + Math.cos(t0) * r1, footY + by + Math.sin(t0) * r1 * 0.8, crestZ + 900],
+                              [bx + Math.cos(t1) * r1, footY + by + Math.sin(t1) * r1 * 0.8, crestZ + 900],
+                              [bx + Math.cos(t1) * r0, footY + by + Math.sin(t1) * r0 * 0.8, crestZ + 900]],
+                          ZERO8, "flat", col);
+            if (q) { q.air = 0.05; q.lit = 1.4 * life; q.day = false; }
+          }
+        });
       }
       const railHalf = ng.half * 0.55;
       [[86, 6], [58, 5]].forEach(([yy, th]) => {
