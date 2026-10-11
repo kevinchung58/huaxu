@@ -2,6 +2,30 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-10 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0i. 第二十七輪（2026-10-11）：完整清單對帳＋inventory-scoping 進 skill
+
+站主：「尼加拉瓜瀑布那邊很多東西，你真的有做完整嗎？檢查清楚並更新 skills。」查了完整
+清單（travelniagara、infoniagara、niagarafallstourism PDF），逐項處置：
+
+**In-frame（畫）**：Horseshoe、American Falls、islands、gorge、rainbow、mist、rail、
+promenade hedge/lamps、Skylon 碟盤、Rainbow Bridge 兩翼、**本輪新增：Tower Hotel（圓塔）
+與 Toronto Power Generating Station（低長體＋煙囪）兩個下游加岸剪影**、夜間照明、季節煙火、
+Journey（tunnel/portals/deck）。
+
+**Compressed（進 drawer/caveat 文字，帶數字）**：Niagara's Fury（Table Rock Centre 室內）、
+遊船（下游船塢）、White Water Walk（~3 km 北、Class VI rapids、4–11 月）、Whirlpool Aero Car
+（~4 km、1916、Torres Quevedo）、Floral Clock（~8 km、16,000 株）、Niagara Glen、Dufferin
+Islands（上游）、Old Scow（上游急流擱淺船，在 walker 背後）、Winter Festival of Lights、
+Clifton Hill/SkyWheel（城側）、helicopters。
+
+**Off-frame 理由**：距離（gorge 彎以北）、室內／售票、美國側、背後（上游）、被 lip 遮（船）。
+
+**Skills 更新**：scene-system 加 phase「scope」與新節「The inventory — completeness as a
+table」：rich site 的完整度＝一張表，每個來源項三選一（in-frame／drawer／off-frame）各帶
+理由；caveat mirror frame、drawer mirror table。
+
+Gates 同跑（見 commit）。
+
 ## 0h. 第二十六輪（2026-10-11）：站主問「瀑布全部做完整了嗎？都做好」——對帳＋夜驗
 
 對帳（第二十四輪的來源）：露台視點✓、Journey✓、照明✓、彩虹✓、下游天際線✓、American

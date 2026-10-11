@@ -2050,6 +2050,15 @@ function leaveOverlay(root, trigger) {
                       ZERO8, "flat", "#42566f");
         if (q) { q.air = 0.55; q.lit = 0.6; q.daygain = 0.5; }
       });
+      /* The Canadian bank downstream carries three silhouettes, nearest first: the old Toronto
+         Power Generating Station at the gorge rim, the round Tower Hotel, and the Skylon's dish
+         furthest out — the skyline a Table Rock visitor turns to. */
+      const power = sil(footY + 200, footY + 700, -5200, 10500, 1300);
+      if (power) { power.air = 0.5; power.lit = 0.6; power.daygain = 0.5; }
+      const stack = sil(footY + 700, footY + 1050, -5500, 10500, 160);
+      if (stack) { stack.air = 0.5; stack.lit = 0.6; stack.daygain = 0.5; }
+      const towerhotel = sil(footY + 200, footY + 1900, -7200, 12500, 320);
+      if (towerhotel) { towerhotel.air = 0.55; towerhotel.lit = 0.6; towerhotel.daygain = 0.5; }
       if (DAY() < 0.25) {
         const ILLUM = ["#37c46b", "#e0435c", "#3f7de0", "#b04de0", "#e0a13f"];
         const held = ILLUM[Math.floor(T / 7) % ILLUM.length];

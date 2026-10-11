@@ -3507,7 +3507,9 @@ DISTRICTS = [
                   "seasonal fireworks — and simplified at the detail level only: no crowds, no "
                   "lettering, the downstream skyline a silhouette, the cruise boat off-frame at "
                   "its downstream landing, no claim that the owner stood at the rail. The mist "
-                  "is the weather the sources describe.",
+                  "is the weather the sources describe. The Parks line north of the gorge "
+                  "bend — White Water Walk, the 1916 Aero Car, the Floral Clock, the Glen — "
+                  "stays in the drawer, beyond the promenade's sight.",
     },
     {
         # Journey Behind the Falls, compressed not deleted (round-20 fidelity directive): the

@@ -15,6 +15,7 @@ skip.
 | 0 go-word | — | the owner's ask, verbatim, in TODO | the ask is written down |
 | 1 evidence | `grounded-scene` §1, `place-intake` | the ladder: what the sources say, ranked | every number has a source or is refused |
 | 2 measure | `grounded-scene` §2 | the measurement table in TODO + record comment | the table survives a reader who trusts nothing |
+| 2b scope | this skill §2b | the inventory table: every sourced item placed in-frame / drawer / off-frame, each with a reason | the caveat mirrors the frame, the drawer mirrors the table |
 | 3 form | this skill §2, `landmark-space` §2-3, `district-author` §0 | one decision: hub room / landmark space / owned sub-space / open district | the decision is stated with its doctrine |
 | 4 author | `district-author` §2-3, `lane-prop`, `street-commons`, `japan-place` | the record in `_gen_html.py`, painters in `js/site.js` | `python3 _gen_html.py` exits 0 |
 | 5 critique | this skill §3-4 | frames read twice, fixes listed in TODO | two consecutive reads find nothing new |
@@ -43,6 +44,25 @@ assume; change one and re-run the whole battery.
 - WebKit rules: `preserve-3d` only on `.room-world`/`.ig-grid`; never `overflow`/`filter` on a
   preserve-3d ancestor. No frameworks, no npm build, no committed package.json — canvas and
   CSS transforms are the whole renderer.
+
+## 2b. The inventory — completeness as a table
+
+A rich real place always has more than a lane can carry; "complete" is therefore not "drew
+everything" but "accounted for everything". After the measurement table, write the inventory:
+one row per sourced sight or beat, each placed in exactly one of three columns —
+
+- **in-frame** — drawn, at its honest scale and bearing; the caveat will name it;
+- **drawer** — compressed into the room's reading material with its figures (distance, date,
+  height, season), because the frame cannot reach it: indoors, ticketed elsewhere, kilometres
+  along the parkway, behind the walker, or hidden by the site's own geometry;
+- **off-frame, reasoned** — refused for a stated reason (the other side of a border, a season
+  the page does not author, a lie the renderer would tell).
+
+The table ships in the round notes; the caveat mirrors the frame column, the drawer mirrors
+the drawer column, and a reader holding the sources can verify all three. Niagara's table
+(§0i in TODO) is the worked example: two falls, an island pair, a gorge, a skyline of three
+silhouettes, a rainbow, illumination and seasonal fireworks in-frame; a boat, a fury, a
+walk, an aero car, a clock, a glen in the drawer; nothing refused without a reason.
 
 ## 2. Choosing the form
 
