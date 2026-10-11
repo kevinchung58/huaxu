@@ -27,7 +27,10 @@ Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo 
   `skills/district-author/SKILL.md`, with `skills/place-intake/` before it when the material is
   photographs of a real place, `skills/japan-place/` whenever the place is in Japan,
   `skills/street-commons/` for the hub street, a new promenade or anything that asks for daylight,
-  and `skills/lane-prop/` for a single object, light or state inside one. Those five live in
+  and `skills/lane-prop/` for a single object, light or state inside one, `skills/landmark-space/`
+  when one landmark object becomes its own walkable space, and `skills/grounded-scene/` whenever a
+  scene recreates a real place and must feel nearly the same as being there (the owner's round-20
+  fidelity rule). Those seven live in
   `skills/` and **are tracked** — unlike everything under `.claude/`, which is local-only. Follow the
   matching one before doing the matching kind of work.
 - **The hub is a street with regions on it, and that is the owner's brief** (2026-10-08): one street
@@ -131,28 +134,22 @@ Owner will send materials later; **do not fabricate** any of this. When the asse
 edit `_gen_html.py` (+ add the file under `IMG/` if a download), rerun `python3 _gen_html.py`,
 and keep the detector at 0 findings — `VER` is derived, so there is nothing to bump.
 
-**A street that is a place to walk, with regions and a coast — asked 2026-10-08, three decisions
-outstanding.** The owner's brief: one street the visitor walks, a region for Japan and a region for
-Canada along it, a door into each room off it, and beautiful beach or harbour views along the way,
-**in sunlight**. The layout half is buildable now and is specified in
-`skills/street-commons/references/street-system.md`; it changes no renderer code. The other two halves
-are decisions, not tasks, and both are the owner's:
-
-1. **The day.** `(T + 78) % 240` is 78 s — the street always opens at night, and no record can change
-   it, because the phase is a constant in `js/site.js`. "有陽光" is either a per-page start phase (the
-   street opens at noon, and what that exposes in the night-authored palette is a finding), or a page
-   that pins the day (needs a sky instead of the flat `#232f4a` lid at `CEIL`, a sunlit water tile, and a
-   decision about cast shadows — the renderer has contact shadows under props and no directional pass),
-   or changing the whole site's day, which includes the two rooms whose subject is dusk. Cost and
-   consequences per option: `skills/street-commons/SKILL.md` §3.
-2. **Water, and which kind.** Sea is the one the owner named; a **river or canal promenade** is the
-   version that fits the lane's one-point projection without opening a second lane, and it can carry a
-   far bank — which is depth a sea cannot give. Either way one body of water, one quay, and a station
-   at the place the water first comes into view.
-3. **How many new places, and where the doors go.** A Toronto-side region and a Japan-side region along
-   the existing spine is the cheap version; a promenade entered at the street's open end (`max_d`,
-   already authored) is the ambitious one. Ask before building — a room is many hours and a second
-   street is more.
+**A street that is a place to walk, with regions and a coast — asked 2026-10-08, decided and built
+by 2026-10-09, its night authored 2026-10-10.** The owner's brief — one street, a Japan region and a
+Canada region, a door per room, coast views in sunlight — is the state of `street.html`: the record
+says `"day": True`, the far end walks out onto a quay at a harbour (`bd.harbor`), the Japanese half
+is a shopping street (`front` + `awn`, `skills/lane-prop` §7), and the sun is an authored moving
+shadow system (`street-commons` §3). The three decisions this backlog once left open were all taken:
+the day is a per-page clock starting before noon; the water is a **harbour**, because the owner
+likened the street to Moji Port and a one-point projection puts water only at the end of the walk;
+the regions are changes of material, light and furniture along the one spine, not new pages. What
+the seventeenth round added is the night the day had been hiding: a lamp now reads three ways after
+dark — halo, body, pool on the pavement — shopfronts spill their window light across the threshold,
+and every front and lantern carries a staggered `liton`, so the evening arrives as a wave
+(`street-commons` §3, "the night rhythm"). The same round found the one lie in the shadow system's
+history — the wall's floor shadow had been `add()`ed after the emit pass and was never painted; the
+light pass draws it now, and `.verify/_shadowdrawn.mjs` proves a shadow is on the screen rather than
+in the comments.
 
 Unrelated to the above and still open:
 
@@ -161,8 +158,10 @@ Unrelated to the above and still open:
    the existing `.btn` system. International search committees want a one-click CV.
 2. **ORCID iD link** — owner will provide their ORCID URL/id. Add to hero + footer social icons
    (define an ORCID inline SVG icon in `_gen_html.py`, Heroicons style), next to Scholar/email.
-3. *(Optional, no input needed — ask before doing)* Surface **corresponding-author / international
-   collaboration** more visibly on Research, since the data already exists in `pubs`.
+3. **Done 2026-10-10** (under the owner's blanket go-word): Research now carries a data-driven
+   glance strip above the publication filters — corresponding-author count, the NSTC
+   study-abroad period, and the international houses — every value computed from `pubs` and
+   `projects`, nothing asserted that the records do not already say.
 
 Context: owner is an NSTC postdoc (2025–2028) exploring international opportunities; these three
 help an international reviewer verify them quickly. Career actions (networking, conferences,
@@ -291,11 +290,14 @@ change and gets committed with the work that motivated it.
 
 | Skill | Path | Use when |
 |---|---|---|
+| **scene-system** | `skills/scene-system/SKILL.md` | Starting any new place, or when the scene skills' order is unclear: the eight-phase pipeline that conducts place-intake / grounded-scene / district-author / landmark-space / lane-prop / street-commons, the renderer contract, the proven idioms with their numbers, the critique failure table, and the gate battery. Read first, then the phase skills. |
 | **district-author** | `skills/district-author/SKILL.md` | Adding or changing a district (a place whose frames, objects and clips hang in one lane), when the owner asks for "3D" or a stories-style viewer, or before choosing any renderer for one. |
 | **place-intake** | `skills/place-intake/SKILL.md` | The owner supplies photographs of a real place — a trip, a site, an alley they walked — and it is to become a room. Runs before `district-author`, before any geometry is written. |
 | **japan-place** | `skills/japan-place/SKILL.md` | The place is in Japan: Tokyo, 福岡/Moji, 屋台, 商店街, 踏切, 参道, 提灯, 自動販売機. Carries the object table with real centimetres (`references/japan-vocabulary.md`) and the sakura-crossing study note (`references/sakura-crossing.md`). |
 | **lane-prop** | `skills/lane-prop/SKILL.md` | One object, light, state or stop inside an existing district: the `SHAPE`/`OBJ_SIZE` registers, the id-prefix naming rule, `Z_SCALE`, `glow`/`of:`, `states`/`leave`, and the measurement that closes it. |
 | **street-commons** | `skills/street-commons/SKILL.md` | The street the rooms stand on: a second street or a new region along the hub, seaside/promenade/harbour/riverbank work, a commercial strip, **and anything that asks for daylight ("有太陽", 海邊, 港, 沿岸, 運河, 商店街)**. Carries the palette-and-sun constraint that makes a sunlit street a stylesheet decision rather than a scene one, and the arithmetic of opening one side of a lane. |
+| **landmark-space** | `skills/landmark-space/SKILL.md` | One landmark object becomes its own walkable space (CN Tower as a room, not a miniature), and the owner's link contract: press the prop, the IG-story plate opens first, an enter-the-space action beside it. Use when a prop should own a district, when the subject is one tall or huge object, or for the beauty gate on any 3D space. |
+| **grounded-scene** | `skills/grounded-scene/SKILL.md` | Any experience scene (體驗場景) that recreates a real place and must feel nearly the same as being there — the owner's round-20 rule. Carries the ladder of evidence (owner's photos → official material → satellite/map → Street View/panoramas → photographs), the measurement table, the fidelity contract (details shrink; sequence, scale, sightlines and distinctive geometry must not), and the fidelity gate. Runs under `district-author`/`landmark-space`, never instead of them. |
 
 **`.claude/skills/` — third-party skills, local-only, gitignored** (not tracked in this repo; the
 74k-line skill payloads were deliberately untracked in `3e2ccbc`). Load the relevant `SKILL.md`

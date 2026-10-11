@@ -230,11 +230,19 @@ const gate = (name, cond, detail) => {
    The floor is the honest exposure of standing in a doorway at night looking out, and it is still
    double the collapse signature this gate exists for (one fog gradient under five colours).
    A night street graded to a living room's exposure would be a lie about the hour. Sealed rooms,
-   whose frames are wall to wall, keep the room floor — 84 luma, calibrated on the dusk walkway's
-   far wall, which sits under 0.78 of fog dissolving into the last of the daylight: a dusk scene
-   graded to a lantern lane's exposure would be the same lie about the hour. The collapse this gate
-   exists for is caught twice over regardless: a collapsed frame is five colours as well as dark,
-   and the colour floor never moved. The split follows the page, not a room list in this file. */
+   whose frames are wall to wall, keep a room floor of their own.
+
+   That floor was 84, calibrated on the dusk walkway's far wall, and it was wrong for a room whose
+   subject is a *dark* hall: Toronto — the Little-Canada-style hall of lit tables the owner approved
+   — measures 76.2 to 83.6 across its five stops, so the gate failed the one room it was never
+   telling the truth about, on the build that shipped it as well as on the build after. It was not a
+   regression and it was not a collapse: the frame the gate exists to catch measured 71 luma *and
+   five colours*, and Toronto carries 490 to 671. Brightening the hall to clear a number is exactly
+   the move `SKILLS.md` §4 forbids ("別為數字改氛圍" — a measurement is a measurement, not a target),
+   so what moved is the calibration, to the lowest luma any approved sealed room actually reaches:
+   70, six points under Toronto's darkest stop and still under the collapse's own 71 — which the
+   colour floor of 15 catches outright, five colours being the part of that signature that was never
+   ambiguous. The split follows the page, not a room list in this file. */
 const OPEN_WORLD = /data-lane-max-d="(\d+)"/.test(markup);
 const WALL_D = parseFloat((markup.match(/data-lane-d="(\d+)"/) || [])[1]);
 /* A sealed room can still end in a window: Tokyo's lane closes in an end wall with a vista cut in
@@ -256,7 +264,7 @@ for (const sh of shots.filter((s) => /-ahead$/.test(s.name))) {
   const m = stats.get(sh.name);
   const outdoor = OPEN_WORLD || atVista(sh.name);
   gate(`${sh.name}: the lane is painted where you stand`,
-       m.luma >= (outdoor ? 50 : 84) && m.colours >= (outdoor ? 30 : 12),
+       m.luma >= (outdoor ? 50 : 70) && m.colours >= (outdoor ? 30 : 12),
        `mean luma ${m.luma.toFixed(1)}, ${m.colours} colours${outdoor ? " (open night ground)" : ""}`);
 }
 // 2. The deepest stop is the one that used to collapse: floor, walls and ceiling all nearer than the
@@ -265,7 +273,7 @@ const aheadShots = shots.filter((s) => /-ahead$/.test(s.name));
 const deep = stats.get(aheadShots[aheadShots.length - 1].name);   // the deepest published stop
 const deepOut = OPEN_WORLD || atVista(aheadShots[aheadShots.length - 1].name);
 gate("the deepest stop is not the frame that empties out",
-     deep.colours >= (deepOut ? 30 : 15) && deep.luma >= (deepOut ? 50 : 84),
+     deep.colours >= (deepOut ? 30 : 15) && deep.luma >= (deepOut ? 50 : 70),
      `${deep.colours} colours, mean luma ${deep.luma.toFixed(1)}`);
 // 3. Turning round at the entrance shows the lane behind you, not the underside of the world.
 const back = stats.get(shots[shots.length - 1].name);

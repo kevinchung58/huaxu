@@ -14,6 +14,9 @@ Canada→Tokyo→Fukuoka corridor is retired.
 
 Work in this order. Do not skip the intake, and do not start with a library.
 
+This skill is the authoring phase of the whole pipeline; `skills/scene-system` conducts
+it — evidence to gates, with the proven renderer idioms and the critique failure table.
+
 ## 0. Is there material, and is it Japan?
 
 If the district comes from the owner's photographs of a real place — a trip, a site, an alley they
@@ -22,6 +25,13 @@ place earns one lane or several, tells you where the reference photographs live 
 never shipped), and hands you back a record. Building directly from photographs without that step is
 how a room becomes a backdrop: this skill knows how to build a place, that one knows what the place
 was.
+
+If the district is a single landmark the owner wants to step into — a tower, a bridge,
+a station — `skills/landmark-space` decides its form (deck, plaza or table), wires the
+prop→story→enter-space contract, and carries the beauty gate. Read it before the intake.
+Whatever the form, when the place is real and the experience must feel nearly the same as being
+there (the owner's round-20 rule), `skills/grounded-scene` governs how faithfully it is built —
+the ladder of evidence, the measurement table and the fidelity gate.
 
 If the place is in Japan, `skills/japan-place` goes with this one: it holds the object table with
 real centimetres for everything a Japanese lane or port is made of, the night the room ends up in,

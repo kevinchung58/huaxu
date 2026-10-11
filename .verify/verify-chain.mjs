@@ -85,6 +85,14 @@ const ROOMS = [
   { file: "rooms.html",          id: "tokyo",   backObj: "noren" },
   { file: "rooms-fukuoka.html",  id: "fukuoka", backObj: "curtain-back" },
   { file: "rooms-toronto.html",  id: "toronto", backObj: "door-back" },
+  // A landmark space owns its way back to the prop that owns it (landmark-space §2), not to
+  // the street: the hall is the hub route in, the space returns to the hall.
+  { file: "rooms-cntower.html",  id: "cntower", backObj: "door-back", home: "rooms-toronto.html" },
+  { file: "rooms-niagara.html",  id: "niagara", backObj: "door-back", home: "rooms-toronto.html",
+    sub: ["rooms-journey.html"] },
+  // The space the real Table Rock owns: entered by the door at the rail end of the promenade,
+  // unwinding to the promenade, not the street.
+  { file: "rooms-journey.html",  id: "journey", backObj: "door-back", home: "rooms-niagara.html" },
 ];
 const STREET_DOORS = [
   { obj: "door-tokyo",    expect: "rooms.html" },
@@ -137,6 +145,8 @@ async function main() {
   for (const r of ROOMS) {
     out.push(`\n-- ${r.id} (${r.file}) --`);
     const { w, doc, navs, errors } = await bootRoom(r.file);
+    // Rooms on the hub street leave for the street; a landmark space leaves for its prop's room.
+    const HOME = r.home || STREET;
     ok(`${r.id}: boots without console errors`, errors.length === 0, errors.slice(0, 2).join(" | "));
 
     const hud = doc.querySelector("[data-walk-exit]");
@@ -144,8 +154,8 @@ async function main() {
        hud ? hud.getAttribute("href") : "missing");
 
     const back = doc.querySelector(`[data-obj="${r.backObj}"]`);
-    ok(`${r.id}: back prop "${r.backObj}" exists and leaves for the street`,
-       !!back && back.dataset.leave.split("#")[0] === STREET, back?.dataset.leave || "missing");
+    ok(`${r.id}: back prop "${r.backObj}" exists and leaves for ${HOME}`,
+       !!back && back.dataset.leave.split("#")[0] === HOME, back?.dataset.leave || "missing");
 
     if (hud && back) {
       ok(`${r.id}: HUD exit href matches back curtain leave`,
@@ -159,10 +169,13 @@ async function main() {
     // Every leave on the page must be the street: one wrong target breaks the
     // "walk out of any room, you are on the street" guarantee.
     const leaves = [...doc.querySelectorAll("[data-leave]")].map((e) => e.dataset.leave);
-    ok(`${r.id}: every leave on the page is the street`,
-       leaves.length > 0 && leaves.every((t) => t.split("#")[0] === STREET), [...new Set(leaves)].join(", "));
+    // A space may also own the door to a space beneath it — the way the real Table Rock owns
+    // Journey Behind the Falls — so a leave is right when it is the unwind home or an owned sub-space.
+    ok(`${r.id}: every leave on the page is ${HOME} or an owned sub-space`,
+       leaves.length > 0 && leaves.every((t) => t.split("#")[0] === HOME || (r.sub || []).includes(t.split("#")[0])),
+       [...new Set(leaves)].join(", "));
     ok(`${r.id}: the leave's spawn hash names its own room`,
-       leaves.every((t) => !t.split("#")[1] || t.split("#")[1] === `at-${r.id}`),
+       leaves.every((t) => !t.split("#")[1] || t.split("#")[1] === `at-${r.id}` || !r.home),
        [...new Set(leaves)].join(", "));
 
     if (back) {
@@ -190,7 +203,10 @@ async function main() {
   const act = fs.readFileSync("activities.html", "utf8");
   /* The Field notes wall is ONE container of three cards, the card itself the door. */
   const WANT = { toronto: "rooms-toronto.html", tokyo: "rooms.html",
-                 fukuoka: "rooms-fukuoka.html" };
+                 fukuoka: "rooms-fukuoka.html",
+                 // the landmark space owns a card too: the album wall is an archive, not the hub
+                 cntower: "rooms-cntower.html", niagara: "rooms-niagara.html",
+                 journey: "rooms-journey.html" };
   const wrapAt = act.indexOf("data-place-cards");
   ok("album: the place-card container exists", wrapAt >= 0);
   for (const [id, page] of Object.entries(WANT)) {

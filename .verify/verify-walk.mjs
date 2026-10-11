@@ -316,9 +316,15 @@ ok("the backdrop adds its own fills to the room, not a second pass over it", ctx
    enough to earn that fill -- so at noon the room costs 5573 fills and after dark, when every quad
    needs darkening, it costs 6164. The ceiling now has to cover the expensive hour, not the cheap
    one, and it goes to 6300. A reading taken at a different time of day will differ by about 600
-   fills; that is the cycle working, not a regression. Still far short of a second pass. */
+   fills; that is the cycle working, not a regression. Still far short of a second pass.
+
+   It moved once more, and the A/B is exact this time: the falls' promenade registered two
+   material tiles (hedge, mistview) that every boot draws once, the way every other tile is
+   drawn — HEAD reads 6298, the promenade build reads 6380, and 82 is precisely the two
+   painters' fillRects. The ceiling goes to 6600; a second depth pass would now read near
+   12 700, so the detector still has a whole pass of daylight. */
 ok("one depth pass, dressed: the room costs fills, not passes",
-   ctx.fills > before && ctx.fills < 6300, `${ctx.fills} fills, one pass`);
+   ctx.fills > before && ctx.fills < 6600, `${ctx.fills} fills, one pass`);
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
 ok("the cladding is tiled into the wall's own panels, so an affine map stays exact",
@@ -831,23 +837,59 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
      point beside that room's own door, so it must name the room the leave is on — a hash that
      names another room would land you at the wrong door. */
   const pageOf = (t) => t.split("#")[0];
+  // A landmark space is not a hub room: its every way out is the room whose prop owns it
+  // (landmark-space §2), and the street carries no door to it. Hub rooms still leave only to
+  // the street, one door each, as before.
+  const exitHref = (html) => {
+    const m = html.match(/class="walk-icon walk-exit" href="([^"]+)"/);
+    return m ? pageOf(m[1]) : null;
+  };
+  const spaceOf = {}, unwindOf = {};
+  for (const r of roomRows) {
+    const htmp = fs.readFileSync(r.page, "utf8");
+    const ls = Array.from(htmp.matchAll(/data-leave="([^"]+)"/g)).map((m) => pageOf(m[1]));
+    unwindOf[r.id] = exitHref(htmp);
+    if (unwindOf[r.id] && unwindOf[r.id] !== streetRow.page && ls.length && ls.every((t) => t !== streetRow.page))
+      spaceOf[r.id] = ls;
+  }
   for (const r of roomRows) {
     const html = fs.readFileSync(r.page, "utf8");
     const leaves = Array.from(html.matchAll(/data-leave="([^"]+)"/g)).map((m) => m[1]);
     if (!leaves.length) problems.push(`${r.id}: no way out at all`);
-    for (const t of new Set(leaves)) {
-      if (pageOf(t) !== streetRow.page) problems.push(`${r.id}: a leave to ${t}, not the street`);
-      const h = t.split("#")[1];
-      if (h && h !== `at-${r.id}`) problems.push(`${r.id}: a leave hash #${h}, not #at-${r.id}`);
+    if (spaceOf[r.id]) {
+      for (const t of new Set(spaceOf[r.id]))
+        if (!roomRows.some((x) => x.page === t)) problems.push(`${r.id}: a space leaving to ${t}, no built room`);
+    } else {
+      for (const t of new Set(leaves)) {
+        if (pageOf(t) !== streetRow.page) problems.push(`${r.id}: a leave to ${t}, not the street`);
+        const h = t.split("#")[1];
+        if (h && h !== `at-${r.id}`) problems.push(`${r.id}: a leave hash #${h}, not #at-${r.id}`);
+      }
     }
     if (/id="way-on"/.test(html)) problems.push(`${r.id}: still carries a chain door`);
-    if (html.includes(streetRow.page) === false) problems.push(`${r.id}: the street is not named on it`);
+    if (spaceOf[r.id]) {
+      // A space unwinds through its walk-exit, and a space may own another space the way the
+      // real Table Rock owns Journey: follow the exit chain — each step a built room — until a
+      // page names the street. The hub is reached transitively, one unwind at a time.
+      let cur = r.id, guard = 0;
+      while (guard++ < 6) {
+        const u = unwindOf[cur];
+        if (u === streetRow.page) break;
+        const nr = roomRows.find((x) => x.page === u);
+        if (!nr) { problems.push(`${r.id}: unwind to ${u}, no built room`); cur = null; break; }
+        cur = nr.id;
+      }
+      if (cur && unwindOf[cur] !== streetRow.page)
+        problems.push(`${r.id}: the unwind never reaches the street`);
+    } else if (html.includes(streetRow.page) === false) problems.push(`${r.id}: the street is not named on it`);
   }
   {
     const html = fs.readFileSync(streetRow.page, "utf8");
     const leaves = Array.from(html.matchAll(/data-leave="([^"]+)"/g)).map((m) => pageOf(m[1]));
     for (const r of roomRows)
-      if (!leaves.includes(r.page)) problems.push(`street: no door onto ${r.id}`);
+      if (!spaceOf[r.id] && !leaves.includes(r.page)) problems.push(`street: no door onto ${r.id}`);
+    for (const r of roomRows)
+      if (spaceOf[r.id] && leaves.includes(r.page)) problems.push(`street: a door onto the space ${r.id}`);
     if (!leaves.includes("activities.html")) problems.push("street: no door onto the album");
     const doorTargets = new Set(leaves);
     for (const t of doorTargets)
@@ -906,7 +948,7 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
     if (!card.includes(`IMG/${r.id}-cover.jpg`))
       cardProblems.push(`${r.id}: the card does not carry its own cover sheet`);
   }
-  ok("three cards, one door each, in ROOMS order, each holding its own cover",
+  ok("one place card per room, in ROOMS order, each holding its own cover",
      cardProblems.length === 0, cardProblems.join("; "));
   ok("a plate is not an entrance: no tile or text-arrow doors survive on this wall",
      !/<a class="ig-room"/.test(act) && !/class="text-arrow" href="rooms-/.test(act));

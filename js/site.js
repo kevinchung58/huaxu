@@ -1117,7 +1117,7 @@ function leaveOverlay(root, trigger) {
     H = Math.max(1, Math.round(W * (ch / Math.max(1, cw))));
     cv.width = W; cv.height = H;
     tilePat = mkTile(paintWall);
-    floorPat = mkTile(paintFloor);
+    floorPat = mkTile(layer.dataset.floor === "pod" ? paintPodFloor : paintFloor);
     winPat = mkTile(paintWindows);
     PATS.shutter = mkTile(paintShutter);
     PATS.dado = mkTile(paintDado);
@@ -1143,6 +1143,74 @@ function leaveOverlay(root, trigger) {
       c.fillStyle = "rgba(240,248,252,0.5)";
       for (let i = 0; i < 26; i++) c.fillRect((i * 37) % 128, (i * 53) % 128, 6 + (i % 3) * 3, 1);
     });
+    /* The city from above — the material the pod's glass wears. A dark ground, a faint street
+       grid, blocks with a few amber windows, and the lake for an edge: read at a lane's distance
+       it is a city seen down, which is the one sightline a tower owns that a photograph of its
+       exterior cannot give. The deep twin is the same city 342 m further down: smaller blocks,
+       hazier grid, because the glass floor looks straight down the length of the shaft. */
+    const paintAerial = (c) => {
+      c.fillStyle = "#15223e"; c.fillRect(0, 0, 128, 128);
+      c.strokeStyle = "rgba(130,152,192,0.26)"; c.lineWidth = 2;
+      [32, 64, 96].forEach((p) => {
+        c.beginPath(); c.moveTo(p, 0); c.lineTo(p, 128); c.stroke();
+        c.beginPath(); c.moveTo(0, p); c.lineTo(128, p); c.stroke();
+      });
+      c.fillStyle = "#233457";
+      [[6,6,20,18],[40,10,16,14],[70,6,22,20],[100,12,18,16],[10,44,18,16],[44,40,14,20],
+       [76,44,20,14],[104,44,16,18],[12,78,16,14],[42,80,20,16],[78,76,16,18],[106,80,14,14],
+       [10,108,18,14],[46,110,14,12],[76,108,18,14],[104,110,16,12]]
+        .forEach(([x,y,w,h]) => c.fillRect(x,y,w,h));
+      c.fillStyle = "rgba(255,176,96,0.8)";
+      [[12,12],[48,16],[80,12],[106,18],[16,50],[50,46],[84,50],[110,52],[18,84],[52,86],
+       [84,82],[110,86],[16,114],[52,116],[82,114],[110,116]].forEach(([x,y]) => c.fillRect(x,y,3,3));
+      c.fillStyle = "#0a1222"; c.fillRect(0, 122, 128, 6);
+    };
+    const paintAerialDeep = (c) => {
+      c.fillStyle = "#0f1a30"; c.fillRect(0, 0, 128, 128);
+      c.strokeStyle = "rgba(120,140,180,0.17)"; c.lineWidth = 1;
+      [16, 48, 80, 112].forEach((p) => {
+        c.beginPath(); c.moveTo(p, 0); c.lineTo(p, 128); c.stroke();
+        c.beginPath(); c.moveTo(0, p); c.lineTo(128, p); c.stroke();
+      });
+      c.fillStyle = "#1d2c4c";
+      for (let y = 4; y < 128; y += 16) for (let x = 4; x < 128; x += 16)
+        if ((x + y) % 32 === 4) c.fillRect(x, y, 7, 6);
+      c.fillStyle = "rgba(255,176,96,0.5)";
+      [[20,20],[68,36],[100,68],[36,84],[84,100],[52,52]].forEach(([x,y]) => c.fillRect(x,y,2,2));
+    };
+    PATS.aerial = mkTile(paintAerial);
+    PATS.aerialdeep = mkTile(paintAerialDeep);
+    /* The pod's own ground: dark steel panels with a hairline seam, a shade brighter
+ where the spots stand over it. Concrete would put the street's pavement at 346 m. */
+    function paintPodFloor(c) {
+      c.fillStyle = "#1e2637"; c.fillRect(0, 0, 128, 128);
+      c.fillStyle = "rgba(10,15,28,0.6)";
+      c.fillRect(0, 0, 128, 2); c.fillRect(0, 64, 128, 2); c.fillRect(0, 0, 2, 128); c.fillRect(64, 0, 2, 128);
+      c.fillStyle = "rgba(160,178,205,0.05)"; c.fillRect(4, 4, 60, 60);
+    }
+    PATS.podfloor = mkTile(paintPodFloor);
+    /* The park side of a promenade: a hedge is a mass of leaves, not a green wall — dark at the
+       body, a few lighter tips where the sun catches the top of the mass. */
+    function paintHedge(c) {
+      c.fillStyle = "#20362c"; c.fillRect(0, 0, 128, 128);
+      c.fillStyle = "#2a463a";
+      for (let i = 0; i < 40; i++) c.fillRect((i * 53) % 128, (i * 37) % 128, 7, 5);
+      c.fillStyle = "#3c5c4a";
+      for (let i = 0; i < 18; i++) c.fillRect((i * 71) % 128, (i * 29) % 128, 4, 3);
+    }
+    /* The falls' mist worn as a side view: soft horizontal streaks, pale over a cool grey, the
+       water's own weather standing in for the gorge the parapet hides. */
+    function paintMistView(c) {
+      c.fillStyle = "#9fb4c6"; c.fillRect(0, 0, 128, 128);
+      c.fillStyle = "rgba(235,244,250,0.5)";
+      for (let y = 6; y < 128; y += 18) c.fillRect(0, y, 128, 5 + (y % 3) * 2);
+      c.fillStyle = "rgba(120,145,168,0.35)";
+      for (let y = 14; y < 128; y += 26) c.fillRect(0, y, 128, 3);
+      c.fillStyle = "rgba(255,255,255,0.55)";
+      for (let i = 0; i < 10; i++) c.fillRect((i * 41) % 128, (i * 61) % 128, 18, 4);
+    }
+    PATS.hedge = mkTile(paintHedge);
+    PATS.mistview = mkTile(paintMistView);
     PATS.track = mkTile(paintTrack);
     PATS.domep = mkTile(paintDomeP);
     PATS.sky0 = mkTile(paintSkyline(0, 0));
@@ -1453,6 +1521,13 @@ function leaveOverlay(root, trigger) {
     body: L.body || null, size: L.size || 0, h: L.h || 0,
     of: L.of || null, k0: L.k === undefined ? 0.5 : L.k,
     swing: L.swing || 0, period: L.period || 4, phase: L.phase || 0,
+    /* The night's two fields, and each of them has to be listed here or it does not exist: the
+       island is JSON and this map is the renderer's whole vocabulary. `liton` is the phase at which
+       this source comes up (inherited from its prop by the emitter, so a shop's windows and its
+       pavement rise together); `spill` makes the light on the ground a splash along a front rather
+       than a pool under a fitting. A field the emitter stamps and this map drops is the trap
+       `skills/lane-prop` §7 was written about, seen from the other end. */
+    liton: L.liton || 0, spill: L.spill || 0,
   }));
   // Time, sampled once per frame: a lantern that swings on a clock of its own while everything else
   // uses another is how a scene starts to shimmer.
@@ -1900,6 +1975,166 @@ function leaveOverlay(root, trigger) {
         if (jib) { jib.air = 0.16; jib.lit = 0.42; jib.daygain = 0.55; }
       });
     }
+    const cb = bd.citybelow;
+    if (cb) {
+      /* The city from above, past the pod's glass: a ground plane far below eye level, panelled
+         like the plaza because one stretched quad would bend the grid the way it bends paving.
+         The lake is the dark band at the far shore — due south of the real pod — and air ramps
+         toward the fog ceiling exactly like every other far surface here. */
+      const STEP = 4000, PU = 1 / 10, span = Math.max(1, cb.z1 - cb.z0);
+      for (let z = cb.z0; z < cb.z1; z += STEP) {
+        const z1 = Math.min(z + STEP, cb.z1);
+        const gq = add(C, [[-cb.half, cb.y, z], [cb.half, cb.y, z],
+                           [cb.half, cb.y, z1], [-cb.half, cb.y, z1]],
+          [z * PU, -cb.half * PU, z * PU, cb.half * PU,
+           z1 * PU, cb.half * PU, z1 * PU, -cb.half * PU],
+          "pat", PATS.aerialdeep);
+        if (gq) { gq.air = 0.18 + ((z - cb.z0) / span) * (FOG_MAX - 0.18); gq.lit = 0.62; gq.daygain = 0.4; }
+      }
+      if (cb.lake) {
+        const lq = add(C, [[-cb.half, cb.y + 2, cb.lake.d0], [cb.half, cb.y + 2, cb.lake.d0],
+                           [cb.half, cb.y + 2, cb.z1], [-cb.half, cb.y + 2, cb.z1]],
+                       ZERO8, "flat", "#0a1322");
+        if (lq) { lq.air = 0.3; lq.lit = 0.4; lq.day = false; }
+      }
+    }
+    const ng = bd.niagara;
+    if (ng) {
+      /* The painter keeps only what no prop can carry: the gorge river running away below the
+         crest, the rainbow when the sun stands in the spray, and the Table Rock rail at the edge
+         of the walkable world. The falls themselves are the site's own falls shape, stood at real
+         scale as props — the same sheet-over-ledge-into-mist that reads on the hall's table. */
+      const STEP = 3000, PU = 1 / 10;
+      const crestZ = ng.z0 + 1200;
+      const footY = ng.y - ng.crest.drop;
+      for (let z = crestZ + 500; z < ng.z1; z += STEP) {
+        const z1 = Math.min(z + STEP, ng.z1);
+        const gq = add(C, [[-ng.half, footY, z], [ng.half, footY, z],
+                           [ng.half, footY, z1], [-ng.half, footY, z1]],
+          [z * PU, -ng.half * PU, z * PU, ng.half * PU,
+           z1 * PU, ng.half * PU, z1 * PU, -ng.half * PU],
+          "flat", "#1f384c");
+        if (gq) { gq.air = 0.16 + ((z - crestZ) / (ng.z1 - crestZ)) * 0.4; gq.lit = 0.7; gq.daygain = 0.9; }
+      }
+      if (DAY() > 0.25) {
+        const cols = ["rgba(255,120,110,0.20)", "rgba(255,200,120,0.20)", "rgba(150,220,150,0.20)", "rgba(140,190,255,0.24)"];
+        cols.forEach((col, i) => {
+          const r0 = 6000 + i * 400;
+          for (let a = 0; a < 7; a++) {
+            const t0 = (a / 6) * Math.PI, t1 = ((a + 1) / 6) * Math.PI;
+            const q = add(C, [[ng.crest.x - Math.cos(t0) * r0, footY + 400 + Math.sin(t0) * (r0 * 0.55), crestZ + 900],
+                              [ng.crest.x - Math.cos(t1) * r0, footY + 400 + Math.sin(t1) * (r0 * 0.55), crestZ + 900],
+                              [ng.crest.x - Math.cos(t1) * (r0 + 400), footY + 400 + Math.sin(t1) * ((r0 + 400) * 0.55), crestZ + 900],
+                              [ng.crest.x - Math.cos(t0) * (r0 + 400), footY + 400 + Math.sin(t0) * ((r0 + 400) * 0.55), crestZ + 900]],
+                          ZERO8, "flat", col);
+            if (q) { q.air = 0.08; q.day = false; }
+          }
+        });
+      }
+      /* Downstream, the gorge runs to the city: the Skylon's dish on the Canadian bank and the
+         Rainbow Bridge spanning to the American side, both silhouettes in the haze — the view
+         every Table Rock visitor turns to after the brink. At night the floodlights spill their
+         held colour onto the water below the falls. */
+      /* The bridge spans the gorge well past the falls' own breadth, so only the two wings
+         beyond the curtain can ever show; the Skylon's dish stands out on the left bank. */
+      const sil = (y0, y1, x, z, w) => add(C, [[x - w / 2, y0, z], [x + w / 2, y0, z],
+                                               [x + w / 2, y1, z], [x - w / 2, y1, z]],
+                                           ZERO8, "flat", "#3a4d66");
+      const sky = sil(footY + 200, footY + 2600, -9500, 15000, 240);
+      if (sky) { sky.air = 0.55; sky.lit = 0.6; sky.daygain = 0.5; }
+      const dish = sil(footY + 2600, footY + 2950, -9500, 15000, 900);
+      if (dish) { dish.air = 0.55; sky.lit = 0.6; dish.daygain = 0.5; }
+      [[-12000, -7000], [7000, 12000]].forEach(([x0, x1]) => {
+        const q = add(C, [[x0, footY + 250, 16500], [x1, footY + 250, 16500],
+                          [x1, footY + 550, 16500], [x0, footY + 550, 16500]],
+                      ZERO8, "flat", "#42566f");
+        if (q) { q.air = 0.55; q.lit = 0.6; q.daygain = 0.5; }
+      });
+      /* The Canadian bank downstream carries three silhouettes, nearest first: the old Toronto
+         Power Generating Station at the gorge rim, the round Tower Hotel, and the Skylon's dish
+         furthest out — the skyline a Table Rock visitor turns to. */
+      const power = sil(footY + 200, footY + 700, -5200, 10500, 1300);
+      if (power) { power.air = 0.5; power.lit = 0.6; power.daygain = 0.5; }
+      const stack = sil(footY + 700, footY + 1050, -5500, 10500, 160);
+      if (stack) { stack.air = 0.5; stack.lit = 0.6; stack.daygain = 0.5; }
+      const towerhotel = sil(footY + 200, footY + 1900, -7200, 12500, 320);
+      if (towerhotel) { towerhotel.air = 0.55; towerhotel.lit = 0.6; towerhotel.daygain = 0.5; }
+      if (DAY() < 0.25) {
+        const ILLUM = ["#37c46b", "#e0435c", "#3f7de0", "#b04de0", "#e0a13f"];
+        const held = ILLUM[Math.floor(T / 7) % ILLUM.length];
+        const glow = add(C, [[-ng.half * 0.8, footY + 4, crestZ + 500], [ng.half * 0.8, footY + 4, crestZ + 500],
+                             [ng.half * 0.8, footY + 4, crestZ + 6500], [-ng.half * 0.8, footY + 4, crestZ + 6500]],
+                         ZERO8, "flat", held);
+        if (glow) { glow.air = 0.3; glow.lit = 0.9; glow.day = false; }
+        /* Fireworks over the crest in season, at ten: three bursts that swell and fade on the
+           frame clock, small against a thirteen-storey curtain, which is the scale they keep. */
+        [[-3000, 3400, 0], [1500, 4100, 2.1], [4500, 3700, 4.2]].forEach(([bx, by, ph]) => {
+          const life = Math.max(0, Math.sin(T * 0.45 + ph));
+          if (life < 0.05) return;
+          const col = ILLUM[Math.floor(ph * 2) % ILLUM.length];
+          for (let k = 0; k < 8; k++) {
+            const t0 = (k / 8) * Math.PI * 2, t1 = ((k + 0.5) / 8) * Math.PI * 2;
+            const r0 = 260 + life * 620, r1 = r0 + 90;
+            const q = add(C, [[bx + Math.cos(t0) * r0, footY + by + Math.sin(t0) * r0 * 0.8, crestZ + 900],
+                              [bx + Math.cos(t0) * r1, footY + by + Math.sin(t0) * r1 * 0.8, crestZ + 900],
+                              [bx + Math.cos(t1) * r1, footY + by + Math.sin(t1) * r1 * 0.8, crestZ + 900],
+                              [bx + Math.cos(t1) * r0, footY + by + Math.sin(t1) * r0 * 0.8, crestZ + 900]],
+                          ZERO8, "flat", col);
+            if (q) { q.air = 0.05; q.lit = 1.4 * life; q.day = false; }
+          }
+        });
+      }
+      const railHalf = ng.half * 0.55;
+      [[86, 6], [58, 5]].forEach(([yy, th]) => {
+        const q = add(C, [[-railHalf, yy, ng.rail], [railHalf, yy, ng.rail],
+                          [railHalf, yy + th, ng.rail], [-railHalf, yy + th, ng.rail]],
+                      ZERO8, "flat", "#20293c");
+        if (q) { q.air = 0.1; q.lit = 0.5; q.daygain = 0.6; }
+      });
+      for (let x = -railHalf; x <= railHalf; x += 900) {
+        const p = add(C, [[x - 4, 0, ng.rail], [x + 4, 0, ng.rail], [x + 4, 92, ng.rail], [x - 4, 92, ng.rail]],
+                      ZERO8, "flat", "#20293c");
+        if (p) { p.air = 0.1; p.lit = 0.5; p.daygain = 0.6; }
+      }
+    }
+    const jb = bd.journey;
+    if (jb) {
+      /* The deck at the foot: the gorge water below the curtain, the deck rail at the edge of
+         the walkable world, and after dark the floodlights' held colour spilled on the water —
+         the deck is one of the real places the illumination is watched from. */
+      const STEP = 2200, PU = 1 / 10;
+      for (let z = jb.z0; z < jb.z1; z += STEP) {
+        const z1 = Math.min(z + STEP, jb.z1);
+        const gq = add(C, [[-jb.half, jb.foot, z], [jb.half, jb.foot, z],
+                           [jb.half, jb.foot, z1], [-jb.half, jb.foot, z1]],
+          [z * PU, -jb.half * PU, z * PU, jb.half * PU,
+           z1 * PU, jb.half * PU, z1 * PU, -jb.half * PU],
+          "flat", "#16283a");
+        if (gq) { gq.air = 0.14 + ((z - jb.z0) / (jb.z1 - jb.z0)) * 0.3; gq.lit = 0.65; gq.daygain = 0.9; }
+      }
+      if (DAY() < 0.25) {
+        const ILLUM = ["#37c46b", "#e0435c", "#3f7de0", "#b04de0", "#e0a13f"];
+        const held = ILLUM[Math.floor(T / 7) % ILLUM.length];
+        const glow = add(C, [[-jb.half * 0.8, jb.foot + 4, jb.z0], [jb.half * 0.8, jb.foot + 4, jb.z0],
+                             [jb.half * 0.8, jb.foot + 4, jb.z1], [-jb.half * 0.8, jb.foot + 4, jb.z1]],
+                         ZERO8, "flat", held);
+        if (glow) { glow.air = 0.28; glow.lit = 0.9; glow.day = false; }
+      }
+      // The deck rail, hand height, at the edge of the walkable world.
+      [[86, 6], [58, 5]].forEach(([yy, th]) => {
+        const q = add(C, [[-jb.half * 0.5, yy, jb.rail], [jb.half * 0.5, yy, jb.rail],
+                          [jb.half * 0.5, yy + th, jb.rail], [-jb.half * 0.5, yy + th, jb.rail]],
+                      ZERO8, "flat", "#20293c");
+        if (q) { q.air = 0.1; q.lit = 0.5; q.daygain = 0.6; }
+      });
+      // The two portals in the tunnel's right wall: windows of falling water, bright behind rock.
+      [[150, 200], [235, 285]].forEach(([p0, p1]) => {
+        const q = add(C, [[jb.wall - 1, 40, p0], [jb.wall - 1, 40, p1],
+                          [jb.wall - 1, 190, p1], [jb.wall - 1, 190, p0]],
+                      ZERO8, "flat", "rgba(226,242,246,0.9)");
+        if (q) { q.lit = 1.35; q.air = 0.04; q.day = false; }
+      });
+    }
     const cross = bd.crossing;
     if (cross) {
       const n = cross.stripes || 8, span = cross.x1 - cross.x0;
@@ -2235,7 +2470,7 @@ function leaveOverlay(root, trigger) {
 
       /* Contact shadow: anything standing on a floor or a tabletop throws a soft dark quad at its
          base, or it floats. Wall-hung things are exempt — their shadow is the wall's own darkness. */
-      if (Math.abs(m.x) < WALL - 40 && kind !== "track") {
+      if (Math.abs(m.x) < WALL - 40 && kind !== "track" && kind !== "glassfloor") {
         const fw = (onSide ? m.d : m.w) * 0.68, fd = (onSide ? m.w : m.d) * 0.68;
         const cs = add(C, [[m.x - fw / 2, m.y + 1, m.z - fd / 2], [m.x + fw / 2, m.y + 1, m.z - fd / 2],
                            [m.x + fw / 2, m.y + 1, m.z + fd / 2], [m.x - fw / 2, m.y + 1, m.z + fd / 2]],
@@ -2697,6 +2932,28 @@ function leaveOverlay(root, trigger) {
                           [m.x + m.w / 2, m.y + 1, m.z + m.d / 2], [m.x - m.w / 2, m.y + 1, m.z + m.d / 2]],
                       ZERO8, "flat", base);
         if (q) { q.lit = lit * 0.5; drawn.push(q); }
+      } else if (shape === "glassfloor") {
+        /* A square of floor that is a window straight down: the city 342 m below rides the deep
+           aerial tile behind a steel rim. `on` (step on) lifts the panel's own light the way a lit
+           pool does — standing on the glass is the moment, not the edge of it. */
+        const on = S && S.on ? S.on : 0;
+        const hw = m.w / 2, hd = m.d / 2;
+        const q = add(C, [[m.x - hw, m.y + 1, m.z - hd], [m.x + hw, m.y + 1, m.z - hd],
+                          [m.x + hw, m.y + 1, m.z + hd], [m.x - hw, m.y + 1, m.z + hd]],
+            [(m.z - hd) * 0.6, (m.x - hw) * 0.6, (m.z - hd) * 0.6, (m.x + hw) * 0.6,
+             (m.z + hd) * 0.6, (m.x + hw) * 0.6, (m.z + hd) * 0.6, (m.x - hw) * 0.6],
+            "pat", PATS.aerialdeep);
+        if (q) { q.lit = lit * (on ? 1.25 : 0.8); drawn.push(q); }
+        [[m.z - hd - 5, m.z - hd], [m.z + hd, m.z + hd + 5]].forEach(([z0, z1]) => {
+          const r = add(C, [[m.x - hw - 5, m.y, z0], [m.x + hw + 5, m.y, z0],
+                            [m.x + hw + 5, m.y + 3, z1], [m.x - hw - 5, m.y + 3, z1]],
+                        ZERO8, "flat", "#3a4763");
+          if (r) { r.lit = lit * 1.1; drawn.push(r); }
+        });
+        const sheen = add(C, [[m.x - hw, m.y + 2, m.z - hd], [m.x - hw * 0.2, m.y + 2, m.z - hd],
+                              [m.x + hw * 0.2, m.y + 2, m.z + hd], [m.x - hw * 0.6, m.y + 2, m.z + hd]],
+                          ZERO8, "flat", `rgba(210,228,248,${on ? 0.10 : 0.16})`);
+        if (sheen) { sheen.air = 0; sheen.day = false; drawn.push(sheen); }
       } else if (shape === "plinth") {
         /* A diorama table: a dark cabinet whose top is the one face brighter than its own light —
            the lamp under the model shines up through it, and that glow is authored in the record.
@@ -2933,6 +3190,12 @@ function leaveOverlay(root, trigger) {
             fn(a0, a1, bow((a0 + a1) / 2) + t);
           }
         };
+        /* The falls are floodlit after dark — every night, coloured lights played up the sheet.
+           The illumination cycles its colours slowly, so at night the jade becomes whichever
+           colour the lights hold, brightened the way a lit curtain is. Day keeps the jade. */
+        const nightfall = DAYPAGE && DAY() < 0.25;
+        const ILLUM = ["#37c46b", "#e0435c", "#3f7de0", "#b04de0", "#e0a13f"];
+        const illum = nightfall ? ILLUM[Math.floor(T / 7) % ILLUM.length] : null;
         // The sheet: three height slices, bright at the crest and shadowing toward the basin —
         // one flat lit value was what made it a glowing white board — then moving stripes over it.
         /* Three height slices, jade and brightening toward the crest. It measured sd 17 -- a flat
@@ -2940,6 +3203,7 @@ function leaveOverlay(root, trigger) {
            and washed the water out to near-white. The stripes are the water's texture, not its
            colour: they go thin and half as opaque so the jade is what you see. */
         [[0, 0.9, "#3f8fa4"], [1, 1.1, "#5aaeb4"], [2, 1.35, "#8ad2cc"]].forEach(([si, l, col]) => {
+          if (illum) { col = illum; l = 1.45; }
           const y0 = m.y + (si / 3) * m.h, y1 = m.y + ((si + 1) / 3) * m.h;
           /* A surge: water does not fall evenly, a body of it comes down and passes. The wave runs
              down the three slices, so the brightness travels with it instead of pulsing in place.
@@ -3900,8 +4164,22 @@ function leaveOverlay(root, trigger) {
        at noon, because a "somewhere open" bounce authored at `k: 0.5` was still burning at the
        daylight floor. Where the record says the place is a day, the sun takes the glows' share away. */
     const dayFall = (v) => (DAYPAGE ? v * (1 - 0.88 * DAY()) : v);
+    /* A light's own moment in the evening.
+
+       `liton` is the phase at which this source comes up, and it is the same field a building's
+       windows already carry — a prop's windows and its pavement come up together, because they are
+       the same light seen twice. Without it every shop on the street rose at the same instant,
+       which is a switch and not a dusk (the reason `liton` exists at all, in Moji's skyline).
+
+       The window is 8% of the cycle rather than the 5% the skyline painters use because a street's
+       shops are walked past one at a time and a five-step rise is over before you reach them. The
+       clamp is what keeps a light from going out again at the end of the cycle: `ease01` of anything
+       above 1 is 1, so a `liton` of 0.9 is a light that comes up late and stays up. */
+    const ease01 = (v) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
+    const litOn = (L) => (L.liton ? ease01((phaseNow() - L.liton) / 0.08) : 1);
     const glowStrength = (L) =>
-      (L.k === undefined ? 0.5 : L.k) * GLOW_GAIN * dayFall(GLOW_DAY + (1 - GLOW_DAY) * NIGHT());
+      (L.k === undefined ? 0.5 : L.k) * GLOW_GAIN * dayFall(GLOW_DAY + (1 - GLOW_DAY) * NIGHT())
+      * litOn(L);
     const glow = (px, py, pz, r, col) => {
       const p = camPt(C, px, py, pz);
       if (p.z < NEAR) return;
@@ -3930,10 +4208,121 @@ function leaveOverlay(root, trigger) {
       g.restore();
     };
 
+    /* A light on the ground, which is the read the halo in the air cannot give.
+
+       The night's light had two of its three reads and no third: the halo hanging in the air, the
+       paper or the bulb that makes it, and nothing at all where the light lands. So the pavement
+       under a lantern was exactly as dark as the pavement under nothing, and a street at night read
+       as four bright dots in a navy tube. A pool is the same light a third time, on the surface it
+       actually falls on, and it is the read that puts the light *under* you.
+
+       Three rules, all of them measured rather than styled:
+
+       - **It is night's.** The condition is `glowStrength` — the same number the halo is drawn at —
+         so a pool arrives with its own light and leaves with it. At noon the sun is the pool, and a
+         warm ellipse on sunlit asphalt is a second sun. This is the night half of the day's shadow
+         rule: shadows are `day: false`, pools are night's, and the two therefore never share a patch
+         of pavement. A shadow at noon and a pool at midnight is one system, not two.
+       - **Its size comes from the source's own height and strength, not from a constant.** A 5 m
+         street lamp throws about 3.7 m across; a paper lantern at 3 m throws 2 m of soft light, and
+         the record's own `size` widens it for a bigger lantern. Everything is clamped, so a
+         mis-authored `k` cannot carpet the lane.
+       - **It is a quad, not a screen-space circle.** `reflect()` squashes a circle at the projected
+         centre, which lands in the right place and lies about its shape: a circle drawn on a
+         picture of a floor is a decal. This one is four corners on the ground plane through the
+         same projection as the shadows, so it foreshortens with distance the way the pavement does.
+         The gradient stays in screen space, centred on the quad's own projected centre and sized
+         from its projected radius, so the falloff is round where a pool is round.
+
+       Drawn under `lighter`, after the haloes: additive, so pools overlap honestly where two lamps
+       meet, and a pool can only ever add light to a surface, never paint over one. */
+    const poolR = (L) => clamp(138 * Math.sqrt(Math.max(40, L.y) / 300)
+      * (0.55 + 0.75 * (L.k === undefined ? 0.5 : L.k))
+      * (L.body === "lantern" ? Math.max(1, (L.size || 22) / 22) * 0.74 : 1), 46, 330);
+    /* Both of the ground lights are one clip and one gradient, so they share the plumbing. The path
+       is the polygon *after* near-plane clipping, never the corners it was handed: the walker can
+       stand between a pool and the far end, and a corner behind the camera projects to the wrong
+       side of the screen and smears the light across the frame. `clipNear` rather than `add()` on
+       purpose — `add()` also pushes into the frame's quad list, and the scene's paint pass has
+       already run by here, so those quads would be counted by the cost harness and painted by
+       nobody. The gradient's radius comes from the nearest surviving corner, for the same reason. */
+    const groundLight = (corners, centre, R, stops) => {
+      const pts = clipNear(corners.map((c) => camPt(C, c[0], c[1], c[2])));
+      if (pts.length < 3) return;
+      const c = camPt(C, centre[0], 3, centre[1]);
+      let zn = Infinity;
+      pts.forEach((p) => { zn = Math.min(zn, p.z); });
+      const zc = clamp(c.z, NEAR, zn);
+      const sx = W * 0.5 + (focal * c.x) / zc, sy = H * 0.5 + (focal * c.y) / zc;
+      const scr = pts.map((p) => [W * 0.5 + (focal * p.x) / p.z, H * 0.5 + (focal * p.y) / p.z]);
+      let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+      scr.forEach(([px2, py2]) => {
+        bx0 = Math.min(bx0, px2); bx1 = Math.max(bx1, px2);
+        by0 = Math.min(by0, py2); by1 = Math.max(by1, py2);
+      });
+      /* The fill is the clip's own box, and it is clamped to the canvas. Both halves matter. The
+         clip is what bounds the light, so a gradient that reaches a little past it is the same
+         picture — but a corner clipped onto the near plane projects to `focal / NEAR`, tens of
+         thousands of px off screen, and a box taken from those coordinates is a 7,742 px `fillRect`
+         for a pool two metres across, which is exactly the oversized fill the cost harness refuses.
+         Nothing off-canvas is being painted either way; the box is the canvas and the radius is the
+         light's own reach. */
+      const fx0 = Math.max(0, bx0 - 2), fy0 = Math.max(0, by0 - 2);
+      const fx1 = Math.min(W, bx1 + 2), fy1 = Math.min(H, by1 + 2);
+      if (fx1 <= fx0 || fy1 <= fy0) return;
+      const rad = Math.max(6, (focal * R) / zc);
+      const gr = g.createRadialGradient(sx, sy, 0, sx, sy, rad);
+      stops(gr);
+      g.save();
+      g.beginPath();
+      scr.forEach(([px2, py2], i) => { if (i) g.lineTo(px2, py2); else g.moveTo(px2, py2); });
+      g.closePath(); g.clip();
+      g.fillStyle = gr;
+      g.fillRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
+      g.restore();
+    };
+    const pool = (L, dx, s) => {
+      const R = poolR(L), sq = 0.34, cx = L.x + dx;
+      groundLight([[cx - R, 3, L.z - R * sq], [cx + R, 3, L.z - R * sq],
+                   [cx + R, 3, L.z + R * sq], [cx - R, 3, L.z + R * sq]], [cx, L.z], R,
+                  (gr) => {
+                    gr.addColorStop(0, `rgba(255,164,84,${(0.62 * s).toFixed(3)})`);
+                    gr.addColorStop(0.45, scaleTint(L.tint, 0.8 * s));
+                    gr.addColorStop(1, "rgba(255,150,70,0)");
+                  });
+    };
+    /* And the read a shop gives: window light spilled across the pavement in front of it.
+
+       A lamp low on a wall does not make a pool, it makes a splash — wide along the front and
+       shallow out into the lane, brightest at the threshold and gone within a couple of metres. The
+       record says which sources are of that kind (`spill`, stamped by the emitter on the glow of any
+       front that wears an awning, because a shopfront is the thing that has glass at knee height);
+       the trapezoid's own numbers come from the source: as wide as its reach, and out into the lane
+       by as much again. It faces the lane's centre line, which is the only direction a wall can
+       throw light, and it sways with nothing because a window does not swing. */
+    const spill = (L, s) => {
+      /* Wide along the front, and no more than two metres out: window light is a splash, and a
+         splash that reaches the other wall is a floodlight. The width is the source's own reach,
+         so a wide shop spills wide and a narrow one does not. */
+      const Rw = poolR(L), Len = Math.min(210, Rw * (L.spill || 1));
+      const sgn = L.x >= 0 ? -1 : 1;                  // toward the centre of the lane
+      const x0 = L.x + sgn * 8, x1 = L.x + sgn * (Len + 40);
+      groundLight([[x0, 3, L.z - Rw], [x0, 3, L.z + Rw], [x1, 3, L.z + Rw * 0.6],
+                   [x1, 3, L.z - Rw * 0.6]], [(x0 + x1) / 2, L.z], Len,
+                  (gr) => {
+                    gr.addColorStop(0, `rgba(255,196,120,${(0.60 * s).toFixed(3)})`);
+                    gr.addColorStop(0.5, scaleTint(L.tint, 0.7 * s));
+                    gr.addColorStop(1, "rgba(255,160,80,0)");
+                  });
+    };
+
     lamps.forEach((L) => {
       const dx = swayOf(L);
       glow(L.x + dx, L.y, L.z, L.r, scaleTint(L.tint, glowStrength(L)));
-      if (L.wet) reflect(L.x + dx, L.z, L.r * 3.6);   // each bulb's pool, thrown back by the asphalt
+      /* The asphalt's own throw-back stays what it was on a night-authored page: those rooms were
+         tuned against it and it is the wet-floor read, not the pool. On a day page the pool above
+         is the authored one and two warm ellipses on the same spot is one too many. */
+      if (L.wet && !DAYPAGE) reflect(L.x + dx, L.z, L.r * 3.6);
       /* Only a lamp the record calls a bulb gets a bulb drawn. Everything else already has a body in
          the scene — a lantern's paper, a machine's panel, a camera's lens — and drawing a white dot at
          the light's own coordinate put a floating bulb in the middle of the lane for every glow that
@@ -3944,12 +4333,42 @@ function leaveOverlay(root, trigger) {
         g.fillStyle = "rgba(255,240,206,0.92)";
         g.beginPath(); g.arc(sx, sy, Math.max(1.5, (focal * 9) / p.z), 0, 6.2832); g.fill();
       }
+      /* And the light on the ground, at the strength the halo was drawn at. Gated on the strength
+         rather than on the hour, so a light whose `liton` has not arrived yet has no pool either:
+         a pool with no light above it is the same lie as a bright wall with no lamp. */
+      const s = glowStrength(L);
+      if (s > 0.05) { if (L.spill) spill(L, s); else pool(L, dx, s); }
     });
-    /* The wall's own shadow on the ground, authored as two strips because a shadow that falls the
-       same way at every hour is a lie about the sun — but at the noon this page opens on, a high
-       sun throws a short shadow home against the wall it comes from. Umbra hard, penumbra half,
-       and both skip the lift (`day: false`) or the sun would wash its own shadow away. */
+    /* The wall's own shadow on the ground, as two strips because a shadow that falls the same way at
+       every hour is a lie about the sun — but at the noon this page opens on, a high sun throws a
+       short shadow home against the wall it comes from. Umbra hard, penumbra half.
+
+       It is painted here, on the canvas, rather than built as a quad, and the reason is a bug that
+       cost a round to find. `drawRoom()` paints its scene with one `quads.forEach(emit)` and these
+       strips were `add()`ed *after* that pass, so they went into the array and were never painted:
+       the shadows existed in the data, in the comments and in the commit message, and not on the
+       screen — `.verify/_shadowdrawn.mjs` boots the served page and reports `NEVER` for them on the
+       build that claimed them. A quad added after the emit is a quad that does not exist, which no
+       structural harness can see because the fill count is unchanged either way. Everything the
+       light pass draws — the haloes, the pools, the cones — is painted on the canvas for the same
+       reason, and this belongs with them.
+
+       Depth is honoured by drawing the far end first: both strips run the whole lane, so the only
+       overlap that matters is the penumbra over the umbra's far edge, and far-to-near is the order
+       the floor itself is painted in. */
+    const ground = (corners, col) => {
+      const pts = clipNear(corners.map((c) => camPt(C, c[0], c[1], c[2])));
+      if (pts.length < 3) return;
+      g.fillStyle = col;
+      g.beginPath();
+      pts.forEach((pt, i) => {
+        const sx = W * 0.5 + (focal * pt.x) / pt.z, sy = H * 0.5 + (focal * pt.y) / pt.z;
+        if (i) g.lineTo(sx, sy); else g.moveTo(sx, sy);
+      });
+      g.closePath(); g.fill();
+    };
     if (DAYPAGE && DAY() > 0.05) {
+      g.globalCompositeOperation = "source-over";
       const a = DAY(), az = sunAz(), k = Math.min(1, Math.abs(az));
       // A wall of height H throws a shadow H / tan(altitude) long, scaled by how much the sun is
       // across the lane rather than up it; the side is the azimuth's side. Long at the edges of
@@ -3958,14 +4377,13 @@ function leaveOverlay(root, trigger) {
       if (len > 6) {
         const sgn = az < 0 ? -1 : 1;                 // the wall the shadow comes from
         const x0 = sgn * (WALL - 4), x1 = sgn * (WALL - 4) - sgn * len;
-        const um = add(C, [[x0, 2, Z_BACK], [x1, 2, Z_BACK], [x1, 2, Z_FAR], [x0, 2, Z_FAR]],
-                       ZERO8, "flat", `rgba(12,18,34,${(0.30 * a).toFixed(3)})`);
-        if (um) { um.day = false; um.air = 0; }
         const x2 = x1 - sgn * len * 0.45;
-        const pe = add(C, [[x1, 2, Z_BACK], [x2, 2, Z_BACK], [x2, 2, Z_FAR], [x1, 2, Z_FAR]],
-                       ZERO8, "flat", `rgba(12,18,34,${(0.14 * a).toFixed(3)})`);
-        if (pe) { pe.day = false; pe.air = 0; }
+        ground([[x1, 2, Z_FAR], [x0, 2, Z_FAR], [x0, 2, Z_BACK], [x1, 2, Z_BACK]],
+               `rgba(12,18,34,${(0.30 * a).toFixed(3)})`);
+        ground([[x2, 2, Z_FAR], [x1, 2, Z_FAR], [x1, 2, Z_BACK], [x2, 2, Z_BACK]],
+               `rgba(12,18,34,${(0.14 * a).toFixed(3)})`);
       }
+      g.globalCompositeOperation = "lighter";
     }
     // A wet patch holds whatever is standing above it, which is the only reason the patch is in the
     // data: a puddle that reflects nothing is a grey rectangle. The bulbs already throw their own pool
@@ -4004,24 +4422,42 @@ function leaveOverlay(root, trigger) {
       // line that holds it and not only in the lamp.
       if (L.body === "lantern") strand([L.x, CEIL, L.z], [L.x + dx, L.h || (L.y + 14), L.z], 0);
     });
-    // What the lanterns put into the air: a shallow cone from the paper down to the ground it lights,
-    // in the same composite as the glow and by the same projection as everything else. It is four
-    // quads for the whole lane, and it is the difference between four bright dots and four lamps.
-    lamps.forEach((L) => {
-      if (L.body !== "lantern" || dayFall(1) < 0.06) return;   // a cone of light is a night object
-      const dx = swayOf(L), R = L.size || 24;
+    /* What the lanterns put into the air: a shallow cone from the paper down to the ground it
+       lights, in the same composite as the glow and by the same projection as everything else. It
+       is four quads for the whole lane, and it is the difference between four bright dots and four
+       lamps.
+
+       Two changes, both about the string reading as a string. The cone's strength is the lantern's
+       own — its `k`, its `liton`, the hour — instead of one constant 0.15 for every lantern on the
+       wire, so the two ends of a string that were tied with a dimmer candle in them actually look
+       dimmer, and a lantern whose light has not come up yet throws no cone at all (the condition is
+       `glowStrength`, the same number its halo and its pool are drawn at; it used to be `dayFall(1)`,
+       which is a property of the page and not of the lamp, and which on a day page still reads 0.12
+       at noon — so the cone was being drawn in daylight and only the paper knew better). And under
+       the cone is a second, wider, fainter one: the 暈, the soft edge a paper lantern makes in humid
+       air, which is what separates a lamp from a dot with a triangle under it. */
+    const cone = (L, R, wm, alpha) => {
+      const dx = swayOf(L);
       const top = camPt(C, L.x + dx, L.y - R, L.z), bot = camPt(C, L.x + dx * 1.5, 2, L.z);
       if (top.z < NEAR || bot.z < NEAR) return;
       const ax = W * 0.5 + (focal * top.x) / top.z, ay = H * 0.5 + (focal * top.y) / top.z;
       const bx = W * 0.5 + (focal * bot.x) / bot.z, by = H * 0.5 + (focal * bot.y) / bot.z;
-      const wa = (focal * R * 0.85) / top.z, wb = (focal * R * 2.9) / bot.z;
+      const wa = (focal * R * 0.85 * wm) / top.z, wb = (focal * R * 2.9 * wm) / bot.z;
       const gr = g.createLinearGradient(ax, ay, bx, by);
-      gr.addColorStop(0, "rgba(255,198,128,0.15)");
+      gr.addColorStop(0, scaleTint(L.tint, alpha));
       gr.addColorStop(1, "rgba(255,168,96,0)");
       g.beginPath();
       g.moveTo(ax - wa, ay); g.lineTo(ax + wa, ay); g.lineTo(bx + wb, by); g.lineTo(bx - wb, by);
       g.closePath();
       g.fillStyle = gr; g.fill();
+    };
+    lamps.forEach((L) => {
+      if (L.body !== "lantern") return;
+      const s = glowStrength(L);
+      if (s < 0.05) return;                          // a cone of light is a night object
+      const R = L.size || 24;
+      cone(L, R, 2.5, 0.30 * s);                     // the 暈: wide, faint, and the same tint
+      cone(L, R, 1, (0.15 + 0.22 * s));              // the cone the paper actually throws
     });
 
     // A spot over a diorama table puts a visible cone in the air, the way the lanterns do: the
@@ -4330,8 +4766,9 @@ function leaveOverlay(root, trigger) {
     // which is the worst kind of dead end — a control that describes an exit instead of being one.
     const leave = m.el.dataset.leave;
     if (leave) { window.location.assign(leave); return; }
-    if (m.el.dataset.frame !== undefined && openRail(Number(m.el.dataset.frame), m.el)) return;
-    if (m.el.dataset.obj === "vending" && openRail(0, m.el)) return;
+    if (m.el.dataset.story && openStoryRail(m.el.dataset.story, m.el)) return;
+    if (m.el.dataset.frame !== undefined && openDistrictRail(Number(m.el.dataset.frame), m.el)) return;
+    if (m.el.dataset.obj === "vending" && openDistrictRail(0, m.el)) return;
     // A thing with stops is opened by being *used*: the shutter goes up, the flap swings, and the card
     // says what the lane looks like now. Pressing it again takes it to the next stop.
     if (m.states && m.states.length > 1) { setState(m, (m.st + 1) % m.states.length); draw(); }
@@ -4368,7 +4805,7 @@ function leaveOverlay(root, trigger) {
   }));
   rows.forEach((row) => {
     const play = row.querySelector("[data-play]");
-    if (play) play.addEventListener("click", () => openRail(Number(play.dataset.play), play));
+    if (play) play.addEventListener("click", () => openDistrictRail(Number(play.dataset.play), play));
   });
 
   view.addEventListener("pointerdown", (event) => {
@@ -4532,7 +4969,8 @@ function leaveOverlay(root, trigger) {
   boot();
 
   const railEl = plate && plate.querySelector("[data-story-reel]");
-  const frames = railEl ? Array.from(railEl.querySelectorAll("[data-story-frame]")) : [];
+  let frames = railEl ? Array.from(railEl.querySelectorAll("[data-story-frame]")) : [];
+  const setFrames = () => { frames = railEl ? Array.from(railEl.querySelectorAll("[data-story-frame]")) : []; };
   const segRow = plate && plate.querySelector("[data-story-segs]");
   const countEl = plate && plate.querySelector("[data-story-count]");
   const panel = plate && plate.querySelector(".modal-panel");
@@ -4588,25 +5026,48 @@ function leaveOverlay(root, trigger) {
     if (!ease || paused || frames.length < 2) return;
     timer = setTimeout(() => { fi = (fi + 1) % frames.length; paint(); schedule(); }, HOLD);
   };
-  const openRail = (n, trigger) => {
+  const openRail = (n, trigger, glide = true) => {
     if (!railEl || !frames.length) return false;
     fi = Math.max(0, Math.min(frames.length - 1, n));
     plate.classList.add("is-open", "is-rail");
     /* Standing in front of the frame while it plays is the point: the dialog is not a second place
-       to look, it is the same wall at reading distance. */
-    atFrame(n);
+       to look, it is the same wall at reading distance. A story rail glides nowhere: its frames are
+       the prop's, not hung on this lane's walls. */
+    if (glide) atFrame(n);
     paint();
     railOpener = enterOverlay(plate, ".modal-close", trigger);
     schedule();
     return true;
   };
+  const enterBtn = plate ? plate.querySelector("[data-enter-space]") : null;
   const closeRail = () => {
     if (!plate || !plate.classList.contains("is-open")) return;
     stopTimer();
     paused = false;
     plate.classList.remove("is-open", "is-rail");
+    if (enterBtn) enterBtn.hidden = true;
     leaveOverlay(plate, railOpener);
     railOpener = null;
+  };
+  /* The link contract (landmark-space §2): a landmark prop opens its own story first, and the
+     enter-the-space verb sits beside the story in the plate chrome. The reel is rebuilt from the
+     stories island, so one rail serves both the lane's hung frames and any prop's story. */
+  const stories = readOne("[data-walk-stories]") || {};
+  const homeReel = railEl ? railEl.innerHTML : "";
+  const openStoryRail = (id, trigger) => {
+    const st = stories[id];
+    if (!st || !railEl || !st.frames || !st.frames.length) return false;
+    railEl.innerHTML = st.frames.map((f, i) =>
+      `<figure class="story-frame" data-story-frame="${i}"><img src="${f.src}" alt="${f.alt}">` +
+      `<figcaption>${f.title} — ${f.caption}</figcaption></figure>`).join("");
+    setFrames();
+    if (enterBtn) { enterBtn.hidden = !st.space; if (st.space) enterBtn.href = st.space; }
+    return openRail(0, trigger, false);
+  };
+  const openDistrictRail = (n, trigger) => {
+    if (railEl && railEl.innerHTML !== homeReel) { railEl.innerHTML = homeReel; setFrames(); }
+    if (enterBtn) enterBtn.hidden = true;
+    return openRail(n, trigger);
   };
   if (panel && frames.length) {
     panel.addEventListener("pointerdown", (event) => {
