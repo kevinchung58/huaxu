@@ -14,6 +14,11 @@
 
 **守住的產品規約**：Field notes 相簿仍只列 Toronto、Tokyo、Fukuoka；CN Tower、Niagara、Journey 仍由所屬真實 prop／door 進入，離開回 owner，不增頂層卡片或 hub door。`.verify/verify-walk.mjs` 的 hub assertion 描述同步修正為「三個主目的地＋album，子空間經 owner 回返」，以免驗收輸出誤稱街道直達所有 room。
 
+**交接給下一個 LLM**：
+- 這批工作在 PR [#13](https://github.com/kevinchung58/huaxu/pull/13)，head `arena/040a574e-huaxu`，commit `82f24f4`。接手先查 PR 狀態與工作樹，不要重複開 PR 或重做已驗收的場景；站主本輪要求合併此 PR，之後若繼續，先確認它已合併。
+- 目前沒有已知阻擋性缺陷。只有非必要的 `.verify/verify-tables.mjs` 全角度掃描在 600 秒後超時、只留下部分資料；不可當作 pass。若後續工作確實需要它，先切成較小批次或針對問題物件縮小角度，不要原樣重跑整個慢掃描。
+- lane-shot 證據在忽略的 `.preview/toronto-object-review-final2/`、`.preview/toronto-object-review-final2-wide/`、`.preview/niagara-falls-shared-shape-final/`，不在 Git；需要時重新產生。未來任何新建或大幅修改環境，必須照 `AGENTS.md` 先讀 Karpathy/PUA/real-place-builder/grounded-scene 與適用的 domain skill，並親自巡視 render 幀。
+
 ---
 
 ## 0k. 第二十九輪（2026-10-13）：移動／碰撞回歸、子空間導覽與 state/door 查核
