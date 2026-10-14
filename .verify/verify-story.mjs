@@ -62,9 +62,19 @@ ok("the cab doors ride on a press",
    (await page.$eval("[data-obj='lift-cn']", (el) => el.dataset.state)) === "1");
 navs.length = 0;
 await page.evaluate(() => document.querySelector("[data-obj='door-back']").click());
-await sleep(300);
-ok("the space unwinds to the prop's room, not the street",
-   navs.some((u) => u.includes("rooms-toronto.html")), navs.join(","));
+await sleep(1600);
+ok("the tower unwinds to its Toronto owner with the prop anchor",
+   navs.some((u) => u.endsWith("rooms-toronto.html#at-tower-cn")), navs.join(","));
+const towerReturn = await page.evaluate(() => {
+  const w = document.querySelector("[data-walk]").__walk;
+  const p = document.querySelector("[data-obj='tower-cn']");
+  return { hash: location.hash, reach: document.querySelector(".walk-hit.is-reach")?.dataset.obj,
+    distance: Math.hypot(parseFloat(p.style.getPropertyValue("--x")) - w.x,
+                         parseFloat(p.style.getPropertyValue("--z")) - w.depth) };
+});
+ok("the returned visitor is standing beside the tower and can use it again",
+   towerReturn.hash === "#at-tower-cn" && towerReturn.reach === "tower-cn" && towerReturn.distance < 190,
+   JSON.stringify(towerReturn));
 
 /* The same contract at the falls: the hall's model opens its story first, and the space
    unwinds to the hall. */
@@ -105,17 +115,33 @@ ok("behind the falls boots with the curtain overhead",
 navs.length = 0;
 await page.evaluate(() => document.querySelector("[data-obj='door-back']").click());
 await sleep(300);
-ok("behind the falls unwinds to the promenade",
-   navs.some((u) => u.includes("rooms-niagara.html")), navs.join(","));
+ok("behind the falls unwinds to its Table Rock door in the promenade",
+   navs.some((u) => u.endsWith("rooms-niagara.html#at-door-journey")), navs.join(","));
 // The click already navigated; let that load finish on its own — a goto to the same URL here
 // would interrupt the walk's boot and the next press would find a half-built scene.
 await page.waitForNetworkIdle({ idleTime: 600, timeout: 10000 }).catch(() => {});
 await sleep(1800);
+const journeyReturn = await page.evaluate(() => ({
+  hash: location.hash, reach: document.querySelector(".walk-hit.is-reach")?.dataset.obj,
+}));
+ok("the returned visitor is beside the same Journey door",
+   journeyReturn.hash === "#at-door-journey" && journeyReturn.reach === "door-journey",
+   JSON.stringify(journeyReturn));
 navs.length = 0;
 await page.evaluate(() => document.querySelector("[data-obj='door-back']").click());
-await sleep(300);
-ok("the falls' space unwinds to the hall",
-   navs.some((u) => u.includes("rooms-toronto.html")), navs.join(","));
+await sleep(1600);
+ok("the falls' space unwinds to its Toronto prop, not the street",
+   navs.some((u) => u.endsWith("rooms-toronto.html#at-falls-n")), navs.join(","));
+const fallsReturn = await page.evaluate(() => {
+  const w = document.querySelector("[data-walk]").__walk;
+  const p = document.querySelector("[data-obj='falls-n']");
+  return { hash: location.hash, reach: document.querySelector(".walk-hit.is-reach")?.dataset.obj,
+    distance: Math.hypot(parseFloat(p.style.getPropertyValue("--x")) - w.x,
+                         parseFloat(p.style.getPropertyValue("--z")) - w.depth) };
+});
+ok("the returned visitor is beside the Niagara model in Toronto",
+   fallsReturn.hash === "#at-falls-n" && fallsReturn.reach === "falls-n" && fallsReturn.distance < 190,
+   JSON.stringify(fallsReturn));
 
 await browser.close();
 console.log(out.join("\n"));

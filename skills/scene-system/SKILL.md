@@ -19,12 +19,14 @@ skip.
 | 3 form | this skill §2, `landmark-space` §2-3, `district-author` §0 | one decision: hub room / landmark space / owned sub-space / open district | the decision is stated with its doctrine |
 | 4 author | `district-author` §2-3, `lane-prop`, `street-commons`, `japan-place` | the record in `_gen_html.py`, painters in `js/site.js` | `python3 _gen_html.py` exits 0 |
 | 5 critique | this skill §3-4 | frames read twice, fixes listed in TODO | two consecutive reads find nothing new |
-| 6 wire | this skill §5 | ROOMS row, back_to, place card + cover, IMG rule | the wiring gates pass |
+| 6 wire | this skill §5 | ROOMS row, owning `back_to`, and either a main-place card or a parent-owned prop entry; IMG rule | the hierarchy and wiring gates pass |
 | 7 verify | this skill §6 | the full gate battery, green | every harness exits 0 and says so |
 
-The hub street doctrine stands over all of it: one street with regions, a door per room on the
-spine, never two open districts stacked on one page, no room→room chain — except the one owned
-form (§2), because the real Table Rock owns Journey and the site must be allowed to say so.
+The hub street doctrine stands over all of it: one street with the three main destinations, never
+one street door for every walkable page. An owned landmark or sub-space is reached only through its
+parent object and unwinds to that parent; it gets neither a top-level Field notes card nor a hub door.
+Never stack two open districts on one page. The real Table Rock owns Journey (§2), so that one nested
+route is deliberate, not a return to the retired room→room chain.
 
 ## 1. The renderer contract
 
@@ -135,11 +137,14 @@ is a pass that was not read.
 
 ## 5. Wiring, album, registry
 
-- A row in `ROOMS` is the single source: page, plates prefix, status. The wiring loop reads it;
-  an authored `back_to` is respected, the default is the street at the room's own door.
-- The album (Field notes) gets one place card per open room, in ROOMS order; the card is the
-  door and carries `IMG/<id>-cover.jpg`. A cover is a generated frame re-saved as JPEG
-  (`.verify/make-cover.mjs`), captioned drawn, never a photograph of the real place.
+- A row in `ROOMS` registers each walkable page, not each album destination. The wiring loop reads
+  it; a main place defaults back to the street at its own door, while an owned space authors the
+  parent page and `#at-<owning-prop>` return anchor.
+- Field notes is fixed to exactly the three original main places — `FIELD_NOTES_PLACE_IDS`:
+  Toronto, Tokyo, Fukuoka — in that order. Only those IDs get a card and `IMG/<id>-cover.jpg`;
+  child spaces such as the CN Tower, Niagara Falls and Journey Behind the Falls never become cards
+  or street doors. Their entry is the parent's real object (story → enter-space, or an owned door),
+  and a cover is a generated frame re-saved as JPEG (`.verify/make-cover.mjs`), never a photograph.
 - Every raster matches a rule in `IMG_RULES` before the generator will run; add the rule with
   the work that adds the file.
 - The landmark link contract (prop → plates → enter verb → space → unwind) is wired by the

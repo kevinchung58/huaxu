@@ -23,10 +23,11 @@ Two rules come from the site and are not negotiable here:
 
 Four questions are blocking. Ask them before reading anything.
 
-1. **The place and its door on the street.** The site is a hub: a walkable street
-   (`street.html`) with a door per room, so a new place is a new door on the street, not a link in a
-   chain. Ask where on the street the door stands (the street is walked mouth to far end; the doors
-   so far sit at Toronto/Tokyo/Fukuoka), and remember the album reads plates in `ROOMS` table order.
+1. **The place and its owner.** First decide whether this is one of the three main destinations
+   (Toronto, Tokyo, Fukuoka) or a real child space owned by an object inside one of them. A new main
+   destination earns one hub-street door and one Field notes card; a child space gets neither. Its
+   entrance is the real parent prop/door, and its exit returns to that owner with `#at-<prop-id>`.
+   Never turn a landmark or child environment into another album destination.
 2. **The photographs.** How many, of what, and which ones are of the *space* rather than of a subject?
    A lane needs at least one picture that shows the ground, one that shows the walls' height, and one
    that shows what is at the far end. If those do not exist, the room is not buildable yet — say so,
@@ -62,8 +63,9 @@ Read each picture for the numbers, not for the mood. The unit is the centimetre;
 | Lights | `lamps`, `lanterns`, `wires` | every source you can see, with its height, tint and strength; a lantern hangs from a wire that crosses the lane, so the wire is authored too |
 | Ground | `marks` | paint, grates, drains, patches, wet. Marks are rectangles in the record's units |
 | Overhead | `beams`, ducts, cables | what crosses above: the ceiling is the layer most rooms leave empty, and it is the one a photograph of a real alley is fullest of. Beam depths are record centimetres — the emitter scales them |
-| The way out | the back exit | where the door or curtain behind the walker stands; the emitter points it at the hub street, so author the prop, not the destination. Doors to *other rooms* are not a room's business at all — they live on the street |
-| The sub-areas | `slots` | the little places the photographs actually show — the stall row, the temple gate, the machine at the end — one per Field notes plate the room will own. The drawn frame that holds a place takes the place's name (`PLACE_TITLES`); a real photograph replaces it in the slot when one arrives. On the album these plates do not appear: the album hangs one representative plate per place, and the sub-areas live inside the rooms |
+| The way out | the back exit | where the door or curtain behind the walker stands; a main place returns to its hub-street door, but an owned space returns to the parent prop with `#at-<prop-id>`. Author the doorway and its owner, not a guessed destination |
+| The sub-areas | `slots` | the little places the photographs actually show — the stall row, the temple gate, the machine at the end — one per in-room frame. The drawn frame takes its place's name (`PLACE_TITLES`); a real photograph replaces it in the slot when one arrives. These plates stay inside the room; Field notes is three main-place cards, never a sub-area gallery |
+| An owned space | a child `ROOMS` row plus its real parent prop/door | a distinct real room discovered inside its owner, not a `slot`, not a street door, and not a Field notes card. Its story/enter action or physical doorway leads in; its exit returns to the owning prop and arrival anchor |
 | The way on, if the far end is open | `lane.max_d` | walk-units depth past `d` at which the walker may keep going when the place's far end is genuinely open ground (the hub street). Absent, the clamp sits a body short of the far wall and the view stays a view |
 
 Rules that keep a room from reading as a backdrop:

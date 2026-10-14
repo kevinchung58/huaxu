@@ -66,18 +66,23 @@ The owner's interaction, as a contract the renderer and the emitter both obey:
   scripting off the same destination is an ordinary link in the drawer's list row, because the
   archive survives without the viewer.
 - **No space without a story, no story implied without frames.** A prop may carry `space:` only if
-  the album has ≥1 frame for it *and* the district row exists; the emitter asserts both, the same
+  the story has ≥1 frame for it *and* the district row exists; the emitter asserts both, the same
   way `record` images wait for a venue and a date. A door that opens onto a `soon` room prints the
   room's own "not open yet" card instead of navigating — the honest locked door is cheaper
   (`district-author` §1).
+- **A child space is not a destination card.** Field notes is permanently the three main places
+  (Toronto, Tokyo, Fukuoka); a landmark or sub-space does not get a card there or a direct door on
+  the hub street. It is discovered from the parent's real object: the landmark prop opens its story
+  and the enter action, while a real owned entrance (such as the Table Rock door) leads to its child.
+  The child exits to its owner, not to the hub or a sibling.
 - **Arrival poses you at the thing.** Pannellum's scene-hotspot carries a target yaw and pitch;
-  ours carries `#at-<prop>` into the new page and the renderer spawns at the stop that names the
-  door you came through, facing the landmark (`place-intake`'s stop rule applied to a doorway
-  between rooms — today `#at-` does this only from rooms onto the street; the landmark space
-  extends it, and that extension is renderer data, not a new library).
+  ours carries `#at-<prop-id>` and the renderer spawns beside that exact owning object, facing it.
+  Hub arrivals use `#at-<room-id>` to stand at the matching street door; child returns use the
+  owning prop's full id (including hyphens), not a guessed room start.
 - **The way back lands on the prop.** `Esc` unwinds plate, list, then leaves; leaving returns to
-  the room the prop stands in, at the prop, because the connection between spaces is a walk's
-  memory, not a teleport (`AGENTS.md`, hub rule). A `leave` on the space's exit names that page.
+  the room the prop stands in, within reach of the prop, because the connection between spaces is
+  a walk's memory, not a teleport (`AGENTS.md`, hub rule). A `leave` on the space's exit names that
+  parent page and `#at-<prop-id>`.
 
 What this contract refuses: the space replacing the story (the photograph is the record; the space
 is the model — one is evidence, the other is craft, and neither stands in for the other), and a

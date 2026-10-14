@@ -17,8 +17,8 @@ from `js/site.js`'s own geometry. Units are record centimetres unless the line s
 | walker's clamp | `z ≤ 3400` walk units | the reach ring is 190 |
 | deepest safe door | record `z ≈ 1238` | `3400 + 190` over `Z_SCALE` |
 
-A room's own box is the same shape at a different size — Moji is `{w:700, d:900, ceil:620,
-back:300}` with a table in it. **A promenade is this same lane with one wall replaced by a border**;
+A room's own box is the same shape at a different size — Moji is `{w:820, d:900, ceil:620,
+back:300}` with a 660 cm solid table and a clear walkable aisle around it. **A promenade is this same lane with one wall replaced by a border**;
 nothing about the projection changes.
 
 ## 2. The spine, and where things go

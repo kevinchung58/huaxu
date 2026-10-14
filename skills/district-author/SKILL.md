@@ -68,28 +68,26 @@ objects, frames, slots. Geometry in px with CSS' handedness: `x` across the lane
 floor line, `ry` turns it to face down the lane. The eye never moves: `.room-world` is
 translated and rotated the other way, so there is no projection math, no loop, no library.
 
-Every district also has a row in `ROOMS` (id, label, page, plate prefixes, status), street row
-first. The emitter wires the doors from the table, not from the records: each room's back exit
-is pointed at the street page (`CHAIN_ENTRY`), and doors **between** rooms are ordinary door
-objects in the street's own record, each with `"leave": ROOM_BY_ID[...]["page"]`. A district
-record never names another district's page — that is what makes rooms freely reorderable and
-what the door-graph assertions police.
+Every walkable page has a row in `ROOMS` (id, label, page, plate prefixes, status), street row
+first. A row is not automatically a top-level destination: the street carries doors only to the
+three main places, and Field notes carries only their three cards. A landmark/owned sub-space row
+is entered from its parent prop or real doorway and authors `back_to` as that parent plus
+`#at-<prop-id>`. Main rooms default back to the street at their own door. Keep parent/child wiring
+explicit; do not turn every new walkable page into a hub door or album card.
 
 Clamps are design, not limitation: yaw ±35°, pitch ±10°. Past that the walls stop covering
 the viewport and the room shows its own edges. Turning is drag, never Pointer Lock —
 Pointer Lock is unsupported on every iOS Safari and it hijacks the cursor.
 
-**Slots are sub-areas.** A room's `slots` list is not media kinds — it is the room's little
-places, one per Field notes plate the room owns: the drawn frame holding a place carries the
-place's name (from `PLACE_TITLES`), and the slot's `state` says what replaces it when a real
-photograph arrives. On the album these plates do not appear at all — the Field notes wall is
-**one container of three cards, the card itself the door** into its room (the card carries the
-place's cover sheet); the sub-area plates live inside the rooms as the frames of the places they
-stand in for. The closure is asserted: every frame's title in a
-room page must be a slot label in that same page, and every frame's `src` must be a
-`PLACE_TITLES` key. An image with a name but no place fails the gate; so does a place with
-nothing holding it. On the album the same plates hang grouped by place — one heading and one
-door per place (`_place_group`/`gallery_html`); a plate is never an entrance in its own right.
+**Slots are in-room sub-areas, not child rooms.** A room's `slots` list names its little
+places — one per frame the room owns. The frame carries the place's name (`PLACE_TITLES`), and
+the slot's `state` says what replaces it when a real photograph arrives. These plates stay inside
+the room. Field notes is **one container of exactly three main-place cards** (Toronto, Tokyo,
+Fukuoka), each card the door into that top-level place and carrying its cover. A landmark or
+owned child space is different from a slot: its parent object/door reveals it; it never becomes a
+fourth album card or a street door. The closure is asserted: every frame title must be a slot label
+in that same room, and every frame `src` must be a `PLACE_TITLES` key. An image with a name but no
+place fails the gate; so does a place with nothing holding it.
 
 ## 3. Build rules
 
@@ -107,12 +105,11 @@ door per place (`_place_group`/`gallery_html`); a plate is never an entrance in 
   concatenate into the name. Reading material lives in a drawer of `var(--bg)` that ships open in
   the HTML and is folded by JS — so the page is complete without scripting, prints as a list, and
   never re-tints a borrowed component to stay legible.
-- Geometry is metric and **authored once**: `EYE = 168`, `1px = 1cm`, `LANE_W/2` walls with the walk
-  clamp 30 cm short of them, `LANE_CEIL` for the roof, and depth scaled by `Z_SCALE` in the generator
-  so the record keeps its authored numbers. The generator writes those onto the layer as
-  `data-lane-w/-d/-ceil/-back` and `data-eye`; the renderer reads them. Do not restate them in CSS
-  transforms or in a second set of constants — six CSS planes were a picture of a room, not a room,
-  and the owner sent that back twice.
+- Geometry is metric and **authored once**: `EYE = 168`, `1px = 1cm`, each room's `LANE_W/2` wall
+  faces, a 24 cm player radius, `LANE_CEIL`, and depth scaled by `Z_SCALE` in the generator. The
+  renderer derives the horizontal clamp as `laneW / 2 - PLAYER_RADIUS`; it must never use a fixed
+  width shared across unlike rooms. The generator writes `data-lane-w/-d/-ceil/-back` and `data-eye`,
+  and the renderer reads them. Do not restate scene dimensions in CSS or a second authored table.
 - The scene is a canvas raster: one projection, walls in 60 cm panels, affine-textured tiling
   patterns, quads painted far-to-near, fog and light as distance functions of the same transform.
   No library and no WebGL.
@@ -220,6 +217,14 @@ in, band by band), `data-walk-marks` (what is painted or let into the ground), `
 derives exactly one glow from a prop's own position, because that light has to come from the machine.
 Adding a lamp in `js/site.js` to "fix" a dark wall is the failure mode this prevents: it produces a
 scene that looks lit and a dataset that says otherwise.
+
+**Collision is data, not a guessed room constant.** The lane walls are at `±laneW/2`; the body's
+centre stays one `PLAYER_RADIUS` inside them. The end-depth and ceiling are clamped from that page's
+authored geometry. Ground props that occupy the visitor's path emit `data-solid`; the renderer tests the body's circle
+against each rotated footprint, then resolves movement on each axis so a visitor can slide along an
+obstacle without its bounding-box corners trapping them or a fast frame tunnelling through it. Floor marks, glass floor and traversable steps
+are not solids. Audit the narrowest lane, the far/back limits, a grounded obstacle and low-ceiling
+jump in `.verify/verify-rooms-e2e.cjs` whenever the collision math changes.
 
 **Atmosphere is a property of the space, not of the view.** A lane is dressed by what its walls are clad
 in, what is on its ground, and what hangs over you — so those three are data, and the renderer only knows

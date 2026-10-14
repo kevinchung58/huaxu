@@ -1,10 +1,11 @@
 # The promenade: sea, harbour, beach and riverbank
 
-A coast is the one Japanese setting the site has never built, so this file is a specification
-rather than a description of something that exists. Its numbers come from the reference build's lake
-and lake-road districts, which are the same problem solved on a flat field, and from the site's own
-lane geometry where they meet. Read `SKILL.md` §3 first: **a sunlit coast needs the light decided
-before any of this is authored**.
+The street now ends at a sunlit harbour; a beach and riverbank remain unbuilt. This file records
+both the current quay implementation and the reusable promenade specification. Its numbers come
+from the reference build's lake and lake-road districts, which are the same problem solved on a flat
+field, and from the site's own lane geometry where they meet. Read `SKILL.md` §3 first: the day's
+lighting system is already built, and any new coastline still has to use it rather than invent a
+second sun.
 
 ## 1. The water
 
@@ -111,15 +112,19 @@ a stream, not the 「美麗的港」 the brief names.
 
 What exists now, all in `bd.harbor` (painter in `js/site.js`, data in `_gen_html.py`):
 
-- water from past the quay to a far shore, panelled like the plaza, night tile and **day tile**
-  (`PATS.waterDay` — pale, horizontally struck, glints; chosen per variant at `DAY() > 0.35`, the
-  second-texture rule the skyline earned), plus a sun-glint column that exists only while the sun
-  does;
-- a quay strip (the plaza, shortened), a rail with posts at its edge, and `max_d` a stride short
-  of the rail — the walk is allowed to stand at the water, not past it;
-- a ferry (hull, white house, one lit window row at night, funnel) and one portal crane, both
-  silhouette by the reference's rule;
-- the far shore as one long low hill (`mountain` now takes a colour, a strait green by day).
+- water from the quay to the far shore, panelled like the plaza with three depth-weighted tones,
+  night tile and **day tile** (`PATS.waterDay` — pale, horizontally struck glints, selected at
+  `DAY() > 0.35`), a sun-glint column, three drifting wind lanes and six expanding ripple rings;
+  the dynamic detail parks under `prefers-reduced-motion`;
+- a real quay face below the paving, a rail with a four-tread slipway cut through it, a ladder down
+  the face, and mooring bollards every 600 walk units; `max_d` still stops the walker before the rail;
+- one ferry with a tapered sheer line, a separate cabin and individual windows, plus a gantry crane
+  whose trolley and hanging hoist make it read as port equipment at this scale;
+- eight broken breakwater blocks in front of the far shore, so the water ends in a working edge rather
+  than a single uninterrupted horizon line;
+- thirteen authored height/colour samples interpolated as one smooth sky gradient, extending above
+  the portrait frustum so the top of the open aperture no longer falls back to the canvas void;
+- the far shore as one long low hill (`mountain` takes a colour, a strait green by day).
 
 **The numbers are walk units.** Read `street-system` §6 before moving any of them: backdrop depths
 and `max_d` are authored directly in walk space, while record depths (props, surfaces, stations,
