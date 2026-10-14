@@ -72,13 +72,11 @@ PUBLIC_PAGES = ["index.html", "about.html", "research.html", "teaching.html",
                 "activities.html", "rooms.html", "service.html", "links.html"]
 
 
-# The rooms, and the shape of the walk: a street, and the rooms that stand on it. The street is the
-# hub — it is the page the nav's "Rooms" opens, it carries a door for every built room, and every
-# room's back curtain opens back onto it. A place should not have to know what exists on either side
-# of its own door, and it does not: the wiring is computed from this table, and `verify-walk.mjs`
-# asserts that each district agrees with its row here, so the two cannot drift apart silently.
-# The street row carries no plate prefix, because the street hangs no pictures: it is the site's own
-# ground, not one more place in the archive.
+# ROOMS registers every walkable page, not every album destination. The street is the hub, with
+# doors only to the three first-tier places; a real landmark or owned sub-space gets its own row but
+# is reached from its parent object, never as another card or street door. The wiring is computed
+# from this table and checked by `verify-walk.mjs`, so page geometry and route ownership cannot drift.
+# The street row carries no plate prefix: it is the site's own ground, not an album destination.
 ROOMS = [
     ("street", "The street", "street.html", [], "open"),
     # The snow walkway became the little city: the owner asked for the Canada room to be the
@@ -99,6 +97,14 @@ ROOMS = [
     ("fukuoka", "Fukuoka", "rooms-fukuoka.html", ["fukuoka-"], "open"),
 ]
 ROOM_BY_ID = {r[0]: {"label": r[1], "page": r[2], "plates": r[3], "status": r[4]} for r in ROOMS}
+ROOM_ROW_BY_ID = {r[0]: r for r in ROOMS}
+# Field notes is the three original top-level destinations. Child spaces stay in ROOMS because
+# they are real walkable pages, but this fixed allowlist is the only source of album cards.
+FIELD_NOTES_PLACE_IDS = ("toronto", "tokyo", "fukuoka")
+if len(set(FIELD_NOTES_PLACE_IDS)) != 3 or any(
+        rid not in ROOM_BY_ID or ROOM_BY_ID[rid]["status"] != "open"
+        for rid in FIELD_NOTES_PLACE_IDS):
+    raise ValueError("Field notes must name exactly three open main places")
 ROOM_ORDER = {r[0]: i for i, r in enumerate(ROOMS)}
 # The nav item says "Rooms", so it opens on the street: a visitor arriving there is standing where
 # every room can be walked to from, rather than inside one of them. Follows the ROOMS table, so
@@ -1656,24 +1662,14 @@ for it, tile in zip(ALBUM_ITEMS, album_tiles):
 # a Python string split across two lines, so the quote and the continuation leaked into the anchor
 # text and the page read `Tokyo, " "walked at first person`. A door that is hard to read is a door
 # nobody opens, so the copy lives here as one sentence and the generator cannot fold it.
-# The Field notes wall is three places, not a pile of plates: one heading per place, one door per
-# place, and that place's plates hung under it — each plate standing in for a little area inside the
-# place (the gate, the stall row, the lit door) until a photograph of the real one arrives. A plate
-# is never an entrance in its own right; the door is the place's. The notes live here rather than in
-# the district records because the album is assembled above DISTRICTS; the door targets and the
-# group names come from the ROOMS table, which does exist by here, so the wall and the walk pages
-# cannot disagree about what a place is called or where its door goes.
+# Field notes is a picker with exactly three main places. The children in ROOMS are discovered
+# inside their owner: the Toronto tower/falls props open their story and enter action, and Table Rock
+# owns Journey Behind the Falls. Their titles and notes therefore never become album cards.
 PLACE_GROUP_NOTES = {
+    "toronto": "A dark hall of lit tables: the city, its falls and its markets, drawn small.",
     "tokyo": "A night lane with shutters, lanterns, and a vending machine keeping the far end.",
     "fukuoka": "Moji Port on a table: the station, the customhouse, the Blue Wing drawbridge "
                 "and the ships on the Kanmon Strait, at dusk.",
-    "toronto": "A dark hall of lit tables: the city, its falls and its markets, drawn small.",
-    "cntower": "The whole CN Tower as one space: the cab doors, the LookOut's city from "
-                "above, the glass underfoot, the higher band.",
-    "niagara": "The promenade at the falls: Table Rock at the lip, the horseshoe's mist, "
-                "the American Falls across, the gorge for an end.",
-    "journey": "Behind the horseshoe: the bedrock tunnel, the portals, the deck at the foot "
-               "of the floodlit curtain.",
 }
 
 
@@ -1701,11 +1697,10 @@ def _place_card(r):
 # The one instruction the album gives, in the block's own voice: what a door does, how to walk once
 # you are inside, how you get back, and that the street's far end is open. It sits above the places,
 # because the moment after "walk in" is exactly where a first-time visitor is lost.
-HOW_TO_WALK = ("Every door on this wall steps you into its place at eye height: W A S D to walk, "
-               "arrow keys or drag to turn, E to open what is in front of you, or the on-screen pad "
-               "on a phone. Esc walks you back out - room to street, street back to this wall - and "
-               "the street is the road between all three places. Its far end is open: keep walking "
-               "and you are outside under the night sky.")
+HOW_TO_WALK = ("These three doors step into Toronto, Tokyo, or Fukuoka: W A S D to walk, "
+               "arrow keys or a gentle drag to turn, E to use what is in front of you, or the "
+               "on-screen pad on a phone. A landmark's own object may lead to another real space; "
+               "Esc returns to its owner, then to the street, and finally to this wall.")
 
 
 def gallery_html():
@@ -1718,11 +1713,14 @@ def gallery_html():
         if held:
             state += ' · ' + str(len(held)) + ' held for want of a caption'
         if b["id"] == "field-notes":
-            # One container, three cards, each card the door. The block's own heading is a line, not
-            # an h3: the cards are the structure a visitor navigates. A place with no cover yet still
-            # gets its card, honest about the missing sheet rather than absent from the row.
-            cards = [_place_card(r) for r in ROOMS
-                     if r[4] == "open" and r[0] != "street" and PLACE_GROUP_NOTES.get(r[0])]
+            # One container and exactly the fixed three main destinations, in the agreed order.
+            # Owned landmark spaces remain discoverable from their parent's props, not as cards.
+            cards = []
+            for rid in FIELD_NOTES_PLACE_IDS:
+                room = ROOM_ROW_BY_ID[rid]
+                if room[4] != "open" or rid not in PLACE_GROUP_NOTES:
+                    raise ValueError(f"Field notes destination {rid!r} has no open main-place record")
+                cards.append(_place_card(room))
             out.append(f'    <p class="eyebrow reveal">{escape(b["label"])}</p>\n'
                        f'    <p class="when reveal">{escape(b["purpose"])} <span class="badge">'
                        f'{escape(b["kind"])}</span> {len(cards)} places</p>\n'
@@ -1920,6 +1918,15 @@ OBJ_SIZE = {
     "bank": (520, 60, 150), "bench": (150, 84, 48), "rack": (140, 76, 90),
 }
 
+# Props whose ground footprint is physically occupied. The generator stamps these as collision
+# boxes for the walker; floor graphics (drains, tracks, glass floor) and traversable steps are
+# deliberately absent. A record may override `solid` per prop when its place calls for an exception.
+WALK_SOLID_KINDS = frozenset({
+    "bank", "bench", "bikes", "bin", "bollard", "booth", "cones", "crate",
+    "hydrant", "ladder", "mailbox", "meter", "pipe", "planter", "plinth", "pole",
+    "rack", "recycle", "shrine", "sign", "signA", "stall", "tree", "utility", "vending",
+})
+
 EYE = 168                    # the eye is 1.68 m above the floor; 1 px = 1 cm throughout
 Z_SCALE = 2.9                # records are authored in the old 4.3 m lane; the space is 12.4 m
 
@@ -1976,8 +1983,8 @@ DISTRICTS = [
         # The hub. The street is the site's own ground — it names no city, carries no lettering, and
         # hangs no pictures: its whole job is to be the place the three rooms stand on, with a door
         # for each and a sky over both. It is outdoors the way Canada's walkway is: the "ceiling" is
-        # high enough to read as night sky, the far end opens instead of stopping, and the light
-        # comes from doorways, street lamps and the wires strung between the poles.
+        # high enough to read as open sky, the far end opens onto the harbour instead of stopping, and
+        # the sun and street fixtures share the light across the walk.
         "id": "street", "label": "The street",
         "page": ROOM_BY_ID["street"]["page"],
         "plates": ROOM_BY_ID["street"]["plates"],
@@ -1985,8 +1992,8 @@ DISTRICTS = [
         # of one and into the next is a journey with the other doors ahead of you, not three doors
         # in a row. max_d stops a stride short of the quay rail: the street ends at the water's
         # edge on purpose, and the walk is allowed to stand at the rail, not past it.
-        # The night lane runs out of doors and the far end opens instead: 3400 walk units of open
-        # ground past the record's own 1040.
+        # The lane runs past its last door into the quay: 3400 walk units past record depth 1040,
+        # ending at a walkable rail rather than a wall.
         "lane": {"w": 700, "d": 1040, "ceil": 620, "back": 300, "max_d": 4150},
         # The street is walked in the day. Its record says so, and the renderer answers by giving the
         # page its own clock (fifteen minutes rather than four, opening just before noon) and by
@@ -1998,8 +2005,8 @@ DISTRICTS = [
         "status": "open",
         "kind": "personal",
         "blurb": "One straight street in the afternoon. Three lit doorways, one per room, a walk "
-                 "apart, a Japanese half under a lantern string at the far end, and open ground "
-                 "past the last wall.",
+                 "apart, a Japanese half under a lantern string at the far end, and a sunlit quay "
+                 "with water and a low far shore beyond the last wall.",
         "objects": [
             # The three doors. Each names the room it opens onto — that is navigation, not a claim —
             # and each carries a lamp over it, because on a night street a door you can read is a
@@ -2168,17 +2175,17 @@ DISTRICTS = [
              "hint": "Where the far quarter runs out, so the walk to the open end has something "
                      "at its edge."},
         ],
-        # The street lights itself the way an open street does: two street lamps on the poles, a
-        # broad cool skylight (bulb:false — it is the night sky dome, not a fitting), and the doors'
-        # own glows from the objects list. All of it is data; the renderer only multiplies.
+        # The street's light comes from its daytime sky and sun as well as fixtures: these poles
+        # and the doors' own glows are recorded here, while bulb:false marks the distant ambient
+        # fill as open-air light rather than another fitting.
         "lamps": [
             {"x": 0, "y": 505, "z": 180, "r": 46, "k": 0.6},
             {"x": 0, "y": 502, "z": 470, "r": 44, "k": 0.58},
             {"x": 0, "y": 500, "z": 780, "r": 46, "k": 0.6},
             {"x": 0, "y": 503, "z": 980, "r": 44, "k": 0.58},
-            # The city's own light, standing in the opening: the far wall of the street faces a lit
-            # skyline through it, and without this the last stretch reads as a dead end. Cool, soft,
-            # no bulb — it is the glow of somewhere open, not a fitting on the street.
+            # A cool, soft point of ambient light in the opening: it gives the last stretch a
+            # distant destination without pretending the street belongs to a named city. No bulb —
+            # it is open-air fill, not another fitting on the street.
             {"x": 0, "y": 190, "z": 1016, "r": 135, "k": 0.5, "tint": "#9fb2d8", "bulb": False},
             # Lanterns on the two far wires, four to a wire and at slightly different heights: a
             # string of lanterns reads as a street because they are a row, not a pair, and the drop
@@ -2246,27 +2253,39 @@ DISTRICTS = [
             {"kind": "kerb", "x0": 306, "x1": 368, "z0": -1400, "z1": 1040, "y1": 6},
         ],
         # The far end is not a window but the way on: the opening runs nearly wall to wall and floor
-        # to sky, and the clamp is authored past it (max_d above) — walk out of the street and the
-        # ground continues under the night sky, GTA-style, with the skyline ahead. What is out there
-        # is open ground the street does not name. No tower, no crossing, no expressway — those are
-        # Tokyo's, and the street is nobody's.
+        # to sky, and the clamp is authored past it (max_d above). Walking out of the street reaches
+        # a sunlit quay, water, a low far shore, one ferry and working harbour equipment — the world
+        # continues, but it does not pretend this anonymous street is Tokyo or any named city.
         "vista": {"x": 0, "y0": 6, "y1": 614, "w": 620},
         "backdrop": {
-            # glow is the band's own brightness: without it a sky band paints at lit 0, and the
-            # horizon band — the one the opening actually frames — reads as a hole in the world.
-            # The band heights are projection-aware: the backdrop sits at z=120000 in scene units,
-            # so a band has to span thousands of cm of y to be more than a hairline on screen, and
-            # the gradient below is the honest "sky is brightest at the horizon" order.
-            "sky": [{"y0": -400, "y1": 8000, "c": "#4a5a84", "glow": 1.0},
-                    {"y0": 8000, "y1": 30000, "c": "#2c3859", "glow": 0.62},
-                    {"y0": 30000, "y1": 40000, "c": "#1e2946", "glow": 0.42}],
+            # `glow` tunes each sample's daylight response. The renderer projects these authored
+            # heights onto one continuous gradient at z=120000; the last sample reaches above the
+            # portrait frustum as well as the landscape one, so neither view opens onto canvas void.
+            "skyGradient": True,
+            "sky": [
+                # Closely spaced palette samples grade from a pale horizon to a deeper zenith; they
+                # are not painted as hard-edged bands.
+                {"y0": -400, "y1": 5000, "c": "#4a5a84", "glow": 1.0},
+                {"y0": 5000, "y1": 10000, "c": "#46577f", "glow": 0.94},
+                {"y0": 10000, "y1": 16000, "c": "#405178", "glow": 0.88},
+                {"y0": 16000, "y1": 23000, "c": "#3a4b70", "glow": 0.82},
+                {"y0": 23000, "y1": 31500, "c": "#344568", "glow": 0.76},
+                {"y0": 31500, "y1": 42000, "c": "#2f3f60", "glow": 0.70},
+                {"y0": 42000, "y1": 55000, "c": "#293959", "glow": 0.64},
+                {"y0": 55000, "y1": 72000, "c": "#243451", "glow": 0.58},
+                {"y0": 72000, "y1": 94000, "c": "#202f4b", "glow": 0.52},
+                {"y0": 94000, "y1": 125000, "c": "#1d2b47", "glow": 0.46},
+                {"y0": 125000, "y1": 170000, "c": "#1b2844", "glow": 0.40},
+                {"y0": 170000, "y1": 230000, "c": "#192641", "glow": 0.36},
+                {"y0": 230000, "y1": 320000, "c": "#17243e", "glow": 0.32},
+            ],
             # The far shore of the strait: one long low hill, not a peak — a harbour street faces
             # water and the land past it, and the hill is low enough that the sky, which is the
             # point of the view, keeps most of the opening.
             "mountain": {"x": 300, "z": 13500, "base": -120, "top": 260, "half": 6200, "crown": 2400, "snow": 0.06, "c": "#3f5a66"},
             "plaza": {"y": -6, "z0": 3000, "z1": 4300, "half": 4200, "lit": 1.1},
             # Two low-rise, lit rooftops flank the opening — off the centre line, so they give the
-            # open ground something human-sized at the edges without a slab over the skyline.
+            # quay approach a human scale without blocking the far shore or harbour view.
             "roofs": [
                 {"x": -1350, "y": 0, "z": 2050, "w": 700, "h": 300, "tone": 1.0},
                 {"x": 1350, "y": 0, "z": 2150, "w": 640, "h": 260, "tone": 1.05},
@@ -2274,9 +2293,50 @@ DISTRICTS = [
             # Past the rail: water to the far shore, a ferry at moor and the crane a working quay
             # keeps. The painter (`bd.harbor` in js/site.js) draws all of it; the record only places
             # it, the way every other backdrop here is placed.
-            "harbor": {"y": -100, "z0": 4360, "z1": 12000, "half": 4200, "rail": 4300,
-                       "ships": [{"x": 260, "z": 6800, "l": 900}],
-                       "cranes": [{"x": -380, "z": 5200}]},
+            "harbor": {
+                "y": -100, "z0": 4360, "z1": 12000, "half": 4200, "rail": 4300,
+                # Walk-space numbers: six-metre mooring spacing, a four-tread slipway through
+                # the rail, and a ladder down the quay face. The walk clamps before the first tread.
+                "bollards": {"z": 4250, "x0": -2100, "x1": 2100, "spacing": 600},
+                "slipway": {"x": 0, "z0": 4185, "z1": 4360, "width": 200,
+                            "y0": -6, "y1": -100, "steps": 4},
+                "ladder": {"x": -320, "z": 4357, "width": 56,
+                           "y0": -100, "y1": -6, "rungs": 6},
+                # A low, broken row beyond the ferry: the edge of the far water is a breakwater,
+                # not another straight line where the hill happens to meet the sea.
+                "breakwater": [
+                    {"x": -1850, "z": 10150, "w": 340, "h": 116},
+                    {"x": -1370, "z": 10020, "w": 420, "h": 148},
+                    {"x": -820, "z": 10110, "w": 360, "h": 122},
+                    {"x": -280, "z": 9950, "w": 460, "h": 156},
+                    {"x": 330, "z": 10090, "w": 360, "h": 124},
+                    {"x": 870, "z": 9900, "w": 440, "h": 151},
+                    {"x": 1430, "z": 10070, "w": 380, "h": 130},
+                    {"x": 1900, "z": 9950, "w": 340, "h": 118},
+                ],
+                # Three broken wind lanes travel along the harbour; six rings expand and fade from
+                # authored points. The renderer parks them when reduced motion is requested.
+                "motion": {
+                    "lanes": [
+                        {"x": -1250, "spread": 760, "length": 430, "spacing": 880,
+                         "speed": 38, "offset": 260},
+                        {"x": 0, "spread": 1120, "length": 560, "spacing": 1040,
+                         "speed": -31, "offset": 1880},
+                        {"x": 1260, "spread": 680, "length": 390, "spacing": 820,
+                         "speed": 53, "offset": 3680},
+                    ],
+                    "ripples": [
+                        {"x": -1650, "z": 4900, "period": 5.8, "phase": 0.2, "max": 260},
+                        {"x": -1020, "z": 5780, "period": 6.4, "phase": 2.0, "max": 310},
+                        {"x": -340, "z": 6900, "period": 5.5, "phase": 4.4, "max": 240},
+                        {"x": 390, "z": 7900, "period": 6.2, "phase": 1.3, "max": 300},
+                        {"x": 1080, "z": 9000, "period": 5.9, "phase": 3.5, "max": 280},
+                        {"x": 1770, "z": 10300, "period": 6.6, "phase": 0.8, "max": 320},
+                    ],
+                },
+                "ships": [{"x": 260, "z": 6800, "l": 900, "windows": 6}],
+                "cranes": [{"x": -380, "z": 5200}],
+            },
         },
         "slots_title": "Rooms on this street",
         "slots": [
@@ -2800,7 +2860,7 @@ DISTRICTS = [
         # on it -- and you cannot stand in a lane and see a harbour. So the district is a table now,
         # the way Toronto is: the port stands small enough to look down on, which is also the only way
         # a visitor sees the bridge open at all.
-        "lane": {"w": 700, "d": 900, "ceil": 620, "back": 300},
+        "lane": {"w": 820, "d": 900, "ceil": 620, "back": 300},
         "purpose": "Moji Port on a table: the station, the customhouse, the Blue Wing drawbridge "
                    "and the ships on the Kanmon Strait, seen as a panorama",
         "status": "open",
@@ -3072,7 +3132,7 @@ DISTRICTS = [
             # it is the one silhouette nobody mistakes, then the blocks, then the dome.
             {"id": "plinth-sky", "kind": "plinth", "x": 0, "z": 630, "y": 0, "ry": 0,
              "w": 320, "h": 80, "d": 160, "top": "cityg",
-             "glow": [{"r": 160, "k": 0.4, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
+             "glow": [{"r": 160, "k": 0.68, "dy": 96, "tint": "rgba(255,214,170,0.54)"}],
              "title": "The table the city stands on",
              "hint": "A lit plinth, table height. Everything on it is small; the light under the "
                      "edge is what makes a model read as a model."},
@@ -3080,9 +3140,8 @@ DISTRICTS = [
              "w": 58, "h": 300, "d": 58,
              "story": TOWER_STORY,
              "title": "The tower, small",
-             "hint": "Tapered shaft, a round pod two thirds up, a needle above: the one silhouette "
-                     "the whole city is known by, drawn at table scale. No lettering, no claim — "
-                     "a shape, not a postcard."},
+             "hint": "A flared, tapering round shaft, broad LookOut deck, smaller SkyPod and long "
+                     "antenna: the tower's silhouette at table scale, with no lettering."},
             {"id": "skyline-cn", "kind": "skyline", "x": 85, "z": 630, "y": 80, "ry": 0,
              "w": 140, "h": 150, "d": 80,
              "title": "The skyline, small",
@@ -3091,8 +3150,8 @@ DISTRICTS = [
             {"id": "dome-rc", "kind": "dome", "x": -40, "z": 630, "y": 80, "ry": 0,
              "w": 84, "h": 44, "d": 84,
              "title": "The dome, small",
-             "hint": "A low white dome among the blocks: the stadium the skyline keeps making room "
-                     "for. Nothing on it but its own curve."},
+             "hint": "An oval stadium bowl and a segmented roof that slides open: Rogers Centre "
+                     "kept low beneath the skyline."},
             # A track along the table's front edge and the streetcar that works it: the city's
             # table is the one table where something drives, the way the real one never stops.
             {"id": "track-c", "kind": "track", "x": 0, "z": 610, "y": 80, "ry": 0,
@@ -3122,7 +3181,7 @@ DISTRICTS = [
              "hint": "A sheet of water over a ledge into mist, small enough to step over and loud "
                      "enough to imagine. The one moving thing in the hall; it moves because you "
                      "are here, not because a clock says so."},
-            # Table three — the market. Stalls at model scale: awnings, crates, a warm lamp.
+            # Table three — the market. Three spaced stalls sit in the forecourt, clear of the hall.
             {"id": "plinth-market", "kind": "plinth", "x": -290, "z": 400, "y": 0, "ry": 0,
              "w": 160, "h": 80, "d": 200, "top": "cobble",
              "glow": [{"r": 160, "k": 0.4, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
@@ -3136,16 +3195,16 @@ DISTRICTS = [
                      "market from 1899. An arcade at street level, a gallery floor of arched "
                      "windows over it, and a cupola with a clock in it. Nothing on it is lettered: "
                      "the clock is a disc, and no vendor is named."},
-            {"id": "stall-m1", "kind": "stall", "x": -300, "z": 350, "y": 80, "ry": 90,
-             "w": 76, "h": 70, "d": 36,
+            {"id": "stall-m1", "kind": "stall", "x": -277, "z": 350, "y": 80, "ry": 90,
+             "w": 44, "h": 50, "d": 34,
              "title": "A stall, small",
              "hint": "Awning over a counter, drawn the size of a hand. The market's first stall."},
-            {"id": "stall-m2", "kind": "stall", "x": -252, "z": 400, "y": 80, "ry": 90,
-             "w": 76, "h": 70, "d": 36,
+            {"id": "stall-m2", "kind": "stall", "x": -277, "z": 400, "y": 80, "ry": 90,
+             "w": 44, "h": 50, "d": 34,
              "title": "A second stall, small",
              "hint": "The row continues. Two stalls facing is a market; one is a table."},
-            {"id": "stall-m3", "kind": "stall", "x": -300, "z": 448, "y": 80, "ry": 90,
-             "w": 76, "h": 70, "d": 36,
+            {"id": "stall-m3", "kind": "stall", "x": -277, "z": 448, "y": 80, "ry": 90,
+             "w": 44, "h": 50, "d": 34,
              "title": "A third stall, small",
              "hint": "The last stall before the table's edge, awning lower than the rest."},
             {"id": "crate-m1", "kind": "crate", "x": -227, "z": 345, "y": 80, "ry": 12,
@@ -3161,31 +3220,28 @@ DISTRICTS = [
              "w": 160, "h": 80, "d": 240, "top": "sand",
              "glow": [{"r": 160, "k": 0.38, "dy": 96, "tint": "rgba(190,220,245,0.34)"}],
              "title": "The table the lake lies on",
-             "hint": "A flat sheet of water with low green islands: the view the skyline turns to "
-                     "face. The ferry is one white box, because at this scale it is."},
+             "hint": "A lake sheet with low island forms and a small Toronto ferry: the water "
+                     "the skyline faces."},
             {"id": "pool-lake", "kind": "pool", "x": -290, "z": 140, "y": 80, "ry": 0,
              "w": 130, "h": 4, "d": 200,
              "title": "The lake, small",
              "hint": "Still water on a table. It reflects the hall's spots the way the real one "
                      "reflects the city."},
-            # Ids are `kind-n` because that is how the renderer finds the branch that draws them:
-            # `kindOf()` strips the suffix, so `planter-i1` reaches the planter's tub and its
-            # planting, and `boat-lake` reaches the hull, the cabin and the crossing. An id the
-            # table has never heard of resolves to nothing and draws as a flat plane — which is
-            # how these two islands and the ferry spent a while being cards on the water.
-            {"id": "planter-i1", "kind": "planter", "x": -320, "z": 112, "y": 82, "ry": 0,
+            # `island-i1` and `island-i2` resolve to a low, irregular landform painter, not to a
+            # reusable street planter; `boat-lake` has a hull, wheelhouse, windows, rails and wake.
+            {"id": "island-i1", "kind": "island", "x": -320, "z": 112, "y": 82, "ry": 0,
              "w": 44, "h": 16, "d": 30,
              "title": "An island, small",
-             "hint": "A low green bump in the water: the islands, reduced to their silhouette."},
-            {"id": "planter-i2", "kind": "planter", "x": -260, "z": 168, "y": 82, "ry": 0,
+             "hint": "A low, irregular island rising from the lake, with a wooded crown."},
+            {"id": "island-i2", "kind": "island", "x": -260, "z": 168, "y": 82, "ry": 0,
              "w": 38, "h": 14, "d": 26,
              "title": "A second island, small",
-             "hint": "The second island, further out. Two bumps are an archipelago at this scale."},
+             "hint": "A second low island beyond the first, part of the Toronto Islands chain."},
             {"id": "boat-lake", "kind": "boat", "x": -290, "z": 140, "y": 83, "ry": 90,
              "w": 36, "h": 12, "d": 12,
              "title": "The ferry, small",
-             "hint": "One white box crossing the sheet: the ferry, at a scale where it cannot be "
-                     "anything more."},
+             "hint": "A white double-ended ferry with a blue waterline and an open passenger deck, "
+                     "crossing the lake and leaving a wake."},
             # The far wall used to carry the hall's cover plate. It carries the city itself now:
             # a lit case holding the tower, a row of blocks and the dome, built by the same shapes
             # that build the tables, so the deepest stop in the room ends on the model at a glance
@@ -3501,7 +3557,7 @@ DISTRICTS = [
         "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
                  "title": "The gate at your back", "hint": "It opens onto the hall, at the falls' "
                                                            "own table."},
-        "back_to": "rooms-toronto.html",
+        "back_to": "rooms-toronto.html#at-falls-n",
         "caveat": "The falls are drawn from public facts — the crest's breadth, the drop, the "
                   "talus, the islands, the rainbow's habit, the nightly illumination and the "
                   "seasonal fireworks — and simplified at the detail level only: no crowds, no "
@@ -3589,7 +3645,7 @@ DISTRICTS = [
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
                  "title": "The tunnel back", "hint": "It climbs to the promenade at Table Rock."},
-        "back_to": "rooms-niagara.html",
+        "back_to": "rooms-niagara.html#at-door-journey",
         "caveat": "Journey Behind the Falls is drawn from public facts — the 125-150 ft descent, "
                   "the 1889 tunnels at their real section, the two portals, the deck at the foot, "
                   "the nightly illumination — and simplified at the detail level only: no crowds, "
@@ -3708,7 +3764,7 @@ DISTRICTS = [
                                                                 "tower's own table."},
         # The landmark space owns its way back (the wiring loop respects an authored back_to): it
         # returns to the prop that owns it, not to the street — the hall is the hub route in.
-        "back_to": "rooms-toronto.html",
+        "back_to": "rooms-toronto.html#at-tower-cn",
         "caveat": "The tower is drawn at the eye's own scale from public facts — heights, levels, "
                   "bearings — and the city below is drawn from above, not surveyed. The ride is "
                   "compressed, the detail is simplified, the experience is the real one's shape. "
@@ -3902,6 +3958,12 @@ def walk_object(o):
     tex = o.get("img", "")
     style = (f'--x:{o["x"]}px;--z:{o["z"]}px;--y:{o.get("y", 0)}px;--ry:{o.get("ry", 0)}deg;'
              f'--w:{w}px;--h:{h}px;--d:{dep}px')
+    # Only a footprint grounded on the walkable floor blocks the visitor. A plinth's top is solid,
+    # but the miniature buildings it carries are not separate room-scale obstacles; steps and floor
+    # marks remain walkable. The explicit record field wins when a particular object needs an override.
+    y = o.get("y", 0)
+    solid = o.get("solid", o["kind"] in WALK_SOLID_KINDS and y <= 0 < y + h)
+    solid_attr = ' data-solid="true"' if solid else ""
     frame = f' data-frame="{o["frame"]}"' if "frame" in o else ""
     # A landmark prop owns a space: the story it opens first, and the district beside the story.
     story_attr = f' data-story="{escape(o["id"])}"' if "story" in o else ""
@@ -3933,7 +3995,7 @@ def walk_object(o):
     return (f'<button type="button" class="walk-hit" data-obj="{escape(o["id"])}" '
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
-            f'data-d="{dep}" style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
+            f'data-d="{dep}"{solid_attr} style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
             f'{states}{leave}{awn_attr}{noren_attr}{fascia_attr}{story_attr}></button>')
 
 
@@ -3942,9 +4004,9 @@ def walk_html(d, drawer):
 
     Where leaving goes is one authored value, used twice: the corner control and the curtain at your
     back are the same door, read from the same field, so the key and the prop cannot point different
-    ways. Every room's value is the hub street — walk out of any room and you are on it, with the
-    doors to the other rooms along it — and the CV is one click further on, from the album's own
-    navigation.
+    ways. A top-level place returns to the hub street; a landmark or owned sub-space returns to the
+    room whose object brought you there. Only the three main places have doors on the street or cards
+    on Field notes; the CV is one click further on from the album's own navigation.
 
     That is the reference's arrangement, read as an architecture rather than as a style: one route,
     the building owns the screen, the picker and the reading live in overlays that appear on
@@ -4171,17 +4233,14 @@ def district_drawer(d):
     ] if x)
 
 
-# The wiring. The street is the hub: every open room's back door — street, lane, walkway or alley —
-# opens onto the street page, which is what makes the three rooms freely reachable from one another
-# instead of strung along a chain. Wiring it here rather than in the records means a room never has
-# to know what exists on the other side of its own curtain; a room added to ROOMS is on the street
-# by the same rule. There is no onward wiring: doors between rooms live in the street's record.
-# The street itself is the one exception — its back door opens the album, not itself.
+# The wiring. The street is the hub for the three main places; a landmark or owned sub-space may
+# leave to the room that owns its entrance, following the real walk out one step at a time. Wiring
+# defaults here rather than in every record, while an explicit `back_to` preserves that parent link.
+# No child space gets a street door; the street itself is the one exception whose back curtain opens
+# the album, not itself.
 for d in open_districts:
-    # Walking out of a room must land you on the street *at that room's own door*, not at the
-    # mouth a whole street away — the connection between rooms is a place you stand, not a link
-    # you follow. The renderer reads the `#at-` hash and spawns beside the door it names, facing
-    # down the street at the other doors.
+    # A top-level room returns to the street at its own door. Owned spaces author their parent in
+    # `back_to`, so Esc unwinds to the object that revealed them before it reaches the street.
     if not d.get("back_to"):
         d["back_to"] = ALBUM_PAGE if d["id"] == "street" else f"{CHAIN_ENTRY}#at-{d['id']}"
 

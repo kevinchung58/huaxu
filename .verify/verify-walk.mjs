@@ -382,16 +382,20 @@ const status = () => q("[data-walk-status]").textContent.trim();
    furniture, which turned a 400 ms sleep from "arrived" into "arrived 40 cm short" without a single
    assertion changing. This waits for the depth the record promised. */
 const settle = async (want) => {
-  for (let i = 0; i < 40; i++) { await sleep(40); if (Math.abs(body().depth - want) < 2) return; }
+  // Auto-walking now uses the same comfort-limited cruise speed as keyboard movement; a full-lane
+  // trip can take several seconds, so do not start the next input while the glide is still active.
+  for (let i = 0; i < 240; i++) { await sleep(40); if (Math.abs(body().depth - want) < 2) return; }
 };
 const title0 = () => (qa(".walk-hit.is-reach")[0] || {}).dataset?.obj || "nothing";
 const body = () => q("[data-walk]").__walk;
 
 await hold("w", 500);
 ok("W moves the body: a station chip takes over the readout", /m in$|ahead$/.test(status()), status());
-ok("the walk stays inside the authored box",
-   /HALF = 290, MIN_D = -30/.test(js) && /const MAX_D = attr\("laneMaxD", Z_FAR - 47\)/.test(js),
-   "the clamp is the page's own far depth minus a body, unless the page authors an open world");
+ok("the walk clamps to this page's walls and its authored far-depth boundary",
+   /const WALL = attr\("laneW", 640\) \/ 2/.test(js)
+     && /const HALF = Math.max\(0, WALL - PLAYER_RADIUS\)/.test(js)
+     && /const MAX_D = attr\("laneMaxD", Z_FAR - 47\)/.test(js),
+   "the body stays inside this room's width and stops before its end wall unless the place opens farther");
 ok("the plaza is seen, not entered: the far plane sits past the clamp",
    vista.w > 0 && 1200 < 1247,
    "a sealed room clamp (far depth 1200) sits short of its end wall at 1247, so the window is a "
@@ -400,7 +404,7 @@ ok("the plaza is seen, not entered: the far plane sits past the clamp",
 // The scramble frame, from the station beside it, with the wall as the only thing in between.
 click(stopAt(798));
 await settle(798);
-await hold("a", 1500);                                   // to the left wall, x clamps at -290
+await hold("a", 2500);                                   // to the authored left wall, x clamps inside it
 await sleep(120);
 ok("the wall prop nearer you wins: the reach is nearest-first, not list-order",
    /The scramble at Shibuya|Utility pole|crate|drain|bin|sign/.test(status()), status());
@@ -428,10 +432,11 @@ ok("the plate opens at the frame you were standing in front of, and carries the 
 const panel0 = plate.querySelector(".modal-panel");
 const segEls = qa(".story-seg");
 const nowIdx = Number(inReach[0].dataset.frame);
+const currentSeg = Number.isInteger(nowIdx) ? segEls[nowIdx] : null;
 ok("a story's bars are one per frame, and the current one is the bar that fills",
-   segEls.length === 6 && segEls[nowIdx].classList.contains("is-now")
+   segEls.length === 6 && !!currentSeg && currentSeg.classList.contains("is-now")
      && segEls.every((sg) => !sg.firstChild.getAttribute("style")),
-   segEls.map((sg) => sg.className.replace("story-seg", "·") || "pending").join(" "));
+   `frame ${nowIdx}; ${segEls.map((sg) => sg.className.replace("story-seg", "·") || "pending").join(" ")}`);
 const fillVal = panel0.style.getPropertyValue("--fill");
 const shownImg = plate.querySelector(`[data-story-frame="${nowIdx}"] img`);
 const shownFile = shownImg ? shownImg.getAttribute("src").split("/").pop() : "";
@@ -483,6 +488,7 @@ ok("closing hands focus back to the thing on the wall that opened it",
 await hold("d", 1300);
 click(stopAt(1146));
 await settle(1146);
+await hold("d", 800);                                      // recenter before the solid cones on the return path
 ok("at the end of the lane the rail is what you are standing in front of",
    /lookout rail/i.test(status()), status());
 key("e");
@@ -509,12 +515,15 @@ ok("the new kit is a button in the lane, not a painted detail", !!booth && booth
 ok("a thing with stops ships at its first one, and eight things have stops",
    booth.dataset.state === "0" && box.dataset.state === "0" && qa("[data-states]").length === 8);
 click(stopAt(0));
-await sleep(1600);
-await hold("d", 900);                                       // hug the right wall, toward the box
-await hold("w", 350);
+await settle(0);
+ok("the home stop really returns to the mouth before the street-kit walk",
+   Math.abs(body().depth) < 2, `depth=${body().depth.toFixed(1)} cm`);
+await hold("d", 2000);                                      // approach the box from the open aisle
+await hold("w", 1400);                                     // stop at its solid front face
 await sleep(140);
-ok("at the mouth of the lane the street kit is what you are standing in front of",
-   qa(".walk-hit.is-reach").length === 1 && /shrine|telephone box|planters/i.test(status()), status());
+ok("at the mouth the nearest authored lane prop is offered for interaction",
+   qa(".walk-hit.is-reach").length === 1 && /small shrine/i.test(status()),
+   `${status()} · x=${body().x.toFixed(0)}, z=${body().depth.toFixed(0)}`);
 const doorPaints = () => ctx.counts.get("rgba(150,186,218,0.28)") || 0;
 const doorBefore = doorPaints();
 click(booth);
@@ -639,6 +648,8 @@ stage.dispatchEvent(middle);
 stage.dispatchEvent(auxLeft);
 ok("the middle button's scroll widget is refused over the scene, and no other click is",
    middle.defaultPrevented && !auxLeft.defaultPrevented);
+await closePlate();                 // the context-menu probe's pointerup is a tap in jsdom; fold it before walking
+ok("the context-menu probe's synthetic tap is folded before testing movement", card.hidden);
 
 ok("the chrome's press areas are bigger than its glyphs, since the glyphs are the drawing",
    /\.walk-icon,\n\.walk-stop \{\n  position: relative;\n\}/.test(css)
@@ -648,18 +659,23 @@ ok("and the enlarged box never loses its focus state, because the ring moved wit
    /\.walk-hit:focus-visible::after \{[^}]*border-color: var\(--accent-bright\)/.test(css)
      && !/\.walk-hit:focus-visible \{\n  outline: 2px/.test(css));
 
+// The synthetic context-menu probe ends in a pointerup that jsdom counts as a tap, so fold its card
+// above, then sidestep from the standpipe's tangent face before the depth-only glides.
+await hold("a", 1800);
+ok("lateral input can leave the mouth furniture without entering a wall",
+   body().x < 180, `x=${body().x.toFixed(1)} cm; depth=${body().depth.toFixed(1)} cm`);
 const tower = q('[data-obj="frame-tower"]');
 ok("the moved frame keeps its own plate link", tower && tower.dataset.frame === "2");
-// The glide: a drawer row moves the body to the frame's depth, and the station chip proves it.
+// The glide: a drawer row moves the body to the frame's depth; compare the body, not a station that
+// can stay the same when both the start and target lie in the same station interval.
 const hereIdx = () => stops.findIndex((el) => el.classList.contains("is-here"));
-const beforeHere = hereIdx();
+const beforeRailDepth = body().depth;
 const rail = q("[data-walk-to]");
 click(rail);
-await sleep(1500);          // the glide is exponential: give it the time it needs to settle
+await settle(348);          // a comfort-speed glide takes the time its authored distance requires
 ok("a drawer link glides the body to that frame's depth, and nothing else",
-   hereIdx() !== beforeHere && /435|4\.3|under the posters/.test(
-     `${stops[hereIdx()].style.getPropertyValue("--z")} ${stops[hereIdx()].textContent}`),
-   `station ${beforeHere} -> ${hereIdx()}`);
+   Math.abs(beforeRailDepth - 348) > 10 && Math.abs(body().depth - 348) < 2,
+   `depth ${beforeRailDepth.toFixed(1)} -> ${body().depth.toFixed(1)} cm`);
 ok("the glide is depth only: the sideways position is left where you put it",
    /targetX === undefined \? x : targetX/.test(js));
 ok("and the body really lands on that depth", Math.abs(body().depth - 348) < 2, `${body().depth}`);
@@ -667,11 +683,12 @@ ok("and the body really lands on that depth", Math.abs(body().depth - 348) < 2, 
 // (1) The idle pump has to advance the walk, not only repaint it: a station clicked while the lane was
 // resting would otherwise glide partway and stop there, looking exactly like a lane that had arrived.
 // (2) The station highlight is asked on every frame, so a prop standing in front of you cannot freeze it.
-stopAt(0);
+click(stopAt(0));
+await settle(0);
 await sleep(1400);                            // let the rAF loop wind down to the idle pump
 const home = stopAt(1146);
 click(home);
-await sleep(1600);
+await settle(1146);
 ok("a place chosen while the lane was resting is still walked to, not just drawn once",
    Math.abs(body().depth - 1146) < 6, `${body().depth}`);
 ok("and the rail keeps up with the body, whatever the reach happens to be lit on",
@@ -824,11 +841,9 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
      rooms.filter((r) => r.id !== "street").every((r) =>
        new RegExp(`ROOM_BY_ID\\["${r.id}"\\]\\["page"\\]`).test(gen)
        && new RegExp(`ROOM_BY_ID\\["${r.id}"\\]\\["plates"\\]`).test(gen)));
-  /* The hub, room by room. Every built room's every way out — curtain, HUD exit, anything with a
-     data-leave — must land on the street, and the street must carry exactly one door per room plus
-     its own door to the album. This is the assertion that would have caught a room still wired as
-     the old chain (a curtain to the room behind, a far door to the room ahead), which is exactly the
-     architecture the hub replaced, and invisible until someone walks it. */
+  /* The hub graph distinguishes main rooms from owned spaces. Main rooms unwind to the street;
+     a landmark/sub-space unwinds to its owner, and the street has doors only to the three main
+     places plus its own door back to the album. */
   const built = rooms.filter((r) => r.status === "open");
   const streetRow = built.find((r) => r.id === "street");
   const roomRows = built.filter((r) => r.id !== "street");
@@ -898,7 +913,7 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
     if (leaves.filter((t) => t === "activities.html").length !== 1)
       problems.push("street: the album door is not exactly one");
   }
-  ok("the hub door graph closes: rooms leave only to the street, the street doors every room + the album",
+  ok("the hub graph closes: main rooms return to the street, owned spaces return through their owners, and the street opens only to the three main places plus the album",
      problems.length === 0, problems.join("; "));
   // Sub-area closure: the Field notes plates are allocated to little places inside the rooms, and
   // the drawn frame holding each place carries the place's name as its title. A frame whose title is
@@ -928,18 +943,25 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   // wall is counted in distinct names.
   const plates = [...new Set(Array.from(act.matchAll(/<img src="IMG\/([A-Za-z0-9._-]+)"/g))
     .map((m) => m[1]))];
-  /* The Field notes wall is ONE container of three cards, and the card itself is the door: press a
-     card, be inside the place. The cards sit in ROOMS order, each holds its own cover sheet, and
-     the sub-area plates appear nowhere on this page — they live inside the rooms as wall frames. */
-  const places = built.filter((r) => r.id !== "street");
+  /* Field notes is permanently exactly the three original top-level places. Owned spaces have
+     their own ROOMS rows, but their entrance is an object/story in the parent — never an album card. */
+  const MAIN_IDS = ["toronto", "tokyo", "fukuoka"];
+  const fieldNotesSource = gen.match(/FIELD_NOTES_PLACE_IDS\s*=\s*\(([^)]*)\)/);
+  const sourceIds = fieldNotesSource
+    ? [...fieldNotesSource[1].matchAll(/"([a-z-]+)"/g)].map((m) => m[1]) : [];
+  ok("the generator locks Field notes to Toronto, Tokyo and Fukuoka",
+     JSON.stringify(sourceIds) === JSON.stringify(MAIN_IDS), sourceIds.join(", "));
+  const places = MAIN_IDS.map((id) => built.find((r) => r.id === id)).filter(Boolean);
   const wrapAt = act.indexOf('data-place-cards');
   ok("the Field notes wall is one container of place cards", wrapAt >= 0);
   const cardProblems = [];
   let prevCard = -1;
-  for (const r of places) {
+  for (const id of MAIN_IDS) {
+    const r = places.find((place) => place.id === id);
+    if (!r) { cardProblems.push(`${id}: no open ROOMS row`); continue; }
     const cardStart = act.indexOf(`data-place-card="${r.id}"`, wrapAt);
     if (cardStart < 0) { cardProblems.push(`${r.id}: no card`); continue; }
-    if (cardStart < prevCard) cardProblems.push("cards are not in ROOMS order");
+    if (cardStart < prevCard) cardProblems.push("cards are not in the fixed Toronto/Tokyo/Fukuoka order");
     prevCard = cardStart;
     const cardEnd = act.indexOf("</a>", cardStart);
     const card = act.slice(cardStart, cardEnd);
@@ -948,8 +970,12 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
     if (!card.includes(`IMG/${r.id}-cover.jpg`))
       cardProblems.push(`${r.id}: the card does not carry its own cover sheet`);
   }
-  ok("one place card per room, in ROOMS order, each holding its own cover",
-     cardProblems.length === 0, cardProblems.join("; "));
+  const emittedIds = [...act.matchAll(/data-place-card="([a-z-]+)"/g)].map((m) => m[1]);
+  ok("exactly three main-place cards, each holding its own cover",
+     cardProblems.length === 0 && JSON.stringify(emittedIds) === JSON.stringify(MAIN_IDS),
+     cardProblems.join("; ") || emittedIds.join(", "));
+  ok("owned landmark and sub-space IDs never become album cards",
+     !emittedIds.some((id) => ["cntower", "niagara", "journey"].includes(id)));
   ok("a plate is not an entrance: no tile or text-arrow doors survive on this wall",
      !/<a class="ig-room"/.test(act) && !/class="text-arrow" href="rooms-/.test(act));
   ok("the sub-area plates do not hang here: the roll carries classroom only",

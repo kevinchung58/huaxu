@@ -1,18 +1,16 @@
-/* verify-rooms-e2e.cjs — the hub street, walked with the keys, not clicked.
+/* verify-rooms-e2e.cjs — walk the hub and owned spaces with deterministic input.
 
-   The site is a street with three rooms off it, and this harness walks it the
-   way a visitor does (W to move, A/D to edge across, arrow taps to turn, E to
-   act, Esc to leave) and proves the things a static grep cannot:
+   The street has exactly three main destinations; real landmark/sub-spaces are
+   discovered from their parent object. This harness drives the walk (W to move,
+   A/D to edge across, held arrows to turn, E to act, Esc to leave) and proves:
 
-     1. The street boots outdoors: sky vista and backdrop wired, lamps painted,
-        and at least one room door within reach of the mouth.
-     2. Each street door is reachable on foot — walk beside it, face it, press
-        E — and E leaves for the room it names (Canada, Tokyo, Fukuoka).
-     3. Every room's back curtain leaves for the street, and Esc — the designed
-        exit — leaves for the street from all three rooms.
-     4. The street's own back door leaves for the album, not for a room.
-     5. The doors are drawn geometry: walked-in and turned-for, each is a
-        visible plane and clicking it navigates.
+     1. Street doors navigate only to Toronto, Tokyo and Fukuoka.
+     2. The narrow Journey lane clamps to its own walls and authored deck extent;
+        a sealed Tokyo lane independently proves the end-wall clamp, and jumps respect the ceiling.
+     3. Solid display plinths stop the walker without sealing the side aisle, while
+        movement stays smooth and axes stay independent of camera turning.
+     4. Child-space exits respawn beside the owning prop, ready to interact again.
+     5. The street's own back door leaves for the album, not for another room.
 
    jsdom has no layout and refuses navigation; the camera math is deterministic,
    so movement is driven by pumping requestAnimationFrame with a monotonic clock
@@ -30,7 +28,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const out = [], fails = [];
 const ok = (n, c, e = "") => { out.push(`${c ? "PASS" : "FAIL"}  ${n}${e ? "  — " + e : ""}`); if (!c) fails.push(n); };
 
-function boot(file) {
+function boot(file, hash = "") {
   return new Promise((resolve, reject) => {
     const navs = [], errors = [];
     const vc = new VirtualConsole();
@@ -41,7 +39,7 @@ function boot(file) {
     let html = fs.readFileSync(file, "utf8").replace(/<script[^>]*src=[^>]*><\/script>/g, "");
     const dom = new JSDOM(html, {
       runScripts: "dangerously", pretendToBeVisual: true,
-      url: "https://huaxu.test/" + file, virtualConsole: vc,
+      url: "https://huaxu.test/" + file + hash, virtualConsole: vc,
     });
     const w = dom.window;
     w.HTMLElement.prototype.scrollIntoView = () => {};
@@ -91,9 +89,9 @@ function boot(file) {
       if (i >= 0) queue.splice(i, 1);
     };
     w.performance = { now: () => now };
-    async function pump(n) {
+    async function pump(n, frameMs = 17) {
       for (let i = 0; i < n; i++) {
-        now += 17;
+        now += frameMs;
         const snapshot = queue.slice();
         queue.length = 0;
         for (const e of snapshot) { try { e.cb(now); } catch (err) { errors.push("tick: " + err.message); } }
@@ -117,23 +115,27 @@ function boot(file) {
   });
 }
 
-/* Walk forward holding W; a slight right strafe counteracts the authored -4° yaw
-   so the walker ends deep and near the middle rather than hugging a wall. */
-async function walkDeep(env, forwardFrames, strafeFrames) {
+/* W follows the street's depth axis regardless of camera yaw; sidestepping to
+   correct camera drift would hide a movement bug, so the walk is one-dimensional. */
+async function walkDeep(env, forwardFrames) {
   env.key("w");
   await env.pump(forwardFrames);
-  if (strafeFrames) { env.key("d"); await env.pump(strafeFrames); env.keyUp("d"); }
   env.keyUp("w");
   await env.pump(6);
 }
 
-/* Turn (arrow taps) until the wanted object is the one in reach; one tap is 7°. */
+/* A short, released arrow press is a deliberate turn; holding the key is rate-limited. */
+async function tapTurn(env, key = "arrowright") {
+  env.key(key);
+  await env.pump(5);
+  env.keyUp(key);
+  await env.pump(2);
+}
 async function turnToReach(env, objId, maxTaps = 60) {
   for (let i = 0; i < maxTaps; i++) {
     const r = env.reach();
     if (r && r.dataset.obj === objId) return true;
-    env.key("arrowright");
-    await env.pump(2);
+    await tapTurn(env);
   }
   const r = env.reach();
   return !!(r && r.dataset.obj === objId);
@@ -173,8 +175,7 @@ async function walkToDepth(env, target, maxFrames = 1500) {
 async function turnToVisible(env, el, maxTaps = 70) {
   for (let i = 0; i < maxTaps; i++) {
     if (el.style.visibility === "visible") return true;
-    env.key("arrowright");
-    await env.pump(2);
+    await tapTurn(env);
   }
   return el.style.visibility === "visible";
 }
@@ -199,15 +200,203 @@ async function main() {
   ok("street carries a painted backdrop (sky, and a city or a harbour beyond)",
      !!bd && bd.sky.length >= 2 && ((bd.city && bd.city.length >= 3) || (bd.harbor && bd.harbor.z1 > bd.harbor.z0)),
      bd ? `sky+${bd.harbor ? "harbor" : "city"} present` : "missing");
-  ok("street carries all four room doors as objects",
-     ["door-toronto", "door-tokyo", "door-fukuoka"].every((id) => env.doc.querySelector(`[data-obj="${id}"]`)));
+  const skyTop = bd && bd.sky && bd.sky[bd.sky.length - 1];
+  ok("street's distant sky uses a smooth gradient and closes a portrait viewport",
+     !!skyTop && bd.skyGradient === true && skyTop.y1 >= 300000 && bd.sky.length >= 10,
+     skyTop ? `${bd.sky.length} colour samples; smooth=${bd.skyGradient}; top ${skyTop.y1}` : "missing sky");
+  const harbor = bd && bd.harbor;
+  ok("the quay has six-metre bollards, a four-tread access cut, and a ladder to the water",
+     !!harbor && harbor.bollards && harbor.bollards.spacing === 600
+       && harbor.slipway && harbor.slipway.steps === 4
+       && harbor.ladder && harbor.ladder.rungs >= 4,
+     harbor ? `bollard spacing ${harbor.bollards && harbor.bollards.spacing}; steps ${harbor.slipway && harbor.slipway.steps}` : "missing quay kit");
+  ok("a broken breakwater and authored wind lanes give the harbour a far edge and a moving surface",
+     !!harbor && harbor.breakwater && harbor.breakwater.length >= 6
+       && harbor.motion && harbor.motion.lanes.length === 3 && harbor.motion.ripples.length === 6,
+     harbor ? `${harbor.breakwater && harbor.breakwater.length} blocks; ${harbor.motion && harbor.motion.lanes.length} lanes / ${harbor.motion && harbor.motion.ripples.length} rings` : "missing harbour detail");
+  ok("water animation parks when reduced motion is requested",
+     /if \(motion && !reduce\(\)\)/.test(js) && /motion\.ripples/.test(js));
+  ok("street carries exactly the three main-place doors",
+     ["door-toronto", "door-tokyo", "door-fukuoka"].every((id) => env.doc.querySelector(`[data-obj="${id}"]`))
+       && !["door-cntower", "door-niagara", "door-journey"].some((id) => env.doc.querySelector(`[data-obj="${id}"]`)));
   ok("no room door on the street is wired to another street door",
      ["door-toronto", "door-tokyo", "door-fukuoka"].every((id) => {
        const el = env.doc.querySelector(`[data-obj="${id}"]`);
        return el && el.dataset.leave && el.dataset.leave !== "street.html";
      }));
 
-  /* ---- 2. Toronto by foot: walk beside the first door, face it, press E ---- */
+  // DESIGN.md promises screen-axis movement. Turning the view must not rotate W into an accidental
+  // sidestep, and A must not add an accidental stride down the lane.
+  const yaw0 = env.walk().yaw;
+  env.key("arrowright"); await env.pump(2); env.keyUp("arrowright"); await env.pump(2);
+  const yaw1 = env.walk().yaw;
+  const beforeW = { ...env.walk() };
+  env.key("w"); await env.pump(60); env.keyUp("w"); await env.pump(35);
+  const afterW = { ...env.walk() };
+  ok("street movement: W advances down the lane without yaw drift",
+     yaw1 !== yaw0 && Math.abs(afterW.x - beforeW.x) < 0.01 && afterW.depth > beforeW.depth + 100,
+     `yaw ${yaw0}->${yaw1}; x ${beforeW.x.toFixed(1)}->${afterW.x.toFixed(1)}; depth +${(afterW.depth - beforeW.depth).toFixed(1)}`);
+  const beforeA = { ...env.walk() };
+  env.key("a"); await env.pump(30); env.keyUp("a"); await env.pump(35);
+  const afterA = { ...env.walk() };
+  ok("street movement: A stays lateral without changing depth",
+     afterA.x < beforeA.x - 35 && Math.abs(afterA.depth - beforeA.depth) < 0.5,
+     `x ${beforeA.x.toFixed(1)}->${afterA.x.toFixed(1)}; depth ${beforeA.depth.toFixed(1)}->${afterA.depth.toFixed(1)}`);
+  ok("movement uses a calm walk speed and a sub-centimetre head cue",
+     env.walk().maxSpeed <= 210 && env.walk().turnRate <= 90,
+     `${env.walk().maxSpeed.toFixed(0)} cm/s max; ${env.walk().turnRate}°/s turn`);
+  const holdYaw0 = env.walk().yaw;
+  env.key("arrowright"); await env.pump(60); env.keyUp("arrowright"); await env.pump(4);
+  const heldTurn = Math.abs(env.walk().yaw - holdYaw0);
+  ok("a held turn is rate-limited instead of repeating large camera jumps",
+     heldTurn >= 70 && heldTurn <= 90, `${heldTurn.toFixed(1)}° in one second`);
+
+  // A 10 Hz frame is 100 ms. The integrator must account for all of it, just as it does for sixty
+  // 17 ms frames; the old 50 ms cap made the same one-second walk half speed on a slow render.
+  env.close();
+  env = await boot("street.html");
+  env.key("w"); await env.pump(50, 17);  // reach cruise speed before comparing the intervals
+  const fastStart = env.walk().depth;
+  await env.pump(60, 17); env.keyUp("w");
+  const fastWalk = env.walk().depth - fastStart;
+  env.close();
+  env = await boot("street.html");
+  env.key("w"); await env.pump(10, 100);  // same warm-up, sampled at 10 Hz
+  const slowStart = env.walk().depth;
+  await env.pump(10, 100); env.keyUp("w");
+  const slowWalk = env.walk().depth - slowStart;
+  ok("street movement: elapsed time, not render frame rate, sets distance",
+     Math.abs(fastWalk - slowWalk) < 12,
+     `60 Hz-ish ${fastWalk.toFixed(1)} cm; 10 Hz ${slowWalk.toFixed(1)} cm`);
+
+  env.key("w"); await env.pump(30);
+  const beforeBlur = env.walk().depth;
+  env.w.dispatchEvent(new env.w.Event("blur"));
+  await env.pump(8);
+  const afterBlur = env.walk().depth;
+  ok("street movement: losing focus releases held keys immediately",
+     afterBlur - beforeBlur < 0.5,
+     `depth drifted ${(afterBlur - beforeBlur).toFixed(2)} cm after blur`);
+  env.keyUp("w");
+
+  /* ---- 2. Collision audit: authored room widths, solids, end wall, ceiling ---- */
+  out.push("\n-- Movement/collision: narrow tunnel, plinth, room limits --");
+  env.close();
+  env = await boot("rooms-journey.html");
+  const tunnel = env.doc.querySelector("[data-walk]");
+  const tunnelWidth = Number(tunnel.dataset.laneW);
+  const tunnelHalf = tunnelWidth / 2 - env.walk().radius;
+  ok("Journey's 240 cm tunnel derives its wall and body limits from its own width",
+     tunnelWidth === 240 && env.walk().wallHalf === 120 && env.walk().halfWidth === tunnelHalf
+       && tunnelHalf === 96,
+     `wall ±${env.walk().wallHalf}; body centre ±${env.walk().halfWidth}`);
+  env.key("a"); await env.pump(100); env.keyUp("a"); await env.pump(8);
+  const leftWall = env.walk().x;
+  ok("A stops at the narrow tunnel's inside wall, never beyond it",
+     leftWall >= -tunnelHalf - 0.01 && Math.abs(leftWall + tunnelHalf) < 1.1,
+     `x=${leftWall.toFixed(2)} / limit=-${tunnelHalf}`);
+  const atLeftDepth = env.walk().depth;
+  env.key("d"); await env.pump(180); env.keyUp("d"); await env.pump(8);
+  const rightWall = env.walk().x;
+  ok("D reaches the opposite wall without widening the 2.4 m tunnel",
+     rightWall <= tunnelHalf + 0.01 && Math.abs(rightWall - tunnelHalf) < 1.1
+       && Math.abs(env.walk().depth - atLeftDepth) < 0.5,
+     `x=${rightWall.toFixed(2)} / limit=+${tunnelHalf}`);
+
+  const journeyLimit = Number(tunnel.dataset.laneMaxD);
+  ok("Journey's tunnel opens onto its deck at the page-authored walk limit",
+     Number.isFinite(journeyLimit) && env.walk().maxDepth === journeyLimit,
+     `${env.walk().maxDepth} cm / authored deck limit=${journeyLimit}`);
+  env.key("w"); await env.pump(600); env.keyUp("w"); await env.pump(8);
+  const deckStop = env.walk().depth;
+  env.key("w"); await env.pump(30); env.keyUp("w"); await env.pump(8);
+  ok("W cannot walk beyond the authored Journey deck extent",
+     deckStop <= journeyLimit + 0.01 && Math.abs(deckStop - journeyLimit) < 1.2
+       && Math.abs(env.walk().depth - deckStop) < 0.1,
+     `depth=${deckStop.toFixed(2)} / limit=${journeyLimit}`);
+  env.key("s"); await env.pump(600); env.keyUp("s"); await env.pump(8);
+  ok("S cannot walk through the rear boundary either", env.walk().depth >= env.walk().minDepth - 0.01,
+     `depth=${env.walk().depth.toFixed(2)} / minimum=${env.walk().minDepth}`);
+  env.key(" "); await env.pump(10); env.keyUp(" ");
+  const peak = env.walk().height;
+  await env.pump(60);
+  ok("jumping is capped below the narrow room's ceiling and lands cleanly",
+     peak > 0 && peak <= env.walk().maxHeight + 0.01 && env.walk().height === 0
+       && env.walk().maxHeight === Number(tunnel.dataset.laneCeil) - Number(tunnel.dataset.eye) - 12,
+     `peak=${peak.toFixed(1)} cm / clearance=${env.walk().maxHeight} cm`);
+
+  env.close();
+  env = await boot("rooms.html");
+  const sealed = env.doc.querySelector("[data-walk]");
+  const sealedFar = Number(sealed.dataset.laneD) - 47;
+  ok("a sealed Tokyo lane stops 47 cm before its own end wall",
+     env.walk().maxDepth === sealedFar,
+     `${env.walk().maxDepth} cm / wall at ${Number(sealed.dataset.laneD)} cm`);
+  env.key("w"); await env.pump(600); env.keyUp("w"); await env.pump(8);
+  const wallStop = env.walk().depth;
+  env.key("w"); await env.pump(30); env.keyUp("w"); await env.pump(8);
+  ok("W cannot pass through the sealed Tokyo end wall, even when held at the clamp",
+     wallStop <= sealedFar + 0.01 && Math.abs(wallStop - sealedFar) < 1.2
+       && Math.abs(env.walk().depth - wallStop) < 0.1,
+     `depth=${wallStop.toFixed(2)} / limit=${sealedFar}`);
+
+  env.close();
+  env = await boot("rooms-fukuoka.html");
+  const plinth = env.doc.querySelector('[data-obj="plinth-moji"]');
+  const plinthX = parseFloat(plinth.style.getPropertyValue("--x"));
+  const plinthZ = parseFloat(plinth.style.getPropertyValue("--z"));
+  const plinthFront = plinthZ - Number(plinth.dataset.d) / 2;
+  const plinthStop = plinthFront - env.walk().radius;
+  const wallHalf = env.walk().wallHalf;
+  const plinthHalf = Number(plinth.dataset.w) / 2;
+  const aisleClearance = wallHalf - plinthHalf - 2 * env.walk().radius;
+  ok("the Moji display plinth is authored as a solid walk obstacle", plinth?.dataset.solid === "true");
+  ok("the Moji hall leaves a full-body side aisle around the solid display",
+     aisleClearance > 0 && env.walk().halfWidth > plinthHalf + env.walk().radius,
+     `${aisleClearance.toFixed(0)} cm spare beyond a 48 cm body`);
+  env.key("w"); await env.pump(700); env.keyUp("w"); await env.pump(8);
+  const atPlinth = env.walk().depth;
+  env.key("w"); await env.pump(40); env.keyUp("w"); await env.pump(8);
+  ok("the walker stops at the near face of the port table instead of entering its volume",
+     Math.abs(atPlinth - plinthStop) < 1.2 && Math.abs(env.walk().depth - atPlinth) < 0.1,
+     `depth=${atPlinth.toFixed(2)} / table edge=${plinthStop.toFixed(2)}`);
+  env.key("d"); await env.pump(180); env.keyUp("d"); await env.pump(8);
+  const sideX = env.walk().x;
+  ok("the visitor can move fully around the port table without crossing its collision footprint",
+     sideX > plinthX + plinthHalf + env.walk().radius
+       && sideX <= env.walk().halfWidth + 0.01,
+     `aisle x=${sideX.toFixed(1)}; collider edge=${plinthX + plinthHalf + env.walk().radius}`);
+  env.key("w"); await env.pump(250); env.keyUp("w"); await env.pump(8);
+  const pastTable = env.walk().depth;
+  ok("the side aisle stays open past the full depth of the display",
+     pastTable > plinthZ + Number(plinth.dataset.d) / 2 + env.walk().radius + 80,
+     `depth=${pastTable.toFixed(0)}; far edge=${plinthZ + Number(plinth.dataset.d) / 2 + env.walk().radius}`);
+
+  env.close();
+  env = await boot("rooms-toronto.html", "#at-tower-cn");
+  const tower = env.doc.querySelector('[data-obj="tower-cn"]');
+  const towerDist = Math.hypot(
+    parseFloat(tower.style.getPropertyValue("--x")) - env.walk().x,
+    parseFloat(tower.style.getPropertyValue("--z")) - env.walk().depth);
+  ok("the CN Tower sub-space returns to its owning prop, in reach and in view",
+     towerDist < 190 && env.reach()?.dataset.obj === "tower-cn",
+     `distance=${towerDist.toFixed(1)} cm; reach=${env.reach()?.dataset.obj || "none"}`);
+  env.key("e"); await env.pump(8);
+  const enterTower = env.doc.querySelector("[data-enter-space]");
+  ok("using the Toronto tower prop opens its story with the tower-space action",
+     !!enterTower && !enterTower.hidden && enterTower.getAttribute("href") === "rooms-cntower.html",
+     enterTower?.getAttribute("href") || "missing story action");
+
+  env.close();
+  env = await boot("rooms-niagara.html", "#at-door-journey");
+  const journeyDoor = env.doc.querySelector('[data-obj="door-journey"]');
+  ok("Journey returns beside Table Rock's own door, ready to enter it again",
+     env.reach()?.dataset.obj === "door-journey"
+       && Math.hypot(parseFloat(journeyDoor.style.getPropertyValue("--x")) - env.walk().x,
+                     parseFloat(journeyDoor.style.getPropertyValue("--z")) - env.walk().depth) < 190,
+     `reach=${env.reach()?.dataset.obj || "none"}; x=${env.walk().x.toFixed(0)}, z=${env.walk().depth.toFixed(0)}`);
+
+  /* ---- 3. Toronto by foot: walk beside the first door, face it, press E ---- */
   out.push("\n-- Street -> Toronto on foot: E on the lit door --");
   env.close();
   env = await boot("street.html");
@@ -307,9 +496,16 @@ async function main() {
   env = await boot("rooms-fukuoka.html");
   ok("fukuoka has pressable objects visible at the mouth",
      [...env.doc.querySelectorAll(".walk-hit")].filter((e) => e.style.visibility === "visible").length >= 3);
-  await walkDeep(env, 250, 0);
+  // The solid port table is a visual anchor, not a wall across the hall: approach it, take the
+  // authored right-hand aisle, pass the model's far edge, then continue toward the harbour.
+  env.key("w"); await env.pump(700); env.keyUp("w"); await env.pump(8);
+  env.key("d"); await env.pump(180); env.keyUp("d"); await env.pump(8);
+  env.key("w"); await env.pump(250); env.keyUp("w"); await env.pump(8);
+  await walkDeep(env, 250);
   const fWalk = env.walk();
-  ok("fukuoka: W carries the walker to the water", fWalk.depth > 950, `depth=${fWalk.depth.toFixed(0)}`);
+  ok("fukuoka: the side aisle carries the walker past the port table to the water",
+     fWalk.depth > 2100 && fWalk.x > 350,
+     `depth=${fWalk.depth.toFixed(0)}; x=${fWalk.x.toFixed(0)}`);
   env.close();
 
   /* ---- 9. The doors are painted geometry: walk in, turn, click, leave ---- */
@@ -333,7 +529,7 @@ async function main() {
     }
     let vis = el && el.style.visibility === "visible";
     for (let i = 0; i < 70 && !vis; i++) {
-      e2.key("arrowright"); await e2.pump(2);
+      await tapTurn(e2);
       vis = el.style.visibility === "visible";
     }
     ok(`${file} [${objId}]: becomes a visible plane as you walk in and look around`, vis,

@@ -30,12 +30,22 @@ Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo 
   and `skills/lane-prop/` for a single object, light or state inside one, `skills/landmark-space/`
   when one landmark object becomes its own walkable space, and `skills/grounded-scene/` whenever a
   scene recreates a real place and must feel nearly the same as being there (the owner's round-20
-  fidelity rule). Those seven live in
-  `skills/` and **are tracked** — unlike everything under `.claude/`, which is local-only. Follow the
-  matching one before doing the matching kind of work.
+  fidelity rule). These scene-authoring skills live in `skills/` and **are tracked** — unlike
+  everything under `.claude/`, which is local-only. Follow the matching one before doing the matching
+  kind of work.
+- **Installed agent practices are mandatory (owner request, 2026-10-14):** before any non-trivial
+  implementation, read `skills/karpathy-guidelines/SKILL.md` and `skills/pua/SKILL.md`. Before every
+  new or revised walkable environment, landmark, or substantial scene build, also read
+  `skills/real-place-builder/SKILL.md` and `skills/grounded-scene/SKILL.md`, then the matching
+  domain skills above. These are tracked project skills, not optional suggestions. Apply PUA as an
+  evidence-first method—diagnose, change approach when stalled, inspect related effects, and verify
+  the actual artifact. Do **not** use shaming, threats, fabricated performance reviews/KPIs, endless
+  retries, or PUA as authority to bypass permissions, user constraints, safety, or tests. A scene is
+  not visually complete until its rendered objects and walkable stops have been inspected.
 - **The hub is a street with regions on it, and that is the owner's brief** (2026-10-08): one street
-  to walk, a region for Japan and a region for Canada, a door into each room, and — not built —
-  sea or harbour views along the way in daylight.
+  to walk, a region for Japan and a region for Toronto, and a door to each of the three main places.
+  Owned landmark/sub-spaces are discovered through their real parent props, not added as more hub
+  destinations. The street also opens onto the harbour in daylight.
 - **The street is a day, and a record says so.** `"day": True` (or `{"cycle", "start", "gain"}`) on a
   district makes the page run its own clock and the renderer add the sun to every surface — the
   mechanism, its measurements and its four consequences are in `skills/street-commons` §3, and the
@@ -43,12 +53,14 @@ Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo 
   whose subject is dusk simply do not ask for it, and their frames are unchanged by it. Daylight
   **cannot** be got by raising `SUN()`: `lit` tops out at a 28% wash over a tile that is a night
   value, which moved the street's whole-frame luminance by six points and looked like nothing.
-- **The coast is decided and built (2026-10-09): the street ends at a harbour.** The owner asked
-  for beach-or-harbour scenery in sunlight and then delegated the choice; the choice is harbour,
-  because the street is likened to Moji Port and Moji Port is a harbour town, and one-point
-  projection puts water only at the end of the walk. The street walks out onto a quay and ends at
-  a rail; past it, water with a day tile, a ferry, a crane and the far shore (`bd.harbor`). The
-  beach was not built on purpose. The Japanese half is a shopping street now: `front` props with
+- **The coast is decided and built (2026-10-09; quay detail completed 2026-10-13): the street ends
+  at a harbour.** The owner asked for beach-or-harbour scenery in sunlight and then delegated the
+  choice; the choice is harbour, because the street is likened to Moji Port and Moji Port is a harbour
+  town, and one-point projection puts water only at the end of the walk. The street walks out onto a
+  quay with a broken rail, a four-tread slipway, a ladder and six-metre mooring bollards; past it are
+  depth-banded moving water, a ferry, gantry crane, breakwater and far shore (`bd.harbor`). The sky
+  fills the open aperture in portrait and landscape. The beach was not built on purpose. The Japanese
+  half is a shopping street now: `front` props with
   an `awn` colour are shops at eye level — awnings, fascias, noren, display glass — per
   `skills/lane-prop` §7. **Two traps from this round, both in the skills now:** record depths are
   ×2.9 into walk space but backdrop depths and `max_d` are walk space as written
@@ -403,34 +415,27 @@ proposal until they have read it, and the loop is not finished until they have.
     registry, and do not classify a new block as `personal` or `academic` without writing down what
     it is for — the same rule that governs a district governs the picture of one.
 
-- **A place is its page, and the pages hang off a hub street.** `ROOMS` in `_gen_html.py` is the
-    table, street first: one row per place, carrying its page, the plate prefixes that belong to it,
-    and whether it is open. The street row **is** the hub — a walkable outdoor page whose record
-    carries one door object per room — and `DISTRICTS` holds each place, taking its page and plates
-    from its row so the album and the walk cannot disagree about which room a plate opens onto.
-    Walking out of any room puts you on the street **at that room's own door** — the exit link
-    carries `#at-<room>` and the renderer spawns beside the door it names, facing down the street
-    at the others, so the connection between rooms is a walk, not a teleport — and the street's
-    doors put you in any room; the
-    street's own back door opens the album, which is the picker. There is no onward wiring: the old
-    Canada→Tokyo→Fukuoka chain is retired, and a `way-on` door anywhere is a regression. Never stack
-    two open districts into one page: the renderer reads one island per key, so the second room's
-    objects would float in the first room's lane. Adding a place means adding a row, a record, a page
-    write, **a door object on the street**, and a gate run — `skills/place-intake` is the checklist.
+- **The walkable pages have a hub, but not every page is a destination.** `ROOMS` in `_gen_html.py`
+    registers every walkable page, street first. `street.html` carries doors only to the three main
+    places — Toronto, Tokyo and Fukuoka. A landmark or owned sub-space has its own row/page but is
+    reached only from the real parent object or doorway; it gets no hub door and no top-level album
+    card. A child exit names its owner and `#at-<prop-id>` so the visitor returns beside the object
+    that revealed it. Main rooms return to the street at their own `#at-<room-id>` door. The street's
+    own back door opens the album. There is no onward chain between main places, and a `way-on` door
+    anywhere is a regression. Never stack open districts on one page: the renderer reads one island
+    per key. Adding a main place means a `ROOMS` row, record, page, one hub door and one Field notes
+    card; adding a real owned space means its row/page, parent prop/door and parent return anchor —
+    never a fourth album card. `skills/place-intake` is the checklist.
 
-- **The hub street and three rooms are open:** `street.html` (the hub, outdoors), Toronto
-    (`rooms-toronto.html`, the Little-Canada-style hall of lit tables that replaced the snow
-    walkway), Tokyo (`rooms.html`), Fukuoka (`rooms-fukuoka.html`). The album's Field
-    notes wall is **one container of three cards, and the card itself is the door** (`_place_card`
-    → `data-place-cards`): press a card, be inside the place. Each card carries the place's cover
-    sheet, name and note. The sub-area plates — the gate, the stall row, the lanterns — do **not**
-    appear on the album at all: they are the wall frames **inside their rooms**, one per named
-    little place (`PLACE_TITLES` + the room's slot list; `verify-walk.mjs` asserts every frame's
-    title is a slot). Fifteen scattered tiles-with-doors read as a pile; one container of three
-    cards reads as three places you could go.
-    A new place is a row in `ROOMS`, a record in `DISTRICTS`, a door on the street, a page written by
-    the walk loop, plate prefixes added to `IMG_RULES` and to the row, and a gate run —
-    `skills/place-intake` walks through it.
+- **Field notes is fixed to the three original destinations, forever:** Toronto, Tokyo, Fukuoka.
+    Its one `data-place-cards` container has exactly those three cards in that order. The CN Tower,
+    Niagara Falls and Journey Behind the Falls are child spaces discovered inside their owners, not
+    standalone cards. Every child scene must still reproduce the real environment it names; do not
+    substitute a generic room or invent another destination. Sub-area plates — the gate, stall row,
+    lanterns — are different again: they are frames *inside* their room, one per named slot
+    (`PLACE_TITLES` + the room's slot list; `verify-walk.mjs` asserts every frame title is a slot).
+    A new main place is a row in `ROOMS`, a record in `DISTRICTS`, a hub door, a Field notes card and a
+    gate run; a child space is owner-wired and has no card. `skills/place-intake` walks through both.
 
 - **Reference photographs never ship.** The owner's photographs of a real place live in `ref/`
     (gitignored) and are read, not published: what hangs on the wall is a generated plate, and what you

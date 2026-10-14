@@ -218,7 +218,10 @@ const body = () => q("[data-walk]").__walk;
 
 await hold("w", 500);
 ok("W moves the body: a station chip takes over the readout", /m in$|ahead$/.test(status()), status());
-ok("the walk stays inside the authored box", /HALF = 290, MIN_D = -30, MAX_D = 1200/.test(js));
+ok("the walk stays inside this page's authored box",
+   /const WALL = attr\("laneW", 640\) \/ 2/.test(js)
+     && /const HALF = Math.max\(0, WALL - PLAYER_RADIUS\)/.test(js)
+     && /const MAX_D = attr\("laneMaxD", Z_FAR - 47\)/.test(js));
 ok("the plaza is seen, not entered: the far plane sits past the clamp",
    /MAX_D = 1200/.test(js) && vista.w > 0 && 1200 < 1247,
    "MAX_D 1200 < the end wall at 1247, so the window is a view and not a hole out of the world");

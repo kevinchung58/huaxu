@@ -11,8 +11,8 @@
    metrics, scrolling, hit-testing and iOS Safari are not in this file and are not claimed by it —
    `.verify/browser-check.py` is where a press has to land.
 
-   It ends in a gate of its own, over the pictures it just took: at every one of the four stops the
-   lane publishes, looking down the lane, the frame has to be a *room* — a floor, walls, a ceiling,
+   It ends in a gate of its own, over the pictures it just took: at every stop on the published
+   route, looking down the lane, the frame has to be a *room* — a floor, walls, a ceiling,
    more than a dozen distinct colours and a mean luminance above 90 — and turning round at the entrance
    has to show the lane behind you rather than the underside of the world. Those three numbers are the
    ones that separated the current renderer from the one that collapsed to a flat plate when you stood
@@ -153,18 +153,36 @@ const shot = (name) => {
   }
 };
 const lookTo = async (want) => {
+  const shortest = (from, to) => ((to - from + 540) % 360) - 180;
+  const rate = (layer.__walk && layer.__walk.turnRate) || 75;
   let yaw = (layer.__walk && layer.__walk.yaw) || 0;
-  while (Math.abs(want - yaw) >= 3.5) {                   // one arrow press is a 7 degree look
-    key(want > yaw ? "ArrowRight" : "ArrowLeft", "keydown");
-    yaw += want > yaw ? 7 : -7;
-    await sleep(12);
+  for (let i = 0; i < 24; i++) {
+    const delta = shortest(yaw, want);
+    if (Math.abs(delta) < 1) break;
+    // The camera turns at a time-based rate, not a fixed number of degrees per keydown. Hold the
+    // arrow for the measured interval, release it, then read the renderer's yaw before correcting.
+    const ms = Math.min(150, Math.max(35, Math.abs(delta) * 1000 / rate + 20));
+    const direction = delta > 0 ? "ArrowRight" : "ArrowLeft";
+    await hold(direction, ms);
+    await sleep(60);
+    yaw = (layer.__walk && layer.__walk.yaw) || yaw;
   }
   await sleep(90);
 };
-const goTo = async (stop) => {                          // the lane's own station chips, not a walk
+const goTo = async (stop) => {                          // use the lane's chips, but wait for the body to arrive
   const chips = Array.from(doc.querySelectorAll("[data-walk-stop]"));
-  if (chips[stop]) tap(chips[stop]);
-  await sleep(1400);
+  const chip = chips[stop];
+  if (!chip) throw new Error(`missing station ${stop}`);
+  const want = parseFloat(chip.style.getPropertyValue("--z")) || 0;
+  tap(chip);
+  // A jsdom raster spends part of each frame painting the scene, so wall-clock glide time is slower
+  // than the authored 165 cm/s physics step; wait on the body itself and let 30 s be only a deadlock cap.
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    if (Math.abs(layer.__walk.depth - want) < 1.5) return;
+    await sleep(40);
+  }
+  throw new Error(`station ${stop} stopped at ${layer.__walk.depth.toFixed(1)} cm; wanted ${want} cm`);
 };
 
 await sleep(1200);                                      // boot, first paint, tiles drawn
@@ -177,14 +195,15 @@ if (listBtn && listBtn.getAttribute("aria-expanded") === "true") tap(listBtn);  
    the page names it. A room that grows a new stop (the street grew "out in the open") is shot at it
    without this file learning anything room-specific. */
 const TOUR = [...markup.matchAll(
-  /data-walk-stop="\d+"[^>]*aria-label="([^,"]+), \d+ cm in"/g)].map((m, i) => [i, m[1]
+  /data-walk-stop="(\d+)"[^>]*aria-label="([^"]+?), \d+ cm in"/g)].map((m) => [Number(m[1]), m[2]
     .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")]);
+const SIDE_ANGLE = Math.max(10, Math.min(120, Number(process.env.LANE_SIDE_ANGLE) || 30));
 let n = 0;
 for (const [i, label] of TOUR) {
   await goTo(i);
-  await lookTo(-30); shot(`${String(++n).padStart(2, "0")}-${label}-left-30`);
-  await lookTo(0);   shot(`${String(++n).padStart(2, "0")}-${label}-ahead`);
-  await lookTo(30);  shot(`${String(++n).padStart(2, "0")}-${label}-right-30`);
+  await lookTo(-SIDE_ANGLE); shot(`${String(++n).padStart(2, "0")}-${label}-left-${SIDE_ANGLE}`);
+  await lookTo(0);          shot(`${String(++n).padStart(2, "0")}-${label}-ahead`);
+  await lookTo(SIDE_ANGLE); shot(`${String(++n).padStart(2, "0")}-${label}-right-${SIDE_ANGLE}`);
 }
 await goTo(0);
 await lookTo(180); shot(`${String(++n).padStart(2, "0")}-entrance-behind`);
@@ -254,7 +273,7 @@ const WALL_D = parseFloat((markup.match(/data-lane-d="(\d+)"/) || [])[1]);
 const HAS_VISTA = !!markup.match(/data-walk-vista/);
 const stopZ = (name) => {
   const i = Math.floor((Number(name.slice(0, 2)) - 1) / 3);   // three frames per stop
-  const stop = markup.match(new RegExp(`data-walk-stop="${i}"[^>]*aria-label="[^,]+, (\\d+) cm in"`));
+  const stop = markup.match(new RegExp(`data-walk-stop="${i}"[^>]*aria-label="[^"]+?, (\\d+) cm in"`));
   return stop ? Number(stop[1]) : 0;
 };
 const atVista = (name) => HAS_VISTA && stopZ(name) >= WALL_D - 260;

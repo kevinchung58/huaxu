@@ -11,8 +11,14 @@ The loadable halves of it live in `skills/`, and those are what an agent should 
 starts: `district-author` (the record, the build rules, the gate), `place-intake` (photographs to a
 record), `japan-place` (what a Japanese place is made of — the object table in centimetres, the
 night, the prohibitions, and the sakura-crossing study note), `street-commons` (the hub street, a
-new region along it, a promenade, and the honest cost of daylight) and `lane-prop` (one object, light
-or state, and the measurement that proves it arrived). This file is the method behind all five.
+new region along it, a promenade, and the honest cost of daylight), `lane-prop` (one object, light
+or state, and the measurement that proves it arrived), `landmark-space` (a real parent prop and its
+owned room), `grounded-scene` (source-based spatial fidelity), `karpathy-guidelines` (simple,
+surgical, assumption-aware coding), `pua` (persistent evidence-first debugging), and
+`real-place-builder` (the end-to-end scene and visual-review gate). This file is the method behind
+them all. `AGENTS.md` requires the Karpathy and PUA practices for non-trivial implementation and
+requires the scene-builder/grounding/domain skills before every environment build or substantial
+revision.
 
 ---
 

@@ -9,13 +9,14 @@ Every room on this site is reached by walking. `street.html` is the hub — a 7.
 7.0 m wide and 10.4 m long in record depth, extending to 34 m of true walk depth, with a door per
 room on either side, lit poles, strung wires, kerbs and tactile paving. The owner's picture of it is
 a **street you walk along, with a region for Japan and a region for Canada, a door into each room,
-and — this is the new part — sea and harbour views along the way, in sunlight.**
+and sea and harbour views in sunlight.** That picture now exists: the straight walk opens onto a
+sunlit quay, water, a far shore and working port details at its end.
 
-That last clause is the whole difficulty. Three things stand between the current street and it, and
-they are of different sizes: the **light** (a stylesheet decision, and a design question for the
-owner), the **kit** (materials and shapes the renderer does not have yet), and the **layout** (which
-is arithmetic, and this skill). Do them in that order of honesty — the layout is the cheapest and
-the light is the one that decides whether the result is what he asked for.
+The street is an open district, not just a corridor with a sky colour: its day clock, materials,
+route and harbour all have to agree. The light and far-space painter are now built; use the measured
+current record and the promenade reference below rather than treating daylight or the harbour as an
+unresolved request. The remaining arithmetic is still the useful part of this skill when the lane is
+extended or another border is added.
 
 ## 1. The street is a sequence of places, and the doors hang off it
 
@@ -29,7 +30,7 @@ second page — it needs the one street to have more than one character along it
 | the near half | the **Canadian quarter** | the Toronto door, brick and plaster, a bench, cool shade |
 | the middle | the crossing | the wires, a pole, a drain, the widest point |
 | the far half | the **Japanese quarter** | the Tokyo and Moji doors, shutters and brickwork, a vending machine's glow |
-| the end | **the opening** | the vista aperture, open ground, the skyline |
+| the end | **the quay** | an open route to the rail, the water, ferry, crane and far shore |
 
 Two rules make that legible rather than merely decorated:
 
@@ -53,8 +54,8 @@ lane**: one side is the built edge (shops, walls, railings), the other is the se
 means `surfaces` for each side, `marks` for the quay and the path, a backdrop for water and sky, and
 a run of props between. The layout math is in `references/street-system.md`; what matters here:
 
-- **`max_d` is how far you can walk out of your own walls.** The street already uses it (`max_d:
-  3400` against a record `d` of 1040) to let the walker carry on into open ground. An L-shaped
+- **`max_d` is how far you can walk out of your own walls.** The street uses it (`max_d:
+  4150` against a record `d` of 1040) to let the walker carry on to its quay. An L-shaped
   promenade — down the street, then along the water — is a second lane whose mouth is where the
   first one opens, not a new renderer.
 - **A shoreline behind a wall is not a promenade.** If the water is beyond the built edge, the
@@ -161,10 +162,10 @@ this table is an assertion.
 
 | The place | What it must be built from | Exists today? |
 |---|---|---|
-| the sea | a water body wider than a `pool` prop: a quay wall or a beach line, three tone bands (shallow, deep, far), a horizon | **no.** `pool` is a tabletop prop; `water` is a night tile |
-| the harbour | quay edges, bollards, a stepped slipway, a crane or a shed, moored hulls and their masts | partly — `boat`, `ship` shapes exist in the Moji kit |
-| the beach | sand, a shingle line, a sea wall or a footpath, dune grass, breakwater blocks | **no.** No sand material in the walk renderer, no beach props |
-| the promenade | railing or parapet, lamps, benches facing out, a widened bay with steps to the water | benches, lamps, kerbs yes; a railing and a quay edge **no** |
+| the sea | a water body wider than a `pool` prop: a quay wall or a beach line, three tone bands (shallow, deep, far), a horizon | **yes, at the street's far end** — a panelled harbour body with three depth-weighted tones, day/night tiles, a far shore, drifting wind lanes and expanding ripples |
+| the harbour | quay edges, bollards, a stepped slipway, a crane or a shed, moored hulls and their masts | **yes, in the hub backdrop** — quay wall, six-metre bollards, a four-tread slipway through the rail, ladder to water, ferry with a sheer line, gantry hoist and a broken breakwater |
+| the beach | sand, a shingle line, a sea wall or a footpath, dune grass, breakwater blocks | **no.** No sand material in the walk renderer; the owner chose a harbour, not a beach |
+| the promenade | railing or parapet, lamps, benches facing out, a widened bay with steps to the water | **partly** — the rail, quay edge, steps and ladder are built; there are no quay benches or separate lamps |
 | the town behind it | fronts, awnings, shutters, poles and wires | yes — the whole Japanese street kit (`skills/japan-place`) |
 | a hillside behind the town | silhouette, terraces, retaining walls, stairs | **partly** — the street's backdrop has mountains as flat silhouettes |
 

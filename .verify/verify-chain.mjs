@@ -1,9 +1,7 @@
-/* verify-chain.mjs — the hub door graph. The street is the hub and the three
-   rooms hang off it, so every open room must leave for the street and only the
-   street (its back curtain, its HUD exit, Esc — same target, three controls),
-   and the street must carry exactly one door per room plus its own door to the
-   album. Nothing may still wire the old linear chain: no room has an onward
-   door, and the site nav's "Rooms" points at the street, not at Canada.
+/* verify-chain.mjs — the hub and owned-space graph. The street has exactly the
+   three main places; landmark/sub-spaces are reached from their owning object,
+   never as street doors or album cards. Exits unwind to the owning room, then
+   the hub; nothing may turn a child space into a top-level destination.
    jsdom has no real navigation; an attempted location change is captured as a
    jsdom "Not implemented: navigation" error, exactly as verify-walk.mjs does.
 
@@ -87,23 +85,26 @@ const ROOMS = [
   { file: "rooms-toronto.html",  id: "toronto", backObj: "door-back" },
   // A landmark space owns its way back to the prop that owns it (landmark-space §2), not to
   // the street: the hall is the hub route in, the space returns to the hall.
-  { file: "rooms-cntower.html",  id: "cntower", backObj: "door-back", home: "rooms-toronto.html" },
+  { file: "rooms-cntower.html",  id: "cntower", backObj: "door-back", home: "rooms-toronto.html",
+    returnHash: "at-tower-cn" },
   { file: "rooms-niagara.html",  id: "niagara", backObj: "door-back", home: "rooms-toronto.html",
-    sub: ["rooms-journey.html"] },
+    returnHash: "at-falls-n", sub: ["rooms-journey.html"] },
   // The space the real Table Rock owns: entered by the door at the rail end of the promenade,
-  // unwinding to the promenade, not the street.
-  { file: "rooms-journey.html",  id: "journey", backObj: "door-back", home: "rooms-niagara.html" },
+  // unwinding to that same door in the promenade, not the street.
+  { file: "rooms-journey.html",  id: "journey", backObj: "door-back", home: "rooms-niagara.html",
+    returnHash: "at-door-journey" },
 ];
 const STREET_DOORS = [
-  { obj: "door-tokyo",    expect: "rooms.html" },
-  { obj: "door-fukuoka",  expect: "rooms-fukuoka.html" },
+  { obj: "door-toronto", expect: "rooms-toronto.html" },
+  { obj: "door-tokyo",   expect: "rooms.html" },
+  { obj: "door-fukuoka", expect: "rooms-fukuoka.html" },
 ];
 
 async function main() {
   ok("css and js exist on disk", fs.existsSync("css/site.css") && fs.existsSync("js/site.js"));
   ok("the street page exists", fs.existsSync(STREET));
 
-  /* ---- the street: one door per room, and its own door to the album ---- */
+  /* ---- the street: three main-place doors, plus its own door to the album ---- */
   out.push(`\n-- street (${STREET}) --`);
   {
     const { w, doc, navs, errors } = await bootRoom(STREET);
@@ -150,12 +151,14 @@ async function main() {
     ok(`${r.id}: boots without console errors`, errors.length === 0, errors.slice(0, 2).join(" | "));
 
     const hud = doc.querySelector("[data-walk-exit]");
-    ok(`${r.id}: HUD exit button exists and has an href`, !!hud && /\.html(#at-[a-z]+)?$/.test(hud?.getAttribute("href") || ""),
+    ok(`${r.id}: HUD exit button exists and has an href`,
+       !!hud && /\.html(#at-[a-z0-9-]+)?$/.test(hud?.getAttribute("href") || ""),
        hud ? hud.getAttribute("href") : "missing");
 
     const back = doc.querySelector(`[data-obj="${r.backObj}"]`);
-    ok(`${r.id}: back prop "${r.backObj}" exists and leaves for ${HOME}`,
-       !!back && back.dataset.leave.split("#")[0] === HOME, back?.dataset.leave || "missing");
+    const expectedExit = r.home ? `${HOME}#${r.returnHash}` : `${HOME}#at-${r.id}`;
+    ok(`${r.id}: back prop "${r.backObj}" returns to its owner at the correct anchor`,
+       !!back && back.dataset.leave === expectedExit, back?.dataset.leave || "missing");
 
     if (hud && back) {
       ok(`${r.id}: HUD exit href matches back curtain leave`,
@@ -174,9 +177,14 @@ async function main() {
     ok(`${r.id}: every leave on the page is ${HOME} or an owned sub-space`,
        leaves.length > 0 && leaves.every((t) => t.split("#")[0] === HOME || (r.sub || []).includes(t.split("#")[0])),
        [...new Set(leaves)].join(", "));
-    ok(`${r.id}: the leave's spawn hash names its own room`,
-       leaves.every((t) => !t.split("#")[1] || t.split("#")[1] === `at-${r.id}` || !r.home),
-       [...new Set(leaves)].join(", "));
+    const badAnchors = leaves.filter((t) => {
+      const [page, hash] = t.split("#");
+      if (r.home && page === HOME) return hash !== r.returnHash;
+      if (!r.home && page === STREET) return !!hash && hash !== `at-${r.id}`;
+      return (r.sub || []).includes(page) && !!hash;
+    });
+    ok(`${r.id}: every return anchor names the actual parent prop`, badAnchors.length === 0,
+       badAnchors.join(", ") || [...new Set(leaves)].join(", "));
 
     if (back) {
       navs.length = 0;
@@ -201,14 +209,14 @@ async function main() {
   // door under the heading opens the street.
   out.push("\n-- activities album --");
   const act = fs.readFileSync("activities.html", "utf8");
-  /* The Field notes wall is ONE container of three cards, the card itself the door. */
+  /* Field notes is permanently the original three main destinations. */
   const WANT = { toronto: "rooms-toronto.html", tokyo: "rooms.html",
-                 fukuoka: "rooms-fukuoka.html",
-                 // the landmark space owns a card too: the album wall is an archive, not the hub
-                 cntower: "rooms-cntower.html", niagara: "rooms-niagara.html",
-                 journey: "rooms-journey.html" };
+                 fukuoka: "rooms-fukuoka.html" };
   const wrapAt = act.indexOf("data-place-cards");
   ok("album: the place-card container exists", wrapAt >= 0);
+  const cardIds = [...act.matchAll(/data-place-card="([a-z-]+)"/g)].map((m) => m[1]);
+  ok("album: exactly Toronto, Tokyo and Fukuoka appear, in the fixed order",
+     JSON.stringify(cardIds) === JSON.stringify(Object.keys(WANT)), cardIds.join(", "));
   for (const [id, page] of Object.entries(WANT)) {
     const at = act.indexOf(`data-place-card="${id}"`, wrapAt);
     ok(`album: the ${id} card exists`, at >= 0);
@@ -218,9 +226,40 @@ async function main() {
     ok(`album: the ${id} card is the door to ${page}`, href === page, href || "missing");
     ok(`album: the ${id} card carries its cover sheet`, card.includes(`IMG/${id}-cover.jpg`));
   }
-  ok("album: one card per place in one container",
-     (act.match(/data-place-card="/g) || []).length === Object.keys(WANT).length);
+  ok("album: no owned landmark or sub-space appears as a top-level card",
+     !/data-place-card="(?:cntower|niagara|journey)"/.test(act));
+  ok("album: one card per main place in one container", cardIds.length === 3);
   ok("album: plates carry no doors of their own", !/<a class="ig-room"/.test(act));
+
+  // Child spaces are owned by props inside their real parent, not by the album or street.
+  const OWNED = [
+    { parent: "rooms-toronto.html", prop: "tower-cn", child: "rooms-cntower.html",
+      story: true, returnHash: "at-tower-cn" },
+    { parent: "rooms-toronto.html", prop: "falls-n", child: "rooms-niagara.html",
+      story: true, returnHash: "at-falls-n" },
+    { parent: "rooms-niagara.html", prop: "door-journey", child: "rooms-journey.html",
+      story: false, returnHash: "at-door-journey" },
+  ];
+  for (const edge of OWNED) {
+    const parentHtml = fs.readFileSync(edge.parent, "utf8");
+    const prop = parentHtml.match(new RegExp(`<button[^>]*data-obj="${edge.prop}"[^>]*>`));
+    const childHtml = fs.readFileSync(edge.child, "utf8");
+    const backProp = childHtml.match(/<button[^>]*data-obj="door-back"[^>]*>/);
+    if (edge.story) {
+      const storiesTag = parentHtml.match(/<script type="application\/json" data-walk-stories>([\s\S]*?)<\/script>/);
+      const stories = storiesTag ? JSON.parse(storiesTag[1]) : {};
+      ok(`${edge.prop}: parent object opens a real story before its owned space`,
+         !!prop && prop[0].includes(`data-story="${edge.prop}"`)
+           && stories[edge.prop]?.space === edge.child && stories[edge.prop]?.frames?.length > 0,
+         stories[edge.prop]?.space || "story/space missing");
+    } else {
+      ok(`${edge.prop}: the owned entry is the door object inside its parent`,
+         !!prop && prop[0].includes(`data-leave="${edge.child}"`), prop?.[0] || "door missing");
+    }
+    ok(`${edge.child}: leaving returns to its owning object in ${edge.parent}`,
+       !!backProp && backProp[0].includes(`data-leave="${edge.parent}#${edge.returnHash}"`),
+       backProp?.[0].match(/data-leave="([^"]+)"/)?.[1] || "return anchor missing");
+  }
   ok("album: no field-notes frames in the roll (the cards replaced them)",
      !/id="ig-field-notes-/.test(act));
 

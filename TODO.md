@@ -1,6 +1,66 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-10 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-14 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0l. 第三十輪（2026-10-14）：建景 skills 強制落地、視覺回歸與 Niagara renderer 修正
+
+站主要求從 GitHub 查核並整合 Karpathy、PUA，以及此前造真實可進入環境時欠缺的 skills；每次建景都必須套用，並保留專案真實地點規範。已將 Karpathy guidelines（上游 `multica-ai/andrej-karpathy-skills` commit `2c606141936f1eeef17fa3043a72095b4765b9c2`，skill front matter 宣告 MIT）、PUA（上游 `tanweai/pua` commit `e6e6cd237ad17750d179674bff52f8184abea8fd`；Codex skill front matter 宣告 MIT，GitHub tree 未見 LICENSE 檔）以及本專案撰寫的 `real-place-builder` 記入 `skills/README.md`。PUA 只整合持續、證據優先的除錯與驗證方法，不採用羞辱、威脅、虛構績效或無止盡重試。`AGENTS.md` 現要求非簡單實作必讀 Karpathy/PUA；每個新／大幅修訂的可行走實境另須先讀 real-place-builder、grounded-scene 與匹配的 domain skills。`SKILLS.md` 導覽同步更新。
+
+**實際視覺查核**：依 Toronto 與 Niagara 場景要求走訪並檢視瀑布弧形、桌燈與 90°物件向視角。Toronto 標準 lane-shot 16 幀與 `LANE_SIDE_ANGLE=90` 16 幀均通過；Niagara 90° lane-shot 13 幀均通過。輸出留在忽略目錄 `.preview/toronto-object-review-final2/`、`.preview/toronto-object-review-final2-wide/`、`.preview/niagara-falls-shared-shape-final/`，未加進 Git。
+
+**Niagara 載入錯誤的根因與修正**：在 Table Rock lane-shot 重現 `TypeError: Cannot set properties of null (setting 'lit')`；堆疊指向 `drawFar`。當 `dish` 存在但 `sky` 已被視錐裁掉時，程式誤寫 `sky.lit`；改為 `dish.lit`。修正後完整 13 幀無 jsdom/renderer 錯誤；mouth 181.0／489 色、hedge 176.6／544 色、mist 156.6／309 色、Table Rock 129.5／251 色，入口回望最深 123.3。
+
+**最後全套回歸**（`LD_LIBRARY_PATH=/tmp/al2023/lib`）：`verify-shapes` 123 props 全有 painter；`verify-geometry`、`verify-clash`、`verify-objects`、`verify-walk`、`verify-rooms-e2e.cjs`、`verify-chain`、`verify-story` 全 exit 0；數值為 `verify-walk` 173/173、e2e／chain 0 failures、story 25/25。`cost-probe`：peak 6380、25 frames、4915/4915 save/restore、bad 0、dark 0.617、huge 0；impeccable 為 `[]`。`_gen_html.py` 連跑兩次後所有 HTML MD5 一致、`sitemap.xml` 未變；Python/JS syntax、`git diff --check` 通過。Chromium harness 的 jsdom 對跨文件導覽會印 `Not implemented: navigation to another Document`，但 harness 會記錄成預期導航且所有 route assertions 通過，非頁面 boot/renderer 錯誤。另試跑非必要的 `.verify/verify-tables.mjs` 角度掃描，600 秒後只產生部分視角資料而超時，故不記為 pass；本輪視覺驗收採實際打開的 Toronto/Niagara lane-shot 幀。
+
+**守住的產品規約**：Field notes 相簿仍只列 Toronto、Tokyo、Fukuoka；CN Tower、Niagara、Journey 仍由所屬真實 prop／door 進入，離開回 owner，不增頂層卡片或 hub door。`.verify/verify-walk.mjs` 的 hub assertion 描述同步修正為「三個主目的地＋album，子空間經 owner 回返」，以免驗收輸出誤稱街道直達所有 room。
+
+---
+
+## 0k. 第二十九輪（2026-10-13）：移動／碰撞回歸、子空間導覽與 state/door 查核
+
+**巷口「A 卡住」已釐清為測試前置狀態，不是 hydrant 碰撞缺陷。** jsdom 的 context-menu 探針以主要指標按下後放開，`pointerup` 會依設計視為場景點擊並打開 prop card；walk handler 在卡片開啟時刻意不接受 WASD。驗證器先關卡並斷言 `card.hidden`，再從 standpipe（`hydrant`）的切線位置 x=296、z=88 按 A，最終 x=3.8、z=88；圓形玩家對旋轉矩形碰撞可沿面側移，沒有穿入物件。先前 167/172 的五個失敗是這個測試前置條件造成的連帶結果，不是 gliding 或 rail 故障。
+
+- `js/site.js` 碰撞仍以玩家半徑 24 cm 對旋轉 OBB footprint 測距，軸向解析允許沿物件滑行；場景寬度、深度、低天花及 end wall 由頁面資料 clamp。速度上限 206 cm/s、轉向 75°/s、步伐視差小於 0.6 cm、無 camera roll，並以 25 ms 子步避免低幀率穿越邊界。
+- `state` JSON 在 `js/site.js:1294–1297` 解析；active state 在 `:2756` 選取，`setState` 在 `:5079–5085` 更新 state、ARIA 與燈光。一般 `shape === "door"` painter 在 `:2811`；電話亭的 `SHAPE.booth = "glass"`，實際滑門 leaf/rail 在 glass painter 的 `:2976–2990`。`.verify/verify-walk.mjs` 實測閉／開狀態門片 fills `0 → 3`，再按回 state 0。
+- Field notes 固定 allowlist `("toronto", "tokyo", "fukuoka")`；CN Tower、Niagara、Journey 僅由父場景物件／Story rail 進入，返回各自 owning prop。
+- 驗證：`verify-walk` **173/173**；`verify-rooms-e2e.cjs` **0 failures**（窄巷兩側牆、Tokyo end wall、Journey 深度界、Moji 展台近面與側道、60/10 fps 距離一致、blur 後停止）；`verify-story` **25/25**；`verify-chain` **0 failures**；`verify-shapes` **123 props** 均有 painter；`verify-geometry`、`verify-clash`、`verify-objects` 均 exit 0；`node --check`、`python3 -m py_compile _gen_html.py`、`git diff --check` 通過。walk 的 cache-buster 為 `044cddf966`。
+
+---
+
+## 0j. 第二十八輪（2026-10-13）：戶外街道收尾＋移動缺陷修正
+
+站主：「外面街道好像還沒完成，角色移動有明顯問題。」檢視 25 個街道視角後，問題不在港口
+資料缺席，而是開口上方退回深色 canvas、遠景天空只有三條硬色帶，港面靜止且碼頭沒有下水
+細節。加上移動合約核對找到一個明確矛盾：`DESIGN.md` 說移動沿街道螢幕軸、轉頭不改下一步，
+但舊速度向量被 yaw 旋轉，所以 W 漂進 x 軸、A/D 漂進深度；舊 `dt` 50ms 上限也讓低於20fps
+的畫面把步速砍半。根節在 `js/site.js`，不手改 `street.html`。
+
+**場景收尾**：遠景保留13個高度／色彩樣本，由 `bd.skyGradient` 投影成單一平滑天空漸層，
+延伸至直向視窗頂部；其餘房間仍用原本的天空帶 painter。海面按近／中／遠三段著色，依
+`prefers-reduced-motion` 動畫三條風紋及六圈漣漪；碼頭加六米繫船柱、欄杆缺口、四級下水階梯、
+海牆梯、八塊遠岸消波塊，並把渡船剪影做出船艏弧線、窗格、吊車吊鉤。
+
+**移動修正**：W/S 只改街道深度，A/D 只改 x，與轉向解耦；保留最多120ms實際時間，以25ms子步
+更新，不因低更新率少走；window blur／頁面隱藏時清除按鍵、手把、慣性與滑行狀態。e2e 增加轉向
+後軸向、低幀率距離、失焦停止及海港資料斷言。
+
+**最終驗證（2026-10-13）**：
+
+- `python3 _gen_html.py` 已重產所有頁面；`verify-walk` 確認 asset hash 為 `353f47e551`。生成前後
+  備份／還原 `sitemap.xml`，保留站主原有的 lastmod diff。
+- `LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-rooms-e2e.cjs`：**0 failures**。W 轉向後 x 漂移
+  0.0、前進 243.4 cm；A 的 x 改變 −144.3、深度只變 0.3 cm；60 Hz 約239.7 cm、10 Hz 約235.0 cm；
+  blur 後深度漂移0.00 cm。港口資料、reduced-motion、房間進出也全通過。Chromium gate 在本 sandbox
+  須設定此 `LD_LIBRARY_PATH`（不設時只因 `/tmp/chromium` 找不到 `libnspr4.so` 而無法啟動）。
+- `LD_LIBRARY_PATH=/tmp/al2023/lib ROOMS=street.html node .verify/lane-shot.mjs .preview/street-audit`：
+  **完整31幀**（10個停靠點各左／前／右＋入口回望），10張正向街道幀全過；最深停靠點228色、
+  平均亮度164.2；`.preview/street-audit/sheet.png` 已重拍並人工巡檢。修正舊停靠點 parser 對逗號標籤
+  的漏抓後，10/10 個停靠點都到位。
+- `verify-walk` **168/168**、`verify-chain` 0 failures、`verify-shapes` **123/123**；
+  `verify-geometry` OK、`verify-clash` 0、`verify-story` **22/22**、`verify-tables` exit 0。
+  `quick_validate.py skills/street-commons` 回報 valid。`node --check` 通過。
+
+---
 
 ## 0i. 第二十七輪（2026-10-11）：完整清單對帳＋inventory-scoping 進 skill
 

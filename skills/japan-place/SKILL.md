@@ -29,8 +29,8 @@ the choice changes the lane, the stops and the size of every object:
 - **The lane** — street level, walked. Tokyo is this: `lane: LANE_FALLBACK` (6.4 m wide, 4.3 m
   deep by default), one eye height, the frames on the walls beside you. It is right for a place
   whose identity is a *corridor*: an alley, a shotengai, a shrine approach, a covered arcade.
-- **The table** — a lit plinth in a hall, looked down on. Moji Port is this (`lane: {w:700, d:900,
-  ceil:620, back:300}`). It is right when the subject is a *panorama* — buildings that must all be
+- **The table** — a lit plinth in a hall, looked down on. Moji Port is this (`lane: {w:820, d:900,
+  ceil:620, back:300}`); the hall leaves a walkable aisle around the solid 660 cm display plinth. It is right when the subject is a *panorama* — buildings that must all be
   in one frame, a harbour, a station square, a crossing with a train on it. It also solves one
   problem a lane cannot: the moment. You cannot stand in a lane and watch a drawbridge open; on a
   table you can, from a stop that was authored to look at it.

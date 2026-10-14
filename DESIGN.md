@@ -102,9 +102,12 @@ the opposite direction. That is what keeps the lane free of a 3D library, and it
 movement is in screen axes (a lane has one axis of travel, so turning never changes where
 the next step lands).
 
-Two limits are deliberate and should not be "improved": yaw and pitch are clamped to ±35° /
-±10° because past that the walls stop covering the viewport and the room shows its own edges;
-and turning is drag, not Pointer Lock, because the site must stay usable on a phone.
+Looking can turn freely around the room, but pitch is bounded at ±24° to keep the camera from
+whipping above or below the scene. Keyboard turns are rate-limited to 75°/s; drag sensitivity is
+0.09° per CSS pixel, and vertical head bob is under 6 mm with no camera roll. The default walk is
+165 cm/s (206 cm/s with Shift). These are comfort constraints, not performance shortcuts: W/A/S/D
+stay on the authored lane axes regardless of look direction, and the view does not snap on key repeat.
+Turning is direct drag/arrow input, never Pointer Lock, so the phone stays usable.
 
 Three more are properties of *these* rooms rather than of the mechanism, and each cost a fix when a
 room was built: an opening is sized against the wall it is cut in **and** the stop it is seen from
@@ -166,10 +169,11 @@ this repo's own code. What that buys, and what it cannot:
   and were invisible for as long as a single island could be read as a list. The district's own
   harness rendered it that way for months without noticing, which is why `.verify/lane-shot.mjs` now
   rasterises the lane's canvas and gates on what the frame is made of.
-- The lane is closed on six sides *by construction*: the camera clips at 24 cm and the walls run past
-  the walk clamp, so turning around shows a lane instead of an edge. The box is authored (`data-lane-w`,
-  `data-lane-d`, `data-lane-ceil`, `data-eye`), so the renderer draws the room the data describes
-  rather than a room someone remembered to keep in sync.
+- Movement is collision-bound to the scene record: the body centre clamps at `laneW / 2 - 24 cm`,
+  the sealed far end stops 47 cm before its wall, and jumps stop below `lane.ceil` with headroom. The
+  authored solid props also block their floor footprints and allow axis sliding. Those bounds are
+  read from `data-lane-w/-d/-ceil` and the prop buttons, never from a global room width. The closed
+  room therefore stays closed even in the 240 cm Journey tunnel.
 - **Both ends of the lane are built, because both ends are frames you stand in front of.** The wall the
   lane runs into wears board-formed concrete — pour seams and tie holes, the same material as the far
   half of its side walls — because it is the largest surface in the deepest frame and a pale grid there
@@ -199,39 +203,32 @@ this repo's own code. What that buys, and what it cannot:
   `prefers-reduced-motion: reduce`, which is decided inside the integrator rather than cancelled in
   CSS after it has been paid for.
 
-### The corridor: one place, one page, and a chain of them
+### The walk graph: three destinations and their owned spaces
 
-The lane was written as the site's only room, with the plumbing to join several districts into one
-page. That join was never usable: the renderer reads one island per key, so a second open district
-would build its furniture over the first room's lane. So a place is now its own page, and the rooms
-are a chain.
+The renderer reads one data island per key, so each walkable environment is its own page. `ROOMS` in
+`_gen_html.py` registers those pages; it is not a list of album destinations. The hub street leads to
+exactly three main places: **Toronto** (the Little-Canada-style hall of model tables), **Tokyo** (the
+night lane), and **Fukuoka** (Moji Port on a table). Each has a place-specific box, sightline, surface
+kit and stops; Fukuoka's 8.2 m hall leaves a body-width aisle around its 6.6 m solid port table.
+Each is designed from the real environment it names, not as a generic room.
 
-`ROOMS` in `_gen_html.py` is the chain, in order, one row per place: its page, the plate prefixes that
-belong to it, and whether it is open. `DISTRICTS` holds the room and takes its page and plates from
-that row, so the album and the walk cannot disagree about which room a plate opens onto. A district
-also brings its own **box** — `lane.w/d/ceil/back` — and its own stops; a Fukuoka alley and a Canadian
-corridor are different rooms and the renderer reads whatever the place authored.
+A real place may own a nested environment. The Toronto model's CN Tower and Niagara Falls props open
+their stories and then their dedicated real spaces; Niagara's Table Rock door owns Journey Behind
+the Falls. These are child spaces: their entry remains inside the parent, they get no street door and
+no Field notes card, and their exit returns to the owning prop/door with `#at-<prop-id>`. The parent's
+own exit then unwinds to its hub door. This is a real place graph, not a linear chain or an invitation
+to invent additional destinations.
 
-Out of a room, two ways: the curtain at your back (and the corner control, which is the same authored
-value, so the key and the prop cannot point different ways) opens onto the place behind this one, or
-onto the album when this is the first room built. At the far end, a plain door opens onto the next
-place — and it is only hung when there *is* a next place, because a door onto nothing is worse than no
-door. Adding a place therefore touches one row, one record, and one gate run; `skills/place-intake`
-is the checklist, and it also decides — with the owner, and against a count of what the photographs
-actually show — whether a trip earns one lane or several.
+Field notes is the picker and contains exactly three cards, in the fixed order Toronto, Tokyo,
+Fukuoka. Cards enter only those top-level places. Child spaces are discovered by interacting with
+the object that represents their actual entrance; their designs retain their real geography,
+materials, scale and sequence. Slots are smaller in-room areas and remain frames inside their own
+room, not new pages.
 
-The album is the picker. Its Field notes wall reads in chain order, and under a plate whose room is
-built there is one line: *Enter Canada*, *Enter Tokyo*, *Enter Fukuoka*. A plate whose room is shut
-carries nothing, because a locked door on a picture is a promise the site cannot keep.
-
-Three rooms are built, and they are deliberately not the same room at three sizes: **Canada** is a
-campus walkway at dusk — 7.2 m wide, open to 4.7 m, snow banked at both edges, one lit door and one
-lamp post; **Tokyo** is the lane the district skill was written around; **Fukuoka** is a stall alley
-between them in width, 5.2 m by 3.8 m, lit by six lanterns on three crossings, ending on water. Each
-declares its own box, its own stops, its own surface kit and its own far plane, and each author's
-lamps are either fixtures (a bulb the renderer draws a body for) or spill (`"bulb": false`, light with
-no body) — a distinction that cost a walkway four white bulbs floating in mid-air before it was made
-explicit in the records.
+A new top-level destination therefore touches `ROOMS`, `DISTRICTS`, the street door, the matching
+Field notes card and a gate run. A child space instead needs a row/page, its real parent object or
+door, a parent return anchor and a fidelity gate — never a fourth card. `skills/place-intake` is the
+checklist for deciding which structure the actual place warrants.
 
 ### Kinds: the two defaults a district can be
 
@@ -246,9 +243,10 @@ are exactly two, because those are the two ways this site can be wrong:
 | on the page | the kind is printed on the card and on every frame row | same |
 
 Travel is a personal space; a talk, a workshop, a school visit is an academic one. A new
-district cannot be built until its kind is declared, and the card that fails to declare it
+district cannot open until its kind is declared; a main-place card that fails to declare it
 renders as shut — `Purpose not declared`, `Not open yet` — because an honestly locked door
-is cheaper than a confidently wrong one.
+is cheaper than a confidently wrong one. An owned sub-space follows its parent's entry and
+return contract and does not get a top-level card.
 
 #### Two WebKit flattening traps, and why this scene is built around them
 
