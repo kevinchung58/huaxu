@@ -17,17 +17,17 @@
 
 **Harness：** `lane-shot` 的 `goTo` 30 s 牆鐘上限在 cntower 走回入口時於 124/58 cm（仍在移動）丟錯，room gate 從未執行 → 上限改為「5 s 無 1 cm 進度」＋180 s 硬上限。cntower lane-shot 首次完整：16 幀＋sheet，7/7 PASS。
 
-**數值（同 harness、同站點，before → after）：** 02 101.8→101.4、05 101.0→95.8、08 83.9→80.5、11 70.8→71.2（接近 sealed 70 是既有狀態）、14 60.1→60.8；05／08／09 變動 39–42% 像素（玻璃地板出現）、01 19%（電梯）、14 0.1%。全套：`verify-shapes` 136/7 頁、`verify-geometry`／`verify-clash` 7 頁 0、`verify-walk` 173/173（中途一次 172/173＝改 JS 後未重產 cache-buster，重產即過）、`verify-objects` exit 0、e2e 0 failures、chain 0 failures、story 25/25、cost-probe peak 6380／28 frames／bad 0／dark 0.617／huge 0、impeccable `[]`、兩次重產 MD5 一致、`node --check`／`py_compile`／`git diff --check` 通過。
+**數值（同 harness、同站點，before → after）：** 02 101.8→101.4、05 101.0→95.8、08 83.9→80.5、11 70.8→71.2（接近 sealed 70 是既有狀態）、14 60.1→60.8；05／08／09 變動 39–42% 像素（玻璃地板出現）、01 19%（電梯）、14 0.1%。全套：`verify-shapes` 136/7 頁、`verify-geometry`／`verify-clash` 7 頁 0、`verify-walk` 173/173（中途一次 172/173＝改 JS 後未重產 cache-buster，重產即過）、`verify-objects` exit 0、e2e 0 failures、chain 0 failures、story 25/25、cost-probe peak 6380／28 frames／bad 0／dark 0.617／huge 0、impeccable `[]`、兩次重產 MD5 一致、`node --check`／`py_compile`／`git diff --check` 通過。街道 lane-shot（續做完成）：31 幀＋sheet，12/12 PASS——10 張 ahead luma 97.5–199.5、色數 153–1000，41 m 走回入口後 entrance-behind 72.2（舊的 30 s 上限走不完這段）；sheet 上看得到門的側視角（mouth-left、middle-right、boards-left）皆見門扇與門板，無平板。
 
 **沒做到／誠實註記：**
-- 街道 lane-shot：30/31 幀已產出，最後 41 m 走回入口那步被站主中止，所以沒有 entrance-behind、sheet 與 PASS/FAIL——不算 pass。以同一公式算 10 張 ahead：luma 82.4–200.7、色數 120–999，遠高於任何門檻。
+- 第一次街道 lane-shot 在 30/31 幀時被站主中止；之後 sandbox 由快照還原（`node_modules`、`/tmp`、忽略目錄都不保存，工作樹的 TODO.md 也退回舊版——已用 `git restore` 取回 a745306 的本節），`bin/restore-env` 重建環境後重跑完成，結果見上。
 - `browser-check.py` 未跑（需 Playwright 下載 Chromium，CDN 不在允許清單；且只測 rooms.html）。`verify-objects` 只看 Toronto 四個視角（設計如此），門與塔的證據來自 lane-shot 與 Chromium 實拍。
 - 「the cab doors」站的電梯在 ±30° 幀邊緣（相對站點 −67°）；正面證據用 `#at-lift-cn` 實拍。站位未改。
 - 腳下城市燈點稀疏：`aerialdeep` 磁磚與 SkyPod 的 citybelow 背景共用，未動以免改到遠景；屬美感微調，留給站主決定。
 - 接觸面板時卡片「1.9 m ahead」是進入 reach 圈時的舊值（`say()` 只在 reach 換物件時更新），既有行為，未動。
 - 已過時的 TODO：round-18 渡輪動作（boat painter 已有 SAIL 13／BERTH 4／REACH 62 時刻表）、round-19 門司遠岸（customhouse／osakashosen／dalianhall 已存在）。
 
-**一次性探針（用完已刪，做法記此）：** puppeteer-core＋`@sparticuz/chromium` 連 :8080；用 `#at-<prop>` hash 或站點 chip 站位；按住方向鍵並讀回 `__walk.yaw` 轉向；滑鼠拖曳調 pitch（往上拖＝往下看）；E 鍵按壓。等待滑行要以 chip 的 `--z` 為目標——軟體 GL 幀很慢，兩次取樣相同不代表到站。證據（忽略目錄、不進 Git）：`.preview/r31-cntower-before/`、`.preview/r31-cntower-after/`（含 sheet）、`.preview/r31-probe-before/`、`.preview/r31-probe-after/`、`.preview/r31-probe-after2/`、`.preview/r31-street-after/`。
+**一次性探針（用完已刪，做法記此）：** puppeteer-core＋`@sparticuz/chromium` 連 :8080；用 `#at-<prop>` hash 或站點 chip 站位；按住方向鍵並讀回 `__walk.yaw` 轉向；滑鼠拖曳調 pitch（往上拖＝往下看）；E 鍵按壓。等待滑行要以 chip 的 `--z` 為目標——軟體 GL 幀很慢，兩次取樣相同不代表到站。證據（忽略目錄、不進 Git）：`.preview/r31-cntower-before/`、`r31-cntower-after/`（含 sheet）、`r31-probe-before/`、`r31-probe-after/`、`r31-probe-after2/` 已隨快照還原消失，本節的數值與描述就是紀錄；還在的只有 `.preview/r31-street-after/`（31 幀＋sheet）。要重看 cntower：`LD_LIBRARY_PATH=/tmp/al2023/lib ROOMS=rooms-cntower.html node .verify/lane-shot.mjs .preview/<dir>`（約 2.5 分鐘）。
 
 ---
 
