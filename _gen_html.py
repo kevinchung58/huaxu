@@ -1667,7 +1667,7 @@ for it, tile in zip(ALBUM_ITEMS, album_tiles):
 # owns Journey Behind the Falls. Their titles and notes therefore never become album cards.
 PLACE_GROUP_NOTES = {
     "toronto": "A dark hall of lit tables: the city, its falls and its markets, drawn small.",
-    "tokyo": "A night lane with shutters, lanterns, and a vending machine keeping the far end.",
+    "tokyo": "Nakamise-dori at night: shuttered vermilion rows from Kaminarimon to a lit Hozomon.",
     "fukuoka": "Moji Port on a table: the station, the customhouse, the Blue Wing drawbridge "
                 "and the ships on the Kanmon Strait, at dusk.",
 }
@@ -1905,6 +1905,8 @@ OBJ_SIZE = {
     "pipe": (16, 300, 16), "awning": (170, 12, 110), "sign": (120, 40, 10),
     "ledge": (430, 12, 60),
     "glassfloor": (220, 4, 180),
+    # Nakamise (round 32): one bay of the 1925 shop rows (width set per bay), and Kaminarimon.
+    "shopbay": (470, 480, 150), "gate": (910, 700, 60),
     "front": (170, 300, 40), "booth": (110, 215, 110), "bikes": (150, 102, 55),
     "planter": (104, 50, 46), "cones": (74, 70, 34), "mailbox": (52, 74, 36),
     "signA": (70, 86, 52), "banner": (56, 150, 6), "pane": (120, 86, 22),
@@ -1924,7 +1926,7 @@ OBJ_SIZE = {
 WALK_SOLID_KINDS = frozenset({
     "bank", "bench", "bikes", "bin", "bollard", "booth", "cones", "crate",
     "hydrant", "ladder", "mailbox", "meter", "pipe", "planter", "plinth", "pole",
-    "rack", "recycle", "shrine", "sign", "signA", "stall", "tree", "utility", "vending",
+    "rack", "recycle", "shrine", "sign", "signA", "stall", "tree", "utility", "vending", "shopbay",
 })
 
 EYE = 168                    # the eye is 1.68 m above the floor; 1 px = 1 cm throughout
@@ -1978,6 +1980,98 @@ TOWER_STORY = {
          "caption": "The Glass Floor: the whole height of the tower read as the drop under your feet."},
     ],
 }
+# Nakamise's rows, generated from the sourced figures (round 32; TODO section 0n), because every
+# number here is the street's: three runs of shops in the street's own order and share of its length,
+# the two crossings at a street's width, and every bay a real shop's width -- the average of its row
+# (about 250 m of shops, 35 on the west and 54 on the east, so 7.3 m and 4.7 m). Walk centimetres
+# here; each object is turned into record depth (/ Z_SCALE) as it is made. The murals are the
+# ground colours of the Asakusa Emaki read off the night photographs -- sky and water blues, cloud
+# golds, pine greens, the paper's cream, a festival red -- because their scenes, which show people,
+# are not drawn.
+NAKAMISE_RUNS = ((0, 550), (1000, 1850), (2350, 3016))
+NAKAMISE_GAPS = ((550, 1000), (1850, 2350))
+NAKAMISE_MURALS = (("#d6b45a", "#3f78b5", "#e9e2d0"), ("#4f8a5b", "#e2c46a", "#2f5d9a"),
+                   ("#e9e2d0", "#c8473a", "#d6b45a"), ("#2f5d9a", "#e9e2d0", "#4f8a5b"),
+                   ("#c8473a", "#d6b45a", "#3f78b5"))
+
+
+def _nakamise():
+    bays, lamps = [], []
+    for tag, x, ry, width, row, side in (("w", -380, 90, 730, 35, "west"), ("e", 380, -90, 470, 54, "east")):
+        n = 0
+        for z0, z1 in NAKAMISE_RUNS:
+            count = max(1, round((z1 - z0) / width))
+            w = (z1 - z0) / count
+            for i in range(count):
+                n += 1
+                zc = z0 + (i + 0.5) * w
+                first, last = i == 0, i == count - 1
+                o = {"id": f"shopbay-{tag}{n}", "kind": "shopbay", "x": x, "z": round(zc / Z_SCALE, 2),
+                     "y": 0, "ry": ry, "w": round(w), "h": 480, "d": 150, "solid": True,
+                     "mural": list(NAKAMISE_MURALS[(2 * n + (tag == "w")) % len(NAKAMISE_MURALS)]),
+                     "title": f"A shop on the {side} row, shut for the night",
+                     "hint": (f"One bay of the {side} row's {row} shops, at a real shop's width. The "
+                              "shutter is down, as it is after about seven; the Asakusa Emaki painted on "
+                              "it shows festivals and people, so only its ground colours are kept. The "
+                              "fascia carries the shop's name in life and is blank here.")}
+                posts = "2" if first and last else "end" if last else "first" if first else None
+                if posts:
+                    o["posts"] = posts
+                bays.append(o)
+                # the strip light under this bay's eave: the bay's own light, so it is pointable
+                lamps.append({"x": x, "y": 300, "z": round(zc / Z_SCALE, 2), "of": o["id"],
+                              "r": 260, "k": 0.5, "bulb": False, "tint": "rgba(255,236,206,0.22)"})
+    # the white globes standing on the fascias, at the ends of each run, alternating rows
+    for j, (z0, z1) in enumerate(NAKAMISE_RUNS):
+        for k2, zz in enumerate((z0 + 40, z1 - 40)):
+            lamps.append({"x": -305 if (j + k2) % 2 == 0 else 305, "y": 430, "z": round(zz / Z_SCALE, 2),
+                          "r": 200, "k": 0.32, "tint": "rgba(255,246,230,0.20)"})
+    surfaces = []
+    for side in (-1, 1):
+        surfaces.append({"side": side, "z0": -103.45, "z1": 1040, "y0": 0, "y1": 500,
+                         "kind": "concrete", "tone": 0.8})
+        for g0, g1 in NAKAMISE_GAPS:
+            surfaces.append({"side": side, "z0": round(g0 / Z_SCALE, 2), "z1": round(g1 / Z_SCALE, 2),
+                             "y0": 0, "y1": 500, "kind": "concrete", "tone": 0.7})
+    return bays, lamps, surfaces
+
+
+NAKAMISE_BAYS, NAKAMISE_LAMPS, NAKAMISE_SURFACES = _nakamise()
+
+# Moji Port's layout (round 32; TODO section 0n). OpenStreetMap coordinates, turned into metres from
+# Mojiko Station and then into the table's frame: the table is read from the head of the No. 1 basin
+# looking north-west, so its right is north-east, at 1.5 cm to the metre for every model and for the
+# strait beyond the far wall. Walk centimetres out; record depths are these / Z_SCALE.
+MOJI_ORIGIN = (33.9451155, 130.9614754)            # Mojiko Station, OSM relation 2532442
+
+
+def moji_xy(lat, lon):
+    e = (lon - MOJI_ORIGIN[1]) * 92436.0            # metres east, at this latitude
+    n = (lat - MOJI_ORIGIN[0]) * 110922.0           # metres north
+    r, f = (e + n) * 0.70711, (n - e) * 0.70711     # right (north-east), forward (north-west)
+    return round((r - 214) * 1.5), round(2230 + (f + 50) * 1.5)
+
+
+_KANMON_S = moji_xy(33.9590201, 130.9637599)        # the Kanmon Bridge's Moji end (OSM way 1116301427)
+_KANMON_N = moji_xy(33.9643462, 130.9537995)        # and its Shimonoseki end
+_YUME = moji_xy(33.9498014, 130.9297392)            # Kaikyo Yume Tower (OSM way 550189992)
+_ext = lambda a, b, k: [round(b[0] + (b[0] - a[0]) * k), round(b[1] + (b[1] - a[1]) * k)]
+MOJI_STRAIT = {
+    "y": 81, "z0": 2610, "z1": 11000, "half": 9000,
+    # The Moji coast running north on the right, from the table's far corner to the bridge's Moji
+    # end, and the Shimonoseki shore from the bridge's far end west past the tower. Each line runs on
+    # past its last measured point along its own direction (`_ext`): the shore continues, and is not
+    # surveyed there.
+    "moji": [[360, 2610], list(_KANMON_S), _ext((360, 2610), _KANMON_S, 0.5)],
+    "shore": [list(_KANMON_N), list(_YUME), _ext(_KANMON_N, _YUME, 0.6)],
+    "yume": {"x": _YUME[0], "z": _YUME[1], "h": round(153 * 1.5), "sphere": round(143 * 1.5), "r": 16},
+    "kanmon": {"a": list(_KANMON_S), "b": list(_KANMON_N), "tower": round(141 * 1.5),
+               "deck": round(61 * 1.5), "side": round(178 / 1068, 4), "width": 19},
+    # Two of the strait's ships on the house clock, mid-channel between the shores.
+    "ships": [{"from": [1364, 4400], "to": [-4200, 4700], "len": 225, "period": 80, "phase": 0.0},
+              {"from": [-4200, 5000], "to": [1300, 4700], "len": 170, "period": 110, "phase": 0.5}],
+}
+
 DISTRICTS = [
     {
         # The hub. The street is the site's own ground — it names no city, carries no lettering, and
@@ -1995,6 +2089,15 @@ DISTRICTS = [
         # The lane runs past its last door into the quay: 3400 walk units past record depth 1040,
         # ending at a walkable rail rather than a wall.
         "lane": {"w": 700, "d": 1040, "ceil": 620, "back": 300, "max_d": 4150},
+        # Its own spoken description (round 32): it had been inheriting the old Tokyo lane's, which
+        # listed a mirror, a meter box and a standpipe this street never had, and a far end of a
+        # crossing, a tower and a mountain where the street's far end is a harbour.
+        "clad_note": (" The street is dressed by region: plaster and brick fronts, shops with their "
+                      "canvases, noren and blank fascias, planters, bins, bicycles, a vending machine "
+                      "and a folding board along the kerbs, and three doors -- Toronto, Tokyo and "
+                      "Fukuoka. Nothing on any of it carries a word."),
+        "sight_note": (" At its far end the street walks out onto a quay over a harbour: moving water, "
+                       "a ferry, a crane, a breakwater and the far shore."),
         # The street is walked in the day. Its record says so, and the renderer answers by giving the
         # page its own clock (fifteen minutes rather than four, opening just before noon) and by
         # adding the sun to every surface rather than washing the night tiles brighter — see the
@@ -2026,8 +2129,8 @@ DISTRICTS = [
              "glow": [{"r": 150, "k": 0.72, "dy": 235}],
              "leave": ROOM_BY_ID["tokyo"]["page"],
              "title": "The door onto Tokyo",
-             "hint": "It opens onto the lane: shutters, lanterns, a vending machine at its end. "
-                     "The curtain inside parts the other way."},
+             "hint": "It opens onto Nakamise-dori at night: Kaminarimon behind you, the shops "
+                     "shuttered, Hozomon lit at the far end. Kaminarimon brings you back."},
             {"id": "door-fukuoka", "kind": "door", "x": -346, "z": 780, "y": 0, "ry": 90,
              "leaf": "#4b4368",
              "glow": [{"r": 150, "k": 0.7, "dy": 235}],
@@ -2343,8 +2446,8 @@ DISTRICTS = [
             {"label": "Toronto", "note": "A dark hall of lit tables: the city, its falls and its "
                                          "markets, drawn small.",
              "state": "Open — the first door on the left."},
-            {"label": "Tokyo", "note": "A lane of open shops and awnings, lanterns over it, "
-                                       "machine keeping the far end.",
+            {"label": "Tokyo", "note": "Nakamise-dori after closing: the shuttered rows, Kaminarimon "
+                                       "behind, Hozomon lit at the far end.",
              "state": "Open — the middle door, on the right."},
             {"label": "Fukuoka", "note": "Moji Port on a table: the station, the customhouse, the "
                                          "Blue Wing and the ships, at dusk.",
@@ -2377,455 +2480,145 @@ DISTRICTS = [
                   "Nothing here says the owner was anywhere.",
     },
     {
+        # Tokyo is Nakamise-dori at night (round 32; the owner chose it from the places on his own
+        # plates, and the sources, the measurement table and the inventory are in TODO section 0n).
+        # The approach to Senso-ji from Kaminarimon to Hozomon: about 250 m of shops in two rows that
+        # were rebuilt in 1925 in reinforced concrete and painted vermilion (Senso-ji's own guide),
+        # 54 shops on the east side and 35 on the west (tokyo-trip.org; tour.ne.jp), granite paving
+        # laid square, open to the sky. OpenStreetMap puts the rows 9.1 m apart face to face, each
+        # about 4 m deep, the street running 4.7 degrees east of north, the Shin-Nakamise arcade
+        # crossing 71 m in and Denboin-dori 181 m in, the plaza under Hozomon 28 m deep and the
+        # pagoda 56 m west of the gate. The hour is after closing: the shops shut around 19:00, the
+        # shutters come down on the Asakusa Emaki (1989), and the gates and the pagoda stay floodlit
+        # until 23:00 -- the street empties, which is also why there is nobody in it.
         "id": "tokyo", "label": "Tokyo",
-        # The page and the plate prefixes come from the ROOMS table above, so the album and the walk
-        # cannot disagree about which room a plate opens onto. The row also carries the street, which
-        # is what this room's back curtain and the hub's door on it must agree on.
         "page": ROOM_BY_ID["tokyo"]["page"],
         "plates": ROOM_BY_ID["tokyo"]["plates"],
-        # The box the lane stands in. There is no far door: the walk is a hub now, and every room
-        # opens back onto the street, which carries the doors onward.
-        "lane": LANE_FALLBACK,
-        "purpose": "A Tokyo lane, dressed: shutters, lanterns, a crossing at its end",
+        # The box is the street: 9.1 m from shopfront to shopfront, the roofline at 4.8 m, nothing
+        # overhead (`open`), and the far end open onto the plaza (`max_d`, walk units) the way the
+        # hub street walks out onto its quay. 250 m of shops walk in 30 m; the order, the width,
+        # every shop's width and both gates' sizes are kept, and it is the count that shrinks.
+        "lane": {"w": 910, "d": 1040, "ceil": 500, "back": 300, "max_d": 4500, "open": True},
+        "floor": "paving",
+        "purpose": "Nakamise-dori at night: the approach from Kaminarimon to Hozomon, the shutters "
+                   "down and the gates lit",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/tokyo-cover.jpg",
-        "cover_caption": "The district in one sheet: a gate lantern, a scramble, a tower, "
-                         "a counter, a mountain on the skyline.",
-        "blurb": "One lane at night. The light at the end is a vending machine, and the "
-                 "lane is walked toward it.",
-        # Set dressing, and the rule that governs it: an object is here so the lane has an edge, a
-        # rhythm, something to walk round — never so the page can imply a fact. Anything that would
-        # speak about Tokyo (a shop name, a sign's lettering) is deliberately left blank instead.
-        "objects": [
-            {"id": "vending", "kind": "vending", "x": -294, "z": 412, "y": 0, "ry": 90,
-             "glow": [{"r": 130, "k": 1.05}],
-             "title": "The vending machine",
-             "hint": "It keeps the lane's frames. Pressing the lit slot opens the drawer "
-                     "the photographs go into; nothing here reviews Tokyo."},
-            {"id": "bollard", "kind": "bollard", "x": -150, "z": 12, "y": 0, "ry": 0,
-             "title": "A bollard at the mouth of the lane",
-             "hint": "Set dressing, drawn rather than surveyed: it is here so the entrance has "
-                     "an edge. Nothing to open."},
-            {"id": "steps", "kind": "steps", "x": 296, "z": 26, "y": 0, "ry": -90,
-             "title": "Two steps up to a door that is not there yet",
-             "hint": "Drawn. A district gets its doorway when there is a room on the other side "
-                     "of it, and there is not one yet."},
-            {"id": "shrine", "kind": "shrine", "x": 296, "z": 36, "y": 42, "ry": -90,
-             "title": "A small shrine at knee height",
-             "hint": "Draw one slip. The slip picks which slot you look at first; there is "
-                     "no score, because a lane is not a game to win."},
-            {"id": "mirror", "kind": "mirror", "x": -308, "z": 14, "y": 236, "ry": 90,
-             # The only object in the lane that turns. `turn` swings the disc on its bracket, so a press
-             # changes the geometry — and what you can see down the lane does not change at all, because
-             # there is nothing behind the glass to show.
-             "states": [
-                 {"say": "Aimed down the lane, the way it was hung.", "turn": 0.0},
-                 {"say": "Turned to the wall. A mirror is aimed by whoever put it up, and this one "
-                         "has nothing to show either way: it is drawn glass, not silvered.",
-                  "turn": 1.0},
-             ],
-             "title": "A convex mirror on a bracket",
-             "hint": "At the mouth of every lane like this, aimed at the corner you cannot see. Drawn, "
-                     "not silvered: there is no reflection in it, because a mirror that invented one "
-                     "would be the renderer making something up."},
-            {"id": "meter", "kind": "meter", "x": 312, "z": 10, "y": 148, "ry": -90,
-             "title": "A meter box and its conduit",
-             "hint": "Bolted where the supply comes in, with its conduit running up to the wire. It "
-                     "reads nothing, because it is drawn: no reading of anybody's is in this lane."},
-            {"id": "hydrant", "kind": "hydrant", "x": 288, "z": 44, "y": 0, "ry": -90,
-             "title": "A standpipe at the kerb",
-             "hint": "Short, red and unmistakable at thirty metres, which is the whole test for "
-                     "dressing. Nothing is claimed about water, or about anybody's fire."},
-            {"id": "drain", "kind": "drain", "x": -80, "z": 54, "y": 0, "ry": 0,
-             "title": "A drain in the asphalt",
-             "hint": "It is the one thing on the floor that knows the lane is wet."},
-            {"id": "ac-left", "kind": "ac", "x": -302, "z": 66, "y": 250, "ry": 90,
-             "title": "An air-conditioning unit, high on the left wall",
-             "hint": "Drawn, and humming about as loudly as anything at this hour is allowed to."},
-            {"id": "crate", "kind": "crate", "x": -244, "z": 96, "y": 0, "ry": 0,
-             "title": "A crate pushed against the wall",
-             "hint": "Set dressing. Go round it: it is 62 cm wide and the lane is 6.4 m."},
-            {"id": "bin", "kind": "bin", "x": 268, "z": 108, "y": 0, "ry": -90,
-             "title": "A bin, lid shut",
-             "hint": "Nothing is in it, and nothing will be: a district does not get to imply "
-                     "what somebody threw away."},
-            # The lane's three poster images were promoted to sub-places: they hang as frames now,
-            # in the frames list below, at these same coordinates. A picture the walker can open is
-            # a place in the record; a poster pinned over it would be the same picture twice.
-            {"id": "pipe", "kind": "pipe", "x": 308, "z": 170, "y": 0, "ry": -90,
-             "title": "A drainpipe down the right wall",
-             "hint": "The lane's other vertical: the one thing here that runs the whole height."},
-            {"id": "ladder", "kind": "ladder", "x": -300, "z": 165, "y": 0, "ry": 90,
-             "title": "A ladder left against the wall",
-             "hint": "Leaning, not resting: `d` is how far its feet stand out from the wall. It is the "
-                     "one prop here that is pure silhouette, which is exactly why it belongs."},
-            {"id": "camera", "kind": "camera", "x": 306, "z": 196, "y": 182, "ry": -90,
-             "glow": [{"r": 40, "k": 0.22, "tint": "rgba(255,120,110,0.5)", "dy": 6}],
-             "title": "A camera under the awning",
-             "hint": "The only lens in the lane, and it is drawn: a body, a bracket, and a small light "
-                     "that is the whole reason the glow beside it exists. It records nothing, and "
-                     "nothing in this lane is watched."},
-            {"id": "front-b", "kind": "front", "x": 316, "z": 250, "y": 0, "ry": -90,
-             "glow": [{"r": 170, "k": 0.75, "tint": "rgba(255,176,96,0.40)", "dy": 150}],
-             # The second front you can do something to, in the half of the lane that used to be only
-             # scenery. Same three stops as the first, and the same coupling: the shutter's height and
-             # the light the lane gets are one number.
-             "states": [
-                 {"say": "Down, and warm behind the steel. Somewhere back there a room is still lit.",
-                  "shut": 0.0, "k": 0.6},
-                 {"say": "Half up: the counter, the shelf behind it, and nobody at either.", "shut": 0.55,
-                  "k": 1.1},
-                 {"say": "Fully up. An empty room with its light on, which is the most honest thing a "
-                         "lane at this hour can show you.", "shut": 1.0, "k": 1.4},
-             ],
-             "title": "The lit front halfway down",
-             "hint": "The far half of the lane answers now: press it and the shutter rolls, and the "
-                     "light that reaches the asphalt goes with it. Drawn, empty, and not for sale."},
-            {"id": "planter-2", "kind": "planter", "x": -252, "z": 332, "y": 0, "ry": 90,
-             "title": "Two planters further down",
-             "hint": "The second planting in the lane, put where the wall turns from brick to hoarding: "
-                     "an alley with only grey in it is a drawing of an alley."},
-            {"id": "awning", "kind": "awning", "x": 292, "z": 200, "y": 214, "ry": -90,
-             "title": "An awning over a shuttered front",
-             "hint": "Drawn at 12 degrees so it sheds onto the lane. There is no shop behind it; "
-                     "the shutter is the wall."},
-            {"id": "sign", "kind": "sign", "x": -302, "z": 206, "y": 258, "ry": 90,
-             "title": "A sign board with no lettering on it",
-             "hint": "Deliberately blank: invented signage would be the one prop in this lane "
-                     "that pretends to say something about Tokyo."},
-            {"id": "pole", "kind": "utility", "x": 292, "z": 275, "y": 0, "ry": -90,
-             "title": "Utility pole",
-             "hint": "The lane's notice board: what this district is for, and what it does "
-                     "not have yet."},
-            {"id": "crate-2", "kind": "crate", "x": 250, "z": 300, "y": 0, "ry": -90,
-             "title": "Two crates, one on top",
-             "hint": "Set dressing with a shadow under it, which is the whole reason it is here."},
-            {"id": "ac-right", "kind": "ac", "x": 302, "z": 336, "y": 262, "ry": -90,
-             "title": "A second unit, higher up",
-             "hint": "Alleys are mostly this: plant bolted to a wall at a height nobody chose."},
-            {"id": "ledge", "kind": "ledge", "x": 0, "z": 426, "y": 96, "ry": 0,
-             "title": "The lookout rail at the window",
-             "hint": "The crossing, the tower and the mountain beyond are drawn at the size a "
-                     "picture of them shows, not surveyed: 1 px is 1 cm in here, and a mountain does "
-                     "not fit. Nothing out there is a record of anybody standing in it."},
-            {"id": "front-a", "kind": "front", "x": -316, "z": 62, "y": 0, "ry": 90,
-             "glow": [{"r": 190, "k": 0.85, "tint": "rgba(255,166,86,0.42)", "dy": 150}],
-             # Three stops for a shutter, and the light is coupled to them: the spill into the lane is
-             # the same number the interior's brightness is. Pressing it changes what the room looks
-             # like, not only what the card says.
-             "states": [
-                 {"say": "Shutter down. The front is closed and the light stays behind the steel.",
-                  "shut": 0.0, "k": 0.55},
-                 {"say": "Half up: enough to see the counter, not enough to be served.", "shut": 0.55,
-                  "k": 1.0},
-                 {"say": "Fully up. The room is open, warm, and empty; nobody is behind it.",
-                  "shut": 1.0, "k": 1.35},
-             ],
-             "title": "A closed front with its light still on",
-             "hint": "Shutter down, interior light still running: the one hour of a lane where a room "
-                     "is still warm and nobody is in it. Drawn, and nothing is for sale here."},
-            {"id": "booth", "kind": "booth", "x": 246, "z": 85, "y": 0, "ry": -90,
-             "glow": [{"r": 120, "k": 0.6, "tint": "rgba(214,232,255,0.34)", "dy": 160}],
-             "states": [
-                 {"say": "Shut. The light inside comes on when the door moves, and goes when it does "
-                         "not.", "door": 0.0, "k": 0.5},
-                 {"say": "Open. Empty, with the receiver hanging — this is a drawn box, so it holds no "
-                         "somebody's call.", "door": 1.0, "k": 1.3},
-             ],
-             "title": "A telephone box",
-             "hint": "Empty, and it holds no message: a district does not get to leave a note from "
-                     "somebody. Glass is drawn as glass here, which means you can see the far side."},
-            {"id": "bikes", "kind": "bikes", "x": -250, "z": 179, "y": 0, "ry": 0,
-             "title": "Two bicycles, leaned against the wall",
-             "hint": "Drawn bicycles. Nobody is claimed as their owner, and nothing is said about why "
-                     "they are there — a lane has bicycles in it, that is all this asserts."},
-            {"id": "planter-1", "kind": "planter", "x": 236, "z": 148, "y": 0, "ry": -90,
-             "title": "Two planters by a closed front",
-             "hint": "Set dressing with something growing in it, because an alley with only grey in it "
-                     "is a drawing of an alley rather than one."},
-            {"id": "cones", "kind": "cones", "x": -120, "z": 82, "y": 0, "ry": 0,
-             "title": "A pair of cones, stored rather than working",
-             "hint": "Nothing is being repaired here. They are stacked where they were left, which is "
-                     "the only reason they are in the scene."},
-            {"id": "mailbox", "kind": "mailbox", "x": 314, "z": 218, "y": 0, "ry": -90,
-             "states": [
-                 {"say": "Shut.", "flap": 0.0},
-                 {"say": "The flap is open and the box is empty. It is a shape in a lane, not a way to "
-                         "reach anybody.", "flap": 1.0},
-             ],
-             "title": "A post box at the corner",
-             "hint": "Red, boxy, at a corner: the shape that says Tokyo louder than any signage could, "
-                     "and it carries no lettering because none is ours to invent."},
-            {"id": "signA-a", "kind": "signA", "x": -236, "z": 300, "y": 0, "ry": 0,
-             "states": [
-                 {"say": "Blank. This face would carry a menu.", "flip": 0.0},
-                 {"say": "Turned over, and blank again: both faces of a board like this are the shop's "
-                         "to write on, and the shop is not real.", "flip": 1.0},
-             ],
-             "title": "A folding board, blank",
-             "hint": "The one prop that could have carried a menu or a price and does not: invented "
-                     "lettering would be a claim about a shop that does not exist."},
-            {"id": "banner-left", "kind": "banner", "x": -316, "z": 221, "y": 232, "ry": 90,
-             "title": "A cloth banner, hanging still",
-             "hint": "Drawn as cloth so it has a fold and a weight. No text on it, same reason as the "
-                     "board."},
-            {"id": "banner-right", "kind": "banner", "x": 316, "z": 372, "y": 244, "ry": -90,
-             "title": "A second banner, further down",
-             "hint": "Two of them is what a lane has; three would be a set design."},
-            {"id": "pane-a", "kind": "pane", "x": 316, "z": 338, "y": 186, "ry": -90,
-             "glow": [{"r": 150, "k": 0.5, "tint": "rgba(255,196,124,0.34)", "dy": 40}],
-             "title": "A window on the brick",
-             "hint": "Somebody's room, at the height a lane sees it at: the sill, the sash, the curtain "
-                     "edge. Nothing behind it is drawn further than the light that comes out.",
-             "states": [
-                 {"say": "Shut, and lit. The room is a brightness in a frame.", "slide": 0.0, "k": 0.9},
-                 {"say": "Opened a hand's width: the air of the room comes into the lane, and the light "
-                         "with it.", "slide": 1.0, "k": 1.45},
-             ]},
-            {"id": "recycle", "kind": "recycle", "x": -294, "z": 398, "y": 0, "ry": 90,
-             "states": [
-                 {"say": "Lidded.", "flap": 0.0},
-                 {"say": "Lid up, and empty. It stands beside the machine because that is where a crate "
-                         "like this stands; nothing in this lane gets recycled.", "flap": 1.0},
-             ],
-             "title": "The crate beside the machine",
-             "hint": "Every machine on a street like this has one within arm's reach of it. That is the "
-                     "only reason it is here, and nothing is in it."},
-            {"id": "bin-2", "kind": "bin", "x": -262, "z": 356, "y": 0, "ry": 90,
-             "title": "The far bin",
-             "hint": "The last thing before the light at the end of the lane."},
-        ],
-        # Where the light comes from and what carries it. A row of bulbs down the centre of the lane,
-        # plus the machine's own glow, which is derived from the prop rather than placed by the
-        # renderer. Depths are record centimetres like every other record; heights are real.
-        # A bare number is a bulb on the ceiling line at that record depth; a dict is authored whole.
-        # The last one is not a bulb at all: it is the city's own bounce coming in through the window,
-        # which is why the end of the lane is the brightest part of it, and why it draws no glass and
-        # throws no pool on the asphalt.
-        "lamps": [20, 120, 220, 320, 402,
-                  {"z": 430, "y": 240, "x": 0, "r": 900, "k": 0.55, "bulb": False,
-                   "tint": "rgba(146,178,255,0.26)"}],
-        # The arcade's rhythm overhead: where a beam crosses the ceiling, in record centimetres like
-        # every other depth in a district record (the emitter scales them with Z_SCALE).
-        "beams": [75.86, 179.31, 282.76, 386.21],
-        # What the walls are made of. This is the street's own kit, band by band: rolling shutters over
-        # closed fronts, glazed tile up to hand height where a shopfront was glazed, painted plaster
-        # above, corrugated patching where a wall has been opened and closed again, a plank hoarding
-        # where a building is being worked on. Side -1 is the left wall, 1 the right, 0 the end wall;
-        # the depths are record centimetres, and the renderer tiles each band into the same 60 cm panels
-        # as the wall behind it so an affine map stays exact.
-        "surfaces": [
-            {"side": -1, "z0": -82.76, "z1": 20.69, "y0": 0, "y1": 420, "kind": "plaster"},
-            {"side": -1, "z0": 20.69, "z1": 103.45, "y0": 0, "y1": 300, "kind": "shutter"},
-            {"side": -1, "z0": 20.69, "z1": 103.45, "y0": 300, "y1": 420, "kind": "corrugated"},
-            {"side": -1, "z0": 103.45, "z1": 162.07, "y0": 0, "y1": 130, "kind": "dado"},
-            {"side": -1, "z0": 103.45, "z1": 162.07, "y0": 130, "y1": 420, "kind": "brick"},
-            {"side": -1, "z0": 162.07, "z1": 262.07, "y0": 0, "y1": 290, "kind": "shutter"},
-            # Board-formed concrete over that shutter: the lane's own structure showing above the
-            # shopfronts, which is what the second half of a street like this actually looks like.
-            {"side": -1, "z0": 162.07, "z1": 262.07, "y0": 290, "y1": 420, "kind": "concrete", "tone": 1.04},
-            {"side": -1, "z0": 262.07, "z1": 348.28, "y0": 0, "y1": 300, "kind": "hoarding", "tone": 0.86},
-            # ...with a sheet of galvanised steel over the top of the boarding, because a hoarding in a
-            # working lane is patched with whatever was on the truck.
-            {"side": -1, "z0": 262.07, "z1": 348.28, "y0": 300, "y1": 420, "kind": "galv", "tone": 0.94},
-            {"side": -1, "z0": 348.28, "z1": 430, "y0": 0, "y1": 120, "kind": "dado"},
-            {"side": -1, "z0": 348.28, "z1": 430, "y0": 120, "y1": 420, "kind": "brick"},
-            {"side": 1, "z0": -82.76, "z1": 13.79, "y0": 0, "y1": 420, "kind": "brick"},
-            {"side": 1, "z0": 13.79, "z1": 65.52, "y0": 0, "y1": 300, "kind": "shutter"},
-            {"side": 1, "z0": 13.79, "z1": 65.52, "y0": 300, "y1": 420, "kind": "plaster"},
-            {"side": 1, "z0": 65.52, "z1": 162.07, "y0": 0, "y1": 140, "kind": "dado"},
-            {"side": 1, "z0": 65.52, "z1": 162.07, "y0": 140, "y1": 420, "kind": "concrete", "tone": 0.96},
-            {"side": 1, "z0": 162.07, "z1": 227.59, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.92},
-            {"side": 1, "z0": 227.59, "z1": 310.34, "y0": 0, "y1": 290, "kind": "shutter"},
-            {"side": 1, "z0": 227.59, "z1": 310.34, "y0": 290, "y1": 420, "kind": "corrugated"},
-            {"side": 1, "z0": 310.34, "z1": 430, "y0": 0, "y1": 130, "kind": "dado", "tone": 1.08},
-            {"side": 1, "z0": 310.34, "z1": 430, "y0": 130, "y1": 420, "kind": "brick"},
-        ],
-        # And on the ground: the tactile guide path that runs beside the walls in a real lane, a painted
-        # gutter line, two grates, a manhole, and one wet patch that holds the machine's light.
+        "cover_caption": "The album's Tokyo sheet, drawn before the room was rebuilt as Nakamise: a "
+                         "gate lantern, a scramble, a tower, a counter, a mountain on the skyline.",
+        "blurb": "The approach to Senso-ji after the shops have shut. Every shutter is down and "
+                 "painted, the eaves are lit, and Hozomon's lantern burns at the far end.",
+        "clad_note": (" The lane is Nakamise-dori after closing: two shallow rows of vermilion "
+                      "shopfronts nine metres apart, every shutter down and painted, a lit eave over a "
+                      "raised walk, a square vermilion post at each bay, granite paving laid square, "
+                      "and two cross streets breaking the rows. Nothing on any fascia carries a word."),
+        "sight_note": (" At its far end the street opens onto the plaza under Hozomon, its great lantern "
+                       "lit, with the five-storey pagoda over the west row; behind you is Kaminarimon "
+                       "and its lantern."),
+        "objects": NAKAMISE_BAYS,
+        # Light: a strip light under every bay's eave, and the white globes that stand on the fascias
+        # (the night photographs), at the ends of each run. Depths are record centimetres.
+        "lamps": NAKAMISE_LAMPS,
+        "beams": [],
+        # Behind the bays the wall is the rows' own structure; where a street crosses, the wall is
+        # that street's own band, dark because no shop light stands in it -- the Shin-Nakamise
+        # arcade on both sides, then Denboin-dori.
+        "surfaces": NAKAMISE_SURFACES,
+        # The gutters along the edge of each raised walk; the paving itself is the floor tile.
         "marks": [
-            {"kind": "tactile", "x0": -300, "x1": -272, "z0": -82.76, "z1": 430},
-            {"kind": "tactile", "x0": 272, "x1": 300, "z0": -82.76, "z1": 430},
-            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 424.14, "z1": 428.97},
-            # The same painted line at the other end of the lane: a straight bar of paint at a mouth is
-            # the one piece of road marking this lane can have without writing a word on the ground.
-            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 8.97, "z1": 13.79},
-            # A channel drain crossing the lane: the kit is the same grate as the two at the kerb, and
-            # crossing the whole width is what a lane does where its own water has to leave it.
-            {"kind": "grate", "x0": -150, "x1": 150, "z0": 219.31, "z1": 224.14},
-            {"kind": "grate", "x0": -118, "x1": -42, "z0": 51.03, "z1": 57.93},
-            {"kind": "grate", "x0": 60, "x1": 136, "z0": 241.38, "z1": 248.28},
-            {"kind": "manhole", "x0": -40, "x1": 40, "z0": 148.28, "z1": 175.86},
-            {"kind": "manhole", "x0": 120, "x1": 200, "z0": 98.62, "z1": 119.31},
-            {"kind": "wet", "x0": -316, "x1": -60, "z0": 337.93, "z1": 427.59},
-            # The kerb: a six centimetre riser where the floor meets the wall, on both sides, so the
-            # lane has a line at its base that light can fall along. Only the face is drawn — the top
-            # of a 46 cm kerb is what you stand on, not what you look at.
-            {"kind": "kerb", "x0": -318, "x1": -272, "z0": -82.76, "z1": 430, "y1": 6},
-            {"kind": "kerb", "x0": 272, "x1": 318, "z0": -82.76, "z1": 430, "y1": 6},
+            {"kind": "grate", "x0": -306, "x1": -297, "z0": -103.45, "z1": 1040},
+            {"kind": "grate", "x0": 297, "x1": 306, "z0": -103.45, "z1": 1040},
         ],
-        # Paper lanterns, hung where a wire already crosses the lane: each one is a light source with a
-        # body, which is the only way the room can be lit by something you can also point at.
-        # Each lantern hangs from a wire, so it has a period and an amplitude: the swing is authored
-        # here rather than taken from a random number, because a lane that moves differently on every
-        # reload is not a drawn place, it is a screensaver. `swing` is centimetres at the foot of the
-        # cord; the light moves with the paper, so the walls brighten and dim where the lamp is.
-        # Every `z` below is a record depth, the same as the cable it hangs from, and each one is the
-        # depth of a crossing in `wires`: a lantern is a light with a cord, and five of the six used to
-        # hang on air because these numbers were written in scene centimetres while the cables beside
-        # them were written in records. `verify-walk` now asserts the pairing rather than trusting it.
-        "lanterns": [
-            # The crossings below are spaced so that every published stop has one in view: a lantern
-            # hung at the mouth of the lane is over your head and out of frame from the entrance, and a
-            # warm light nobody can see is a number, not a room.
-            {"x": -120, "y": 268, "z": 60, "r": 27, "swing": 3.2, "period": 3.1, "phase": 0.0},
-            {"x": 40, "y": 252, "z": 60, "r": 31, "swing": 2.6, "period": 3.9, "phase": 1.7},
-            {"x": 210, "y": 262, "z": 150, "r": 26, "swing": 3.6, "period": 4.4, "phase": 0.9},
-            {"x": -170, "y": 272, "z": 240, "r": 29, "swing": 2.2, "period": 3.4, "phase": 2.6},
-            {"x": -140, "y": 262, "z": 330, "r": 26, "swing": 3.0, "period": 3.6, "phase": 2.1},
-            {"x": 150, "y": 258, "z": 410, "r": 28, "swing": 2.6, "period": 4.1, "phase": 0.6},
-        ],
-        # The window cut in the end wall, and what you see through it. These are NOT record depths and
-        # are not multiplied by Z_SCALE: nothing here is hung from a record, and the far plane is
-        # authored so a picture of Tokyo reads at the scale a picture shows it at. Mount Fuji is not
-        # 900 m away, and the page does not pretend it is.
-        "vista": {"x": 0, "y0": 108, "y1": 336, "w": 470},
+        "lanterns": [],
+        "wires": [],
+        "vista": {"x": 0, "y0": 2, "y1": 498, "w": 900},
         "backdrop": {
-            # The picture beyond the window used to hang its upper half on glow 0: a city at night
-            # with no air behind it, and the two deep stops — the ones that stand at the window and
-            # look through it — came back darker than the lane's own gate allows. The dusk bands
-            # below give the picture its air; the lane stays a night lane.
-            "plaza": {"y": -260, "z0": 1240, "z1": 12000, "half": 3600, "lit": 0.8},
-            # A nearer row of rooftops, flanking the crossing rather than standing on it. Through the
-            # aperture the first thing seen should be a silhouette at the height a lane sees roofs;
-            # eight-storey facades straight out of the window would be a diagram of a city, not a view
-            # of one. Each carries its own tone, so the row is not four photocopies of one block.
-            "roofs": [
-                {"x": -1750, "y": 0, "z": 1900, "w": 780, "h": 470, "tone": 0.5},
-                {"x": -2520, "y": 0, "z": 2040, "w": 900, "h": 640, "tone": 0.25},
-                {"x": 1850, "y": 0, "z": 1860, "w": 720, "h": 520, "tone": 0.7},
-                {"x": 2640, "y": 0, "z": 2100, "w": 940, "h": 760, "tone": 0.35},
-            ],
-            # A raised road crossing the whole view, above the crossing on the ground: the one piece of
-            # infrastructure that says this city is larger than this window. Its lamps are geometry
-            # rather than light sources — nothing out there is allowed to light the lane it is seen
-            # from, and no source in the room is unnamed.
-            "express": {"z": 6300, "y": 1250, "half": 6200, "thick": 170, "depth": 900, "pier": 230,
-                        "ground": -260, "piers": [-4200, -1500, 1100, 3700, 5900],
-                        "lamps": [-4300, -1700, 900, 3500, 5700]},
-            "crossing": {"y": -260, "z0": 2100, "z1": 3600, "x0": -1150, "x1": 1150,
-                         "stripes": 9, "width": 96, "diagonals": True},
-            # `win` is how much of a block is lit; `tone` is how much of that light the air between here
-            # and there has taken out of it. A picture of a city has near and far in it, and without
-            # tones every block came back at exactly the same brightness at every distance.
-            "city": [
-                {"x": -2200, "z": 2900, "w": 900, "h": 900, "win": 0.65, "tone": 0.95},
-                {"x": 2300, "z": 3100, "w": 800, "h": 1100, "win": 0.6, "tone": 0.88},
-                {"x": -1500, "z": 4200, "w": 1300, "h": 1500, "win": 0.5, "tone": 0.7},
-                {"x": -450, "z": 4600, "w": 1500, "h": 2300, "win": 0.42, "tone": 0.62},
-                {"x": 900, "z": 4100, "w": 1100, "h": 1200, "win": 0.6, "tone": 0.74},
-                {"x": 2100, "z": 4800, "w": 1400, "h": 2900, "win": 0.34, "tone": 0.5},
-                {"x": -2900, "z": 5400, "w": 1800, "h": 2600, "win": 0.4, "tone": 0.42},
-                {"x": 3400, "z": 5600, "w": 1600, "h": 1800, "win": 0.5, "tone": 0.58},
-            ],
-            "tower": {"x": 1500, "z": 12000, "half": 520, "top": 4200,
-                      "decks": [1500, 2600], "mast": 4700},
-            "mountain": {"x": -18000, "z": 90000, "base": -260, "top": 14000,
-                         "half": 30000, "crown": 5200, "snow": 0.3},
-            "sky": [{"y0": -260, "y1": 1400, "c": "#46587e", "glow": 0.95},
-                    {"y0": 1400, "y1": 4200, "c": "#2e3b5c"},
-                    {"y0": 4200, "y1": 40000, "c": "#1c2742"}],
+            # A Tokyo night: the sky holds the city's glow low and goes dark overhead, high enough to
+            # cover the frame now that the street has no lid.
+            "sky": [{"y0": -260, "y1": 1600, "c": "#3a4868", "glow": 0.9},
+                    {"y0": 1600, "y1": 7000, "c": "#26314c"},
+                    {"y0": 7000, "y1": 200000, "c": "#161e32"}],
+            # The plaza under Hozomon continues the street's own paving: 28 m from the last shops to
+            # the gate in life, 30 m here, kept nearly whole because the gate's size is the moment.
+            "plaza": {"y": 0, "z0": 3016, "z1": 7600, "half": 2600, "lit": 0.8},
+            "temple": {"x": 0, "z": 6000, "gate": {"w": 2100, "h": 2270},
+                       "pagoda": {"x": -5600, "z": 7900, "h": 5332}},
         },
-        # Cables, in the same units, strung wall to wall and to the pole they are bolted on to.
-        # Five crossings spread down the lane at the record depths the lanterns are hung on, plus the
-        # two runs that make it a street rather than a set of crossings: one from the left wall to the
-        # pole, one from the pole to the end wall. A cable used to be authored at record 700 and to run
-        # to record 1180 — both past the record's own end, which is the far wall: those two were drawn
-        # beyond the room, over the city in the aperture, anchored to nothing on this side of it.
-        "wires": [
-            {"a": [-320, 336, 60], "b": [320, 352, 60], "sag": 46},
-            {"a": [-320, 330, 150], "b": [320, 344, 150], "sag": 40},
-            {"a": [-320, 344, 240], "b": [320, 330, 240], "sag": 52},
-            {"a": [-320, 338, 330], "b": [320, 334, 330], "sag": 44},
-            {"a": [-320, 352, 410], "b": [320, 340, 410], "sag": 30},
-            {"a": [-320, 330, 182], "b": [292, 300, 275], "sag": 38},
-            {"a": [292, 300, 275], "b": [300, 322, 426], "sag": 34},
-        ],
+        # The sub-places: the album's own plates, stood at the post line in front of the shops at eye
+        # height, where the walk passes them and a visitor can reach them -- on the shutters behind
+        # the posts they were always farther than the shop itself, and nearest-first reach could never
+        # offer them. Each is a drawn plate, captioned as one, and none stands in a cross street.
         "frames": [
-            # The sub-places: the small areas inside the place, one drawn plate each, hung where the
-            # walk passes them. A plate is planned from a place the owner actually went; a corner
-            # nobody stood in gets no plate. The titles are the album's own, via the PLACE_TITLES
-            # table above, which this block is checked against at build time.
-            {"id": "sensoji", "src": "IMG/tokyo-sensoji.jpg", "x": 314, "z": 120, "y": 96, "ry": -90,
+            {"id": "sensoji", "src": "IMG/tokyo-sensoji.jpg", "x": -299, "z": 103, "y": 96, "ry": 90,
              "title": "The gate at Asakusa",
-             "alt": "Illustration of a temple gate with a giant hanging lantern and a row of "
-                    "closed shopfronts, empty of people.",
-             "caption": "The gate lantern and a closed shopfront row, drawn. Asakusa as the "
-                        "subject of a picture, not as proof that anyone stood in it."},
-            {"id": "scramble", "src": "IMG/tokyo-scramble.jpg", "x": -314, "z": 290, "y": 96, "ry": 90,
+             "alt": "Illustration of a temple gate at night with a great red paper lantern hanging "
+                    "in its passage.",
+             "caption": "The gate the street begins at, drawn: the lantern in its passage, the red "
+                        "of the posts. It stands by the west row, a few steps from the real one."},
+            {"id": "scramble", "src": "IMG/tokyo-scramble.jpg", "x": -299, "z": 495, "y": 96, "ry": 90,
              "title": "The scramble at Shibuya",
-             "alt": "Illustration of a wide pedestrian scramble crossing seen from above at "
-                    "night, stripes radiating, no people and no cars.",
-             "caption": "The crossing from above, drawn. Empty on purpose: a crowd here would "
-                        "be an invented record, and this frame is not a record."},
-            {"id": "tower", "src": "IMG/tokyo-tower.jpg", "x": 314, "z": 380, "y": 96, "ry": -90,
+             "alt": "Illustration of a wide pedestrian scramble crossing at night, its stripes "
+                    "running every way under tall lit buildings.",
+             "caption": "Shibuya's crossing, drawn: another Tokyo, hung as a plate. It is not on "
+                        "this street and the street does not pretend it is."},
+            {"id": "tower", "src": "IMG/tokyo-tower.jpg", "x": -299, "z": 897, "y": 96, "ry": 90,
              "title": "The tower at dusk",
-             "alt": "Illustration of a lattice radio tower at dusk seen between low rooftops, "
-                    "small lights along its frame.",
-             "caption": "The lattice tower between rooftops, drawn, its own lights the only "
-                        "amber in the frame."},
-            {"id": "poster-lantern", "src": "IMG/tokyo-poster-lantern.jpg", "x": -310, "z": 150, "y": 96, "ry": 90,
+             "alt": "Illustration of a red and white lattice tower against a dusk sky over low "
+                    "rooftops.",
+             "caption": "The tower at dusk, drawn. It stands in Shiba, kilometres south of here, "
+                        "and no window on this street looks at it."},
+            {"id": "poster-lantern", "src": "IMG/tokyo-poster-lantern.jpg", "x": 299, "z": 145, "y": 96,
+             "ry": -90,
              "title": "The paper lantern",
              "alt": "Illustration of a single round paper lantern glowing warm against the dark "
                     "grain of a closed shopfront.",
-             "caption": "One lantern, close up, drawn. It is the shape every light in the lane "
-                        "repeats, hung here at the height a walker reads it."},
-            {"id": "poster-wires", "src": "IMG/tokyo-poster-wires.jpg", "x": 310, "z": 214, "y": 104, "ry": -90,
+             "caption": "One lantern, close up, drawn. The street's own lanterns are the two great "
+                        "ones in its gates."},
+            {"id": "poster-wires", "src": "IMG/tokyo-poster-wires.jpg", "x": 299, "z": 862, "y": 104,
+             "ry": -90,
              "title": "The wires over the lane",
              "alt": "Illustration of a tangle of overhead wires crossing a dark sky, cut into "
                     "short segments by the rooftops.",
-             "caption": "The overhead tangle, drawn. The lane's own wires in the wires island are "
-                        "the same subject at full scale."},
-            {"id": "poster-ticket", "src": "IMG/tokyo-poster-ticket.jpg", "x": -310, "z": 392, "y": 108, "ry": 90,
+             "caption": "Tokyo's overhead wires, drawn. Nakamise itself is strung with none; the "
+                        "plate hangs here as a picture of the city around it."},
+            {"id": "poster-ticket", "src": "IMG/tokyo-poster-ticket.jpg", "x": 299, "z": 985, "y": 108,
+             "ry": -90,
              "title": "The ticket machine",
              "alt": "Illustration of a small ticket machine glowing on a sidewalk at night, its "
                     "buttons drawn as blank studs.",
-             "caption": "The machine's light is the lane's coldest, drawn: one more small light "
-                        "sunk into the wall an arm's length from the vending machine."},
+             "caption": "A ticket machine, drawn: the cold light of a station a few minutes' walk "
+                        "away, hung here as a plate rather than stood in the street."},
         ],
-        # The sub-areas. Each Field notes plate belongs to one little place in the lane, and the
-        # drawn frame with the same name holds that place until a photograph of it arrives; the
-        # album's title for each plate is the place, not the picture. verify-walk asserts the
-        # closure: every frame's title is a slot in this list.
-        "slots_title": "Places in the lane",
+        "slots_title": "Places on the street",
         "slots": [
             {"label": "The lane in one sheet", "note": "The album's cover plate for this room. In "
-                                                       "the lane it is the mouth itself: stand at "
-                                                       "the first chip and the whole lane is the "
-                                                       "sheet.",
-             "state": "Held by the lane itself, until a photograph of the mouth takes the slot."},
-            {"label": "The gate at Asakusa", "note": "The mouth end of the left wall, where the "
-                                                     "curtain is still at your back.",
+                                                       "the street it is Kaminarimon's end itself: "
+                                                       "stand at the first chip and the whole "
+                                                       "approach is the sheet.",
+             "state": "Held by the street itself, until a photograph of the approach takes the slot."},
+            {"label": "The gate at Asakusa", "note": "By the west row's first posts, with "
+                                                     "Kaminarimon itself at your back.",
              "state": "Held by a drawn frame; a photograph of the real gate takes the slot when one "
                       "arrives."},
-            {"label": "The scramble at Shibuya", "note": "Mid left wall, opposite the lit window.",
+            {"label": "The scramble at Shibuya", "note": "By the west row past the Shin-Nakamise "
+                                                         "arcade.",
              "state": "Held by a drawn frame; a photograph of the crossing takes the slot when one "
                       "arrives."},
-            {"label": "The tower at dusk", "note": "The deep end of the left wall, beside the end "
-                                                   "wall the old far door stood in.",
+            {"label": "The tower at dusk", "note": "By the west row's last posts, before the "
+                                                   "plaza.",
              "state": "Held by a drawn frame; a photograph of the tower takes the slot when one "
                       "arrives."},
-            {"label": "The paper lantern", "note": "The poster beside the gate picture, where the "
-                                                   "wall is still close enough to read.",
+            {"label": "The paper lantern", "note": "By the east row's first posts, across from "
+                                                   "the gate picture.",
              "state": "Held by a drawn poster frame; a photograph of the lantern takes the slot "
                       "when one arrives."},
-            {"label": "The wires over the lane", "note": "The poster on the right wall, under the "
-                                                          "crossing of cables the lane is lit by.",
+            {"label": "The wires over the lane", "note": "By the east row past Denboin-dori, "
+                                                          "across from the tower picture.",
              "state": "Held by a drawn poster frame; a photograph of the wires takes the slot when "
                       "one arrives."},
-            {"label": "The ticket machine", "note": "The deep end of the left wall, in front of "
-                                                    "the machine that keeps the lane's far end.",
+            {"label": "The ticket machine", "note": "By the east row's last posts, before the "
+                                                    "plaza.",
              "state": "Held by a drawn poster frame; a photograph of the machine takes the slot "
                       "when one arrives."},
             {"label": "Clips and the lane at 22:40", "note": "Vertical clips and one sound, when "
@@ -2833,277 +2626,234 @@ DISTRICTS = [
              "state": "Empty by design. A clip needs its caption before it can play here, and the "
                       "sound only if a visitor asks for it."},
         ],
-        # Where the stops are, in record centimetres: the chips the reader walks between. Part of the
-        # record because a different room has different places worth standing.
         "stations": [
-            {"z": 0, "label": "the entrance"},
-            {"z": 150, "label": "under the posters"},
-            {"z": 275, "label": "by the pole"},
-            {"z": 350, "label": "by the lit window"},
-            {"z": 395, "label": "in front of the machine"},
+            # 1.2 m in from the first shops and 3.8 m from the gate, so turning round frames Kaminarimon
+            # -- its pillars and its lantern -- instead of a wall of passage at arm's length.
+            {"z": 40, "label": "inside Kaminarimon, its lantern at your back"},
+            {"z": 255, "label": "where the Shin-Nakamise arcade crosses"},
+            {"z": 480, "label": "between the shuttered rows"},
+            {"z": 724, "label": "where Denboin-dori crosses"},
+            {"z": 1000, "label": "the last shops before the plaza"},
+            {"z": 1480, "label": "in the plaza under Hozomon"},
         ],
-        # The curtain at your back opens onto the street: the hub the lane stands off, and the page
-        # every other room is reached from. The wiring block decides the href.
-        "exit": {"id": "noren", "kind": "noren", "x": 0, "z": -44, "y": 178, "ry": 180,
-                 "title": "The curtain at your back", "hint": "It parts onto the street."},
-        "caveat": "The lane is drawn, not surveyed. The wall holds drawn covers and three drawn "
-                  "sights — the temple gate at Asakusa, the crossing at Shibuya, the tower at dusk "
-                  "— and the objects are props; no footage sits in any slot yet. Frames and clips "
-                  "arrive when the owner supplies them, and nothing here implies a place was "
-                  "visited.",
+        # Kaminarimon at your back: the gate the street is entered through and left by. The wiring
+        # block decides the href; the street outside is the hub.
+        "exit": {"id": "gate-kaminari", "kind": "gate", "x": 0, "z": -90, "y": 0, "ry": 0,
+                 "w": 910, "h": 700, "d": 60,
+                 "title": "Kaminarimon, at your back",
+                 "hint": "The outer gate of Senso-ji, 11.7 m tall. Its lantern -- 3.9 m tall, red "
+                         "with black bands over a metal base -- hangs in the passage, and here it "
+                         "carries none of its characters. Walk through it to the street."},
+        "caveat": "Nakamise-dori as it stands after closing, built from public sources -- Senso-ji's "
+                  "own guide, OpenStreetMap's footprints and the street's published measurements -- "
+                  "with night photographs read for light and material. The 250 m of shops walk in "
+                  "30 m: the street's order, its width, each shop's width and both gates' sizes are "
+                  "kept, and the count of shops is what shrinks. The shutters keep only the ground "
+                  "colours of the Asakusa Emaki, whose scenes show people; no fascia, lantern or sign "
+                  "carries lettering. The plates on the shutters are drawn. Nothing here says the "
+                  "owner was in this place.",
     },
     {
+        # Moji Port on a table (round 32: laid out from the map; the sources, the measurement table
+        # and the inventory are in TODO section 0n). The owner's brief stands -- the station, the
+        # customhouse, the Blue Wing and the ships on the Kanmon Strait, a table model, dusk into
+        # night, one yatai -- and what changed is that every model now stands where OpenStreetMap
+        # puts it, at one scale (1.5 cm to the metre), read from the head of the No. 1 basin looking
+        # north-west: the basin in front, the Blue Wing across its mouth, the strait beyond, the
+        # Shimonoseki shore on the far left and the Kanmon Bridge far right (NAVITIME: from the
+        # bridge, "the Kanmon Bridge on the right"). The first table stood all four buildings in one
+        # row at the far edge, two of them on the wrong side of the basin, in a hall still dressed as
+        # the alley it had been. `moji_xy` turns each OSM coordinate into the table's frame.
         "id": "fukuoka", "label": "Fukuoka",
         "page": ROOM_BY_ID["fukuoka"]["page"],
         "plates": ROOM_BY_ID["fukuoka"]["plates"],
-        # A hall, not an alley. Moji is a port panorama -- a 108 m drawbridge and a strait with ships
-        # on it -- and you cannot stand in a lane and see a harbour. So the district is a table now,
-        # the way Toronto is: the port stands small enough to look down on, which is also the only way
-        # a visitor sees the bridge open at all.
-        "lane": {"w": 820, "d": 900, "ceil": 620, "back": 300},
-        "purpose": "Moji Port on a table: the station, the customhouse, the Blue Wing drawbridge "
-                   "and the ships on the Kanmon Strait, seen as a panorama",
+        # A model hall, as the brief asked ("a table, like Toronto's, like Little Canada"): dark walls,
+        # the table lit, and the far wall open onto the strait at the table's own scale. 8.8 m wide so
+        # a walker can still go round the true-scale table by the right-hand aisle.
+        "lane": {"w": 880, "d": 900, "ceil": 620, "back": 300},
+        "purpose": "Moji Port on a table, laid out from the map: the station, the customhouse, the "
+                   "Blue Wing and the ships on the Kanmon Strait, from dusk into night",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/fukuoka-cover.jpg",
         "cover_caption": "Moji Port in one sheet: the wooden station, the brick customhouse, the "
                         "Blue Wing standing open, and the strait beyond it.",
-        "blurb": "The harbour at dusk, small enough to look down on. The bridge stands open for a "
-                 "ship, the strait moves, and while you are there the buildings come alight one "
-                 "after another.",
-        # The port is drawn. Its proportions come from the reference photographs; every object is a
-        # prop, every sign is blank, and no stall is named or said to be open. The basin sits back
-        # from the table's near edge so there is a quay to stand the stall and the bridge approach
-        # on, and the deck is lifted clear of the waterline -- at the water's own height the closed
-        # bridge was a plane under the surface, and drew nothing at all.
+        "blurb": "The port at model scale, from the head of the basin. The Blue Wing makes its last "
+                 "opening of the day at four, the strait keeps moving, and after dusk the buildings "
+                 "come alight one after another.",
+        "clad_note": (" The room is a dark model hall: plain walls, a lit table, and on it Moji Port "
+                      "laid out from the map at one scale -- the station, the former Osaka Shosen "
+                      "building, the basin with the Blue Wing across its mouth, the old customhouse, "
+                      "the Dalian memorial building and the tall Retro tower behind them. Nothing on "
+                      "any of it carries a word."),
+        "sight_note": (" Past the table the far wall opens onto the Kanmon Strait at the same scale: "
+                       "ships crossing, the Shimonoseki shore with the Kaikyo Yume Tower to the left, "
+                       "and the Kanmon Bridge to the right."),
         "objects": [
-            {"id": "plinth-moji", "kind": "plinth", "x": 0, "z": 540, "y": 0, "ry": 0,
-             "w": 660, "h": 80, "d": 500, "top": "cityg",
+            {"id": "plinth-moji", "kind": "plinth", "x": 0, "z": round(2418 / Z_SCALE, 2), "y": 0, "ry": 0,
+             "w": 720, "h": 80, "d": 376, "top": "cityg",
              "glow": [{"r": 170, "k": 0.42, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
              "title": "The table the port stands on",
-             "hint": "A lit plinth, table height. Everything on it is small; the light under the "
-                     "edge is what makes a model read as a model."},
-            {"id": "pool-moji", "kind": "pool", "x": 0, "z": 500, "y": 80, "ry": 0,
-             "w": 640, "h": 6, "d": 260,
-             "title": "The basin, and the strait beyond it",
-             "hint": "The No. 1 boat basin the Blue Wing crosses, opening onto the Kanmon Strait. "
-                     "Nothing is claimed about the tide."},
-            {"id": "drawbridge-mj", "kind": "drawbridge", "x": 0, "z": 540, "y": 92, "ry": 90,
-             "w": 360, "h": 30, "d": 54,
-             "glow": [{"r": 120, "k": 0.34, "dy": 22}],
+             "hint": "A lit table at 1.5 cm to the metre. Every model on it stands where the map "
+                     "puts it, and the strait beyond the far wall is the same scale."},
+            # The No. 1 basin between the hotel quay and the customhouse, from its head to the Blue
+            # Wing; and the strait, which the table's far edge hands to the backdrop.
+            {"id": "pool-moji", "kind": "pool", "x": 115, "z": round(2378 / Z_SCALE, 2), "y": 80, "ry": 0,
+             "w": 93, "h": 2, "d": 276,
+             "title": "The No. 1 basin",
+             "hint": "The boat basin the Blue Wing crosses, about 60 m wide, opening north-west onto "
+                     "the strait. Nothing is claimed about the tide."},
+            {"id": "pool-strait", "kind": "pool", "x": 0, "z": round(2560 / Z_SCALE, 2), "y": 80, "ry": 0,
+             "w": 720, "h": 2, "d": 90,
+             "title": "The Kanmon Strait",
+             "hint": "A little over 700 m wide at its narrowest and carrying some 500 ships a day; "
+                     "here it starts at the table's edge and runs on past the far wall."},
+            {"id": "drawbridge-mj", "kind": "drawbridge", "x": 120, "z": round(2498 / Z_SCALE, 2), "y": 80,
+             "ry": 0, "w": 157, "h": 6, "d": 7, "leaves": 0.47,
+             "glow": [{"r": 90, "k": 0.3, "dy": 14}],
              "title": "The Blue Wing",
-             "hint": "Blue Wing Moji: 108 m of pedestrian drawbridge, the largest in Japan and the "
-                     "only one of its kind. Two leaves that rise like the wings it is named for, "
-                     "opening six times a day and taking about twenty minutes over it. Here it "
-                     "opens once each evening, for the ship."},
-            {"id": "ship-mj", "kind": "ship", "x": 0, "z": 470, "y": 84, "ry": 0,
-             "w": 300, "h": 34, "d": 44,
-             "title": "A ship on the strait",
-             "hint": "Timed rather than merely moving: it is the reason the bridge opens, so it "
-                     "clears the channel while the leaves stand and is gone before they come down."},
-            {"id": "ship-mj2", "kind": "ship", "x": 0, "z": 590, "y": 84, "ry": 0,
-             "w": 240, "h": 26, "d": 34,
-             "title": "A second ship, further out",
-             "hint": "The strait is never empty. Smaller and further off, which is what makes the "
-                     "near one read as nearer."},
-            {"id": "dalianhall-mj", "kind": "dalianhall", "x": -268, "z": 700, "y": 80, "ry": 0,
-             "liton": 0.88,
-             "w": 118, "h": 92, "d": 64,
-             "title": "The Dalian Friendship Memorial Hall",
-             "hint": "Built in 1995, brick, and carrying a composite steeple: square, then "
-                     "octagonal, then a spire. Every stage of it is drawn, because a steeple "
-                     "sketched as one cone is a cone and not a steeple."},
-            {"id": "customhouse-mj", "kind": "customhouse", "x": 86, "z": 706, "y": 80, "ry": 0,
-             "liton": 0.80,
-             "w": 172, "h": 108, "d": 78,
-             "title": "The former Moji Customhouse",
-             "hint": "1912, red brick over a timber frame, in the Renaissance manner. One of the "
-                     "three giants of Meiji architecture, \u59bb\u6728\u983c\u9ec4, had a hand "
-                     "in it. The top floor is glazed where the ones below are arched, because the "
-                     "third floor is an observation room and the first an exhibition room."},
-            {"id": "osakashosen-mj", "kind": "osakashosen", "x": 244, "z": 700, "y": 80, "ry": 0,
-             "liton": 0.84,
-             "w": 140, "h": 92, "d": 66,
-             "title": "The former Osaka Shosen building",
-             "hint": "Known by two things, and both are drawn: the tall round-headed arches that "
-                     "take most of its face, and the octagonal tower on its corner, eight sides "
-                     "turned out of real trigonometry with a roof of eight triangles."},
-            {"id": "stationfront-mj", "kind": "stationfront", "x": -104, "z": 706, "y": 80, "ry": 0,
-             "liton": 0.76,
-             "w": 196, "h": 118, "d": 84,
+             "hint": "Blue Wing Moji: 108.1 m of pedestrian drawbridge across the basin's mouth, "
+                     "completed 1993. Its 24.1 m south leaf is lifted by a wire rope over its pylon, "
+                     "its 14 m north leaf by a hydraulic ram, both to about 60 degrees, six times a "
+                     "day from 10:00 to 16:00, about twenty minutes each time. Lit after dark; it "
+                     "does not open then."},
+            {"id": "ship-mj", "kind": "ship", "x": 114, "z": round(2500 / Z_SCALE, 2), "y": 81, "ry": 90,
+             "w": 30, "h": 6, "d": 7.5, "run": 140,
+             "title": "A harbour boat",
+             "hint": "A boat of the basin's own size, using the openings: out under the raised "
+                     "leaves on one, back in on the next. The big ships keep to the strait."},
+            {"id": "stationfront-mj", "kind": "stationfront", "x": -300, "z": round(2305 / Z_SCALE, 2),
+             "y": 80, "ry": 0, "liton": 0.76, "w": 68, "h": 20, "d": 30,
              "title": "Moji Port Station",
              "hint": "Opened in 1914 and still the station it was: a wooden two-storey in the "
                      "neo-Renaissance manner, symmetric, its centre shaped like the character "
-                     "\u9580 -- a gate, the first half of the port's own name. In 1988 it became "
-                     "the first station building in Japan to be designated an Important Cultural "
-                     "Property. Restored 2012 to 2019. Nothing here claims a train or a platform."},
-            {"id": "front-mj", "kind": "front", "x": -252, "z": 360, "y": 80, "ry": 90,
-             "liton": 0.74,
-             "w": 78, "h": 66, "d": 62,
-             "glow": [{"r": 110, "k": 0.6, "dy": 44, "tint": "rgba(255,180,110,0.5)"}],
+                     "\u9580 -- a gate, the first half of the port's own name. In 1988 the first "
+                     "station building in Japan designated an Important Cultural Property; restored "
+                     "2012 to 2019. It stands south-west of the basin, the far left of the table."},
+            {"id": "osakashosen-mj", "kind": "osakashosen", "x": -127, "z": round(2350 / Z_SCALE, 2),
+             "y": 80, "ry": 0, "liton": 0.84, "w": 58, "h": 27, "d": 40,
+             "title": "The former Osaka Shosen building",
+             "hint": "Known by two things, and both are drawn: the tall round-headed arches across "
+                     "its face and the octagonal tower on its corner. It stands between the station "
+                     "and the basin."},
+            {"id": "customhouse-mj", "kind": "customhouse", "x": 193, "z": round(2406 / Z_SCALE, 2), "y": 80,
+             "ry": 0, "liton": 0.80, "w": 57, "h": 21, "d": 44,
+             "title": "The former Moji Customhouse",
+             "hint": "1912, red brick over a timber frame, in the Renaissance manner; Tsumaki "
+                     "Yorinaka had a hand in it. It stands at the basin's mouth, at the north end "
+                     "of the Blue Wing."},
+            {"id": "dalianhall-mj", "kind": "dalianhall", "x": 247, "z": round(2392 / Z_SCALE, 2), "y": 80,
+             "ry": 0, "liton": 0.88, "w": 37, "h": 30, "d": 30,
+             "title": "The Dalian Friendship Memorial building",
+             "hint": "Built in 1995 as a copy of the Russian-era steamship office in Dalian, red "
+                     "brick and white stone, with its composite steeple. It stands beside the old "
+                     "customhouse on the basin's north side."},
+            {"id": "skyline-retro", "kind": "skyline", "x": 331, "z": round(2434 / Z_SCALE, 2), "y": 80,
+             "ry": 0, "liton": 0.82, "w": 34, "h": 190, "d": 30,
+             "towers": [{"dx": 0, "dz": 0, "w": 34, "d": 30, "h": 190, "c": "#d9d5cb"}],
+             "title": "The Retro High-Mart tower",
+             "hint": "Kurokawa Kisho's 31-storey tower of 1999, 126.95 m, made slender so the hill "
+                     "behind the port could still be seen from the basin; its top floor is the "
+                     "Retro Observation Room at 103 m. At this scale it is the tallest thing on "
+                     "the table, as it is on the waterfront."},
+            {"id": "front-mj", "kind": "front", "x": 40, "z": round(2252 / Z_SCALE, 2), "y": 80, "ry": 0,
+             "liton": 0.74, "w": 5, "h": 4, "d": 4,
+             "glow": [{"r": 36, "k": 0.5, "dy": 4, "tint": "rgba(255,180,110,0.5)"}],
              "title": "One yatai, on the quay",
-             "hint": "Kept, because the owner asked for one. Nothing is claimed about what it "
-                     "sells: the counter is drawn and the cloth is blank."},
+             "hint": "Kept because the owner asked for one, at the table's scale: about three metres "
+                     "of stall. Nothing is claimed about what it sells."},
         ],
+        # The hall's light: one warm spot over the table and a dim one over the walk.
         "lamps": [
-            {"x": -212, "y": 330, "z": 330, "r": 240, "k": 0.36, "bulb": False,
-             "tint": "rgba(186,208,255,0.20)"},
-            {"x": 0, "y": 12, "z": 380, "r": 500, "k": 0.24, "bulb": False,
-             "tint": "rgba(255,206,150,0.20)"},
+            {"x": 0, "y": 560, "z": round(2418 / Z_SCALE, 2), "r": 520, "k": 0.5, "bulb": False,
+             "tint": "rgba(255,226,186,0.20)", "of": "plinth-moji"},
+            {"x": 0, "y": 560, "z": 160, "r": 300, "k": 0.22,
+             "tint": "rgba(206,218,240,0.16)"},
         ],
         "beams": [90, 240, 340],
+        # A model hall's walls: the gallery base and plaster the Toronto hall wears, dark.
         "surfaces": [
-            # Timber, tile and plaster, with one patch of corrugated sheet where a stall was rebuilt.
-            {"side": -1, "z0": -260, "z1": 80, "y0": 0, "y1": 150, "kind": "dado", "tone": 0.98},
-            {"side": -1, "z0": -260, "z1": 80, "y0": 150, "y1": 380, "kind": "hoarding", "tone": 0.94},
-            {"side": -1, "z0": 80, "z1": 300, "y0": 0, "y1": 380, "kind": "plaster", "tone": 0.9},
-            {"side": -1, "z0": 300, "z1": 380, "y0": 0, "y1": 380, "kind": "brick", "tone": 0.86},
-            {"side": 1, "z0": -260, "z1": 60, "y0": 0, "y1": 380, "kind": "hoarding", "tone": 0.92},
-            {"side": 1, "z0": 60, "z1": 240, "y0": 0, "y1": 160, "kind": "dado", "tone": 1.0},
-            {"side": 1, "z0": 60, "z1": 240, "y0": 160, "y1": 380, "kind": "corrugated", "tone": 0.9},
-            {"side": 1, "z0": 240, "z1": 380, "y0": 0, "y1": 380, "kind": "plaster", "tone": 0.88},
+            {"side": -1, "z0": -103.45, "z1": 900, "y0": 0, "y1": 110, "kind": "hallbase", "tone": 0.8},
+            {"side": -1, "z0": -103.45, "z1": 900, "y0": 110, "y1": 620, "kind": "hallplaster", "tone": 0.62},
+            {"side": 1, "z0": -103.45, "z1": 900, "y0": 0, "y1": 110, "kind": "hallbase", "tone": 0.8},
+            {"side": 1, "z0": -103.45, "z1": 900, "y0": 110, "y1": 620, "kind": "hallplaster", "tone": 0.62},
         ],
-        # Wet stone the whole way down — it is an alley beside water — with a grate, a drain run and
-        # the painted line at the mouth.
-        "marks": [
-            {"kind": "wet", "x0": -260, "x1": 260, "z0": 200, "z1": 380},
-            {"kind": "grate", "x0": -60, "x1": 60, "z0": 330, "z1": 348},
-            {"kind": "gutter", "x0": -260, "x1": 260, "z0": 24, "z1": 36},
-            {"kind": "kerb", "x0": -260, "x1": -230, "z0": -260, "z1": 380, "y1": 7},
-            {"kind": "kerb", "x0": 230, "x1": 260, "z0": -260, "z1": 380, "y1": 7},
-        ],
-        "vista": {"x": 0, "y0": 96, "y1": 300, "w": 460},
-        "wires": [
-            {"a": [-260, 344, 40], "b": [260, 338, 40], "sag": 46},
-            {"a": [-260, 340, 150], "b": [260, 334, 150], "sag": 50},
-            {"a": [-260, 346, 280], "b": [260, 340, 280], "sag": 44},
-            {"a": [214, 300, 84], "b": [220, 316, 330], "sag": 30},
-        ],
+        "marks": [],
+        # The far wall opens as a diorama's backdrop does: a band at the table's own horizon -- the
+        # strait, both shores and the bridge -- with the hall's wall above it, not six metres of sky.
+        "vista": {"x": 0, "y0": 82, "y1": 360, "w": 860},
+        "wires": [],
         "backdrop": {
-            # Night over water: the horizon band glows off the surface, the upper bands hold it.
+            # Dusk over the strait: the horizon band holds the light off the water.
             "sky": [{"y0": -400, "y1": 8000, "c": "#37456a", "glow": 0.62},
                     {"y0": 8000, "y1": 20000, "c": "#243049", "glow": 0.3},
-                    {"y0": 20000, "y1": 40000, "c": "#131d33", "glow": 0.14}],
-            "mountain": [{"x": 600, "y": 420, "w": 2200, "h": 300, "c": "#1c2740"}],
-            "plaza": {"y": -300, "z0": 700, "z1": 7000, "half": 4000},
-            "roofs": [
-                # A backdrop's z is not scaled the way a prop's is -- a prop's z is multiplied by
-                # 2.9 on its way out, a roof's is not. These were authored for the alley, where the
-                # props stopped at record z 350 and a roof at 1250 was safely behind them. The port
-                # table reaches record z 790, which is 2291 once scaled, so every roof here stood in
-                # FRONT of the far bank and hid it: the customhouse and the Osaka Shosen building
-                # were both behind the middle roof and drew nothing at all, and only the Dalian
-                # hall, off to the left of it, was ever visible. Pushed past the table's far edge.
-                {"x": -1200, "y": 0, "z": 2500, "w": 700, "h": 420, "tone": 0.55},
-                {"x": 1300, "y": 0, "z": 2600, "w": 800, "h": 500, "tone": 0.4},
-                {"x": 300, "y": 0, "z": 2450, "w": 620, "h": 360, "tone": 0.68},
-            ],
-            "city": [
-                {"x": -1600, "z": 2800, "w": 1200, "h": 1500, "win": 0.5, "tone": 0.66},
-                {"x": -200, "z": 3200, "w": 1000, "h": 1100, "win": 0.45, "tone": 0.58},
-                {"x": 800, "z": 2900, "w": 1100, "h": 1700, "win": 0.55, "tone": 0.74},
-                {"x": 1900, "z": 3400, "w": 1200, "h": 1000, "win": 0.4, "tone": 0.5},
-                {"x": 2600, "z": 3000, "w": 900, "h": 1400, "win": 0.5, "tone": 0.62},
-            ],
+                    {"y0": 20000, "y1": 60000, "c": "#131d33", "glow": 0.14}],
+            "strait": MOJI_STRAIT,
         },
-                "frames": [
+        "frames": [
             # The port's sub-places: the building it is named for, the bridge it is known for, and
-            # the water it stands on. The alley's three frames were replaced rather than reworded,
-            # because a picture of a stall row is not a picture of a harbour.
-            {"id": "station", "src": "IMG/fukuoka-1.jpg", "x": -284, "z": 120, "y": 96, "ry": 90,
+            # the water it stands on, hung on the hall's walls as drawn plates.
+            {"id": "station", "src": "IMG/fukuoka-1.jpg", "x": -436, "z": 330, "y": 120, "ry": 90,
              "title": "Moji Port Station",
              "alt": "Illustration of a small wooden two-storey railway station at dusk, symmetric, "
                     "its centre shaped like a gate and a few windows lit.",
              "caption": "The building the district is named after, drawn: two storeys of painted "
                         "timber, dead symmetric, and a centre that reads as a gate."},
-            {"id": "bridge", "src": "IMG/fukuoka-2.jpg", "x": 284, "z": 240, "y": 150, "ry": -90,
+            {"id": "bridge", "src": "IMG/fukuoka-2.jpg", "x": 436, "z": 470, "y": 150, "ry": -90,
              "title": "The Blue Wing, open",
              "alt": "Illustration of a blue pedestrian drawbridge over a harbour basin at dusk, its "
                     "two leaves raised like wings and lit from below.",
-             "caption": "The bridge, drawn at the moment it is worth looking at: both leaves up, "
-                        "floodlit against a dark harbour."},
-            {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 284, "z": 350, "y": 96, "ry": -90,
+             "caption": "The bridge, drawn at the moment it is worth looking at: both leaves up. "
+                        "Its last opening is at four; after dark it is lit, and shut."},
+            {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 436, "z": 600, "y": 120, "ry": -90,
              "title": "The strait at dusk",
              "alt": "Illustration of a wide strait at dusk seen from a quay, two low cargo ships "
                     "crossing it and lights along the far shore.",
-             "caption": "What the basin opens onto. Drawn: the room walks toward it, and the "
-                        "picture claims nothing about what is on the far shore."},
+             "caption": "What the basin opens onto, drawn: the room's far wall opens onto the same "
+                        "water at the table's scale."},
         ],
-        # Sub-areas, same rule as the other rooms: one little place per Field notes plate, a drawn
-        # frame holding the place until a photograph arrives.
         "slots_title": "Places in the port",
         "slots": [
             {"label": "Fukuoka, the port in one sheet", "note": "The album's cover plate for this "
-                                                                "room. In the port it is the "
-                                                                "whole panorama in one look: the "
-                                                                "quay, the basin and the strait.",
+                                                                "room. In the hall it is the table "
+                                                                "itself: the station, the basin and "
+                                                                "the strait in one look.",
              "state": "Held by the port itself, until a photograph of the quay takes the slot."},
-            {"label": "Moji Port Station", "note": "The far bank, left of the middle: the building "
-                                                   "the district is named after.",
+            {"label": "Moji Port Station", "note": "The table's far left, south-west of the basin, "
+                                                   "where the map puts it.",
              "state": "Held by a drawn frame; a photograph of the station takes the slot when one "
                       "arrives."},
-            {"label": "The Blue Wing, open", "note": "The middle of the basin, where the bridge "
-                                                     "stands open for a ship.",
+            {"label": "The Blue Wing, open", "note": "Across the basin's mouth; it opens on the "
+                                                     "hour from ten to four.",
              "state": "Held by a drawn frame; a photograph of the bridge takes the slot when one "
                       "arrives."},
-            {"label": "The strait at dusk", "note": "Beyond the basin, where the water opens out "
-                                                    "and the ships cross.",
+            {"label": "The strait at dusk", "note": "Beyond the basin, past the far wall, where the "
+                                                    "ships cross.",
              "state": "Held by a drawn frame; a photograph of the strait takes the slot when one "
                       "arrives."},
             {"label": "Clips and the port after dark", "note": "Vertical clips and one sound, when "
                                                                "material exists.",
              "state": "Empty by design. A clip needs its caption before it can play here."},
         ],
-        # The lanterns.
-        #
-        # One list, and it lives here. This record used to carry a second `"lanterns"` key up
-        # under `backdrop`; in a dict literal the later key wins silently, so the row that was
-        # being edited was dead and the row on screen was the other one. A duplicate key that
-        # Python accepts without complaint is the sort of thing that eats an afternoon, so now
-        # there is exactly one here and the generator asserts on the count below.
-        #
-        # Re-strung off the walk and onto the table. They ran from z 26 to 348, which is the
-        # floor of the hall you walk down, not the port: a camera standing at z 957 had most of
-        # the row behind it and the nearest lantern 53 units from the lens. Measured against an
-        # empty list, that row was 92% of every warm pixel on screen at the first two stops and
-        # nothing at all at the last three. The brightness this room has been carrying was a
-        # paper lantern pressed against the glass.
-        #
-        # They run down both flanks of the quay now at x +-300, clear of the buildings (x -268
-        # to 244) so each one is a warm point against water or sky rather than against brick,
-        # from the near edge of the table to the far bank. From the furthest stop the row is
-        # 900 units off and a lantern is about 21 px across; from the near stop, 24 px.
-        "lanterns": [
-            {"x": -300, "y": 212, "z": 390, "r": 15},
-            {"x": -300, "y": 205, "z": 440, "r": 17},
-            {"x": -300, "y": 213, "z": 490, "r": 15},
-            {"x": -300, "y": 204, "z": 540, "r": 17},
-            {"x": -300, "y": 214, "z": 590, "r": 15},
-            {"x": -300, "y": 206, "z": 640, "r": 17},
-            {"x": -300, "y": 212, "z": 690, "r": 15},
-            {"x":  300, "y": 206, "z": 415, "r": 16},
-            {"x":  300, "y": 213, "z": 465, "r": 15},
-            {"x":  300, "y": 205, "z": 515, "r": 17},
-            {"x":  300, "y": 214, "z": 565, "r": 15},
-            {"x":  300, "y": 207, "z": 615, "r": 16},
-            {"x":  300, "y": 213, "z": 665, "r": 15},
-        ],
-        # The stations walk up to the table and stop at its edge. Toronto's do the same: each stop
-        # stands 90-170 short of the table it is looking at, because a diorama is looked at from
-        # outside it. The first version of this put the stops at 60-600 with a table spanning
-        # 170-690, so three of the five stood inside the port or past it, looking at nothing.
+        "lanterns": [],
+        # The walk comes up the hall to the table's near edge -- the head of the basin -- and the
+        # last stops stand close enough that the far wall's opening takes in both far landmarks.
         "stations": [
-            {"z": 60,  "label": "the far end of the hall"},
-            {"z": 170, "label": "coming up to the table"},
-            {"z": 260, "label": "at the near edge"},
-            {"z": 330, "label": "over the water"},
-            {"z": 330, "label": "close, over the basin"},
+            {"z": 60,  "label": "the door of the hall"},
+            {"z": 330, "label": "coming up to the table"},
+            {"z": 560, "label": "at the table's edge, the head of the basin"},
+            {"z": 690, "label": "over the basin, toward the strait"},
+            {"z": 735, "label": "close, beside the station"},
         ],
         "exit": {"id": "curtain-back", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
                  "title": "The curtain at your back", "hint": "It parts onto the street."},
-        "caveat": "The alley is drawn, not surveyed: its proportions come from the owner's own "
-                  "photographs, no stall is named, no sign carries lettering and no date is claimed. "
-                  "Nothing here says the owner was in any of these places.",
+        "caveat": "Moji Port as a table model, laid out from OpenStreetMap at 1.5 cm to the metre "
+                  "and read from the head of the No. 1 basin looking north-west; the strait beyond "
+                  "the far wall is the same scale. The buildings' heights are their storeys' (the "
+                  "Retro tower's is sourced); the Mitsui Club, the hotel and Kaikyo Plaza are not "
+                  "modelled. The Blue Wing keeps its real timetable, so it is shut after dark. No "
+                  "sign carries lettering and the yatai sells nothing named. Nothing here says the "
+                  "owner was in any of these places.",
     },
     {
         # Toronto, small. The owner's brief was Little Canada — the Toronto attraction where the
@@ -3131,38 +2881,55 @@ DISTRICTS = [
             # Table one — the city. A plinth with the skyline on it: the tower reads first because
             # it is the one silhouette nobody mistakes, then the blocks, then the dome.
             {"id": "plinth-sky", "kind": "plinth", "x": 0, "z": 630, "y": 0, "ry": 0,
-             "w": 320, "h": 80, "d": 160, "top": "cityg",
+             "w": 400, "h": 80, "d": 190, "top": "cityg",
              "glow": [{"r": 160, "k": 0.68, "dy": 96, "tint": "rgba(255,214,170,0.54)"}],
              "title": "The table the city stands on",
-             "hint": "A lit plinth, table height. Everything on it is small; the light under the "
-                     "edge is what makes a model read as a model."},
-            {"id": "tower-cn", "kind": "tower", "x": -120, "z": 628, "y": 80, "ry": 0,
+             "hint": "A lit table laid out as the city lies, north away from you: the tower, Rogers "
+                     "Centre to its west, the financial district to its north-east, and the "
+                     "streetcar along the waterfront in front."},
+            {"id": "tower-cn", "kind": "tower", "x": -10, "z": 636.9, "y": 80, "ry": 0,
              "w": 58, "h": 300, "d": 58,
              "story": TOWER_STORY,
              "title": "The tower, small",
              "hint": "A flared, tapering round shaft, broad LookOut deck, smaller SkyPod and long "
-                     "antenna: the tower's silhouette at table scale, with no lettering."},
-            {"id": "skyline-cn", "kind": "skyline", "x": 85, "z": 630, "y": 80, "ry": 0,
-             "w": 140, "h": 150, "d": 80,
-             "title": "The skyline, small",
-             "hint": "A row of blocky towers with a few lit windows, the way a downtown reads from "
-                     "the lake at night. Drawn small; the windows are the only words it has."},
-            {"id": "dome-rc", "kind": "dome", "x": -40, "z": 630, "y": 80, "ry": 0,
-             "w": 84, "h": 44, "d": 84,
-             "title": "The dome, small",
-             "hint": "An oval stadium bowl and a segmented roof that slides open: Rogers Centre "
-                     "kept low beneath the skyline."},
+                     "antenna: the tower's silhouette at table scale (553.3 m to 300 cm, the scale "
+                     "every height on this table keeps), with no lettering."},
+            # The downtown, as real towers (round 32; TODO section 0n): First Canadian Place (298.1 m,
+            # white), Scotia Plaza (275 m, red granite, its notched crown) and Royal Bank Plaza's two
+            # gold towers (180 m and 114 m), at the tower's scale (1:184), standing north-east of it in
+            # their real order -- Royal Bank Plaza nearest the lake, Scotia Plaza farthest. Their
+            # footprints are approximate and the ground between them is drawn at about a third, the
+            # way a model city brings its downtown in; heights and order are not compressed.
+            {"id": "skyline-cn", "kind": "skyline", "x": 70, "z": 643.79, "y": 80, "ry": 0,
+             "w": 100, "h": 162, "d": 90,
+             "towers": [{"dx": -30, "dz": 22, "w": 28, "d": 28, "h": 162, "c": "#e7e9e6"},
+                        {"dx": 8, "dz": -32, "w": 22, "d": 20, "h": 98, "c": "#c9a24a"},
+                        {"dx": 32, "dz": -14, "w": 18, "d": 16, "h": 62, "c": "#c9a24a"},
+                        {"dx": 22, "dz": 30, "w": 24, "d": 24, "h": 149, "c": "#8f3b32", "crown": "v"}],
+             "title": "The financial district, small",
+             "hint": "First Canadian Place, the tallest, in white; Scotia Plaza in red granite with its "
+                     "notched crown; Royal Bank Plaza's two gold towers nearest the lake. Heights at "
+                     "the tower's scale; after dusk their floors light up."},
+            {"id": "dome-rc", "kind": "dome", "x": -102, "z": 621.72, "y": 80, "ry": 0,
+             "w": 111, "h": 47, "d": 111,
+             "title": "Rogers Centre, small",
+             "hint": "West of the tower and a little south, as it stands: the stadium bowl under a roof "
+                     "86 m high in four panels. The north panel is fixed; the two middle panels slide "
+                     "north onto it and the south panel turns round to nest inside, so it opens toward "
+                     "the lake."},
             # A track along the table's front edge and the streetcar that works it: the city's
             # table is the one table where something drives, the way the real one never stops.
-            {"id": "track-c", "kind": "track", "x": 0, "z": 610, "y": 80, "ry": 0,
-             "w": 280, "h": 2, "d": 12,
+            # Queens Quay's streetcar line runs along the waterfront south of the tower: the table's
+            # front edge, and the one table where something drives.
+            {"id": "track-c", "kind": "track", "x": 0, "z": 599.31, "y": 80, "ry": 0,
+             "w": 380, "h": 2, "d": 12,
              "title": "The track, small",
-             "hint": "Ballast and two rails along the front edge: the strip the streetcar runs on."},
-            {"id": "tram-t", "kind": "tram", "x": 0, "z": 610, "y": 80, "ry": 0,
-             "w": 280, "h": 12, "d": 12,
+             "hint": "Ballast and two rails along the front edge: the waterfront line south of the "
+                     "tower."},
+            {"id": "tram-t", "kind": "tram", "x": 0, "z": 599.31, "y": 80, "ry": 0,
+             "w": 380, "h": 12, "d": 12,
              "title": "The streetcar, small",
-             "hint": "A red streetcar shuttling the track, lit from within. The city's table is "
-                     "the one table where something drives."},
+             "hint": "A red streetcar shuttling the waterfront track, lit from within."},
             # Table two — the falls. The water is the one thing in the hall that moves.
             {"id": "plinth-falls", "kind": "plinth", "x": 290, "z": 200, "y": 0, "ry": 0,
              "w": 160, "h": 80, "d": 240, "top": "rock",
@@ -3182,39 +2949,22 @@ DISTRICTS = [
                      "enough to imagine. The one moving thing in the hall; it moves because you "
                      "are here, not because a clock says so."},
             # Table three — the market. Three spaced stalls sit in the forecourt, clear of the hall.
-            {"id": "plinth-market", "kind": "plinth", "x": -290, "z": 400, "y": 0, "ry": 0,
-             "w": 160, "h": 80, "d": 200, "top": "cobble",
+            # Table three -- the market, east of the city as St. Lawrence Market stands 1.25 km east and
+            # 0.69 km north of the tower (OpenStreetMap), so it is on your right, beside the city.
+            {"id": "plinth-market", "kind": "plinth", "x": 290, "z": 586.21, "y": 0, "ry": 0,
+             "w": 160, "h": 80, "d": 200, "top": "cityg",
              "glow": [{"r": 160, "k": 0.4, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
              "title": "The table the market stands on",
-             "hint": "A stall row at table scale. No stall is named and no price is written; a "
-                     "market reads by its awnings and its crates, not its lettering."},
-            {"id": "hall-sl", "kind": "hall", "x": -345, "z": 400, "y": 80, "ry": 90,
-             "w": 170, "h": 130, "d": 48,
-             "title": "St. Lawrence Market, the South Market hall",
-             "hint": "Toronto's first City Hall, built 1845 in red brick, gutted and reopened as a "
-                     "market from 1899. An arcade at street level, a gallery floor of arched "
-                     "windows over it, and a cupola with a clock in it. Nothing on it is lettered: "
-                     "the clock is a disc, and no vendor is named."},
-            {"id": "stall-m1", "kind": "stall", "x": -277, "z": 350, "y": 80, "ry": 90,
-             "w": 44, "h": 50, "d": 34,
-             "title": "A stall, small",
-             "hint": "Awning over a counter, drawn the size of a hand. The market's first stall."},
-            {"id": "stall-m2", "kind": "stall", "x": -277, "z": 400, "y": 80, "ry": 90,
-             "w": 44, "h": 50, "d": 34,
-             "title": "A second stall, small",
-             "hint": "The row continues. Two stalls facing is a market; one is a table."},
-            {"id": "stall-m3", "kind": "stall", "x": -277, "z": 448, "y": 80, "ry": 90,
-             "w": 44, "h": 50, "d": 34,
-             "title": "A third stall, small",
-             "hint": "The last stall before the table's edge, awning lower than the rest."},
-            {"id": "crate-m1", "kind": "crate", "x": -227, "z": 345, "y": 80, "ry": 12,
-             "w": 26, "h": 20, "d": 20,
-             "title": "Crates by the stalls",
-             "hint": "Whatever the market sells arrives in crates. Drawn small, stacked once."},
-            {"id": "crate-m2", "kind": "crate", "x": -227, "z": 372, "y": 80, "ry": -18,
-             "w": 22, "h": 16, "d": 20,
-             "title": "A second crate",
-             "hint": "The market's clutter, at a scale where clutter is a centimetre tall."},
+             "hint": "St. Lawrence Market South at 1:100, its long axis north to south as it lies "
+                     "on Front Street. The vendors are inside it, as they are."},
+            {"id": "hall-sl", "kind": "hall", "x": 290, "z": 586.21, "y": 80, "ry": 90,
+             "w": 115, "h": 18, "d": 50,
+             "title": "St. Lawrence Market, the South Market",
+             "hint": "John Wilson Siddall's 1902 market hall, red brick under one high arched roof "
+                     "with a clerestory, built round the centre of the 1845 City Hall: at the north "
+                     "end on Front Street, three stone archways and the old council chamber over "
+                     "them. The 1845 hall's wings, pediment and clock cupola came down in that "
+                     "rebuild, so none of them is here. Its height is approximate."},
             # Table four — the lake. The city's front door: water, islands, one small ferry.
             {"id": "plinth-lake", "kind": "plinth", "x": -290, "z": 140, "y": 0, "ry": 0,
              "w": 160, "h": 80, "d": 240, "top": "sand",
@@ -3229,88 +2979,39 @@ DISTRICTS = [
                      "reflects the city."},
             # `island-i1` and `island-i2` resolve to a low, irregular landform painter, not to a
             # reusable street planter; `boat-lake` has a hull, wheelhouse, windows, rails and wake.
-            {"id": "island-i1", "kind": "island", "x": -320, "z": 112, "y": 82, "ry": 0,
+            {"id": "island-i1", "kind": "island", "x": -325, "z": 107.93, "y": 82, "ry": 0,
              "w": 44, "h": 16, "d": 30,
              "title": "An island, small",
-             "hint": "A low, irregular island rising from the lake, with a wooded crown."},
-            {"id": "island-i2", "kind": "island", "x": -260, "z": 168, "y": 82, "ry": 0,
+             "hint": "The Toronto Islands lie south of downtown across the harbour: the near end of "
+                     "this table, with a wooded crown."},
+            {"id": "island-i2", "kind": "island", "x": -255, "z": 113.79, "y": 82, "ry": 0,
              "w": 38, "h": 14, "d": 26,
              "title": "A second island, small",
-             "hint": "A second low island beyond the first, part of the Toronto Islands chain."},
+             "hint": "A second low island in the chain, beside the first."},
             {"id": "boat-lake", "kind": "boat", "x": -290, "z": 140, "y": 83, "ry": 90,
              "w": 36, "h": 12, "d": 12,
              "title": "The ferry, small",
-             "hint": "A white double-ended ferry with a blue waterline and an open passenger deck, "
-                     "crossing the lake and leaving a wake."},
+             "hint": "A white double-ended Island ferry with an open passenger deck, crossing north "
+                     "and south between the city's shore (the far end of the table) and the islands "
+                     "(the near end), the way the real ones cross from the foot of Bay Street."},
             # The far wall used to carry the hall's cover plate. It carries the city itself now:
             # a lit case holding the tower, a row of blocks and the dome, built by the same shapes
             # that build the tables, so the deepest stop in the room ends on the model at a glance
             # instead of on a picture of it.
-            {"id": "plinth-cityshelf", "kind": "plinth", "x": 180, "z": 712, "y": 150, "ry": 180,
-             "w": 300, "h": 10, "d": 40, "tone": 0.34,
-             "title": "The city in one case",
-             "hint": "The room ends on a lit case holding the whole city: the tower, a row of "
-                     "blocks, the dome. Built of the same shapes as the tables, so it is the "
-                     "model at a glance rather than a picture of one."},
-            {"id": "tower-mini", "kind": "tower", "x": 200, "z": 712, "y": 160, "ry": 180,
-             "w": 30, "h": 168, "d": 22,
-             "title": "The tower, in the case",
-             "hint": "The same shape as the table's tower, a sixth of the size: a concrete shaft, "
-                     "a pod, and a mast that only the top of the case is tall enough for."},
-            {"id": "skyline-mini", "kind": "skyline", "x": 108, "z": 712, "y": 160, "ry": 180,
-             "w": 92, "h": 74, "d": 22, "tone": 0.5,
-             "title": "The blocks, in the case",
-             "hint": "Four blocks at staggered depths, lit from inside: at this size every window "
-                     "is two pixels, which is what a window in a real skyline is."},
-            {"id": "dome-mini", "kind": "dome", "x": 264, "z": 712, "y": 160, "ry": 180,
-             "w": 64, "h": 36, "d": 22, "tone": 0.5,
-             "title": "The dome, in the case",
-             "hint": "A ribbed cap on a low drum, the third thing the city is known by."},
             # Where the walls carried drawn plates of the three areas, they carry small built
             # cases now: a lit shelf, and on it the thing itself at a sixth of the size. A picture
             # of the falls beside the falls was always the weaker of the two things on that wall.
-            {"id": "plinth-skyshelf", "kind": "plinth", "x": 354, "z": 396, "y": 150, "ry": -90,
-             "w": 120, "h": 10, "d": 40, "tone": 0.34,
-             "title": "A case of blocks",
-             "hint": "A lit shelf on the wall, holding a row of towers with their windows on: "
-                     "the city reduced to the one thing it is recognised by."},
-            {"id": "skyline-mini2", "kind": "skyline", "x": 354, "z": 396, "y": 160, "ry": -90,
-             "w": 96, "h": 72, "d": 24, "tone": 0.5,
-             "title": "The blocks, small",
-             "hint": "Four blocks, staggered in depth so the row has a silhouette, lit from "
-                     "inside the way the table's blocks are."},
-            {"id": "plinth-fallsshelf", "kind": "plinth", "x": 354, "z": 170, "y": 150, "ry": -90,
-             "w": 120, "h": 10, "d": 40, "tone": 0.34,
-             "title": "A case of water",
-             "hint": "A lit shelf on the wall, holding a ledge with water going over it."},
             # A shelf model has to be a model. At 96 x 72 it stood three quarters the size of the
             # falls on the table below it, so the two read as a duplicated waterfall rather than as a
             # diorama and the case it is displayed in.
-            {"id": "falls-mini", "kind": "falls", "x": 354, "z": 170, "y": 160, "ry": -90,
-             "w": 68, "h": 30, "d": 20, "tone": 0.5,
-             "title": "The falls, small",
-             "hint": "A sheet over a ledge into mist, with the same shimmer the table's falls "
-                     "has, moving on the same clock."},
-            {"id": "plinth-marketshelf", "kind": "plinth", "x": -354, "z": 290, "y": 150, "ry": 90,
-             "w": 120, "h": 10, "d": 40, "tone": 0.34,
-             "title": "A case of stalls",
-             "hint": "A lit shelf on the wall, holding one stall under a striped awning."},
-            {"id": "stall-mini", "kind": "stall", "x": -354, "z": 290, "y": 160, "ry": 90,
-             "w": 88, "h": 56, "d": 24, "tone": 0.5,
-             "title": "A stall, small",
-             "hint": "An awning, a counter and the crates under it: a market reads at any size, "
-                     "which is the only reason a market is worth modelling."},
             # The hall's own furniture: a bench between tables and the rope line of a model room.
-            {"id": "bench-t", "kind": "bench", "x": 320, "z": 380, "y": 0, "ry": -90,
-             "title": "A bench in the dark",
-             "hint": "The one seat in the hall, between the city and the market, for looking."},
             # Trees, the one thing a miniature plants by the thousand: two on the islands,
             # a shore pair, corners of the city and the falls, one by the market.
-            {"id": "tree-i1", "kind": "tree", "x": -320, "z": 112, "y": 96, "ry": 0,
+            {"id": "tree-i1", "kind": "tree", "x": -325, "z": 107.93, "y": 96, "ry": 0,
              "w": 14, "h": 24, "d": 14,
              "title": "A tree on the island",
              "hint": "The island keeps a tree; at this scale a tree is a pinch of flock."},
-            {"id": "tree-i2", "kind": "tree", "x": -260, "z": 168, "y": 94, "ry": 0,
+            {"id": "tree-i2", "kind": "tree", "x": -255, "z": 113.79, "y": 94, "ry": 0,
              "w": 12, "h": 20, "d": 12,
              "title": "A tree on the second island",
              "hint": "The second island's tree, smaller, further out."},
@@ -3322,15 +3023,15 @@ DISTRICTS = [
              "w": 14, "h": 24, "d": 14,
              "title": "A second shore tree",
              "hint": "The far corner of the lake table, a tree at the water's edge."},
-            {"id": "tree-c1", "kind": "tree", "x": -150, "z": 612, "y": 80, "ry": 0,
+            {"id": "tree-c1", "kind": "tree", "x": -178, "z": 609.66, "y": 80, "ry": 0,
              "w": 14, "h": 24, "d": 14,
              "title": "A street tree by the city",
              "hint": "The city table keeps street trees; downtown reads by them."},
-            {"id": "tree-c2", "kind": "tree", "x": 145, "z": 648, "y": 80, "ry": 0,
+            {"id": "tree-c2", "kind": "tree", "x": 150, "z": 656.9, "y": 80, "ry": 0,
              "w": 12, "h": 20, "d": 12,
              "title": "A second street tree",
              "hint": "The row continues round the table's left edge."},
-            {"id": "tree-c3", "kind": "tree", "x": 150, "z": 612, "y": 80, "ry": 0,
+            {"id": "tree-c3", "kind": "tree", "x": 178, "z": 609.66, "y": 80, "ry": 0,
              "w": 12, "h": 20, "d": 12,
              "title": "A park tree at the city's corner",
              "hint": "The city's right corner keeps a park's worth of one tree."},
@@ -3342,13 +3043,10 @@ DISTRICTS = [
              "w": 14, "h": 24, "d": 14,
              "title": "A second tree above the falls",
              "hint": "The rim's other side, a tree at the rail."},
-            {"id": "tree-m1", "kind": "tree", "x": -225, "z": 425, "y": 80, "ry": 0,
+            {"id": "tree-m1", "kind": "tree", "x": 226, "z": 614.48, "y": 80, "ry": 0,
              "w": 14, "h": 24, "d": 14,
              "title": "A tree by the market",
              "hint": "The market's corner keeps the one tree a market square allows."},
-            {"id": "bollard-t", "kind": "bollard", "x": 100, "z": 40, "y": 0, "ry": 0,
-             "title": "A bollard at the mouth",
-             "hint": "The hall's entrance keeps an edge the way the street does."},
         ],
         # Dim spots over the walk; the tables carry their own glows from the objects list, so the
         # dioramas are the brightest things in the room and the walk stays a dark hall around them.
@@ -3358,17 +3056,14 @@ DISTRICTS = [
             # One spot per table, close and narrow: the diorama outshines the hall it stands in.
             {"x": -230, "y": 300, "z": 120, "r": 46, "k": 0.5, "spot": True},
             {"x": 230, "y": 300, "z": 170, "r": 46, "k": 0.5, "spot": True},
-            {"x": -230, "y": 300, "z": 290, "r": 46, "k": 0.5, "spot": True},
-            {"x": 0, "y": 300, "z": 396, "r": 52, "k": 0.55, "spot": True},
-            # A picture light over the cover plate on the far wall: the hall ends on the city in
-            # one sheet, and a plate you walk toward is a plate you can read.
-            {"x": 0, "y": 320, "z": 452, "r": 130, "k": 0.7},
+            {"x": 260, "y": 300, "z": 565.52, "r": 46, "k": 0.5, "spot": True},
+            {"x": 0, "y": 300, "z": 606.9, "r": 52, "k": 0.55, "spot": True},
         ],
         "wires": [],
         "beams": [120, 260, 400],
         "surfaces": [
-            # A hall, not a lane: concrete dado at hand height, dark hoarding above, both sides the
-            # whole length, so the walls recede and the lit tables do the talking.
+            # A model hall: the gallery base at hand height and dark plaster above, both sides the whole
+            # length, so the walls recede and the lit tables do the talking.
             {"side": -1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "hallbase", "tone": 0.62},
             {"side": -1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "hallplaster", "tone": 0.5,
              "grad": True},
@@ -3393,7 +3088,7 @@ DISTRICTS = [
                     "mist on a lit table, a tiny railing along the top.",
              "caption": "The falls at table scale: a sheet of water, a ledge, and mist. The model "
                         "moves; the picture holds still."},
-            {"id": "market", "wall": False, "src": "IMG/toronto-3.jpg", "x": -374, "z": 290, "y": 150, "ry": 90,
+            {"id": "market", "wall": False, "src": "IMG/toronto-3.jpg", "x": 374, "z": 586.21, "y": 150, "ry": -90,
              "title": "St. Lawrence Market, small",
              "alt": "Illustration of a miniature market street on a lit table: small stalls with "
                     "striped awnings, stacked crates, and warm hanging lamps.",
@@ -3423,16 +3118,24 @@ DISTRICTS = [
             {"z": 0, "label": "the mouth of the hall"},
             {"z": 140, "label": "by the lake table"},
             {"z": 200, "label": "by the falls table"},
-            {"z": 400, "label": "by the market table"},
-            {"z": 460, "label": "by the city table"},
+            {"z": 500, "label": "by the market table, on your right"},
+            {"z": 560, "label": "by the city table"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
                  "title": "The door at your back", "hint": "It opens onto the street, at this "
                  "room's own door."},
-        "caveat": "The hall is drawn, not surveyed, and the city in it is a model: proportions "
-                  "are the artist's, the landmarks read by silhouette alone, and nothing on any "
-                  "table carries a name, a date or a claim that the owner stood in Toronto. The "
-                  "model is the point, not the trip.",
+        "caveat": "A model hall in the manner of Little Canada, its tables laid out by the real "
+                  "bearings: the city at the far end with the lake in front of it, the market to "
+                  "its east, the falls across the lake to the south-east. On the city table every "
+                  "height keeps the tower's scale (1:184) and the ground between the towers is "
+                  "brought in; the market is 1:100 and its roof height approximate; only towers "
+                  "with sourced heights stand on the skyline. Nothing on any table carries a name, "
+                  "a date or a claim that the owner stood in Toronto.",
+        "clad_note": (" The room is a dark model hall with lit tables: the city at the far end -- the "
+                      "tower, Rogers Centre to its west, the financial district to its north-east, a "
+                      "streetcar along the front -- the lake with its islands and ferry on your left, "
+                      "the falls on your right, and St. Lawrence Market on your right beside the city. "
+                      "Nothing on any table carries a word."),
     },
     {
         # Niagara, the Canadian edge (grounded-scene §6's second worked example). The lane is the
@@ -3988,6 +3691,12 @@ def walk_object(o):
     awn_attr = f' data-awn="{escape(o["awn"])}"' if o.get("awn") else ""
     noren_attr = f' data-noren="{escape(o["noren"])}"' if o.get("noren") else ""
     fascia_attr = f' data-fascia="{escape(o["fascia"])}"' if o.get("fascia") else ""
+    # Round 32: what a real place needed that the street's kit never did -- a shop bay's mural ground
+    # and posts, a skyline's named towers, a bascule's split, a harbour boat's run. They travel in the
+    # document like an awning colour, or the renderer never sees them (lane-prop section 7).
+    extra_attr = "".join(
+        f' data-{k}="{escape(v if isinstance(v, str) else json.dumps(v, separators=(",", ":")))}"'
+        for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run") if k in o))
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
@@ -4001,7 +3710,7 @@ def walk_object(o):
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
             f'data-d="{dep}"{solid_attr} style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
-            f'{states}{leave}{awn_attr}{noren_attr}{fascia_attr}{story_attr}></button>')
+            f'{states}{leave}{awn_attr}{noren_attr}{fascia_attr}{story_attr}{extra_attr}></button>')
 
 
 def walk_html(d, drawer):
@@ -4079,6 +3788,8 @@ def walk_html(d, drawer):
     # An open-world far end: the record authors how far the walker may keep going (walk units), and
     # the renderer lets the world continue past the last wall. Absent, the clamp is the wall itself.
     max_d_attr = f' data-lane-max-d="{lane["max_d"]}"' if lane.get("max_d") else ""
+    # A street with nothing over it (Nakamise) says so, and the renderer draws no lid.
+    max_d_attr += ' data-lane-open="1"' if lane.get("open") else ""
     # A place may own its ground: the pod walks on dark steel, not the street's concrete.
     floor_attr = f' data-floor="{d["floor"]}"' if d.get("floor") else ""
     # A place whose subject is the day: `"day": True` on the record, or a dict to author the cycle,

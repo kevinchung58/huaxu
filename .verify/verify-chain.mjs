@@ -80,7 +80,7 @@ const click = (w, el) => el && el.dispatchEvent(new w.MouseEvent("click", { bubb
 
 const STREET = "street.html";
 const ROOMS = [
-  { file: "rooms.html",          id: "tokyo",   backObj: "noren" },
+  { file: "rooms.html",          id: "tokyo",   backObj: "gate-kaminari" },   // Nakamise is left through Kaminarimon (round 32)
   { file: "rooms-fukuoka.html",  id: "fukuoka", backObj: "curtain-back" },
   { file: "rooms-toronto.html",  id: "toronto", backObj: "door-back" },
   // A landmark space owns its way back to the prop that owns it (landmark-space §2), not to

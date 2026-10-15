@@ -644,6 +644,10 @@ function leaveOverlay(root, trigger) {
   // Scene dimensions come from this room's record. The body radius is the only shared spatial
   // margin: a walker stays inside the actual wall faces, rather than inside one guessed room width.
   const WALL = attr("laneW", 640) / 2, CEIL = attr("laneCeil", 420);
+  /* An open lane (round 32): a street with nothing over it -- Nakamise is open to the sky -- draws no
+     lid, so what stands above the roofline (the pagoda over the west row) and the night sky itself
+     are seen as they are, instead of behind a navy ceiling at the eaves. */
+  const OPEN = attr("laneOpen", 0) ? true : false;
   const Z_FAR = attr("laneD", 1247), Z_BACK = -attr("laneBack", 240);
   const EYE = attr("eye", 168), PLAYER_RADIUS = 24, HEAD_CLEARANCE = 12;
   const HALF = Math.max(0, WALL - PLAYER_RADIUS);
@@ -716,6 +720,23 @@ function leaveOverlay(root, trigger) {
       c.fillRect((i * 53) % 128, (i * 29) % 128, 2, 2);
     }
     c.fillStyle = "rgba(16,24,42,.36)"; c.fillRect(0, 104, 128, 24);  // the damp line at the foot
+  };
+  /* Nakamise's paving (round 32): granite slabs laid square, "like a go board" (tour.ne.jp), two by
+     two per tile in four close greys so the grid does not read as one stamp, with dark joints and
+     a granite speckle. */
+  const paintPaving = (c) => {
+    ["#6f7178", "#686a72", "#73757c", "#6b6d74"].forEach((t, i) => {
+      c.fillStyle = t; c.fillRect((i % 2) * 64, Math.floor(i / 2) * 64, 64, 64);
+    });
+    for (let i = 0; i < 260; i++) {
+      c.fillStyle = `rgba(${i % 3 ? "230,232,238" : "20,22,28"},${(0.05 + (i % 5) * 0.012).toFixed(3)})`;
+      c.fillRect((i * 37) % 128, (i * 71) % 128, 1 + (i % 2), 1);
+    }
+    c.strokeStyle = "rgba(18,20,26,.75)"; c.lineWidth = 2;
+    [0, 64, 128].forEach((p) => {
+      c.beginPath(); c.moveTo(p, 0); c.lineTo(p, 128); c.stroke();
+      c.beginPath(); c.moveTo(0, p); c.lineTo(128, p); c.stroke();
+    });
   };
   const paintFloor = (c) => {
     // Wet asphalt at night is a *reflective* surface, which is why it reads mid-tone and not black:
@@ -1120,7 +1141,7 @@ function leaveOverlay(root, trigger) {
     H = Math.max(1, Math.round(W * (ch / Math.max(1, cw))));
     cv.width = W; cv.height = H;
     tilePat = mkTile(paintWall);
-    floorPat = mkTile(layer.dataset.floor === "pod" ? paintPodFloor : paintFloor);
+    floorPat = mkTile(({ pod: paintPodFloor, paving: paintPaving })[layer.dataset.floor] || paintFloor);
     winPat = mkTile(paintWindows);
     PATS.shutter = mkTile(paintShutter);
     PATS.dado = mkTile(paintDado);
@@ -1277,9 +1298,16 @@ function leaveOverlay(root, trigger) {
     if (!node) return null;
     try { return JSON.parse(node.textContent); } catch (err) { return null; }
   };
+  const jsonData = (v) => { try { return v ? JSON.parse(v) : null; } catch (e) { return null; } };
   const meta = objs.map((el) => ({
     el, kind: el.dataset.obj, leaf: el.dataset.leaf || null, top: el.dataset.top || null,
     awn: el.dataset.awn || null, noren: el.dataset.noren || null, fascia: el.dataset.fascia || null,
+    // Round 32: what a real place needed that the street's kit never did -- a shop bay's mural ground
+    // and posts, a skyline's named towers, a bascule's split, a harbour boat's run. Record data on
+    // the element, like an awning colour, or the renderer never sees it (lane-prop section 7).
+    mural: jsonData(el.dataset.mural), posts: el.dataset.posts || null,
+    towers: jsonData(el.dataset.towers), leaves: parseFloat(el.dataset.leaves) || 0,
+    run: parseFloat(el.dataset.run) || 0,
     // `liton` is the phase at which this prop's own windows come up. The district lights its
     // buildings one after another, and without a per-prop moment they all came on together, which
     // is a switch and not a dusk.
@@ -1436,6 +1464,7 @@ function leaveOverlay(root, trigger) {
                   bank: "#dfe8f2", bench: "#4a3f36", rack: "#6a6f78",
                   plinth: "#2b2733", tower: "#6b7a92", skyline: "#1c2740", dome: "#93a3b8",
                   falls: "#dfe9f2", pool: "#1d3a55", boat: "#e8eef4", island: "#65764e",
+                  shopbay: "#b8392b", gate: "#b8392b",
                   // Blue Wing Moji is painted blue, and that is the whole reason people photograph
                   // it: a blue bascule against red brick and a dark harbour.
                   drawbridge: "#3f6ea8", ship: "#5a6472",
@@ -1488,10 +1517,12 @@ function leaveOverlay(root, trigger) {
                   // Moji's kit: the drawbridge the district is known by, and the ships it opens for.
                   drawbridge: "drawbridge", ship: "ship", stationfront: "stationfront",
                   customhouse: "customhouse", osakashosen: "osakashosen", dalianhall: "dalianhall",
-                  // The market's hall: a brick nave with an arcade under a gallery floor, and a
-                  // cupola with a clock in it. A market that is only stalls is a market in the
-                  // abstract -- this one is a building and the stalls belong to it.
-                  hall: "markethall" };
+                  // The market's hall: St. Lawrence Market South as it stands -- a brick hall under
+                  // one arched roof, the 1845 block's three stone arches at its north end, and no
+                  // cupola, which came down in the 1902 rebuild (round 32).
+                  hall: "markethall",
+                  // Nakamise's own (round 32): a bay of the 1925 shop rows, and Kaminarimon.
+                  shopbay: "shopbay", gate: "gate" };
   // A few props are named for what they are, not for the kind that draws them; these are the aliases.
   Object.assign(SHAPE, { pole: "box", barrel: "box", stool: "box", lamp: "box",
                          curtain: "cloth", stall: "stall", ledge: "plane",
@@ -1968,6 +1999,229 @@ function leaveOverlay(root, trigger) {
                              [tw.x + w, dy + 90, tw.z], [tw.x - w, dy + 90, tw.z]],
                          ZERO8, "flat", "#f0d9a8", null);
         if (deck) { deck.air = 0.06; deck.lit = 0.9; }
+      });
+    }
+    /* Hōzōmon and the five-storey pagoda at the head of Nakamise (round 32; TODO §0n). The gate is
+       22.7 m tall, 21 m wide and 8 m deep, rebuilt in 1964 in reinforced concrete; its centre bay
+       hangs the Kobunachō lantern (3.75 m tall, 2.7 m across, red; its characters are writing and
+       are left off) between two copper tōrō 2.75 m tall, and the Niō stand in the outer bays behind
+       grilles and are not drawn. The pagoda stands 56 m west and 19 m north of the gate's centre
+       (OpenStreetMap), 53.32 m to the top of its finial. Both are floodlit until 23:00, so they are
+       lit at night and fall back toward silhouette in the hours the hall calls day. */
+    const tp = bd.temple;
+    if (tp) {
+      const flood = 0.78 + 0.62 * NIGHT();
+      const T0 = (pts, col, l, air = 0.06) => {
+        const q = add(C, pts, new Array(pts.length * 2).fill(0), "flat", col, null);
+        if (q) { q.lit = l; q.air = air; q.day = false; }
+        return q;
+      };
+      const gx = tp.x || 0, gz = tp.z, G = tp.gate || { w: 2100, h: 2270 };
+      const R = (x0, y0, x1, y1, z, col, l, air) =>
+        T0([[gx + x0, y0, z], [gx + x1, y0, z], [gx + x1, y1, z], [gx + x0, y1, z]], col, l, air);
+      const hw = G.w / 2, k = G.h / 2270;
+      // Stone podium, the lower storey's shadowed bays, then the six pillars across five bays.
+      R(-hw - 60, 0, hw + 60, 50 * k, gz - 30, "#7d7a74", flood * 0.8);
+      R(-hw, 50 * k, hw, 960 * k, gz + 40, "#5a3024", flood * 0.62);
+      const bay = G.w / 5;
+      for (let i = 0; i < 5; i++) {
+        const x0 = -hw + i * bay;
+        if (i === 0 || i === 4) {
+          R(x0, 60 * k, x0 + bay, 900 * k, gz + 10, "#6a2a20", flood * 0.75);
+          for (let j = 1; j < 8; j++) {
+            const xb = x0 + (bay * j) / 8;
+            R(xb - 5, 80 * k, xb + 5, 880 * k, gz + 6, "#8c3a2c", flood * 0.85);
+          }
+        }
+      }
+      for (let i = 0; i <= 5; i++) {
+        const xp = -hw + i * bay;
+        R(xp - 46, 50 * k, xp + 46, 960 * k, gz, "#c8442f", flood * 1.05);
+      }
+      R(-hw - 40, 880 * k, hw + 40, 960 * k, gz - 2, "#ad3a2b", flood * 0.95);
+      // The lanterns: the red chōchin in the centre bay, the copper tōrō either side of it.
+      const LR = 135 * k, Lb = 470 * k, Lt = 845 * k;
+      for (let i = 0; i < 6; i++) {
+        const t0 = i / 6, t1 = (i + 1) / 6;
+        const r0 = LR * (0.84 + 0.16 * Math.sin(Math.PI * t0)), r1 = LR * (0.84 + 0.16 * Math.sin(Math.PI * t1));
+        const col = t0 < 0.12 || t1 > 0.88 ? "#1f1a18" : "#c22f22";
+        T0([[gx - r0, Lb + (Lt - Lb) * t0, gz - 20], [gx + r0, Lb + (Lt - Lb) * t0, gz - 20],
+            [gx + r1, Lb + (Lt - Lb) * t1, gz - 20], [gx - r1, Lb + (Lt - Lb) * t1, gz - 20]], col, flood * 1.15);
+      }
+      [-1, 1].forEach((s) => {
+        const cx = s * bay, top = 835 * k, bot = 560 * k, w2 = 55 * k;
+        T0([[gx + cx - w2, bot, gz - 18], [gx + cx + w2, bot, gz - 18], [gx + cx + w2 * 0.8, top - 60 * k, gz - 18],
+            [gx + cx - w2 * 0.8, top - 60 * k, gz - 18]], "#56614f", flood * 0.85);
+        T0([[gx + cx - w2 * 1.3, top - 60 * k, gz - 19], [gx + cx + w2 * 1.3, top - 60 * k, gz - 19],
+            [gx + cx, top, gz - 19]], "#3f4a3c", flood * 0.8);
+      });
+      // Pent roof between the storeys, the upper storey with its balustrade, and the great roof.
+      T0([[gx - hw - 260 * k, 960 * k, gz - 60], [gx + hw + 260 * k, 960 * k, gz - 60],
+          [gx + hw + 40, 1170 * k, gz + 60], [gx - hw - 40, 1170 * k, gz + 60]], "#323846", flood * 0.7);
+      R(-hw - 250 * k, 955 * k, hw + 250 * k, 985 * k, gz - 64, "#5a6170", flood * 0.8);
+      R(-hw * 0.86, 1170 * k, hw * 0.86, 1250 * k, gz + 70, "#8f2f24", flood * 0.9);
+      R(-hw * 0.82, 1250 * k, hw * 0.82, 1650 * k, gz + 80, "#4d2a20", flood * 0.6);
+      for (let i = 0; i <= 5; i++) {
+        const xp = -hw * 0.82 + i * (hw * 1.64 / 5);
+        R(xp - 26, 1250 * k, xp + 26, 1650 * k, gz + 76, "#c2412e", flood * 0.95);
+      }
+      T0([[gx - hw - 420 * k, 1640 * k, gz - 40], [gx + hw + 420 * k, 1640 * k, gz - 40],
+          [gx + hw * 0.62, 2190 * k, gz + 200], [gx - hw * 0.62, 2190 * k, gz + 200]], "#2e3442", flood * 0.72);
+      [-1, 1].forEach((s) => T0([[gx + s * (hw + 420 * k), 1640 * k, gz - 41], [gx + s * (hw + 480 * k), 1720 * k, gz - 41],
+                                 [gx + s * (hw + 300 * k), 1700 * k, gz - 41]], "#4f5667", flood * 0.8));
+      R(-hw - 410 * k, 1632 * k, hw + 410 * k, 1660 * k, gz - 44, "#5a6170", flood * 0.8);
+      R(-hw * 0.66, 2190 * k, hw * 0.66, G.h, gz + 200, "#262b36", flood * 0.7);
+      // The floodlights' spill on the plaza in front of the gate: the light that makes it a place to stand.
+      T0([[gx - hw - 400, 2, gz - 2200], [gx + hw + 400, 2, gz - 2200], [gx + hw + 200, 2, gz - 60],
+          [gx - hw - 200, 2, gz - 60]], `rgba(255,214,160,${(0.1 + 0.12 * NIGHT()).toFixed(3)})`, 1.1, 0.04);
+      const pg = tp.pagoda;
+      if (pg) {
+        const px = pg.x, pz = pg.z, PH = pg.h || 5332;
+        const S = (x0, y0, x1, y1, col, l) =>
+          T0([[px + x0, y0, pz], [px + x1, y0, pz], [px + x1, y1, pz], [px + x0, y1, pz]], col, l, 0.1);
+        S(-620, 0, 620, 150, "#77746e", flood * 0.75);
+        let y = 150;
+        for (let i = 0; i < 5; i++) {
+          const bw = 360 - i * 30, bh = 600 - i * 30, rw = 700 - i * 55;
+          S(-bw, y, bw, y + bh, "#bf412e", flood * (1 - i * 0.03));
+          S(-bw * 0.4, y + bh * 0.15, bw * 0.4, y + bh * 0.8, "#2a1712", 0.5);
+          T0([[px - rw, y + bh, pz - 30], [px + rw, y + bh, pz - 30], [px + bw * 0.9, y + bh + 150, pz + 30],
+              [px - bw * 0.9, y + bh + 150, pz + 30]], "#2f3543", flood * 0.72, 0.1);
+          [-1, 1].forEach((s) => T0([[px + s * rw, y + bh, pz - 31], [px + s * (rw + 50), y + bh + 50, pz - 31],
+                                     [px + s * (rw - 90), y + bh + 30, pz - 31]], "#4d5464", flood * 0.8, 0.1));
+          y += bh + 150;
+        }
+        S(-18, y, 18, PH - 120, "#5e5446", flood * 0.8);
+        for (let r = 0; r < 9; r++) {
+          const ry = y + 140 + r * ((PH - y - 420) / 9);
+          S(-62, ry, 62, ry + 26, "#8a7a54", flood * 0.9);
+        }
+        S(-34, PH - 160, 34, PH, "#a68c52", flood);
+      }
+    }
+    /* The Kanmon Strait beyond the Moji table, at the table's own scale (round 32; TODO §0n): one
+       model, from the quay to the far shore. The water runs from the table's far edge to the
+       Shimonoseki shore; the Kaikyō Yume Tower stands on it (153 m, its glass sphere at 143 m),
+       about 3 km west of the station; the Kanmon Bridge crosses to the north (1,068 m: a 712 m
+       span between towers 141 m above the sea and 178 m side spans, the deck 61 m up, painted
+       grey-green); and the strait's own traffic -- some 500 ships a day -- passes on the house
+       clock. Positions are OpenStreetMap's, turned into the table's frame (the table looks
+       north-west). The far shore's city is a band of low blocks: the sources give the city, not
+       its buildings, and nothing out there is lettered. */
+    const sq = bd.strait;
+    if (sq) {
+      const wy = sq.y, nightK = NIGHT();
+      const S0 = (pts, col, l, air) => {
+        const q = add(C, pts, new Array(pts.length * 2).fill(0), "flat", col, null);
+        if (q) { q.lit = l; q.air = air === undefined ? 0.12 : air; q.day = false; }
+        return q;
+      };
+      const STEP = 1200, PU = 1 / 10, span = Math.max(1, sq.z1 - sq.z0);
+      for (let z = sq.z0; z < sq.z1; z += STEP) {
+        const z1 = Math.min(z + STEP, sq.z1);
+        const wq = add(C, [[-sq.half, wy, z], [sq.half, wy, z], [sq.half, wy, z1], [-sq.half, wy, z1]],
+          [z * PU, -sq.half * PU, z * PU, sq.half * PU, z1 * PU, sq.half * PU, z1 * PU, -sq.half * PU],
+          "pat", PATS.water, null);
+        if (wq) { wq.lit = 0.8; wq.air = 0.08 + (((z + z1) / 2 - sq.z0) / span) * (FOG_MAX - 0.1); }
+      }
+      // Land: the Moji coast running north on the right, the Shimonoseki shore across the strait.
+      const landStrip = (line, far, sideX) => {
+        for (let i = 0; i < line.length - 1; i++) {
+          const [ax0, az0] = line[i], [bx0, bz0] = line[i + 1];
+          const pts = sideX
+            ? [[ax0, wy + 1, az0], [bx0, wy + 1, bz0], [far, wy + 1, bz0], [far, wy + 1, az0]]
+            : [[ax0, wy + 1, az0], [bx0, wy + 1, bz0], [bx0, wy + 1, bz0 + far], [ax0, wy + 1, az0 + far]];
+          S0(pts, "#1b2333", 0.45, 0.2);
+        }
+      };
+      if (sq.moji) landStrip(sq.moji, 9000, true);
+      if (sq.shore) {
+        landStrip(sq.shore, 4000, false);
+        let n = 0;
+        for (let i = 0; i < sq.shore.length - 1; i++) {
+          const [ax0, az0] = sq.shore[i], [bx0, bz0] = sq.shore[i + 1];
+          const L = Math.hypot(bx0 - ax0, bz0 - az0), cnt = Math.max(2, Math.round(L / 160));
+          for (let j = 0; j < cnt; j++, n++) {
+            const t = (j + 0.5) / cnt, cx = ax0 + (bx0 - ax0) * t, cz = az0 + (bz0 - az0) * t + 60;
+            const h = 18 + ((n * 37) % 40), w = 70 + ((n * 53) % 60);
+            S0([[cx - w / 2, wy + 1, cz], [cx + w / 2, wy + 1, cz], [cx + w / 2, wy + h, cz], [cx - w / 2, wy + h, cz]],
+               mix("#2b3548", ((n % 3) - 1) * 0.06), 0.55, 0.22);
+            if (nightK > 0.3) {
+              for (let r = 1; r < Math.min(4, Math.floor(h / 9)); r++) {
+                S0([[cx - w * 0.4, wy + r * 9, cz - 1], [cx + w * 0.4, wy + r * 9, cz - 1],
+                    [cx + w * 0.4, wy + r * 9 + 2.5, cz - 1], [cx - w * 0.4, wy + r * 9 + 2.5, cz - 1]],
+                   `rgba(255,214,150,${(0.35 * nightK).toFixed(3)})`, 1.2, 0.2);
+              }
+            }
+          }
+        }
+      }
+      // The Kaikyō Yume Tower: a slender shaft and the glass sphere near its head.
+      const ym = sq.yume;
+      if (ym) {
+        S0([[ym.x - 9, wy, ym.z], [ym.x + 9, wy, ym.z], [ym.x + 7, wy + ym.sphere - ym.r, ym.z],
+            [ym.x - 7, wy + ym.sphere - ym.r, ym.z]], "#8796a6", 0.7, 0.18);
+        const sp = [];
+        for (let i = 0; i < 14; i++) {
+          const a = (i / 14) * Math.PI * 2;
+          sp.push([ym.x + Math.cos(a) * ym.r, wy + ym.sphere + Math.sin(a) * ym.r, ym.z - 1]);
+        }
+        S0(sp, nightK > 0.3 ? "#d9ecf6" : "#9fb6c6", nightK > 0.3 ? 1.4 : 0.8, 0.16);
+        S0([[ym.x - 2, wy + ym.sphere + ym.r, ym.z], [ym.x + 2, wy + ym.sphere + ym.r, ym.z],
+            [ym.x + 1, wy + ym.h, ym.z], [ym.x - 1, wy + ym.h, ym.z]], "#8796a6", 0.7, 0.18);
+      }
+      // The Kanmon Bridge: towers at the ends of the centre span, the deck, and the main cables.
+      const kb = sq.kanmon;
+      if (kb) {
+        const [ax0, az0] = kb.a, [bx0, bz0] = kb.b, sd = kb.side || 178 / 1068;
+        const at = (t) => [ax0 + (bx0 - ax0) * t, az0 + (bz0 - az0) * t];
+        const dx = bx0 - ax0, dz = bz0 - az0, len = Math.hypot(dx, dz), nx = -dz / len, nz = dx / len;
+        const halfW = kb.width || 19;
+        const col = "#7f9488", dY = wy + kb.deck;
+        S0([[ax0 - nx * halfW, dY, az0 - nz * halfW], [bx0 - nx * halfW, dY, bz0 - nz * halfW],
+            [bx0 + nx * halfW, dY, bz0 + nz * halfW], [ax0 + nx * halfW, dY, az0 + nz * halfW]], col, 0.65, 0.2);
+        S0([[ax0, dY - 4, az0], [bx0, dY - 4, bz0], [bx0, dY, bz0], [ax0, dY, az0]], mix(col, -0.25), 0.6, 0.2);
+        [sd, 1 - sd].forEach((t) => {
+          const [tx, tz] = at(t);
+          [-1, 1].forEach((e) => S0([[tx + nx * e * halfW - 3, wy, tz + nz * e * halfW], [tx + nx * e * halfW + 3, wy, tz + nz * e * halfW],
+                                     [tx + nx * e * halfW + 2, wy + kb.tower, tz + nz * e * halfW],
+                                     [tx + nx * e * halfW - 2, wy + kb.tower, tz + nz * e * halfW]], col, 0.7, 0.18));
+          S0([[tx - nx * halfW, wy + kb.tower - 8, tz - nz * halfW], [tx + nx * halfW, wy + kb.tower - 8, tz + nz * halfW],
+              [tx + nx * halfW, wy + kb.tower - 2, tz + nz * halfW], [tx - nx * halfW, wy + kb.tower - 2, tz - nz * halfW]], col, 0.7, 0.18);
+        });
+        const cableY = (t) => {
+          if (t < sd) return dY + (kb.tower - kb.deck) * (t / sd);
+          if (t > 1 - sd) return dY + (kb.tower - kb.deck) * ((1 - t) / sd);
+          const c = (t - 0.5) / (0.5 - sd);
+          return dY + 6 + (kb.tower - kb.deck - 6) * c * c;
+        };
+        for (let i = 0; i < 24; i++) {
+          const t0 = i / 24, t1 = (i + 1) / 24, [x0, z0] = at(t0), [x1, z1] = at(t1);
+          S0([[x0, cableY(t0), z0], [x1, cableY(t1), z1], [x1, cableY(t1) + 1.6, z1], [x0, cableY(t0) + 1.6, z0]],
+             mix(col, 0.1), 0.75, 0.18);
+        }
+      }
+      // The strait's ships, on the house clock: a dark hull, the white house aft, lights after dark.
+      (sq.ships || []).forEach((sh) => {
+        const t = (((ease ? T : 0) / sh.period) + (sh.phase || 0)) % 1;
+        const [fx, fz] = sh.from, [tx, tz] = sh.to;
+        const x = fx + (tx - fx) * t, z = fz + (tz - fz) * t;
+        const L = Math.hypot(tx - fx, tz - fz), ux = (tx - fx) / L, uz = (tz - fz) / L;
+        const hl = sh.len / 2, hb = sh.len / 14, hh = sh.len / 12;
+        const fade = Math.min(1, Math.min(t, 1 - t) * 8);
+        const air = 0.1 + (1 - fade) * 0.5;
+        const p = (a, b, y) => [x + ux * a - uz * b, wy + y, z + uz * a + ux * b];
+        S0([p(-hl, -hb, 0), p(hl * 0.8, -hb, 0), p(hl * 0.8, -hb, hh), p(-hl, -hb, hh)], "#2a2f38", 0.7, air);
+        S0([p(hl * 0.8, -hb, 0), p(hl, 0, 0), p(hl, 0, hh), p(hl * 0.8, -hb, hh)], "#262b33", 0.7, air);
+        S0([p(-hl, -hb, hh), p(hl * 0.8, -hb, hh), p(hl, 0, hh), p(hl * 0.8, hb, hh), p(-hl, hb, hh)], "#5b6470", 0.7, air);
+        S0([p(-hl * 0.92, -hb * 0.8, hh), p(-hl * 0.62, -hb * 0.8, hh), p(-hl * 0.62, -hb * 0.8, hh * 2.4),
+            p(-hl * 0.92, -hb * 0.8, hh * 2.4)], "#e6e9ec", 0.8, air);
+        if (nightK > 0.3) {
+          S0([p(-hl * 0.9, -hb * 0.82, hh * 1.6), p(-hl * 0.64, -hb * 0.82, hh * 1.6), p(-hl * 0.64, -hb * 0.82, hh * 1.9),
+              p(-hl * 0.9, -hb * 0.82, hh * 1.9)], `rgba(255,220,170,${(0.7 * nightK).toFixed(3)})`, 1.5, air);
+          S0([p(hl * 0.5, -hb * 0.5, hh * 2.6), p(hl * 0.52, -hb * 0.5, hh * 2.6), p(hl * 0.52, -hb * 0.5, hh * 2.9),
+              p(hl * 0.5, -hb * 0.5, hh * 2.9)], `rgba(255,252,240,${(0.9 * nightK).toFixed(3)})`, 1.6, air);
+        }
       });
     }
     const plaza = bd.plaza;
@@ -2588,7 +2842,7 @@ function leaveOverlay(root, trigger) {
           "pat", floorPat);
       if (fl) { fl.lit = lightAt(0, 6, zc) * 1.15; fl.air = haze(fl.z) * 0.7;
                 fl.sz = fl.z + 4000; }   // the ground paints before anything standing on it
-      const cl = add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
+      const cl = OPEN ? null : add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
           [0, 0, 0, 0, 0, 0, 0, 0], "flat", lidAt(zc));
       if (cl) { cl.lit = AMBIENT * 0.8;   // out of the bulbs' reach, and it should look that way
                 cl.sz = cl.z + 4000; }   // and the lid paints before the walls it meets
@@ -3009,6 +3263,138 @@ function leaveOverlay(root, trigger) {
           Q([P(-half, 0, head), P(-half, ins, head), P(-half, ins, m.h), P(-half, 0, m.h)], mix("#4d5f5a", -0.06), lit * 0.8);
           Q([P(half, 0, head), P(half, ins, head), P(half, ins, m.h), P(half, 0, m.h)], mix("#4d5f5a", -0.06), lit * 0.8);
         }
+      } else if (shape === "shopbay") {
+        /* One bay of Nakamise's shop rows (round 32; the sources are in TODO §0n). Read off the map
+           and the night photographs: the 1925 rows are shallow (about 4 m deep) and stand 9.1 m
+           apart face to face. From the ground up a bay is a raised strip under the eave, the roll
+           shutter (down once the shops shut, around 19:00, and painted since 1989 with the Asakusa
+           Emaki), a lintel, an eave 150 cm deep with its strip light, the fascia band out at the
+           post line, and the tiled roof edge, with a square vermilion post at the bay's edge. The
+           mural's scenes have people in them, so only their ground colours are kept (`mural`), and
+           the fascia, which carries each shop's name, is left blank. */
+        const along = Math.abs(m.ry) > 45;
+        const dir = along ? (m.x < 0 ? 1 : -1) : (m.z < 0 ? 1 : -1);
+        const half = m.w / 2, D = m.d;
+        const P = (u, v, y) => (along ? [m.x + dir * (v - D / 2), y, m.z + u]
+                                      : [m.x + u, y, m.z + dir * (v - D / 2)]);
+        const Q = (pts, col, l, air) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); }
+          return q;
+        };
+        const rgba = (hex, a) =>
+          `rgba(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(",")},${a})`;
+        const ySt = 12, yS = m.h * 0.55, yE = m.h * 0.64, yF = m.h * 0.83, yR = m.h;
+        const glowK = 0.45 + 0.55 * NIGHT();
+        // The strip under the eave: a riser at the post line and a pale tiled walk.
+        Q([P(-half, D, 0), P(half, D, 0), P(half, D, ySt), P(-half, D, ySt)], "#5c5954", lit * 0.8);
+        Q([P(-half, 0, ySt), P(half, 0, ySt), P(half, D, ySt), P(-half, D, ySt)], "#aaa59b", lit * 0.95);
+        // The shutter in the cladding's own slat tile, and the mural's ground laid over it in bands.
+        const sp = [P(-half, 1, ySt), P(half, 1, ySt), P(half, 1, yS), P(-half, 1, yS)];
+        const blade = along
+          ? add(C, sp, [m.z * DPM - half * DPM, -ySt * DPM, m.z * DPM + half * DPM, -ySt * DPM,
+                        m.z * DPM + half * DPM, -yS * DPM, m.z * DPM - half * DPM, -yS * DPM],
+                "pat", PATS.shutter)
+          : add(C, sp, ZERO8, "flat", "#8a8f96");
+        if (blade) { blade.lit = lit * 1.1; drawn.push(blade); }
+        const mural = m.mural && m.mural.length ? m.mural : [];
+        mural.forEach((c, i) => {
+          const y0 = ySt + (i / mural.length) * (yS - ySt);
+          const y1 = ySt + ((i + 1) / mural.length) * (yS - ySt);
+          Q([P(-half, 1.8, y0), P(half, 1.8, y0), P(half, 1.8, y1), P(-half, 1.8, y1)],
+            rgba(c, 0.58), lit * 1.05);
+        });
+        // A shop is two or three shutters wide: the guides between them, and the bay's own edges.
+        const NS = Math.max(1, Math.round(m.w / 180));
+        for (let i = 0; i <= NS; i++) {
+          const u = -half + (i / NS) * m.w;
+          Q([P(u - 2, 2.4, ySt), P(u + 2, 2.4, ySt), P(u + 2, 2.4, yS), P(u - 2, 2.4, yS)],
+            "#2f3036", lit * 0.8);
+        }
+        // Lintel and shutter box, then the eave's soffit with its strip light.
+        Q([P(-half, 1, yS), P(half, 1, yS), P(half, 1, yE), P(-half, 1, yE)], "#5e2a22", lit * 0.85);
+        Q([P(-half, 0, yE), P(half, 0, yE), P(half, D, yE), P(-half, D, yE)], "#d8d0bf", lit * 1.15);
+        const strip = add(C, [P(-half + 6, 18, yE - 1), P(half - 6, 18, yE - 1),
+                              P(half - 6, 30, yE - 1), P(-half + 6, 30, yE - 1)],
+                          ZERO8, "flat", `rgba(255,243,220,${(0.5 + 0.45 * glowK).toFixed(3)})`);
+        if (strip) { strip.lit = 1.5; strip.nolite = true; drawn.push(strip); }
+        // The fascia at the post line: a pale board, ruled in vermilion top and bottom, unlettered.
+        Q([P(-half, D, yE), P(half, D, yE), P(half, D, yF), P(-half, D, yF)], "#e6e1d5", lit * 0.98);
+        Q([P(-half, D + 0.5, yE), P(half, D + 0.5, yE), P(half, D + 0.5, yE + 7), P(-half, D + 0.5, yE + 7)],
+          "#a8352a", lit * 0.9);
+        Q([P(-half, D + 0.5, yF - 7), P(half, D + 0.5, yF - 7), P(half, D + 0.5, yF), P(-half, D + 0.5, yF)],
+          "#a8352a", lit * 0.9);
+        // The tiled roof edge, running back up to the ridge line, and its lighter eave tiles.
+        Q([P(-half, D + 4, yF), P(half, D + 4, yF), P(half, 0, yR), P(-half, 0, yR)], "#3b404a", lit * 0.72);
+        Q([P(-half, D + 5, yF - 2), P(half, D + 5, yF - 2), P(half, D + 5, yF + 6), P(-half, D + 5, yF + 6)],
+          "#59606b", lit * 0.8);
+        // Where the row stops for a cross street, its end wall shows.
+        const caps = m.posts === "2" ? [-half, half] : m.posts === "end" ? [half] : m.posts === "first" ? [-half] : [];
+        caps.forEach((u) => Q([P(u, 0, 0), P(u, D, 0), P(u, D, yR * 0.86), P(u, 0, yR)], "#5a2620", lit * 0.7));
+        // The posts: square, vermilion, standing on the strip at the bay's edge.
+        const posts = m.posts === "2" ? [-half, half] : m.posts === "end" ? [-half, half] : [-half];
+        posts.forEach((u) => {
+          const pw = 11, v0 = D - 30, v1 = D - 8;
+          [-1, 1].forEach((s) => Q([P(u + s * pw, v0, ySt), P(u + s * pw, v1, ySt), P(u + s * pw, v1, yE),
+                                    P(u + s * pw, v0, yE)], "#922c22", lit * 0.85));
+          Q([P(u - pw, v1, ySt), P(u + pw, v1, ySt), P(u + pw, v1, yE), P(u - pw, v1, yE)], "#b8392b", lit);
+        });
+      } else if (shape === "gate") {
+        /* Kaminarimon from inside the precinct (round 32): the gate the lane is entered through and
+           left by, 11.7 m tall and 11.4 m wide (Sensō-ji; Wikipedia). Its passage carries the great
+           chōchin, 3.9 m tall and 3.3 m across, red with black bands over a metal base; here it says
+           nothing, because its characters are writing. The bays either side hold the Tenryū and
+           Kinryū figures behind grilles, and figures are not drawn, so the grilles are. */
+        const dir = m.z < 0 ? 1 : -1;
+        const half = m.w / 2, pass = Math.min(230, half * 0.52);
+        const P = (u, y, v = 0) => [m.x + u, y, m.z + dir * v];
+        const Q = (pts, col, l, air) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); }
+          return q;
+        };
+        const n = NIGHT();
+        /* The press area is the passage you walk out through, under the lantern -- not the whole gate.
+           A gate this size fills the view when you turn back to it, and a press box is shown only while
+           its corner is on screen, so a box round all of it was never shown: the way out vanished just
+           when you faced it. Everything else is drawn but kept out of `drawn`, which is the press box. */
+        const S = (pts, col, l) => { const q = add(C, pts, ZERO8, "flat", col); if (q) q.lit = l; return q; };
+        // Beyond the passage: the street at night, so the end of the lane never shows through it.
+        // Through the passage, the street outside at night: its lit ground, the warm band of its
+        // shopfronts across the way, and the sky over them -- an opening, not a panel.
+        Q([P(-pass, 0, -6), P(pass, 0, -6), P(pass, 250, -6), P(-pass, 250, -6)], "#2a2d3c", 0.7);
+        S([P(-pass, 250, -6), P(pass, 250, -6), P(pass, m.h, -6), P(-pass, m.h, -6)], "#1c2438", 0.6);
+        S([P(-pass, 0, -5), P(pass, 0, -5), P(pass, 46, -5), P(-pass, 46, -5)], "#6a6c78", 0.95);
+        S([P(-pass, 60, -5), P(pass, 60, -5), P(pass, 190, -5), P(-pass, 190, -5)],
+          `rgba(255,204,146,${(0.22 + 0.26 * n).toFixed(3)})`, 1.3);
+        [-1, 1].forEach((s) => {
+          const u0 = s * pass, u1 = s * half;
+          S([P(u0, 0, -3), P(u1, 0, -3), P(u1, m.h * 0.84, -3), P(u0, m.h * 0.84, -3)], "#33191a", lit * 0.6);
+          for (let i = 1; i < 10; i++) {
+            const u = u0 + ((u1 - u0) * i) / 10;
+            S([P(u - 2.5, 30, -1), P(u + 2.5, 30, -1), P(u + 2.5, m.h * 0.82, -1), P(u - 2.5, m.h * 0.82, -1)],
+              "#7c3328", lit * 0.85);
+          }
+        });
+        [-half, -pass, pass, half].forEach((u) =>
+          S([P(u - 26, 0, 2), P(u + 26, 0, 2), P(u + 26, m.h, 2), P(u - 26, m.h, 2)], "#b8392b", lit));
+        [[0.84, 0.89], [0.95, 1]].forEach(([a, b]) =>
+          S([P(-half - 30, m.h * a, 3), P(half + 30, m.h * a, 3), P(half + 30, m.h * b, 3),
+             P(-half - 30, m.h * b, 3)], "#a3342a", lit * 0.95));
+        // The lantern: a barrel in seven slices, black-banded top and bottom, a metal ring beneath.
+        const LH = 390, R = 165, lt = m.h * 0.94, lb = lt - LH, SL = 7;
+        for (let i = 0; i < SL; i++) {
+          const t0 = i / SL, t1 = (i + 1) / SL;
+          const r0 = R * (0.84 + 0.16 * Math.sin(Math.PI * t0));
+          const r1 = R * (0.84 + 0.16 * Math.sin(Math.PI * t1));
+          const y0 = lb + t0 * LH, y1 = lb + t1 * LH;
+          const col = t0 < 0.13 || t1 > 0.87 ? "#1d1917" : "#b4291e";
+          [[-1, -0.38, -0.22], [-0.38, 0.38, 0.1], [0.38, 1, -0.22]].forEach(([a, b, k]) =>
+            S([P(a * r0, y0, 8), P(b * r0, y0, 8), P(b * r1, y1, 8), P(a * r1, y1, 8)],
+              mix(col, k), lit * (1.25 + 0.45 * n)));
+        }
+        S([P(-R * 0.86, lb - 22, 9), P(R * 0.86, lb - 22, 9), P(R * 0.86, lb, 9), P(-R * 0.86, lb, 9)],
+          "#8a6a3c", lit);
       } else if (shape === "glass") {
         // A box you can see through: the frame first, then the panes at a fraction of the alpha an
         // opaque face would use, so the far side of the lane stays legible behind it. Painting glass
@@ -3434,37 +3820,68 @@ function leaveOverlay(root, trigger) {
                          ZERO8, "flat", `rgba(255,86,64,${(blink * 0.24).toFixed(3)})`);
         if (halo) { halo.lit = 1.5; drawn.push(halo); }
       } else if (shape === "skyline") {
-        /* A row of blocky towers of different heights; a few lit windows are the only words it has.
-           The blocks share the table's footprint and sit at staggered depths so the row has a
-           silhouette instead of a fence line. */
-        const blocks = [[-0.36, 0.55, 0.3, -0.1], [-0.1, 0.95, 0.32, 0.12], [0.16, 0.7, 0.3, -0.06],
-                        [0.4, 0.5, 0.26, 0.08]];
-        blocks.forEach(([cx, hf, wf, dz], bi) => {
-          facesOf({ ...m, x: m.x + cx * m.w, z: m.z + dz * m.d, h: m.h * hf, w: m.w * wf,
-                    d: m.d * 0.5 }).forEach((f) => {
-            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
-                         + f.n[2] * (C.z - f.p[0][2]);
-            if (toward <= 0) return;
-            const win = f.n[1] !== 1
-              ? PATS[(NIGHT() > 0.45 ? "skyn" : "sky") + ((bi + Math.floor(T * 0.7)) % 3)]
-              : null;
-            const q = win
-              ? add(C, f.p, patUV(f), "pat", win)
-              : add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.2));
-            /* Windows are the whole point of the cycle: dark glass reflecting the sky all day, and
-               at dusk thousands of them coming on at once. Held at a constant 1.05 they were always
-               on, which is a building with the lights left on in daylight. */
-            if (q) {
-              q.lit = win ? Math.max(lit, 0.9) : lit;
-              if (win) q.nolite = true;   // the city keeps its own light after dark
-              drawn.push(q);
-            }
+        const faceToward = (f) => f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                                + f.n[2] * (C.z - f.p[0][2]) > 0;
+        if (m.towers && m.towers.length) {
+          /* Real towers (round 32): the record names each one with its height from the sources at
+             the table's scale and its cladding colour, in the order the downtown stands seen from
+             the lake. Floors read as bands, and after dusk the bands are lit windows. A tower whose
+             crown is its signature carries it (`crown: "v"`, Scotia Plaza's notched top). */
+          m.towers.forEach((t, bi) => {
+            const tm = { ...m, x: m.x + (t.dx || 0), z: m.z + (t.dz || 0), w: t.w, d: t.d || t.w, h: t.h };
+            facesOf(tm).forEach((f) => {
+              if (!faceToward(f)) return;
+              const q = add(C, f.p, ZERO8, "flat", mix(t.c, f.k + (lit - 0.7) * 0.2));
+              if (q) { q.lit = lit; drawn.push(q); }
+              if (f.n[1] === 1) return;
+              const [a, b, c2, d2] = f.p;       // a,b at the foot; c2,d2 at the head
+              const at = (p0, p1, k) => [p0[0] + (p1[0] - p0[0]) * k, p0[1] + (p1[1] - p0[1]) * k,
+                                         p0[2] + (p1[2] - p0[2]) * k];
+              const nb = Math.max(4, Math.round(t.h / 14));
+              const on = NIGHT();
+              for (let i = 1; i < nb; i++) {
+                const k0 = i / nb, k1 = k0 + 0.32 / nb;
+                const lo0 = at(a, d2, k0), lo1 = at(b, c2, k0), hi1 = at(b, c2, k1), hi0 = at(a, d2, k1);
+                const lt = 0.18 + 0.5 * on * (0.6 + 0.4 * Math.sin(bi * 1.7 + i * 2.3 + Math.floor(T * 0.2)));
+                const bq = add(C, [lo0, lo1, hi1, hi0], ZERO8, "flat",
+                               on > 0.35 ? `rgba(255,224,170,${lt.toFixed(3)})` : "rgba(20,26,38,0.28)");
+                if (bq) { bq.lit = on > 0.35 ? 1.3 : lit; if (on > 0.35) bq.nolite = true; drawn.push(bq); }
+              }
+              if (t.crown === "v") {
+                const top0 = at(a, d2, 0.94);
+                const mid = at(at(a, b, 0.5), at(d2, c2, 0.5), 1);
+                const notch = add(C, [d2, [mid[0], top0[1], mid[2]], c2], new Array(6).fill(0), "flat",
+                                  mix(t.c, -0.45));
+                if (notch) { notch.lit = lit; drawn.push(notch); }
+              }
+            });
           });
-        });
+        } else {
+          /* The generic row, kept for any record that has not named its towers. */
+          const blocks = [[-0.36, 0.55, 0.3, -0.1], [-0.1, 0.95, 0.32, 0.12], [0.16, 0.7, 0.3, -0.06],
+                          [0.4, 0.5, 0.26, 0.08]];
+          blocks.forEach(([cx, hf, wf, dz], bi) => {
+            facesOf({ ...m, x: m.x + cx * m.w, z: m.z + dz * m.d, h: m.h * hf, w: m.w * wf,
+                      d: m.d * 0.5 }).forEach((f) => {
+              if (!faceToward(f)) return;
+              const win = f.n[1] !== 1
+                ? PATS[(NIGHT() > 0.45 ? "skyn" : "sky") + ((bi + Math.floor(T * 0.7)) % 3)]
+                : null;
+              const q = win
+                ? add(C, f.p, patUV(f), "pat", win)
+                : add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.2));
+              if (q) { q.lit = win ? Math.max(lit, 0.9) : lit; if (win) q.nolite = true; drawn.push(q); }
+            });
+          });
+        }
       } else if (shape === "dome") {
-        /* Rogers Centre: an oval stadium bowl with seating around a baseball field and a roof that
-           retracts. The old stepped cuboids read as a stack of boxes; the real identifying form is
-           the broad oval drum and the segmented lid moving on its tracks. */
+        /* Rogers Centre: an oval stadium bowl with seating around a baseball field, under a roof of
+           four panels (round 32 correction; Wikipedia). The north panel is fixed; the two middle
+           panels slide north and stack over it, and the south semicircular panel rotates round the
+           stadium and nests inside the stack, so an open roof is a stack at the north end and the
+           field open to the south. The first build slid two halves apart east and west, which is a
+           roof, but not this one. The real move takes twenty minutes; the hall plays it in a few
+           seconds, the way it plays its day. */
         const sm = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
         const cyc = (T / 42) % 1;
         const op = !ease ? 0 : cyc < 0.12 ? sm(cyc / 0.12)
@@ -3472,10 +3889,11 @@ function leaveOverlay(root, trigger) {
                  : cyc < 0.58 ? sm(1 - (cyc - 0.46) / 0.12) : 0;
         const along = Math.abs(m.ry) > 45, N = 16;
         const ax = m.w * 0.5, bz = m.d * 0.5;
-        const P = (u, v, yf, shift = 0) => along
-          ? [m.x + v, m.y + m.h * yf, m.z + u + shift]
-          : [m.x + u + shift, m.y + m.h * yf, m.z + v];
-        const ep = (a, ru, rv, yf, shift = 0) => P(Math.cos(a) * ax * ru, Math.sin(a) * bz * rv, yf, shift);
+        // u runs east-west, v south (-) to north (+), as the table is laid out.
+        const P = (u, v, yf) => along
+          ? [m.x + v, m.y + m.h * yf, m.z + u]
+          : [m.x + u, m.y + m.h * yf, m.z + v];
+        const ep = (a, ru, rv, yf) => P(Math.cos(a) * ax * ru, Math.sin(a) * bz * rv, yf);
         const wall = (y0, y1, ru0, rv0, ru1, rv1, colour, brightness = lit) => {
           for (let i = 0; i < N; i++) {
             const a0 = (i / N) * Math.PI * 2, a1 = ((i + 1) / N) * Math.PI * 2;
@@ -3504,71 +3922,52 @@ function leaveOverlay(root, trigger) {
           const q = add(C, pts, new Array(N * 2).fill(0), "flat", colour);
           if (q) { q.lit = brightness; q.nolite = true; drawn.push(q); }
         };
-
         // Concrete drum, shallow stepped seating bowl, and a readable field at the bottom.
-        wall(0.00, 0.28, 0.49, 0.47, 0.49, 0.47,
-             (i) => i % 2 ? "#596575" : "#647080", lit * 0.72);
-        wall(0.27, 0.45, 0.45, 0.43, 0.19, 0.17,
-             (i) => i % 3 ? "#354457" : "#46586c", lit * 0.64);
+        wall(0.00, 0.28, 0.49, 0.47, 0.49, 0.47, (i) => i % 2 ? "#596575" : "#647080", lit * 0.72);
+        wall(0.27, 0.45, 0.45, 0.43, 0.19, 0.17, (i) => i % 3 ? "#354457" : "#46586c", lit * 0.64);
         ring(0.29, 0.49, 0.47, 0.43, 0.41, "#b2b8bc", lit * 0.9);
         ring(0.32, 0.43, 0.41, 0.38, 0.36, "#56657a", lit * 0.78);
         ring(0.36, 0.38, 0.36, 0.33, 0.31, "#7d514b", lit * 0.74);
         ring(0.40, 0.33, 0.31, 0.28, 0.26, "#475970", lit * 0.82);
         ring(0.44, 0.28, 0.26, 0.21, 0.19, "#647287", lit * 0.86);
         disc(0.455, 0.21, 0.19, "#477246", 0.95 + 0.35 * NIGHT() + 0.18 * op);
-
-        // A small baseball diamond and foul lines reward a closer look; no labels or invented signs.
-        const fy = 0.459, home = P(ax * 0.105, 0, fy), second = P(-ax * 0.055, 0, fy);
-        const first = P(ax * 0.025, bz * 0.075, fy), third = P(ax * 0.025, -bz * 0.075, fy);
-        const infield = add(C, [home, first, second, third], ZERO8, "flat", "#9b6349");
-        if (infield) { infield.lit = lit * 0.88; drawn.push(infield); }
-        [[home, first], [home, third]].forEach(([a, b]) => {
-          const dx = b[0] - a[0], dz = b[2] - a[2], len = Math.hypot(dx, dz) || 1;
-          const px = -dz / len * 0.65, pz = dx / len * 0.65;
-          const q = add(C, [[a[0] + px, a[1] + 0.1, a[2] + pz], [b[0] + px, b[1] + 0.1, b[2] + pz],
-                            [b[0] - px, b[1] + 0.1, b[2] - pz], [a[0] - px, a[1] + 0.1, a[2] - pz]],
-                        ZERO8, "flat", "rgba(238,232,214,0.82)");
-          if (q) { q.lit = 1.15; drawn.push(q); }
-        });
-
-        // The stationary roof ring and rails remain while two arched roof leaves slide apart.
+        // The stationary roof ring the panels ride on.
         wall(0.47, 0.53, 0.49, 0.47, 0.49, 0.47, "#394a5a", lit * 0.9);
-        [-1, 1].forEach((side) => {
-          const v = side * bz * 0.465, yf = 0.535;
-          const rail = add(C, [P(-ax * 0.50, v - 1.3, yf), P(ax * 0.50, v - 1.3, yf),
-                               P(ax * 0.50, v + 1.3, yf), P(-ax * 0.50, v + 1.3, yf)],
-                           ZERO8, "flat", "#273949");
-          if (rail) { rail.lit = lit * 0.82; drawn.push(rail); }
-        });
         const roofY = (u, v) => 0.535 + 0.19 *
           Math.pow(Math.max(0, 1 - (u / ax) ** 2), 0.62) *
           Math.pow(Math.max(0, 1 - (v / bz) ** 2), 0.55);
-        const NU = 5, NV = 4;
-        [-1, 1].forEach((side) => {
-          const shift = side * op * ax * 0.64;
+        /* One panel: its own patch of the closed roof (v0..v1), then moved — slid north by `dv`, or
+           turned about the stadium's centre by `rot` — and lifted by `lift` so the stack reads as a
+           stack. Its height follows the closed roof where it came from, which is what a panel is. */
+        const NU = 6, NV = 3;
+        const panel = (v0, v1, dv, rot, lift, tone) => {
+          const cr = Math.cos(rot), sr = Math.sin(rot);
+          // The panel rides the roof's own curve wherever it has got to, lifted by its place in the stack.
+          const at = (u, v) => {
+            const uu = u * cr - v * sr, vv = u * sr + v * cr + dv;
+            return P(uu, vv, roofY(uu, Math.min(bz, Math.max(-bz, vv))) + lift);
+          };
           for (let i = 0; i < NU; i++) {
-            const u0 = side < 0 ? -ax + i * ax / NU : i * ax / NU;
-            const u1 = side < 0 ? -ax + (i + 1) * ax / NU : (i + 1) * ax / NU;
+            const u0 = -ax + (i / NU) * 2 * ax, u1 = -ax + ((i + 1) / NU) * 2 * ax;
             for (let j = 0; j < NV; j++) {
-              const v0 = -bz * 0.46 + j * bz * 0.92 / NV;
-              const v1 = -bz * 0.46 + (j + 1) * bz * 0.92 / NV;
-              const q = add(C, [P(u0, v0, roofY(u0, v0), shift), P(u1, v0, roofY(u1, v0), shift),
-                                P(u1, v1, roofY(u1, v1), shift), P(u0, v1, roofY(u0, v1), shift)],
-                            ZERO8, "flat", mix("#87939c", ((i + j) % 2) ? 0.02 : -0.08));
+              const va = v0 + (j / NV) * (v1 - v0), vb = v0 + ((j + 1) / NV) * (v1 - v0);
+              // keep to the oval: a panel corner outside the drum is pulled in to its rim
+              const cl = (u, v) => {
+                const r = Math.hypot(u / ax, v / bz);
+                return r > 0.985 ? [u * 0.985 / r, v * 0.985 / r] : [u, v];
+              };
+              const [pu0, pv0] = cl(u0, va), [pu1, pv1] = cl(u1, va), [pu2, pv2] = cl(u1, vb), [pu3, pv3] = cl(u0, vb);
+              const q = add(C, [at(pu0, pv0), at(pu1, pv1), at(pu2, pv2), at(pu3, pv3)], ZERO8, "flat",
+                            mix(tone, ((i + j) % 2) ? 0.02 : -0.08));
               if (q) { q.lit = lit * 0.92; drawn.push(q); }
             }
           }
-          // Five raised seams on each leaf keep the closed roof from reading as one flat lid.
-          for (let i = 1; i < NU; i++) {
-            const u = side < 0 ? -ax + i * ax / NU : i * ax / NU;
-            const a = P(u - 0.55, -bz * 0.45, roofY(u, -bz * 0.45) + 0.35, shift);
-            const b = P(u + 0.55, -bz * 0.45, roofY(u, -bz * 0.45) + 0.35, shift);
-            const c = P(u + 0.55, bz * 0.45, roofY(u, bz * 0.45) + 0.35, shift);
-            const d = P(u - 0.55, bz * 0.45, roofY(u, bz * 0.45) + 0.35, shift);
-            const seam = add(C, [a, b, c, d], ZERO8, "flat", "rgba(225,231,233,0.44)");
-            if (seam) { seam.lit = 1.05; drawn.push(seam); }
-          }
-        });
+        };
+        // North panel, fixed; south panel turning half a circle onto it; the middle pair sliding north.
+        panel(bz * 0.5, bz, 0, 0, 0, "#87939c");
+        panel(-bz, -bz * 0.5, 0, Math.PI * op, 0.012 * op, "#8d989f");
+        panel(0, bz * 0.5, bz * 0.5 * op, 0, 0.024 * op, "#848f98");
+        panel(-bz * 0.5, 0, bz * op, 0, 0.036 * op, "#808b94");
       } else if (shape === "falls") {
         /* The falls at table scale: a pale sheet over a ledge into mist, held between two dark
            headlands. The sheet's stripes shimmer with the frame clock — they move because the
@@ -3892,121 +4291,123 @@ function leaveOverlay(root, trigger) {
           });
         }
       } else if (shape === "drawbridge" || shape === "ship") {
-        /* The Blue Wing.
-
-           Moji's is the largest pedestrian drawbridge in Japan and the only one of its kind: 108 m
-           across the No. 1 boat basin, two leaves that rise like the wings it is named for, opening
-           six times a day and taking about twenty minutes over it, floodlit after dark. It is the
-           reason this district is worth a table -- a bridge that does something is the whole
-           exhibit, the way a roof that opens is the reason Little Canada builds Rogers Centre.
-
-           `facesOf` cannot rotate a box, so the leaves are built by hand and lifted with real
-           trigonometry: each swings about its own hinge on the near bank, and the tip rises through
-           `LIFT` (about 72 degrees at full open, which is what a bascule actually manages). Both
-           leaves and the deck they meet over are drawn every frame; the depth sort puts the far one
-           behind the water it belongs to.
-
-           The schedule is read from `dayPhase`, so the bridge is on the same clock as the light in
-           the room. It opens once each evening: a slow swing up, a long stand while the ships have
-           the channel, then down again. */
-        const along = Math.abs(m.ry) > 45;
-        const p = dayPhase();
+        /* Blue Wing Moji, as built (round 32; sources in TODO §0n). 108.1 m end to end, of which two
+           leaves move: the 24.1 m parent leaf on the south side, lifted by a wire rope wound over the
+           pulley at the head of its pylon (the pylon is pulled landward and the leaf, built in one
+           piece with it, rises), and the 14 m child leaf on the north side, pushed up by a hydraulic
+           ram. Both rise to about 60 degrees. It opens six times a day -- at 10, 11, 13, 14, 15 and
+           16 o'clock -- rising over four or five minutes and down again twenty minutes after it
+           began; it is lit after dark but it does not open then. Each leaf hinges at its own bank
+           and the tips meet over the channel: the first build hinged both at the middle, so "open"
+           was a V with the banks in the air, and it opened only at night, which it never does.
+           `leaves` is where the tips meet, as a share of the span from the south end. The pylon's
+           height is not in the sources reached; it is drawn at half the parent leaf. */
+        const hour = dayPhase() * 24;
         const sm = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
+        const OPENS = [10, 11, 13, 14, 15, 16], WIN = 20 / 60, RISE = 4.5 / 60;
+        let lift = 0, win = -1, into = 0;
+        OPENS.forEach((h0, i) => { const t = hour - h0; if (t >= 0 && t < WIN) { win = i; into = t; } });
+        if (win >= 0) lift = into < RISE ? sm(into / RISE) : into > WIN - RISE ? sm((WIN - into) / RISE) : 1;
+        const along = Math.abs(m.ry) > 45;
+        const PT = (u, y, v) => (along ? [m.x + v, y, m.z + u] : [m.x + u, y, m.z + v]);
         if (shape === "ship") {
-          /*
-             The ships work the channel on the house clock, and they are timed rather than merely
-             moving: they are the reason the bridge opens, so a ship that crosses whenever it likes
-             makes the bridge a coincidence instead of a machine. It clears the channel during the
-             bridge's long stand and is out of the way before the leaves come down. */
-          const u = p > 0.72 && p < 0.94 ? sm((p - 0.72) / 0.22) : (p < 0.72 ? 0 : 1);
-          const run = ease ? (u * 2 - 1) * (m.w / 2) : 0;
-          const x = m.x + (along ? 0 : run), z = m.z + (along ? run : 0);
-          const hw = m.w * 0.5, hd = m.d * 0.5, h = m.h;
-          // The hull: a shallow box, because a ship's deck is not where a ship's bulk is.
-          facesOf({ ...m, x, z, h: h * 0.42 }).forEach((f) => {
-            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
-                         + f.n[2] * (C.z - f.p[0][2]);
-            if (toward <= 0) return;
-            const q = add(C, f.p, ZERO8, "flat", mix(base, f.k - 0.12));
-            if (q) { q.lit = lit * 0.95; drawn.push(q); }
-          });
-          // The deckhouse, set back so the foredeck reads as a foredeck.
-          facesOf({ ...m, x: x - (along ? 0 : hw * 0.22), z: z - (along ? hw * 0.22 : 0),
-                    y: m.y + h * 0.42, h: h * 0.34, w: m.w * 0.34, d: m.d * 0.72 }).forEach((f) => {
-            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
-                         + f.n[2] * (C.z - f.p[0][2]);
-            if (toward <= 0) return;
-            const q = add(C, f.p, ZERO8, "flat", mix(base, f.k + 0.22));
-            if (q) { q.lit = lit * 1.1; drawn.push(q); }
-          });
-          /* Her lights after dark: a warm row along the deckhouse and a white at the masthead.
-             These are what a ship on water actually is at night -- two lights and a dark hull. */
-          if (NIGHT() > 0.15) {
-            const lq = add(C, along
-              ? [[x - hd * 0.6, m.y + h * 0.5, z - hw * 0.3], [x + hd * 0.6, m.y + h * 0.5, z - hw * 0.3],
-                 [x + hd * 0.6, m.y + h * 0.62, z - hw * 0.3], [x - hd * 0.6, m.y + h * 0.62, z - hw * 0.3]]
-              : [[x - hw * 0.3, m.y + h * 0.5, z - hd * 0.6], [x - hw * 0.3, m.y + h * 0.5, z + hd * 0.6],
-                 [x - hw * 0.3, m.y + h * 0.62, z + hd * 0.6], [x - hw * 0.3, m.y + h * 0.62, z - hd * 0.6]],
-              ZERO8, "flat", `rgba(255,214,160,${(0.72 * NIGHT()).toFixed(3)})`);
-            if (lq) { lq.lit = 1.6; lq.nolite = true; drawn.push(lq); }
-            const mq = add(C, [[x - 1.6, m.y + h * 0.96, z], [x + 1.6, m.y + h * 0.96, z],
-                               [x + 1.6, m.y + h * 1.06, z], [x - 1.6, m.y + h * 1.06, z]],
-                           ZERO8, "flat", `rgba(255,250,238,${(0.9 * NIGHT()).toFixed(3)})`);
-            if (mq) { mq.lit = 1.7; mq.nolite = true; drawn.push(mq); }
+          /* A harbour boat on the basin, using the openings the way the boats do: out through the
+             mouth on one opening and back in on the next. Between openings it lies where its last
+             run left it, and by evening, six runs later, it is home. The big ships are not here:
+             they keep to the strait, which the backdrop carries. */
+          const half = (m.run || 80) / 2;
+          let s;
+          if (win >= 0 && into > RISE && into < WIN - RISE) {
+            const k = sm((into - RISE) / (WIN - 2 * RISE));
+            s = win % 2 === 0 ? -half + 2 * half * k : half - 2 * half * k;
+          } else {
+            const done = OPENS.filter((h0) => hour >= h0 + WIN - RISE).length;
+            s = done % 2 === 1 ? half : -half;
           }
+          if (!ease) s = -half;
+          const hw = m.w / 2, hd = m.d / 2, h = m.h, y0 = m.y;
+          const B = (u, y, v) => PT(u + s, y, v);
+          const Qs = (pts, col, l) => {
+            const q = add(C, pts, ZERO8, "flat", col);
+            if (q) { q.lit = l; drawn.push(q); }
+            return q;
+          };
+          // Hull: a pointed bow, a square stern, white topsides over a dark waterline.
+          const hullTop = y0 + h * 0.42;
+          [-1, 1].forEach((sd) => Qs([B(-hw, y0, sd * hd), B(hw * 0.62, y0, sd * hd), B(hw * 0.62, hullTop, sd * hd),
+                                      B(-hw, hullTop, sd * hd)], "#e9edf0", lit));
+          [-1, 1].forEach((sd) => Qs([B(hw * 0.62, y0, sd * hd), B(hw, y0, 0), B(hw, hullTop, 0),
+                                      B(hw * 0.62, hullTop, sd * hd)], "#dfe4e8", lit * 0.95));
+          Qs([B(-hw, hullTop, -hd), B(hw * 0.62, hullTop, -hd), B(hw, hullTop, 0), B(hw * 0.62, hullTop, hd),
+              B(-hw, hullTop, hd)], "#9aa6b0", lit * 0.9);
+          Qs([B(-hw, y0, -hd - 0.2), B(hw * 0.62, y0, -hd - 0.2), B(hw * 0.62, y0 + h * 0.1, -hd - 0.2),
+              B(-hw, y0 + h * 0.1, -hd - 0.2)], "#24324a", lit * 0.8);
+          // The cabin, aft of amidships, with its windows lit after dark.
+          const c0 = -hw * 0.7, c1 = hw * 0.25, cT = hullTop + h * 0.4;
+          [-1, 1].forEach((sd) => Qs([B(c0, hullTop, sd * hd * 0.8), B(c1, hullTop, sd * hd * 0.8),
+                                      B(c1, cT, sd * hd * 0.8), B(c0, cT, sd * hd * 0.8)], "#f2f4f5", lit * 1.05));
+          Qs([B(c0, cT, -hd * 0.8), B(c1, cT, -hd * 0.8), B(c1, cT, hd * 0.8), B(c0, cT, hd * 0.8)], "#c8d0d6", lit);
+          const nw = NIGHT();
+          [-1, 1].forEach((sd) => {
+            const q = add(C, [B(c0 + 2, hullTop + h * 0.16, sd * (hd * 0.8 + 0.3)), B(c1 - 2, hullTop + h * 0.16, sd * (hd * 0.8 + 0.3)),
+                              B(c1 - 2, hullTop + h * 0.3, sd * (hd * 0.8 + 0.3)), B(c0 + 2, hullTop + h * 0.3, sd * (hd * 0.8 + 0.3))],
+                          ZERO8, "flat", nw > 0.3 ? `rgba(255,222,170,${(0.4 + 0.5 * nw).toFixed(3)})` : "#3d4e63");
+            if (q) { q.lit = nw > 0.3 ? 1.5 : lit; if (nw > 0.3) q.nolite = true; drawn.push(q); }
+          });
         } else {
-        let lift = 0;
-        if (p > 0.72 && p < 0.94) {
-          const t = (p - 0.72) / 0.22;
-          lift = t < 0.18 ? sm(t / 0.18) : t < 0.72 ? 1 : sm(1 - (t - 0.72) / 0.28);
-        }
-        const MAXA = 1.26;                       // ~72 degrees, the real leaf's reach
-        const ang = lift * MAXA;
-        const L = m.w / 2, Wd = m.d, hw = Wd / 2;
-        // A point on a leaf: `u` out from the hinge, `v` across the walkway, `s` the side.
-        const leaf = (s, u, v) => {
-          const r = u * L;
-          return along
-            ? [m.x + v,              m.y + Math.sin(ang) * r, m.z + s * (Math.cos(ang) * r)]
-            : [m.x + s * (Math.cos(ang) * r), m.y + Math.sin(ang) * r, m.z + v];
-        };
-        [-1, 1].forEach((s) => {
-          const q = add(C, [leaf(s, 0, -hw), leaf(s, 1, -hw), leaf(s, 1, hw), leaf(s, 0, hw)],
-                        ZERO8, "flat", mix(base, 0));
-          if (q) { q.lit = lit * 1.05; drawn.push(q); }
-          // The rail along the outer edge, so a deck has a profile and not just a face.
-          const r0 = 4.5;
-          [-1, 1].forEach((e) => {
-            const rq = add(C, [leaf(s, 0, e * hw), leaf(s, 1, e * hw),
-                               [leaf(s, 1, e * hw)[0], leaf(s, 1, e * hw)[1] + r0, leaf(s, 1, e * hw)[2]],
-                               [leaf(s, 0, e * hw)[0], leaf(s, 0, e * hw)[1] + r0, leaf(s, 0, e * hw)[2]]],
-                            ZERO8, "flat", mix(base, -0.34));
-            if (rq) { rq.lit = lit * 0.9; drawn.push(rq); }
-          });
-          /* The counterweight pit at the hinge: the chunk a bascule needs to lift its own leaf,
-             and the thing that tells you this bridge is a machine and not a ramp. */
-          const px = along ? m.x : m.x + s * (L * 0.16);
-          const pz = along ? m.z + s * (L * 0.16) : m.z;
-          facesOf({ ...m, x: px, z: pz, y: m.y, h: m.h, w: Wd * 1.5, d: along ? L * 0.3 : Wd * 1.5 })
-            .forEach((f) => {
-              const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
-                           + f.n[2] * (C.z - f.p[0][2]);
-              if (toward <= 0) return;
-              const qq = add(C, f.p, ZERO8, "flat", mix(base, f.k - 0.3));
-              if (qq) { qq.lit = lit * 0.8; drawn.push(qq); }
+          const L = m.w, hw = m.d / 2, deck = m.y + m.h;
+          const uM = -L / 2 + (m.leaves || 0.47) * L;
+          const L1 = (24.1 / 108.1) * L, L2 = (14 / 108.1) * L;
+          const uH1 = uM - L1, uH2 = uM + L2;
+          const ang = lift * (Math.PI / 3);
+          const blue = "#2f6db3", side = mix("#2f6db3", -0.32);
+          const Qd = (pts, col, l) => {
+            const q = add(C, pts, ZERO8, "flat", col);
+            if (q) { q.lit = l; drawn.push(q); }
+            return q;
+          };
+          // A deck between two points in (u, y): its walking face, its two sides and a rail line.
+          const deckRun = (u0, y0, u1, y1) => {
+            Qd([PT(u0, y0, -hw), PT(u1, y1, -hw), PT(u1, y1, hw), PT(u0, y0, hw)], blue, lit * 1.05);
+            [-1, 1].forEach((e) => {
+              Qd([PT(u0, y0 - 2.2, e * hw), PT(u1, y1 - 2.2, e * hw), PT(u1, y1, e * hw), PT(u0, y0, e * hw)],
+                 side, lit * 0.85);
+              Qd([PT(u0, y0, e * hw), PT(u1, y1, e * hw), PT(u1, y1 + 1.6, e * hw), PT(u0, y0 + 1.6, e * hw)],
+                 "#dfe8f2", lit * 0.9);
             });
-        });
-        /* The lit edge: a line of light along the walkway that comes up after dark, because the
-           bridge is floodlit and a blue bridge at night is lit, not merely visible. */
-        if (NIGHT() > 0.15) {
-          [-1, 1].forEach((s) => {
-            const gq = add(C, [leaf(s, 0.06, -hw + 0.6), leaf(s, 0.97, -hw + 0.6),
-                               leaf(s, 0.97, hw - 0.6), leaf(s, 0.06, hw - 0.6)],
-                            ZERO8, "flat",
-                            `rgba(150,206,255,${(0.34 * NIGHT()).toFixed(3)})`);
-            if (gq) { gq.lit = 1.5 + 0.5 * lift; gq.nolite = true; drawn.push(gq); }
+          };
+          // The fixed approaches, on their piers.
+          deckRun(-L / 2, deck, uH1, deck);
+          deckRun(uH2, deck, L / 2, deck);
+          [-L / 2 + 6, uH1 - 3, uH2 + 3, L / 2 - 6].forEach((u) => {
+            const f = { ...m, x: PT(u, 0, 0)[0], z: PT(u, 0, 0)[2], y: m.y - 8, h: m.h + 6, w: 5, d: m.d * 0.9 };
+            facesOf(f).forEach((fc) => {
+              const q = add(C, fc.p, ZERO8, "flat", mix("#5d6672", fc.k - 0.1));
+              if (q) { q.lit = lit * 0.8; drawn.push(q); }
+            });
           });
-        }
+          // The two leaves, each turning about its own bank.
+          deckRun(uH1, deck, uH1 + Math.cos(ang) * L1, deck + Math.sin(ang) * L1);
+          deckRun(uH2 - Math.cos(ang) * L2, deck + Math.sin(ang) * L2, uH2, deck);
+          // The parent leaf's pylon: built with the leaf, so it leans landward as the leaf rises.
+          const pyH = L1 * 0.5;
+          const topU = uH1 - Math.sin(ang) * pyH, topY = deck + Math.cos(ang) * pyH;
+          [-1, 1].forEach((e) => Qd([PT(uH1 - 1.4, deck, e * hw), PT(uH1 + 1.4, deck, e * hw),
+                                     PT(topU + 1.4, topY, e * hw), PT(topU - 1.4, topY, e * hw)], side, lit * 0.95));
+          Qd([PT(topU - 2, topY, -hw), PT(topU + 2, topY, -hw), PT(topU + 2, topY, hw), PT(topU - 2, topY, hw)],
+             blue, lit);
+          // Lit after dark: a line of light along each edge of the walk.
+          if (NIGHT() > 0.15) {
+            const k = (0.34 * NIGHT()).toFixed(3);
+            [[-L / 2, deck, uH1, deck], [uH2, deck, L / 2, deck],
+             [uH1, deck, uH1 + Math.cos(ang) * L1, deck + Math.sin(ang) * L1],
+             [uH2 - Math.cos(ang) * L2, deck + Math.sin(ang) * L2, uH2, deck]].forEach(([u0, y0, u1, y1]) => {
+              const q = add(C, [PT(u0, y0 + 0.4, -hw + 0.6), PT(u1, y1 + 0.4, -hw + 0.6),
+                                PT(u1, y1 + 0.4, hw - 0.6), PT(u0, y0 + 0.4, hw - 0.6)],
+                            ZERO8, "flat", `rgba(150,206,255,${k})`);
+              if (q) { q.lit = 1.5 + 0.5 * lift; q.nolite = true; drawn.push(q); }
+            });
+          }
         }
       } else if (shape === "stationfront") {
         /*
@@ -4416,28 +4817,28 @@ function leaveOverlay(root, trigger) {
                          `rgba(255,188,116,${(0.16 + (ease ? 0.15 * Math.sin(T * 5.2 + m.z * 0.1) : 0)).toFixed(3)})`);
         if (glow) { glow.lit = 1.45; glow.nolite = true; drawn.push(glow); }
       } else if (shape === "markethall") {
-        /* St. Lawrence Market, the South Market hall.
-
-           It is a building before it is a market. This hall went up in 1845 as Toronto's first
-           City Hall -- red brick with stone dressings, Georgian -- and was gutted and reopened
-           as a market from 1899. What identifies it from the street is not the trade inside but
-           the shell: a long brick nave, an arcade at street level, a row of arched windows on
-           the gallery floor, a stone cornice, and a cupola with a clock in it. What stood here
-           before was three stalls and two crates on bare cobbles, which is a market only in the
-           abstract, and 56% of the table was empty stone.
-
-           Nothing on it is lettered. No vendor is named, no price is written, and the clock is a
-           disc with no hands and no numerals, because a face with numbers on it is a sign, and
-           the rule in this hall is that nothing is written. */
+        /* St. Lawrence Market South, as it stands (round 32 correction; sources in TODO §0n). The
+           building is John Wilson Siddall's 1902 market hall built round the surviving centre block
+           of Henry Bowyer Lane's 1845 City Hall. That rebuild took down the old hall's wings, its
+           pediment and its cupola with the clock (Wikipedia; Doug Taylor), so the clock tower the
+           first model carried had been gone for a hundred and twenty years. What stands: a long
+           red-brick hall under one high arched roof with a clerestory (Wikipedia: "a hybrid of arch
+           roof with clerestory"), and at its north end on Front Street the 1845 block -- three stone
+           archways at the ground and the old council chamber over them, whose fan windows now look
+           into the hall -- its outline still marked in yellow brick. Long axis north-south, as the
+           table lies; nothing on it is lettered and no vendor is named. */
         const along = Math.abs(m.ry) > 45;
         const dir = along ? (m.x < 0 ? 1 : -1) : -1;
         const P = (u, v, y) => (along ? [m.x + dir * v, m.y + y, m.z + u] : [m.x + u, m.y + y, m.z + dir * v]);
-        const hw = m.w / 2, hd = m.d / 2, F = hd;
-        const Z = (n) => new Array(n * 2).fill(0);
-        /* An opening with a head on it: two jambs and a semicircle. `rise` is the head's height,
-           kept separate from the half-width so a wide arch and a tall window are not the same
-           shape -- an arch forced to a semicircle of its own width is a tunnel. */
-        const arch = (uc, ar, rise, yS, yP, v, seg = 7) => {
+        const hw = m.w / 2, hd = m.d / 2, H = m.h;
+        const yE = H * 0.5, yA = H * 0.58, yC = H * 0.68, vC = hd * 0.62;
+        const Zn = (n) => new Array(n * 2).fill(0);
+        const Q = (pts, col, l) => {
+          const q = add(C, pts, Zn(pts.length), "flat", col);
+          if (q) { q.lit = l; drawn.push(q); }
+          return q;
+        };
+        const arch = (uc, v, ar, yS, yP, rise, seg = 7) => {
           const p = [P(uc - ar, v, yS), P(uc + ar, v, yS), P(uc + ar, v, yP)];
           for (let i = 0; i <= seg; i++) {
             const t = (i / seg) * Math.PI;
@@ -4445,148 +4846,88 @@ function leaveOverlay(root, trigger) {
           }
           return p;
         };
-        const brickTop = m.h * 0.78, BAYS = 7, uOf = (i) => -hw + (i + 0.5) * (m.w / BAYS);
-        // Brick. The street face catches the market's warm lamp; the returns do not.
-        const body = add(C, [P(-hw, F, 0), P(hw, F, 0), P(hw, F, brickTop), P(-hw, F, brickTop)],
-                         ZERO8, "flat", mix("#7d4034", -0.04));
-        if (body) { body.lit = lit * 0.95; drawn.push(body); }
-        [-1, 1].forEach((sd) => {
-          const e = add(C, [P(sd * hw, F, 0), P(sd * hw, -hd, 0),
-                            P(sd * hw, -hd, brickTop), P(sd * hw, F, brickTop)],
-                         ZERO8, "flat", mix("#7d4034", -0.24));
-          if (e) { e.lit = lit * 0.78; drawn.push(e); }
+        const warm = (k) => `rgba(255,206,140,${(k + 0.55 * NIGHT()).toFixed(3)})`;
+        // The long walls: brick over a stone base, a row of tall round-headed windows.
+        [hd, -hd].forEach((v, side) => {
+          Q([P(-hw, v, 0), P(hw, v, 0), P(hw, v, yE), P(-hw, v, yE)], mix("#7f4234", side ? -0.2 : -0.02), lit * (side ? 0.75 : 0.95));
+          Q([P(-hw, v + Math.sign(v) * 0.3, 0), P(hw, v + Math.sign(v) * 0.3, 0),
+             P(hw, v + Math.sign(v) * 0.3, H * 0.06), P(-hw, v + Math.sign(v) * 0.3, H * 0.06)], "#bfb39a", lit * 0.9);
+          if (side) return;
+          const BAYS = 8;
+          for (let i = 0; i < BAYS; i++) {
+            const uc = -hw + (i + 0.5) * (m.w / BAYS), ar = (m.w / BAYS) * 0.26;
+            const wq = Q(arch(uc, v + 0.4, ar, H * 0.12, H * 0.36, ar * 0.9), warm(0.12), 1.35);
+            if (wq) wq.nolite = true;
+          }
         });
-        // Courses: brick is laid in lines, and a flat wall of one red is a painted board.
-        for (let k = 1; k < 9; k++) {
-          const cy = (k / 9) * brickTop;
-          const q = add(C, [P(-hw, F + 0.2, cy), P(hw, F + 0.2, cy),
-                            P(hw, F + 0.2, cy + m.h * 0.008), P(-hw, F + 0.2, cy + m.h * 0.008)],
-                        ZERO8, "flat", "rgba(30,16,12,0.16)");
-          if (q) { q.lit = 0.6; drawn.push(q); }
-        }
-        // Ground arcade: open to the street, and the shade inside is warmer than the brick.
-        for (let i = 0; i < BAYS; i++) {
-          const uc = uOf(i), ar = (m.w / BAYS) * 0.3;
-          const head = add(C, arch(uc, ar * 1.3, ar * 1.25, m.h * 0.03, m.h * 0.32, F + 0.3),
-                           Z(11), "flat", mix("#c9bda6", -0.12));
-          if (head) { head.lit = lit * 0.9; drawn.push(head); }
-          const p = arch(uc, ar, ar * 1.1, m.h * 0.07, m.h * 0.32, F + 0.6);
-          const q = add(C, p, Z(p.length), "flat", mix("#241a16", 0.08));
-          if (q) { q.lit = lit * 0.45; drawn.push(q); }
-          // something is being sold in there, and it is lit
-          const g2 = add(C, [P(uc - ar * 0.8, F + 0.9, m.h * 0.07),
-                             P(uc + ar * 0.8, F + 0.9, m.h * 0.07),
-                             P(uc + ar * 0.8, F + 0.9, m.h * 0.2),
-                             P(uc - ar * 0.8, F + 0.9, m.h * 0.2)],
-                         ZERO8, "flat",
-                         `rgba(255,196,126,${(0.06 + 0.3 * NIGHT() + (ease ? 0.07 * Math.sin(T * 1.6 + i * 1.1) : 0)).toFixed(3)})`);
-          if (g2) { g2.lit = 1.4; g2.nolite = true; drawn.push(g2); }
-        }
-        // The gallery floor: tall arched windows, lit from inside, and lit unevenly -- a hall of
-        // windows all at one brightness is a strip light.
-        for (let i = 0; i < BAYS; i++) {
-          const uc = uOf(i), ar = (m.w / BAYS) * 0.24;
-          const yS = m.h * 0.44, yP = m.h * 0.62;
-          const st = add(C, arch(uc, ar * 1.32, ar * 1.32, yS - ar * 0.3, yP, F + 0.3),
-                         Z(11), "flat", mix("#c9bda6", -0.06));
-          if (st) { st.lit = lit * 0.94; drawn.push(st); }
-          const p = arch(uc, ar, ar * 1.15, yS, yP, F + 0.6);
-          const q = add(C, p, Z(p.length), "flat",
-                        `rgba(255,214,150,${(0.12 + 0.62 * NIGHT() + (ease ? 0.12 * Math.sin(T * 0.9 + i * 0.7) : 0)).toFixed(3)})`);
-          if (q) { q.lit = 1.55; q.nolite = true; drawn.push(q); }
-          // a mullion, because an undivided arched window at this size is a hole
-          const mu = add(C, [P(uc - 0.9, F + 0.7, yS), P(uc + 0.9, F + 0.7, yS),
-                             P(uc + 0.9, F + 0.7, yP + ar * 1.15), P(uc - 0.9, F + 0.7, yP + ar * 1.15)],
-                         ZERO8, "flat", "rgba(52,38,30,0.5)");
-          if (mu) { mu.lit = 1.1; drawn.push(mu); }
-        }
-        // Cornice and parapet: the hall is finished at the top, not cut off.
-        const co = add(C, [P(-hw, F + 0.4, brickTop), P(hw, F + 0.4, brickTop),
-                           P(hw, F + 0.4, m.h * 0.85), P(-hw, F + 0.4, m.h * 0.85)],
-                       ZERO8, "flat", mix("#c9bda6", 0.06));
-        if (co) { co.lit = lit * 1.05; drawn.push(co); }
-        const pa = add(C, [P(-hw, F, m.h * 0.85), P(hw, F, m.h * 0.85),
-                           P(hw, F, m.h * 0.93), P(-hw, F, m.h * 0.93)],
-                       ZERO8, "flat", mix("#3f4a58", -0.1));
-        if (pa) { pa.lit = lit * 0.85; drawn.push(pa); }
-        // A shallow slate roof completes the long hall behind its parapet; the cupola rises through it.
-        const eave = m.h * 0.92, ridge = m.h * 1.11;
-        const roofFront = add(C, [P(-hw, F + 0.2, eave), P(hw, F + 0.2, eave),
-                                  P(hw, 0, ridge), P(-hw, 0, ridge)],
-                              ZERO8, "flat", "#4b5662");
-        const roofBack = add(C, [P(-hw, -hd, eave), P(hw, -hd, eave),
-                                 P(hw, 0, ridge), P(-hw, 0, ridge)],
-                             ZERO8, "flat", "#3c4855");
-        if (roofFront) { roofFront.lit = lit * 0.92; drawn.push(roofFront); }
-        if (roofBack) { roofBack.lit = lit * 0.78; drawn.push(roofBack); }
-        [-1, 1].forEach((end) => {
-          const gable = add(C, [P(end * hw, -hd, eave), P(end * hw, hd, eave), P(end * hw, 0, ridge)],
-                            new Array(6).fill(0), "flat", mix("#7d4034", -0.12));
-          if (gable) { gable.lit = lit * 0.84; drawn.push(gable); }
+        // Aisle roofs from the eaves in to the clerestory, then the clerestory band of windows.
+        [1, -1].forEach((s) => {
+          Q([P(-hw, s * hd, yE), P(hw, s * hd, yE), P(hw, s * vC, yA), P(-hw, s * vC, yA)], "#4d5761", lit * 0.82);
+          Q([P(-hw, s * vC, yA), P(hw, s * vC, yA), P(hw, s * vC, yC), P(-hw, s * vC, yC)], mix("#7f4234", -0.1), lit * 0.85);
+          if (s > 0) {
+            for (let i = 0; i < 12; i++) {
+              const u0 = -hw + (i + 0.18) * (m.w / 12), u1 = -hw + (i + 0.82) * (m.w / 12);
+              const q = Q([P(u0, vC + 0.3, yA + (yC - yA) * 0.2), P(u1, vC + 0.3, yA + (yC - yA) * 0.2),
+                           P(u1, vC + 0.3, yA + (yC - yA) * 0.82), P(u0, vC + 0.3, yA + (yC - yA) * 0.82)],
+                          warm(0.1), 1.3);
+              if (q) q.nolite = true;
+            }
+          }
         });
-        // Narrow seams catch the exhibit light and make the roof read as a finished surface.
-        for (let i = 1; i < 7; i++) {
-          const u = -hw + (i / 7) * m.w;
-          const seam = add(C, [P(u - 0.7, F + 0.5, eave + 0.8), P(u + 0.7, F + 0.5, eave + 0.8),
-                               P(u + 0.7, 0, ridge + 0.8), P(u - 0.7, 0, ridge + 0.8)],
-                           ZERO8, "flat", "rgba(207,211,210,0.26)");
-          if (seam) { seam.lit = 1.0; drawn.push(seam); }
+        // The arched roof: a half-round vault from clerestory to clerestory, with its ribs.
+        const SEG = 7, vaultPt = (t, u) => P(u, vC * Math.cos(t), yC + (H - yC) * Math.sin(t));
+        for (let i = 0; i < SEG; i++) {
+          const t0 = (i / SEG) * Math.PI, t1 = ((i + 1) / SEG) * Math.PI;
+          Q([vaultPt(t0, -hw), vaultPt(t0, hw), vaultPt(t1, hw), vaultPt(t1, -hw)],
+            mix("#5b666e", i % 2 ? 0.04 : -0.04), lit * (0.78 + 0.18 * Math.sin((t0 + t1) / 2)));
         }
-        /* The cupola. It is the one part of the hall the eye finds from across the room, and a
-           market that has lost its clock is a market you cannot place. */
-        const tu = hw * 0.6, tw = m.w * 0.11, tTop = m.h * 1.12;
-        const sh = add(C, [P(tu - tw, F, brickTop), P(tu + tw, F, brickTop),
-                           P(tu + tw, F, tTop), P(tu - tw, F, tTop)],
-                       ZERO8, "flat", mix("#8a5240", 0.06));
-        if (sh) { sh.lit = lit * 1.0; drawn.push(sh); }
-        [-1, 1].forEach((sd) => {
-          const e = add(C, [P(tu + sd * tw, F, brickTop), P(tu + sd * tw, -hd * 0.8, brickTop),
-                            P(tu + sd * tw, -hd * 0.8, tTop), P(tu + sd * tw, F, tTop)],
-                         ZERO8, "flat", mix("#8a5240", -0.2));
-          if (e) { e.lit = lit * 0.82; drawn.push(e); }
+        for (let k = 1; k < 8; k++) {
+          const u = -hw + (k / 8) * m.w, rib = [];
+          for (let i = 0; i <= SEG; i++) rib.push(vaultPt((i / SEG) * Math.PI, u));
+          for (let i = 0; i < SEG; i++) {
+            const a = rib[i], b = rib[i + 1];
+            Q([a, b, [b[0], b[1] + 0.8, b[2]], [a[0], a[1] + 0.8, a[2]]], "rgba(214,220,224,0.5)", 1);
+          }
+        }
+        // The end walls follow the section: walls, aisle roofs, clerestory, and the vault's arch.
+        [-hw, hw].forEach((u) => {
+          const sec = [P(u, hd, 0), P(u, hd, yE), P(u, vC, yA), P(u, vC, yC)];
+          for (let i = 1; i < SEG; i++) sec.push(vaultPt((i / SEG) * Math.PI, u));
+          sec.push(P(u, -vC, yC), P(u, -vC, yA), P(u, -hd, yE), P(u, -hd, 0));
+          Q(sec, mix("#7f4234", -0.12), lit * 0.82);
+          const lun = [];
+          for (let i = 0; i <= 8; i++) {
+            const t = (i / 8) * Math.PI;
+            lun.push(P(u + Math.sign(u) * 0.3, vC * 0.7 * Math.cos(t), yC + (H - yC) * 0.72 * Math.sin(t)));
+          }
+          const lq = Q(lun, warm(0.1), 1.3);
+          if (lq) lq.nolite = true;
         });
-        // The clock: a disc. No hands, no numerals, nothing written.
-        const cr = tw * 0.66, cc = brickTop + (tTop - brickTop) * 0.6, disc = [];
-        for (let i = 0; i < 14; i++) {
-          const ang = (i / 14) * Math.PI * 2;
-          disc.push(P(tu + cr * Math.cos(ang), F + 0.8, cc + cr * Math.sin(ang)));
+        // The 1845 block at the north end: brick inside a yellow-brick outline, three stone archways,
+        // and the council chamber's round-headed windows over them. Flat-topped: no pediment, no cupola.
+        const bu0 = hw, bu1 = hw + m.w * 0.05, bv = hd * 0.5, bh = H * 0.84;
+        Q([P(bu1, -bv, 0), P(bu1, bv, 0), P(bu1, bv, bh), P(bu1, -bv, bh)], "#8a4636", lit);
+        [-bv, bv].forEach((v) => Q([P(bu0, v, 0), P(bu1, v, 0), P(bu1, v, bh), P(bu0, v, bh)], "#743a2d", lit * 0.8));
+        Q([P(bu0, -bv, bh), P(bu1, -bv, bh), P(bu1, bv, bh), P(bu0, bv, bh)], "#c7b07a", lit * 0.9);
+        [[-bv, -bv + 2.4], [bv - 2.4, bv]].forEach(([v0, v1]) =>
+          Q([P(bu1 + 0.3, v0, 0), P(bu1 + 0.3, v1, 0), P(bu1 + 0.3, v1, bh), P(bu1 + 0.3, v0, bh)], "#c9ad6c", lit * 0.95));
+        Q([P(bu1 + 0.3, -bv, bh - 2.4), P(bu1 + 0.3, bv, bh - 2.4), P(bu1 + 0.3, bv, bh), P(bu1 + 0.3, -bv, bh)],
+          "#c9ad6c", lit * 0.95);
+        const FP = (v, y) => P(bu1 + 0.6, v, y);
+        for (let i = -1; i <= 1; i++) {
+          const vc = i * bv * 0.62, ar = bv * 0.2;
+          const st = [FP(vc - ar * 1.25, 0), FP(vc + ar * 1.25, 0), FP(vc + ar * 1.25, bh * 0.26)];
+          for (let k = 0; k <= 7; k++) { const t = (k / 7) * Math.PI; st.push(FP(vc + ar * 1.25 * Math.cos(t), bh * 0.26 + ar * 1.2 * Math.sin(t))); }
+          Q(st, "#d8cdb4", lit);
+          const op = [FP(vc - ar, 0), FP(vc + ar, 0), FP(vc + ar, bh * 0.26)];
+          for (let k = 0; k <= 7; k++) { const t = (k / 7) * Math.PI; op.push(FP(vc + ar * Math.cos(t), bh * 0.26 + ar * Math.sin(t))); }
+          const oq = Q(op, warm(0.18), 1.3);
+          if (oq) oq.nolite = true;
+          const wn = [FP(vc - ar * 0.7, bh * 0.5), FP(vc + ar * 0.7, bh * 0.5), FP(vc + ar * 0.7, bh * 0.64)];
+          for (let k = 0; k <= 7; k++) { const t = (k / 7) * Math.PI; wn.push(FP(vc + ar * 0.7 * Math.cos(t), bh * 0.64 + ar * 0.7 * Math.sin(t))); }
+          const wq = Q(wn, warm(0.14), 1.3);
+          if (wq) wq.nolite = true;
         }
-        const dq = add(C, disc, Z(disc.length), "flat",
-                       `rgba(238,230,212,${(0.92 + (ease ? 0.06 * Math.sin(T * 0.5) : 0)).toFixed(2)})`);
-        if (dq) { dq.lit = 1.6; drawn.push(dq); }
-        /* The clock keeps the hall's time.
-
-           It was a blank disc -- "no hands, no numerals, nothing written" -- and that was the safe
-           reading of the rule against lettering. But a clock face that never moves is the one
-           object in the room that promises it is telling you something and then does not, and the
-           hall has had a day since this round. So the hands are here, and they read `dayPhase`:
-           the light in the room and the clock on the market are the same clock, which is the sort
-           of thing you only notice if you look, and noticing is the point of a hall this size.
-           Still no numerals, nothing written. Nothing here is lettered. */
-        [[0.52, dayPhase() * 12], [0.82, (dayPhase() * 12 % 1) * 60]].forEach(([lf, turn]) => {
-          const a = (turn / (lf > 0.6 ? 12 : 60)) * Math.PI * 2 - Math.PI / 2;
-          const ax = Math.cos(a), ay = Math.sin(a), px = -ay, py = ax;
-          const L = cr * lf, t = Math.max(0.6, cr * 0.085);
-          const q = add(C, [P(tu + px * t,               F + 1.4, cc + py * t),
-                            P(tu + px * t + ax * L,      F + 1.4, cc + py * t + ay * L),
-                            P(tu - px * t + ax * L,      F + 1.4, cc - py * t + ay * L),
-                            P(tu - px * t,               F + 1.4, cc - py * t)],
-                        ZERO8, "flat", "#2b3038");
-          if (q) { q.lit = 1.25; drawn.push(q); }
-        });
-        // Cap over it, then a finial.
-        const capR = tw * 1.15, capB = tTop, capH = m.h * 0.15, cap = [P(tu - capR, F, capB)];
-        for (let i = 0; i <= 9; i++) {
-          const t = Math.PI - (i / 9) * Math.PI;
-          cap.push(P(tu + capR * Math.cos(t), F, capB + capH * Math.sin(t)));
-        }
-        cap.push(P(tu + capR, F, capB));
-        const cq = add(C, cap, Z(cap.length), "flat", mix("#3f4a58", 0.12));
-        if (cq) { cq.lit = lit * 1.1; drawn.push(cq); }
-        const fin = add(C, [P(tu - 1.6, F, capB + capH), P(tu + 1.6, F, capB + capH),
-                            P(tu + 1.6, F, capB + capH + m.h * 0.08), P(tu - 1.6, F, capB + capH + m.h * 0.08)],
-                       ZERO8, "flat", "#c9bda6");
-        if (fin) { fin.lit = 1.35; drawn.push(fin); }
       } else if (shape === "tree") {
         /* A model tree: a trunk, and a crown that is a pinch of flock on a wire.
 

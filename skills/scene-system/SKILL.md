@@ -184,7 +184,10 @@ grep the markup and the `?v=` pin.
 ## 8. Worked examples, shipped
 
 - `street.html` — the hub, the day page, the night rhythm, the harbour open end.
-- `rooms.html` / `rooms-fukuoka.html` — night lanes and the table port.
+- `rooms.html` — Nakamise-dori at night, built from OpenStreetMap and the street's published
+  figures: the order, width and each shop's width kept, the count of shops shrunk (round 32).
+- `rooms-fukuoka.html` — Moji Port laid out from OpenStreetMap at one scale, the strait beyond the
+  far wall continuing the same model; the Blue Wing on its real timetable (round 32).
 - `rooms-toronto.html` — the hall of lit tables; props owning spaces.
 - `rooms-cntower.html` — the whole tower as one ascent; bearings as fact (§6 there).
 - `rooms-niagara.html` — the day promenade to the Table Rock rail; prop at real scale;

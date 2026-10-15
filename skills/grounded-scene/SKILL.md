@@ -147,6 +147,22 @@ the rail end opens Journey Behind the Falls — the bedrock tunnel at its real s
 portal a window of falling water, the open end the deck at the curtain's foot, floodlit
 after dark — one lane, four stations, every figure from the sources.
 
+The same method, third pass — the rooms that came before the rule (round 32). Tokyo, Moji and the
+Toronto hall had been built before §1 existed, and each was re-read against sources rather than
+patched. What the pass found is the reason this skill exists: a market hall wearing the clock cupola
+that was demolished in 1902; Rogers Centre on the wrong side of the tower and its roof opening the
+wrong way; a drawbridge hinged at its middle, opening only at night when the real one never does; two
+of four Moji buildings on the wrong side of their basin; and a Tokyo "lane" that was no place at all.
+Rung 3 was reachable here as OpenStreetMap (Nominatim search with `polygon_geojson=1`, and the API's
+`map.json` on a tiny bounding box to read building edges — street widths came from those); Google
+Maps and Street View were not, and the records say so. Two rules came out of it. A real corridor
+longer than the lane keeps its order, its width and each unit's width, and the *count* shrinks
+(Nakamise: 250 m in 30 m, every bay a real shop). A table model keeps one scale for every model and for
+the backdrop beyond it, positions turned from map coordinates in code (`moji_xy`), so the bearings
+in the frame are the map's. Where the sources stopped — a hall's height, a tower's footprint — the
+record says "approximate", and a building with no source for its form is left off and named in the
+caveat rather than drawn as a box.
+
 ## 7. Refusals
 
 Everything `district-author` §5 and `landmark-space` §6 refuse, plus: no invented bearing — north
