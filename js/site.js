@@ -648,6 +648,24 @@ function leaveOverlay(root, trigger) {
      lid, so what stands above the roofline (the pagoda over the west row) and the night sky itself
      are seen as they are, instead of behind a navy ceiling at the eaves. */
   const OPEN = attr("laneOpen", 0) ? true : false;
+  /* The rest of the shell is the place's too (round 33). A tunnel has a vault and a concrete lid,
+     not the street's sky; a pod has an acoustic-tile ceiling; a promenade has no wall behind you
+     and no wall ahead -- the world goes on, and the walk limit is the only edge. Each is authored
+     on the record's `lane` and stamped on the layer:
+       `lid`       a PATS key or a #hex: what the ceiling is made of (absent: the street's sky);
+       `vault`     cm of rise: the walls stop at CEIL - vault and the lid is a barrel over them;
+       `open_back` / `open_end`: no wall at the mouth / at the far end. */
+  const LID = layer.dataset.laneLid || "";
+  const VAULT = Math.max(0, Math.min(attr("laneVault", 0), CEIL - 40));
+  const WALL_TOP = CEIL - VAULT;
+  const OPEN_BACK = attr("laneOpenBack", 0) ? true : false;
+  const OPEN_END = attr("laneOpenEnd", 0) ? true : false;
+  // `under`: the lane is underground (Journey's tunnel). Its walls, floor and vault are lit by its
+  // own lamps whatever the hour outside, so they take neither the sun's lift nor the night's murk.
+  const UNDER = attr("laneUnder", 0) ? true : false;
+  // `wallmat`: what the shell's uncladded walls are made of -- the wall at your back, the end
+  // wall round its window, any side panel no band covers. Absent: the street's plaster and concrete.
+  const WALLMAT = layer.dataset.laneWallmat || "";
   const Z_FAR = attr("laneD", 1247), Z_BACK = -attr("laneBack", 240);
   const EYE = attr("eye", 168), PLAYER_RADIUS = 24, HEAD_CLEARANCE = 12;
   const HALF = Math.max(0, WALL - PLAYER_RADIUS);
@@ -668,6 +686,9 @@ function leaveOverlay(root, trigger) {
   let gliding = null, keys = new Set(), stick = null, down = null, hereFar = Infinity, hereShown = -1;
   let wasDrag = false;   // the last gesture travelled, so the click it leaves behind is not a press
   const stopZ = stops.map((el) => num(el, "--z"));
+  // Where across the lane a stop stands you (round 33): at the rail, not in the middle of a 14 m
+  // terrace. Absent, a glide keeps the walker's own x, as it always did.
+  const stopX = stops.map((el) => { const v = el.style.getPropertyValue("--x"); return v ? parseFloat(v) : undefined; });
 
   /* ---- the raster ----
      A canvas, one projection, a painter's algorithm. No WebGL, no library, nothing vendored: the
@@ -683,7 +704,20 @@ function leaveOverlay(root, trigger) {
       concretePat = null, galvPat = null;
   // One lookup for every cladding the walls and the ground can be wearing; a kind with no entry falls
   // back to the wall's own tiles, which is the honest default for a surface nobody specified.
-  const PATS = {};
+  /* Tiles a page asks for by name. Most are painted at boot; round 33's place materials are lazy
+     (`LAZY`): painted the first time something looks one up, so a page that never shows a carpet,
+     a tunnel lining or a lit city never paints one -- and the boot's fill count stays the room's. */
+  const LAZY = {};
+  let PATKEY = null, FLATOF = {};
+  const PATS = new Proxy({}, {
+    get(t, k) {
+      if (!(k in t) && typeof k === "string" && LAZY[k] && g) {
+        t[k] = mkTile(LAZY[k]);
+        if (PATKEY) PATKEY.set(t[k], k);
+      }
+      return t[k];
+    },
+  });
   const pics = new Map();
   const loadPics = () => {
     objs.forEach((el) => {
@@ -737,6 +771,115 @@ function leaveOverlay(root, trigger) {
       c.beginPath(); c.moveTo(p, 0); c.lineTo(p, 128); c.stroke();
       c.beginPath(); c.moveTo(0, p); c.lineTo(128, p); c.stroke();
     });
+  };
+  /* Round 33: the materials the Toronto-owned places are actually made of, each read off the
+     photographs the records cite (TODO §0o). Tiles, because a photograph of somebody's real floor
+     is the one lie this renderer tells for free.
+
+     The LookOut's carpet: the 2017 window-wall photographs show a dark grey-brown loop carpet with
+     a small repeating figure, not the street's asphalt or the steel the round-21 pod walked on. */
+  const paintCarpet = (c) => {
+    c.fillStyle = "#4b4741"; c.fillRect(0, 0, 128, 128);
+    c.fillStyle = "rgba(22,20,18,0.30)";
+    for (let y = 0; y < 128; y += 16) {
+      for (let x = (y / 16) % 2 ? 8 : 0; x < 128; x += 16) c.fillRect(x, y, 8, 8);
+    }
+    for (let i = 0; i < 90; i++) {
+      c.fillStyle = `rgba(${i % 3 ? "214,204,186" : "30,26,22"},${(0.06 + (i % 4) * 0.02).toFixed(2)})`;
+      c.fillRect((i * 37) % 128, (i * 59) % 128, 2, 2);
+    }
+  };
+  /* Its ceiling: square acoustic tiles in a light grid, the photographs' pale lid with the window
+     head's dark soffit below it. One tile per 64 cm at the lid's own 2 px/cm, close to the 60 cm
+     module such ceilings are hung in. */
+  const paintAcoustic = (c) => {
+    c.fillStyle = "#b4b1a9"; c.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 200; i++) {
+      c.fillStyle = `rgba(70,68,62,${(0.10 + (i % 3) * 0.05).toFixed(2)})`;
+      c.fillRect((i * 53) % 128, (i * 31) % 128, 1, 1);
+    }
+    c.fillStyle = "rgba(48,48,46,0.5)"; c.fillRect(0, 0, 128, 3); c.fillRect(0, 0, 3, 128);
+  };
+  /* The core's face: the pod's inner wall is the tower's own core, panelled and painted pale, with
+     a joint every panel width. Nothing on it is a shop or a sign. */
+  const paintCore = (c) => {
+    c.fillStyle = "#8f8d88"; c.fillRect(0, 0, 128, 128);
+    const grd = c.createLinearGradient(0, 0, 128, 0);
+    grd.addColorStop(0, "rgba(255,255,255,0.07)"); grd.addColorStop(0.5, "rgba(255,255,255,0)");
+    grd.addColorStop(1, "rgba(0,0,0,0.07)");
+    c.fillStyle = grd; c.fillRect(0, 0, 128, 128);
+    c.fillStyle = "rgba(34,34,36,0.42)"; c.fillRect(0, 0, 2, 128); c.fillRect(64, 0, 2, 128);
+  };
+  /* The window head: the photographs' dark soffit band over the glass, plain, one shadow line. */
+  const paintSoffit = (c) => {
+    c.fillStyle = "#2e323a"; c.fillRect(0, 0, 128, 128);
+    c.fillStyle = "rgba(255,255,255,0.05)"; c.fillRect(0, 0, 128, 64);
+  };
+  /* Journey's tunnel lining. Niagara Parks' own photograph of the passage is the source: the 1944
+     bore is lined in concrete, rough and glistening, grey with dark wet blotches and the drips'
+     vertical streaks -- not the bedrock strata the round-22 walls wore. */
+  const paintTunnelC = (c) => {
+    c.fillStyle = "#6b6c69"; c.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 22; i++) {
+      c.fillStyle = `rgba(30,32,32,${(0.05 + (i % 4) * 0.025).toFixed(3)})`;
+      const x = (i * 47) % 128, y = (i * 29) % 128, w = 14 + (i % 5) * 7, h = 8 + (i % 3) * 6;
+      c.fillRect(x, y, w, h);
+    }
+    for (let x = 3; x < 128; x += 11) {
+      c.fillStyle = `rgba(24,26,26,${(0.05 + (x % 4) * 0.02).toFixed(3)})`;
+      c.fillRect(x, (x * 7) % 40, 2, 60 + (x % 5) * 12);
+    }
+    for (let i = 0; i < 46; i++) {
+      c.fillStyle = "rgba(232,238,238,0.12)";
+      c.fillRect((i * 61) % 128, (i * 23) % 128, 3, 1);
+    }
+  };
+  /* The Table Rock parapet's stone: rough grey-brown blocks, the post the railing is set into in the
+     photographs taken at the wall (Getty, May 2026). */
+  const paintStoneWall = (c) => {
+    c.fillStyle = "#6a655b"; c.fillRect(0, 0, 128, 128);
+    const rows = [0, 30, 62, 96, 128];
+    for (let r = 0; r < 4; r++) {
+      const off = r % 2 ? 22 : 0;
+      for (let x = -off; x < 128; x += 46) {
+        c.fillStyle = `rgba(${r % 2 ? "40,36,30" : "210,200,180"},${(0.06 + ((x + r) % 3) * 0.03).toFixed(2)})`;
+        c.fillRect(x + 2, rows[r] + 2, 42, rows[r + 1] - rows[r] - 4);
+      }
+      c.fillStyle = "rgba(28,26,22,0.55)"; c.fillRect(0, rows[r], 128, 2);
+    }
+  };
+  /* The Recreation Trail's paving stones (OSM: surface=paving_stones): small grey pavers in a
+     running bond, a little uneven in tone. */
+  const paintPavers = (c) => {
+    c.fillStyle = "#7d7a74"; c.fillRect(0, 0, 128, 128);
+    for (let r = 0; r < 8; r++) {
+      const off = r % 2 ? 16 : 0;
+      for (let x = -off; x < 128; x += 32) {
+        c.fillStyle = `rgba(${(r + x) % 3 ? "40,38,34" : "235,230,220"},${(0.05 + ((x / 32 + r) % 4) * 0.025).toFixed(3)})`;
+        c.fillRect(x + 1, r * 16 + 1, 30, 14);
+      }
+      c.fillStyle = "rgba(34,32,28,0.5)"; c.fillRect(0, r * 16, 128, 1);
+    }
+  };
+  /* A lit city seen down from 346 m: a dark ground with a scatter of street lights and windows.
+     The scatter is a texture and says so in the room's caveat -- the lights are drawn at a lit
+     city's density, not surveyed street by street. */
+  const paintCityNight = (c) => {
+    c.fillStyle = "#1c2131"; c.fillRect(0, 0, 128, 128);
+    c.fillStyle = "rgba(255,166,86,0.10)"; c.fillRect(0, 0, 128, 128);
+    /* Scattered by a seeded generator, not by arithmetic on the index: the old (i * 83) % 128 laid
+       the lights on a hidden lattice, and a lattice seen kilometres deep beats against the screen's
+       own pixels in rippling arcs (round 33's frames from the LookOut). Scattered lights alias to
+       grain, which is what a city at that distance looks like anyway. Same count, same colours. */
+    let seed = 20171;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 260; i++) {
+      const warm = i % 4 !== 0;
+      c.fillStyle = warm ? `rgba(255,${196 + (i % 4) * 12},${118 + (i % 3) * 32},${(0.6 + (i % 4) * 0.1).toFixed(2)})`
+                         : "rgba(228,236,255,0.8)";
+      const s = i % 6 === 0 ? 2 : 1;
+      c.fillRect(Math.floor(rnd() * 128), Math.floor(rnd() * 128), s, s);
+    }
   };
   const paintFloor = (c) => {
     // Wet asphalt at night is a *reflective* surface, which is why it reads mid-tone and not black:
@@ -1141,7 +1284,8 @@ function leaveOverlay(root, trigger) {
     H = Math.max(1, Math.round(W * (ch / Math.max(1, cw))));
     cv.width = W; cv.height = H;
     tilePat = mkTile(paintWall);
-    floorPat = mkTile(({ pod: paintPodFloor, paving: paintPaving })[layer.dataset.floor] || paintFloor);
+    floorPat = mkTile(({ pod: paintPodFloor, paving: paintPaving, carpet: paintCarpet,
+                         pavers: paintPavers, tunnel: paintTunnelC })[layer.dataset.floor] || paintFloor);
     winPat = mkTile(paintWindows);
     PATS.shutter = mkTile(paintShutter);
     PATS.dado = mkTile(paintDado);
@@ -1167,43 +1311,6 @@ function leaveOverlay(root, trigger) {
       c.fillStyle = "rgba(240,248,252,0.5)";
       for (let i = 0; i < 26; i++) c.fillRect((i * 37) % 128, (i * 53) % 128, 6 + (i % 3) * 3, 1);
     });
-    /* The city from above — the material the pod's glass wears. A dark ground, a faint street
-       grid, blocks with a few amber windows, and the lake for an edge: read at a lane's distance
-       it is a city seen down, which is the one sightline a tower owns that a photograph of its
-       exterior cannot give. The deep twin is the same city 342 m further down: smaller blocks,
-       hazier grid, because the glass floor looks straight down the length of the shaft. */
-    const paintAerial = (c) => {
-      c.fillStyle = "#15223e"; c.fillRect(0, 0, 128, 128);
-      c.strokeStyle = "rgba(130,152,192,0.26)"; c.lineWidth = 2;
-      [32, 64, 96].forEach((p) => {
-        c.beginPath(); c.moveTo(p, 0); c.lineTo(p, 128); c.stroke();
-        c.beginPath(); c.moveTo(0, p); c.lineTo(128, p); c.stroke();
-      });
-      c.fillStyle = "#233457";
-      [[6,6,20,18],[40,10,16,14],[70,6,22,20],[100,12,18,16],[10,44,18,16],[44,40,14,20],
-       [76,44,20,14],[104,44,16,18],[12,78,16,14],[42,80,20,16],[78,76,16,18],[106,80,14,14],
-       [10,108,18,14],[46,110,14,12],[76,108,18,14],[104,110,16,12]]
-        .forEach(([x,y,w,h]) => c.fillRect(x,y,w,h));
-      c.fillStyle = "rgba(255,176,96,0.8)";
-      [[12,12],[48,16],[80,12],[106,18],[16,50],[50,46],[84,50],[110,52],[18,84],[52,86],
-       [84,82],[110,86],[16,114],[52,116],[82,114],[110,116]].forEach(([x,y]) => c.fillRect(x,y,3,3));
-      c.fillStyle = "#0a1222"; c.fillRect(0, 122, 128, 6);
-    };
-    const paintAerialDeep = (c) => {
-      c.fillStyle = "#0f1a30"; c.fillRect(0, 0, 128, 128);
-      c.strokeStyle = "rgba(120,140,180,0.17)"; c.lineWidth = 1;
-      [16, 48, 80, 112].forEach((p) => {
-        c.beginPath(); c.moveTo(p, 0); c.lineTo(p, 128); c.stroke();
-        c.beginPath(); c.moveTo(0, p); c.lineTo(128, p); c.stroke();
-      });
-      c.fillStyle = "#1d2c4c";
-      for (let y = 4; y < 128; y += 16) for (let x = 4; x < 128; x += 16)
-        if ((x + y) % 32 === 4) c.fillRect(x, y, 7, 6);
-      c.fillStyle = "rgba(255,176,96,0.5)";
-      [[20,20],[68,36],[100,68],[36,84],[84,100],[52,52]].forEach(([x,y]) => c.fillRect(x,y,2,2));
-    };
-    PATS.aerial = mkTile(paintAerial);
-    PATS.aerialdeep = mkTile(paintAerialDeep);
     /* The pod's own ground: dark steel panels with a hairline seam, a shade brighter
  where the spots stand over it. Concrete would put the street's pavement at 346 m. */
     function paintPodFloor(c) {
@@ -1213,28 +1320,6 @@ function leaveOverlay(root, trigger) {
       c.fillStyle = "rgba(160,178,205,0.05)"; c.fillRect(4, 4, 60, 60);
     }
     PATS.podfloor = mkTile(paintPodFloor);
-    /* The park side of a promenade: a hedge is a mass of leaves, not a green wall — dark at the
-       body, a few lighter tips where the sun catches the top of the mass. */
-    function paintHedge(c) {
-      c.fillStyle = "#20362c"; c.fillRect(0, 0, 128, 128);
-      c.fillStyle = "#2a463a";
-      for (let i = 0; i < 40; i++) c.fillRect((i * 53) % 128, (i * 37) % 128, 7, 5);
-      c.fillStyle = "#3c5c4a";
-      for (let i = 0; i < 18; i++) c.fillRect((i * 71) % 128, (i * 29) % 128, 4, 3);
-    }
-    /* The falls' mist worn as a side view: soft horizontal streaks, pale over a cool grey, the
-       water's own weather standing in for the gorge the parapet hides. */
-    function paintMistView(c) {
-      c.fillStyle = "#9fb4c6"; c.fillRect(0, 0, 128, 128);
-      c.fillStyle = "rgba(235,244,250,0.5)";
-      for (let y = 6; y < 128; y += 18) c.fillRect(0, y, 128, 5 + (y % 3) * 2);
-      c.fillStyle = "rgba(120,145,168,0.35)";
-      for (let y = 14; y < 128; y += 26) c.fillRect(0, y, 128, 3);
-      c.fillStyle = "rgba(255,255,255,0.55)";
-      for (let i = 0; i < 10; i++) c.fillRect((i * 41) % 128, (i * 61) % 128, 18, 4);
-    }
-    PATS.hedge = mkTile(paintHedge);
-    PATS.mistview = mkTile(paintMistView);
     PATS.track = mkTile(paintTrack);
     PATS.domep = mkTile(paintDomeP);
     PATS.sky0 = mkTile(paintSkyline(0, 0));
@@ -1259,6 +1344,11 @@ function leaveOverlay(root, trigger) {
     PATS.lantern = mkTile(paintLantern);
     PATS.concrete = mkTile(paintConcrete);
     PATS.galv = mkTile(paintGalv);
+    // Round 33's materials (see the painters) are lazy -- painted on first use, see `LAZY`.
+    Object.assign(LAZY, { carpet: paintCarpet, acoustic: paintAcoustic, core: paintCore,
+                          soffit: paintSoffit, tunnelc: paintTunnelC, stonewall: paintStoneWall,
+                          pavers: paintPavers, cityn: paintCityNight });
+    PATS.win = winPat;
     // Locals as well as registry entries: the end wall's face and the parapet's coping are painted in
     // draw() by name, and reading them back off PATS there would be the drawing code doing a lookup for
     // a material it can see in this file.
@@ -1275,7 +1365,11 @@ function leaveOverlay(root, trigger) {
                sand: "#b7a98c", hallplaster: "#8e94a2", hallbase: "#3a4150",
                corrugated: "#5a6470", hoarding: "#4a5568", plaster: "#465572",
                tactile: "#4a5568", lantern: "#e8b06a", kerb: "#5a6470", grate: "#3a4150",
-               concrete: "#6b7380", galv: "#79828f" };
+               concrete: "#6b7380", galv: "#79828f",
+               carpet: "#4b4741", acoustic: "#b4b1a9", core: "#8d8b86", soffit: "#2e323a", tunnelc: "#6e6f6c",
+               // cityn and win are their tiles' measured means (round 33): the fallback stands in for the
+               // tile, and the city's had been its unlit ground alone, a third of the tile's brightness.
+               stonewall: "#6a655b", pavers: "#7d7a74", cityn: "#363136", win: "#263149" };
   };
 
   /* Two shapes of island live inside the hit layer, and they answer two different questions: a list
@@ -1308,6 +1402,8 @@ function leaveOverlay(root, trigger) {
     mural: jsonData(el.dataset.mural), posts: el.dataset.posts || null,
     towers: jsonData(el.dataset.towers), leaves: parseFloat(el.dataset.leaves) || 0,
     run: parseFloat(el.dataset.run) || 0,
+    // A door the record says is a lift (round 33: the exits of the LookOut and the tunnel).
+    lift: el.dataset.lift === "true",
     // `liton` is the phase at which this prop's own windows come up. The district lights its
     // buildings one after another, and without a per-prop moment they all came on together, which
     // is a switch and not a dusk.
@@ -1436,12 +1532,37 @@ function leaveOverlay(root, trigger) {
     }
     return out;
   };
-  let PATKEY = null, FLATOF = {};
   const affine = (p, uv) => {                    // three uv->screen pairs define the map
-    const [a0, b0] = uv[0], [a1, b1] = uv[1], [a2, b2] = uv[2];
-    const x0 = W * 0.5 + (focal * p[0].x) / p[0].z, y0 = H * 0.5 + (focal * p[0].y) / p[0].z;
-    const x1 = W * 0.5 + (focal * p[1].x) / p[1].z, y1 = H * 0.5 + (focal * p[1].y) / p[1].z;
-    const x2 = W * 0.5 + (focal * p[2].x) / p[2].z, y2 = H * 0.5 + (focal * p[2].y) / p[2].z;
+    /* Which three. A panel's first three corners are a fine triangle, but a ground cell clipped to
+       a shoreline, or a quad the near plane has cut, can open with three corners almost in a line,
+       and a map fitted on a sliver paints a sliver: the fill missed most of its own clip and the
+       sky showed through the ground at the harbour's edge (round 33, the LookOut). When the first
+       triangle is thin, a wide one is found instead -- the polygon's longest span in uv and the
+       corner farthest from it. A rectangle's first triangle is half its box, so panels keep theirs. */
+    let i0 = 0, i1 = 1, i2 = 2;
+    const n = p.length;
+    if (n > 3) {
+      const tri = (a, b, c) => Math.abs((uv[b][0] - uv[a][0]) * (uv[c][1] - uv[a][1]) -
+                                        (uv[c][0] - uv[a][0]) * (uv[b][1] - uv[a][1]));
+      let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+      for (let i = 0; i < n; i++) {
+        u0 = Math.min(u0, uv[i][0]); u1 = Math.max(u1, uv[i][0]);
+        v0 = Math.min(v0, uv[i][1]); v1 = Math.max(v1, uv[i][1]);
+      }
+      if (tri(0, 1, 2) < 0.25 * (u1 - u0) * (v1 - v0)) {
+        const d2 = (a, b) => (uv[a][0] - uv[b][0]) ** 2 + (uv[a][1] - uv[b][1]) ** 2;
+        let far = -1;
+        for (let i = 1; i < n; i++) if (d2(i, 0) > far) { far = d2(i, 0); i1 = i; }
+        far = -1;
+        for (let i = 0; i < n; i++) if (d2(i, i1) > far) { far = d2(i, i1); i0 = i; }
+        far = -1;
+        for (let i = 0; i < n; i++) if (tri(i0, i1, i) > far) { far = tri(i0, i1, i); i2 = i; }
+      }
+    }
+    const [a0, b0] = uv[i0], [a1, b1] = uv[i1], [a2, b2] = uv[i2];
+    const x0 = W * 0.5 + (focal * p[i0].x) / p[i0].z, y0 = H * 0.5 + (focal * p[i0].y) / p[i0].z;
+    const x1 = W * 0.5 + (focal * p[i1].x) / p[i1].z, y1 = H * 0.5 + (focal * p[i1].y) / p[i1].z;
+    const x2 = W * 0.5 + (focal * p[i2].x) / p[i2].z, y2 = H * 0.5 + (focal * p[i2].y) / p[i2].z;
     const det = (a1 - a0) * (b2 - b0) - (a2 - a0) * (b1 - b0);
     if (Math.abs(det) < 1e-6) return null;
     const m11 = ((x1 - x0) * (b2 - b0) - (x2 - x0) * (b1 - b0)) / det;
@@ -1465,6 +1586,9 @@ function leaveOverlay(root, trigger) {
                   plinth: "#2b2733", tower: "#6b7a92", skyline: "#1c2740", dome: "#93a3b8",
                   falls: "#dfe9f2", pool: "#1d3a55", boat: "#e8eef4", island: "#65764e",
                   shopbay: "#b8392b", gate: "#b8392b",
+                  // Round 33: a Table Rock parapet post, the Journey deck's parapet, a tunnel
+                  // mouth's concrete reveal, and a trail lamp post.
+                  parapet: "#6a655b", deckwall: "#77746c", portal: "#5a5b58", lamp: "#2a2c30",
                   // Blue Wing Moji is painted blue, and that is the whole reason people photograph
                   // it: a blue bascule against red brick and a dark harbour.
                   drawbridge: "#3f6ea8", ship: "#5a6472",
@@ -1522,7 +1646,10 @@ function leaveOverlay(root, trigger) {
                   // cupola, which came down in the 1902 rebuild (round 32).
                   hall: "markethall",
                   // Nakamise's own (round 32): a bay of the 1925 shop rows, and Kaminarimon.
-                  shopbay: "shopbay", gate: "gate" };
+                  shopbay: "shopbay", gate: "gate",
+                  // Round 33: posts and parapets are boxes of their own material; a tunnel's
+                  // mouth is its reveal round an opening the wall's `open` band leaves.
+                  parapet: "box", deckwall: "box", portal: "portal" };
   // A few props are named for what they are, not for the kind that draws them; these are the aliases.
   Object.assign(SHAPE, { pole: "box", barrel: "box", stool: "box", lamp: "box",
                          curtain: "cloth", stall: "stall", ledge: "plane",
@@ -1674,7 +1801,10 @@ function leaveOverlay(root, trigger) {
   const DAY_LEN = attr("laneDayCycle", 900);
   const DAY_AT = attr("laneDayStart", 0.45);           // where the page opens in its own cycle
   const DAY_GAIN = attr("laneDayGain", 1);
-  const phaseNow = () => (DAYPAGE ? ((T / DAY_LEN) + DAY_AT) % 1 : dayPhase());
+  // A place held at one hour of the night (`data-lane-night`, a phase): the LookOut's window shows a
+  // night that does not move, so its lamps and air stop following the hall's clock (round 33).
+  const HELD = attr("laneNight", 0);
+  const phaseNow = () => (HELD ? HELD : DAYPAGE ? ((T / DAY_LEN) + DAY_AT) % 1 : dayPhase());
   const sunNow = () => clamp(Math.sin((phaseNow() - 0.25) * Math.PI * 2) * 0.5 + 0.5, 0, 1);
   /* How much sun is on the place, as a factor rather than a truth: 0 from dusk to dawn, 1 at noon.
      The floor is what decides whether a room reads as "lit by its own lamps" or "outdoors", and 0.45
@@ -1729,21 +1859,25 @@ function leaveOverlay(root, trigger) {
     let fitted = false;
     if (q.mode === "pat" && q.arg) {
       const m = affine(q.pts, q.pts.map((p) => [p.u, p.v]));
-      if (m) {
-        const us = q.pts.map((p) => p.u), vs = q.pts.map((p) => p.v);
-        const u0 = Math.min.apply(null, us), u1 = Math.max.apply(null, us);
-        const v0 = Math.min.apply(null, vs), v1 = Math.max.apply(null, vs);
-        g.save(); path(); g.clip(); g.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
-        // A rect over the uv extent misses the wedge where perspective bends the fourth corner
-        // outside the affine parallelogram — thin slices at a grazing angle lost a triangle per
-        // panel. Filling the quad's own uv polygon, inflated a touch, covers the whole clip.
-        const cu = (u0 + u1) / 2, cv = (v0 + v1) / 2, EX = 1.35;
-        g.beginPath();
-        q.pts.forEach((p, i) => {
-          const uu = cu + (p.u - cu) * EX, vv = cv + (p.v - cv) * EX;
-          if (i) g.lineTo(uu, vv); else g.moveTo(uu, vv);
+      const det = m ? m[0] * m[3] - m[1] * m[2] : 0;
+      if (m && Math.abs(det) > 1e-9) {
+        /* What is filled is the clip's own preimage. The fit is affine on three corners, and a
+           panel in deep perspective (a vault facet over the eye, a ground cell kilometres deep)
+           bends its other corners outside the fitted parallelogram, so filling the quad's uv
+           extent missed a wedge, and filling its uv polygon inflated threefold still missed most
+           of a sliver of shore 1.4 km out from the LookOut (round 33: the sky showed through the
+           ground). Mapping the clip's screen corners back through the fit and filling their box
+           covers the clip exactly, whatever the perspective, for the same single fill. */
+        let U0 = Infinity, U1 = -Infinity, V0 = Infinity, V1 = -Infinity;
+        q.pts.forEach((p) => {
+          const sx = W * 0.5 + (focal * p.x) / p.z - m[4], sy = H * 0.5 + (focal * p.y) / p.z - m[5];
+          const uu = (m[3] * sx - m[2] * sy) / det, vv = (m[0] * sy - m[1] * sx) / det;
+          U0 = Math.min(U0, uu); U1 = Math.max(U1, uu); V0 = Math.min(V0, vv); V1 = Math.max(V1, vv);
         });
-        g.closePath();
+        const pad = 2 / Math.sqrt(Math.abs(det));            // two pixels, in the tile's units
+        g.save(); path(); g.clip(); g.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+        g.beginPath();
+        g.rect(U0 - pad, V0 - pad, U1 - U0 + 2 * pad, V1 - V0 + 2 * pad);
         g.fillStyle = q.arg;
         g.fill();
         g.restore();
@@ -1905,6 +2039,201 @@ function leaveOverlay(root, trigger) {
     });
   };
 
+  /* ---- the world, as surveyed (round 33) ----
+     Everything this draws is the generator's geometry: OpenStreetMap coordinates and the heights the
+     records cite, turned into scene centimetres in `_gen_html.py` (`world_*` helpers) and stamped on
+     the page as `backdrop.world.prims`. The painter invents nothing. It knows six verbs:
+       f   fill a polygon in one colour;
+       x   tile a material across a polygon at the real size of the thing it is made of
+           (`u` cm per tile; `ax` "h" for ground, "v" for a face; `rot` turns the ground's grid);
+       w   run water down a sheet: a base colour and moving streaks, the falls' held colour at night;
+       m   breathe a mist: a billboard that faces the eye, densest at its foot;
+       l   light points: bulbs that stay at least a pixel and a half wide however far away;
+       rb  a rainbow in the spray, only by day and only with the sun at the viewer's back;
+       fw  fireworks over a point, only after dark.
+     Per prim: `c` colour (`cn` its night twin on a day page), `a` air, `l` lit, `s` a sort layer
+     (ground under water under land under objects), `n` nolite, `d0` takes no sun, `dg` daygain. */
+  const ZEROS = {};
+  const zeros = (n) => ZEROS[n] || (ZEROS[n] = new Array(n * 2).fill(0));
+  const worldUV = (p) => {
+    const k = 128 / (p.u || 1000);
+    if (p.ax === "v") {
+      const [x0, , z0] = p.p[0], [x1, , z1] = p.p[1];
+      const len = Math.hypot(x1 - x0, z1 - z0) || 1, ux = (x1 - x0) / len, uz = (z1 - z0) / len;
+      return p.p.flatMap(([x, y, z]) => [((x - x0) * ux + (z - z0) * uz) * k, -y * k]);
+    }
+    const r = ((p.rot || 0) * Math.PI) / 180, cr = Math.cos(r), sr = Math.sin(r);
+    return p.p.flatMap(([x, , z]) => [(x * cr - z * sr) * k, (x * sr + z * cr) * k]);
+  };
+  const WORLD_BIAS = 6000;
+  /* Where a sealed lane lets the world in (round 33). A tunnel -- walls, a lid, open at its end --
+     sees the world through its mouth and through any side band that is air or glass, and nowhere
+     else; from inside the Journey tunnel the whole gorge stood behind its concrete and was painted
+     anyway, then painted over, which more than doubled the tunnel's fills. The screen boxes of
+     those openings are returned so world quads that miss all of them can be dropped. An open lane,
+     a lane without a lid, or a camera already out past the mouth culls nothing. */
+  const apertures = (C) => {
+    if (OPEN || !(LID || VAULT) || !OPEN_END || C.z >= Z_FAR - 1) return null;
+    const rects = [];
+    const boxOf = (corners) => {
+      const pts = clipNear(corners.map((c) => camPt(C, c[0], c[1], c[2])));
+      if (pts.length < 3) return;
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      pts.forEach((q) => {
+        const sx = W * 0.5 + (focal * q.x) / q.z, sy = H * 0.5 + (focal * q.y) / q.z;
+        x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
+      });
+      rects.push([x0 - 4, y0 - 4, x1 + 4, y1 + 4]);
+    };
+    boxOf([[-WALL, 0, Z_FAR], [WALL, 0, Z_FAR], [WALL, CEIL, Z_FAR], [-WALL, CEIL, Z_FAR]]);
+    if (OPEN_BACK) boxOf([[-WALL, 0, Z_BACK], [WALL, 0, Z_BACK], [WALL, CEIL, Z_BACK], [-WALL, CEIL, Z_BACK]]);
+    surfaces.forEach((sc) => {
+      if (sc.kind !== "open" && sc.kind !== "glazing" && sc.kind !== "railing") return;
+      const x = sc.side * WALL, y0 = sc.y0 || 0, y1 = sc.y1 === undefined ? CEIL : sc.y1;
+      boxOf([[x, y0, sc.z0], [x, y0, sc.z1], [x, y1, sc.z1], [x, y1, sc.z0]]);
+    });
+    return rects;
+  };
+  const drawWorld = (C) => {
+    const prims = bd.world.prims || [];
+    const n0 = quads.length, ap = apertures(C);
+    // Horizontal polygons ship compact (one height `h`, flat x/z pairs `q`); expanded once.
+    if (!bd.world.ready) {
+      prims.forEach((p) => {
+        if (p.q && !p.p) {
+          p.p = [];
+          for (let i = 0; i + 1 < p.q.length; i += 2) p.p.push([p.q[i], p.h, p.q[i + 1]]);
+        }
+      });
+      bd.world.ready = true;
+    }
+    const dl = DAY(), dark = DAYPAGE ? dl < 0.25 : true;
+    const WILLUM = ["#37c46b", "#e0435c", "#3f7de0", "#b04de0", "#e0a13f"];
+    const held = WILLUM[Math.floor(T / 7) % WILLUM.length];
+    const rx = C.cy, rz = -C.sy;                 // the camera's right, in the floor plane
+    const colourOf = (p) => (p.cn && DAYPAGE ? blendHex(p.cn, p.c, dl) : p.c);
+    const finish = (q, p) => {
+      if (!q) return null;
+      q.air = p.a === undefined ? 0.2 : p.a;
+      q.lit = p.l === undefined ? 0.5 : p.l;
+      if (p.n) q.nolite = true;
+      if (p.d0) q.day = false;
+      if (p.dg !== undefined) q.daygain = p.dg;
+      q.sz = q.z + WORLD_BIAS + (p.s || 0) * 1e6;
+      return q;
+    };
+    const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+    for (let pi = 0; pi < prims.length; pi++) {
+      const p = prims[pi], t = p.t || "f";
+      /* A cliff, a wall or a canopy's edge faces one way (`fn`, its outward normal across the
+         floor plane): from behind it is not drawn, as a solid's back is not seen. A ground, a
+         water or a roof (`h`) is seen from above only, unless it says it is a ceiling (`two`). */
+      if (p.fn && (C.x - p.p[0][0]) * p.fn[0] + (C.z - p.p[0][2]) * p.fn[1] < 0) continue;
+      if (p.q && !p.two && C.eye < p.h) continue;
+      if (t === "f") {
+        finish(add(C, p.p, zeros(p.p.length), "flat", colourOf(p)), p);
+      } else if (t === "x") {
+        if (!p._uv) p._uv = worldUV(p);
+        const pat = PATS[p.pat];
+        const xq = finish(pat ? add(C, p.p, p._uv, "pat", pat) : add(C, p.p, zeros(p.p.length), "flat", colourOf(p)), p);
+        if (xq) xq.wide = true;
+      } else if (t === "w") {
+        // A sheet of falling water: [top-left, top-right, bottom-right, bottom-left].
+        const lit = p.il && dark;
+        const base = finish(add(C, p.p, ZERO8, "flat", lit ? held : colourOf(p)), p);
+        if (base && lit) { base.nolite = true; base.lit = 1.25; base.air = Math.min(base.air, 0.18); }
+        const [tl, tr, br, bl] = p.p, nk = p.k === undefined ? 2 : p.k;
+        for (let i = 0; i < nk; i++) {
+          const f = (i + 0.5) / nk + 0.18 / nk * Math.sin(i * 2.3 + pi);
+          const fall = ease ? ((T * (p.sp || 0.32) + i * 0.37 + pi * 0.13) % 1) : 0.45;
+          const v0 = Math.max(0, fall - 0.3), v1 = fall, df = 0.22 / nk;
+          const A = (ff, v) => lerp3(lerp3(tl, tr, ff), lerp3(bl, br, ff), v);
+          const s = add(C, [A(f - df, v0), A(f + df, v0), A(f + df, v1), A(f - df, v1)], ZERO8, "flat",
+                        `rgba(255,255,255,${((lit ? 0.14 : 0.2 + 0.08 * Math.sin(T * 2.7 + i + pi)) * (1 - (base ? base.air : 0))).toFixed(3)})`);
+          if (s) { s.air = 0; s.lit = 0.5; s.day = false; s.nolite = true; s.sz = (base ? base.sz : s.z + WORLD_BIAS) - 1; }
+        }
+      } else if (t === "m") {
+        /* Spray: overlapping rounds, each a billboard square to the eye and nearly clear, thinning
+           and widening as they rise -- a cloud, not a curtain (scene-system: mist that is a plane
+           washes the whole view pale). */
+        const [ox, oy, oz] = p.o, al = (p.al || 0.3) * (ease ? 0.88 + 0.12 * Math.sin(T * 0.45 + pi) : 1);
+        const tint = p.il && dark ? held : null;
+        /* The night is baked into the colour, and the round takes no overlay of its own: the shared
+           haze-and-night pass lays its wash over a quad's whole outline, and on a round that is
+           nearly clear that wash darkens the sky behind it -- five overlapping rounds of 0.08 took
+           a third off the sky and the spray read as smoke (round 33, the Journey deck). */
+        const nf = tint ? 0 : NIGHT() * 0.5;
+        const base = tint ? [1, 3, 5].map((i) => parseInt(tint.slice(i, i + 2), 16)) : [238, 244, 247];
+        const rgb = base.map((v, i) => Math.round(v * (1 - nf) + [22, 34, 60][i] * nf)).join(",");
+        const NP = 5;
+        for (let k = 0; k < NP; k++) {
+          const f = k / (NP - 1), drift = ease ? Math.sin(T * 0.3 + pi + k) * p.w * 0.03 : 0;
+          const r = p.w * (0.32 + 0.22 * f), cy = oy + p.h * (0.18 + 0.7 * f);
+          const cx = ox + rx * ((k % 2 ? 1 : -1) * p.w * 0.08 + drift), cz = oz + rz * ((k % 2 ? 1 : -1) * p.w * 0.08 + drift);
+          const pts = [];
+          for (let a = 0; a < 10; a++) {
+            const th = (a / 10) * Math.PI * 2, c = Math.cos(th) * r, sy = Math.sin(th) * r * 0.62;
+            pts.push([cx + rx * c, cy + sy, cz + rz * c]);
+          }
+          const q = add(C, pts, zeros(10), "flat", `rgba(${rgb},${(al * (1 - 0.6 * f) * (tint ? 0.5 : 1)).toFixed(3)})`);
+          if (q) { q.air = 0; q.lit = 0; q.day = false; q.nolite = true;
+                   q.sz = q.z + WORLD_BIAS + (p.s || 0) * 1e6; }
+        }
+      } else if (t === "l") {
+        const r0 = p.r || 60;
+        for (const [x, y, z] of p.pts) {
+          const d = Math.hypot(x - C.x, y - C.eye, z - C.z);
+          const r = Math.max(r0, (d * 1.5) / focal);
+          const q = add(C, [[x - rx * r, y - r, z - rz * r], [x + rx * r, y - r, z + rz * r],
+                            [x + rx * r, y + r, z + rz * r], [x - rx * r, y + r, z - rz * r]], ZERO8, "flat", p.c || "#ffd9a0");
+          if (q) { q.nolite = true; q.air = p.a === undefined ? 0.12 : p.a; q.lit = 0.5; q.day = false; q.sz = q.z + WORLD_BIAS - 1; }
+        }
+      } else if (t === "rb") {
+        // The spray's rainbow: only by day, and only with the sun behind the viewer (the record says
+        // which way the viewer faces; afternoon sun stands in the west at Table Rock).
+        if (!DAYPAGE || dl < 0.3 || sunAz() * (p.west ? 1 : -1) < 0.12) continue;
+        const [ox, oy, oz] = p.o, R = p.r, nx = p.ux, nz = p.uz;
+        ["rgba(255,110,100,0.16)", "rgba(255,206,110,0.16)", "rgba(140,220,140,0.15)", "rgba(130,180,255,0.18)"].forEach((cc, bi) => {
+          const r0 = R * (1 - bi * 0.035), r1 = r0 - R * 0.035;
+          for (let a = 0; a < 8; a++) {
+            const t0 = (a / 8) * Math.PI, t1 = ((a + 1) / 8) * Math.PI;
+            const P = (rr, tt) => [ox + nx * Math.cos(tt) * rr, oy + Math.sin(tt) * rr, oz + nz * Math.cos(tt) * rr];
+            const q = add(C, [P(r0, t0), P(r0, t1), P(r1, t1), P(r1, t0)], ZERO8, "flat", cc);
+            if (q) { q.air = 0.05; q.day = false; q.nolite = true; q.sz = q.z + WORLD_BIAS; }
+          }
+        });
+      } else if (t === "fw") {
+        if (!dark || !DAYPAGE) continue;
+        const [ox, oy, oz] = p.o;
+        [[-0.8, 0.9, 0], [0.3, 1.15, 2.1], [1.0, 1.0, 4.2]].forEach(([bx, by, ph], bi) => {
+          const life = Math.max(0, Math.sin(T * 0.45 + ph));
+          if (life < 0.05) return;
+          const cx = ox + rx * bx * p.r, cz = oz + rz * bx * p.r, cy = oy + by * p.r;
+          const cc = WILLUM[(bi * 2 + 1) % WILLUM.length];
+          for (let k = 0; k < 8; k++) {
+            const a0 = (k / 8) * Math.PI * 2, a1 = ((k + 0.5) / 8) * Math.PI * 2;
+            const r0 = p.r * (0.12 + life * 0.3), r1 = r0 + p.r * 0.05;
+            const P = (rr, aa) => [cx + rx * Math.cos(aa) * rr, cy + Math.sin(aa) * rr * 0.8, cz + rz * Math.cos(aa) * rr];
+            const q = add(C, [P(r0, a0), P(r1, a0), P(r1, a1), P(r0, a1)], ZERO8, "flat", cc);
+            if (q) { q.air = 0.05; q.lit = 1.4 * life; q.day = false; q.nolite = true; q.sz = q.z + WORLD_BIAS; }
+          }
+        });
+      }
+    }
+    if (ap) {
+      let k = n0;
+      for (let i = n0; i < quads.length; i++) {
+        const q = quads[i];
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        q.pts.forEach((p) => {
+          const sx = W * 0.5 + (focal * p.x) / p.z, sy = H * 0.5 + (focal * p.y) / p.z;
+          x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
+        });
+        if (ap.some((r) => x1 >= r[0] && x0 <= r[2] && y1 >= r[1] && y0 <= r[3])) quads[k++] = q;
+      }
+      quads.length = k;
+    }
+  };
   const drawFar = (C) => {
     /* One convention, stated once: the compound is authored in scene centimetres, and the far plane is
        authored at the scale a *picture* of Tokyo shows rather than 1:1 — a mountain does not fit in a
@@ -1923,6 +2252,52 @@ function leaveOverlay(root, trigger) {
        instead, because the sun does fall on those. */
     const dayC = (hex, k) => (DAYPAGE && DAY() > 0.01
       ? blendHex(hex, blendHex(hex, "#d3e3f4", 0.62), DAY() * k) : hex);
+    /* The sky all round (round 33). The banded sky is one plane at z 120 000, which is a sky only
+       for a lane you look down; a promenade with no walls, or a pod with glass on one hand, is
+       looked out of in every direction. A sky is at infinity, so it depends on the pitch and not on
+       the yaw: one screen-space gradient whose stops are elevation angles, laid first. */
+    const sa = bd.skyAround;
+    // Not before the first resize: with no focal length yet the screen quad's corners divide by
+    // zero, and a NaN corner is a call the canvas silently drops (the cost probe counted eight).
+    if (sa && Array.isArray(sa.stops) && typeof g.createLinearGradient === "function" && focal > 0) {
+      const dl = DAY(), pr = (pitch * Math.PI) / 180;
+      const yOf = (e) => {
+        const a = Math.max(-1.55, Math.min(1.55, (e * Math.PI) / 180 + pr));
+        return H * 0.5 - focal * Math.tan(a);
+      };
+      const grad = g.createLinearGradient(0, 0, 0, H);
+      const stops = sa.stops.slice().sort((a, b) => b.e - a.e);   // zenith first = top of screen first
+      let last = -1;
+      stops.forEach((s) => {
+        const t = Math.max(0, Math.min(1, yOf(s.e) / Math.max(1, H)));
+        if (t <= last + 0.0005) return;
+        grad.addColorStop(t, s.n && DAYPAGE ? blendHex(s.n, s.c, dl) : (s.n && !DAYPAGE ? s.n : s.c));
+        last = t;
+      });
+      /* A sealed lane's panels meet edge to edge, and where two anti-aliased edges meet, the canvas
+         leaves a hairline of whatever was painted first. With the world behind a tunnel culled (see
+         `apertures`), that would be the sky in every seam of the floor and the vault: so behind a
+         sealed lane the backing is its own material's colour, and the sky is laid only in the box
+         of its openings. */
+      const ap = bd.world ? apertures(C) : null;
+      const at = (x0, y0, x1, y1) => [{ x: (x0 - W * 0.5) / focal, y: (y0 - H * 0.5) / focal, z: 1 },
+                                      { x: (x1 - W * 0.5) / focal, y: (y0 - H * 0.5) / focal, z: 1 },
+                                      { x: (x1 - W * 0.5) / focal, y: (y1 - H * 0.5) / focal, z: 1 },
+                                      { x: (x0 - W * 0.5) / focal, y: (y1 - H * 0.5) / focal, z: 1 }];
+      let box = [0, 0, W, H];
+      if (ap) {
+        quads.push({ z: 1e12 + 1, sz: 1e12 + 1, mode: "flat", arg: FLATOF[WALLMAT] || "#2b3a56", img: null,
+                     area: W * H, air: 0, lit: 0, day: false, nolite: true, pts: at(0, 0, W, H) });
+        box = ap.reduce((b, r) => [Math.min(b[0], r[0]), Math.min(b[1], r[1]), Math.max(b[2], r[2]), Math.max(b[3], r[3])],
+                        [Infinity, Infinity, -Infinity, -Infinity]);
+        box = [Math.max(0, box[0]), Math.max(0, box[1]), Math.min(W, box[2]), Math.min(H, box[3])];
+      }
+      if (box[2] > box[0] && box[3] > box[1]) {
+        quads.push({ z: 1e12, sz: 1e12, mode: "flat", arg: grad, img: null, area: (box[2] - box[0]) * (box[3] - box[1]),
+                     air: 0, lit: 0, day: false, nolite: true, pts: at(box[0], box[1], box[2], box[3]) });
+      }
+    }
+    if (bd.world) drawWorld(C);
     const skyBands = bd.sky || [];
     if (bd.skyGradient && skyBands.length && typeof g.createLinearGradient === "function") {
       // The record's height bands are colour samples, not separate slabs: project their centres to
@@ -2526,166 +2901,6 @@ function leaveOverlay(root, trigger) {
         if (hook) { hook.air = 0.13; hook.lit = 0.42; hook.daygain = 0.34; }
       });
     }
-    const cb = bd.citybelow;
-    if (cb) {
-      /* The city from above, past the pod's glass: a ground plane far below eye level, panelled
-         like the plaza because one stretched quad would bend the grid the way it bends paving.
-         The lake is the dark band at the far shore — due south of the real pod — and air ramps
-         toward the fog ceiling exactly like every other far surface here. */
-      const STEP = 4000, PU = 1 / 10, span = Math.max(1, cb.z1 - cb.z0);
-      for (let z = cb.z0; z < cb.z1; z += STEP) {
-        const z1 = Math.min(z + STEP, cb.z1);
-        const gq = add(C, [[-cb.half, cb.y, z], [cb.half, cb.y, z],
-                           [cb.half, cb.y, z1], [-cb.half, cb.y, z1]],
-          [z * PU, -cb.half * PU, z * PU, cb.half * PU,
-           z1 * PU, cb.half * PU, z1 * PU, -cb.half * PU],
-          "pat", PATS.aerialdeep);
-        if (gq) { gq.air = 0.18 + ((z - cb.z0) / span) * (FOG_MAX - 0.18); gq.lit = 0.62; gq.daygain = 0.4; }
-      }
-      if (cb.lake) {
-        const lq = add(C, [[-cb.half, cb.y + 2, cb.lake.d0], [cb.half, cb.y + 2, cb.lake.d0],
-                           [cb.half, cb.y + 2, cb.z1], [-cb.half, cb.y + 2, cb.z1]],
-                       ZERO8, "flat", "#0a1322");
-        if (lq) { lq.air = 0.3; lq.lit = 0.4; lq.day = false; }
-      }
-    }
-    const ng = bd.niagara;
-    if (ng) {
-      /* The painter keeps only what no prop can carry: the gorge river running away below the
-         crest, the rainbow when the sun stands in the spray, and the Table Rock rail at the edge
-         of the walkable world. The falls themselves are the site's own falls shape, stood at real
-         scale as props — the same sheet-over-ledge-into-mist that reads on the hall's table. */
-      const STEP = 3000, PU = 1 / 10;
-      const crestZ = ng.z0 + 1200;
-      const footY = ng.y - ng.crest.drop;
-      for (let z = crestZ + 500; z < ng.z1; z += STEP) {
-        const z1 = Math.min(z + STEP, ng.z1);
-        const gq = add(C, [[-ng.half, footY, z], [ng.half, footY, z],
-                           [ng.half, footY, z1], [-ng.half, footY, z1]],
-          [z * PU, -ng.half * PU, z * PU, ng.half * PU,
-           z1 * PU, ng.half * PU, z1 * PU, -ng.half * PU],
-          "flat", "#1f384c");
-        if (gq) { gq.air = 0.16 + ((z - crestZ) / (ng.z1 - crestZ)) * 0.4; gq.lit = 0.7; gq.daygain = 0.9; }
-      }
-      if (DAY() > 0.25) {
-        const cols = ["rgba(255,120,110,0.20)", "rgba(255,200,120,0.20)", "rgba(150,220,150,0.20)", "rgba(140,190,255,0.24)"];
-        cols.forEach((col, i) => {
-          const r0 = 6000 + i * 400;
-          for (let a = 0; a < 7; a++) {
-            const t0 = (a / 6) * Math.PI, t1 = ((a + 1) / 6) * Math.PI;
-            const q = add(C, [[ng.crest.x - Math.cos(t0) * r0, footY + 400 + Math.sin(t0) * (r0 * 0.55), crestZ + 900],
-                              [ng.crest.x - Math.cos(t1) * r0, footY + 400 + Math.sin(t1) * (r0 * 0.55), crestZ + 900],
-                              [ng.crest.x - Math.cos(t1) * (r0 + 400), footY + 400 + Math.sin(t1) * ((r0 + 400) * 0.55), crestZ + 900],
-                              [ng.crest.x - Math.cos(t0) * (r0 + 400), footY + 400 + Math.sin(t0) * ((r0 + 400) * 0.55), crestZ + 900]],
-                          ZERO8, "flat", col);
-            if (q) { q.air = 0.08; q.day = false; }
-          }
-        });
-      }
-      /* Downstream, the gorge runs to the city: the Skylon's dish on the Canadian bank and the
-         Rainbow Bridge spanning to the American side, both silhouettes in the haze — the view
-         every Table Rock visitor turns to after the brink. At night the floodlights spill their
-         held colour onto the water below the falls. */
-      /* The bridge spans the gorge well past the falls' own breadth, so only the two wings
-         beyond the curtain can ever show; the Skylon's dish stands out on the left bank. */
-      const sil = (y0, y1, x, z, w) => add(C, [[x - w / 2, y0, z], [x + w / 2, y0, z],
-                                               [x + w / 2, y1, z], [x - w / 2, y1, z]],
-                                           ZERO8, "flat", "#3a4d66");
-      const sky = sil(footY + 200, footY + 2600, -9500, 15000, 240);
-      if (sky) { sky.air = 0.55; sky.lit = 0.6; sky.daygain = 0.5; }
-      const dish = sil(footY + 2600, footY + 2950, -9500, 15000, 900);
-      if (dish) { dish.air = 0.55; dish.lit = 0.6; dish.daygain = 0.5; }
-      [[-12000, -7000], [7000, 12000]].forEach(([x0, x1]) => {
-        const q = add(C, [[x0, footY + 250, 16500], [x1, footY + 250, 16500],
-                          [x1, footY + 550, 16500], [x0, footY + 550, 16500]],
-                      ZERO8, "flat", "#42566f");
-        if (q) { q.air = 0.55; q.lit = 0.6; q.daygain = 0.5; }
-      });
-      /* The Canadian bank downstream carries three silhouettes, nearest first: the old Toronto
-         Power Generating Station at the gorge rim, the round Tower Hotel, and the Skylon's dish
-         furthest out — the skyline a Table Rock visitor turns to. */
-      const power = sil(footY + 200, footY + 700, -5200, 10500, 1300);
-      if (power) { power.air = 0.5; power.lit = 0.6; power.daygain = 0.5; }
-      const stack = sil(footY + 700, footY + 1050, -5500, 10500, 160);
-      if (stack) { stack.air = 0.5; stack.lit = 0.6; stack.daygain = 0.5; }
-      const towerhotel = sil(footY + 200, footY + 1900, -7200, 12500, 320);
-      if (towerhotel) { towerhotel.air = 0.55; towerhotel.lit = 0.6; towerhotel.daygain = 0.5; }
-      if (DAY() < 0.25) {
-        const ILLUM = ["#37c46b", "#e0435c", "#3f7de0", "#b04de0", "#e0a13f"];
-        const held = ILLUM[Math.floor(T / 7) % ILLUM.length];
-        const glow = add(C, [[-ng.half * 0.8, footY + 4, crestZ + 500], [ng.half * 0.8, footY + 4, crestZ + 500],
-                             [ng.half * 0.8, footY + 4, crestZ + 6500], [-ng.half * 0.8, footY + 4, crestZ + 6500]],
-                         ZERO8, "flat", held);
-        if (glow) { glow.air = 0.3; glow.lit = 0.9; glow.day = false; }
-        /* Fireworks over the crest in season, at ten: three bursts that swell and fade on the
-           frame clock, small against a thirteen-storey curtain, which is the scale they keep. */
-        [[-3000, 3400, 0], [1500, 4100, 2.1], [4500, 3700, 4.2]].forEach(([bx, by, ph]) => {
-          const life = Math.max(0, Math.sin(T * 0.45 + ph));
-          if (life < 0.05) return;
-          const col = ILLUM[Math.floor(ph * 2) % ILLUM.length];
-          for (let k = 0; k < 8; k++) {
-            const t0 = (k / 8) * Math.PI * 2, t1 = ((k + 0.5) / 8) * Math.PI * 2;
-            const r0 = 260 + life * 620, r1 = r0 + 90;
-            const q = add(C, [[bx + Math.cos(t0) * r0, footY + by + Math.sin(t0) * r0 * 0.8, crestZ + 900],
-                              [bx + Math.cos(t0) * r1, footY + by + Math.sin(t0) * r1 * 0.8, crestZ + 900],
-                              [bx + Math.cos(t1) * r1, footY + by + Math.sin(t1) * r1 * 0.8, crestZ + 900],
-                              [bx + Math.cos(t1) * r0, footY + by + Math.sin(t1) * r0 * 0.8, crestZ + 900]],
-                          ZERO8, "flat", col);
-            if (q) { q.air = 0.05; q.lit = 1.4 * life; q.day = false; }
-          }
-        });
-      }
-      const railHalf = ng.half * 0.55;
-      [[86, 6], [58, 5]].forEach(([yy, th]) => {
-        const q = add(C, [[-railHalf, yy, ng.rail], [railHalf, yy, ng.rail],
-                          [railHalf, yy + th, ng.rail], [-railHalf, yy + th, ng.rail]],
-                      ZERO8, "flat", "#20293c");
-        if (q) { q.air = 0.1; q.lit = 0.5; q.daygain = 0.6; }
-      });
-      for (let x = -railHalf; x <= railHalf; x += 900) {
-        const p = add(C, [[x - 4, 0, ng.rail], [x + 4, 0, ng.rail], [x + 4, 92, ng.rail], [x - 4, 92, ng.rail]],
-                      ZERO8, "flat", "#20293c");
-        if (p) { p.air = 0.1; p.lit = 0.5; p.daygain = 0.6; }
-      }
-    }
-    const jb = bd.journey;
-    if (jb) {
-      /* The deck at the foot: the gorge water below the curtain, the deck rail at the edge of
-         the walkable world, and after dark the floodlights' held colour spilled on the water —
-         the deck is one of the real places the illumination is watched from. */
-      const STEP = 2200, PU = 1 / 10;
-      for (let z = jb.z0; z < jb.z1; z += STEP) {
-        const z1 = Math.min(z + STEP, jb.z1);
-        const gq = add(C, [[-jb.half, jb.foot, z], [jb.half, jb.foot, z],
-                           [jb.half, jb.foot, z1], [-jb.half, jb.foot, z1]],
-          [z * PU, -jb.half * PU, z * PU, jb.half * PU,
-           z1 * PU, jb.half * PU, z1 * PU, -jb.half * PU],
-          "flat", "#16283a");
-        if (gq) { gq.air = 0.14 + ((z - jb.z0) / (jb.z1 - jb.z0)) * 0.3; gq.lit = 0.65; gq.daygain = 0.9; }
-      }
-      if (DAY() < 0.25) {
-        const ILLUM = ["#37c46b", "#e0435c", "#3f7de0", "#b04de0", "#e0a13f"];
-        const held = ILLUM[Math.floor(T / 7) % ILLUM.length];
-        const glow = add(C, [[-jb.half * 0.8, jb.foot + 4, jb.z0], [jb.half * 0.8, jb.foot + 4, jb.z0],
-                             [jb.half * 0.8, jb.foot + 4, jb.z1], [-jb.half * 0.8, jb.foot + 4, jb.z1]],
-                         ZERO8, "flat", held);
-        if (glow) { glow.air = 0.28; glow.lit = 0.9; glow.day = false; }
-      }
-      // The deck rail, hand height, at the edge of the walkable world.
-      [[86, 6], [58, 5]].forEach(([yy, th]) => {
-        const q = add(C, [[-jb.half * 0.5, yy, jb.rail], [jb.half * 0.5, yy, jb.rail],
-                          [jb.half * 0.5, yy + th, jb.rail], [-jb.half * 0.5, yy + th, jb.rail]],
-                      ZERO8, "flat", "#20293c");
-        if (q) { q.air = 0.1; q.lit = 0.5; q.daygain = 0.6; }
-      });
-      // The two portals in the tunnel's right wall: windows of falling water, bright behind rock.
-      [[150, 200], [235, 285]].forEach(([p0, p1]) => {
-        const q = add(C, [[jb.wall - 1, 40, p0], [jb.wall - 1, 40, p1],
-                          [jb.wall - 1, 190, p1], [jb.wall - 1, 190, p0]],
-                      ZERO8, "flat", "rgba(226,242,246,0.9)");
-        if (q) { q.lit = 1.35; q.air = 0.04; q.day = false; }
-      });
-    }
     const cross = bd.crossing;
     if (cross) {
       const n = cross.stripes || 8, span = cross.x1 - cross.x0;
@@ -2821,9 +3036,53 @@ function leaveOverlay(root, trigger) {
       for (const r of rows) {
         if (r.y0 > y + 0.01) break;
         if (r.y1 > y) y = r.y1;
-        if (y >= CEIL) return true;
+        if (y >= WALL_TOP) return true;
       }
-      return y >= CEIL;
+      return y >= WALL_TOP;
+    };
+    /* Holes in the floor (round 33): a glass floor is a window, so where one lies the floor is not
+       painted and the surveyed world under it shows through -- only on a page that has a world to
+       show. What you see through it is whatever the camera's own angle reaches: the walk cannot
+       pitch past 24 degrees, so the glass shows the ground a few hundred metres out, which is what
+       the same glass shows a visitor whose head is where this camera is. */
+    const holes = bd && bd.world
+      ? meta.filter((m) => kindOf(m.kind) === "glassfloor")
+            .map((m) => ({ x0: m.x - m.w / 2, x1: m.x + m.w / 2, z0: m.z - m.d / 2, z1: m.z + m.d / 2 }))
+      : [];
+    const floorPiece = (x0, x1, za, zb, zc) => {
+      if (x1 - x0 < 1 || zb - za < 1) return;
+      const fl = add(C, [[x0, 0, za], [x1, 0, za], [x1, 0, zb], [x0, 0, zb]],
+          [za * DPM, x0 * DPM, za * DPM, x1 * DPM, zb * DPM, x1 * DPM, zb * DPM, x0 * DPM],
+          "pat", floorPat);
+      if (fl) { fl.lit = lightAt((x0 + x1) / 2, 6, zc) * 1.15; fl.air = haze(fl.z) * 0.7;
+                fl.sz = fl.z + 4000;     // the ground paints before anything standing on it
+                if (UNDER) fl.nolite = true; }
+    };
+    // The lid, in whatever the place's ceiling is made of. A #hex is a flat colour, a PATS key is a
+    // tile at the lid's own scale; absent, the street's sky (or night) as before.
+    const lidPat = LID && LID[0] !== "#" ? PATS[LID] : null;
+    const lidFlat = LID && LID[0] === "#" ? LID : null;
+    const lidQuad = (pts, za, zb, zc, ya) => {
+      const q = lidPat
+        ? add(C, pts, [za * DPM, pts[0][0] * DPM, za * DPM, pts[1][0] * DPM,
+                       zb * DPM, pts[2][0] * DPM, zb * DPM, pts[3][0] * DPM], "pat", lidPat)
+        : add(C, pts, ZERO8, "flat", lidFlat || lidAt(zc));
+      if (q) {
+        q.lit = LID ? lightAt(0, ya, zc) * 0.95 : AMBIENT * 0.8;
+        if (LID) q.day = false;          // a ceiling is under a roof: the sun does not land on it
+        if (UNDER) q.nolite = true;
+        q.sz = q.z + 4000;
+      }
+      return q;
+    };
+    /* The barrel: K chords of a circular segment from one springing line to the other, rising VAULT
+       at the crown. Four chords read as a vault at a tunnel's width without asking for a curve. */
+    const VK = 4;
+    const vaultY = (k) => {
+      const half = WALL, rise = VAULT;
+      const R = (half * half + rise * rise) / (2 * rise), cy = WALL_TOP + rise - R;
+      const a0 = Math.asin(half / R), a = -a0 + (2 * a0 * k) / VK;
+      return [R * Math.sin(a), cy + R * Math.cos(a)];
     };
     for (let z = Z_BACK; z < Z_FAR; z += SEG) {
       const z1 = Math.min(z + SEG, Z_FAR);
@@ -2831,21 +3090,29 @@ function leaveOverlay(root, trigger) {
       [-1, 1].forEach((side) => {
         if (surfaces.length && cladCovers(side, z, z1)) return;
         const px = side * WALL;
-        const q = add(C, [[px, 0, z], [px, 0, z1], [px, CEIL, z1], [px, CEIL, z]],
-                      [z * DPM, 0, z1 * DPM, 0, z1 * DPM, -CEIL * DPM, z * DPM, -CEIL * DPM],
-                      "pat", tilePat);
+        const q = add(C, [[px, 0, z], [px, 0, z1], [px, WALL_TOP, z1], [px, WALL_TOP, z]],
+                      [z * DPM, 0, z1 * DPM, 0, z1 * DPM, -WALL_TOP * DPM, z * DPM, -WALL_TOP * DPM],
+                      "pat", (WALLMAT && PATS[WALLMAT]) || tilePat);
         // Side and span ride along so a door in this wall can paint after the slices behind it.
-        if (q) { q.lit = lightAt(px, 210, zc); q.wall = side; q.za = z; q.zb = z1; }
+        if (q) { q.lit = lightAt(px, 210, zc); q.wall = side; q.za = z; q.zb = z1; if (UNDER) q.nolite = true; }
       });
-      const fl = add(C, [[-WALL, 0, z], [WALL, 0, z], [WALL, 0, z1], [-WALL, 0, z1]],
-          [z * DPM, -WALL * DPM, z * DPM, WALL * DPM, z1 * DPM, WALL * DPM, z1 * DPM, -WALL * DPM],
-          "pat", floorPat);
-      if (fl) { fl.lit = lightAt(0, 6, zc) * 1.15; fl.air = haze(fl.z) * 0.7;
-                fl.sz = fl.z + 4000; }   // the ground paints before anything standing on it
-      const cl = OPEN ? null : add(C, [[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]],
-          [0, 0, 0, 0, 0, 0, 0, 0], "flat", lidAt(zc));
-      if (cl) { cl.lit = AMBIENT * 0.8;   // out of the bulbs' reach, and it should look that way
-                cl.sz = cl.z + 4000; }   // and the lid paints before the walls it meets
+      const hole = holes.find((h) => h.z0 < z1 && h.z1 > z);
+      if (!hole) floorPiece(-WALL, WALL, z, z1, zc);
+      else {
+        const ha = Math.max(z, hole.z0), hb = Math.min(z1, hole.z1);
+        floorPiece(-WALL, WALL, z, ha, zc);
+        floorPiece(-WALL, Math.max(-WALL, hole.x0), ha, hb, zc);
+        floorPiece(Math.min(WALL, hole.x1), WALL, ha, hb, zc);
+        floorPiece(-WALL, WALL, hb, z1, zc);
+      }
+      if (VAULT && !OPEN) {
+        for (let k = 0; k < VK; k++) {
+          const [xa, ya] = vaultY(k), [xb, yb] = vaultY(k + 1);
+          lidQuad([[xa, ya, z], [xb, yb, z], [xb, yb, z1], [xa, ya, z1]], z, z1, zc, (ya + yb) / 2);
+        }
+      }
+      const cl = OPEN || VAULT ? null : lidQuad([[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]], z, z1, zc, CEIL);
+      if (cl && !LID) cl.lit = AMBIENT * 0.8;   // out of the bulbs' reach, and it should look that way
     }
     /* The wall the lane runs into is the largest single surface in the deepest frame, and it was the
        lane's default tile: a pale grid with nothing in it, which read as the page having run out rather
@@ -2855,11 +3122,14 @@ function leaveOverlay(root, trigger) {
     const wallPiece = (x0, y0, x1, y1, at) => {
       const q = add(C, [[x0, y0, Z_FAR], [x1, y0, Z_FAR], [x1, y1, Z_FAR], [x0, y1, Z_FAR]],
           [x0 * DPM, -y0 * DPM, x1 * DPM, -y0 * DPM, x1 * DPM, -y1 * DPM, x0 * DPM, -y1 * DPM],
-          "pat", concretePat);
+          "pat", (WALLMAT && PATS[WALLMAT]) || concretePat);
       if (q) q.lit = at;
       return q;
     };
-    if (vista) {
+    if (OPEN_END) {
+      /* No end wall (round 33): a promenade does not stop at a wall, and a wall there with a hole
+         in it was a picture frame round the falls. The walk limit (`max_d`) is the only edge. */
+    } else if (vista) {
       // Four pieces around the opening, plus jambs and a sill: a hole in a wall has a reveal, and
       // without one the vista reads as a decal of a window rather than a route out of the room.
       const vx0 = Math.max(-WALL, vista.x - vista.w / 2), vx1 = Math.min(WALL, vista.x + vista.w / 2);
@@ -2885,9 +3155,66 @@ function leaveOverlay(root, trigger) {
                         vx1 * DPM, (vista.y0 - deep) * DPM, vx0 * DPM, (vista.y0 - deep) * DPM],
                        "pat", galvPat);
       if (sill) sill.lit = lightAt(0, 120, Z_FAR) * 1.5;
+      // A glazed end (round 33, the LookOut): the opening is a window wall, mullion every `pitch`.
+      if (vista.pitch) {
+        for (let mx = vx0 + vista.pitch; mx < vx1 - 4; mx += vista.pitch) {
+          const mq = add(C, [[mx - 3.5, vista.y0, Z_FAR - 1], [mx + 3.5, vista.y0, Z_FAR - 1],
+                             [mx + 3.5, vista.y1, Z_FAR - 1], [mx - 3.5, vista.y1, Z_FAR - 1]], ZERO8, "flat", "#1b2029");
+          if (mq) { mq.lit = lightAt(mx, 150, Z_FAR) * 0.7; mq.air = 0.05; }
+        }
+        const pane = add(C, [[vx0, vista.y0, Z_FAR - 0.5], [vx1, vista.y0, Z_FAR - 0.5],
+                             [vx1, vista.y1, Z_FAR - 0.5], [vx0, vista.y1, Z_FAR - 0.5]], ZERO8, "flat", "rgba(150,175,205,0.07)");
+        if (pane) { pane.air = 0; pane.day = false; pane.nolite = true; }
+      }
     } else {
       wallPiece(-WALL, 0, WALL, CEIL, lightAt(0, 210, Z_FAR));
     }
+    const drawSee = (C, sc, px) => {
+      const from = Math.max(sc.z0, Z_BACK), to = Math.min(sc.z1, Z_FAR);
+      const mk = (pts, colour, lit, air) => {
+        const q = add(C, pts, ZERO8, "flat", colour);
+        if (q) { q.lit = lit; q.air = air; q.wall = sc.side; q.za = pts[0][2]; q.zb = pts[1][2]; }
+        return q;
+      };
+      if (sc.kind === "glazing") {
+        const pitch = sc.pitch || 161, mw = sc.mw || 7;
+        for (let z = from; z < to; z += pitch) {
+          const z1 = Math.min(z + pitch, to);
+          // The pane: almost nothing. A window as bright as the room it looks out of is a mirror.
+          const pane = mk([[px, sc.y0, z], [px, sc.y0, z1], [px, sc.y1, z1], [px, sc.y1, z]],
+                          sc.tint || "rgba(150,175,205,0.07)", 0, 0);
+          if (pane) { pane.day = false; pane.nolite = true; }
+        }
+        for (let m = Math.ceil(from / pitch) * pitch; m <= to; m += pitch) {
+          const q = mk([[px, sc.y0, m - mw / 2], [px, sc.y0, m + mw / 2], [px, sc.y1, m + mw / 2], [px, sc.y1, m - mw / 2]],
+                       sc.frame || "#1b2029", lightAt(px, (sc.y0 + sc.y1) / 2, m) * 0.7, 0.05);
+          if (q) q.sz = q.z - 2;          // the frame in front of the pane it holds
+        }
+        return;
+      }
+      // railing: rails in 3 m pieces (a flat colour needs no 60 cm panel); iron bars near the eye,
+      // and a thin screen of their density further off, where a bar is less than a pixel anyway.
+      const top = sc.y1, low = sc.y0, bar = sc.bar || 2.4, gap = sc.gap || 14;
+      const iron = sc.frame || "#202228", PIECE = 300;
+      const mid = low + (top - low) * 0.32;
+      for (let z = from; z < to; z += PIECE) {
+        const z1 = Math.min(z + PIECE, to), zc = (z + z1) / 2;
+        const lit = lightAt(px, top, zc) * 0.8;
+        mk([[px, top - 7, z], [px, top - 7, z1], [px, top, z1], [px, top, z]], iron, lit, 0.06);
+        mk([[px, low, z], [px, low, z1], [px, low + 5, z1], [px, low + 5, z]], iron, lit, 0.06);
+        mk([[px, mid, z], [px, mid, z1], [px, mid + 4, z1], [px, mid + 4, z]], iron, lit, 0.06);
+        const near = Math.abs(zc - C.z) < 700;
+        if (!near) {
+          const s = mk([[px, low, z], [px, low, z1], [px, top, z1], [px, top, z]], "rgba(32,34,40,0.30)", 0, 0.06);
+          if (s) s.day = false;
+          continue;
+        }
+        for (let b = z + gap / 2; b < z1; b += gap) {
+          mk([[px, low, b - bar / 2], [px, low, b + bar / 2], [px, top, b + bar / 2], [px, top, b - bar / 2]],
+             iron, lit, 0.06);
+        }
+      }
+    };
     /* Cladding, panel by panel.
 
        A band of shutter is drawn as the same 60 cm slices as the wall behind it, because an affine
@@ -2898,6 +3225,12 @@ function leaveOverlay(root, trigger) {
        and nothing to polygon-offset. */
     surfaces.forEach((sc) => {
       const px = sc.side * (WALL - 2);
+      /* Round 33: a band can be air, glass or a railing. `open` paints nothing -- the wall is not
+         there, and the world beyond is drawn by the backdrop. `glazing` is a window wall: a mullion
+         every `pitch` cm and a faint pane, so the city or the gorge behind it is the view and not a
+         tile standing in for one. `railing` is iron bars and rails with air between them. */
+      if (sc.kind === "open") return;
+      if (sc.kind === "glazing" || sc.kind === "railing") { drawSee(C, sc, px); return; }
       const from = Math.max(sc.z0, Z_BACK), to = Math.min(sc.z1, Z_FAR);
       const pat = PATS[sc.kind] || tilePat;
       for (let z = Math.floor(from / SEG) * SEG; z < to; z += SEG) {
@@ -2920,6 +3253,7 @@ function leaveOverlay(root, trigger) {
                     * (sc.kind === "shutter" ? 1.12 : 1) * (sc.tone === undefined ? 1 : sc.tone);
             // A shutter is metal and catches the light; plywood and brick mostly do not.
             if (sc.kind === "hoarding") q.lit *= 0.86;
+            if (UNDER) q.nolite = true;
             /* Authored shade, the stand-in for a cast-shadow pass: the sun stands to the left, so
                the left wall face is turned away from it and takes a third of the lift, while the
                right face takes all of it. A street whose two walls share one noon has no sun
@@ -2975,14 +3309,16 @@ function leaveOverlay(root, trigger) {
        it has at eye height is the one thing no alley wall does. It is one extra quad and it is what
        turns the frame behind you at the entrance from a pale rectangle into a wall. */
     const PLINTH = 92;
+    if (!OPEN_BACK) {
     const back = add(C, [[WALL, PLINTH, Z_BACK], [-WALL, PLINTH, Z_BACK], [-WALL, CEIL, Z_BACK], [WALL, CEIL, Z_BACK]],
         [WALL * DPM, -PLINTH * DPM, -WALL * DPM, -PLINTH * DPM,
-         -WALL * DPM, -CEIL * DPM, WALL * DPM, -CEIL * DPM], "pat", tilePat);
+         -WALL * DPM, -CEIL * DPM, WALL * DPM, -CEIL * DPM], "pat", (WALLMAT && PATS[WALLMAT]) || tilePat);
     if (back) back.lit = lightAt(0, 210, Z_BACK);
     const plinth = add(C, [[WALL, 0, Z_BACK], [-WALL, 0, Z_BACK], [-WALL, PLINTH, Z_BACK], [WALL, PLINTH, Z_BACK]],
         [WALL * DPM, 0, -WALL * DPM, 0, -WALL * DPM, -PLINTH * DPM, WALL * DPM, -PLINTH * DPM],
-        "pat", concretePat);
+        "pat", (WALLMAT && PATS[WALLMAT]) || concretePat);
     if (plinth) plinth.lit = lightAt(0, 30, Z_BACK) * 1.25;
+    }
 
     beams.forEach((bz) => {          // so the ceiling has a rhythm, and the lane reads as a podium
       const y = CEIL - 26, half = 11;
@@ -3000,7 +3336,7 @@ function leaveOverlay(root, trigger) {
       return f.p.flatMap((p) => [u(p) * DPM, -v(p) * DPM]);
     };
     // Which material tile a boxy prop is made of; absent here, a face keeps its flat tint.
-    const MATS = { crate: "wood", planter: "terrain", bench: "wood" };
+    const MATS = { crate: "wood", planter: "terrain", bench: "wood", parapet: "stonewall", deckwall: "concrete" };
     meta.forEach((m) => {
       const hw = m.w / 2;
       const onSide = Math.abs(m.ry) > 45;
@@ -3079,7 +3415,7 @@ function leaveOverlay(root, trigger) {
         const along = Math.abs(m.ry) > 45;
         const dir = along ? (m.x < 0 ? 1 : -1) : (m.z < 0 ? -1 : 1);
         const half = m.w / 2, ins = Math.max(m.d, 10), ajar = S && S.door ? S.door : 0;
-        const lift = kind === "lift";
+        const lift = kind === "lift" || m.lift;
         const P = (u, v, y) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
         const Q = (pts, col, l, air) => {
           const q = add(C, pts, ZERO8, "flat", col);
@@ -3701,6 +4037,23 @@ function leaveOverlay(root, trigger) {
                           [m.x + m.w / 2, m.y + 1, m.z + m.d / 2], [m.x - m.w / 2, m.y + 1, m.z + m.d / 2]],
                       ZERO8, "flat", base);
         if (q) { q.lit = lit * 0.5; drawn.push(q); }
+      } else if (shape === "portal") {
+        /* A tunnel's mouth in a side wall (round 33, Journey's branch to the portals): the opening
+           is air -- the wall's `open` band -- and this paints its concrete reveal, two jambs with
+           their returns and a head, so the press box is the opening you can see. */
+        const side = m.x > 0 ? 1 : -1, px = side * (WALL - 1), hw = m.w / 2, dep = m.d;
+        const col = mix(base, -0.05), ret = mix(base, -0.3);
+        [[m.z - hw - 14, m.z - hw, m.z - hw], [m.z + hw, m.z + hw + 14, m.z + hw]].forEach(([z0, z1, zr]) => {
+          const q = add(C, [[px, 0, z0], [px, 0, z1], [px, m.h, z1], [px, m.h, z0]], ZERO8, "flat", col);
+          if (q) { q.lit = lit; drawn.push(q); }
+          const r = add(C, [[px, 0, zr], [px + side * dep, 0, zr], [px + side * dep, m.h, zr], [px, m.h, zr]],
+                        ZERO8, "flat", ret);
+          if (r) { r.lit = lit * 0.8; drawn.push(r); }
+        });
+        const head = add(C, [[px, m.h, m.z - hw - 14], [px, m.h, m.z + hw + 14],
+                             [px, m.h + 12, m.z + hw + 14], [px, m.h + 12, m.z - hw - 14]], ZERO8, "flat", col);
+        if (head) { head.lit = lit; drawn.push(head); }
+        if (UNDER) drawn.forEach((q) => { q.nolite = true; });
       } else if (shape === "glassfloor") {
         /* A square of floor that is a window straight down: the city 342 m below rides the deep
            aerial tile behind a steel rim. The glass takes no wash from the room's lamps — its light
@@ -3709,12 +4062,27 @@ function leaveOverlay(root, trigger) {
            over it you look through the glass, not at it — standing on it is the moment. */
         const on = S && S.on ? S.on : 0;
         const hw = m.w / 2, hd = m.d / 2;
-        const q = add(C, [[m.x - hw, m.y + 1, m.z - hd], [m.x + hw, m.y + 1, m.z - hd],
-                          [m.x + hw, m.y + 1, m.z + hd], [m.x - hw, m.y + 1, m.z + hd]],
-            [(m.z - hd) * 0.6, (m.x - hw) * 0.6, (m.z - hd) * 0.6, (m.x + hw) * 0.6,
-             (m.z + hd) * 0.6, (m.x + hw) * 0.6, (m.z + hd) * 0.6, (m.x - hw) * 0.6],
-            "pat", PATS.aerialdeep);
-        if (q) { q.lit = 0.5; drawn.push(q); }
+        /* Round 33: on a page with a surveyed world the floor under the glass is a hole (see
+           `holes` in the room loop) and the city really is down there -- the panel is then its
+           steel frame and a faint pane, the units' joints between them. Without a world the
+           old deep tile stands in, as it did. */
+        if (bd && bd.world) {
+          const pane = add(C, [[m.x - hw, m.y + 1, m.z - hd], [m.x + hw, m.y + 1, m.z - hd],
+                               [m.x + hw, m.y + 1, m.z + hd], [m.x - hw, m.y + 1, m.z + hd]],
+                           ZERO8, "flat", `rgba(170,195,225,${on ? 0.05 : 0.09})`);
+          if (pane) { pane.air = 0; pane.day = false; pane.nolite = true; drawn.push(pane); }
+          const n = Math.max(1, Math.round(m.w / 160));
+          for (let k = 1; k < n; k++) {
+            const jx = m.x - hw + (k * m.w) / n;
+            const j = add(C, [[jx - 3, m.y + 2, m.z - hd], [jx + 3, m.y + 2, m.z - hd],
+                              [jx + 3, m.y + 2, m.z + hd], [jx - 3, m.y + 2, m.z + hd]], ZERO8, "flat", "#2a3142");
+            if (j) { j.lit = lit; drawn.push(j); }
+          }
+        } else {
+          const q = add(C, [[m.x - hw, m.y + 1, m.z - hd], [m.x + hw, m.y + 1, m.z - hd],
+                            [m.x + hw, m.y + 1, m.z + hd], [m.x - hw, m.y + 1, m.z + hd]], ZERO8, "flat", "#101826");
+          if (q) { q.lit = 0.5; drawn.push(q); }
+        }
         [[m.z - hd - 5, m.z - hd], [m.z + hd, m.z + hd + 5]].forEach(([z0, z1]) => {
           const r = add(C, [[m.x - hw - 5, m.y, z0], [m.x + hw + 5, m.y, z0],
                             [m.x + hw + 5, m.y + 3, z1], [m.x - hw - 5, m.y + 3, z1]],
@@ -5312,9 +5680,13 @@ function leaveOverlay(root, trigger) {
       // A wall of height H throws a shadow H / tan(altitude) long, scaled by how much the sun is
       // across the lane rather than up it; the side is the azimuth's side. Long at the edges of
       // the day, a sliver at noon, gone when the sun is up the lane.
-      const len = Math.min(WALL * 1.6, (620 / Math.tan(sunAlt())) * k);
+      const sgn0 = az < 0 ? -1 : 1;
+      // A side that is open air (round 33: a promenade's railing, a terrace) has no wall to throw
+      // this shadow; its posts and lamps throw their own.
+      const wallThere = !surfaces.some((sc) => sc.side === sgn0 && sc.kind === "open");
+      const len = wallThere ? Math.min(WALL * 1.6, (620 / Math.tan(sunAlt())) * k) : 0;
       if (len > 6) {
-        const sgn = az < 0 ? -1 : 1;                 // the wall the shadow comes from
+        const sgn = sgn0;                            // the wall the shadow comes from
         const x0 = sgn * (WALL - 4), x1 = sgn * (WALL - 4) - sgn * len;
         const x2 = x1 - sgn * len * 0.45;
         ground([[x1, 2, Z_FAR], [x0, 2, Z_FAR], [x0, 2, Z_BACK], [x1, 2, Z_BACK]],
@@ -5757,7 +6129,7 @@ function leaveOverlay(root, trigger) {
   /* --- input: every verb has both a key and a finger --- */
   const drawerClose = layer.querySelector("[data-walk-list-close]");
   if (drawerClose) drawerClose.addEventListener("click", () => toggleList(false));
-  stops.forEach((el, i) => el.addEventListener("click", () => { glideTo(stopZ[i]); }));
+  stops.forEach((el, i) => el.addEventListener("click", () => { glideTo(stopZ[i], stopX[i]); }));
   Array.from(layer.querySelectorAll("[data-walk-to]")).forEach((btn) => btn.addEventListener("click", () => {
     glideTo(parseFloat(btn.getAttribute("data-walk-to")) || 0);
     toggleList(false);

@@ -2,6 +2,127 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-15 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0o. 第三十三輪（2026-10-15）：「其他的多倫多的做好了嗎？」——CN Tower／Niagara／Journey 三個子空間照真實重建
+
+**站主原話**：「其他的多倫多的做好了嗎？」。解讀（回報時講明）：多倫多擁有的三個子空間——CN Tower
+（`rooms-cntower`）、Niagara Falls（`rooms-niagara`）、Journey Behind the Falls（`rooms-journey`，屬 Table Rock）。
+第 32 輪只重做三個主房間；這三個子空間第 21–27 輪雖有測量表，**畫出來的環境卻不是真的**。如實回答：「之前沒有，
+這輪照來源重建了」。
+
+### 改之前查到的「亂做」（HEAD `cf4dbbf`；改前每站截圖 `.preview/r33-before-{cntower,niagara,journey}/`）
+- **CN Tower**：窗外是一張 `aerial` 貼圖當牆（scene-system 的 "City as cladding"）＋通用 `citybelow` painter——
+  一塊貼 `aerialdeep` 的平面，**放在眼睛下方 9 m**（實際 346 m）、只鋪到 1.2 km，900 m 外一條暗帶當湖；
+  沒有任何一棟大樓，湖、島、機場都不是資料畫的；`ledge-cn` 無來源。
+- **Niagara**：兩側牆是 `hedge`（綠籬）＋`mistview`（霧當牆）＋`dado`（磚）；瀑布是大廳桌上模型放大當 prop
+  （`falls-ng`／`falls-am`）；長椅、兩個花台（`planter-go/lu`）無來源。實際 Table Rock 前是石柱＋鐵欄杆（Getty 2026），
+  另一側是 Table Rock Centre。
+- **Journey**：隧道牆是 `rock`（裸岩）——實際 1944 年起是混凝土襯砌拱頂（grokipedia；Niagara Parks 照片）；
+  瀑布是 `falls-jb` prop。
+- **文件錯誤**：`grounded-scene` §2 範例表寫「Rogers Centre｜塔基東北」，本檔 §0b 也寫「Rogers Centre＋鐵道 NE 腳下」——
+  OSM：Rogers Centre 在塔的**西南西約 190 m**。第 32 輪大廳模型放錯邊很可能就是從這個範例抄來的。兩處都已更正。
+
+### 來源（抓來的頁不會留，結論在這裡與 `_gen_html.py` world block 的註解）
+- **OSM**（Nominatim `polygon_geojson`＋`node/{id}/ways.json`；Overpass 502、大 bbox 無用——如實記錄）：
+  Niagara——Recreation Trail way 1319958255（lit、paving_stones；原點 node 26235703）、Horseshoe 56539663、
+  American 217355188、Bridal Veil 515298933、Goat 3743454、Luna 37356202、Table Rock Centre 420548287、
+  Skylon 241004747、Rainbow Bridge 162149070。Toronto——CN Tower way 32742038、Rogers Centre 7969701、
+  Toronto Islands relation 10705563、Billy Bishop 85471、Tommy Thompson 189780702、Union 14744491、Queens Quay W 五段。
+- **Wikipedia「List of tallest buildings in Toronto」（2026）**：塔 4 km 內 214 m 以上 23 棟（座標＋高度）；infobox：
+  全市 100 m 以上 405 棟、150 m 以上 111 棟、200 m 以上 34 棟。
+- **CN Tower**：DCN 2017（LookOut 12 bays×7 sections、玻璃 1.61×2.62 m）；CNN（Glass Floor 1994、LookOut 2017 翻修）；
+  torontocntowertour（SkyPod 446.5、EdgeWalk 356、360 餐廳 351、LookOut 346、Glass Floor 342 m）；EBSCO（6 部電梯、58 s）。
+- **Journey**：falzguy（電梯 38 m、隧道 56 m 到平台、約 18 m 處向東南分岔、Cataract 支線 61 m、Great Falls 再 49 m）；
+  grokipedia（2.4×2 m、1944 混凝土襯砌、下平台 1951）；visitniagarafalls（隧道盡頭 Great Falls Portal、上下兩層平台）。
+- **照片（只當參考，不出貨）**：Getty 2026（Table Rock 鐵欄杆＋石柱）、dailyhive／CBC（LookOut 窗、暗色 soffit、
+  吸音天花、地毯）、Niagara Parks（混凝土拱頂、籠燈）、Reddit（平台混凝土柱、管欄杆）、r/skyscrapers OC
+  （LookOut 夜景，同 Rec. 709 公式量得平均 luma 37.0——拿來校 lane-shot，見下）。
+
+### 測量表（摘要；完整數字在 record 與 world block 註解）
+| 項目 | 值 | 方位 | 階梯 |
+|---|---|---|---|
+| Niagara lane | Recreation Trail 最後 43 m，向南走到 Table Rock 欄杆 | S | 3（OSM way） |
+| 左手（峽谷側） | 石柱每 3 m、鐵欄杆 24–108 cm | E | 4（照片） |
+| 右手 | Table Rock Centre（石基、玻璃、簷，高約 10 m） | W | 3＋4 |
+| 瀑布世界 | Horseshoe 頂線、American＋崖錐、Bridal Veil、Goat／Luna、峽谷、河、Rainbow Bridge、Skylon 160 m | — | 3 |
+| Journey 隧道 | 寬 2.4 m、長 56 m、混凝土拱頂、籠燈 | — | 2＋4 |
+| 分岔 | 18 m 處、40°、Cataract 61 m、Great Falls 110 m | SE | 2（畫成直線：路線未測） |
+| LookOut | 346 m；43 m 環上一段 18.6 m 的弦，面向 NE | NE | 2＋3 |
+| 窗 | 竪框間距 161 cm、玻璃落地、暗色 soffit 262–330 cm | SE、NE | 2＋4 |
+| Glass Floor | 24 m²、342 m，真的開洞看到下方城市 | 下 | 2 |
+| 城市 | 地面 −346 m 分環到 43.2 km；湖、群島、半島、機場跑道燈（約略）；23 棟大樓；Rogers Centre 86 m | — | 3 |
+| 大樓窗格 | 一層 4.0 m（辦公佔地）／3.2 m（住宅佔地） | — | 典型值（非逐棟） |
+
+### 範圍表（in-frame／drawer／off-frame）
+- **CN Tower**：in-frame＝核心牆＋電梯門、吸音天花、地毯、落地窗＋竪框、soffit、Glass Floor（真洞）、SkyPod 電梯；
+  窗外：湖、群島、Tommy Thompson 半島、Billy Bishop 跑道燈、23 棟大樓（亮窗）、城市燈、夜空。drawer（畫了、這段弦看不到）：
+  Rogers Centre（西南西，在核心另一側）。off-frame（理由）：150–214 m 的約 88 棟、100–150 m 的約 300 棟（本輪未轉錄座標）；
+  EdgeWalk（356 m 的外環，不在 LookOut 內）；360 餐廳（另一層）；人；文字。
+- **Niagara**：in-frame＝鋪面、石柱鐵欄杆、Table Rock Centre、燈柱、Horseshoe、American、Bridal Veil、Goat／Luna、峽谷、
+  河、Rainbow Bridge、Skylon、霧、彩虹、夜間點燈、煙火。off-frame：美方岸上建物細節、遊船、人。
+- **Journey**：in-frame＝混凝土拱頂隧道、分岔（燈、兩個 portal 的光）、平台（混凝土柱、牆、管欄杆、頂板）、崖面、瀑布、
+  霧、彩虹。off-frame：portal 內部（不可走入）、雨衣人群。
+
+### 做法（renderer＋record）
+- `_gen_html.py` 新增 world block：`LaneFrame`（經緯度→lane 公分）、`clip_rect`／`dp_simplify`／`resample`、
+  `grid_hprims`（大地面切格，避免近平面破圖）、`world_extrude`；三個 builder `niagara_world`／`toronto_world`／`journey_world`。
+- `js/site.js`：`bd.world` prims（`f` 平面、`x` 貼圖（`u` 公分一格）、`w` 水幕、`m` 霧、`l` 燈點、`rb` 彩虹、`fw` 煙火）；
+  lane 外殼屬性 `lid`／`vault`／`open`／`open-back`／`open-end`／`under`／`wallmat`；cladding 新種類 `open`／`glazing`／`railing`；
+  `skyAround` 全向天空；`data-lane-night`（把時鐘停在夜裡的某一刻）。
+- 物件：Niagara `door-journey`、`door-back`、`lamp-ng1/2`、`parapet-ng`；Journey `portal-jb`、`deckwall-jb`、`door-back`；
+  CN Tower `lift-cn`、`glassfloor-cn`、`lift-skypod`、`door-back`。
+
+### critique 抓到並修掉（每條都有證據，scratch 在 `.preview/`）
+1. **地面破洞**：CN Tower 第 6 格出現一塊淡色多邊形＝天空從地面透出。flat-fill 對照補得起來→是 pattern fill；
+   `shot1dbg` 探針找到 1.4 km 外一個五角細長地格，填色沒蓋滿自己的 clip。改成「clip 角點經反仿射回 uv 的 bbox＋2 px」
+   ＋穩健三角形（`affine()`），一個 quad 仍只有一次 fill（`c6fix-1.png`）。
+2. **遠環漏洞**：分環時以「格中心在內環內」跳過→21.6–28 km 一圈天空露在地平線下。改成「整格在內環內才跳過」，
+   新環 600／1800／5400／10800 m，`cov2.py` 232 格 0 洞。
+3. **FLATOF 錯**：`cityn` 的後備色是未點燈的底色（#151a26），實測貼圖平均 #363136；`win` 同理 #263149。
+4. **霧變黑煙**：霧圈各自吃一次 haze／夜色 overlay，蓋住背後天空——五圈疊起來天空少三分之一。夜色改烤進顏色、霧圈不上 overlay。
+5. **城市燈 moiré**：燈位 `(i*83)%128` 是隱藏晶格，遠看成波紋→種子亂數散佈（同數量、同顏色）。
+6. **樓層數變兩倍**：窗格貼圖一格 8 層卻設 12.8 m（一層 1.6 m）→辦公 4.0 m／住宅 3.2 m。
+7. **隧道裡畫整個峽谷**：Journey 從隧道內，整個瀑布世界在牆後被畫再被蓋掉，fills ×2.6（入口一格 2549 vs 舊 963）。
+   加 `apertures()`：封閉 lane 只畫從隧道口與側開口看得到的世界（入口 2549→1811、中段 1535→894、平台不變）；
+   背後改鋪 lane 自己的材質色，接縫不再露天空（原本地板出現亮線）。
+8. **NaN**：`skyAround` 在第一次 resize 前除以 focal 0，cost-probe `bad 8`→加 guard，三頁 bad 0。
+9. **室內燈跟大廳時鐘走**：非 day 頁的 `lightAt` 跟 240 s 循環，窗外固定夜、室內卻「中午」變亮（stop 134→94）→
+   `"night": 0.92`（`data-lane-night`），室內固定夜間燈光（第一站 t=5 與 t=120 都是 110.2）。
+10. **分岔是平灰色**：改用主隧道同一張混凝土貼圖（64 cm 一格）。
+
+### 閘門改了什麼（為什麼不是放寬）
+- `lane-shot`：「從高處看夜晚城市」的窗（頁面有 world＋`skyAround`、沒有自己的 day）戶外 luma 下限 50→35。依據：
+  同一公式量一張 LookOut 實拍夜景 37.0——50 等於要求房間比真實地點還亮；崩壞的夜幀（只剩底板）約 30；
+  **色數下限 30 沒動**（崩壞靠它抓）。沒有為了數字調亮城市或天空。
+- `verify-rooms-e2e`：Journey 走到平台改成「走到 clamp 不再前進」（隧道變成真的 56 m，固定 600 幀只走到 17.5 m）；
+  S 測試也走回到底（原本走一半就判過）。
+- `verify-story`：`falls-jb` → 平台 `deckwall-jb`＋world 裡確實有水幕（瀑布現在是世界，不是 prop）。
+- `verify-walk`：lid 相關 regex（新外殼屬性）。
+
+### 驗證（全部在最終程式碼上重跑）
+- 靜態：`node --check`（site.js 與四支閘門）、`py_compile`、`git diff --check` OK；產生器冪等（md5 連跑兩次相同）；
+  impeccable `[]`。
+- shapes：92 個 prop 全解析；geometry OK；clash OK。walk 163/163（東京 fills 8317 < 8600，沒動天花板）；
+  objects exit 0；chain 96 PASS／0 failure；e2e 72 PASS／0 failure；story 25/25。
+- cost-probe（量測、非閘門）：東京 peak 8317、bad 0、huge 0；三個子頁 bad 8→0（NaN 修掉）。單幀 fills（`shotcount`）：
+  Journey 入口 2549→1811、中段 1535→894（apertures）、平台 597；CN Tower 604／354；Niagara 1775／1317；
+  對照 HEAD 的 Journey 入口 963（舊場景短很多，只是參考）。
+- lane-shot（真光柵，每站三個方向＋回頭，**每格都看過**）：CN Tower 7/7（112.7／86.7／86.7／86.3／48.2，回頭 87.5；
+  室內固定夜間後各站一致）；Niagara 6/6（181.6／179.6／180.7／165.0，回頭 95.2）；Journey 6/6（110.0／105.7／149.6／
+  151.8，回頭 101.3）。
+- 證據：改前 `.preview/r33-before-{cntower,niagara,journey}/`；改後 `.preview/r33-cntower-v6/`、`r33-niagara-v4/`、
+  `r33-journey-v4/`；A/B：`mist-ab.png`、`nmist-ab.png`（霧）、`jcull-diff.png`（接縫）、`c6fix-1.png`（地面破洞）；
+  夜景參考 `ref-night.png`（gitignored，不出貨）。
+
+### 沒做到／要知道的
+- **CN Tower 窗外只有 23 棟**（4 km 內 ≥214 m）；真實是一整片燈牆（全市 150 m 以上 111 棟、100 m 以上 405 棟）。
+  下一步可把 Wikipedia 表 150–214 m 那段（約 9 個 chunk）轉錄進來——要不要做待站主決定。
+- 地面是平的；城市燈是貼圖，不是真實街道；Niagara 鋪面在斜視角仍有輕微 moiré。
+- 近似值：LookOut 弦拉直、寬 5.6 m、大樓佔地（40／30 m）、Glass Floor 形狀、Sugar Beach 以東岸線、跑道燈位置；
+  Niagara 峽谷北段崖線、崖面／崖錐分界、水幕 24 m 拋距、島上樹高 14 m、Table Rock Centre 高 10 m、燈柱位置、Skylon 底座；
+  Journey 隧道方位、平台位置、分岔畫成直線。
+- 故事圖（例如 `IMG/niagara-2.jpg`、CN Tower 的三格）**沒有重做**，仍是舊的生成圖。
+- `browser-check.py` 未跑（Playwright 的 Chromium CDN 連不到，同第 32 輪）。
+
 ## 0n. 第三十二輪（2026-10-15）：剩下的房間全部改成「照真實做」——淺草仲見世、門司港照地圖、多倫多照地理
 
 **站主原話**：「你剩下那些rooms裡面環境與物件都要真實做出來不是亂做」。CN Tower／Niagara／Journey 在
@@ -416,7 +537,7 @@ Table Rock 視點、馬蹄弧、霧與虹）。District＝promenade lane：西�
 - **§5 忠誠 gate**：每視線追到表、每表行引階梯；critique pass 對照真全景；辨識測試（去過的人
   看 lane-shot 說「這不是那裡」就 fail）；source 與 build 衝突時 build 錯。
 - **§6 CN Tower 修正版**：§7 beats 留作順序，但全部 grounded——LookOut facings 用真方位
-  （大略：湖 S、Rogers Centre＋鐵道 NE 腳下、downtown N/E）、glass floor 真廣場 342 m 下、
+  （大略：湖 S、Rogers Centre＋鐵道 NE 腳下、downtown N/E）〔**第 33 輪更正**：OSM 顯示 Rogers Centre 在塔的西南西約 190 m，不在東北；北側腳下是鐵道走廊，downtown 在 N/NE。〕、glass floor 真廣場 342 m 下、
   電梯真 58 s 運動壓縮時間、SkyPod 保留真差異。沒有任何真樓層被刪。
 
 **同 commit**：`landmark-space` §7 加 round-20 correction 段＋§1 pointer；AGENTS.md 表格第七行

@@ -3,6 +3,7 @@ import hashlib
 import re
 import subprocess
 import json
+import math
 from fnmatch import fnmatch
 from pathlib import Path
 from html import escape
@@ -1904,6 +1905,10 @@ OBJ_SIZE = {
     "ac": (86, 30, 36), "crate": (62, 46, 52), "bin": (68, 86, 68),
     "pipe": (16, 300, 16), "awning": (170, 12, 110), "sign": (120, 40, 10),
     "ledge": (430, 12, 60),
+    # Round 33: a stone post of the Table Rock parapet, the Journey deck's concrete parapet, a
+    # tunnel mouth's reveal, and a lamp post on the trail (each sized per prop in its record).
+    "parapet": (60, 120, 60), "deckwall": (600, 105, 30), "portal": (240, 175, 30),
+    "lamp": (14, 420, 14),
     "glassfloor": (220, 4, 180),
     # Nakamise (round 32): one bay of the 1925 shop rows (width set per bay), and Kaminarimon.
     "shopbay": (470, 480, 150), "gate": (910, 700, 60),
@@ -1927,6 +1932,7 @@ WALK_SOLID_KINDS = frozenset({
     "bank", "bench", "bikes", "bin", "bollard", "booth", "cones", "crate",
     "hydrant", "ladder", "mailbox", "meter", "pipe", "planter", "plinth", "pole",
     "rack", "recycle", "shrine", "sign", "signA", "stall", "tree", "utility", "vending", "shopbay",
+    "parapet", "deckwall", "lamp",
 })
 
 EYE = 168                    # the eye is 1.68 m above the floor; 1 px = 1 cm throughout
@@ -2071,6 +2077,745 @@ MOJI_STRAIT = {
     "ships": [{"from": [1364, 4400], "to": [-4200, 4700], "len": 225, "period": 80, "phase": 0.0},
               {"from": [-4200, 5000], "to": [1300, 4700], "len": 170, "period": 110, "phase": 0.5}],
 }
+
+
+# ---- Surveyed worlds (round 33) ------------------------------------------------------------------
+# The three Toronto-owned child spaces were walked in round 33 against the standard round 32 set
+# ("real, sourced, not made up") and failed it: the LookOut's glass wore a generic aerial tile on both
+# hands, the falls were the hall's table model stood large and mirrored, the tunnel had a daylight
+# sky for a roof. What replaces them is geometry, not art direction: OpenStreetMap coordinates and the
+# sourced heights below, turned into scene centimetres here and drawn by `drawWorld` in js/site.js,
+# which invents nothing. Every list says where it came from; TODO section 0o has the sources.
+
+def ll_m(lat, lon, lat0, lon0):
+    """Metres east and north of (lat0, lon0) on the local tangent plane (WGS84 series)."""
+    phi = math.radians(lat0)
+    k_lat = 111132.954 - 559.822 * math.cos(2 * phi) + 1.175 * math.cos(4 * phi)
+    k_lon = 111412.84 * math.cos(phi) - 93.5 * math.cos(3 * phi)
+    return ((lon - lon0) * k_lon, (lat - lat0) * k_lat)
+
+
+def dp_simplify(pts, tol):
+    """Douglas-Peucker on a 2D polyline in metres: OSM's survey detail kept to `tol` metres."""
+    if len(pts) < 3:
+        return list(pts)
+    (ax, ay), (bx, by) = pts[0], pts[-1]
+    dx, dy = bx - ax, by - ay
+    L = math.hypot(dx, dy) or 1e-9
+    far, idx = -1.0, 0
+    for i in range(1, len(pts) - 1):
+        px, py = pts[i]
+        d = abs(dy * px - dx * py + bx * ay - by * ax) / L
+        if d > far:
+            far, idx = d, i
+    if far <= tol:
+        return [pts[0], pts[-1]]
+    return dp_simplify(pts[:idx + 1], tol)[:-1] + dp_simplify(pts[idx:], tol)
+
+
+def resample(pts, n):
+    """A polyline as n+1 points evenly spaced along its length."""
+    seg = [math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]) for i in range(len(pts) - 1)]
+    total = sum(seg) or 1e-9
+    out, acc, i = [], 0.0, 0
+    for k in range(n + 1):
+        target = total * k / n
+        while i < len(seg) - 1 and acc + seg[i] < target:
+            acc += seg[i]
+            i += 1
+        t = 0.0 if seg[i] == 0 else min(1.0, max(0.0, (target - acc) / seg[i]))
+        out.append((pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t))
+    return out
+
+
+def left_normals(pts):
+    """Unit normals to the left of travel along a polyline (east/north metres)."""
+    out = []
+    for i in range(len(pts)):
+        a = pts[max(0, i - 1)]
+        b = pts[min(len(pts) - 1, i + 1)]
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(dx, dy) or 1e-9
+        out.append((-dy / L, dx / L))
+    return out
+
+
+def clip_rect(poly, x0, y0, x1, y1):
+    """Sutherland-Hodgman: a polygon clipped to an axis-aligned cell."""
+    def clip(pts, inside, cut):
+        out = []
+        for i in range(len(pts)):
+            p, q = pts[i], pts[(i + 1) % len(pts)]
+            pin, qin = inside(p), inside(q)
+            if pin:
+                out.append(p)
+            if pin != qin:
+                out.append(cut(p, q))
+        return out
+    def xcut(x):
+        return lambda p, q: (x, p[1] + (q[1] - p[1]) * (x - p[0]) / ((q[0] - p[0]) or 1e-9))
+    def ycut(y):
+        return lambda p, q: (p[0] + (q[0] - p[0]) * (y - p[1]) / ((q[1] - p[1]) or 1e-9), y)
+    pts = list(poly)
+    for inside, cut in ((lambda p: p[0] >= x0, xcut(x0)), (lambda p: p[0] <= x1, xcut(x1)),
+                        (lambda p: p[1] >= y0, ycut(y0)), (lambda p: p[1] <= y1, ycut(y1))):
+        if not pts:
+            break
+        pts = clip(pts, inside, cut)
+    return pts
+
+
+class LaneFrame:
+    """A place's metres (east, north, up) to a lane's scene centimetres: x right, y up, z ahead."""
+
+    def __init__(self, e0, n0, u0, heading):
+        self.e0, self.n0, self.u0 = e0, n0, u0
+        h = math.radians(heading)
+        self.s, self.c = math.sin(h), math.cos(h)
+
+    def cm(self, e, n, u):
+        de, dn = e - self.e0, n - self.n0
+        return [round((de * self.c - dn * self.s) * 100), round((u - self.u0) * 100),
+                round((de * self.s + dn * self.c) * 100)]
+
+    def dist(self, e, n):
+        return math.hypot(e - self.e0, n - self.n0)
+
+
+def _fn(fr, de, dn):
+    """A horizontal direction in the place's metres as a unit vector in the lane's x/z."""
+    x, z = de * fr.c - dn * fr.s, de * fr.s + dn * fr.c
+    L = math.hypot(x, z) or 1e-9
+    return [round(x / L, 3), round(z / L, 3)]
+
+
+def _prim(t, pts, **kw):
+    d = {"t": t, "p": pts}
+    d.update({k: v for k, v in kw.items() if v is not None})
+    return d
+
+
+def _hprim(t, fr, pts, elev, **kw):
+    """A horizontal polygon, stamped compactly: one height `h` and flat x/z pairs `q`."""
+    cms = [fr.cm(e, n, elev) for e, n in pts]
+    d = {"t": t, "h": cms[0][1], "q": [v for c in cms for v in (c[0], c[2])]}
+    d.update({k: v for k, v in kw.items() if v is not None})
+    return d
+
+
+def grid_hprims(fr, poly, elev, focus, rings=((25, 100), (100, 400), (400, 1600), (1600, 3200)), **kw):
+    """A horizontal polygon cut into square cells round `focus` (place metres), finer near it."""
+    out, inner = [], 0
+    fx, fy = focus
+    for size, reach in rings:
+        k = int(round(reach / size))
+        for i in range(-k, k):
+            for j in range(-k, k):
+                x0, y0 = fx + i * size, fy + j * size
+                cx, cy = x0 + size / 2 - fx, y0 + size / 2 - fy
+                if max(abs(cx), abs(cy)) < inner:
+                    continue
+                cell = clip_rect(poly, x0, y0, x0 + size, y0 + size)
+                if len(cell) >= 3:
+                    out.append(_hprim("f", fr, cell, elev, **kw))
+        inner = reach
+    return out
+
+
+def world_quads_between(fr, top, bot, u_top, u_bot, colour, air, step=1, out=None, **kw):
+    """Faces between two corresponding polylines at two heights (a cliff, a talus, a tree line).
+    Each faces outward, square to its own top edge -- toward `bot` across the floor, or, where the
+    two lie on one line, to the polyline's left ("L") or right ("R") -- and is not drawn from
+    behind. (The side test is exact only with the face's own normal: an offset that runs oblique to
+    the edge put a cliff's back in front of the eye 60 m along it.)"""
+    res = []
+    for i in range(0, len(top) - 1, step):
+        j = min(i + step, len(top) - 1)
+        ex, ey = top[j][0] - top[i][0], top[j][1] - top[i][1]
+        nx, ny = -ey, ex                                   # the edge's left
+        if out == "R" or (out is None and nx * (bot[i][0] + bot[j][0] - top[i][0] - top[j][0])
+                          + ny * (bot[i][1] + bot[j][1] - top[i][1] - top[j][1]) < 0):
+            nx, ny = -nx, -ny
+        res.append(_prim("f", [fr.cm(*top[i], u_top), fr.cm(*top[j], u_top),
+                               fr.cm(*bot[j], u_bot), fr.cm(*bot[i], u_bot)],
+                         c=colour, a=air, fn=_fn(fr, nx, ny), **kw))
+    return res
+
+
+def _outward(foot, a, b):
+    """The normal of edge a-b pointing away from the footprint's centroid."""
+    cx = sum(e for e, _ in foot) / len(foot)
+    cy = sum(n for _, n in foot) / len(foot)
+    de, dn = b[1] - a[1], -(b[0] - a[0])
+    mx, my = (a[0] + b[0]) / 2 - cx, (a[1] + b[1]) / 2 - cy
+    return (de, dn) if de * mx + dn * my >= 0 else (-de, -dn)
+
+
+def world_extrude(fr, foot, u0, u1, side, top, air, bands=None, **kw):
+    """A footprint stood up from u0 to u1: its faces (each facing out) and its roof. `bands` slices
+    the faces: [(u_a, u_b, colour), ...] -- a stone base under glass under a fascia."""
+    out = []
+    slices = bands or [(u0, u1, side)]
+    for i in range(len(foot)):
+        a, b = foot[i], foot[(i + 1) % len(foot)]
+        fn = _fn(fr, *_outward(foot, a, b))
+        for (ua, ub, col) in slices:
+            out.append(_prim("f", [fr.cm(*a, ua), fr.cm(*b, ua), fr.cm(*b, ub), fr.cm(*a, ub)],
+                             c=col, a=air, fn=fn, **kw))
+    out.append(_hprim("f", fr, foot, u1, c=top, a=air, **kw))
+    return out
+
+
+# ---- Niagara: Table Rock, the gorge and both falls (OpenStreetMap, read 2026-10-15) ---------------
+# Origin: the Niagara Recreation Trail at Table Rock Centre's north-east corner (OSM node 26235703;
+# the trail is way 1319958255, lit, paving stones). Heights are metres above the trail.
+NIA_O = (43.0791448, -79.0782451)
+NIA_RIVER = -58.5        # the lower river: the Horseshoe's sourced 57 m drop below a crest 1.5 m under the rail
+NIA_CREST = -1.5         # water at the Horseshoe's brink, just under the terrace rail
+NIA_AM_CREST = -1.0      # the American Falls' brink
+NIA_TALUS = -29.0        # top of the American Falls' boulders: a free fall inside the sourced 21-30 m
+NIA_GOAT_TREES = 14.0    # Goat Island's woods over the gorge (approximate canopy, not surveyed)
+
+
+def nia(lat, lon):
+    return ll_m(lat, lon, *NIA_O)
+
+
+# The Horseshoe Falls (OSM way 56539663): its brink, from Table Rock round to Terrapin Point.
+NIA_HS_CREST = [nia(la, lo) for la, lo in (
+    (43.0786657, -79.0784358), (43.0785841, -79.0781523), (43.0783098, -79.0779055),
+    (43.0778749, -79.0776641), (43.0775888, -79.0773208), (43.0773341, -79.076736),
+    (43.0771450, -79.0764078), (43.0771186, -79.0760548), (43.0768443, -79.0755022),
+    (43.0768247, -79.0750033), (43.0769031, -79.07466), (43.0770833, -79.0742738),
+    (43.0772596, -79.0741679), (43.0775927, -79.0739626), (43.0775966, -79.073673),
+    (43.0776162, -79.0732921), (43.0778043, -79.0731312), (43.0778709, -79.0734155),
+    (43.0779493, -79.0738178), (43.0783686, -79.0741289), (43.0787486, -79.0743113),
+    (43.0791052, -79.074365), (43.0792580, -79.0744562), (43.0795244, -79.0745527),
+    (43.0797595, -79.0744937), (43.0799284, -79.0744982), (43.0799669, -79.0746597))]
+# The American Falls (OSM way 217355188): the brink, from Luna Island north to Prospect Point.
+NIA_AM_CREST_L = dp_simplify([nia(la, lo) for la, lo in (
+    (43.0837240, -79.0704815), (43.0838811, -79.0705211), (43.0839594, -79.070277),
+    (43.0840750, -79.0702421), (43.0841671, -79.0699551), (43.0842689, -79.069762),
+    (43.0843963, -79.0696011), (43.0845040, -79.0695421), (43.0846411, -79.069475),
+    (43.0847920, -79.0693865), (43.0849585, -79.0693516), (43.0850741, -79.0693704),
+    (43.0852053, -79.0693355), (43.0853385, -79.0693865), (43.0854169, -79.069188),
+    (43.0854992, -79.0690378), (43.0855599, -79.0688688), (43.0856226, -79.0688195))], 2.0)
+# Bridal Veil Falls (OSM way 515298933): from Goat Island's corner to Luna Island.
+NIA_BV_CREST = [nia(la, lo) for la, lo in ((43.0835070, -79.0709736), (43.0834320, -79.0708507),
+                                           (43.0835194, -79.0706932))]
+# Goat Island (OSM way 3743454) and Luna Island (OSM way 37356202).
+NIA_GOAT = dp_simplify([nia(la, lo) for la, lo in (
+    (43.0802484, -79.0751326), (43.0801428, -79.0747088), (43.0799669, -79.0746597),
+    (43.0798238, -79.0738837), (43.0785824, -79.0717294), (43.0786262, -79.0708196),
+    (43.0784820, -79.0705879), (43.0784570, -79.0699184), (43.0789335, -79.066961),
+    (43.0788957, -79.0664331), (43.0784756, -79.0654037), (43.0784632, -79.0615671),
+    (43.0786450, -79.0607688), (43.0792093, -79.0603311), (43.0795227, -79.0603225),
+    (43.0798863, -79.0606744), (43.0810210, -79.0633438), (43.0816479, -79.0639102),
+    (43.0819802, -79.0645196), (43.0818423, -79.0661504), (43.0824441, -79.0672491),
+    (43.0824880, -79.0675924), (43.0822184, -79.0692232), (43.0822999, -79.0695579),
+    (43.0825318, -79.0700128), (43.0835070, -79.0709736), (43.0838688, -79.0710021),
+    (43.0839066, -79.0712829), (43.0838629, -79.0715685), (43.0835588, -79.0716929),
+    (43.0832641, -79.0721127), (43.0827732, -79.0722015), (43.0814258, -79.0734961),
+    (43.0808396, -79.0749791))], 1.5)
+NIA_GOAT_GORGE = [nia(la, lo) for la, lo in (       # the island's face on the lower river
+    (43.0802484, -79.0751326), (43.0808396, -79.0749791), (43.0814258, -79.0734961),
+    (43.0827732, -79.0722015), (43.0832641, -79.0721127), (43.0835588, -79.0716929),
+    (43.0838629, -79.0715685), (43.0839066, -79.0712829), (43.0838688, -79.0710021))]
+NIA_LUNA = dp_simplify([nia(la, lo) for la, lo in (
+    (43.0835194, -79.0706932), (43.0833272, -79.0704941), (43.0832443, -79.0703909),
+    (43.0831359, -79.070154), (43.0830346, -79.0700129), (43.0828823, -79.0699197),
+    (43.0829120, -79.0697394), (43.0830581, -79.0696044), (43.0832144, -79.069653),
+    (43.0833305, -79.0697787), (43.0833785, -79.0699867), (43.0834513, -79.0701287),
+    (43.0836143, -79.0702215), (43.0837367, -79.0704683), (43.0835366, -79.0706753))], 1.0)
+# The lower river's Canadian edge, north from the Horseshoe's foot (OSM way 1149263109).
+NIA_CA_WATER = [nia(la, lo) for la, lo in (
+    (43.0789579, -79.0779869), (43.0791396, -79.0777287), (43.0792626, -79.0775794),
+    (43.0805733, -79.0776599), (43.0811244, -79.0773907), (43.0817569, -79.077085),
+    (43.0822054, -79.0766206), (43.0837514, -79.0763519), (43.0842591, -79.0758867),
+    (43.0849917, -79.0752942), (43.0852344, -79.0748356), (43.0857741, -79.0739679),
+    (43.0865178, -79.0742049), (43.0870484, -79.0739055), (43.0870636, -79.0727019))]
+# The upper river's Canadian bank, south from the brink (same way, upstream).
+NIA_CA_UPPER = [nia(la, lo) for la, lo in (
+    (43.0785322, -79.0786434), (43.0772604, -79.0788802), (43.0764679, -79.0783282),
+    (43.0756860, -79.0782527), (43.0739517, -79.0766558), (43.0730072, -79.0749109),
+    (43.0713689, -79.0722391), (43.0706873, -79.0712619), (43.0702129, -79.069562),
+    (43.0698013, -79.0676319))]
+NIA_TRAIL = [nia(la, lo) for la, lo in (                 # the Recreation Trail, north to south
+    (43.0801663, -79.0783193), (43.0798741, -79.0783083), (43.0795756, -79.0782919),
+    (43.0791767, -79.0782410), (43.0791448, -79.0782451), (43.0788872, -79.0781453),
+    (43.0787518, -79.0783178), (43.0787002, -79.0785253), (43.0786750, -79.0785684))]
+# Table Rock Centre (OSM way 420548287), its footprint kept to two metres.
+NIA_TABLEROCK = dp_simplify([nia(la, lo) for la, lo in (
+    (43.0794969, -79.0798608), (43.0794258, -79.0797307), (43.0794073, -79.079375),
+    (43.0793951, -79.0793059), (43.0792962, -79.0793385), (43.0792720, -79.0792012),
+    (43.0791392, -79.0792451), (43.0791501, -79.0793068), (43.0787698, -79.0794324),
+    (43.0787569, -79.079359), (43.0789555, -79.0792934), (43.0789137, -79.0790562),
+    (43.0788339, -79.078974), (43.0787966, -79.0787621), (43.0788087, -79.0786949),
+    (43.0788634, -79.0786181), (43.0789136, -79.0785554), (43.0789699, -79.0785361),
+    (43.0790573, -79.078492), (43.0791027, -79.0783746), (43.0790975, -79.0783403),
+    (43.0791381, -79.0783288), (43.0791777, -79.0783484), (43.0792575, -79.0784037),
+    (43.0793161, -79.0785463), (43.0793215, -79.0785797), (43.0795537, -79.0785764),
+    (43.0795684, -79.0786673), (43.0796339, -79.0788406), (43.0796713, -79.0790682),
+    (43.0796348, -79.0791423), (43.0795119, -79.0791829), (43.0795234, -79.079248),
+    (43.0795078, -79.0796773), (43.0795455, -79.0798447))], 2.0)
+NIA_SKYLON = nia(43.0851385, -79.0796926)              # Skylon Tower (OSM way 241004747), 160 m
+NIA_RAINBOW = (nia(43.0915407, -79.0698017), nia(43.0901556, -79.0677042))   # OSM way 162149070
+NIA_PROSPECT = nia(43.0859538, -79.0700909)            # the American Falls' north corner
+NIA_US_RIM_N = nia(43.0886329, -79.0661756)            # the US rim at the bridge (OSM relation 14629795)
+
+
+def _ring_m(points, close=True):
+    return points + ([points[0]] if close else [])
+
+
+# Goat Island's shore on the upper river, from Terrapin Point east (the same OSM way, unsimplified).
+NIA_GOAT_SOUTH = [nia(la, lo) for la, lo in (
+    (43.0799669, -79.0746597), (43.0798238, -79.0738837), (43.0785824, -79.0717294),
+    (43.0786262, -79.0708196), (43.0784820, -79.0705879), (43.0784570, -79.0699184),
+    (43.0789335, -79.066961), (43.0788957, -79.0664331), (43.0784756, -79.0654037),
+    (43.0784632, -79.0615671), (43.0786450, -79.0607688), (43.0792093, -79.0603311))]
+# ...and its shore on the American Rapids, from the island's east end back west to Luna's channel.
+NIA_GOAT_NORTH = [nia(la, lo) for la, lo in (
+    (43.0795227, -79.0603225), (43.0798863, -79.0606744), (43.0810210, -79.0633438),
+    (43.0816479, -79.0639102), (43.0819802, -79.0645196), (43.0818423, -79.0661504),
+    (43.0824441, -79.0672491), (43.0822184, -79.0692232), (43.0825318, -79.0700128),
+    (43.0835070, -79.0709736))]
+# The rim of the Canadian gorge north of the terrace: the trail's own line where it runs along the
+# wall, then the mapped water's edge set about 40 m inland (the rim itself is not in OSM here).
+NIA_RIM_N = [(7.0, 14.0), (3.0, 48), (1.5, 81), (0.5, 113), (25, 160), (47, 221), (70, 290), (106, 340),
+             (128, 512), (165, 568), (212, 648), (250, 675), (320, 736), (330, 900), (520, 1180),
+             (640, 1352)]
+# The terrace's brink, where its rail runs: the trail's corner nearest the falls (OSM node 291955852)
+# round the Horseshoe's Canadian end to the upper bank.
+NIA_BRINK = [(8.0, -29.0), (2.0, -38.0), (-8.0, -47.0), (-15.5, -53.2), (-32.4, -68.0)]
+
+
+def niagara_world(fr, view="rim"):
+    """The falls, the gorge and their banks from one lane frame (`view` "rim" or "deck")."""
+    P = []
+    def air(e, n, k=1.0):
+        d = fr.dist(e, n)
+        return round(min(0.5, 0.03 + d / 3200 * 0.5) * k, 3)
+    up = lambda pts, u: [fr.cm(e, n, u) for e, n in pts]
+
+    # Canadian ground: west of the rim, the terrace and the upper bank, out to 2.4 km.
+    canada = list(reversed(NIA_CA_UPPER)) + NIA_BRINK[::-1][1:] + [(7.0, -10.0)] + NIA_RIM_N + \
+        [(640, 2400), (-2400, 2400), (-2400, -2400), (863, -2400)]
+    focus = (fr.e0 + 22 * fr.s, fr.n0 + 22 * fr.c)
+    P += grid_hprims(fr, canada, 0, focus, c="#5f7b47", cn="#1b2430", a=0.08, s=8.5, dg=0.55)
+    # The terrace round Table Rock Centre: paved, the colour of the trail's pavers.
+    tpave = NIA_BRINK[:4] + [(-26.0, -52.0), (-40.0, -42.0), (-36.0, -2.0), (-30.0, 60.0)] + \
+        list(reversed(NIA_RIM_N[:4])) + [(7.0, -10.0)]
+    P += grid_hprims(fr, tpave, 0.02, focus, c="#7d7a74", cn="#252a33", a=0.04, s=8.4, dg=1.0)
+    # The terrace rail along the brink: iron, at hand height, with the air between its bars.
+    br = resample(NIA_BRINK, 12)
+    for i in range(len(br) - 1):
+        a, b = br[i], br[i + 1]
+        P.append(_prim("f", [fr.cm(*a, 1.0), fr.cm(*b, 1.0), fr.cm(*b, 1.08), fr.cm(*a, 1.08)],
+                       c="#202228", a=0.04, cn="#0f1114"))
+        P.append(_prim("f", [fr.cm(*a, 0.32), fr.cm(*b, 0.32), fr.cm(*b, 0.36), fr.cm(*a, 0.36)],
+                       c="#202228", a=0.04, cn="#0f1114"))
+        if i < 6:
+            seg = math.hypot(b[0] - a[0], b[1] - a[1])
+            for k in range(int(seg / 0.16)):
+                t0, t1 = (k + 0.4) * 0.16 / seg, (k + 0.6) * 0.16 / seg
+                p0 = (a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0)
+                p1 = (a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1)
+                P.append(_prim("f", [fr.cm(*p0, 0.0), fr.cm(*p1, 0.0), fr.cm(*p1, 1.0), fr.cm(*p0, 1.0)],
+                               c="#202228", a=0.04, cn="#0f1114"))
+        else:
+            P.append(_prim("f", [fr.cm(*a, 0.0), fr.cm(*b, 0.0), fr.cm(*b, 1.0), fr.cm(*a, 1.0)],
+                           c="rgba(32,34,40,0.3)", a=0.04, d0=1))
+
+    # The upper river above the brink: from the crest, along Goat Island, out to the rapids' head.
+    upper = NIA_HS_CREST + NIA_GOAT_SOUTH[1:] + [(1700, 0), (1700, -2400), (863, -2400)] + \
+        list(reversed(NIA_CA_UPPER))
+    P += grid_hprims(fr, upper, NIA_CREST, focus, c="#4b8b8d", cn="#18303a", a=0.1, s=9.0, dg=0.5)
+    for (e0, n0, e1, n1) in ((40, -330, 330, -360), (80, -420, 420, -470), (140, -560, 560, -610),
+                             (330, -300, 520, -200), (380, -120, 600, -60)):
+        P.append(_hprim("f", fr, [(e0, n0), (e1, n1), (e1, n1 - 9), (e0, n0 - 9)], NIA_CREST + 0.05,
+                       c="rgba(236,244,244,0.38)", a=air(e0, n0), s=8.95, d0=1))
+    # The American Rapids between Goat Island and the US shore, then the US mainland and its rim.
+    am_cr = NIA_AM_CREST_L
+    rapids = [am_cr[0], am_cr[-1], (1480, 900), (1700, 400), (1700, 0)] + NIA_GOAT_NORTH + [NIA_LUNA[0]]
+    P.append(_hprim("f", fr, rapids, NIA_AM_CREST, c="#5a9698", cn="#1a3038", a=0.18, s=8.9, dg=0.5))
+    us = [am_cr[-1], NIA_PROSPECT, NIA_US_RIM_N, (1400, 1600), (3200, 1600), (3200, 900), (1480, 900)]
+    P.append(_hprim("f", fr, us, 0, c="#5a7348", cn="#1b2430", a=0.25, s=8.6, dg=0.5))
+    us_rim = resample([NIA_PROSPECT, NIA_US_RIM_N], 6)
+    P += world_quads_between(fr, us_rim, us_rim, 11, 0, "#33492e", air(800, 900), out="L", cn="#121a1c", dg=0.45)
+    us_foot = [(e - 9, n + 4) for e, n in us_rim]
+    P += world_quads_between(fr, us_rim, us_foot, 0, NIA_RIVER, "#6c675c", air(800, 900), cn="#1d2026", dg=0.45)
+
+    # The lower river: from the Horseshoe's foot north under the Rainbow Bridge.
+    hs = resample(dp_simplify(NIA_HS_CREST, 1.0), 36)
+    nrm = left_normals(hs)
+    foot = [(e + nx * 24 * min(1.0, i / 4), n + ny * 24 * min(1.0, i / 4))
+            for i, ((e, n), (nx, ny)) in enumerate(zip(hs, nrm))]
+    goat_w = [(e - 8, n) for e, n in NIA_GOAT_GORGE]
+    amn0 = left_normals(am_cr)
+    am_toe = [(e + nx * 36, n + ny * 36) for (e, n), (nx, ny) in zip(am_cr, amn0)]
+    lower = NIA_CA_WATER + [(560, 1250), (760, 1500), (1000, 1300), (NIA_US_RIM_N[0] - 12, NIA_US_RIM_N[1])] + \
+        list(reversed(us_foot)) + list(reversed(am_toe)) + list(reversed(goat_w)) + list(reversed(foot))
+    P += grid_hprims(fr, lower, NIA_RIVER, focus, c="#2e5a5f", cn="#0f1d26", a=0.12, s=9.6, dg=0.55)
+    foam_in = [(e + nx * 70, n + ny * 70) for (e, n), (nx, ny) in zip(hs, nrm)]
+    for i in range(0, 36, 3):
+        j = min(i + 3, 36)
+        P.append(_hprim("f", fr, [foot[i], foot[j], foam_in[j], foam_in[i]], NIA_RIVER + 0.3,
+                       c="rgba(226,238,236,0.55)", a=air(*hs[i], 0.8), s=9.5, d0=1))
+
+    # The Canadian gorge wall: a cliff to two-thirds of the drop, scree from there to the water.
+    rim_w = resample([NIA_BRINK[0]] + NIA_RIM_N[:13], 30)
+    water_w = resample(NIA_CA_WATER[:12], 30)
+    cliff_foot = [(e + (we - e) * 0.25, n + (wn - n) * 0.25) for (e, n), (we, wn) in zip(rim_w, water_w)]
+    P += world_quads_between(fr, rim_w, cliff_foot, 0, -36, "#696357", air(60, 200), cn="#1c1f25", dg=0.45)
+    P += world_quads_between(fr, cliff_foot, water_w, -36, NIA_RIVER, "#7a735f", air(60, 200), cn="#20232a", dg=0.45)
+    # North of the lane the rim keeps its parapet: a dark band at hand height.
+    par = resample(NIA_RIM_N[1:7], 10)
+    P += world_quads_between(fr, par, par, 1.1, 0, "#2b2b2e", 0.06, out="R", cn="#121418")
+
+    # Goat Island: woods on top, a canopy edge, and rock where it faces the gorge.
+    P.append(_hprim("f", fr, NIA_GOAT, NIA_GOAT_TREES, c="#3a5532", cn="#121a1c", a=0.2, s=0.002, dg=0.45))
+    ring = NIA_GOAT + [NIA_GOAT[0]]
+    for i in range(len(ring) - 1):
+        a, b = ring[i], ring[i + 1]
+        P.append(_prim("f", [fr.cm(*a, 0), fr.cm(*b, 0), fr.cm(*b, NIA_GOAT_TREES), fr.cm(*a, NIA_GOAT_TREES)],
+                       c="#2c4428", cn="#0f1618", a=air(*a), dg=0.45, fn=_fn(fr, *_outward(NIA_GOAT, a, b))))
+    gg = resample(NIA_GOAT_GORGE, 12)
+    gfoot = [(e - 8, n) for e, n in gg]
+    P += world_quads_between(fr, gg, gfoot, 0, NIA_RIVER, "#6e6a5f", air(400, 300), cn="#1d2026", dg=0.45)
+    P.append(_hprim("f", fr, NIA_LUNA, 9, c="#3c5734", cn="#121a1c", a=air(650, 560), dg=0.45))
+    lr = NIA_LUNA + [NIA_LUNA[0]]
+    for i in range(len(lr) - 1):
+        P.append(_prim("f", [fr.cm(*lr[i], NIA_TALUS), fr.cm(*lr[i + 1], NIA_TALUS),
+                             fr.cm(*lr[i + 1], 9), fr.cm(*lr[i], 9)], c="#5f5b51", cn="#1b1e24",
+                       a=air(650, 560), dg=0.45, fn=_fn(fr, *_outward(NIA_LUNA, lr[i], lr[i + 1]))))
+
+    # A curtain that leaves its brink and falls in a parabola: `throw` metres out at its foot.
+    def curtain(crest, u_top, u_bot, throw, colours, k_streaks, taper=0):
+        nr = left_normals(crest)
+        tk = [min(1.0, i / taper) if taper else 1.0 for i in range(len(crest))]
+        cut = [0.0, 0.1, 0.4, 1.0]
+        for s in range(3):
+            fa, fb = cut[s], cut[s + 1]
+            ua, ub = u_top + (u_bot - u_top) * fa, u_top + (u_bot - u_top) * fb
+            oa, ob = throw * math.sqrt(fa), throw * math.sqrt(fb)
+            for i in range(len(crest) - 1):
+                j = i + 1
+                pa = (crest[i][0] + nr[i][0] * oa * tk[i], crest[i][1] + nr[i][1] * oa * tk[i])
+                pb = (crest[j][0] + nr[j][0] * oa * tk[j], crest[j][1] + nr[j][1] * oa * tk[j])
+                qa = (crest[i][0] + nr[i][0] * ob * tk[i], crest[i][1] + nr[i][1] * ob * tk[i])
+                qb = (crest[j][0] + nr[j][0] * ob * tk[j], crest[j][1] + nr[j][1] * ob * tk[j])
+                P.append(_prim("w", [fr.cm(*pa, ua), fr.cm(*pb, ua), fr.cm(*qb, ub), fr.cm(*qa, ub)],
+                               c=colours[s], a=air(*crest[i], 0.75), il=1, dg=0.35,
+                               k=(k_streaks if s else 0)))
+    curtain(hs, NIA_CREST, NIA_RIVER, 24, ("#3f9c8a", "#bcdcd8", "#e4f0ef"), 2, taper=4)
+    amr = resample(am_cr, 12)
+    curtain(amr, NIA_AM_CREST, NIA_TALUS, 4, ("#7fb9ae", "#dfecea", "#e9f2f1"), 2)
+    amn = left_normals(amr)
+    t_top = [(e + nx * 4, n + ny * 4) for (e, n), (nx, ny) in zip(amr, amn)]
+    t_toe = [(e + nx * 36, n + ny * 36) for (e, n), (nx, ny) in zip(amr, amn)]
+    for i in range(len(amr) - 1):
+        P.append(_prim("w", [fr.cm(*t_top[i], NIA_TALUS), fr.cm(*t_top[i + 1], NIA_TALUS),
+                             fr.cm(*t_toe[i + 1], NIA_RIVER), fr.cm(*t_toe[i], NIA_RIVER)],
+                       c="#8d8b84", cn="#22252b", a=air(*amr[i], 0.85), k=2, sp=0.22, dg=0.4))
+    bvr = resample(NIA_BV_CREST, 3)
+    curtain(bvr, NIA_AM_CREST, NIA_TALUS, 3, ("#7fb9ae", "#dfecea", "#e9f2f1"), 1)
+
+    # The spray: a plume over the Horseshoe's basin, a lower one at the American Falls.
+    mist_k = 0.4 if view == "deck" else 1.0
+    # Columns, not blankets: the spray rises where the most water lands, near the apex.
+    for (e, n, w, h, al) in ((165, -170, 80, 95, 0.2), (235, -200, 64, 80, 0.18), (95, -110, 56, 60, 0.16)):
+        P.append({"t": "m", "o": fr.cm(e, n, NIA_RIVER + 4), "w": w * 100, "h": h * 100,
+                  "al": round(al * mist_k, 3), "a": 0.02, "il": 1})
+    P.append({"t": "m", "o": fr.cm(610, 650, NIA_RIVER + 2), "w": 7000, "h": 2600, "al": 0.12,
+              "a": 0.04, "il": 1})
+    rc = fr.cm(130, -120, NIA_RIVER - 22)
+    vx, vz = -rc[0], -rc[2]
+    L = math.hypot(vx, vz) or 1
+    P.append({"t": "rb", "o": rc, "r": 6200, "ux": round(-vz / L, 4), "uz": round(vx / L, 4), "west": 1})
+    P.append({"t": "fw", "o": fr.cm(160, -120, 30), "r": 6000})
+
+    # Table Rock Centre on the terrace (footprint OSM; two storeys, height approximate).
+    P += world_extrude(fr, NIA_TABLEROCK, 0, 10, "#8c9296", "#5f6468", air(-60, 0), dg=0.55,
+                       bands=[(0, 1.0, "#8b867b"), (1.0, 8.8, "#5d707d"), (8.8, 10, "#73777a")])
+    # The Skylon on the hill to the north-north-west, 160 m: a shaft and its pod.
+    se, sn = NIA_SKYLON
+    shaft = [(se - 5, sn - 5), (se + 5, sn - 5), (se + 5, sn + 5), (se - 5, sn + 5)]
+    P += world_extrude(fr, shaft, 0, 140, "#a4a49e", "#8e8e88", air(se, sn), cn="#262b33", dg=0.5)
+    pod = [(se + 15 * math.cos(a), sn + 15 * math.sin(a)) for a in [k * math.pi / 4 for k in range(8)]]
+    P += world_extrude(fr, pod, 140, 158, "#c9c7bf", "#b0aea6", air(se, sn), cn="#30353e", dg=0.5)
+    # The Rainbow Bridge downstream: a steel arch springing near the water, its deck at the rims.
+    (ae, an), (be, bn) = NIA_RAINBOW
+    me, mn = (ae + be) / 2, (an + bn) / 2
+    L = math.hypot(be - ae, bn - an)
+    ux, uy = (be - ae) / L, (bn - an) / L
+    P.append(_prim("f", [fr.cm(ae, an, 2.5), fr.cm(be, bn, 2.5), fr.cm(be, bn, -1.5), fr.cm(ae, an, -1.5)],
+                   c="#56635b", cn="#181e24", a=air(me, mn), dg=0.45))
+    for off in (-8, 8):
+        ox, oy = -uy * off, ux * off
+        prev = None
+        for k in range(11):
+            sx = -145 + 29 * k
+            y = NIA_RIVER + 8 + (-6 - (NIA_RIVER + 8)) * (1 - (sx / 145) ** 2)
+            pt = (me + ux * sx + ox, mn + uy * sx + oy)
+            if prev:
+                P.append(_prim("f", [fr.cm(*prev[0], prev[1]), fr.cm(*pt, y), fr.cm(*pt, y - 4),
+                                     fr.cm(*prev[0], prev[1] - 4)], c="#5d6b62", cn="#181e24",
+                               a=air(me, mn), dg=0.45))
+            prev = (pt, y)
+    return P
+
+
+# ---- Toronto from the LookOut (OpenStreetMap + Wikipedia's list of tallest buildings) -------------
+TOR_O = (43.6425637, -79.3870872)       # the CN Tower (OSM way 32742038)
+TOR_LOOKOUT = 346.0                     # LookOut level, metres above the base
+TOR_GRID = -16.7                        # the downtown street grid's turn from true north
+
+
+def tor(lat, lon):
+    return ll_m(lat, lon, *TOR_O)
+
+
+# The skyline the LookOut looks at: every tower over 214 m within four kilometres of the tower, with
+# the coordinates and heights of Wikipedia's "List of tallest buildings in Toronto" (read 2026-10-15).
+# Footprints are typical (office 40 m, residential 30 m), not surveyed; bases are the ground's level.
+TOR_TOWERS = [
+    ("SkyTower at Pinnacle One Yonge", 43.64333, -79.375, 351.8, 34, -4.0),
+    ("First Canadian Place", 43.648838, -79.381744, 298.3, 46, 0),
+    ("The St. Regis Toronto", 43.649818, -79.380341, 276.9, 34, 0),
+    ("Scotia Plaza", 43.649422, -79.379578, 275.0, 44, 0),
+    ("Aura", 43.659431, -79.382812, 271.9, 34, 0),
+    ("TD Canada Trust Tower", 43.646465, -79.378784, 260.9, 40, 0),
+    ("CIBC Square II", 43.64527, -79.3788, 243.1, 44, 0),
+    ("CIBC Square I", 43.644161, -79.377762, 241.3, 44, 0),
+    ("Commerce Court West", 43.648209, -79.379509, 239.0, 42, 0),
+    ("TD Terrace", 43.645195, -79.384583, 236.5, 44, 0),
+    ("ICE Condominiums II", 43.642048, -79.381676, 234.2, 30, 0),
+    ("Harbour Plaza East", 43.642113, -79.379013, 233.0, 30, 0),
+    ("Concord Canada House 1", 43.641399, -79.392265, 231.3, 30, 0),
+    ("Sugar Wharf Tower G", 43.64476, -79.371704, 230.2, 30, -2.0),
+    ("Harbour Plaza West", 43.642109, -79.379616, 224.0, 30, 0),
+    ("Ten York", 43.641106, -79.381248, 224.0, 30, 0),
+    ("TD Bank Tower", 43.647568, -79.381012, 222.8, 40, 0),
+    ("Sugar Wharf Tower F", 43.644562, -79.371086, 218.4, 30, -2.0),
+    ("Prestige at Pinnacle One Yonge", 43.643608, -79.374184, 216.2, 30, -3.0),
+    ("Bay Adelaide Centre West", 43.650269, -79.380508, 214.7, 40, 0),
+    ("Shangri-La Toronto", 43.649086, -79.386177, 214.0, 30, 0),
+    ("One Bloor West", 43.669917, -79.387028, 308.9, 34, 0),
+    ("One Bloor", 43.669983, -79.386147, 257.3, 34, 0),
+]
+# The Toronto Islands (OSM relation 10705563, simplified to ~40 m) and the Leslie Street Spit
+# (Tommy Thompson Park, OSM way 189780702); Billy Bishop airport (OSM relation 85471).
+TOR_ISLANDS = [tor(la, lo) for lo, la in (
+    (-79.4049155, 43.6278629), (-79.4042908, 43.6264494), (-79.4007385, 43.6244491),
+    (-79.3922309, 43.6178924), (-79.389772, 43.6130676), (-79.3882736, 43.6115568),
+    (-79.3821836, 43.6122351), (-79.3715204, 43.6163625), (-79.3669545, 43.6189773),
+    (-79.3583527, 43.6250963), (-79.354423, 43.6298036), (-79.3494405, 43.6310442),
+    (-79.3530698, 43.6341993), (-79.3567244, 43.6333165), (-79.3563062, 43.6290134),
+    (-79.3592886, 43.6256517), (-79.3657635, 43.6214987), (-79.3704692, 43.6208264),
+    (-79.3766004, 43.6185149), (-79.3817514, 43.6196097), (-79.3865483, 43.6204608),
+    (-79.3893095, 43.6208439), (-79.3903466, 43.6182249), (-79.3899821, 43.6234306),
+    (-79.3889831, 43.6244016), (-79.3896458, 43.6267408), (-79.3885497, 43.6278597),
+    (-79.3896648, 43.6297552), (-79.3874595, 43.6305459), (-79.3889094, 43.6327235),
+    (-79.3921772, 43.6312628), (-79.3949247, 43.6336577))]
+TOR_SPIT = dp_simplify([tor(la, lo) for lo, la in (
+    (-79.3450575, 43.621791), (-79.3435403, 43.6126919), (-79.3366554, 43.6191997),
+    (-79.3272007, 43.6188716), (-79.3236923, 43.6174026), (-79.3220937, 43.6226249),
+    (-79.321205, 43.6293394), (-79.3209657, 43.6331755), (-79.3216044, 43.6377822),
+    (-79.3200464, 43.6458085), (-79.3216818, 43.6521617), (-79.3280425, 43.6500249),
+    (-79.3241548, 43.6472539), (-79.3214683, 43.6453059), (-79.3234378, 43.6375319),
+    (-79.3290549, 43.6336186), (-79.3364677, 43.6294405), (-79.3289148, 43.6309204),
+    (-79.3316982, 43.626645), (-79.3241848, 43.6258715), (-79.3330988, 43.6223337),
+    (-79.3390842, 43.6294174), (-79.3388756, 43.6221511), (-79.3450575, 43.621791))], 25)
+TOR_RUNWAY = (tor(43.6276, -79.4030), tor(43.6309, -79.3900))   # the aerodrome's long axis (approximate)
+# The harbour edge: Queens Quay's own line (OSM ways 352799162, 41789174, 407215251, 24221150,
+# 538879521) set 70 m lakeward for the dock walls; west to Bathurst Quay and east to the Eastern Gap
+# and the spit's root, the edge between them read from the islands' gaps (approximate).
+TOR_SHORE = [tor(la, lo) for la, lo in (
+    (43.6330, -79.4600), (43.6320, -79.4200), (43.6345, -79.4040), (43.6355, -79.3985),
+    (43.6355, -79.3978), (43.6360, -79.3954), (43.6369, -79.3930), (43.6381, -79.3876),
+    (43.6383, -79.3866), (43.6385, -79.3855), (43.6388, -79.3837), (43.6397, -79.3793),
+    (43.6404, -79.3774), (43.6410, -79.3755), (43.6413, -79.3747), (43.6425, -79.3700),
+    (43.6420, -79.3600), (43.6390, -79.3530), (43.6370, -79.3505), (43.6385, -79.3440),
+    (43.6420, -79.3330), (43.6470, -79.3255), (43.6522, -79.3217), (43.6600, -79.3050),
+    (43.6700, -79.2850), (43.6850, -79.2500), (43.7500, -79.1000), (43.8300, -78.9000))]
+TOR_SHORE = [tor(la, lo) for la, lo in ((43.5500, -79.6000), (43.6000, -79.5000))] + TOR_SHORE
+
+
+def toronto_world(fr):
+    """Toronto at night from the LookOut: ground, lake, islands, the skyline, the airport's lights."""
+    P = []
+    g, lake, isl = -TOR_LOOKOUT, -TOR_LOOKOUT - 4, -TOR_LOOKOUT - 2.5
+    def air(e, n):
+        d = math.hypot(e, n)
+        return round(min(0.55, 0.06 + d / 9000 * 0.5), 3)
+    # The ground and the lake, both cut into cells: the city's lights tile at their real size (one
+    # tile = 320 m) without an affine map bending across a cell kilometres deep, and the air thickens
+    # cell by cell with distance, which is what lets the lake fade into the horizon's haze.
+    w_end, e_end = TOR_SHORE[0], TOR_SHORE[-1]
+    R = 42000
+    land = TOR_SHORE + [(R, e_end[1]), (R, R), (-R, R), (-R, w_end[1])]
+    water = TOR_SHORE + [(R, e_end[1]), (R, -R), (-R, -R), (-R, w_end[1])]
+    # Rings of cells, each finer ring inside the next. A cell is left out only when it lies wholly
+    # inside the ring within, so the rings meet without a seam of sky between them: skipping cells
+    # by their centres left the band from 21.6 km to 28 km bare, a line of sky under the horizon.
+    cells, inner = [], 0
+    for size, reach in ((600, 2400), (1800, 7200), (5400, 21600), (10800, 43200)):
+        k = reach // size
+        for i in range(-k, k):
+            for j in range(-k, k):
+                x0, y0 = i * size, j * size
+                if -inner <= x0 and x0 + size <= inner and -inner <= y0 and y0 + size <= inner:
+                    continue
+                cells.append((x0, y0, x0 + size, y0 + size))
+        inner = reach
+    for (x0, y0, x1, y1) in cells:
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+        poly = clip_rect(land, x0, y0, x1, y1)
+        if len(poly) >= 3:
+            P.append(_hprim("x", fr, poly, g, pat="cityn", u=32000, ax="h",
+                           c="#151a26", a=air(cx, cy), s=9, n=1))
+        poly = clip_rect(water, x0, y0, x1, y1)
+        if len(poly) >= 3:
+            P.append(_hprim("f", fr, poly, lake, c="#0b1322", a=air(cx, cy), s=9.5, n=1))
+    P.append(_hprim("f", fr, TOR_ISLANDS, isl, c="#1a2521", a=0.12, s=8.5, n=1))
+    P.append(_hprim("f", fr, TOR_SPIT, isl, c="#10161a", a=0.2, s=8.5, n=1))
+    # The airport's runway lights, along the aerodrome's long axis (approximate).
+    (re0, rn0), (re1, rn1) = TOR_RUNWAY
+    L = math.hypot(re1 - re0, rn1 - rn0)
+    px, py = -(rn1 - rn0) / L * 22, (re1 - re0) / L * 22
+    pts = []
+    for k in range(21):
+        t = k / 20
+        e, n = re0 + (re1 - re0) * t, rn0 + (rn1 - rn0) * t
+        pts += [fr.cm(e + px, n + py, isl + 1), fr.cm(e - px, n - py, isl + 1)]
+    P.append({"t": "l", "pts": pts, "r": 90, "c": "#fff1c8", "a": 0.18})
+    # The islands are parkland and dark at night; no lights are drawn on them (their docks and homes
+    # are not surveyed here).
+    # The skyline: each tower a box on the grid's turn, wearing the lit-window tile at a storey's real
+    # height. The tile is eight storeys tall: 4.0 m apiece on an office footprint, 3.2 m on a
+    # residential one (typical floor-to-floor heights, not each building's own) -- at 1.6 m, which
+    # it was, every tower showed twice its real number of floors.
+    gn = (math.sin(math.radians(TOR_GRID)), math.cos(math.radians(TOR_GRID)))    # the grid's north
+    ge = (gn[1], -gn[0])                                                         # and its east
+    for name, la, lo, h, w, base in TOR_TOWERS:
+        e, n = tor(la, lo)
+        hw = w / 2
+        foot = [(e + sx * hw * ge[0] + sy * hw * gn[0], n + sx * hw * ge[1] + sy * hw * gn[1])
+                for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+        a = air(e, n)
+        for i in range(4):
+            p0, p1 = foot[i], foot[(i + 1) % 4]
+            P.append(_prim("x", [fr.cm(*p0, g + base), fr.cm(*p1, g + base), fr.cm(*p1, g + base + h),
+                                 fr.cm(*p0, g + base + h)], pat="win", u=3200 if w >= 40 else 2560,
+                           ax="v", c="#1b2740",
+                           a=a, n=1, l=0.5, fn=_fn(fr, *_outward(foot, p0, p1))))
+        P.append(_hprim("f", fr, foot, g + base + h, c="#141c2c", a=a, n=1))
+    # Rogers Centre below to the west-south-west: the roof, 86 m, its white panels at night.
+    rc = [tor(la, lo) for lo, la in ((-79.3908121, 43.6421698), (-79.3902364, 43.6407719),
+                                     (-79.389037, 43.6405471), (-79.3882698, 43.6408479),
+                                     (-79.3876575, 43.641308), (-79.3882376, 43.6427464),
+                                     (-79.3891078, 43.6425763), (-79.3903255, 43.6422566))]
+    P += world_extrude(fr, rc, g, g + 86, "#3a4253", "#9aa3ae", 0.08, n=1)
+    return P
+
+
+# ---- Journey Behind the Falls: the tunnel's own furniture, in lane centimetres --------------------
+# The tunnel is 56 m from the elevator to the deck (falzguy.com's measured figures); the deck stands
+# at its mouth on the Canadian cliff, 38 m under the rim (the elevator's sourced descent).
+JOURNEY_FRAME = (-37.0, 4.0, -38.0, 120.0)   # elevator landing (E, N, U) and the tunnel's bearing
+JOURNEY_TUNNEL_CM = 5600
+JOURNEY_BRANCH_CM = (1533, 1906)             # the branch's mouth on the right wall, walk cm
+
+
+def journey_world(fr):
+    """The falls from the deck, the branch to the portals, the deck and the cliff round its mouth."""
+    P = niagara_world(fr, "deck")
+    Zf = JOURNEY_TUNNEL_CM
+    # The branch to the portals: 16-18 m in, to the south-east; the Cataract Portal's spur 61 m along
+    # it, the Great Falls Portal's at its end, 110 m along. Drawn straight (its line is not surveyed),
+    # leaving the main tunnel's right wall at 40 degrees: its two walls start at the opening's two
+    # jambs, which a 2.4 m bore at that angle sets 3.73 m apart along the wall.
+    za, zb = JOURNEY_BRANCH_CM
+    dx, dz = math.sin(math.radians(40)), math.cos(math.radians(40))
+    Lw = lambda t, y: [round(120 + dx * t), y, round(zb + dz * t)]       # the branch's left wall
+    Rw = lambda t, y: [round(120 + dx * t), y, round(za + dz * t)]       # and its right
+    Cw = lambda t, y: [round(120 + dx * t), y, round((za + zb) / 2 + dz * t)]
+    aof = lambda t: round(min(0.5, 0.05 + t / 12000 * 0.45), 3)
+    cuts = [0, 900, 1800, 3000, 4500, 6000, 6240, 8000, 9500, 11000]
+    # The same concrete as the main bore (its tile at the lane's own scale, 64 cm a repeat), so the
+    # branch reads as the tunnel turning, not as another material.
+    con = dict(pat="tunnelc", u=64, n=1)
+    for t0, t1 in zip(cuts, cuts[1:]):
+        a = aof(t0)
+        P.append(_prim("x", [Lw(t0, 0), Lw(t1, 0), Rw(t1, 0), Rw(t0, 0)], c="#3b3d3c", a=a, **con))
+        if (t0, t1) == (6000, 6240):
+            # The Cataract Portal's spur opens off the branch's left wall: daylight through water.
+            P.append(_prim("f", [Lw(t0, 0), Lw(t1, 0), Lw(t1, 190), Lw(t0, 190)],
+                           c="rgba(226,238,240,0.9)", a=a, n=1, d0=1))
+        else:
+            P.append(_prim("x", [Lw(t0, 0), Lw(t1, 0), Lw(t1, 175), Lw(t0, 175)], c="#58595a", a=a, ax="v", **con))
+        P.append(_prim("x", [Rw(t0, 0), Rw(t1, 0), Rw(t1, 175), Rw(t0, 175)], c="#4f5052", a=a, ax="v", **con))
+        P.append(_prim("x", [Lw(t0, 175), Lw(t1, 175), Cw(t1, 220), Cw(t0, 220)], c="#4a4b4a", a=a, ax="v", **con))
+        P.append(_prim("x", [Rw(t0, 175), Rw(t1, 175), Cw(t1, 220), Cw(t0, 220)], c="#454645", a=a, ax="v", **con))
+    # The Great Falls Portal's light at the branch's end.
+    P.append(_prim("f", [Lw(11000, 0), Rw(11000, 0), Rw(11000, 175), Cw(11000, 220), Lw(11000, 175)],
+                   c="rgba(220,234,238,0.82)", a=aof(11000), n=1, d0=1))
+    P.append({"t": "l", "pts": [[p[0] + 8, 165, p[2] + 6] for p in (Rw(t, 0) for t in range(500, 10600, 800))],
+              "r": 7, "c": "#ffd08a", "a": 0.1})
+    # The deck at the tunnel's mouth: a slab, side parapets with their pipe rail, the upper deck's
+    # roof over its first metres and the pillar that carries it (Reddit photograph, 2025).
+    P.append({"t": "f", "h": 0, "q": [-350, Zf, 350, Zf, 350, 6330, -350, 6330], "c": "#706e68",
+              "a": 0.04, "dg": 0.7})
+    for sx in (-350, 350):
+        P.append(_prim("f", [[sx, 0, Zf], [sx, 0, 6330], [sx, 105, 6330], [sx, 105, Zf]], c="#6c6a64",
+                       a=0.04, dg=0.7))
+        P.append(_prim("f", [[sx, 105, Zf], [sx, 105, 6330], [sx, 111, 6330], [sx, 111, Zf]], c="#a3a9ae",
+                       a=0.04, dg=0.6))
+    P.append({"t": "f", "h": 262, "q": [-350, Zf, 350, Zf, 350, 5960, -350, 5960], "c": "#4f4e4b", "a": 0.04,
+              "d0": 1, "two": 1})
+    P.append(_prim("f", [[-350, 262, 5960], [350, 262, 5960], [350, 292, 5960], [-350, 292, 5960]],
+                   c="#62615d", a=0.04, dg=0.6))
+    for (x0, z0, x1, z1) in ((305, 5925, 335, 5925), (335, 5925, 335, 5955), (335, 5955, 305, 5955),
+                             (305, 5955, 305, 5925)):
+        P.append(_prim("f", [[x0, 0, z0], [x1, 0, z1], [x1, 262, z1], [x0, 262, z0]], c="#6a6964", a=0.04, dg=0.6))
+    # The cliff the tunnel comes out of, round its mouth, up to the rim 38 m overhead.
+    for quad in ([[-4000, -2000, Zf], [-125, -2000, Zf], [-125, 3800, Zf], [-4000, 3800, Zf]],
+                 [[125, -2000, Zf], [4000, -2000, Zf], [4000, 3800, Zf], [125, 3800, Zf]],
+                 [[-125, 225, Zf], [125, 225, Zf], [125, 3800, Zf], [-125, 3800, Zf]]):
+        P.append(_prim("f", quad, c="#5e5a51", cn="#1c1f25", a=0.06, s=0.001, dg=0.45))
+    return P
+
+
+# The day sky over the falls, all round: elevation stops, a day colour and a night one.
+NIAGARA_SKY = {"stops": [{"e": -2, "c": "#d9e6ee", "n": "#1e2639"}, {"e": 0, "c": "#d4e3ec", "n": "#1d2538"},
+                         {"e": 5, "c": "#b3cde0", "n": "#161d30"}, {"e": 18, "c": "#86aed2", "n": "#101728"},
+                         {"e": 50, "c": "#6593c4", "n": "#0b101e"}, {"e": 90, "c": "#5784b8", "n": "#080c18"}]}
+# Toronto's night over the LookOut: the horizon's glow off the city, the zenith near black.
+TORONTO_SKY = {"stops": [{"e": -2, "c": "#3d4260"}, {"e": 0, "c": "#4a4b66"}, {"e": 2, "c": "#363b58"},
+                         {"e": 8, "c": "#22283f"}, {"e": 30, "c": "#121829"}, {"e": 90, "c": "#080c18"}]}
+
+
+def niagara_parapet_bands(z_back=-200, z_end=4301, every=300, first=150, half=20):
+    """The parapet along the gorge, in record cm: a stone post every `every` walk cm, an iron
+    railing on a stone curb between posts, and open air above both."""
+    edges = [z_back]
+    for q in range(first, z_end, every):
+        edges += [q - half, q + half]
+    edges.append(z_end)
+    zs = lambda z: round(z / Z_SCALE, 1)
+    out = []
+    for i in range(len(edges) - 1):
+        a, b = zs(edges[i]), zs(edges[i + 1])
+        if i % 2 == 1:
+            out += [{"side": -1, "z0": a, "z1": b, "y0": 0, "y1": 120, "kind": "stonewall"},
+                    {"side": -1, "z0": a, "z1": b, "y0": 120, "y1": 400, "kind": "open"}]
+        else:
+            out += [{"side": -1, "z0": a, "z1": b, "y0": 0, "y1": 24, "kind": "stonewall"},
+                    {"side": -1, "z0": a, "z1": b, "y0": 24, "y1": 108, "kind": "railing", "frame": "#1f2126"},
+                    {"side": -1, "z0": a, "z1": b, "y0": 108, "y1": 400, "kind": "open"}]
+    return out
+
 
 DISTRICTS = [
     {
@@ -3138,108 +3883,82 @@ DISTRICTS = [
                       "Nothing on any table carries a word."),
     },
     {
-        # Niagara, the Canadian edge (grounded-scene §6's second worked example). The lane is the
-        # promenade's last stretch, walked in the day, ending at the Table Rock rail; beyond it the
-        # niagara painter carries the whole fact: the horseshoe crest (670 m of brink, a 57 m drop,
-        # sources in TODO §0c) spilling into its mist, the American Falls on its talus across to the
-        # left, the islands between, the gorge river below, a rainbow when the sun stands right.
-        # What shrinks is detail; what must not: the crest's breadth-to-drop ratio, Table Rock at
-        # the lip, the river running north behind you, the mist as weather.
+        # Niagara at Table Rock, as it stands (round 33; sources in TODO §0o). The lane is the last
+        # 43 m of the Niagara Recreation Trail (OSM way 1319958255: lit, paving stones) walked south
+        # to the brink, on its real line (bearing 180) and at its real scale: the gorge on the left
+        # behind the parapet, Table Rock Centre's terrace on the right, the Horseshoe's Canadian end at
+        # the far left corner, where the trail comes nearest the falls (OSM node 291955852). Nothing
+        # walls it in: the world round it is surveyed (`niagara_world`) -- the Horseshoe's brink as
+        # OSM maps it, the American and Bridal Veil falls, Goat and Luna Islands, the gorge and both
+        # rivers, the Rainbow Bridge and the Skylon at their bearings -- and it is drawn as geometry,
+        # not as the hall's table model stood large. Round 22-30's promenade had the gorge on the
+        # wrong hand, a hedge nobody surveyed, and three downstream "silhouettes" two of which stand
+        # upstream or up the hill; all three are gone.
         "id": "niagara", "label": "The falls",
         "page": ROOM_BY_ID["niagara"]["page"],
         "plates": ROOM_BY_ID["niagara"]["plates"],
-        # A promenade is narrower than a street and open to the sky: the ceiling is only there so
-        # the box closes overhead, and the day is authored the way the street's is.
-        "lane": {"w": 560, "d": 460, "ceil": 380, "back": 220, "max_d": 1500},
-        "day": {"cycle": 900, "start": 0.55, "gain": 1},
-        "purpose": "The promenade at Niagara Falls: Table Rock at the lip, the horseshoe's mist, the American Falls across, the gorge for an end",
+        "lane": {"w": 1400, "d": 1483, "ceil": 400, "back": 200, "max_d": 4250, "open": True,
+                 "open_back": True, "open_end": True},
+        "floor": "pavers",
+        "day": {"cycle": 900, "start": 0.5, "gain": 1},
+        "purpose": "Table Rock at Niagara Falls: the trail's last stretch to the brink, the gorge, both falls and the islands where they stand",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/niagara-cover.jpg",
         "cover_caption": "The horseshoe from Table Rock, drawn with its rainbow.",
-        "blurb": "One promenade walked in the day. Hedges and lamps on the park side, a parapet and "
-                 "the mist on the gorge side, and at the rail the whole falls: the crest, the drop, "
-                 "the mist, the rainbow, the American Falls across.",
-        "clad_note": " The lane is the promenade: a hedge and lamp posts on the park side, a stone "
-                     "parapet at hand height on the gorge side and the falls' own mist above it. "
-                     "Nothing on any of it carries a word.",
-        "sight_note": " At its far end the walk stops at the Table Rock rail, and beyond is the "
-                      "whole fact of the falls: the horseshoe crest spilling into mist, the "
-                      "American Falls across on its boulders, the gorge river below, a rainbow in "
-                      "the spray, and downstream in the haze the Rainbow Bridge's wings and the "
-                      "Skylon's dish. After dark the curtain holds the illumination's colour "
-                      "and, in season, fireworks swell over the crest. The cruise boat stays out "
-                      "of the frame: its landing is downstream, and from the lip the basin it "
-                      "works is hidden by the lip itself. Nothing out there is a record of "
-                      "anybody standing in it.",
+        "blurb": "The last 43 m of the Recreation Trail walked to Table Rock's brink, in the day. "
+                 "The parapet and the gorge on the left, the centre's terrace on the right, and "
+                 "round it the falls where they are: the Horseshoe's brink at the far corner, the "
+                 "American Falls behind you across the gorge, Goat Island between.",
+        "clad_note": " The lane is the trail at Table Rock: paving stones underfoot, an iron railing "
+                     "on stone posts along the gorge on the left, and on the right the open terrace "
+                     "to Table Rock Centre. Nothing walls it in and nothing on it carries a word.",
+        "sight_note": " The world round the trail is drawn from the map: ahead and to the left the "
+                      "Horseshoe's brink curving away to Goat Island with its spray over the basin, "
+                      "a rainbow in it on a sunny afternoon; across the gorge Goat Island's woods "
+                      "and cliff; behind you, north-east, the American Falls on its boulders with "
+                      "the Bridal Veil and Luna Island beside it, the Rainbow Bridge further down, "
+                      "and the Skylon on the hill to the north-north-west. After dark both falls "
+                      "hold the illumination's colour and, in season, fireworks open over the basin.",
         "objects": [
-            # The park side keeps one bench and the hedge keeps it company: a promenade is walked
-            # slowly, and a bench facing the mist is the one furniture the view asks for.
-            {"id": "bench-ng", "kind": "bench", "x": -250, "z": 240, "y": 0, "ry": 90,
-             "title": "A bench at the hedge",
-             "hint": "It faces the gorge side. The mist is the view; the bench is the pause."},
-            # The falls themselves, stood at real scale in the site's own falls shape: the sheet,
-            # the ledge, the mist — the same draw that reads on the hall's table, at the crest's
-            # own breadth-to-drop ratio. The horseshoe wraps the view; the American Falls stands
-            # to the left on its talus, the islands between.
-            {"id": "falls-ng", "kind": "falls", "x": 300, "z": 2400, "y": -150, "ry": 0,
-             "w": 4200, "h": 900, "d": 120,
-             "title": "The horseshoe, at the rail",
-             "hint": "Six hundred and seventy metres of brink at model breadth, drawn at the "
-                     "rail's own distance: the water goes over the lip a few metres away."},
-            {"id": "falls-am", "kind": "falls", "x": -2600, "z": 3400, "y": -150, "ry": 20,
-             "w": 2600, "h": 600, "d": 90,
-             "title": "The American Falls across",
-             "hint": "A straight sheet onto its talus of boulders, east of the horseshoe, the "
-                     "islands between."},
-            {"id": "planter-go", "kind": "planter", "x": -1400, "z": 2600, "y": -150, "ry": 0,
-             "w": 900, "h": 140, "d": 500,
-             "title": "Goat Island at the crest",
-             "hint": "The green wedge that parts the horseshoe from the bridal veil, at the "
-                     "crest line."},
-            {"id": "planter-lu", "kind": "planter", "x": -1900, "z": 2900, "y": -150, "ry": 0,
-             "w": 460, "h": 100, "d": 300,
-             "title": "Luna Island, small",
-             "hint": "The smaller island, between the American and the bridal veil."},
-            # The real Table Rock Centre is the entrance to Journey Behind the Falls; here the
-            # door stands at the rail end of the promenade, where the terraces stack down.
-            {"id": "door-journey", "kind": "door", "x": 262, "z": 430, "y": 0, "ry": -90,
-             "leaf": "#2b3852",
-             "glow": [{"r": 120, "k": 0.5, "dy": 200, "tint": "rgba(160,210,230,0.4)"}],
-             "title": "The Journey door",
-             "hint": "Journey Behind the Falls: the elevator drops through the bedrock to the "
-                     "tunnels, the portals, the deck at the foot of the curtain.",
+            # Table Rock Centre's wing reaches the trail at E -6.8 m (OSM way 420548287): the doors
+            # stand in its face. Journey Behind the Falls starts inside this building (Niagara
+            # Parks), so its door is here, beside the door back to the hall.
+            {"id": "door-journey", "kind": "door", "x": 678, "z": 469, "y": 0, "ry": -90,
+             "leaf": "#33414e",
+             "glow": [{"r": 110, "k": 0.45, "dy": 200, "tint": "rgba(160,210,230,0.4)"}],
+             "title": "Journey Behind the Falls",
+             "hint": "Inside Table Rock Centre: an elevator drops 38 m through the rock to the 1944 "
+                     "tunnel, its two portals behind the sheet and the deck at the foot of the falls.",
              "leave": ROOM_BY_ID["journey"]["page"]},
+            # The trail is lit (OSM: lit=yes). Two posts stand for its lamps; their spacing is
+            # drawn, not surveyed.
+            {"id": "lamp-ng1", "kind": "lamp", "x": 640, "z": 120, "y": 0, "ry": 0, "w": 14, "h": 420, "d": 14,
+             "title": "A trail lamp", "hint": "The Recreation Trail is lit along the gorge; the post's "
+                                             "place here is drawn, not surveyed."},
+            {"id": "lamp-ng2", "kind": "lamp", "x": 640, "z": 1150, "y": 0, "ry": 0, "w": 14, "h": 420, "d": 14,
+             "title": "A trail lamp", "hint": "The Recreation Trail is lit along the gorge; the post's "
+                                             "place here is drawn, not surveyed."},
+            # The parapet's last stone post, at the brink corner: the closest the trail comes to
+            # the water, the press that answers what the falls are.
+            {"id": "parapet-ng", "kind": "parapet", "x": -670, "z": 1462, "y": 0, "ry": 0,
+             "w": 60, "h": 120, "d": 60,
+             "title": "The Table Rock rail",
+             "hint": "The Horseshoe's brink starts a few metres past this post and runs about 670 m "
+                     "round to Goat Island; the water drops 57 m into the basin. Table Rock itself, "
+                     "the ledge the place is named for, fell into the gorge in 1850."},
         ],
-        "surfaces": [
-            # Park side: a hedge at hand height and park greenery above it to the ceiling line.
-            {"side": -1, "z0": 30, "z1": 470, "y0": 0, "y1": 150, "kind": "hedge", "tone": 1},
-            {"side": -1, "z0": 30, "z1": 470, "y0": 150, "y1": 340, "kind": "hedge", "tone": 0.7},
-            # Gorge side: the stone parapet at hand height, and above it the falls' mist worn as
-            # cladding — the side view is weather, the way the pod's side view was the city.
-            {"side": 1, "z0": 30, "z1": 470, "y0": 0, "y1": 100, "kind": "dado", "tone": 0.9},
-            {"side": 1, "z0": 30, "z1": 470, "y0": 100, "y1": 340, "kind": "mistview", "tone": 1},
-        ],
+        # The gorge side: an iron railing on a stone curb between stone posts, open air above
+        # (the Getty photographs at the wall, May 2026); the terrace side is open to the centre.
+        "surfaces": niagara_parapet_bands() + [
+            {"side": 1, "z0": -69, "z1": 1483, "y0": 0, "y1": 400, "kind": "open"}],
         "lamps": [
-            # The promenade's lamp posts, authored whole: they keep the hedge side honest at dusk
-            # and do almost nothing at noon, because the sun owns the day page.
-            {"x": -252, "y": 210, "z": 120, "r": 90, "k": 0.5},
-            {"x": -252, "y": 210, "z": 340, "r": 90, "k": 0.5},
+            {"x": 640, "y": 410, "z": 120, "r": 90, "k": 0.45},
+            {"x": 640, "y": 410, "z": 1150, "r": 90, "k": 0.45},
         ],
-        # The end wall is a frame, not a stop: one wide aperture over the stone sill, and the
-        # niagara painter carries everything past it from every stop on the promenade.
-        "vista": {"x": 0, "y0": 20, "y1": 340, "w": 520},
         "backdrop": {
-            # The day sky, in the street's own idiom: bands from below the horizon up, glow near
-            # one at the light-bearing band, because the lighting model multiplies what glow gives.
-            "sky": [{"y0": -400, "y1": 3000, "c": "#7fa8cc", "glow": 1.0},
-                    {"y0": 3000, "y1": 30000, "c": "#5d82ac", "glow": 0.7},
-                    {"y0": 30000, "y1": 90000, "c": "#48688f", "glow": 0.5}],
-            "niagara": {"y": -60, "z0": 600, "z1": 20000, "half": 12000,
-                        "crest": {"x": 1000, "w": 14000, "drop": 1100},
-                        "american": {"x": -9000, "w": 6000, "drop": 1600},
-                        "islands": [{"x": -5200, "w": 2600}, {"x": -11000, "w": 3000}],
-                        "rail": 1450},
+            "skyAround": NIAGARA_SKY,
+            "world": {"prims": niagara_world(LaneFrame(0.0, 14.0, 0.0, 180.0))},
         },
         "slots_title": "Places at the falls",
         "slots": [
@@ -3248,207 +3967,203 @@ DISTRICTS = [
                       "American Falls across.",
              "state": "Held by three drawn story frames; a photograph takes the slot when one arrives."},
             {"label": "The Table Rock rail",
-             "note": "The lip at the rail, where the water goes over a few metres away.",
+             "note": "The brink a few metres past the last post, where the trail comes nearest the water.",
              "state": "Held by the rail itself; no plate can stand in for the drop."},
         ],
         "stations": [
-            {"z": 10, "label": "the mouth of the promenade"},
-            {"z": 140, "label": "the hedge and the rail"},
-            {"z": 300, "label": "the mist ahead"},
-            {"z": 480, "label": "the Table Rock rail"},
+            {"z": 21, "x": 0, "label": "the trail at Table Rock Centre"},
+            {"z": 469, "x": 470, "label": "the centre's doors"},
+            {"z": 980, "x": -520, "label": "the parapet over the gorge"},
+            {"z": 1440, "x": -520, "label": "the Table Rock rail"},
         ],
-        "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
-                 "title": "The gate at your back", "hint": "It opens onto the hall, at the falls' "
+        "exit": {"id": "door-back", "kind": "door", "x": 678, "z": 340, "y": 0, "ry": -90, "leaf": "#33414e",
+                 "title": "Back through the centre", "hint": "It opens onto the hall, at the falls' "
                                                            "own table."},
         "back_to": "rooms-toronto.html#at-falls-n",
-        "caveat": "The falls are drawn from public facts — the crest's breadth, the drop, the "
-                  "talus, the islands, the rainbow's habit, the nightly illumination and the "
-                  "seasonal fireworks — and simplified at the detail level only: no crowds, no "
-                  "lettering, the downstream skyline a silhouette, the cruise boat off-frame at "
-                  "its downstream landing, no claim that the owner stood at the rail. The mist "
-                  "is the weather the sources describe. The Parks line north of the gorge "
-                  "bend — White Water Walk, the 1916 Aero Car, the Floral Clock, the Glen — "
-                  "stays in the drawer, beyond the promenade's sight.",
+        "caveat": "The place is drawn from the map and the sources: the trail, the terrace and "
+                  "Table Rock Centre's footprint, the Horseshoe's brink, the American and Bridal "
+                  "Veil falls, Goat and Luna Islands and the gorge's edges are OpenStreetMap's; "
+                  "the 57 m drop, the American Falls' 21-30 m onto its boulders, the Skylon's 160 m "
+                  "and the bridge's 290 m arch are the sources'. Approximate and said so: the rim "
+                  "of the gorge north of the terrace (drawn 30-40 m inland of the mapped water), "
+                  "the cliff's split between rock face and scree, the falling water's 24 m throw, "
+                  "the woods' height on the islands, Table Rock Centre's 10 m and its plain faces, "
+                  "the lamp posts' places. No crowds, no boats on the water, no lettering, and no "
+                  "claim that the owner stood at the rail. The Parks line downstream -- White Water "
+                  "Walk, the Aero Car, the Floral Clock, the Glen -- and the Fallsview towers up the "
+                  "hill stay in the drawer.",
     },
     {
-        # Journey Behind the Falls, compressed not deleted (round-20 fidelity directive): the
-        # elevator is the door on the promenade, the lane is the bedrock tunnel at its real
-        # section — the tunnels run about 2.4 m wide and 2.1 m high — and the far end opens onto
-        # the lower observation deck at the foot of the horseshoe, the curtain thirteen storeys
-        # overhead. Record facts, sources in TODO §0f: descent 125-150 ft through bedrock,
-        # tunnels bored 1889, the Cataract and Great Falls portals behind the sheet, ponchos at
-        # the door, and after dark the floodlit curtain from the deck.
+        # Journey Behind the Falls (round 33; sources in TODO §0o). Not the bedrock strata and the
+        # daylight sky the round-22 tunnel wore: the 1944 tunnel is concrete-lined and electrically
+        # lit (niagarafrontier.com), a barrel vault over wet walls with lamps along one side (Niagara
+        # Parks' own photograph), 2.4 m wide and about 2 m high. The lane is the main tunnel at its
+        # measured 56 m, elevator to deck (falzguy.com); the branch to the portals leaves it on the
+        # right 17 m in and is drawn running off to its two portals, 61 m and 110 m along; the far end
+        # opens onto the upper deck on the cliff, 38 m under the rim, with the falls drawn from the
+        # same surveyed model the promenade uses, seen from where the deck stands.
         "id": "journey", "label": "Behind the falls",
         "page": ROOM_BY_ID["journey"]["page"],
         "plates": ROOM_BY_ID["journey"]["plates"],
-        "lane": {"w": 240, "d": 470, "ceil": 213, "back": 160, "max_d": 1500},
-        "day": {"cycle": 900, "start": 0.55, "gain": 1},
-        "purpose": "Journey Behind the Falls: down through the bedrock, behind the horseshoe's curtain, to the deck at its foot",
+        "lane": {"w": 240, "d": 1931, "ceil": 220, "back": 160, "max_d": 6200, "vault": 45,
+                 "lid": "tunnelc", "under": True, "open_end": True, "wallmat": "tunnelc"},
+        "floor": "tunnel",
+        "day": {"cycle": 900, "start": 0.5, "gain": 1},
+        "purpose": "Journey Behind the Falls: the elevator's 38 m, the 1944 tunnel, the branch to the portals, the deck on the cliff",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/niagara-cover.jpg",
         "cover_caption": "The horseshoe from its foot, floodlit after dark.",
-        "blurb": "One tunnel walked in the bedrock: strata on the walls, soft light, the roar "
-                 "rising; at the portal a window of falling water, and at the open end the deck "
-                 "at the foot of the curtain, thirteen storeys overhead.",
-        "clad_note": " The tunnel walls wear the bedrock's own strata in flat bands — limestone "
-                     "and dolostone pale, shale dark — the geology the descent exposes. Nothing "
-                     "on any of it carries a word.",
-        "sight_note": " At the portal the rock opens onto the back of the sheet; at the deck the "
-                      "whole curtain stands overhead into mist. After dark the floodlights hold "
-                      "their colour on the water, the way the real deck sees them.",
+        "blurb": "The main tunnel walked from the elevator to the deck, 56 m of wet concrete "
+                 "vault under Table Rock. The branch to the two portals opens on the right, and "
+                 "at the far end the deck stands on the cliff with the Horseshoe's curtain beside it.",
+        "clad_note": " The tunnel is concrete-lined, 2.4 m wide under a low barrel vault, wet, with "
+                     "caged lamps along its right wall. Nothing on any of it carries a word.",
+        "sight_note": " Seventeen metres in, the branch to the portals runs off to the right, its "
+                      "lamps receding to the Cataract Portal's daylight 61 m along and the Great "
+                      "Falls Portal's at its end. At the deck the curtain stands on your right, "
+                      "the basin and its spray ahead, Goat Island's cliff across the gorge and the "
+                      "American Falls far down it on the left. After dark the curtain holds the "
+                      "illumination's colour.",
         "objects": [
-            # The curtain from below: stood at real scale with its top above the frame, so the
-            # deck reads as the foot of a thirteen-storey wall of water, not a table model.
-            {"id": "falls-jb", "kind": "falls", "x": 0, "z": 2300, "y": -200, "ry": 0,
-             "w": 5200, "h": 3000, "d": 140,
-             "title": "The curtain, from the deck",
-             "hint": "Thirteen storeys of water overhead: the sheet's top stands above the "
-                     "frame, the mist at its foot is the deck's weather."},
+            # The branch's mouth in the right wall: its concrete reveal, the press that tells what
+            # lies along it.
+            {"id": "portal-jb", "kind": "portal", "x": 118, "z": 593, "y": 0, "ry": -90,
+             "w": 373, "h": 175, "d": 2,
+             "title": "The way to the portals",
+             "hint": "A second tunnel, to the south-east: the Cataract Portal opens off it 61 m "
+                     "along, the Great Falls Portal 49 m further, each at the end of a 16 m spur "
+                     "where you stand about 7 m behind the falling water."},
+            # The deck's front parapet: concrete with a pipe rail, the edge of the walk.
+            {"id": "deckwall-jb", "kind": "deckwall", "x": 0, "z": 2172, "y": 0, "ry": 0,
+             "w": 700, "h": 105, "d": 30,
+             "title": "The upper deck",
+             "hint": "The deck is 38 m under the rim at the foot of the cliff; the brink is 36 m over "
+                     "your head and the basin 20 m below. The lower deck, 18 steps down, is shut in "
+                     "deep winter for the ice."},
         ],
         "surfaces": [
-            # The strata, pale over dark, both walls, for the tunnel's length only; the deck
-            # beyond stands open to the sky.
-            {"side": -1, "z0": 20, "z1": 300, "y0": 0, "y1": 70, "kind": "rock", "tone": 0.55},
-            {"side": -1, "z0": 20, "z1": 300, "y0": 70, "y1": 140, "kind": "rock", "tone": 0.8},
-            {"side": -1, "z0": 20, "z1": 300, "y0": 140, "y1": 213, "kind": "rock", "tone": 1},
-            {"side": 1, "z0": 20, "z1": 300, "y0": 0, "y1": 70, "kind": "rock", "tone": 0.55},
-            {"side": 1, "z0": 20, "z1": 300, "y0": 70, "y1": 140, "kind": "rock", "tone": 0.8},
-            {"side": 1, "z0": 20, "z1": 300, "y0": 140, "y1": 213, "kind": "rock", "tone": 1},
+            {"side": -1, "z0": -55, "z1": 1931, "y0": 0, "y1": 175, "kind": "tunnelc"},
+            {"side": 1, "z0": -55, "z1": 528.6, "y0": 0, "y1": 175, "kind": "tunnelc"},
+            {"side": 1, "z0": 528.6, "z1": 657.2, "y0": 0, "y1": 175, "kind": "open"},
+            {"side": 1, "z0": 657.2, "z1": 1931, "y0": 0, "y1": 175, "kind": "tunnelc"},
         ],
         "lamps": [
-            # The tunnels are lit soft and diffused: two low glows, no sun underground.
-            {"x": 0, "y": 200, "z": 90, "r": 70, "k": 0.55},
-            {"x": 0, "y": 200, "z": 230, "r": 70, "k": 0.55},
+            # Caged lamps on the right wall, the photograph's amber, every eight metres.
+            {"x": 104, "y": 160, "z": z, "r": 60, "k": 0.55, "tint": "rgba(255,190,110,0.45)", "bulb": False}
+            for z in (30, 300, 760, 1040, 1320, 1600, 1880)
         ],
-        # The tunnel mouth opens full-height onto the deck: the end wall is a frame with nothing
-        # left in it, and the painter carries the gorge and the rail past it.
-        "vista": {"x": 0, "y0": 0, "y1": 213, "w": 240},
         "backdrop": {
-            "sky": [{"y0": -400, "y1": 3000, "c": "#7fa8cc", "glow": 1.0},
-                    {"y0": 3000, "y1": 30000, "c": "#5d82ac", "glow": 0.7},
-                    {"y0": 30000, "y1": 90000, "c": "#48688f", "glow": 0.5}],
-            "journey": {"y": -60, "foot": -700, "z0": 1200, "z1": 9000, "half": 6000,
-                        "wall": 120, "rail": 1450},
+            "skyAround": NIAGARA_SKY,
+            "world": {"prims": journey_world(LaneFrame(*JOURNEY_FRAME))},
         },
         "slots_title": "Places behind the falls",
         "slots": [
             {"label": "The Cataract Portal",
-             "note": "The rock opens behind the sheet: water for a window, the roar for a wall.",
-             "state": "Held by the portal glow in the tunnel wall; a photograph takes the slot when one arrives."},
-            {"label": "The lower deck",
-             "note": "The foot of the curtain, thirteen storeys overhead, mist for weather.",
+             "note": "Down the branch: the first of the two openings behind the sheet.",
+             "state": "Held by the branch and its light; a photograph takes the slot when one arrives."},
+            {"label": "The upper deck",
+             "note": "On the cliff at the curtain's side, the brink 36 m overhead.",
              "state": "Held by the deck and the curtain; after dark the floodlights hold it."},
         ],
         "stations": [
-            {"z": 10, "label": "the elevator landing"},
-            {"z": 120, "label": "the storied tunnel"},
-            {"z": 230, "label": "the Cataract Portal"},
-            {"z": 460, "label": "the lower deck"},
+            {"z": 20, "x": 0, "label": "the elevator landing"},
+            {"z": 560, "x": 40, "label": "the branch to the portals"},
+            {"z": 1880, "x": 0, "label": "the tunnel's mouth"},
+            {"z": 2120, "x": 0, "label": "the upper deck"},
         ],
-        "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
-                 "title": "The tunnel back", "hint": "It climbs to the promenade at Table Rock."},
+        "exit": {"id": "door-back", "kind": "door", "lift": True, "x": 0, "z": -46, "y": 0, "ry": 0,
+                 "leaf": "#4a4e52",
+                 "title": "The elevator up", "hint": "It climbs the 38 m to Table Rock Centre."},
         "back_to": "rooms-niagara.html#at-door-journey",
-        "caveat": "Journey Behind the Falls is drawn from public facts — the 125-150 ft descent, "
-                  "the 1889 tunnels at their real section, the two portals, the deck at the foot, "
-                  "the nightly illumination — and simplified at the detail level only: no crowds, "
-                  "no lettering, no ponchos on rails, no claim that the owner stood at the deck.",
+        "caveat": "Journey Behind the Falls is drawn from public facts: the 38 m descent, the 1944 "
+                  "concrete-lined tunnel at its 2.4 m section, the main tunnel's 56 m to the deck, the "
+                  "portal branch at 17 m with its portals at 61 m and 110 m (falzguy.com's measured "
+                  "figures), the deck on the cliff, the nightly illumination. Approximate and said "
+                  "so: the tunnel's bearing and the deck's exact place are read from the deck's "
+                  "photographs and the tunnel's length, not surveyed; the branch is drawn straight. "
+                  "No crowds, no ponchos, no lettering, and no claim that the owner stood on the deck.",
     },
     {
-        # The whole CN Tower as one walkable space (landmark-space §7, grounded-scene §6): one lane
-        # read as an ascent. The cab doors at the mouth, the LookOut's floor-to-ceiling glass carrying
-        # the city from above, the Glass Floor as the drop underfoot, the SkyPod's higher sky at the
-        # far window. Record facts, sources in TODO §0a/§0b: 553.3 m, opened 1976; LookOut 346 m;
-        # Glass Floor 342 m (the world's first, 1994); SkyPod 446.5 m; the ride, 58 seconds.
-        # Bearings are the real ones (grounded-scene §1 rung 3-4): Lake Ontario due south of the pod,
-        # Rogers Centre and the rail corridor at its base, the downtown grid north and east — the
-        # aerial tile is the city read from above, not a composed backdrop.
+        # The CN Tower's LookOut, as it stands (round 33; sources in TODO §0o). The LookOut is a ring
+        # of floor-to-ceiling window walls round the tower's core: 12 column bays of seven panes, each
+        # 1.61 m wide and 2.62 m high (Daily Commercial News, 2017), so a ring about 43 m across.
+        # The lane is one 18.6 m chord of it on the south-east side, walked north-east: the core on
+        # the left, the glass on the right looking south-east over the harbour and the islands, the
+        # far glass looking north-east at the financial district. The city out there is surveyed
+        # (`toronto_world`): the shore, the islands, the spit, every tower over 214 m within four
+        # kilometres at Wikipedia's coordinates and heights. It replaces a generic aerial tile worn
+        # on both hands, which no bearing could be read off.
         "id": "cntower", "label": "The tower",
         "page": ROOM_BY_ID["cntower"]["page"],
         "plates": ROOM_BY_ID["cntower"]["plates"],
-        # A pod is narrower than a street and lower than a hall: the ceiling is the pod's own, and
-        # the mouth holds the cab doors instead of a curtain.
-        "lane": {"w": 560, "d": 640, "ceil": 330, "back": 220},
-        "floor": "pod",
-        "purpose": "The whole CN Tower as one space: the cab doors, the LookOut, the glass underfoot, the higher band",
+        "lane": {"w": 560, "d": 640, "ceil": 330, "back": 220, "lid": "acoustic", "wallmat": "core"},
+        "floor": "carpet",
+        # The city beyond the glass is held at night, so the room inside is too: without this the
+        # LookOut's lamps followed the hall's four-minute day and brightened to noon under a night
+        # sky (round 33: the tour's stops measured 134 falling to 94 for no reason in the place).
+        "night": 0.92,
+        "purpose": "The CN Tower's LookOut at 346 m: one stretch of its window ring, the city where it stands below",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/cntower-cover.jpg",
         "cover_caption": "The pod's own sheet: the city from above through the LookOut glass, drawn.",
-        "blurb": "One lane read as an ascent. The cab doors at the mouth, floor-to-ceiling glass "
-                 "carrying the city from above, a glass floor that is 342 m of drop, and the "
-                 "SkyPod's higher sky at the far window.",
-        "clad_note": " The lane is the pod at 346 m: floor-to-ceiling glass on both hands, the city "
-                     "from above worn as the wall's own material, a steel floor underfoot, and one "
-                     "square of it that is glass. Nothing on any of it carries a word.",
-        "sight_note": " At its far end a window holds a higher band of sky and the city three "
-                      "hundred and more metres below, running to a lake horizon. Nothing out there "
-                      "is a record of anybody standing in it.",
+        "blurb": "One stretch of the LookOut's ring at night: the core and its lifts on the left, "
+                 "floor-to-ceiling glass on the right over the harbour and the islands, the glass "
+                 "floor underfoot, and at the far end the financial district's towers.",
+        "clad_note": " The lane is the LookOut at 346 m: carpet underfoot, an acoustic-tile ceiling, the "
+                     "core's panelled wall on the left, and on the right the window wall's panes, "
+                     "1.61 m each, floor to ceiling. Nothing on any of it carries a word.",
+        "sight_note": " Out of the glass Toronto is where it is: the harbour's north shore "
+                      "below, the Toronto Islands and Billy Bishop's runway lights to the south, "
+                      "the Leslie Street Spit to the south-east, and through the far glass the "
+                      "financial district -- First Canadian Place, Scotia Plaza, the St. Regis, "
+                      "TD and Commerce Court -- with SkyTower at Pinnacle One Yonge to the east, "
+                      "its roof about at your eye. The lights between the towers are drawn at a "
+                      "lit city's density, not surveyed street by street.",
         "objects": [
-            # The elevator is the door and the moment (landmark-space §7 beat 1): the ride is 58
-            # authored seconds in the real tower, here a press. The shaft's light runs past while
-            # the doors stand open. The id says lift, the kind says door: site.js aliases `lift`
-            # to the door painter's centre-parting variant (the `shop`/`front` precedent), so the
-            # leaves part on `door` instead of a street door's panels, handle and fanlight.
+            # The lift landing in the core (landmark-space §7 beat 1): six glass-fronted cars, 58 s.
             {"id": "lift-cn", "kind": "door", "x": -278, "z": 60, "y": 0, "ry": 90,
              "leaf": "#2b3852",
              "glow": [{"r": 130, "k": 0.6, "dy": 210, "tint": "rgba(255,214,170,0.45)"}],
-             "states": [{"say": "The cab doors, shut. The real ride is 58 seconds; here it is a press."},
-                        {"door": 1, "say": "The doors stand open: the shaft's light runs past, and "
-                                          "the pod is the next room."}],
-             "title": "The cab doors",
-             "hint": "Six glass-fronted capsules run this shaft. Press to ride: the doors opening "
-                     "is the transition, not a cutscene."},
-            # The Glass Floor (beat 3): the part of the floor that is 342 m of drop. `on` is the
-            # step-on state; the deep aerial tile carries the city below. Its size is the sourced
-            # one, not a token: 24 m² of 64 mm units (Wikipedia, WikiArquitectura; TODO round 31),
-            # so 480 × 500 — the record's 220 × 180 was a sixth of it. The stop stands on its
-            # middle; the two stops before it see it ahead on the floor.
+             "states": [{"say": "The lift doors, shut. The ride up is 58 seconds; here it is a press."},
+                        {"door": 1, "say": "The doors stand open on the lit car."}],
+             "title": "The lift doors",
+             "hint": "Six glass-fronted lifts run the tower's shaft to the LookOut in 58 seconds."},
+            # The LookOut's own glass floor (June 2017), set directly above the 1994 original on the
+            # SkyTerrace level below (seesight-tours; CNN fast facts). Its size is not published:
+            # it is drawn at the original's 24 m2. The floor under it is open to the city.
             {"id": "glassfloor-cn", "kind": "glassfloor", "x": 0, "z": 430, "y": 0, "ry": 0,
              "w": 480, "h": 4, "d": 500,
-             "states": [{"say": "The Glass Floor at the rail: 342 m of drop under 64 mm of glass."},
-                        {"on": 1, "say": "On the glass. The plaza is 342 m below — the whole tower "
-                                         "is the drop under your feet."}],
+             "states": [{"say": "The LookOut's glass floor, above the 1994 original one level down."},
+                        {"on": 1, "say": "On the glass: 346 m of air under it. Look down."}],
              "title": "The glass floor",
-             "hint": "The world's first, 1994: a square of floor that is a window straight down the "
-                     "length of the tower. Press to step on, press to step back."},
-            # The SkyPod as a band, not a room (beat 4): the far window's stop. Its real
-            # differentiator is the height — the horizon a shade further, the sky a band higher.
-            {"id": "ledge-cn", "kind": "ledge", "x": 0, "z": 610, "y": 0, "ry": 0,
-             "w": 460, "h": 12, "d": 60,
-             "title": "The window at the higher band",
-             "hint": "Where the pod's glass ends and the SkyPod's sky begins: 446 m is mostly a "
-                     "further horizon and a higher band of dark."},
+             "hint": "Added to the LookOut in 2017, directly above the world's first glass floor "
+                     "(1994) on the SkyTerrace level 4 m below. Press to step on, press to step back."},
+            # The SkyPod is 100 m higher by its own lift from this level, not a window at the end
+            # of this one: its door is in the core.
+            {"id": "lift-skypod", "kind": "door", "x": -278, "z": 560, "y": 0, "ry": 90,
+             "leaf": "#3a4458",
+             "states": [{"say": "The SkyPod lift, shut. Its deck is 446.5 m up, 33 storeys over this one."},
+                        {"door": 1, "say": "Open: the SkyPod's own car, a separate ride from this level."}],
+             "title": "The SkyPod lift",
+             "hint": "The SkyPod, 446.5 m, is reached by its own lift from the LookOut level."},
         ],
-        # Floor-to-ceiling glass is a material band: the city from above rides the cladding the way
-        # every wall here wears its material. Both hands, from the cab to the far stop.
         "surfaces": [
-            # Darker than the pod itself: the city below is night outside the glass, and a window
-            # as bright as the room it looks out of is a mirror, not a view.
-            {"side": -1, "z0": 150, "z1": 600, "y0": 12, "y1": 260, "kind": "aerial", "tone": 0.55},
-            {"side": 1, "z0": 150, "z1": 600, "y0": 12, "y1": 260, "kind": "aerial", "tone": 0.55},
+            {"side": -1, "z0": -76, "z1": 640, "y0": 0, "y1": 330, "kind": "core"},
+            # The window wall: panes 1.61 m by 2.62 m, a dark soffit over them to the ceiling.
+            {"side": 1, "z0": -76, "z1": 640, "y0": 0, "y1": 262, "kind": "glazing", "pitch": 161},
+            {"side": 1, "z0": -76, "z1": 640, "y0": 262, "y1": 330, "kind": "soffit"},
         ],
-        # The restaurant that rings the real pod is one warm light band at its own hour, never
-        # modelled — a room with people eating is a room with people.
         "lamps": [
-            # The pod's own dim spots over the walk, the way the hall's tables outshine the room:
-            # the city below is the light this place is about, the fittings only keep the floor.
-            {"x": 0, "y": 296, "z": 100, "r": 240, "k": 0.8},
-            {"x": 0, "y": 296, "z": 260, "r": 240, "k": 0.8},
-            {"x": 0, "y": 296, "z": 420, "r": 240, "k": 0.8},
-            {"x": 0, "y": 296, "z": 580, "r": 240, "k": 0.8},
-            {"x": -250, "y": 252, "z": 300, "r": 140, "k": 0.6, "tint": "rgba(255,178,102,0.4)", "liton": 0.6},
-            {"x": 250, "y": 252, "z": 300, "r": 140, "k": 0.6, "tint": "rgba(255,178,102,0.4)", "liton": 0.6},
+            # Recessed downlights, low at night so the glass is a view and not a mirror.
+            {"x": 0, "y": 320, "z": z, "r": 200, "k": 0.42} for z in (40, 200, 360, 520)
         ],
-        "vista": {"x": 0, "y0": 30, "y1": 300, "w": 460},
+        # The far end is glass too, looking north-east; the core continues on its left.
+        "vista": {"x": 40, "y0": 0, "y1": 262, "w": 480, "pitch": 161},
         "backdrop": {
-            # The higher band and the pale horizon the SkyPod stop faces; below the horizon the
-            # citybelow painter carries the city three hundred metres down.
-            "sky": [{"y0": 300, "y1": 4000, "c": "#0b1424", "glow": 0.10},
-                    {"y0": 236, "y1": 300, "c": "#22375a", "glow": 0.20},
-                    {"y0": 186, "y1": 236, "c": "#31486e", "glow": 0.30}],
-            "citybelow": {"y": -900, "z0": 6000, "z1": 120000, "half": 60000,
-                          "lake": {"d0": 90000}},
+            "skyAround": TORONTO_SKY,
+            "world": {"prims": toronto_world(LaneFrame(5.18, -18.30, 0.0, 45.0))},
         },
         "slots_title": "Places in the tower",
         "slots": [
@@ -3457,26 +4172,34 @@ DISTRICTS = [
                       "from above, the drop under the glass.",
              "state": "Held by three drawn story frames; a photograph takes the slot when one arrives."},
             {"label": "The glass floor",
-             "note": "The one square of floor that is a window straight down.",
-             "state": "Held by the panel itself; no plate can stand in for 342 m."},
+             "note": "The square of floor that is a window down to the city.",
+             "state": "Held by the panel itself; no plate can stand in for 346 m."},
         ],
         "stations": [
-            {"z": 20, "label": "the cab doors"},
-            {"z": 180, "label": "the LookOut's glass"},
-            {"z": 340, "label": "the LookOut, mid"},
-            {"z": 430, "label": "on the glass floor"},
-            {"z": 560, "label": "the higher band"},
+            {"z": 20, "x": -60, "label": "the lift doors"},
+            {"z": 200, "x": 160, "label": "the window wall, south-east"},
+            {"z": 430, "x": 40, "label": "on the glass floor"},
+            {"z": 500, "x": -40, "label": "the SkyPod lift"},
+            {"z": 615, "x": 120, "label": "the north-east glass"},
         ],
-        "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
-                 "title": "The cab doors at your back", "hint": "They open onto the hall, at the "
-                                                                "tower's own table."},
+        "exit": {"id": "door-back", "kind": "door", "lift": True, "x": 0, "z": -46, "y": 0, "ry": 0,
+                 "leaf": "#2b3852",
+                 "title": "The lift down", "hint": "It opens onto the hall, at the tower's own table."},
         # The landmark space owns its way back (the wiring loop respects an authored back_to): it
-        # returns to the prop that owns it, not to the street — the hall is the hub route in.
+        # returns to the prop that owns it, not to the street -- the hall is the hub route in.
         "back_to": "rooms-toronto.html#at-tower-cn",
-        "caveat": "The tower is drawn at the eye's own scale from public facts — heights, levels, "
-                  "bearings — and the city below is drawn from above, not surveyed. The ride is "
-                  "compressed, the detail is simplified, the experience is the real one's shape. "
-                  "Nothing here carries a name or a claim that the owner stood at 346 m.",
+        "caveat": "The LookOut is drawn from public facts: 346 m, the window wall's 12 bays of 1.61 m "
+                  "by 2.62 m panes, the glass floor of 2017 above the 1994 original, the SkyPod's own "
+                  "lift. The city below is the map's and the record's: the shore, the islands and the "
+                  "spit from OpenStreetMap, every tower over 214 m within 4 km at Wikipedia's "
+                  "coordinates and heights. Approximate and said so: the ring's curve straightened "
+                  "into one chord, the walk's 5.6 m width, the towers' footprints, the glass floor's "
+                  "size, the shore east of Sugar Beach, the runway's line, the towers' storeys (a "
+                  "typical office or residential floor, not each building's own), and the lights "
+                  "between the towers, which are a lit city's density rather than its streets. "
+                  "Missing and said so: Toronto has over a hundred towers above 150 m and only the "
+                  "23 above 214 m are here, so this skyline is sparser than the real one. Nothing "
+                  "here carries a name or a claim that the owner stood at 346 m.",
     },
     {
         "id": "undeclared", "label": "Next district", "purpose": "Purpose not declared",
@@ -3696,7 +4419,7 @@ def walk_object(o):
     # document like an awning colour, or the renderer never sees them (lane-prop section 7).
     extra_attr = "".join(
         f' data-{k}="{escape(v if isinstance(v, str) else json.dumps(v, separators=(",", ":")))}"'
-        for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run") if k in o))
+        for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run", "lift") if k in o))
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
@@ -3753,7 +4476,8 @@ def walk_html(d, drawer):
         # screen reader gets without anything being painted over the space.
         chips.append(
             f'<button type="button" class="walk-stop" data-walk-stop="{n}" '
-            f'style="--z:{round(st["z"] * Z_SCALE)}px;--p:{st["z"] * Z_SCALE / walk_d:.3f}" '
+            f'style="--z:{round(st["z"] * Z_SCALE)}px;--p:{st["z"] * Z_SCALE / walk_d:.3f}'
+            f'{f";--x:{st[chr(120)]}px" if "x" in st else ""}" '
             f'aria-label="{escape(st["label"])}, {round(st["z"] * Z_SCALE)} cm in"></button>')
     links = []
     for n, fr in enumerate(d.get("frames", [])):
@@ -3790,6 +4514,14 @@ def walk_html(d, drawer):
     max_d_attr = f' data-lane-max-d="{lane["max_d"]}"' if lane.get("max_d") else ""
     # A street with nothing over it (Nakamise) says so, and the renderer draws no lid.
     max_d_attr += ' data-lane-open="1"' if lane.get("open") else ""
+    # Round 33: the rest of the shell is the place's -- what the ceiling is made of, a vault's rise,
+    # no wall behind or ahead, a lane underground (the renderer's `LID`/`VAULT`/`OPEN_*`/`UNDER`).
+    max_d_attr += f' data-lane-lid="{escape(lane["lid"])}"' if lane.get("lid") else ""
+    max_d_attr += f' data-lane-vault="{lane["vault"]}"' if lane.get("vault") else ""
+    max_d_attr += ' data-lane-open-back="1"' if lane.get("open_back") else ""
+    max_d_attr += ' data-lane-open-end="1"' if lane.get("open_end") else ""
+    max_d_attr += ' data-lane-under="1"' if lane.get("under") else ""
+    max_d_attr += f' data-lane-wallmat="{escape(lane["wallmat"])}"' if lane.get("wallmat") else ""
     # A place may own its ground: the pod walks on dark steel, not the street's concrete.
     floor_attr = f' data-floor="{d["floor"]}"' if d.get("floor") else ""
     # A place whose subject is the day: `"day": True` on the record, or a dict to author the cycle,
@@ -3800,6 +4532,10 @@ def walk_html(d, drawer):
     # so a day page runs the hall's own fifteen.
     day = d.get("day")
     day_attr = ""
+    # A place held at one hour of the night (`"night": 0.92`, the cycle's phase): the clock stops
+    # there, for a room whose window shows a night that does not move.
+    if d.get("night"):
+        day_attr = f' data-lane-night="{d["night"]}"'
     if day:
         opts = day if isinstance(day, dict) else {}
         day_attr = (f' data-lane-day="1" data-lane-day-cycle="{opts.get("cycle", 900)}"'

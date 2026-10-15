@@ -55,7 +55,7 @@ become one table, committed inside the district record:
 | claim | value | bearing / facing | source rung |
 |---|---|---|---|
 | e.g. Lake Ontario | due south of the pod, horizon ~visible from 346 m | S | rung 3 + rung 4 |
-| e.g. Rogers Centre | at the tower's base, NE of the shaft | NE, close | rung 3 |
+| e.g. Rogers Centre | ~190 m west-south-west of the shaft, roof 86 m | WSW, close | rung 3 (OSM way 7969701) |
 | e.g. Glass Floor | 4 m below the LookOut level, 24 m² | down | rung 2 |
 
 Rows are the things the scene promises: heights that matter, the real order of levels, what each
@@ -162,6 +162,26 @@ the backdrop beyond it, positions turned from map coordinates in code (`moji_xy`
 in the frame are the map's. Where the sources stopped — a hall's height, a tower's footprint — the
 record says "approximate", and a building with no source for its form is left off and named in the
 caveat rather than drawn as a box.
+
+*Correction, round 33.* §2's example table used to put Rogers Centre "NE of the shaft". It
+stands about 190 m west-south-west (OpenStreetMap), and the hall's model had been built on the wrong
+side of the tower until round 32 -- an example in a skill is a source too, and a wrong one travels.
+
+The same method, fourth pass — the owned spaces as surveyed worlds (round 33). The CN Tower, the
+falls and the Journey had measurement tables since rounds 21-27, but what the frames showed was still
+composed: the LookOut's view a wallpaper tile of a city, the falls the hall's table model stood at
+scale between a hedge and a wall of mist, the Journey's tunnel bare rock where the real one has been
+concrete-lined since 1944. A table that is not what the frame draws is not fidelity. Each world is
+now built from the map in the generator: OpenStreetMap polygons (the Recreation Trail, the three
+falls' crests, Goat and Luna Islands, the Toronto Islands, Billy Bishop) turned into lane centimetres by
+`LaneFrame`, the 23 towers of 214 m and over within 4 km from the Wikipedia list at their coordinates and
+heights, and the LookOut as an 18.6 m chord of its real 43 m ring at 346 m, facing north-east. What
+the method teaches: a frame's furniture can be checked against a photograph (an iron railing on stone
+posts, not a hedge), and so can its light -- a night photograph from the deck measures luma 37, which
+is what told the gate its floor, not the room its brightness. Where the sources stop -- the branch
+tunnel's line, the towers below 214 m, the city's streets -- the record says so; a skyline of 23
+real towers is sparse against the real wall of light, and the caveat says that too rather than
+filling the gap with invented boxes.
 
 ## 7. Refusals
 

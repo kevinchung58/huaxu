@@ -215,6 +215,13 @@ and `data-walk-wires`, plus the islands `data-walk-surfaces` (what each wall is 
 in, band by band), `data-walk-marks` (what is painted or let into the ground), `data-walk-beams`,
 `data-walk-vista` and `data-walk-backdrop`. The renderer draws the bulbs it is told about and
 derives exactly one glow from a prop's own position, because that light has to come from the machine.
+The same holds for what lies *beyond* the lane (round 33): a gorge, a city seen from 346 m, the falls
+from a deck are the backdrop's `world` — prims the generator builds from map data (`LaneFrame` turns
+latitude and longitude into lane centimetres; `niagara_world`, `toronto_world`, `journey_world` are the
+worked builders) — never shapes drawn into `js/site.js`, and never a prop stood at scale because it was
+to hand. The lane's shell says how much of that world shows (`lid`, `vault`, `open`, `open_back`,
+`open_end`, `under`, `wallmat`; cladding of kind `open`, `glazing`, `railing`), and the walk's
+collision still comes from the lane alone: a world is something you look at, not something you walk on.
 Adding a lamp in `js/site.js` to "fix" a dark wall is the failure mode this prevents: it produces a
 scene that looks lit and a dataset that says otherwise.
 

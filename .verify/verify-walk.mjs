@@ -171,7 +171,7 @@ ok("the far end is Hozomon at its sourced size, with the pagoda 56 m west and 19
 ok("the plaza continues the street's own paving, at street level, from the last shops on",
    bd.plaza.y === 0 && bd.plaza.z0 === WALK_D && bd.plaza.z1 > bd.temple.z);
 ok("a street with no lid has a sky that reaches the top of the frame",
-   bd.sky.length === 3 && bd.sky[bd.sky.length - 1].y1 >= 120000 && /const cl = OPEN \? null : add\(/.test(js));
+   bd.sky.length === 3 && bd.sky[bd.sky.length - 1].y1 >= 120000 && /const cl = OPEN \|\| VAULT \? null : lidQuad\(/.test(js) && /if \(VAULT && !OPEN\)/.test(js));
 ok("the aperture opens the whole end of the street onto the plaza",
    vista && vista.w >= 880 && vista.y0 <= 4 && vista.y1 >= 490);
 ok("no prop's z is left in record units (all scaled by 2.9)",

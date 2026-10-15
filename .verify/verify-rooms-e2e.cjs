@@ -307,15 +307,33 @@ async function main() {
   ok("Journey's tunnel opens onto its deck at the page-authored walk limit",
      Number.isFinite(journeyLimit) && env.walk().maxDepth === journeyLimit,
      `${env.walk().maxDepth} cm / authored deck limit=${journeyLimit}`);
-  env.key("w"); await env.pump(600); env.keyUp("w"); await env.pump(8);
+  /* Walk until the clamp holds, not for a fixed number of frames: the tunnel is its real 56 m now
+     (round 33), and the 600 frames that used to reach the deck stopped 17 m in -- the same lie
+     walkToDepth's note describes. The cap scales with the authored limit. */
+  env.key("w");
+  for (let i = 0, last = -1; i < Math.ceil(journeyLimit / 2) + 600; i += 20) {
+    await env.pump(20);
+    if (Math.abs(env.walk().depth - last) < 0.01) break;
+    last = env.walk().depth;
+  }
+  env.keyUp("w"); await env.pump(8);
   const deckStop = env.walk().depth;
   env.key("w"); await env.pump(30); env.keyUp("w"); await env.pump(8);
   ok("W cannot walk beyond the authored Journey deck extent",
      deckStop <= journeyLimit + 0.01 && Math.abs(deckStop - journeyLimit) < 1.2
        && Math.abs(env.walk().depth - deckStop) < 0.1,
      `depth=${deckStop.toFixed(2)} / limit=${journeyLimit}`);
-  env.key("s"); await env.pump(600); env.keyUp("s"); await env.pump(8);
-  ok("S cannot walk through the rear boundary either", env.walk().depth >= env.walk().minDepth - 0.01,
+  // And back the whole way, until the rear clamp holds -- a fixed 600 frames now ends mid-tunnel,
+  // where "not through the rear boundary" would be true without ever meeting it.
+  env.key("s");
+  for (let i = 0, last = -1; i < Math.ceil(journeyLimit / 2) + 600; i += 20) {
+    await env.pump(20);
+    if (Math.abs(env.walk().depth - last) < 0.01) break;
+    last = env.walk().depth;
+  }
+  env.keyUp("s"); await env.pump(8);
+  ok("S cannot walk through the rear boundary either",
+     env.walk().depth >= env.walk().minDepth - 0.01 && env.walk().depth - env.walk().minDepth < 1.2,
      `depth=${env.walk().depth.toFixed(2)} / minimum=${env.walk().minDepth}`);
   env.key(" "); await env.pump(10); env.keyUp(" ");
   const peak = env.walk().height;

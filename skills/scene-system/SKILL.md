@@ -43,6 +43,14 @@ assume; change one and re-run the whole battery.
   `dado` is brickwork, `rock` is bedrock — the material is the kind, the strata are the tones.
 - Painters (`bd.<id>` in `js/site.js`, config inline in the page) draw in absolute coordinates
   and only what no prop can carry: rivers, rainbows, rails, skylines, glow.
+- A lane that looks out at a real place carries a **surveyed world** (`bd.world.prims`, round 33):
+  prims in lane centimetres, turned from latitude and longitude by the generator's `LaneFrame` —
+  `f` flat, `x` tiled (`u` cm a repeat; `ax: "v"` maps a wall), `w` a water sheet and its streaks,
+  `m` spray, `l` light points, `rb` the rainbow, `fw` fireworks. What stands between the walker and
+  that world is the shell — the record's `lane` keys `lid`, `vault`, `open`, `open_back`, `open_end`,
+  `under`, `wallmat`, stamped as `data-lane-*` — and cladding bands of kind `open`, `glazing` (a
+  mullion every `pitch` cm) and `railing`. `skyAround` is a sky all round the eye;
+  `"night": <phase>` on the record holds a page's clock at one hour of the night.
 - WebKit rules: `preserve-3d` only on `.room-world`/`.ig-grid`; never `overflow`/`filter` on a
   preserve-3d ancestor. No frameworks, no npm build, no committed package.json — canvas and
   CSS transforms are the whole renderer.
@@ -104,8 +112,22 @@ Recipes that survived the critique pass, with their numbers. Reach for these bef
   math, reuse the site's proven small-scale shape stood at real size (the falls: the
   sheet-over-ledge-into-mist, breadth-to-drop ratio kept). Fidelity lives in the bearings and
   the ratios, not in the drawing technique.
-- **City as cladding** — a city from above rides a wall tile (`aerial`); the pod's side view
-  is the city, the bearings are the fact.
+- **City as cladding** — *retired for the LookOut in round 33*: a wall tile of a city is no city,
+  and the bearings were only true in the caveat. A fallback where no survey can be reached, and the
+  caveat then says the view is a texture.
+- **Surveyed world** — the beyond is map data (§1). A ground bigger than the eye's surroundings is cut
+  into cells, in rings that skip a cell only when it lies **wholly** inside the finer ring (by its
+  centre left a 6 km band of sky under the horizon). Layer biases paint lower water first; world faces
+  back-face-test with their own edge normal; a light lattice seen kilometres deep beats into moiré, so
+  lights are scattered by a seeded generator; a window tile is a storey at its real height (eight
+  storeys of 4.0 m office or 3.2 m residential — at 1.6 m a tower showed twice its floors).
+- **Sealed lane over a world** — a tunnel sees its world only through its mouth and its open bands;
+  `apertures()` drops the world quads that miss them (the Journey's entrance frame 2549 → 1811
+  fills, the picture identical), and the backing behind the lane is its own material, so a seam
+  between two panels never shows sky.
+- **Night from height** — a window over a night city is darker than a doorway onto a lit street:
+  two thirds of it is sky. Calibrate the gate against a photograph from the place (the LookOut's
+  night measures luma 37), never the city against the gate.
 - **Night rhythm and illumination** — lamps read three ways after dark and carry staggered
   `liton`; a floodlit landmark switches its sheet to the held illumination colour when
   `DAY() < 0.25`, five colours cycling slow, the gorge spilling the same light. The page's day
@@ -131,6 +153,12 @@ a visitor, twice**. The harness proves paint; only a read proves place. Known fa
 | silhouette floating | monochrome quad without a dark anchor | anchor against gorge/sky |
 | nothing painted | quad `add()`ed after the emit pass | painters run in the draw list |
 | subject below the floor | the lane box clips props at y<0, and the lip occludes the basin from a lip-height eye | the painter carries what the eye can see; what the lip hides stays off-frame, and the caveat says so |
+| a pale polygon in the ground — sky through it | a pattern fill not covering its own clip (a sliver cell's thin first triangle) | fill the clip's preimage box; diagnose with a flat-fill A/B and `.preview/shot1dbg.mjs`, not by guessing data holes |
+| a band of sky just under the horizon | ring cells skipped by their centre | skip only cells wholly inside the finer ring |
+| spray reads as smoke | the haze/night wash laid over a nearly clear round darkens the sky behind it | bake the night into the round's colour; no wash on translucent quads |
+| rippling arcs in a far texture | a hidden lattice in the tile | scatter with a seeded generator |
+| a tunnel twice as costly as its frame | the world behind its walls painted, then painted over | `apertures()` + the lane's own backing |
+| a room brightening to noon under a night window | a non-day page's lamps following the hall's clock | `"night": <phase>` on the record |
 
 Write what each read caught into TODO with the round; a critique pass that reports no catches
 is a pass that was not read.
@@ -189,11 +217,17 @@ grep the markup and the `?v=` pin.
 - `rooms-fukuoka.html` — Moji Port laid out from OpenStreetMap at one scale, the strait beyond the
   far wall continuing the same model; the Blue Wing on its real timetable (round 32).
 - `rooms-toronto.html` — the hall of lit tables; props owning spaces.
-- `rooms-cntower.html` — the whole tower as one ascent; bearings as fact (§6 there).
-- `rooms-niagara.html` — the day promenade to the Table Rock rail; prop at real scale;
-  skyline silhouette; illumination.
-- `rooms-journey.html` — the owned sub-space; bedrock at its real section; the portal; the
-  deck at the curtain's foot.
+- `rooms-cntower.html` — the LookOut at 346 m as an 18.6 m chord of its ring, facing north-east
+  over a surveyed Toronto at night: the shore, the islands, the spit and Billy Bishop from
+  OpenStreetMap, the 23 towers over 214 m within 4 km at their coordinates; the Glass Floor a real
+  hole onto it (round 33).
+- `rooms-niagara.html` — the last 43 m of the Recreation Trail walked south to Table Rock's rail by
+  day: stone posts and iron railing on the gorge side, Table Rock Centre on the other; both falls,
+  the islands, the gorge, the Rainbow Bridge and the Skylon where the map puts them; illumination
+  and fireworks after dark (round 33).
+- `rooms-journey.html` — the owned sub-space: 56 m of 1944 concrete vault from the elevator to the
+  deck, the branch to the two portals at 40°, the deck at the curtain's foot over the surveyed
+  falls (round 33).
 
 Each example's round notes live in TODO; the measurement tables in §0a-§0f are the artefacts
 phase 2 leaves behind.
