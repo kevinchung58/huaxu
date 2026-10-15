@@ -176,10 +176,16 @@ const goTo = async (stop) => {                          // use the lane's chips,
   const want = parseFloat(chip.style.getPropertyValue("--z")) || 0;
   tap(chip);
   // A jsdom raster spends part of each frame painting the scene, so wall-clock glide time is slower
-  // than the authored 165 cm/s physics step; wait on the body itself and let 30 s be only a deadlock cap.
-  const deadline = Date.now() + 30000;
-  while (Date.now() < deadline) {
-    if (Math.abs(layer.__walk.depth - want) < 1.5) return;
+  // than the authored 165 cm/s physics step; wait on the body itself. The cap is on standing still
+  // (5 s without a centimetre of progress), not on the length of the walk: a flat 30 s stopped the
+  // CN Tower's 15 m walk back to its entrance at 124 cm of 58, still moving, before any gate ran.
+  const hard = Date.now() + 180000;
+  let last = layer.__walk.depth, still = Date.now();
+  while (Date.now() < hard) {
+    const at = layer.__walk.depth;
+    if (Math.abs(at - want) < 1.5) return;
+    if (Math.abs(at - last) >= 1) { last = at; still = Date.now(); }
+    else if (Date.now() - still > 5000) break;
     await sleep(40);
   }
   throw new Error(`station ${stop} stopped at ${layer.__walk.depth.toFixed(1)} cm; wanted ${want} cm`);

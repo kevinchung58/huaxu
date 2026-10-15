@@ -1482,6 +1482,9 @@ function leaveOverlay(root, trigger) {
                   // plane, so a new shape that never shipped would show as a card, not a crash.
                   plinth: "plinth", tower: "tower", skyline: "skyline", dome: "dome",
                   falls: "falls", pool: "pool", boat: "boat", island: "island",
+                  // The tower's own: a panel of floor you see 342 m down through. Its branch
+                  // shipped in round 21 without this key, so for nine rounds it drew as a 4 cm card.
+                  glassfloor: "glassfloor",
                   // Moji's kit: the drawbridge the district is known by, and the ships it opens for.
                   drawbridge: "drawbridge", ship: "ship", stationfront: "stationfront",
                   customhouse: "customhouse", osakashosen: "osakashosen", dalianhall: "dalianhall",
@@ -1494,7 +1497,10 @@ function leaveOverlay(root, trigger) {
                          curtain: "cloth", stall: "stall", ledge: "plane",
                          // A shop is a front the record gave an awning: the id says shop, the
                          // painter is the retail one.
-                         shop: "front" });
+                         shop: "front",
+                         // A lift is a door that parts in the middle: the door painter draws it
+                         // without the panels, handle and fanlight that make a street door.
+                         lift: "door" });
   const mix = (hex, k) => {    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
     const to = k >= 0 ? [255, 238, 208] : [10, 17, 40];
     const a = Math.abs(k);
@@ -2574,7 +2580,8 @@ function leaveOverlay(root, trigger) {
         const q = add(C, [[px, 0, z], [px, 0, z1], [px, CEIL, z1], [px, CEIL, z]],
                       [z * DPM, 0, z1 * DPM, 0, z1 * DPM, -CEIL * DPM, z * DPM, -CEIL * DPM],
                       "pat", tilePat);
-        if (q) q.lit = lightAt(px, 210, zc);
+        // Side and span ride along so a door in this wall can paint after the slices behind it.
+        if (q) { q.lit = lightAt(px, 210, zc); q.wall = side; q.za = z; q.zb = z1; }
       });
       const fl = add(C, [[-WALL, 0, z], [WALL, 0, z], [WALL, 0, z1], [-WALL, 0, z1]],
           [z * DPM, -WALL * DPM, z * DPM, WALL * DPM, z1 * DPM, WALL * DPM, z1 * DPM, -WALL * DPM],
@@ -2652,6 +2659,7 @@ function leaveOverlay(root, trigger) {
               [z0 * DPM, -ya * DPM, z1 * DPM, -ya * DPM, z1 * DPM, -yb * DPM, z0 * DPM, -yb * DPM],
               "pat", pat);
           if (q) {
+            q.wall = sc.side; q.za = z0; q.zb = z1;     // see the door's paint stack
             // `tone` is authored dirt: a band can be brighter or duller than the material it is cut
             // from, which is what a wall that has been patched and repainted once actually looks like.
             q.lit = lightAt(px, (ya + yb) / 2, (z0 + z1) / 2)
@@ -2817,34 +2825,80 @@ function leaveOverlay(root, trigger) {
         const along = Math.abs(m.ry) > 45;
         const dir = along ? (m.x < 0 ? 1 : -1) : (m.z < 0 ? -1 : 1);
         const half = m.w / 2, ins = Math.max(m.d, 10), ajar = S && S.door ? S.door : 0;
+        const lift = kind === "lift";
         const P = (u, v, y) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
         const Q = (pts, col, l, air) => {
           const q = add(C, pts, ZERO8, "flat", col);
           if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); }
         };
-        Q([P(-half, ins, 0), P(half, ins, 0), P(half, ins, m.h), P(-half, ins, m.h)],
-          mix(base, -0.42), lit * 0.5);
-        const lw = m.w * 0.92, y1 = m.h * 0.94, slide = ajar * lw * 0.8;
-        const leaf = (u0, u1, ya, yb, col, l) =>
-          Q([P(u0 + slide, 4, ya), P(u1 + slide, 4, ya), P(u1 + slide, 4, yb), P(u0 + slide, 4, yb)],
-            col, l);
-        leaf(-lw / 2, lw / 2, 0, y1, mix(base, 0.16), lit * 1.05);
-        if (ajar < 0.9) {
-          leaf(-lw * 0.32, -lw * 0.08, m.h * 0.16, m.h * 0.44, mix(base, -0.3), lit * 0.78);
-          leaf(-lw * 0.32, -lw * 0.08, m.h * 0.54, m.h * 0.84, mix(base, -0.3), lit * 0.78);
-          leaf(lw * 0.08, lw * 0.32, m.h * 0.16, m.h * 0.44, mix(base, -0.3), lit * 0.78);
-          leaf(lw * 0.08, lw * 0.32, m.h * 0.54, m.h * 0.84, mix(base, -0.3), lit * 0.78);
+        const from = drawn.length;
+        /* The reveal goes behind the leaf. An end door is built back from the room (+v runs away
+           from whoever faces it), a side door out from its wall (+v runs into the lane), so one
+           offset stood every side door's dark reveal ten centimetres in front of its own leaf.
+           Seen down the street a sort tie hid it; turned to face the door, the door was a blank
+           slab. Round 31 found all four side doors that way in Chromium. */
+        const back = along ? 1 : ins;
+        const lw = m.w * 0.92, y1 = m.h * 0.94;
+        if (lift) {
+          /* A lift landing: two brushed leaves on a centre seam in a steel frame — no panels, no
+             handle, no fanlight, which are a street door's. `door` parts the leaves into their
+             pockets (each shrinks toward its jamb, so nothing slides out over the wall) and the
+             gap shows the lit cab instead of the dark reveal. */
+          Q([P(-half, back, 0), P(half, back, 0), P(half, back, m.h), P(-half, back, m.h)],
+            ajar ? "#b9a682" : mix(base, -0.42), ajar ? 0.7 + ajar * 0.7 : lit * 0.5);
+          const open = (1 - ajar) * (lw / 2 - 0.6);
+          if (open > 1) {
+            Q([P(-lw / 2, 4, 0), P(-lw / 2 + open, 4, 0), P(-lw / 2 + open, 4, y1), P(-lw / 2, 4, y1)],
+              mix(base, 0.34), lit * 1.1);
+            Q([P(lw / 2 - open, 4, 0), P(lw / 2, 4, 0), P(lw / 2, 4, y1), P(lw / 2 - open, 4, y1)],
+              mix(base, 0.28), lit * 1.1);
+          }
+          Q([P(-half, 5, 0), P(-lw / 2, 5, 0), P(-lw / 2, 5, m.h), P(-half, 5, m.h)], mix(base, 0.48), lit * 1.2);
+          Q([P(lw / 2, 5, 0), P(half, 5, 0), P(half, 5, m.h), P(lw / 2, 5, m.h)], mix(base, 0.48), lit * 1.2);
+          Q([P(-half, 5, y1), P(half, 5, y1), P(half, 5, m.h), P(-half, 5, m.h)], mix(base, 0.48), lit * 1.2);
+          Q([P(-half, 2, 0), P(half, 2, 0), P(half, 2, 3), P(-half, 2, 3)], mix(base, 0.5), lit * 1.2);
+        } else {
+          Q([P(-half, back, 0), P(half, back, 0), P(half, back, m.h), P(-half, back, m.h)],
+            mix(base, -0.42), lit * 0.5);
+          const slide = ajar * lw * 0.8;
+          const leaf = (u0, u1, ya, yb, col, l) =>
+            Q([P(u0 + slide, 4, ya), P(u1 + slide, 4, ya), P(u1 + slide, 4, yb), P(u0 + slide, 4, yb)],
+              col, l);
+          leaf(-lw / 2, lw / 2, 0, y1, mix(base, 0.16), lit * 1.05);
+          if (ajar < 0.9) {
+            leaf(-lw * 0.32, -lw * 0.08, m.h * 0.16, m.h * 0.44, mix(base, -0.3), lit * 0.78);
+            leaf(-lw * 0.32, -lw * 0.08, m.h * 0.54, m.h * 0.84, mix(base, -0.3), lit * 0.78);
+            leaf(lw * 0.08, lw * 0.32, m.h * 0.16, m.h * 0.44, mix(base, -0.3), lit * 0.78);
+            leaf(lw * 0.08, lw * 0.32, m.h * 0.54, m.h * 0.84, mix(base, -0.3), lit * 0.78);
+          }
+          leaf(lw * 0.5 - 20, lw * 0.5 - 5, m.h * 0.4, m.h * 0.54, "#e2d2ae", lit * 1.9);
+          Q([P(-half, 6, y1), P(half, 6, y1), P(half, 6, m.h), P(-half, 6, m.h)], "#f0c27a", 2.1, 0.05);
+          Q([P(-half, 2, 0), P(half, 2, 0), P(half, 2, 6), P(-half, 2, 6)], mix(base, 0.3), lit * 1.1);
+          /* A doorway you can read from down the street: a lit jamb either side of the leaf, and the
+             fanlight's colour spilled onto the ground in front of it. A door with no light on it is
+             a wall; these three quads are the difference. */
+          Q([P(-half, 3, 0), P(-half + 5, 3, 0), P(-half + 5, 3, y1), P(-half, 3, y1)], "#f0c27a", 1.8);
+          Q([P(half - 5, 3, 0), P(half, 3, 0), P(half, 3, y1), P(half - 5, 3, y1)], "#f0c27a", 1.8);
         }
-        leaf(lw * 0.5 - 20, lw * 0.5 - 5, m.h * 0.4, m.h * 0.54, "#e2d2ae", lit * 1.9);
-        Q([P(-half, 6, y1), P(half, 6, y1), P(half, 6, m.h), P(-half, 6, m.h)], "#f0c27a", 2.1, 0.05);
-        Q([P(-half, 2, 0), P(half, 2, 0), P(half, 2, 6), P(-half, 2, 6)], mix(base, 0.3), lit * 1.1);
-        /* A doorway you can read from down the street: a lit jamb either side of the leaf, and the
-           fanlight's colour spilled onto the ground in front of it. A door with no light on it is
-           a wall; these three quads are the difference. */
-        Q([P(-half, 3, 0), P(-half + 5, 3, 0), P(-half + 5, 3, y1), P(-half, 3, y1)], "#f0c27a", 1.8);
-        Q([P(half - 5, 3, 0), P(half, 3, 0), P(half, 3, y1), P(half - 5, 3, y1)], "#f0c27a", 1.8);
-        Q([P(-half, 6, 0), P(half, 6, 0), P(half, 76, 0), P(-half, 76, 0)],
-          "rgba(240,194,122,0.22)", 1.2, 0.06);
+        /* One stack, painted in the order it was built. The joinery is layers on one face, and a
+           painter that sorts each quad by its own centre puts the far panels and the handle under
+           the leaf they are set into. A side door must also clear the wall slices it stands on,
+           each sorted by its own centre as well, so its stack goes just ahead of the nearest one
+           behind it — no further, or a pole standing in front of the door would sink under it. */
+        const face = drawn.slice(from);
+        if (face.length) {
+          let at = Math.min(...face.map((q) => q.z));
+          if (along) {
+            const side = Math.sign(m.x), z0 = m.z - half, z1 = m.z + half;
+            quads.forEach((w) => { if (w.wall === side && w.za < z1 && w.zb > z0) at = Math.min(at, w.z - 1); });
+          }
+          face.forEach((q, i) => { q.sz = at - i * 0.01; });
+        }
+        // The spill is floor, not face: it keeps its own depth, and a lift lights no pavement.
+        if (!lift) {
+          Q([P(-half, 6, 0), P(half, 6, 0), P(half, 76, 0), P(-half, 76, 0)],
+            "rgba(240,194,122,0.22)", 1.2, 0.06);
+        }
       } else if (shape === "cloth") {
         const along = Math.abs(m.ry) > 45;
         const len = m.w, n = 4, gap = 8;
@@ -3263,8 +3317,10 @@ function leaveOverlay(root, trigger) {
         if (q) { q.lit = lit * 0.5; drawn.push(q); }
       } else if (shape === "glassfloor") {
         /* A square of floor that is a window straight down: the city 342 m below rides the deep
-           aerial tile behind a steel rim. `on` (step on) lifts the panel's own light the way a lit
-           pool does — standing on the glass is the moment, not the edge of it. */
+           aerial tile behind a steel rim. The glass takes no wash from the room's lamps — its light
+           is the city's, below, and a washed pane reads as grey floor (its first render, round 31,
+           did exactly that when stepped on). `on` (step on) clears the reflection instead: standing
+           over it you look through the glass, not at it — standing on it is the moment. */
         const on = S && S.on ? S.on : 0;
         const hw = m.w / 2, hd = m.d / 2;
         const q = add(C, [[m.x - hw, m.y + 1, m.z - hd], [m.x + hw, m.y + 1, m.z - hd],
@@ -3272,7 +3328,7 @@ function leaveOverlay(root, trigger) {
             [(m.z - hd) * 0.6, (m.x - hw) * 0.6, (m.z - hd) * 0.6, (m.x + hw) * 0.6,
              (m.z + hd) * 0.6, (m.x + hw) * 0.6, (m.z + hd) * 0.6, (m.x - hw) * 0.6],
             "pat", PATS.aerialdeep);
-        if (q) { q.lit = lit * (on ? 1.25 : 0.8); drawn.push(q); }
+        if (q) { q.lit = 0.5; drawn.push(q); }
         [[m.z - hd - 5, m.z - hd], [m.z + hd, m.z + hd + 5]].forEach(([z0, z1]) => {
           const r = add(C, [[m.x - hw - 5, m.y, z0], [m.x + hw + 5, m.y, z0],
                             [m.x + hw + 5, m.y + 3, z1], [m.x - hw - 5, m.y + 3, z1]],
@@ -3281,7 +3337,7 @@ function leaveOverlay(root, trigger) {
         });
         const sheen = add(C, [[m.x - hw, m.y + 2, m.z - hd], [m.x - hw * 0.2, m.y + 2, m.z - hd],
                               [m.x + hw * 0.2, m.y + 2, m.z + hd], [m.x - hw * 0.6, m.y + 2, m.z + hd]],
-                          ZERO8, "flat", `rgba(210,228,248,${on ? 0.10 : 0.16})`);
+                          ZERO8, "flat", `rgba(210,228,248,${on ? 0.04 : 0.16})`);
         if (sheen) { sheen.air = 0; sheen.day = false; drawn.push(sheen); }
       } else if (shape === "plinth") {
         /* A diorama table: a dark cabinet whose top is the one face brighter than its own light —

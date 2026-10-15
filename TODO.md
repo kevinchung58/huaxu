@@ -1,6 +1,35 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-14 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-15 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0m. 第三十一輪（2026-10-15）：沒畫出來的物件——CN Tower 三個未註冊 prop、側牆門變平板、閘門漏看的頁
+
+站主：「請用 skills並且遵循根AGENTS.MD SKILLS做該做的事情並進行專案。」依 AGENTS 先讀 Karpathy／PUA／real-place-builder／scene-system／lane-prop／grounded-scene，盤點 TODO 與 gates，再以 render 幀為準找缺陷。PR #1–#13 皆已合併，無 open issue；第三十輪「無已知阻擋性缺陷」的結論被以下證據推翻。
+
+**缺陷 1（round 21 起）：CN Tower 四個 prop 有三個沒到自己的 painter。** painter 由 `data-obj` id 前綴經 `kindOf` 決定，record 的 `kind` 只用於 OBJ_SIZE／碰撞、從不進 HTML。`lift-cn`（record 說 door）→ 退回 plane，開門 state 只有字幕；`glass-cn`（glassfloor）→ SHAPE 根本沒有 `glassfloor` 鍵，37 個 painter branch 中唯一的死碼，九輪都畫成 4 cm 高的卡片＋接地陰影；`sky-cn`（ledge）→ fallback 色。閘門沒抓到：`verify-shapes/geometry/clash` 手打四頁清單（123 props），之後建的 cntower／niagara／journey 從未被檢；`verify-story` 只驗 DOM `data-state`，不驗像素。
+- 修法：`SHAPE.glassfloor`；`lift: "door"` alias（`shop`/`front` 先例，id 不變、record 註記）；`glass-cn`→`glassfloor-cn`、`sky-cn`→`ledge-cn`（record 本來就寫 ledge）；`verify-story` 選擇器同步。三個 gate 改為從磁碟推導「含 `data-obj=` 的所有頁」——7 頁 136 props 全 resolve。反向對照：新 `verify-shapes` 套在 HEAD 的 site.js＋cntower 頁 → exit 1，正好列出 `lift-cn glass-cn sky-cn`。
+- 電梯畫法：door painter 加中分電梯變體——兩片拉絲門扇＋中縫＋鋼框，無門板／把手／氣窗（那是街門的）；`door` state 讓門扇縮進兩側門袋、露出亮的車廂。state 現在是幾何。
+
+**缺陷 2（PR #8，2026-09-30 起）：所有側牆門正面看是一塊平板。** door painter 的偏移假設 +v＝門後（端牆門成立），但側牆門的 `dir` 讓 +v 指向走道，於是全尺寸暗色 reveal 站在門扇前 10 cm；沿街看時排序平手剛好藏住，轉身面對門就整片蓋住門扇、門板、把手、氣窗。Chromium 實拍確認：Niagara `door-journey`、街上 Toronto／Tokyo 主門正面皆為單色平板。另外門扇／門板／把手共面、各以自己中心排序，遠側門板與把手會沉到門扇下。
+- 修法：側牆門 reveal 放到門扇後（v=1）；門面各層組成一疊、依建構順序繪製，排序鍵放在「重疊的最近一片牆切片」之前一點點（牆與 cladding 切片建立時標記 `wall/za/zb`，用實際 quad，不重推切片網格——cntower `back: 220` 不在 60 cm 網格上）；地面光暈維持自己的深度。刻意不用固定 −70 偏移：`pole-west` 在 Toronto 門遠緣外 10 cm，固定偏移會讓門蓋過站在它前面的桿子。實拍驗證：三扇門＋journey 門正面皆見門板、把手、氣窗；從街中段回望，桿子仍正確擋在門前；端牆 `door-back` 不變。
+
+**缺陷 3：Glass Floor 尺寸與來源不符。** 來源一致為 24 m²（256–258 sq ft）、64 mm（25 mm 夾層＋25 mm 空氣層＋13 mm 夾層）：Wikipedia「CN Tower」、WikiArquitectura、torontotourism.org 2026 指南、CN Tower FAQ 鏡像；record 的 220×180≈4 m² 只有六分之一（grounded-scene §5：record 與幾何衝突時幾何錯）→ 480×500。另據 kpax（CNN fast facts）、tourbyspot：2017 起 LookOut 346 m 本身也有對齊的玻璃地板，所以放在 LookOut lane 有依據。painter 首次真正執行時，`on` 的 `lit×1.25` 讓暖色 wash 把深色城市磁磚洗成灰地板 → 玻璃不吃室內燈（lit 0.5），`on` 改為清掉反光（sheen 0.16→0.04）。站位：「on the glass floor」站在面板中心，預設 pitch −2°（往上 2°；正 pitch 才是往下）時地板要 ~357 cm 外才入鏡，所以腳下玻璃只在往下拖曳時可見（MAX_PITCH 24，實拍證明）；前兩站（LookOut's glass、LookOut mid）正前方清楚看到整片。
+
+**Harness：** `lane-shot` 的 `goTo` 30 s 牆鐘上限在 cntower 走回入口時於 124/58 cm（仍在移動）丟錯，room gate 從未執行 → 上限改為「5 s 無 1 cm 進度」＋180 s 硬上限。cntower lane-shot 首次完整：16 幀＋sheet，7/7 PASS。
+
+**數值（同 harness、同站點，before → after）：** 02 101.8→101.4、05 101.0→95.8、08 83.9→80.5、11 70.8→71.2（接近 sealed 70 是既有狀態）、14 60.1→60.8；05／08／09 變動 39–42% 像素（玻璃地板出現）、01 19%（電梯）、14 0.1%。全套：`verify-shapes` 136/7 頁、`verify-geometry`／`verify-clash` 7 頁 0、`verify-walk` 173/173（中途一次 172/173＝改 JS 後未重產 cache-buster，重產即過）、`verify-objects` exit 0、e2e 0 failures、chain 0 failures、story 25/25、cost-probe peak 6380／28 frames／bad 0／dark 0.617／huge 0、impeccable `[]`、兩次重產 MD5 一致、`node --check`／`py_compile`／`git diff --check` 通過。
+
+**沒做到／誠實註記：**
+- 街道 lane-shot：30/31 幀已產出，最後 41 m 走回入口那步被站主中止，所以沒有 entrance-behind、sheet 與 PASS/FAIL——不算 pass。以同一公式算 10 張 ahead：luma 82.4–200.7、色數 120–999，遠高於任何門檻。
+- `browser-check.py` 未跑（需 Playwright 下載 Chromium，CDN 不在允許清單；且只測 rooms.html）。`verify-objects` 只看 Toronto 四個視角（設計如此），門與塔的證據來自 lane-shot 與 Chromium 實拍。
+- 「the cab doors」站的電梯在 ±30° 幀邊緣（相對站點 −67°）；正面證據用 `#at-lift-cn` 實拍。站位未改。
+- 腳下城市燈點稀疏：`aerialdeep` 磁磚與 SkyPod 的 citybelow 背景共用，未動以免改到遠景；屬美感微調，留給站主決定。
+- 接觸面板時卡片「1.9 m ahead」是進入 reach 圈時的舊值（`say()` 只在 reach 換物件時更新），既有行為，未動。
+- 已過時的 TODO：round-18 渡輪動作（boat painter 已有 SAIL 13／BERTH 4／REACH 62 時刻表）、round-19 門司遠岸（customhouse／osakashosen／dalianhall 已存在）。
+
+**一次性探針（用完已刪，做法記此）：** puppeteer-core＋`@sparticuz/chromium` 連 :8080；用 `#at-<prop>` hash 或站點 chip 站位；按住方向鍵並讀回 `__walk.yaw` 轉向；滑鼠拖曳調 pitch（往上拖＝往下看）；E 鍵按壓。等待滑行要以 chip 的 `--z` 為目標——軟體 GL 幀很慢，兩次取樣相同不代表到站。證據（忽略目錄、不進 Git）：`.preview/r31-cntower-before/`、`.preview/r31-cntower-after/`（含 sheet）、`.preview/r31-probe-before/`、`.preview/r31-probe-after/`、`.preview/r31-probe-after2/`、`.preview/r31-street-after/`。
+
+---
 
 ## 0l. 第三十輪（2026-10-14）：建景 skills 強制落地、視覺回歸與 Niagara renderer 修正
 

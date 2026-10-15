@@ -21,8 +21,13 @@ const kindOf = (id) => {
   for (const k of Object.keys(SHAPE)) if (id.startsWith(k + "-") && (!best || k.length > best.length)) best = k;
   return best || id;
 };
+/* Every page that carries props, read off the disk. The list used to be four names typed in by hand,
+   so the three spaces built after it (the CN Tower, Niagara, Journey) were never audited, and three
+   of the tower's four props drew as fallback planes from round 21 to round 31. */
+const PAGES = fs.readdirSync(".").filter((f) => f.endsWith(".html")
+  && fs.readFileSync(f, "utf8").includes('data-obj="')).sort();
 let bad = 0, total = 0;
-for (const f of ["rooms-toronto.html", "rooms.html", "rooms-fukuoka.html", "street.html"]) {
+for (const f of PAGES) {
   if (!fs.existsSync(f)) continue;
   const ids = [...fs.readFileSync(f, "utf8").matchAll(/data-obj="([A-Za-z0-9-]+)"/g)].map((m) => m[1]);
   const miss = ids.filter((id) => SHAPE[kindOf(id)] === undefined);

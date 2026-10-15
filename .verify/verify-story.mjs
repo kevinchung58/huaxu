@@ -48,14 +48,14 @@ await page.goto("http://127.0.0.1:8080/rooms-cntower.html", { waitUntil: "networ
 await sleep(1500);
 ok("the space boots with its city-below backdrop",
    await page.evaluate(() => !!document.querySelector("[data-walk-backdrop]")));
-await page.evaluate(() => document.querySelector("[data-obj='glass-cn']").click());
+await page.evaluate(() => document.querySelector("[data-obj='glassfloor-cn']").click());
 await sleep(200);
 ok("the glass floor steps on",
-   (await page.$eval("[data-obj='glass-cn']", (el) => el.dataset.state)) === "1");
-await page.evaluate(() => document.querySelector("[data-obj='glass-cn']").click());
+   (await page.$eval("[data-obj='glassfloor-cn']", (el) => el.dataset.state)) === "1");
+await page.evaluate(() => document.querySelector("[data-obj='glassfloor-cn']").click());
 await sleep(200);
 ok("and steps back off",
-   (await page.$eval("[data-obj='glass-cn']", (el) => el.dataset.state)) === "0");
+   (await page.$eval("[data-obj='glassfloor-cn']", (el) => el.dataset.state)) === "0");
 await page.evaluate(() => document.querySelector("[data-obj='lift-cn']").click());
 await sleep(200);
 ok("the cab doors ride on a press",

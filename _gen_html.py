@@ -3684,7 +3684,9 @@ DISTRICTS = [
         "objects": [
             # The elevator is the door and the moment (landmark-space §7 beat 1): the ride is 58
             # authored seconds in the real tower, here a press. The shaft's light runs past while
-            # the doors stand open.
+            # the doors stand open. The id says lift, the kind says door: site.js aliases `lift`
+            # to the door painter's centre-parting variant (the `shop`/`front` precedent), so the
+            # leaves part on `door` instead of a street door's panels, handle and fanlight.
             {"id": "lift-cn", "kind": "door", "x": -278, "z": 60, "y": 0, "ry": 90,
              "leaf": "#2b3852",
              "glow": [{"r": 130, "k": 0.6, "dy": 210, "tint": "rgba(255,214,170,0.45)"}],
@@ -3694,10 +3696,13 @@ DISTRICTS = [
              "title": "The cab doors",
              "hint": "Six glass-fronted capsules run this shaft. Press to ride: the doors opening "
                      "is the transition, not a cutscene."},
-            # The Glass Floor (beat 3): one panel of the floor that is 342 m of drop. `on` is the
-            # step-on state; the deep aerial tile carries the city below.
-            {"id": "glass-cn", "kind": "glassfloor", "x": 0, "z": 430, "y": 0, "ry": 0,
-             "w": 220, "h": 4, "d": 180,
+            # The Glass Floor (beat 3): the part of the floor that is 342 m of drop. `on` is the
+            # step-on state; the deep aerial tile carries the city below. Its size is the sourced
+            # one, not a token: 24 m² of 64 mm units (Wikipedia, WikiArquitectura; TODO round 31),
+            # so 480 × 500 — the record's 220 × 180 was a sixth of it. The stop stands on its
+            # middle; the two stops before it see it ahead on the floor.
+            {"id": "glassfloor-cn", "kind": "glassfloor", "x": 0, "z": 430, "y": 0, "ry": 0,
+             "w": 480, "h": 4, "d": 500,
              "states": [{"say": "The Glass Floor at the rail: 342 m of drop under 64 mm of glass."},
                         {"on": 1, "say": "On the glass. The plaza is 342 m below — the whole tower "
                                          "is the drop under your feet."}],
@@ -3706,7 +3711,7 @@ DISTRICTS = [
                      "length of the tower. Press to step on, press to step back."},
             # The SkyPod as a band, not a room (beat 4): the far window's stop. Its real
             # differentiator is the height — the horizon a shade further, the sky a band higher.
-            {"id": "sky-cn", "kind": "ledge", "x": 0, "z": 610, "y": 0, "ry": 0,
+            {"id": "ledge-cn", "kind": "ledge", "x": 0, "z": 610, "y": 0, "ry": 0,
              "w": 460, "h": 12, "d": 60,
              "title": "The window at the higher band",
              "hint": "Where the pod's glass ends and the SkyPod's sky begins: 446 m is mostly a "
