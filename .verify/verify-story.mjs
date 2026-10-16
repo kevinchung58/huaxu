@@ -106,6 +106,24 @@ ok("the promenade carries the Journey door at the rail end",
      const d = document.querySelector("[data-obj='door-journey']");
      return !!d && d.dataset.leave === "rooms-journey.html";
    }));
+const railView = await page.evaluate(() => {
+  const stop = document.querySelector("[data-walk-stop='3']");
+  return stop ? { yaw: stop.dataset.viewYaw, pitch: stop.dataset.viewPitch } : null;
+});
+ok("the Table Rock rail stop aims down and toward the Horseshoe",
+   railView?.yaw === "-15" && railView?.pitch === "10", JSON.stringify(railView));
+await page.evaluate(() => document.querySelector("[data-walk-stop='3']").click());
+await page.waitForFunction(() => {
+  const w = document.querySelector("[data-walk]")?.__walk;
+  return w && w.yaw === -15 && w.pitch === 10;
+}, { timeout: 5000 });
+ok("choosing the rail stop applies its authored camera view",
+   await page.evaluate(() => {
+     const w = document.querySelector("[data-walk]").__walk;
+     return w.yaw === -15 && w.pitch === 10;
+   }));
+await page.goto("http://127.0.0.1:8080/rooms-niagara.html", { waitUntil: "networkidle0" });
+await sleep(1500);
 await page.evaluate(() => document.querySelector("[data-obj='door-journey']").click());
 await waitForRoute("rooms-journey.html");
 ok("the Journey door leads behind the falls",

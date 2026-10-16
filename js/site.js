@@ -689,6 +689,13 @@ function leaveOverlay(root, trigger) {
   // Where across the lane a stop stands you (round 33): at the rail, not in the middle of a 14 m
   // terrace. Absent, a glide keeps the walker's own x, as it always did.
   const stopX = stops.map((el) => { const v = el.style.getPropertyValue("--x"); return v ? parseFloat(v) : undefined; });
+  const stopView = stops.map((el) => {
+    const view = (key) => {
+      const v = parseFloat(el.dataset[`view${key}`]);
+      return Number.isFinite(v) ? v : null;
+    };
+    return { yaw: view("Yaw"), pitch: view("Pitch") };
+  });
 
   /* ---- the raster ----
      A canvas, one projection, a painter's algorithm. No WebGL, no library, nothing vendored: the
@@ -7002,7 +7009,11 @@ function leaveOverlay(root, trigger) {
   /* --- input: every verb has both a key and a finger --- */
   const drawerClose = layer.querySelector("[data-walk-list-close]");
   if (drawerClose) drawerClose.addEventListener("click", () => toggleList(false));
-  stops.forEach((el, i) => el.addEventListener("click", () => { glideTo(stopZ[i], stopX[i]); }));
+  stops.forEach((el, i) => el.addEventListener("click", () => {
+    if (stopView[i].yaw !== null) yaw = wrapYaw(stopView[i].yaw);
+    if (stopView[i].pitch !== null) pitch = clamp(stopView[i].pitch, -MAX_PITCH, MAX_PITCH);
+    glideTo(stopZ[i], stopX[i]);
+  }));
   Array.from(layer.querySelectorAll("[data-walk-to]")).forEach((btn) => btn.addEventListener("click", () => {
     glideTo(parseFloat(btn.getAttribute("data-walk-to")) || 0);
     toggleList(false);
@@ -7190,7 +7201,7 @@ function leaveOverlay(root, trigger) {
   // Read-only, for the harness: a jsdom that can only assert "the picture changed" cannot tell a
   // camera that walks from one that jitters, and the numbers that matter are already in scope here.
   layer.__walk = { get depth() { return depth; }, get x() { return x; }, get height() { return height; },
-                   get yaw() { return yaw; }, get focal() { return focal; }, get quads() { return quads.length; },
+                   get yaw() { return yaw; }, get pitch() { return pitch; }, get focal() { return focal; }, get quads() { return quads.length; },
                    get wallHalf() { return WALL; }, get radius() { return PLAYER_RADIUS; },
                    get halfWidth() { return HALF; },
                    get minDepth() { return MIN_D; }, get maxDepth() { return MAX_D; },

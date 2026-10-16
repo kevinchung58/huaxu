@@ -2,21 +2,21 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-16 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
-## 0s. 第三十七輪（2026-10-16）：Tokyo 實景封面、穩定 story gate、五個環境的未完成清單
+## 0s. 第三十七輪（2026-10-16）：Tokyo 實景封面、Niagara rail 停點取景、穩定 story gate、五個環境的未完成清單
 
 本輪延續「繼續把真實環境做好，並盤點尚未完成的場景／物品」。依可驗證資料區分：已建的來源導向場景、已知近似、真正缺項，以及因缺乏可靠形體資料而刻意不畫；幾何／互動 gate 通過不代表視覺已完全符合實地。
 
 ### 收尾與驗證
 - `IMG/tokyo-cover.jpg` 換成實際 Chromium 開啟 `rooms.html`、stop 2 朝前的無 UI 畫面（1024×768；Tokyo 使用 Canvas2D renderer）。不是生成圖或現地照片。SHA-256：`9c860d4d2df03cb1a521d450fa2c2fed60d19685eaae6fedd7be1ae63d433016`。`_gen_html.py` 的 caption 為：`Nakamise's shuttered vermilion rows, drawn from the lane toward Hozomon.`
-- `.verify/verify-story.mjs` 的導航驗收改為等待精確 pathname/hash 與返回後的 `is-reach` 物件，不再靠固定 300/1600 ms 捕捉導覽；保留原本的故事、進出空間、互動及返回 owner 斷言。**25/25 PASS**。
-- 最終 gate：`verify-walk` **163/163**；shapes **100 props 都 resolve**；geometry、clash、Three.js、chain **96 PASS／0 failure**、rooms E2E **72 checks／0 failure**、story **25/25**；`verify-objects` 在 Chromium 正確的 `LD_LIBRARY_PATH` 下 exit 0。這些 gate 各自驗證程式結構、幾何約束、路由互動或像素量測，**不能單獨證明真實感／視覺完整**。
+- `.verify/verify-story.mjs` 的導航驗收改為等待精確 pathname/hash 與返回後的 `is-reach` 物件，不再靠固定 300/1600 ms 捕捉導覽；保留原本的故事、進出空間、互動及返回 owner 斷言，並驗證 Table Rock rail 停點會套用作者化視角。**27/27 PASS**。
+- 最終 gate：`verify-walk` **163/163**；shapes **100 props 都 resolve**；geometry、clash、Three.js、chain **96 PASS／0 failure**、rooms E2E **72 checks／0 failure**、story **27/27**；`verify-objects` 在 Chromium 正確的 `LD_LIBRARY_PATH` 下 exit 0。這些 gate 各自驗證程式結構、幾何約束、路由互動或像素量測，**不能單獨證明真實感／視覺完整**。
 - `_gen_html.py` 連跑兩次，19 個 tracked HTML／sitemap 的 SHA-256 完全相同。JS/Python syntax 與 `git diff --check` 另於本輪收尾確認。
 
 ### 真實環境盤點（目前仍有近似／缺項）
 - **Tokyo／Nakamise（`rooms.html`）**：仲見世夜間閉店巷道、兩側店列、新仲見世／伝法院通交叉口、寶藏門方向均已建；封面已換成實際 renderer 畫面。**近似**：店列是平均化／縮減後的開間與概括立面，不是 89 間店逐戶實測；繪卷只作底色。季節裝飾、人物與招牌／提燈文字刻意不畫，避免捏造當日狀態或文字。
 - **Moji Port（`rooms-fukuoka.html`）**：門司港駅、舊大阪商船、舊門司税關、大連友好記念館各有獨立 1:25 展台；港桌保留船溜與 Blue Wing 配置。**近似／未完成**：レトロハイマート（Retro Tower）仍在港桌上（1.5 cm/m），未獨立展示；四棟高度與細部尺寸部分由照片按比例讀取，車站月台側及若干側／背面窗位沒有來源、按正面節奏概括。**刻意不建模**：三井倶楽部、飯店、海峽プラザ等形體／高度沒有可靠依據；不把它們虛構成精確建築。
 - **Toronto／CN Tower（`rooms-toronto.html`、`rooms-cntower.html`）**：LookOut／塔內空間與城市視景已建。**實際缺項／近似**：Toronto 約 288 棟 100–150 m 建築尚未加入（可用 2020 massing 資料但未整合）；地面畫平，建築 footprint／樓層採典型值而非逐棟測量，遠景城市燈為抽象貼圖。CN Tower 的 LookOut 弧形弦取直，Glass Floor 外形亦為近似。這不等於「Toronto 已完整」。
-- **Niagara Falls（`rooms-niagara.html`）**：Horseshoe／American／Bridal Veil、Table Rock、峭壁、欄杆、霧及旅館等已按來源建到可走視景。**實際缺項**：Niagara Parkway 尚未畫；遠處 terrace 仍是防 moiré 的平均色、顯得空。**近似**：崖線、崩積坡分界、水幕拋距／霧高、欄杆尺寸及燈柱位置並非全數測量；預設 stop 3 構圖讓瀑布偏右、+10° 俯仰較易看清，屬尚可改善的取景而非「水幕沒畫」。
+- **Niagara Falls（`rooms-niagara.html`）**：Horseshoe／American／Bridal Veil、Table Rock、峭壁、欄杆、霧及旅館等已按來源建到可走視景。**實際缺項**：Niagara Parkway 尚未畫；遠處 terrace 仍是防 moiré 的平均色、顯得空。**近似**：崖線、崩積坡分界、水幕拋距／霧高、欄杆尺寸及燈柱位置並非全數測量。為讓水幕在 Table Rock rail 停點更易辨認，該 stop 現設定 yaw −15°／pitch +10°；以實際 Chromium／Three.js A/B 檢視，水幕進入畫面更多，沒有改動瀑布地理幾何。
 - **Journey Behind the Falls（`rooms-journey.html`）**：混凝土主隧道、濕木板、管線、平台口與瀑布世界已建，子空間進出返回也經真瀏覽器驗證。**實際近似／缺項**：分支隧道仍為直的方盒；轉彎與分岔路線沒有測量資料，隧道尺寸及管線細節部分按照片估讀，不能當成 surveyed floor plan。
 
 ### 因無可靠資料而刻意排除（不是已完成物件）

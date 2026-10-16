@@ -4435,7 +4435,7 @@ DISTRICTS = [
             {"z": 21, "x": 0, "label": "the trail at Table Rock Centre"},
             {"z": 469, "x": 470, "label": "the centre's doors"},
             {"z": 980, "x": -520, "label": "the parapet over the gorge"},
-            {"z": 1440, "x": -520, "label": "the Table Rock rail"},
+            {"z": 1440, "x": -520, "yaw": -15, "pitch": 10, "label": "the Table Rock rail"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 678, "z": 340, "y": 0, "ry": -90, "leaf": "#33414e",
                  "title": "Back through the centre", "hint": "It opens onto the hall, at the falls' "
@@ -4961,8 +4961,9 @@ def walk_html(d, drawer):
     for n, st in enumerate(d["stations"]):
         # A tick, not a caption: where the words go is the card, and the accessible name is what a
         # screen reader gets without anything being painted over the space.
+        view = "".join(f' data-view-{key}="{st[key]}"' for key in ("yaw", "pitch") if key in st)
         chips.append(
-            f'<button type="button" class="walk-stop" data-walk-stop="{n}" '
+            f'<button type="button" class="walk-stop" data-walk-stop="{n}"{view} '
             f'style="--z:{round(st["z"] * Z_SCALE)}px;--p:{st["z"] * Z_SCALE / walk_d:.3f}'
             f'{f";--x:{st[chr(120)]}px" if "x" in st else ""}" '
             f'aria-label="{escape(st["label"])}, {round(st["z"] * Z_SCALE)} cm in"></button>')
