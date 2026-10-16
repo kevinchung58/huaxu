@@ -165,6 +165,19 @@ a visitor, twice**. The harness proves paint; only a read proves place. Known fa
 | diagonal hatching across a skyline | lit windows chosen by arithmetic on the cell index | a seeded draw, same count and colours (`towerwin`); not a box-filtered mip, which dulls lit windows |
 | a tunnel twice as costly as its frame | the world behind its walls painted, then painted over | `apertures()` + the lane's own backing |
 | a room brightening to noon under a night window | a non-day page's lamps following the hall's clock | `"night": <phase>` on the record |
+| a waterfall reads as a pale facade with windows | a flat sheet with short pale bars moving on it | the water's grain (`fallsw`): streaks running the whole drop, laid as an overlay whose air is in its alpha; the moving streaks long and narrow (round 35) |
+| the plunge basin reads as a stepped floor or a dome | one hard-edged foam band on dark flat water | textured foam (`foam`) at the foot, then translucent bands each thinner than the last |
+| spray that is there and cannot be seen | white rounds over a white sheet and white foam | soft rounds (`soft`: a gradient to nothing at the rim) placed where dark water, rock or sky is behind them; test by raising alpha, not by assuming a bug |
+| moiré rings and fans on a paved floor | 8 cm joints under two pixels high from about 6 m at eye height | floor tiers by distance, the tile pulled toward its own measured mean (the mean kept exact, so the tiers meet without a step) |
+| a textured surface glowing at night | a tile painted in day colours on a prim that has a night colour | lay `cn` over the tile as the day goes, or crossfade a night tile (`pn`, the hotels' `towerwin`) |
+| a wall missing in a recess of a building | the outward normal taken from the centroid of a concave footprint | the winding's own normal (`_outward_ccw`) |
+| a named building drawn as a grey box | its form never checked | read the form off photographs (kept out of git, `.preview/<round>/ref/`); the caveat names what is approximate |
+| a wedge or band of water painted over the ground near the eye | world prims sort by depth + 6000 + layer·1e6, and a sheet below the bank (layer 0) was out-layered by the ground (8.5) and the terrace (8.4) | on a view from above the bank give everything below it a layer over the ground's (`low` 8.8); not on a view from under the bank |
+| a dark slab over a side opening in a vault | a prop's lintel in the wall's plane behind the barrel's lowest chord, painted in front of it because a prop sorts by its own depth | no lintel where the opening reaches the springing; the barrel is its head |
+| a pipe or rail on a wall that comes out as a dashed shelf | a long piece sorted at its middle, painted over by the wall panels in front of that middle | cut it to the wall's own panels near the eye and sort it just in front of its nearest end |
+| a parapet whose posts are cut off by the wall behind them | one long wall quad per segment beside short posts | cut the wall, its coping and its ironwork cell by cell between the posts |
+| ironwork that greys the view through it | an overlay tile taking the air, night and sun washes over its clear parts | `a` 0, `n`, `d0` on the overlay prim; its colour is its own |
+| a white wireframe down a side tunnel | adjacent world panels filled one by one, the sky showing through each anti-aliased seam | one dark underlay per face, the whole run long, a layer under the panels |
 
 Write what each read caught into TODO with the round; a critique pass that reports no catches
 is a pass that was not read.

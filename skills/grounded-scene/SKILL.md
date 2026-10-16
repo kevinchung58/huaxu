@@ -188,6 +188,31 @@ below them the city is lights, not buildings, rather than filling the gap with i
 scope line drawn by distance has to be checked in the frame too: the round-34 draft cut at 4 km and
 would have called the Yonge and Eglinton towers out of sight, and the far glass shows them.
 
+**The falls, corrected (round 35).** Read against photographs of the place (rung 5, fetched by image
+search and kept in `.preview/r35/ref/`, never shipped), the round-33 Table Rock failed the recognition
+test in four ways no map could show: Table Rock Centre is a buff stone Collegiate Gothic building with
+arched windows under steep roofs (Wikipedia names the style; the photographs show it), not a grey box
+with a glass band; the gorge wall under the terrace is sheer rock in level beds for two-thirds of the
+drop and green talus below, not a ramp; the curtain is streaks of water, not a sheet with windows; and
+the bowl is white foam under spray. Where a height was missing it was derived from a sourced
+neighbour rather than guessed: the Fallsview bluff's 29.9 m from the Falls Incline Railway's 59.8 m at
+30 degrees, the Skylon's street 17.5 m over the trail from its 160 m above the street against 236 m
+above the bottom of the falls. The towers on the bluff come from the city's own Wikipedia list at their
+coordinates, heights and floors; what the list holds that is not a building there (a ride, two
+riverside towers, one hotel whose form nobody sourced) is named in the caveat instead of boxed.
+
+**Read the small things off the photographs too (round 35, second pass).** The owner looked at the
+corrected falls and asked for them finer, and inside the falls above all. What the photographs held
+that the first pass had boxed: the Table Rock parapet is a low wall of rough grey stone with rough
+posts and black ironwork of rings between them, at the hip -- not straight bars at hand height; the
+lamps are black lanterns on black posts; Journey's tunnels are floored with wet wooden boards laid
+along the passage, carry a galvanised service pipe along one wall, and stand taller than drawn (people
+reach about six tenths of the crown). Measures read from a photograph are read against the people in
+it, and the caveat says so; a pattern drawn from a photograph (the ironwork's rings) is named as
+such. Not drawn because the source was fetched but the time went to the inside of the falls: the
+Niagara Parkway past the terrace (OSM: northbound, two lanes, under the Centre at 4.4 m) -- recorded,
+so the next pass starts from the ways, not from a search.
+
 ## 7. Refusals
 
 Everything `district-author` §5 and `landmark-space` §6 refuse, plus: no invented bearing — north

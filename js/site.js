@@ -700,7 +700,7 @@ function leaveOverlay(root, trigger) {
      functions of the same projection, so no depth cue can disagree with the geometry the way an
      overlaid gradient would. What this is not: a lightmap, a raytracer, or a survey. */
   const SEG = 60, NEAR = 24, DPM = 2;   // panel, near plane, pattern scale: the renderer's own
-  let W = 0, H = 0, focal = 620, tilePat = null, floorPat = null, winPat = null,
+  let W = 0, H = 0, focal = 620, tilePat = null, floorPat = null, floorTiers = null, winPat = null,
       concretePat = null, galvPat = null;
   // One lookup for every cladding the walls and the ground can be wearing; a kind with no entry falls
   // back to the wall's own tiles, which is the honest default for a surface nobody specified.
@@ -819,34 +819,277 @@ function leaveOverlay(root, trigger) {
      bore is lined in concrete, rough and glistening, grey with dark wet blotches and the drips'
      vertical streaks -- not the bedrock strata the round-22 walls wore. */
   const paintTunnelC = (c) => {
-    c.fillStyle = "#6b6c69"; c.fillRect(0, 0, 128, 128);
-    for (let i = 0; i < 22; i++) {
-      c.fillStyle = `rgba(30,32,32,${(0.05 + (i % 4) * 0.025).toFixed(3)})`;
-      const x = (i * 47) % 128, y = (i * 29) % 128, w = 14 + (i % 5) * 7, h = 8 + (i % 3) * 6;
-      c.fillRect(x, y, w, h);
+    /* Round 35: the blotches were rectangles laid by arithmetic on their index (i * 47 % 128), and on
+       the vault's facets at every distance they read as camouflage, not as wet concrete. The same
+       material, drawn the way concrete is: a fine aggregate grain, a few soft wet patches with no
+       corners, and the drips' streaks fading down the wall -- all from a seeded draw and wrapped at
+       the tile's edges, so the 64 cm repeat does not print a grid down the bore. Same base, so the
+       same mean within a point (the flat fallback stays #6e6f6c). */
+    c.fillStyle = "#70716e"; c.fillRect(0, 0, 128, 128);
+    let seed = 1944;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const wrap = (x, y, r, draw) => {
+      for (const dx of [-128, 0, 128]) for (const dy of [-128, 0, 128]) {
+        if (x + dx + r < 0 || x + dx - r > 128 || y + dy + r < 0 || y + dy - r > 128) continue;
+        draw(x + dx, y + dy);
+      }
+    };
+    for (let i = 0; i < 16; i++) {
+      const x = rnd() * 128, y = rnd() * 128, r = 8 + rnd() * 16, a = 0.04 + rnd() * 0.05;
+      wrap(x, y, r, (px, py) => {
+        const gr = c.createRadialGradient(px, py, 0, px, py, r);
+        gr.addColorStop(0, `rgba(28,30,30,${a.toFixed(3)})`); gr.addColorStop(1, "rgba(28,30,30,0)");
+        c.fillStyle = gr; c.fillRect(px - r, py - r, 2 * r, 2 * r);
+      });
     }
-    for (let x = 3; x < 128; x += 11) {
-      c.fillStyle = `rgba(24,26,26,${(0.05 + (x % 4) * 0.02).toFixed(3)})`;
-      c.fillRect(x, (x * 7) % 40, 2, 60 + (x % 5) * 12);
+    for (let i = 0; i < 14; i++) {
+      const x = rnd() * 128, y = rnd() * 128, len = 30 + rnd() * 60, w = 1 + rnd() * 1.5, a = 0.05 + rnd() * 0.07;
+      wrap(x, y + len / 2, len, (px, py) => {
+        const gr = c.createLinearGradient(0, py - len / 2, 0, py + len / 2);
+        gr.addColorStop(0, `rgba(22,24,24,${a.toFixed(3)})`); gr.addColorStop(1, "rgba(22,24,24,0)");
+        c.fillStyle = gr; c.fillRect(px, py - len / 2, w, len);
+      });
     }
-    for (let i = 0; i < 46; i++) {
-      c.fillStyle = "rgba(232,238,238,0.12)";
-      c.fillRect((i * 61) % 128, (i * 23) % 128, 3, 1);
+    for (let i = 0; i < 700; i++) {
+      const light = rnd() < 0.45, a = 0.04 + rnd() * 0.08;
+      c.fillStyle = light ? `rgba(226,230,228,${a.toFixed(3)})` : `rgba(26,28,28,${a.toFixed(3)})`;
+      c.fillRect(Math.floor(rnd() * 128), Math.floor(rnd() * 128), 1, 1);
+    }
+    for (let i = 0; i < 30; i++) {
+      c.fillStyle = "rgba(232,238,238,0.10)";            // the wet glints under the lamps
+      c.fillRect(Math.floor(rnd() * 128), Math.floor(rnd() * 128), 2, 1);
+    }
+  };
+  /* Journey's walkway (round 35, the visitors' photographs of the tunnels): wet wooden boards laid
+     along the passage, dark brown, the gaps between them black, and the wet's long sheen on every
+     board. The floor maps a tile's width along the walk, so the boards are the tile's rows: four 16 cm
+     boards to its 64 cm. No butt joints: one every 64 cm in every row read as parquet. Seeded. */
+  const paintBoards = (c) => {
+    c.fillStyle = "#4f4337"; c.fillRect(0, 0, 128, 128);
+    let seed = 6650;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let r = 0; r < 4; r++) {
+      const y = r * 32, t = rnd();
+      c.fillStyle = t < 0.5 ? `rgba(24,18,12,${(0.06 + 0.12 * rnd()).toFixed(3)})`
+                            : `rgba(150,128,104,${(0.05 + 0.1 * rnd()).toFixed(3)})`;
+      c.fillRect(0, y + 2, 128, 29);
+      for (let k = 0; k < 5; k++) {                     // the grain, the board's whole length
+        c.fillStyle = `rgba(28,20,14,${(0.05 + 0.07 * rnd()).toFixed(3)})`;
+        c.fillRect(0, y + 4 + Math.floor(rnd() * 24), 128, 1);
+      }
+      c.fillStyle = "rgba(226,222,212,0.10)";            // the wet sheen along the board
+      c.fillRect(0, y + 8 + Math.floor(rnd() * 12), 128, 3);
+      c.fillStyle = "rgba(12,10,8,0.85)"; c.fillRect(0, y, 128, 2);      // the gap
+    }
+  };
+  /* The falling water's grain (round 35). A curtain was one flat colour with two moving bars on it,
+     and at the deck's distance the bars read as windows in a pale wall. Water falling 57 m is ropes of
+     solid water and white aerated streaks running the whole drop, so this tile is streaks that run its
+     full height -- seamless down the sheet -- each brightening and fading along its length on whole
+     periods of the tile, white where the water is broken and a darker blue-green between. It is an
+     overlay, clear between the streaks, so the sheet's own colour shows through by day and the
+     illumination's colour after dark. Seeded, like every scatter here: a curtain 600 m off aliases to
+     grain, not to a lattice. */
+  const paintFallsWater = (c) => {
+    let seed = 35071;                                  // a fresh tile is clear: nothing to clear
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 52; i++) {
+      const x = rnd() * 128, w = 0.8 + rnd() * 3.6, a = 0.1 + rnd() * 0.34;
+      const dark = i % 4 === 0, per = 1 + Math.floor(rnd() * 2), ph = rnd() * Math.PI * 2;
+      const gr = c.createLinearGradient(0, 0, 0, 128);
+      for (let k = 0; k <= 8; k++) {
+        const f = 0.55 + 0.45 * Math.sin(ph + (k / 8) * per * Math.PI * 2);
+        gr.addColorStop(k / 8, dark ? `rgba(34,82,92,${(a * 0.55 * f).toFixed(3)})`
+                                    : `rgba(255,255,255,${(a * f).toFixed(3)})`);
+      }
+      c.fillStyle = gr;
+      c.fillRect(x, 0, w, 128);
+      if (x + w > 128) c.fillRect(x - 128, 0, w, 128);
+    }
+  };
+  /* The gorge wall (round 35): the rock at Table Rock stands in horizontal beds, pale grey-buff, as
+     every photograph of the Canadian wall from below shows -- so a tile of beds of varying thickness
+     and tone, with the odd vertical joint and a stain running down from it. Mapped down the face
+     (`ax: "v"`), so the beds stay level from one face to the next. Seeded, like every scatter here. */
+  const paintStrata = (c) => {
+    c.fillStyle = "#8a8373"; c.fillRect(0, 0, 128, 128);
+    let seed = 4211;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let y = 0; y < 128;) {
+      const h = 3 + Math.floor(rnd() * 9), t = rnd();
+      c.fillStyle = t < 0.5 ? `rgba(40,36,30,${(0.05 + 0.12 * rnd()).toFixed(3)})`
+                            : `rgba(236,230,214,${(0.04 + 0.1 * rnd()).toFixed(3)})`;
+      c.fillRect(0, y, 128, Math.min(h, 128 - y));
+      c.fillStyle = "rgba(34,30,26,0.22)"; c.fillRect(0, y, 128, 1);
+      y += h;
+    }
+    for (let i = 0; i < 9; i++) {
+      const x = Math.floor(rnd() * 128), y = Math.floor(rnd() * 128), len = 10 + Math.floor(rnd() * 40);
+      c.fillStyle = "rgba(30,28,24,0.28)";
+      for (const dy of [-128, 0]) c.fillRect(x, y + dy, 1, len);
+      const gr = c.createLinearGradient(0, y, 0, y + len * 1.6);
+      gr.addColorStop(0, "rgba(46,40,34,0.12)"); gr.addColorStop(1, "rgba(46,40,34,0)");
+      c.fillStyle = gr;
+      for (const dy of [-128, 0]) c.fillRect(x - 3, y + dy, 7, len * 1.6);
+    }
+  };
+  /* Table Rock Centre's walls (round 35): buff stone in courses, two storeys of tall dark windows,
+     the lower ones arched -- the building in the Niagara Falls Tourism and Clifton Hill photographs
+     (its 1926 north building is Collegiate Gothic, Wikipedia), not the grey box with a glass band it
+     had been. One tile is the wall's full height, 9.5 m, so the windows sit on its floors. */
+  const paintTrcWall = (c) => {
+    c.fillStyle = "#a6977d"; c.fillRect(0, 0, 128, 128);
+    let seed = 1926;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let y = 0; y < 128; y += 6) {
+      c.fillStyle = "rgba(70,60,46,0.22)"; c.fillRect(0, y, 128, 1);
+      for (let x = (y / 6) % 2 ? 0 : 11; x < 128; x += 22) { c.fillRect(x, y, 1, 6); }
+    }
+    for (let i = 0; i < 90; i++) {
+      c.fillStyle = rnd() < 0.5 ? "rgba(60,50,38,0.08)" : "rgba(240,230,210,0.08)";
+      c.fillRect(Math.floor(rnd() * 128), Math.floor(rnd() * 128), 5, 3);
+    }
+    c.fillStyle = "#7c705e"; c.fillRect(0, 120, 128, 8);           // the base course
+    c.fillStyle = "#8e816c"; c.fillRect(0, 60, 128, 4);            // the string course between floors
+    const glass = (x, y, w, h, arch) => {
+      c.fillStyle = "#2b333b";
+      c.fillRect(x, y + (arch ? w / 2 : 0), w, h - (arch ? w / 2 : 0));
+      if (arch) { c.beginPath(); c.arc(x + w / 2, y + w / 2, w / 2, Math.PI, 0); c.fill(); }
+      c.fillStyle = "rgba(170,190,205,0.18)"; c.fillRect(x + 1, y + h * 0.35, w - 2, h * 0.2);
+      c.fillStyle = "rgba(20,22,24,0.9)";
+      c.fillRect(x + w / 2 - 0.5, y + (arch ? w / 2 : 2), 1, h - (arch ? w / 2 : 2));
+      c.fillRect(x, y + h * 0.62, w, 1);
+    };
+    glass(14, 72, 22, 46, true); glass(53, 72, 22, 46, true); glass(92, 72, 22, 46, true);
+    glass(16, 18, 18, 34, false); glass(55, 18, 18, 34, false); glass(94, 18, 18, 34, false);
+  };
+  /* The Fallsview hotels by day (round 35): eight storeys of eight windows a tile, like the towers'
+     night tile (`towerwin`), on a pale facade -- typical, as their footprints are (see the record's
+     caveat): the list gives each one's height and floors, not its cladding. */
+  const paintHotelDay = (c) => {
+    c.fillStyle = "#b9b3a7"; c.fillRect(0, 0, 128, 128);
+    let seed = 2009;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let r = 0; r < 8; r++) for (let k = 0; k < 8; k++) {
+      const v = rnd();
+      c.fillStyle = v < 0.2 ? "#7f90a0" : v < 0.5 ? "#55667a" : "#475768";
+      c.fillRect(k * 16 + 3, r * 16 + 4, 10, 8);
+    }
+    c.fillStyle = "rgba(60,58,54,0.25)";
+    for (let r = 0; r <= 8; r++) c.fillRect(0, r * 16, 128, 1);
+  };
+  /* Woods seen from the side (round 35): crowns of trees in several greens, lit on top and shaded
+     under, packed so no ground shows -- the bluff behind Table Rock and the edge of Goat Island's
+     woods, which were flat green walls. Seeded crowns, wrapped at the tile's edges. */
+  const paintCanopy = (c) => {
+    c.fillStyle = "#34502e"; c.fillRect(0, 0, 128, 128);
+    let seed = 3743;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 70; i++) {
+      const x = rnd() * 128, y = rnd() * 128, r = 6 + rnd() * 10, t = rnd();
+      const col = t < 0.3 ? "58,86,48" : t < 0.65 ? "70,100,56" : t < 0.85 ? "46,70,40" : "86,112,62";
+      for (const dx of [-128, 0, 128]) for (const dy of [-128, 0, 128]) {
+        const px = x + dx, py = y + dy;
+        if (px + r < 0 || px - r > 128 || py + r < 0 || py - r > 128) continue;
+        const gr = c.createRadialGradient(px - r * 0.3, py - r * 0.4, r * 0.1, px, py, r);
+        gr.addColorStop(0, `rgba(${col},0.95)`); gr.addColorStop(0.7, `rgba(${col},0.8)`);
+        gr.addColorStop(1, "rgba(30,44,26,0)");
+        c.fillStyle = gr; c.beginPath(); c.arc(px, py, r, 0, Math.PI * 2); c.fill();
+      }
+    }
+  };
+  /* The foam where the sheet lands (round 35): water churned white, with darker green-grey where
+     it opens between the boils and paler streaks drawn out by the current. Opaque, like a ground
+     tile -- it is laid on the basin only within some forty metres of the foot, the white beyond it
+     thinning in plain translucent bands. Seeded and wrapped. */
+  const paintFoam = (c) => {
+    c.fillStyle = "#dfe9e6"; c.fillRect(0, 0, 128, 128);
+    let seed = 5700;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const blob = (x, y, r, col) => {
+      for (const dx of [-128, 0, 128]) for (const dy of [-128, 0, 128]) {
+        const px = x + dx, py = y + dy;
+        if (px + r < 0 || px - r > 128 || py + r < 0 || py - r > 128) continue;
+        const gr = c.createRadialGradient(px, py, 0, px, py, r);
+        gr.addColorStop(0, col); gr.addColorStop(1, "rgba(0,0,0,0)");
+        c.fillStyle = gr; c.fillRect(px - r, py - r, 2 * r, 2 * r);
+      }
+    };
+    for (let i = 0; i < 26; i++) blob(rnd() * 128, rnd() * 128, 6 + rnd() * 16, `rgba(96,140,134,${(0.2 + rnd() * 0.3).toFixed(3)})`);
+    for (let i = 0; i < 30; i++) blob(rnd() * 128, rnd() * 128, 4 + rnd() * 10, `rgba(250,253,252,${(0.4 + rnd() * 0.4).toFixed(3)})`);
+  };
+  /* The upper river's rapids (round 35): above the Horseshoe the water runs fast and broken, white
+     caps drawn out along the current over a blue-green that is the river's own (the flat colour it
+     had, #4b8b8d, is the base). A ground tile, turned to the current by its prim's `rot`; seeded
+     dashes, so the river kilometres off goes to grain, and used only on the near cells (the far
+     ones keep the flat colour, which is this tile's mean). */
+  const paintRapids = (c) => {
+    c.fillStyle = "#408487"; c.fillRect(0, 0, 128, 128);
+    let seed = 6650;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 44; i++) {
+      const x = rnd() * 128, y = rnd() * 128, rx = 2 + rnd() * 5, k = 2.5 + rnd() * 3.5;
+      const white = i % 4 !== 0, a = white ? 0.18 + rnd() * 0.34 : 0.1 + rnd() * 0.12;
+      const col = white ? "236,246,244" : "22,60,66";
+      for (const dx of [-128, 0, 128]) for (const dy of [-128, 0, 128]) {
+        if (Math.abs(x + dx - 64) > 64 + rx || Math.abs(y + dy - 64) > 64 + rx * k) continue;
+        c.save(); c.translate(x + dx, y + dy); c.scale(1, k);
+        const gr = c.createRadialGradient(0, 0, 0, 0, 0, rx);
+        gr.addColorStop(0, `rgba(${col},${a.toFixed(3)})`); gr.addColorStop(1, `rgba(${col},0)`);
+        c.fillStyle = gr; c.fillRect(-rx, -rx, 2 * rx, 2 * rx);
+        c.restore();
+      }
     }
   };
   /* The Table Rock parapet's stone: rough grey-brown blocks, the post the railing is set into in the
      photographs taken at the wall (Getty, May 2026). */
+  /* The Table Rock parapet's stone (round 35, after the photographs at the brink): rough-faced grey
+     limestone in irregular blocks, no two courses the same height, the joints dark and the faces
+     weathered in patches -- not dressed ashlar, which is what the tile had been. Seeded. */
   const paintStoneWall = (c) => {
-    c.fillStyle = "#6a655b"; c.fillRect(0, 0, 128, 128);
-    const rows = [0, 30, 62, 96, 128];
+    c.fillStyle = "#67635b"; c.fillRect(0, 0, 128, 128);
+    let seed = 7349;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const rows = [0, 34, 58, 96, 128];
     for (let r = 0; r < 4; r++) {
-      const off = r % 2 ? 22 : 0;
-      for (let x = -off; x < 128; x += 46) {
-        c.fillStyle = `rgba(${r % 2 ? "40,36,30" : "210,200,180"},${(0.06 + ((x + r) % 3) * 0.03).toFixed(2)})`;
-        c.fillRect(x + 2, rows[r] + 2, 42, rows[r + 1] - rows[r] - 4);
+      const y0 = rows[r], y1 = rows[r + 1];
+      let x = -Math.floor(rnd() * 30);
+      while (x < 128) {
+        const w = 26 + Math.floor(rnd() * 34), t = rnd();
+        c.fillStyle = t < 0.45 ? `rgba(30,28,24,${(0.06 + 0.16 * rnd()).toFixed(3)})`
+                               : `rgba(226,220,204,${(0.05 + 0.13 * rnd()).toFixed(3)})`;
+        c.fillRect(x + 2, y0 + 2, w - 3, y1 - y0 - 3);
+        // a rough face: a lit upper lip and a shadowed lower one on every block
+        c.fillStyle = "rgba(236,230,216,0.10)"; c.fillRect(x + 2, y0 + 2, w - 3, 2);
+        c.fillStyle = "rgba(20,18,16,0.16)"; c.fillRect(x + 2, y1 - 4, w - 3, 3);
+        c.fillStyle = "rgba(24,22,19,0.6)"; c.fillRect(x, y0, 2, y1 - y0);
+        if (x + w > 128) { c.fillStyle = "rgba(24,22,19,0.6)"; c.fillRect(x - 128, y0, 2, y1 - y0); }
+        x += w;
       }
-      c.fillStyle = "rgba(28,26,22,0.55)"; c.fillRect(0, rows[r], 128, 2);
+      c.fillStyle = "rgba(24,22,19,0.6)"; c.fillRect(0, y0, 128, 2);
     }
+    for (let i = 0; i < 26; i++) {                      // weathering: dark and pale patches
+      const px = rnd() * 128, py = rnd() * 128, r = 3 + rnd() * 9;
+      c.fillStyle = rnd() < 0.6 ? `rgba(26,26,24,${(0.05 + 0.08 * rnd()).toFixed(3)})`
+                                : `rgba(232,228,216,${(0.04 + 0.06 * rnd()).toFixed(3)})`;
+      c.beginPath(); c.arc(px, py, r, 0, Math.PI * 2); c.fill();
+    }
+  };
+  /* The ironwork between the parapet's posts (round 35, the same photographs): black flat bar, a rail
+     top and bottom, an upright at every cell and a ring in each, a smaller ring turned inside it.
+     Clear between the iron -- an overlay, like the falls' grain -- so the gorge stands behind it. One
+     tile is one cell, square: the band is mapped a tile high. */
+  const paintIronScroll = (c) => {
+    c.fillStyle = "#18191c";
+    c.fillRect(0, 0, 128, 11); c.fillRect(0, 117, 128, 11);   // the rails
+    c.fillRect(0, 0, 8, 128);                                  // the upright at the cell's edge
+    c.fillRect(64, 11, 7, 15); c.fillRect(64, 102, 7, 15);     // collars from the ring to the rails
+    c.fillRect(8, 61, 20, 7); c.fillRect(107, 61, 21, 7);      // and to the uprights
+    c.strokeStyle = "#18191c"; c.lineWidth = 7;
+    c.beginPath(); c.arc(67.5, 64, 38, 0, Math.PI * 2); c.stroke();
+    c.lineWidth = 5;
+    c.beginPath(); c.arc(67.5, 64, 19, Math.PI * 0.3, Math.PI * 1.9); c.stroke();
+    c.beginPath(); c.arc(67.5, 64, 5, 0, Math.PI * 2); c.fill();
   };
   /* The Recreation Trail's paving stones (OSM: surface=paving_stones): small grey pavers in a
      running bond, a little uneven in tone. */
@@ -1310,7 +1553,18 @@ function leaveOverlay(root, trigger) {
     cv.width = W; cv.height = H;
     tilePat = mkTile(paintWall);
     floorPat = mkTile(({ pod: paintPodFloor, paving: paintPaving, carpet: paintCarpet,
-                         pavers: paintPavers, tunnel: paintTunnelC })[layer.dataset.floor] || paintFloor);
+                         pavers: paintPavers, tunnel: paintBoards })[layer.dataset.floor] || paintFloor);
+    /* The pavers fade with distance (round 35). Their joints are 8 cm apart, and a joint 8 cm from the
+       next is under two pixels high from about six metres out at eye height: past that the pattern
+       stops being pavers and becomes the moire rings and fans the Table Rock frames were full of. This
+       renderer has no mip, and a box-filtered one was tried and reverted on the towers (round 34) --
+       but a paved floor is the case a mean is right for: what a walkway twenty metres off looks like
+       is its average colour. So the floor has tiers: the tile, the tile pulled half and then four
+       fifths of the way to its own measured mean, and the mean, by the slice's distance ahead. The
+       mean is kept exactly at every tier, so the tiers meet without a step in tone. */
+    floorTiers = layer.dataset.floor === "pavers"
+      ? [0.5, 0.8].map((k) => mkTile((c) => { paintPavers(c); c.fillStyle = `rgba(121,117,112,${k})`; c.fillRect(0, 0, 128, 128); }))
+      : null;
     winPat = mkTile(paintWindows);
     PATS.shutter = mkTile(paintShutter);
     PATS.dado = mkTile(paintDado);
@@ -1372,7 +1626,10 @@ function leaveOverlay(root, trigger) {
     // Round 33's materials (see the painters) are lazy -- painted on first use, see `LAZY`.
     Object.assign(LAZY, { carpet: paintCarpet, acoustic: paintAcoustic, core: paintCore,
                           soffit: paintSoffit, tunnelc: paintTunnelC, stonewall: paintStoneWall,
-                          pavers: paintPavers, cityn: paintCityNight, towerwin: paintTowerWindows });
+                          pavers: paintPavers, cityn: paintCityNight, towerwin: paintTowerWindows,
+                          fallsw: paintFallsWater, rapids: paintRapids, strata: paintStrata,
+                          trcwall: paintTrcWall, hotelw: paintHotelDay, canopy: paintCanopy, foam: paintFoam,
+                          ironscroll: paintIronScroll });
     PATS.win = winPat;
     // Locals as well as registry entries: the end wall's face and the parapet's coping are painted in
     // draw() by name, and reading them back off PATS there would be the drawing code doing a lookup for
@@ -1395,8 +1652,15 @@ function leaveOverlay(root, trigger) {
                // cityn and win are their tiles' measured means (round 33): the fallback stands in for the
                // tile, and the city's had been its unlit ground alone, a third of the tile's brightness.
                // towerwin measures the same as win (round 34): same glass, same count, same colours.
-               stonewall: "#6a655b", pavers: "#7d7a74", cityn: "#363136", win: "#263149",
-               towerwin: "#263149" };
+               stonewall: "#5f5c55", pavers: "#797570", cityn: "#363136", win: "#263149",
+               towerwin: "#263149",
+               // fallsw is an overlay (clear between its streaks): its fallback is a light veil, not a
+               // solid; rapids falls back to the river's flat colour, the tile's measured mean.
+               fallsw: "rgba(240,246,246,0.16)", rapids: "#4b8b8d",
+               // round 35's place tiles, each its measured mean
+               strata: "#847d6e", trcwall: "#7d7566", hotelw: "#969795", canopy: "#3b5631", foam: "#c5cfcc",
+               // the parapet's ironwork is an overlay too: its fallback is the tile's own coverage
+               ironscroll: "rgba(10,10,12,0.385)" };
   };
 
   /* Two shapes of island live inside the hit layer, and they answer two different questions: a list
@@ -1884,7 +2148,29 @@ function leaveOverlay(root, trigger) {
        speck. The uv extent of the quad covers it exactly, and if the affine fit fails the flat colour
        is still what you see. */
     let fitted = false;
-    if (q.mode === "pat" && q.arg) {
+    if (q.soft) {
+      /* A round of spray (round 35): its colour from its centre to nothing at its rim, squashed to
+         the round's own ellipse. The path is already laid; the transform moves only the gradient. */
+      const s = q.soft;
+      g.save(); g.translate(s.x, s.y); g.scale(1, s.k);
+      /* The outline is laid again inside the round's own frame, so the path and the gradient are
+         stated in one frame and land together whichever way a canvas reads the transform (tested:
+         the harness raster and a browser agree; this is belt and braces, not a fix). */
+      g.beginPath();
+      q.pts.forEach((p, i) => {
+        const px = W * 0.5 + (focal * p.x) / p.z - s.x, py = (H * 0.5 + (focal * p.y) / p.z - s.y) / s.k;
+        if (i) g.lineTo(px, py); else g.moveTo(px, py);
+      });
+      g.closePath();
+      const gr = g.createRadialGradient(0, 0, 0, 0, 0, Math.max(1, s.r));
+      gr.addColorStop(0, `rgba(${s.rgb},${s.a.toFixed(3)})`);
+      gr.addColorStop(0.5, `rgba(${s.rgb},${(s.a * 0.62).toFixed(3)})`);
+      gr.addColorStop(1, `rgba(${s.rgb},0)`);
+      g.fillStyle = gr; g.fill(); g.restore();
+      fitted = true;
+    }
+    if (q.alpha !== undefined) g.globalAlpha = Math.max(0, Math.min(1, q.alpha));
+    if (!fitted && q.mode === "pat" && q.arg) {
       const m = affine(q.pts, q.pts.map((p) => [p.u, p.v]));
       const det = m ? m[0] * m[3] - m[1] * m[2] : 0;
       if (m && Math.abs(det) > 1e-9) {
@@ -1912,6 +2198,7 @@ function leaveOverlay(root, trigger) {
       }
     }
     if (!fitted) { g.fillStyle = q.mode === "flat" ? q.arg : (FLATOF[PATKEY && PATKEY.get(q.arg)] || "#2b3a56"); g.fill(); }
+    if (q.alpha !== undefined) g.globalAlpha = 1;
     if (!fitted && q.mode === "pic" && q.img && q.img.complete && q.img.naturalWidth) {
       const m = affine(q.pts, q.pts.map((p) => [p.u, p.v]));
       if (m) {
@@ -2158,22 +2445,56 @@ function leaveOverlay(root, trigger) {
       if (p.fn && (C.x - p.p[0][0]) * p.fn[0] + (C.z - p.p[0][2]) * p.fn[1] < 0) continue;
       if (p.q && !p.two && C.eye < p.h) continue;
       if (t === "f") {
-        finish(add(C, p.p, zeros(p.p.length), "flat", colourOf(p)), p);
+        /* A floodlit face (`il`, round 35: the Skylon's colour wash) takes the held illumination
+           colour after dark and keeps its own light, as a falls sheet does. */
+        const lit = p.il && dark;
+        const fq = finish(add(C, p.p, zeros(p.p.length), "flat", lit ? held : colourOf(p)), p);
+        if (fq && lit) { fq.nolite = true; fq.lit = 1.1; fq.air = Math.min(fq.air, 0.3); }
       } else if (t === "x") {
         if (!p._uv) p._uv = worldUV(p);
         const pat = PATS[p.pat];
         const xq = finish(pat ? add(C, p.p, p._uv, "pat", pat) : add(C, p.p, zeros(p.p.length), "flat", colourOf(p)), p);
         if (xq) xq.wide = true;
+        /* A tile is painted in daylight colours; a flat prim with a night colour (`cn`) goes to it as
+           the day goes (`colourOf`). Without the same here the rapids glowed at night against the
+           flat river round them, so the night colour is laid over the tile as the day leaves. */
+        if (xq && pat && p.cn && DAYPAGE && dl < 0.98 && xq.area > 64) {
+          const nq = finish(add(C, p.p, zeros(p.p.length), "flat", p.cn), p);
+          if (nq) { nq.alpha = 1 - dl; nq.sz = xq.sz - 0.1; }
+        }
+        /* Or a night tile (`pn`): a facade by day becomes its lit windows after dark -- the night
+           tile laid over the day one as the day goes, keeping its own light (no night wash), the
+           haze still between it and the eye. */
+        if (xq && pat && p.pn && PATS[p.pn] && DAYPAGE && dl < 0.98 && xq.area > 64) {
+          const nq = finish(add(C, p.p, p._uv, "pat", PATS[p.pn]), p);
+          if (nq) { nq.alpha = 1 - dl; nq.nolite = true; nq.day = false; nq.sz = xq.sz - 0.1; }
+        }
       } else if (t === "w") {
         // A sheet of falling water: [top-left, top-right, bottom-right, bottom-left].
         const lit = p.il && dark;
         const base = finish(add(C, p.p, ZERO8, "flat", lit ? held : colourOf(p)), p);
         if (base && lit) { base.nolite = true; base.lit = 1.25; base.air = Math.min(base.air, 0.18); }
+        /* Round 35: the water's grain (`pat`, the `fallsw` streaks) laid over the sheet, mapped down
+           its face at `u` cm a tile. Its air and its night are in its alpha, not in a wash: a wash is
+           laid over a quad's whole outline, and over a tile that is clear between its streaks it
+           would darken the sheet a second time. */
+        // (Not on a sheet smaller than about 20 x 20 px: the grain is finer than that, so there it
+        // would be a fill that changes nothing anyone can see.)
+        if (base && p.pat && PATS[p.pat] && base.area > 400) {
+          if (!p._uv) p._uv = worldUV({ p: p.p, u: p.u, ax: "v" });
+          const ov = add(C, p.p, p._uv, "pat", PATS[p.pat]);
+          if (ov) {
+            ov.alpha = (p.pa === undefined ? 1 : p.pa) * (1 - base.air) * (lit ? 0.45 : 1 - 0.5 * NIGHT());
+            ov.air = 0; ov.lit = 0.5; ov.day = false; ov.nolite = true; ov.sz = base.sz - 0.5;
+          }
+        }
         const [tl, tr, br, bl] = p.p, nk = p.k === undefined ? 2 : p.k;
         for (let i = 0; i < nk; i++) {
           const f = (i + 0.5) / nk + 0.18 / nk * Math.sin(i * 2.3 + pi);
           const fall = ease ? ((T * (p.sp || 0.32) + i * 0.37 + pi * 0.13) % 1) : 0.45;
-          const v0 = Math.max(0, fall - 0.3), v1 = fall, df = 0.22 / nk;
+          // A streak is a rope of water running most of the drop, not a pane: long and narrow
+          // where the grain is drawn (round 35), the old short bar where it is not.
+          const v0 = Math.max(0, fall - (p.pat ? 0.55 : 0.3)), v1 = fall, df = (p.pat ? 0.07 : 0.22) / nk;
           const A = (ff, v) => lerp3(lerp3(tl, tr, ff), lerp3(bl, br, ff), v);
           const s = add(C, [A(f - df, v0), A(f + df, v0), A(f + df, v1), A(f - df, v1)], ZERO8, "flat",
                         `rgba(255,255,255,${((lit ? 0.14 : 0.2 + 0.08 * Math.sin(T * 2.7 + i + pi)) * (1 - (base ? base.air : 0))).toFixed(3)})`);
@@ -2192,7 +2513,7 @@ function leaveOverlay(root, trigger) {
         const nf = tint ? 0 : NIGHT() * 0.5;
         const base = tint ? [1, 3, 5].map((i) => parseInt(tint.slice(i, i + 2), 16)) : [238, 244, 247];
         const rgb = base.map((v, i) => Math.round(v * (1 - nf) + [22, 34, 60][i] * nf)).join(",");
-        const NP = 5;
+        const NP = p.np || 5;                       // rounds in the cloud; the bowl's take three (cost)
         for (let k = 0; k < NP; k++) {
           const f = k / (NP - 1), drift = ease ? Math.sin(T * 0.3 + pi + k) * p.w * 0.03 : 0;
           const r = p.w * (0.32 + 0.22 * f), cy = oy + p.h * (0.18 + 0.7 * f);
@@ -2202,9 +2523,16 @@ function leaveOverlay(root, trigger) {
             const th = (a / 10) * Math.PI * 2, c = Math.cos(th) * r, sy = Math.sin(th) * r * 0.62;
             pts.push([cx + rx * c, cy + sy, cz + rz * c]);
           }
-          const q = add(C, pts, zeros(10), "flat", `rgba(${rgb},${(al * (1 - 0.6 * f) * (tint ? 0.5 : 1)).toFixed(3)})`);
+          const aa = al * (1 - 0.6 * f) * (tint ? 0.5 : 1);
+          const q = add(C, pts, zeros(10), "flat", `rgba(${rgb},${aa.toFixed(3)})`);
           if (q) { q.air = 0; q.lit = 0; q.day = false; q.nolite = true;
-                   q.sz = q.z + WORLD_BIAS + (p.s || 0) * 1e6; }
+                   q.sz = q.z + WORLD_BIAS + (p.s || 0) * 1e6;
+                   /* Round 35: a round of spray has no edge. Filled flat, five overlapping ten-gons
+                      read as a stack of grey plates; filled with a gradient from its centre to
+                      nothing at its rim (`soft`, drawn by `emit`), the same five read as a cloud. */
+                   const o = camPt(C, cx, cy, cz);
+                   if (o.z > NEAR) q.soft = { x: W * 0.5 + (focal * o.x) / o.z, y: H * 0.5 + (focal * o.y) / o.z,
+                                              r: (focal * r) / o.z, k: 0.62, rgb, a: aa }; }
         }
       } else if (t === "l") {
         const r0 = p.r || 60;
@@ -2220,12 +2548,17 @@ function leaveOverlay(root, trigger) {
         // which way the viewer faces; afternoon sun stands in the west at Table Rock).
         if (!DAYPAGE || dl < 0.3 || sunAz() * (p.west ? 1 : -1) < 0.12) continue;
         const [ox, oy, oz] = p.o, R = p.r, nx = p.ux, nz = p.uz;
-        ["rgba(255,110,100,0.16)", "rgba(255,206,110,0.16)", "rgba(140,220,140,0.15)", "rgba(130,180,255,0.18)"].forEach((cc, bi) => {
-          const r0 = R * (1 - bi * 0.035), r1 = r0 - R * 0.035;
-          for (let a = 0; a < 8; a++) {
-            const t0 = (a / 8) * Math.PI, t1 = ((a + 1) / 8) * Math.PI;
+        /* Round 35: a bow is seen only where there is spray to make it, so it is a piece of an arc
+           standing in the mist and fading out at both ends -- not a whole arch with its feet planted
+           on the water, which is what the full half-circle read as from the rim and the deck. */
+        [[255, 110, 100, 0.16], [255, 206, 110, 0.16], [140, 220, 140, 0.15], [130, 180, 255, 0.18]].forEach(([cr, cg, cb, ca], bi) => {
+          const r0 = R * (1 - bi * 0.035), r1 = r0 - R * 0.035, NS = 7, A0 = 0.22 * Math.PI, A1 = 0.78 * Math.PI;
+          for (let a = 0; a < NS; a++) {
+            const t0 = A0 + ((A1 - A0) * a) / NS, t1 = A0 + ((A1 - A0) * (a + 1)) / NS;
+            const fade = Math.sin((Math.PI * (a + 0.5)) / NS);
             const P = (rr, tt) => [ox + nx * Math.cos(tt) * rr, oy + Math.sin(tt) * rr, oz + nz * Math.cos(tt) * rr];
-            const q = add(C, [P(r0, t0), P(r0, t1), P(r1, t1), P(r1, t0)], ZERO8, "flat", cc);
+            const q = add(C, [P(r0, t0), P(r0, t1), P(r1, t1), P(r1, t0)], ZERO8, "flat",
+                          `rgba(${cr},${cg},${cb},${(ca * fade).toFixed(3)})`);
             if (q) { q.air = 0.05; q.day = false; q.nolite = true; q.sz = q.z + WORLD_BIAS; }
           }
         });
@@ -3078,9 +3411,12 @@ function leaveOverlay(root, trigger) {
       : [];
     const floorPiece = (x0, x1, za, zb, zc) => {
       if (x1 - x0 < 1 || zb - za < 1) return;
-      const fl = add(C, [[x0, 0, za], [x1, 0, za], [x1, 0, zb], [x0, 0, zb]],
-          [za * DPM, x0 * DPM, za * DPM, x1 * DPM, zb * DPM, x1 * DPM, zb * DPM, x0 * DPM],
-          "pat", floorPat);
+      const fd = Math.abs(zc - C.z);
+      const corners = [[x0, 0, za], [x1, 0, za], [x1, 0, zb], [x0, 0, zb]];
+      const fl = floorTiers && fd >= 1600
+        ? add(C, corners, ZERO8, "flat", "#797570")          // the pavers' measured mean
+        : add(C, corners, [za * DPM, x0 * DPM, za * DPM, x1 * DPM, zb * DPM, x1 * DPM, zb * DPM, x0 * DPM],
+              "pat", floorTiers && fd >= 450 ? floorTiers[fd >= 900 ? 1 : 0] : floorPat);
       if (fl) { fl.lit = lightAt((x0 + x1) / 2, 6, zc) * 1.15; fl.air = haze(fl.z) * 0.7;
                 fl.sz = fl.z + 4000;     // the ground paints before anything standing on it
                 if (UNDER) fl.nolite = true; }
@@ -3224,6 +3560,25 @@ function leaveOverlay(root, trigger) {
       const top = sc.y1, low = sc.y0, bar = sc.bar || 2.4, gap = sc.gap || 14;
       const iron = sc.frame || "#202228", PIECE = 300;
       const mid = low + (top - low) * 0.32;
+      /* Round 35: ornamental iron (`scroll`, the Table Rock parapet) is one band of the `ironscroll`
+         tile, a cell as wide as the band is high, rather than bars: near the eye the tile, further
+         off the same thin screen. Black iron keeps its own colour by day and by night (no sun, no
+         wash over the clear between the scrolls, which would grey the gorge behind it). */
+      if (sc.scroll && PATS.ironscroll) {
+        const k = 128 / (top - low);
+        for (let z = from; z < to; z += PIECE) {
+          const z1 = Math.min(z + PIECE, to), zc = (z + z1) / 2;
+          if (Math.abs(zc - C.z) >= 900) {
+            const s = mk([[px, low, z], [px, low, z1], [px, top, z1], [px, top, z]], "rgba(18,19,22,0.42)", 0, 0.06);
+            if (s) s.day = false;
+            continue;
+          }
+          const q = add(C, [[px, low, z], [px, low, z1], [px, top, z1], [px, top, z]],
+                        [z * k, 128, z1 * k, 128, z1 * k, 0, z * k, 0], "pat", PATS.ironscroll);
+          if (q) { q.air = 0; q.lit = 0.5; q.day = false; q.nolite = true; q.wall = sc.side; q.za = z; q.zb = z1; }
+        }
+        return;
+      }
       for (let z = from; z < to; z += PIECE) {
         const z1 = Math.min(z + PIECE, to), zc = (z + z1) / 2;
         const lit = lightAt(px, top, zc) * 0.8;
@@ -3258,6 +3613,33 @@ function leaveOverlay(root, trigger) {
          tile standing in for one. `railing` is iron bars and rails with air between them. */
       if (sc.kind === "open") return;
       if (sc.kind === "glazing" || sc.kind === "railing") { drawSee(C, sc, px); return; }
+      /* Round 35: a service pipe along the wall (Journey's tunnels, from the photographs): galvanised,
+         its face in two tones for the round of it and its underside -- it runs over the eye, so the
+         underside is the side you see -- standing `out` off the wall, a coupling every 3 m. Cut in the
+         wall's own 60 cm panels near the eye and sorted just in front of its nearest end: a 3 m piece
+         sorted at its middle was painted over by the wall panels in front of that middle, and the pipe
+         came out as a dashed shelf. Past 15 m the face alone, in 3 m pieces. */
+      if (sc.kind === "pipe") {
+        const out = sc.out || 9, fx = px - sc.side * out, ym = (sc.y0 + sc.y1) / 2;
+        const from = Math.max(sc.z0, Z_BACK), to = Math.min(sc.z1, Z_FAR);
+        const nl = (q, lit) => { if (q) { q.lit = lit; if (UNDER) q.nolite = true; } return q; };
+        for (let z = from; z < to;) {
+          const near = Math.abs(z - C.z) < 1500, step = near ? SEG : 300;
+          const z1 = Math.min(z + step, to), zc = (z + z1) / 2, lit = lightAt(fx, sc.y1, zc);
+          const bias = (q) => { if (q) q.sz = q.z - (z1 - z) / 2 - 4; };
+          bias(nl(add(C, [[fx, ym, z], [fx, ym, z1], [fx, sc.y1, z1], [fx, sc.y1, z]], ZERO8, "flat", "#7a7f84"), lit));
+          bias(nl(add(C, [[fx, sc.y0, z], [fx, sc.y0, z1], [fx, ym, z1], [fx, ym, z]], ZERO8, "flat", "#5a5f64"), lit));
+          if (near) bias(nl(add(C, [[px, sc.y0, z], [px, sc.y0, z1], [fx, sc.y0, z1], [fx, sc.y0, z]], ZERO8, "flat", "#3d4145"), lit * 0.8));
+          if (near && Math.floor(z1 / 300) !== Math.floor(z / 300)) {     // a coupling at each 3 m mark
+            const cz = Math.floor(z1 / 300) * 300, cx = fx - sc.side * 1.5;
+            const k = nl(add(C, [[cx, sc.y0 - 1.5, cz - 4], [cx, sc.y0 - 1.5, cz + 4], [cx, sc.y1 + 1.5, cz + 4],
+                                 [cx, sc.y1 + 1.5, cz - 4]], ZERO8, "flat", "#686d72"), lit);
+            if (k) k.sz = k.z - 40;
+          }
+          z = z1;
+        }
+        return;
+      }
       const from = Math.max(sc.z0, Z_BACK), to = Math.min(sc.z1, Z_FAR);
       const pat = PATS[sc.kind] || tilePat;
       for (let z = Math.floor(from / SEG) * SEG; z < to; z += SEG) {
@@ -3433,6 +3815,25 @@ function leaveOverlay(root, trigger) {
             : add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.24));
           if (q) { q.lit = lit; drawn.push(q); }
         });
+        /* Round 35: a trail lamp is the park's black lantern on its post (the photographs at the
+           brink), not a bare pole -- a glazed head on a collar, a cap and a finial over it, its glass
+           grey by day and lit from within after dark. */
+        if (kind === "lamp" && m.h > 200) {
+          const night = NIGHT() > 0.45;
+          const part = (dy, h, w, col, glow) => facesOf({ ...m, y: m.y + m.h + dy, h, w, d: w }).forEach((f) => {
+            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1]) + f.n[2] * (C.z - f.p[0][2]);
+            if (toward <= 0) return;
+            const q = add(C, f.p, ZERO8, "flat", glow ? col : mix(col, f.k + (lit - 0.7) * 0.24));
+            if (!q) return;
+            q.lit = glow ? 1.3 : lit;
+            if (glow) { q.nolite = true; q.day = false; }
+            drawn.push(q);
+          });
+          part(-72, 7, 26, base, false);                                   // the collar
+          part(-65, 46, 30, night ? "#ffdca0" : "#7c848b", night);         // the glass
+          part(-19, 9, 40, base, false);                                   // the cap
+          part(-10, 12, 14, base, false);                                  // the finial
+        }
       } else if (shape === "door") {
         /* A door is joinery, not a rectangle: a dark reveal behind it, a leaf with two inset panels
            and a handle, a threshold under it, and a lit fanlight over its head — that fanlight is
@@ -4077,9 +4478,16 @@ function leaveOverlay(root, trigger) {
                         ZERO8, "flat", ret);
           if (r) { r.lit = lit * 0.8; drawn.push(r); }
         });
-        const head = add(C, [[px, m.h, m.z - hw - 14], [px, m.h, m.z + hw + 14],
-                             [px, m.h + 12, m.z + hw + 14], [px, m.h + 12, m.z - hw - 14]], ZERO8, "flat", col);
-        if (head) { head.lit = lit; drawn.push(head); }
+        /* The head is a lintel in the wall, under the wall's top. Round 35: where the opening rises
+           to the vault's springing (Journey's branch) there is no wall over it to carry one -- the
+           barrel is its head. A head laid there stood in the wall's plane behind the barrel's lowest
+           chord, was painted in front of it anyway (a prop sorts by its own depth) and hung over the
+           walker as a dark slab; moved under the springing it was a beam at eye height. */
+        if (m.h + 12 <= WALL_TOP + 0.5) {
+          const head = add(C, [[px, m.h, m.z - hw - 14], [px, m.h, m.z + hw + 14],
+                               [px, m.h + 12, m.z + hw + 14], [px, m.h + 12, m.z - hw - 14]], ZERO8, "flat", col);
+          if (head) { head.lit = lit; drawn.push(head); }
+        }
         if (UNDER) drawn.forEach((q) => { q.nolite = true; });
       } else if (shape === "glassfloor") {
         /* A square of floor that is a window straight down: the city 342 m below rides the deep

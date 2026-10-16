@@ -2,6 +2,114 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-16 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0q. 第三十五輪（2026-10-16）：「繼續全部做完整」「瀑布要完整做好」——Table Rock 與 Journey 照照片重做
+
+**站主原話**：「繼續全部做完整」，接著（選項題跳過）「瀑布要完整做好」；中途又說「你瀑布那邊要再做細緻一點」
+「瀑布內部裡面實際環境要做精細一點」，以及「門司港那邊模型要拆開」（見「沒做到」最後一條）。
+解讀：第 34 輪沒做到的清單全部處理，瀑布（`rooms-niagara`、`rooms-journey`）優先而且要經得起「跟真的 Table Rock／Journey
+比」的辨識測試；CN Tower 的圖卡次之。
+
+### 來源（抓來的頁不會留，結論在這裡與 `_gen_html.py` 註解）
+- **照片（rung 5，image search，存 `.preview/r35/ref/`，gitignored、不出貨）**：Getty「railing and lamp post with the Horseshoe
+  Falls … at Table Rock」；torontoareaoutings（Table Rock 欄杆、彩虹）；cliftonhill（從峽谷看 Table Rock Centre 與峭壁；Journey
+  深台）；travelingmitch（Journey 平台兩張）；niagarafallstourism（Table Rock Centre 轉角）；Tripadvisor（Journey 下層平台）。
+  一張「隧道內部」其實是 Niagara Parks Power Station 的 The Tunnel（2022），**不是** Journey，沒拿來用。
+- **OSM API** `way/420548287.json`：Table Rock Centre `building:levels=2`、old_name Table Rock House、note「form partly estimated」。
+  `way/241004747.json`：Skylon `building:levels=3`。
+- **Wikipedia raw**：「Table Rock Welcome Centre」（北棟 1926、Collegiate Gothic、Findlay and Foulis；南棟 1974；2008 Grand Hall）；
+  「Falls Incline Railway」（59.8 m、30°、座標 43.079499,−79.080789 → 爬升 29.9 m、水平 51.8 m）；「Skylon Tower」（街面起 160 m、
+  離瀑布底 236 m → 街面在下游河面上 76 m＝步道上 17.5 m；屋頂 149 m、尖頂 11 m）；「List of tallest buildings in Niagara Falls,
+  Ontario」（11 棟 ≥50 m 等，座標、高度、樓層；轉錄成 `NIA_HOTELS`）。
+- **Nominatim**：Fallsview Boulevard（旅館在它東側、崖頂）；Buffalo Avenue（美國岸，見「沒做」）。
+- **Journey 隧道內部照片（rung 5）**：Niagara Tours（niagara-tours.com 的 Journey 頁）與 mylifeisajourney.com：低矮的弧形拱、
+  粗糙潮濕的混凝土（深色水漬）、**濕的木板走道**（順著隧道鋪）、右牆約 1.9 m 高一條**鍍鋅管**（有接頭、旁邊電箱）、
+  洞口前一道黑色直條欄杆；人的身高約到拱頂的六成 → 拱頂約 2.6 m。
+- **OSM（抓了、本輪沒畫）**：Niagara Parkway 在 Table Rock 旁是北向單行兩線柏油（way 1088538530、1457641425、1097824388），
+  在 Table Rock Centre 底下穿過（way 1088538531，`covered=yes`、`maxheight=4.4`）；南向車道另一條（1119220554）。
+
+### critique 抓到的（改前截圖 `.preview/r35/before-{niagara,journey}/`，每條有證據）
+1. **瀑布像一面有窗的牆**：curtain 是平色帶＋每段 2 條短淺色長方形（寬 0.44/k 段寬、長 0.3 帶高），近看就是窗格（Journey F11、
+   Niagara F10–12）。→ 新 overlay tile **`fallsw`**：52 條貫穿整個落差的水紋（白／深藍綠，沿長度以整數週期明暗，上下無縫），
+   overlay 的 air 與夜放在 alpha（不再蓋 wash，否則透明處被壓暗兩次）；移動水紋改成長 0.55、寬 0.07/k。帶從 3 段改 4 段
+   （0/5/15/42/100%，綠→淺綠→白），綠色 brink 到白色不再是一條硬線。
+2. **潭像一塊石頭／階梯地板**：一條 55% 的硬邊泡沫帶在深色平面水上。追查（`.preview/r35/shot1.mjs`，DROP=m/rb/w/x 對照＋PROBE
+   逐 fill 列出）確認那塊「圓頂」就是潭面＋泡沫，不是霧也不是 bug；腳下的霧其實有畫，只是**白霧疊在白瀑布與白泡沫上看不見**
+   （把 al 拉到 0.95 才確認）。→ 泡沫改成貼圖 **`foam`**（不透明、44 m 內）＋三條逐層變淡的透明帶（0.45/0.22/0.1）；潭水
+   `#2e5a5f`→`#3d706c`；霧改成軟邊（`soft`：從中心到邊緣漸層到 0），盆內兩圈＋一圈外圈，deck 視角不再減弱。
+3. **彩虹是一整個半圓、兩腳插在水面**→ 只畫 0.22π–0.78π 那段，兩端淡出。
+4. **上游河面是平的青綠色**→ 近處（400 m 內）cell 用 **`rapids`** 貼圖（白浪沿水流 NNE），遠處平色＝貼圖量到的平均（`#4b8b8d`）。
+5. **Table Rock Centre 是灰色平頂盒子加藍玻璃帶**；照片與 Wikipedia：淺黃褐石材 Collegiate Gothic、拱窗、陡斜屋頂、Grand Hall
+   有小塔樓。→ 牆貼 **`trcwall`**（9.5 m 一格＝兩層樓，下層拱窗）、屋頂從簷口內縮 2.4 m 升 4 m（`inset_polygon`，驗過 27 邊無翻轉
+   無交叉）、塔樓位置照照片（近似）。凹多邊形的外法線改用繞向（`_outward_ccw`），重心法在凹處會把牆轉反而被剔除。
+6. **峭壁是從崖頂斜到 25% 的暗色斜坡**；照片：直立、水平岩層、下三分之一是長滿綠色的崩積坡。→ 0 到 −38 m 直立
+   （1.5 m 內傾），貼 **`strata`**；崩積坡 `#56663f`。
+7. **Fallsview 的旅館完全沒有**（右 30°、behind 都該看得到）。→ Wikipedia 表上站在崖上的 10 棟照座標／高度／樓層畫
+   （佔地照多倫多規則 30 m；Tower Hotel 是 1962 年觀景塔改的，畫成 16 m 塔身）；白天 `hotelw`、天黑 crossfade 到 `towerwin`
+   （新的 `pn` 機制）。崖用 incline 算出的 29.9 m，線過 incline 座標、讓旅館在上、Skylon 在下（其餘近似）；坡面與坡頂樹冠用
+   **`canopy`**；南端漸降入地而不是一刀切。Skylon 改成街面 +17.5 m 起算：塔身、149 m 屋頂（銅綠）、11 m 尖頂。
+8. **鋪面 moiré（環紋、扇形）**：8 cm 縫在 6 m 外不到 2 px。→ 地板依距離分層：<4.5 m 原 tile、4.5–9 m 拉向平均 50%、
+   9–16 m 80%、>16 m 平均色 `#797570`（量到的平均，`FLATOF` 一起改）。每層平均不變，所以層與層之間沒有色階。
+9. **夜裡貼圖會發亮**：貼圖是白天顏色，而 flat prim 有 `cn`。→ `x` verb：有 `cn` 的貼圖隨天色蓋上 `cn`；有 `pn` 的蓋上夜貼圖。
+10. **Journey 隧道像迷彩**：`paintTunnelC` 的長方形斑塊是 `i*47%128` 排的。→ 種子亂數的細骨料顆粒、16 個軟邊濕斑、14 條
+    滴水痕，邊緣 wrap；平均仍是 `#6e6f6c`（量過）。
+11. **門口與欄杆外的青色楔形／橫帶**（從第 33 輪就在，before 截圖也有）：裁切＋`PROBE` 逐 fill 追到根因是**排序的層，不是深度**：
+    世界 prim 的 sz＝深度＋6000＋s·1e6，地面（s 8.5）與 terrace（s 8.4）的層比水幕（s 0）高，所以水幕永遠在地面之後畫、
+    蓋在地面上；lane 自己的鋪面（z＋4000）又在兩者之後，所以楔形停在近處鋪面。→ rim 視角下岸面以下的 prim（三道水幕、
+    AF 崩積、加拿大岸 0→−38 m 岩層與崩積坡、美國岸峭壁、Goat 峭壁、彩虹）給 `low` 層 8.8；deck 視角不給（眼睛在岸下，
+    岸下的 prim 在旅館前面，而且那裡的地面被剔除）。眼睛在岸上時，y＞0 的東西一定比 y＜0 的先被看到，所以「水→峭壁→地面→物件」是精確的。
+12. **Table Rock 的欄杆是直條鐵欄**；照片（brink 兩張）：粗糙灰色石塊砌的矮牆、牆上一塊塊粗石柱、柱間是黑色圓圈花紋鐵件、
+    高度在腰際。→ lane 的欄杆帶：牆 60 cm、鐵件 60–90 cm（新的 overlay tile **`ironscroll`**：上下橫條、每格一根直條、一個圓圈
+    裡再一個 C 形捲，透明處不吃日光與空氣）、石柱 96 cm、50 cm 見方、每 3 m；brink 沿線的世界欄杆同一做法，**一格一格切**
+    （柱與柱之間的牆、壓頂、鐵件各自一塊），否則長的牆面在畫家排序裡會蓋過它前面的柱。`stonewall` 從方整的 ashlar 改成粗面
+    不規則的灰色石塊（平均 `#5f5c55`，`FLATOF` 一起改）；`parapet-ng` 改 50×96×50。
+13. **燈柱是灰色細桿**；照片：黑色鑄鐵燈柱、頂上一個燈籠。→ `lamp` 加燈籠頭（燈座、玻璃、帽、尖頂），玻璃白天灰、天黑後亮。
+    （`lamp` 這個 kind 只有 Niagara 用，不影響其他房間。）
+14. **Journey 分支口上方一塊暗色厚板**：`portal` 的門楣畫在牆面上 175–187 cm，但那裡已經是拱的起拱線，門楣其實在拱的最低一片
+    後面，卻因為 prop 用自己的深度排序而畫在前面。先把門楣移到起拱線下面，變成眼睛高度的一根橫樑——更糟；→ 開口高到起拱線
+    時不畫門楣（拱就是它的頂）。分支裡一條條白色細線（相鄰面各自填色，接縫透出天空）→ 每個面底下墊一塊同範圍的暗色底（層 0.5）。
+15. **Journey 隧道內部太素**（站主：「瀑布內部裡面實際環境要做精細一點」）→ 照上面兩張照片：地板改成濕木板（新 painter
+    **`paintBoards`**，順著隧道、16 cm 一片、黑縫、整條的濕光；原本一 tile 一個接頭看起來像拼花，拿掉）；右牆一條鍍鋅管
+    （新的 surface kind **`pipe`**：兩色正面＋底面＋每 3 m 一個接頭；近處切成牆的 60 cm 一段、排序放在最近端前面——
+    3 m 一段用中點排序時被前面的牆片蓋掉，變成一截一截的架子）；斷面照照片從拱頂 2.2 m 改成 2.6 m（牆 2.0 m、拱高 0.6 m），
+    分支同步（牆 200、脊 260、地板用木板的平均色），洞口 262。
+
+### 範圍與近似（我決定的，理由）
+- 不畫：Sky Screamer（Marineland 遊樂設施、南 2 km）、Casino Tower／Rainbow Tower（河邊的塔、形狀無來源）、Sheraton on the
+  Falls（形狀無來源）；2 km 外的遠岸（Buffalo Ave 推得出美國岸，但從欄杆看在 Goat Island 樹冠後面、其餘 <2 px）。都寫進 caveat。
+- 燈柱的**位置**仍是「drawn, not surveyed」（外型已照照片改）；欄杆的尺寸是從照片裡人的身高讀的（caveat 寫了）。
+- 圖卡：`niagara-2` 重畫（欄杆在左＝峽谷側、右邊是石造 Table Rock Centre、前方水霧；原圖欄杆在右、樹籬路燈在左，方向錯）；
+  `toronto-tower-1` 重畫（原圖天線上方多一盞不存在的燈）；`toronto-tower-3` 重畫（原圖有鞋子＝人、與虛構的圓形廣場）；alt 同步改。
+  三張都是生成圖，照 IMG 規則標 generated。
+- 封面：`niagara-cover`、`journey-cover`、`cntower-cover` 改用本輪 renderer 畫面（`make-cover.mjs`）；journey record 原本借用
+  niagara-cover 還寫「floodlit after dark」（假的），改指自己的 `journey-cover.jpg`、caption 照實寫。
+
+### 驗證（最終程式碼）
+`.preview/r35/gates.sh`（全部 exit 0）：`node --check`、`py_compile`、generate、`verify-shapes`（92 props 都有 painter）、
+`verify-geometry`、`verify-clash`、`verify-walk` **163/163**、`verify-chain` **96 PASS／0 failure**、`verify-rooms-e2e` **72／0 failure**、
+`verify-objects`、`verify-story` **25/25**、cost-probe（rooms.html 峰值 8317、bad 0、huge 0；niagara 10485、journey 14170、cntower 6189）、
+impeccable `[]`、重跑兩次 md5 相同（idempotent）、`git diff --check`。
+lane-shot（最終程式碼，`.preview/r35/fin2-*`，三張 sheet 都看過）：Niagara **5/6**（ahead 181.7／180.6／153.5／107.7；behind 31.0 **FAIL**，
+見下）、Journey **6/6**（110.9／105.2／125.5／99.6；behind 90.1）、CN Tower **7/7**（110.6／86.5／88.3／86.0；NE 玻璃 48.1；behind 87.5）。
+behind 的 A/B：同一流程下舊程式碼 29.8、新程式碼 30.5 → 是時間點（落在入夜之後），不是畫壞；沒有為了數字把夜調亮。
+
+### 沒做到／要知道的
+- **多倫多 100–150 m 的約 288 棟仍沒有放**：Wikipedia 表只列 150 m 以上；可用的來源是 ArcGIS 上的 2020 3D massing（`MAX_HEIGHT>=100`
+  225 個 polygon，podium／塔分開、2020 後的塔沒有）——本輪瀑布優先，沒做。**地面仍是平的**（多倫多）、**佔地與樓層仍是典型值**、
+  **遠處窗格 moiré** 照舊（理由見 §0p）。
+- **瀑布這邊的近似**（caveat 都寫了）：峽谷北段的崖線、38 m 直立與崩積坡的分界、水的 24 m 拋距與水霧高度、Table Rock Centre 的簷高／
+  屋頂／小塔樓位置、崖線離開 incline 之後的走向、旅館的佔地與外牆、燈柱位置、欄杆的尺寸與花紋（照片讀的）、Journey 斷面與
+  木板與管線（照片讀的）。Skylon 底下的坡沒畫（塔身往下接到平地，頂端高度是對的）。**Niagara Parkway 沒畫**（OSM 已抓，見來源）；
+  terrace 遠處仍是平的平均色（防 moiré 的分層），看起來空；分支隧道仍是直的方盒（線沒有測量來源）。
+- **深夜的 behind 畫面**：lane-shot 單獨跑時 behind 落在黃昏（≥50）；三個 tour 並行時 tour 變慢、落到深夜，量到 29.9（<50 的
+  open-world 門檻）。畫面是真的夜景不是 collapse（顏色數多、亮窗、Skylon），但門檻是用黃昏校的；沒有為了數字把夜調亮。
+- **成本**：cost-probe 峰值 niagara 10031→10485、journey 11405→14170（瀑布紋理 overlay、4 帶、盆內霧、旅館與崖、TRC 屋頂；
+  Niagara 中途一度到 11878，brink 欄杆從約 450 根直條換成一格一格的石牆＋花紋鐵件後降回）；rooms.html 8317、cntower 6189 不變。這兩頁沒有 fill 上限的 gate；實機幀率沒量。
+- **browser-check.py**：沒跑（本輪時間給了瀑布內部；`bc-wrap.py` 已寫在 /tmp，下輪可直接用）。
+- **站主待補（AGENTS 的 backlog）**：ORCID、CV、教學活動日期、Tokyo 封面——需要站主的資料，本輪沒有提供，照規則不編造，維持 held。
+- **門司港「模型要拆開」（站主本輪中途提出）**：本輪沒動。現況：Fukuoka 是一張 1.5 cm/m 的門司港桌上模型（主題是站主早先定的，
+  見 §0n 與 landmark-space 的 table 形式），所有建物擠在一張 720×376 cm 的桌上，每棟都小、看不出漂亮。下一輪要做：把每個地標
+  拆成各自的展台（較大比例、各自打光），e2e 的「Moji 展台近面與側道」斷言要一起改。拆法（各自展台／改成真實比例可走的街）待站主選。
+
 ## 0p. 第三十四輪（2026-10-16）：「繼續」——Wikipedia 150 m 以上 117 棟全部照座標與高度放進 LookOut 窗外
 
 **站主原話**：「繼續」，回答第 33 輪結尾的問題「要不要下一輪把 150–214 m 大樓照 Wikipedia 列表補進去？」。
