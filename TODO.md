@@ -124,6 +124,10 @@ behind 的 A/B：同一流程下舊程式碼 29.8、新程式碼 30.5 → 是時
 - **CesiumGS/cesiumjs-skills**（Apache-2.0，官方）：CesiumJS＋3D Tiles。這條路能直接串 Google Photorealistic 3D Tiles 的真實
   攝影測量（Niagara、多倫多、門司港都有），細節一步到位；代價是 API key、執行時連 Google、署名與不得快取的條款、檔案重、
   走路 lane 的設計要換，而且這個沙盒連不到那些主機、沒辦法驗。
+- **Blender skills**（站主第二次問時補查）：arjun988/blender-skills（MIT、312★，94 個 Blender skill，含 archviz，走 Blender MCP）、
+  kevinbadi/blender-skills（158★、沒有 license）。Blender 本身可以用 PyPI 的 `bpy` 在沙盒裡無頭跑：最新 5.2.2 要 Python 3.13，
+  **5.0.1 有 cp311 manylinux wheel**（本機 Python 3.11.2、glibc 2.36），約 400 MB，**未實測**（可能缺 X／GL 函式庫、只能 CPU 算圖）。
+  用途是當「離線素材工廠」：用 OSM 高度與照片建模，先算好遠景全景或貼圖，網站執行時仍零依賴；缺點是預算好的圖不會隨走動產生視差。
 - **判斷**：「大形體對、細節不夠」是現在這個架構的正常上限，不是壞掉——每個細節都是手寫的 quad／tile，加一個就多一次排序風險
   （本輪的青色楔形、暗板、虛線管都是）和 fill 成本；資料只給位置與高度，細節只能一張張照片讀。要不要換架構（留 Canvas／改
   three.js／改 Cesium 3D Tiles）是站主的決定，見回報。
