@@ -4,9 +4,10 @@ A study note on `https://github.com/Kenton-GMI/sakura-crossing`, read for the Ja
 `de01898` ("initial public release", 2026-07-29), MIT-licensed, 56 096 lines of JavaScript in 49
 modules, one shipped music track, no image assets.
 
-It is a **reference, not a dependency** — the same rule as every other pack in `AGENTS.md`. It is
-three.js + Vite, and this site ships no library and no build step, so nothing from it can be
-vendored even if the licence allowed it. Fetch it to read:
+It is a **reference, not a dependency** — the same rule as every other pack in `AGENTS.md`. At the
+2026-07 study date, this site shipped no scene library. On 2026-10-16 the owner later approved one
+pinned, MIT Three.js runtime for source-backed walkable-world rendering; that separate exception does
+not make this project a dependency or import its Vite tooling, source, or invented signage. Fetch it to read:
 
 ```bash
 git clone --depth 1 https://github.com/Kenton-GMI/sakura-crossing.git /tmp/sakura-crossing
@@ -76,9 +77,11 @@ eye level, the noren's proportions — and never the words. See `japan-place` §
 
 **2. Its declared structure.** It is npm, Vite, three.js, ES modules, a `public/` folder, 859 k
 triangles at 1.2 M submitted per frame, a half-float render target at 1.5–2×, FXAA, a depth-texture
-ink pass, an inverted-hull outline pass. Our lane is one canvas raster with no library, ~16 KB of
-JS total, and `AGENTS.md`'s dependency rule is explicit: renegotiating it is its own PR and its own
-conversation with the owner. Nothing in this pack justifies that conversation.
+ink pass, an inverted-hull outline pass. At the time this note was written, our lane was a Canvas2D
+raster and `AGENTS.md` rejected WebGL. The later owner approval is much narrower: the current site
+vendors only the pinned Three.js runtime for sourced walkable-world backdrops, keeps Canvas2D as its
+lane/fallback renderer, and still has no npm build. Nothing in this pack justifies adopting its Vite
+stack, render pipeline, signage or geometry.
 
 **3. The planet.** Its whole world is authored flat and bent onto a 160 m sphere by one projection
 layer that runs once, with the railway on the equator so the loop closes exactly, and content far

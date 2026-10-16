@@ -63,10 +63,11 @@ yet`). An honestly locked door is cheaper than a confidently wrong one.
 ## 2. The record
 
 `DISTRICTS` in `_gen_html.py` — id, label, kind, purpose, status (`open` | `soon`), blurb,
-objects, frames, slots. Geometry in px with CSS' handedness: `x` across the lane, `z` depth
-(positive is farther; the stylesheet negates it), `y` is the object's **bottom** above the
-floor line, `ry` turns it to face down the lane. The eye never moves: `.room-world` is
-translated and rotated the other way, so there is no projection math, no loop, no library.
+objects, frames, slots. Geometry is authored in centimetres: `x` across the lane, `z` positive
+farther (scaled once by `Z_SCALE` in the emitter), `y` is the object's **bottom** above the floor,
+and `ry` turns it to face down the lane. The walk camera moves through that shared coordinate
+system (`EYE = 168` cm); `site.js` projects the lane, while `scene3d.js` uses the same camera for
+sourced outdoor-world meshes. Do not return to the retired `.room-world` CSS-transform model.
 
 Every walkable page has a row in `ROOMS` (id, label, page, plate prefixes, status), street row
 first. A row is not automatically a top-level destination: the street carries doors only to the
@@ -75,9 +76,9 @@ is entered from its parent prop or real doorway and authors `back_to` as that pa
 `#at-<prop-id>`. Main rooms default back to the street at their own door. Keep parent/child wiring
 explicit; do not turn every new walkable page into a hub door or album card.
 
-Clamps are design, not limitation: yaw ±35°, pitch ±10°. Past that the walls stop covering
-the viewport and the room shows its own edges. Turning is drag, never Pointer Lock —
-Pointer Lock is unsupported on every iOS Safari and it hijacks the cursor.
+Clamps are design, not limitation: pitch stays within ±24°; yaw wraps through a full turn. The
+lane's authored dimensions and the camera transform must agree at every orientation. Turning is drag,
+never Pointer Lock — Pointer Lock is unsupported on every iOS Safari and it hijacks the cursor.
 
 **Slots are in-room sub-areas, not child rooms.** A room's `slots` list names its little
 places — one per frame the room owns. The frame carries the place's name (`PLACE_TITLES`), and
@@ -91,9 +92,10 @@ place fails the gate; so does a place with nothing holding it.
 
 ## 3. Build rules
 
-- Edit `_gen_html.py`, `css/site.css`, `js/site.js` only. **Never hand-edit `*.html`.**
-- One `VER` constant feeds both `?v=` tags. Never reintroduce a per-file literal: a stale
-  pin ships invisible changes to every visitor with a warm cache.
+- Edit `_gen_html.py`, `css/site.css`, `js/site.js`, and (for the approved world layer) `js/scene3d.js`
+  plus the exact pinned runtime under `js/vendor/`. **Never hand-edit `*.html`.**
+- One derived `VER` feeds the stylesheet, classic script and module-script `?v=` tags, and hashes the
+  Canvas files, Three.js bridge, and pinned runtime modules. Never reintroduce a per-file literal.
 - Every frame is three surfaces from **one** record: a wall object, a captioned list row with an
   anchor and a `Play from here`, and a rail figure. Counts must stay equal; assert it in the
   harness.
@@ -110,9 +112,12 @@ place fails the gate; so does a place with nothing holding it.
   renderer derives the horizontal clamp as `laneW / 2 - PLAYER_RADIUS`; it must never use a fixed
   width shared across unlike rooms. The generator writes `data-lane-w/-d/-ceil/-back` and `data-eye`,
   and the renderer reads them. Do not restate scene dimensions in CSS or a second authored table.
-- The scene is a canvas raster: one projection, walls in 60 cm panels, affine-textured tiling
-  patterns, quads painted far-to-near, fog and light as distance functions of the same transform.
-  No library and no WebGL.
+- The lane interior remains a Canvas2D raster: one projection, walls in 60 cm panels, affine-textured
+  tiling patterns, quads painted far-to-near, fog and light from the same transform. By owner approval
+  (2026-10-16), a page whose sourced record has `backdrop.world.prims` also draws that outdoor world
+  with pinned Three.js 0.186.1 in a WebGL layer behind the 2D overlay; the Canvas2D world painter is
+  the complete fallback. This is a renderer transition, not permission to invent geometry, and it does
+  not affect the Activities album's CSS 3D.
 - Lighting is part of the model, not a coat of paint: one `AMBIENT`, one `FOG_MAX`, and every wall,
   floor and prop lit by `lightAt()` — the falloff of the same `lamps` list the glows and the wet-floor
   reflections are drawn from. Never brighten a surface by hand, or it glows where nothing shines.
@@ -154,7 +159,8 @@ Run in this order and stop on the first failure:
 python3 _gen_html.py; echo "exit=$?"          # exit 0 or nothing else counts
 md5sum *.html > /tmp/a && python3 _gen_html.py >/dev/null && md5sum *.html > /tmp/b
 diff -q /tmp/a /tmp/b                          # the generator must be idempotent
-node .verify/verify-walk.mjs           # 178 assertions, run from the repo root
+node .verify/verify-walk.mjs           # lane, generated markup and cache-buster invariants
+node bin/verify-three.mjs               # pinned Three.js import + sourced-world geometry
 node .verify/verify-chain.mjs          # the hub door graph, booted page by page
 node .verify/verify-rooms-e2e.cjs      # the walk driven by keys: street -> each room, room -> street
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
@@ -182,9 +188,10 @@ tree, so commit early and often even while the remote is unreachable.
 No invented venues, dates, captions, attendees, or visited places. Drawn set dressing (a crate, a
 bollard, a blank sign) is authorised art direction and says so in its own hint; a caption never does.
 An image may not reach a page before it reaches `IMG_RULES`. No student or bystander
-faces presented as content. No vendored library, no WebGL, no npm tooling committed without
-the owner explicitly renegotiating the dependency rule in `AGENTS.md` — and that is its own
-PR, not a gallery PR. When a hoist or splice of this single-file generator is involved,
+faces presented as content. No new vendored library or npm tooling without the owner's explicit
+approval in `AGENTS.md`. The owner approved one exception on 2026-10-16: pinned, MIT-licensed Three.js
+0.186.1 for sourced walkable-world backdrops, with no package manifest or build tooling. That exception
+is not permission to migrate the Activities album or add another dependency. When a hoist or splice of this single-file generator is involved,
 check ordering: a slice with `i > j` produces a duplicated region that still parses, passes
 `ast.parse`, and fails only at runtime. And patch a file by applying, writing, then re-grepping the
 written file — an assert that runs after an in-memory mutation loses the whole round when it fires
@@ -192,12 +199,14 @@ late, which has now happened four times.
 
 ## 6. What is a solid, and what is a plate
 
-The lane is **one canvas raster**, so it cannot be assembled out of separately transformed surfaces —
-that was the earlier architecture and it is gone. What remains 3D in CSS is the album wall and the
-plate, and there WebKit still bites: a non-visible `overflow`, or a `filter`, on the element that
-declares `transform-style: preserve-3d` silently forces it flat, and a universal `preserve-3d` rule
-makes the whole thing vanish. So `preserve-3d` goes on `.ig-grid` only, the `perspective` one level up
-on `.ig-wall`, and the frames' depth **inside each frame's own transform**, because a scroll container
+The lane interior remains **one Canvas2D raster**; for a sourced `backdrop.world`, a Three.js WebGL
+canvas now sits behind that transparent overlay, sharing the same walk camera. This is one composed
+view, not separately transformed webpage panels. If WebGL is unavailable, the existing Canvas2D
+painter still draws the whole scene. What remains 3D in CSS is the album wall and plate, where WebKit
+still bites: a non-visible `overflow`, or a `filter`, on the element that declares
+`transform-style: preserve-3d` silently forces it flat, and a universal `preserve-3d` rule makes the
+whole thing vanish. So `preserve-3d` goes on `.ig-grid` only, the `perspective` one level up on
+`.ig-wall`, and the frames' depth **inside each frame's own transform**, because a scroll container
 flattens its children.
 
 Inside the raster, the equivalent rule is that nothing may be invented by the renderer, and there is
@@ -218,8 +227,8 @@ derives exactly one glow from a prop's own position, because that light has to c
 The same holds for what lies *beyond* the lane (round 33): a gorge, a city seen from 346 m, the falls
 from a deck are the backdrop's `world` — prims the generator builds from map data (`LaneFrame` turns
 latitude and longitude into lane centimetres; `niagara_world`, `toronto_world`, `journey_world` are the
-worked builders) — never shapes drawn into `js/site.js`, and never a prop stood at scale because it was
-to hand. The lane's shell says how much of that world shows (`lid`, `vault`, `open`, `open_back`,
+worked builders). `js/site.js` paints them in the Canvas2D fallback; `js/scene3d.js` triangulates the
+same record for WebGL. Neither renderer authors a location or substitutes a full-size prop for it. The lane's shell says how much of that world shows (`lid`, `vault`, `open`, `open_back`,
 `open_end`, `under`, `wallmat`; cladding of kind `open`, `glazing`, `railing`), and the walk's
 collision still comes from the lane alone: a world is something you look at, not something you walk on.
 Adding a lamp in `js/site.js` to "fix" a dark wall is the failure mode this prevents: it produces a

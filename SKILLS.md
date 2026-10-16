@@ -7,6 +7,12 @@ not have to relearn it.
 It is called SKILLS and not RULES because it is a craft rather than a checklist. Where AGENTS.md
 says what must be true of the repository, this file says how to get a district right.
 
+**Renderer decision (owner approval, 2026-10-16):** walkable-world backdrops may use the pinned,
+MIT-licensed Three.js 0.186.1 runtime when their record supplies `backdrop.world.prims`. The lane
+interior remains Canvas2D for now and is the complete no-WebGL fallback; this does not change the
+Activities album's CSS 3D. Three.js converts authored geometry only — it is not a license to invent
+site details or dimensions.
+
 The loadable halves of it live in `skills/`, and those are what an agent should open when the work
 starts: `district-author` (the record, the build rules, the gate), `place-intake` (photographs to a
 record), `japan-place` (what a Japanese place is made of — the object table in centimetres, the

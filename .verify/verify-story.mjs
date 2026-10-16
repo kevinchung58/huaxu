@@ -13,8 +13,12 @@ const browser = await puppeteer.launch({ executablePath: await chromium.executab
   defaultViewport: { width: 1024, height: 768 } });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const page = await browser.newPage();
-const navs = [];
-page.on("framenavigated", (f) => { if (f === page.mainFrame()) navs.push(f.url()); });
+const waitForRoute = (path, hash = "") => page.waitForFunction(
+  (p, h) => location.pathname.endsWith(p) && (!h || location.hash === h),
+  { timeout: 15_000 }, path, hash);
+const waitForReach = (id) => page.waitForFunction(
+  (obj) => document.querySelector(".walk-hit.is-reach")?.dataset.obj === obj,
+  { timeout: 15_000 }, id);
 
 await page.goto("http://127.0.0.1:8080/rooms-toronto.html", { waitUntil: "networkidle0" });
 await sleep(1500);
@@ -37,10 +41,9 @@ ok("the enter-space verb sits in the plate chrome, named for a reader",
    !!enter && !enter.hidden && !!enter.label, JSON.stringify(enter));
 ok("the enter-space verb leads into the space", enter?.href === "rooms-cntower.html", enter?.href);
 
-navs.length = 0;
 await page.evaluate(() => document.querySelector("[data-enter-space]").click());
-await sleep(300);
-ok("the verb navigates into the space", navs.some((u) => u.includes("rooms-cntower.html")), navs.join(","));
+await waitForRoute("rooms-cntower.html");
+ok("the verb navigates into the space", page.url().includes("rooms-cntower.html"), page.url());
 
 /* Inside the space: the glass floor carries its step-on state, the cab doors their ride, and the
    way back is the hall. */
@@ -60,11 +63,11 @@ await page.evaluate(() => document.querySelector("[data-obj='lift-cn']").click()
 await sleep(200);
 ok("the cab doors ride on a press",
    (await page.$eval("[data-obj='lift-cn']", (el) => el.dataset.state)) === "1");
-navs.length = 0;
 await page.evaluate(() => document.querySelector("[data-obj='door-back']").click());
-await sleep(1600);
+await waitForRoute("rooms-toronto.html", "#at-tower-cn");
+await waitForReach("tower-cn");
 ok("the tower unwinds to its Toronto owner with the prop anchor",
-   navs.some((u) => u.endsWith("rooms-toronto.html#at-tower-cn")), navs.join(","));
+   page.url().endsWith("rooms-toronto.html#at-tower-cn"), page.url());
 const towerReturn = await page.evaluate(() => {
   const w = document.querySelector("[data-walk]").__walk;
   const p = document.querySelector("[data-obj='tower-cn']");
@@ -103,11 +106,10 @@ ok("the promenade carries the Journey door at the rail end",
      const d = document.querySelector("[data-obj='door-journey']");
      return !!d && d.dataset.leave === "rooms-journey.html";
    }));
-navs.length = 0;
 await page.evaluate(() => document.querySelector("[data-obj='door-journey']").click());
-await sleep(300);
+await waitForRoute("rooms-journey.html");
 ok("the Journey door leads behind the falls",
-   navs.some((u) => u.includes("rooms-journey.html")), navs.join(","));
+   page.url().includes("rooms-journey.html"), page.url());
 await page.goto("http://127.0.0.1:8080/rooms-journey.html", { waitUntil: "networkidle0" });
 await sleep(1500);
 // Round 33: the falls are the surveyed world now (the Horseshoe's sheets of water seen from the
@@ -118,26 +120,22 @@ ok("behind the falls boots in the tunnel, its deck at the mouth and the falls in
      return !!document.querySelector("[data-obj='deckwall-jb']")
        && ((bd.world && bd.world.prims) || []).some((p) => p.t === "w");
    }));
-navs.length = 0;
 await page.evaluate(() => document.querySelector("[data-obj='door-back']").click());
-await sleep(300);
+await waitForRoute("rooms-niagara.html", "#at-door-journey");
+await waitForReach("door-journey");
 ok("behind the falls unwinds to its Table Rock door in the promenade",
-   navs.some((u) => u.endsWith("rooms-niagara.html#at-door-journey")), navs.join(","));
-// The click already navigated; let that load finish on its own — a goto to the same URL here
-// would interrupt the walk's boot and the next press would find a half-built scene.
-await page.waitForNetworkIdle({ idleTime: 600, timeout: 10000 }).catch(() => {});
-await sleep(1800);
+   page.url().endsWith("rooms-niagara.html#at-door-journey"), page.url());
 const journeyReturn = await page.evaluate(() => ({
   hash: location.hash, reach: document.querySelector(".walk-hit.is-reach")?.dataset.obj,
 }));
 ok("the returned visitor is beside the same Journey door",
    journeyReturn.hash === "#at-door-journey" && journeyReturn.reach === "door-journey",
    JSON.stringify(journeyReturn));
-navs.length = 0;
 await page.evaluate(() => document.querySelector("[data-obj='door-back']").click());
-await sleep(1600);
+await waitForRoute("rooms-toronto.html", "#at-falls-n");
+await waitForReach("falls-n");
 ok("the falls' space unwinds to its Toronto prop, not the street",
-   navs.some((u) => u.endsWith("rooms-toronto.html#at-falls-n")), navs.join(","));
+   page.url().endsWith("rooms-toronto.html#at-falls-n"), page.url());
 const fallsReturn = await page.evaluate(() => {
   const w = document.querySelector("[data-walk]").__walk;
   const p = document.querySelector("[data-obj='falls-n']");

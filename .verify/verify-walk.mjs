@@ -790,21 +790,24 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
 /* ---- 6. the cache-buster is the assets' own hash ----------------------------------------------- */
 {
   const { createHash } = await import("node:crypto");
-  const digest = createHash("sha1").update(fs.readFileSync("css/site.css"))
-    .update(fs.readFileSync("js/site.js")).digest("hex").slice(0, 10);
+  const hash = createHash("sha1");
+  ["css/site.css", "js/site.js", "js/scene3d.js",
+   "js/vendor/three-0.186.1/three.core.js", "js/vendor/three-0.186.1/three.module.js"]
+    .forEach((asset) => hash.update(fs.readFileSync(asset)));
+  const digest = hash.digest("hex").slice(0, 10);
   const pages = fs.readdirSync(".").filter((f) => f.endsWith(".html"));
   const tokens = new Set();
   const wrong = [];
   pages.forEach((f) => {
     const html = fs.readFileSync(f, "utf8");
-    const tags = [...html.matchAll(/(?:site\.css|site\.js)\?v=([0-9a-z]+)/g)].map((m) => m[1]);
+    const tags = [...html.matchAll(/(?:site\.css|site\.js|scene3d\.js)\?v=([0-9a-z]+)/g)].map((m) => m[1]);
     tags.forEach((t) => tokens.add(t));
     // Every page must ask for the bytes on disk, and ask for both with one token: two tokens is how a
     // build ships a new renderer under an old key, which no other gate here can see because it only
     // shows up in a returning visitor's cache.
     if (tags.length && (new Set(tags).size !== 1 || tags[0] !== digest)) wrong.push(`${f}: ${tags[0]}`);
   });
-  ok("the cache-buster is the hash of the two assets, so a stale one cannot ship",
+  ok("the cache-buster covers Canvas, Three.js bridge, and pinned runtime assets",
      wrong.length === 0 && tokens.size === 1 && [...tokens][0] === digest,
      [...tokens].join(" ") + (wrong.length ? " — " + wrong.join(", ") : ""));
 }

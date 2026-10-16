@@ -1971,6 +1971,7 @@ function leaveOverlay(root, trigger) {
   };
   const ZERO8 = [0, 0, 0, 0, 0, 0, 0, 0];
   const quads = [];
+  let threeRenderer = null;
   const add = (C, corners, uv, mode, arg, img) => {
     const pts = corners.map((c, i) => {
       const o = camPt(C, c[0], c[1], c[2]);
@@ -3677,6 +3678,18 @@ function leaveOverlay(root, trigger) {
     const half = clamp(0.6 / zoom, 0.34, 0.92);
     focal = W * 0.5 / Math.tan(half);
     const C = cam();
+    if (threeRenderer) {
+      try {
+        threeRenderer.render({ camera: C, width: W, height: H, focal, time: T,
+                              day: DAY(), dayPage: DAYPAGE, night: NIGHT(), sunAz: sunAz() });
+      } catch (err) {
+        const failed = threeRenderer;
+        threeRenderer = null;
+        try { if (failed.dispose) failed.dispose(); } catch (_) {}
+        layer.dataset.walkRenderer = "canvas2d";
+        if (window.console && typeof console.warn === "function") console.warn("Three.js frame fallback:", err);
+      }
+    }
     quads.length = 0;
     // Whether the authored bands tile a panel's whole height: if they do, the wall's own tiling is
     // not painted at all, because the cladding will be. Anything less than full coverage keeps it, so
@@ -3998,7 +4011,7 @@ function leaveOverlay(root, trigger) {
        mountain 1 200 m away in this renderer; it falls on the lane, and the lane is where the lift is
        for. Marked in one place rather than at each of the compound's own call sites, because every
        quad `drawFar` authors is that picture, including the aperture it is seen through. */
-    if (bd) drawFar(C);
+    if (bd && !threeRenderer) drawFar(C);
     /* The wall at your back is a surface with no authored cladding, and the material model's own
        default for that is the wall's tiles — not a flat colour. It was a flat plank, which meant that
        turning round at the entrance filled the screen with one grey rectangle three metres away and
@@ -6276,8 +6289,14 @@ function leaveOverlay(root, trigger) {
     });
 
     g.setTransform(1, 0, 0, 1, 0, 0);
-    g.fillStyle = "#141e36";
-    g.fillRect(0, 0, W, H);
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = "source-over";
+    if (threeRenderer) {
+      if (typeof g.clearRect === "function") g.clearRect(0, 0, W, H);
+    } else {
+      g.fillStyle = "#141e36";
+      g.fillRect(0, 0, W, H);
+    }
     g.setTransform(1, 0, 0, 1, 0, 0);
     quads.sort((p, q) => (q.sz ?? q.z) - (p.sz ?? p.z));
     quads.forEach(emit);
@@ -7176,7 +7195,14 @@ function leaveOverlay(root, trigger) {
                    get halfWidth() { return HALF; },
                    get minDepth() { return MIN_D; }, get maxDepth() { return MAX_D; },
                    get maxHeight() { return MAX_HEIGHT; }, get bob() { return bob; },
-                   get maxSpeed() { return SPEED * RUN; }, get turnRate() { return TURN_RATE; } };
+                   get maxSpeed() { return SPEED * RUN; }, get turnRate() { return TURN_RATE; },
+                   get renderer() { return threeRenderer ? "three" : "canvas2d"; },
+                   get backdrop() { return bd; }, get day() { return DAY(); }, get dayPage() { return DAYPAGE; },
+                   attachThree(engine) {
+                     if (!engine || typeof engine.render !== "function") return false;
+                     threeRenderer = engine; draw();
+                     return threeRenderer === engine;
+                   } };
   if (listPanel) listPanel.classList.add("is-closed");   // scripting present: fold it, then obey
   if (listBtn) listBtn.setAttribute("aria-expanded", "false");
   draw();

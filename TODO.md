@@ -2,6 +2,28 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-16 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0s. 第三十七輪（2026-10-16）：Tokyo 實景封面、穩定 story gate、五個環境的未完成清單
+
+本輪延續「繼續把真實環境做好，並盤點尚未完成的場景／物品」。依可驗證資料區分：已建的來源導向場景、已知近似、真正缺項，以及因缺乏可靠形體資料而刻意不畫；幾何／互動 gate 通過不代表視覺已完全符合實地。
+
+### 收尾與驗證
+- `IMG/tokyo-cover.jpg` 換成實際 Chromium 開啟 `rooms.html`、stop 2 朝前的無 UI 畫面（1024×768；Tokyo 使用 Canvas2D renderer）。不是生成圖或現地照片。SHA-256：`9c860d4d2df03cb1a521d450fa2c2fed60d19685eaae6fedd7be1ae63d433016`。`_gen_html.py` 的 caption 為：`Nakamise's shuttered vermilion rows, drawn from the lane toward Hozomon.`
+- `.verify/verify-story.mjs` 的導航驗收改為等待精確 pathname/hash 與返回後的 `is-reach` 物件，不再靠固定 300/1600 ms 捕捉導覽；保留原本的故事、進出空間、互動及返回 owner 斷言。**25/25 PASS**。
+- 最終 gate：`verify-walk` **163/163**；shapes **100 props 都 resolve**；geometry、clash、Three.js、chain **96 PASS／0 failure**、rooms E2E **72 checks／0 failure**、story **25/25**；`verify-objects` 在 Chromium 正確的 `LD_LIBRARY_PATH` 下 exit 0。這些 gate 各自驗證程式結構、幾何約束、路由互動或像素量測，**不能單獨證明真實感／視覺完整**。
+- `_gen_html.py` 連跑兩次，19 個 tracked HTML／sitemap 的 SHA-256 完全相同。JS/Python syntax 與 `git diff --check` 另於本輪收尾確認。
+
+### 真實環境盤點（目前仍有近似／缺項）
+- **Tokyo／Nakamise（`rooms.html`）**：仲見世夜間閉店巷道、兩側店列、新仲見世／伝法院通交叉口、寶藏門方向均已建；封面已換成實際 renderer 畫面。**近似**：店列是平均化／縮減後的開間與概括立面，不是 89 間店逐戶實測；繪卷只作底色。季節裝飾、人物與招牌／提燈文字刻意不畫，避免捏造當日狀態或文字。
+- **Moji Port（`rooms-fukuoka.html`）**：門司港駅、舊大阪商船、舊門司税關、大連友好記念館各有獨立 1:25 展台；港桌保留船溜與 Blue Wing 配置。**近似／未完成**：レトロハイマート（Retro Tower）仍在港桌上（1.5 cm/m），未獨立展示；四棟高度與細部尺寸部分由照片按比例讀取，車站月台側及若干側／背面窗位沒有來源、按正面節奏概括。**刻意不建模**：三井倶楽部、飯店、海峽プラザ等形體／高度沒有可靠依據；不把它們虛構成精確建築。
+- **Toronto／CN Tower（`rooms-toronto.html`、`rooms-cntower.html`）**：LookOut／塔內空間與城市視景已建。**實際缺項／近似**：Toronto 約 288 棟 100–150 m 建築尚未加入（可用 2020 massing 資料但未整合）；地面畫平，建築 footprint／樓層採典型值而非逐棟測量，遠景城市燈為抽象貼圖。CN Tower 的 LookOut 弧形弦取直，Glass Floor 外形亦為近似。這不等於「Toronto 已完整」。
+- **Niagara Falls（`rooms-niagara.html`）**：Horseshoe／American／Bridal Veil、Table Rock、峭壁、欄杆、霧及旅館等已按來源建到可走視景。**實際缺項**：Niagara Parkway 尚未畫；遠處 terrace 仍是防 moiré 的平均色、顯得空。**近似**：崖線、崩積坡分界、水幕拋距／霧高、欄杆尺寸及燈柱位置並非全數測量；預設 stop 3 構圖讓瀑布偏右、+10° 俯仰較易看清，屬尚可改善的取景而非「水幕沒畫」。
+- **Journey Behind the Falls（`rooms-journey.html`）**：混凝土主隧道、濕木板、管線、平台口與瀑布世界已建，子空間進出返回也經真瀏覽器驗證。**實際近似／缺項**：分支隧道仍為直的方盒；轉彎與分岔路線沒有測量資料，隧道尺寸及管線細節部分按照片估讀，不能當成 surveyed floor plan。
+
+### 因無可靠資料而刻意排除（不是已完成物件）
+- **Moji**：上述三井倶楽部、飯店與海峽プラザ不臆造建築量體／高度；無高度來源的兩岸山丘不補造。
+- **Niagara**：形體來源不足的 Casino Tower、Rainbow Tower、Sheraton on the Falls 不建；2 km 外美國岸細節被 Goat Island 樹冠遮住且不足可辨像素，未假裝精確建模。
+- **Tokyo**：季節裝飾、人物、牌匾／燈籠文字不加入；這些不是漏做的靜態建築。
+
 ## 0r. 第三十六輪（2026-10-16）：門司港的模型拆開——四棟各自一個展台（1:25），港桌只留配置
 
 **站主原話**：第 35 輪中途「門司港那邊模型要拆開」「要分開模型 感覺看不出漂亮」（拆法的選項題跳過，照字面決定「各自展台」，
@@ -74,7 +96,7 @@
   toronto 2500、journey 2227；peak 指標 journey 14170。**仍是全站每幀最重的一頁**（門口同時看到四個模型），實機 FPS 沒量。
 
 ### 沒做到／限制（照實）
-- **藍翼橋圖卡（`fukuoka-2.jpg`）兩片橋翼畫成一樣長**；實際是 24.1 m 與 14 m（§0n 有來源）。本輪沒重畫。
+- **藍翼橋圖卡（`fukuoka-2.jpg`）的舊批註已過時**：重看現存插畫，兩片橋葉本身已畫成一長一短；`_gen_html.py` 的 alt／caption 也已按來源寫明 24.1 m 南側親橋、14 m 北側子橋。不可再把它列為「兩片等長／尚未重畫」；但圖仍是生成插畫，不是實測照片，不能以圖證明實際比例或構造。
 - 部件尺寸與高度是對著輪廓寬讀照片的**約略值**；車站月台側、各棟背面與側面的窗位**沒有來源**，是照正面的節奏補的（caveat 寫約略）。
 - Retro 塔仍在港桌上（1.5 cm/m），沒有自己的展台；三井倶楽部、飯店、海峽プラザ仍未建模（無形體來源）。
 - 大廳本身（牆、天花、燈具）沒動；FPS 沒量；`browser-check.py` 沒跑。
@@ -505,8 +527,7 @@ Fukuoka 的主題站主早已定（門司港全景、桌上模型、黃昏入夜
 
 ### 沒做到／要知道的
 - `browser-check.py` 未跑（Playwright 的 Chromium CDN 連不到）。
-- 東京相簿封面 `IMG/tokyo-cover.jpg` 仍是舊的生成圖（雷門燈籠、scramble、塔、櫃台、山）；caption 已改成如實說明。
-  要不要換成仲見世場景的一格（`make-cover.mjs`）——待站主決定。
+- （當時尚未完成；第 37 輪已處理，見 §0s。）東京相簿封面原是舊生成圖（雷門燈籠、scramble、塔、櫃台、山）；目前 `IMG/tokyo-cover.jpg` 已換成實際 Chromium 渲染的 Nakamise stop 2 畫面，caption 同步改為如實描述。
 - 標為「約略」的數字：藍翼橋主塔高度、市場屋頂高度、大樓佔地、門司港建物高度（依樓層估）；Scotia Plaza 的
   紅花崗岩是常識、本輪未重抓來源。
 - 門司港：三井倶楽部、Rossi 飯店、海峽プラザ未建模（無形體／高度來源）；兩岸山丘不畫。

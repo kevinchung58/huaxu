@@ -149,12 +149,14 @@ Consequences that are now structural, not stylistic:
 - **No URL state.** There is no `#walk-tokyo` to open and nothing about the camera is addressable;
   `#frame-tokyo-*` still marks the row it names. A visit is not a fact worth linking.
 
-The body of the space is a hand-written raster, not a stylesheet trick. One `<canvas>` fills the
-viewport and everything on it comes from a single projection: walls split into 60 cm panels, each
-panel textured by an affine map onto a tiled pattern, quads depth-sorted and painted far-to-near,
-fog and the amber pool and the bulbs all distance functions of that same projection. There is no
-WebGL and no library — the whole site is still dependency-free, and the renderer is ~200 lines of
-this repo's own code. What that buys, and what it cannot:
+The walkable view is now a narrow hybrid, not a stylesheet trick. On pages with a sourced
+`backdrop.world.prims`, a pinned, vendored Three.js 0.186.1 WebGL canvas renders that outdoor geometry
+in the same walk camera; a transparent Canvas2D canvas still paints the lane, props and hit targets
+above it. The original Canvas2D world painter remains the complete fallback, so a device without
+WebGL still gets the whole place. The Three.js layer translates existing source records; its
+procedural grayscale material maps are not photographs and do not add scene facts. The Activities
+album remains CSS 3D and outside this exception. What the original Canvas2D painter buys, and what it
+cannot:
 
 - **A quad is culled by the bounds its projected points occupy, never by its corners.** Both failure
   modes have now been paid for: the far plane (a sky covers the view by being larger than it, so every

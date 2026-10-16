@@ -1,14 +1,16 @@
 # AGENTS.md
 
 Personal academic site for Hua-Xu Zhong (鍾華栩), PhD — educational technology, AI in education, design thinking.
-Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo root of `master`
-(see "Operational notes" below if the live site ever 404s).
+Static HTML, **no npm build step or runtime package install**. Deployed via GitHub Pages from the repo root
+of `master` (see "Operational notes" below if the live site ever 404s). One owner-approved exception is
+pinned, MIT-licensed Three.js 0.186.1, vendored under `js/vendor/` and loaded only for walkable pages
+with a sourced `backdrop.world`; no package manifest, CDN, or additional dependency is implied.
 
 ## Critical: source of truth
 
 - The cache-buster is **derived, not hand-bumped**: `VER` in `_gen_html.py` is the sha1 of
-  `css/site.css` + `js/site.js`, truncated, and both the stylesheet link and the footer `<script>`
-  read that one value. It used to be a literal that a human had to remember, and it went stale the
+  `css/site.css`, `js/site.js`, `js/scene3d.js`, and the two pinned Three.js runtime files, truncated;
+  the stylesheet, classic script and module script read that one value. It used to be a literal that a human had to remember, and it went stale the
   first time the renderer changed in a commit that forgot: new rooms, old `?v=`, and the only person
   who would ever see the bug is a returning visitor whose browser drew them with the last renderer.
   `verify-walk.mjs` now recomputes the hash from disk and fails if a page asks for anything else.
@@ -124,7 +126,8 @@ records what may be taken (the object vocabulary and its measured proportions, t
 the flood-fill waypoint probe, and a refusal list that arrived at nearly the same place ours did)
 and what may not (its signage system, which paints an invented Japanese string on every surface —
 legitimate for a fictional town, forbidden in a scene here — and its npm/Vite/three.js stack, which
-is the dependency rule and not a precedent for it).
+was not a precedent for the dependency rule. The owner later approved a separate, pinned Three.js
+runtime for walkable-world rendering on 2026-10-16; that does not license the sister build's other tooling.
 
 ## Operational notes (2026-08)
 
@@ -193,7 +196,8 @@ lives in `js/site.js` (the `[data-dot-*]` block). Contract to keep intact, in th
   screen-reader route into the game.
 - Playback has a `prefers-reduced-motion` branch; keep it when touching `watch()`.
 - Verify by playing panels 1, 5, and 8 (one per act) at `python3 -m http.server 8080`, and
-  keep the detector at 0 findings. No test framework — the site stays dependency-free.
+  keep the detector at 0 findings. No test framework or package-manager runtime; the approved vendored
+  Three.js exception is limited to walkable-world pages.
 
 ## Interactive: the photo plate
 
@@ -259,13 +263,10 @@ intact:
   plate can shift, and `loading="lazy"` stays on the tiles.
 - `inertOutside` / `trapTab` / `enterOverlay` / `leaveOverlay` are the site's shared overlay
   plumbing; the plate and the dot game both use them. Keep them shared.
-- Depth is **CSS transforms only**. The tilt and the angled roll are `perspective()` plus
-  `rotateY`/`translateZ`, chosen over WebGL for three measured reasons: three.js is ~149 KB
-  gzipped against the ~16 KB the whole site ships today; Pointer Lock (the `WASD` walk the
-  reference site uses) is unsupported on every iOS Safari and on Chrome for Android, so a
-  walk-through would be desktop-only; and a flat JPEG is not a space until something
-  estimates its depth, which needs a model and offline work, not a stylesheet. Keep it that
-  way unless the owner asks otherwise.
+- Depth in the **Activities album and its story plate** remains CSS transforms only. Their tilt and
+  angled roll are `perspective()` plus `rotateY`/`translateZ`; this owner-approved Three.js decision
+  (2026-10-16) is scoped to walkable environments and does not redesign or WebGL-ify the album.
+  The album's flat-JPEG surfaces remain DOM content, not reconstructed 3D geometry.
 - The frames' perspective is written **inside each frame's own transform**: a scroll container
   flattens its children, so a `perspective` inherited from the plate would be ignored.
 
@@ -397,7 +398,10 @@ proposal until they have read it, and the loop is not finished until they have.
 
 ## Conventions
 
-- Keep the site dependency-free: no frameworks, no build tooling, no `npm run build`.
+- Keep the static site free of package-manager installs and build tooling: no framework, no `package.json`,
+  and no `npm run build`. The sole approved runtime library is the pinned, vendored MIT Three.js 0.186.1
+  for source-backed walkable-world layers; it is dynamically imported only where `backdrop.world.prims`
+  exists. Do not extend that exception to the Activities album or add another dependency without approval.
 - Preserve accessibility features already present: skip link, `aria-*` attributes, semantic landmarks.
 - Inline SVG icons (Heroicons-style paths) are defined in `_gen_html.py`; add new icons there.
 - Commit generated HTML together with the `_gen_html.py` change that produced it.
@@ -446,6 +450,8 @@ proposal until they have read it, and the loop is not finished until they have.
     nav, no footer, no `reveal`, and its reading material lives in a drawer that ships open and is
     folded by JS. Adding a section, a `reveal` class or a navy drawer surface to that page is a
     defect, not a design choice — it either hides content from visitors without scripting or drops
-    borrowed components to 2:1 contrast. The scene itself is a canvas raster with no library in it;
-    its box is authored (`data-lane-w/-d/-ceil`, `data-eye`) and read by the renderer, so do not put
-    geometry back into CSS transforms or invent a second set of numbers in `js/site.js`.
+    borrowed components to 2:1 contrast. The lane interior remains a Canvas2D raster with the
+    authored box (`data-lane-w/-d/-ceil`, `data-eye`); its sourced outdoor-world layer is Three.js
+    where `backdrop.world.prims` exists, behind the Canvas2D overlay. Canvas2D remains the complete
+    fallback. Do not put scene geometry into CSS transforms or invent a second set of dimensions in
+    `js/site.js` or `js/scene3d.js`.

@@ -8,6 +8,10 @@
 >
 > v1 of this file was wrong in an important way. It described the reference as a
 > *building*. It is not. See §2.
+>
+> Scope note, 2026-10-16: the owner separately approved Three.js/WebGL for **walkable
+> environments**. This spec is still only about the Activities album and story plate; that approval
+> does not change its CSS-3D proposal or authorize a WebGL album migration.
 
 ## 1. Method: what I actually read, and what I could not
 

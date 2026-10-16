@@ -2104,6 +2104,7 @@ body.shell {
   outline: 2px solid var(--accent-bright);
   outline-offset: -2px;
 }
+.walk-three-canvas,
 .walk-canvas {
   position: absolute;
   inset: 0;
@@ -2111,9 +2112,17 @@ body.shell {
   height: 100%;
   display: block;
 }
+.walk-three-canvas {
+  z-index: 0;
+  pointer-events: none;
+}
+.walk-canvas {
+  z-index: 1;
+}
 .walk-hits {
   position: absolute;
   inset: 0;
+  z-index: 2;
 }
 /* The lane is drawn rather than photographed, so it is allowed one visible grain: the film on a
    night scene that keeps flat wall panels from banding under the fog. */

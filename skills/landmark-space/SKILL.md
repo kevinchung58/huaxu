@@ -153,7 +153,9 @@ affine-plus-flat-colour math (the falls), while a city-from-above rides a wall c
 (the pod) — fidelity lives in the bearings and the ratios, not in the drawing technique; and
 sky bands must start below the horizon and end above the frame's top with glow near one, or
 the day sky reads as night murk (the street's idiom, reused). Each of these stayed inside the
-dependency rule: new tiles, one painter, no library. Round 24 added two more proven prices:
+dependency rule in rounds 21–24: new tiles, one painter, no library. The owner later approved a
+limited Three.js layer for source-backed walkable-world geometry (2026-10-16; see `AGENTS.md`); that
+renderer decision does not change the evidence or parent-door rules below. Round 24 added two more proven prices:
 a space may itself own a space the way the real Table Rock owns Journey Behind the Falls —
 the door stands where the real entrance stands, the sub-space unwinds to its owner, and the
 gates follow each page's walk-exit chain to the street; and a landmark's night is a fact of

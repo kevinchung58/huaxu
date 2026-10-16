@@ -14,8 +14,9 @@ the standing method for every scene that recreates somewhere real, not a CN Towe
 
 What "nearly the same" means operationally: a visitor who has stood there should look at the stop's
 lane-shot and recognise the place — the right lake on the right side, the right stadium under the
-pod, the right order of floors under their feet. It does *not* mean a CAD model, exact window
-counts or photoreal materials; this renderer cannot do those and the owner never asked for them.
+pod, the right order of floors under their feet. It does *not* mean a CAD model, exact window counts
+or photoreal materials; the current hybrid renderer does not claim those, and the owner has not asked
+for them. Three.js changes the geometry path, not the evidence standard.
 
 ## 1. The ladder of evidence — where "real" comes from
 
@@ -90,9 +91,10 @@ cutting the experience and is refused.
 
 ## 4. Fidelity inside this renderer
 
-The renderer's honest price (`landmark-space` §4) stands: 168 cm eye, pitch ±10°, one authored
-aperture per stop, `Z_SCALE` 2.9, CSS-transform/canvas-raster only. Grounding does not renegotiate
-any of it — it governs *what is chosen* within it:
+The renderer's honest price (`landmark-space` §4) stands: 168 cm eye, one authored aperture per
+stop and `Z_SCALE` 2.9; the scene currently composes a Canvas2D lane with an owner-approved Three.js
+world layer where sourced `backdrop.world.prims` exist, and falls back to Canvas2D without WebGL.
+Grounding does not renegotiate those camera/data contracts — it governs *what is chosen* within them:
 
 - Fidelity here means fidelity to **what the eye sees from the stop**, not to a model of the
   object. A 360° observation pod is three or four authored facings — and those facings are picked

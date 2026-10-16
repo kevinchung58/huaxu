@@ -19,10 +19,13 @@ def _asset_ver() -> str:
     pages went on asking for `?v=20260923c`, so a returning visitor would have drawn the two new rooms
     with the old renderer and seen them wrong — the one class of bug that no gate here can see, because
     it only happens in somebody's browser cache. Derived, it is correct by construction: touch either
-    asset and every page asks for the new bytes.
+    asset and every page asks for the new bytes. The walkable-world module and the pinned Three.js
+    runtime are included too: the module has its own script URL, and a stale engine under a current
+    page pin is the same browser-cache bug as a stale Canvas renderer.
     """
     h = hashlib.sha1()
-    for f in ("css/site.css", "js/site.js"):
+    for f in ("css/site.css", "js/site.js", "js/scene3d.js",
+              "js/vendor/three-0.186.1/three.core.js", "js/vendor/three-0.186.1/three.module.js"):
         h.update((ROOT / f).read_bytes())
     return h.hexdigest()[:10]
 
@@ -339,6 +342,7 @@ def shell_page(title: str, body: str, path: str, cover: str = "IMG/1.jpg",
 <body class="shell">
 {body}
 <script src="js/site.js?v={VER}"></script>
+<script type="module" src="js/scene3d.js?v={VER}"></script>
 </body>
 </html>
 """
@@ -3206,9 +3210,9 @@ DISTRICTS = [
     {
         # The hub. The street is the site's own ground — it names no city, carries no lettering, and
         # hangs no pictures: its whole job is to be the place the three rooms stand on, with a door
-        # for each and a sky over both. It is outdoors the way Canada's walkway is: the "ceiling" is
-        # high enough to read as open sky, the far end opens onto the harbour instead of stopping, and
-        # the sun and street fixtures share the light across the walk.
+        # for each and an open sky above the walls. It is outdoors the way Canada's walkway is: the
+        # far end opens onto the harbour instead of stopping, and the sun and street fixtures share
+        # the light across the walk.
         "id": "street", "label": "The street",
         "page": ROOM_BY_ID["street"]["page"],
         "plates": ROOM_BY_ID["street"]["plates"],
@@ -3218,7 +3222,7 @@ DISTRICTS = [
         # edge on purpose, and the walk is allowed to stand at the rail, not past it.
         # The lane runs past its last door into the quay: 3400 walk units past record depth 1040,
         # ending at a walkable rail rather than a wall.
-        "lane": {"w": 700, "d": 1040, "ceil": 620, "back": 300, "max_d": 4150},
+        "lane": {"w": 700, "d": 1040, "ceil": 620, "back": 300, "max_d": 4150, "open": True},
         # Its own spoken description (round 32): it had been inheriting the old Tokyo lane's, which
         # listed a mirror, a meter box and a standpipe this street never had, and a far end of a
         # crossing, a tower and a mountain where the street's far end is a harbour.
@@ -3636,8 +3640,7 @@ DISTRICTS = [
         "status": "open",
         "kind": "personal",
         "cover": "IMG/tokyo-cover.jpg",
-        "cover_caption": "The album's Tokyo sheet, drawn before the room was rebuilt as Nakamise: a "
-                         "gate lantern, a scramble, a tower, a counter, a mountain on the skyline.",
+        "cover_caption": "Nakamise's shuttered vermilion rows, drawn from the lane toward Hozomon.",
         "blurb": "The approach to Senso-ji after the shops have shut. Every shutter is down and "
                  "painted, the eaves are lit, and Hozomon's lantern burns at the far end.",
         "clad_note": (" The lane is Nakamise-dori after closing: two shallow rows of vermilion "
@@ -3992,10 +3995,11 @@ DISTRICTS = [
                         "doors."},
             {"id": "bridge", "src": "IMG/fukuoka-2.jpg", "x": 436, "z": round(1480 / Z_SCALE, 2), "y": 150, "ry": -90,
              "title": "The Blue Wing, open",
-             "alt": "Illustration of a blue pedestrian drawbridge over a harbour basin at dusk, its "
-                    "two leaves raised like wings and lit from below.",
-             "caption": "The bridge, drawn at the moment it is worth looking at: both leaves up. "
-                        "Its last opening is at four; after dark it is lit, and shut."},
+             "alt": "Illustration of a blue pedestrian drawbridge over a harbour basin at dusk, "
+                    "with its longer southern parent leaf raised beside the shorter northern child leaf.",
+             "caption": "The bridge, drawn at an opening: its 24.1 m southern parent leaf and "
+                        "14 m northern child leaf are both raised. Its last opening is at four; "
+                        "after dark it is lit, and shut."},
             {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 436, "z": round(2090 / Z_SCALE, 2), "y": 130, "ry": -90,
              "title": "The strait at dusk",
              "alt": "Illustration of a wide strait at dusk seen from a quay, two low cargo ships "
@@ -5031,6 +5035,7 @@ def walk_html(d, drawer):
        aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
        Space to jump, E to open what you are standing in front of, L for the list, I for this note.
        Nothing is written over the space: every sentence is behind a button.">
+    <canvas class="walk-three-canvas" data-walk-three width="16" height="9" aria-hidden="true"></canvas>
     <canvas class="walk-canvas" data-walk-canvas width="16" height="9" aria-hidden="true"></canvas>
     <div class="walk-hits" data-walk-hits>
       {INDENT.join(parts)}

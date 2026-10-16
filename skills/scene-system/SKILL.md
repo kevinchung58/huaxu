@@ -52,8 +52,10 @@ assume; change one and re-run the whole battery.
   mullion every `pitch` cm) and `railing`. `skyAround` is a sky all round the eye;
   `"night": <phase>` on the record holds a page's clock at one hour of the night.
 - WebKit rules: `preserve-3d` only on `.room-world`/`.ig-grid`; never `overflow`/`filter` on a
-  preserve-3d ancestor. No frameworks, no npm build, no committed package.json — canvas and
-  CSS transforms are the whole renderer.
+  preserve-3d ancestor. The approved renderer exception (2026-10-16) is a pinned, vendored Three.js
+  0.186.1 layer for sourced `backdrop.world.prims`; it is lazy-loaded only on those walkable pages.
+  The lane interior stays Canvas2D and is the fallback. No framework, npm build, package manifest,
+  or album WebGL migration is authorized by that exception.
 
 ## 2b. The inventory — completeness as a table
 
