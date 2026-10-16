@@ -213,6 +213,20 @@ such. Not drawn because the source was fetched but the time went to the inside o
 Niagara Parkway past the terrace (OSM: northbound, two lanes, under the Centre at 4.4 m) -- recorded,
 so the next pass starts from the ways, not from a search.
 
+**Take the models apart (round 36).** The owner looked at Moji Port on its one table and said the
+models had to come apart -- at 1.5 cm to the metre every building was a block a few centimetres high,
+and nobody could see what made it beautiful. The four buildings now stand on stands of their own down
+the hall, all at one scale (1:25) so the station is still twice the length of the others, and the table
+keeps the port's layout with their OpenStreetMap footprints as low plates. A model seen from two metres
+has to be built from sources the way a scene is: lengths from the map's outlines, floor areas and
+storeys from Wikipedia and the Agency for Cultural Affairs' register, and the rest read off photographs
+(kept in `.preview/r36/ref/`). Read that way, three of the four table painters were wrong in ways the
+table's scale had hidden: Osaka Shosen is orange facing brick banded grey, not pale render; the
+customhouse has two storeys, not three with a glazed top; the Dalian hall's tower is a banded polygon
+under a tall dark spire, not a steeple stepping square to round. And a drawn plate hung behind a
+faithful model is checked against it: the station's plate showed a tiled-roof house that is no part of
+Moji, and was redrawn from the model's own frame and the sources.
+
 ## 7. Refusals
 
 Everything `district-author` §5 and `landmark-space` §6 refuse, plus: no invented bearing — north

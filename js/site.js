@@ -1692,6 +1692,8 @@ function leaveOverlay(root, trigger) {
     // the element, like an awning colour, or the renderer never sees it (lane-prop section 7).
     mural: jsonData(el.dataset.mural), posts: el.dataset.posts || null,
     towers: jsonData(el.dataset.towers), leaves: parseFloat(el.dataset.leaves) || 0,
+    // Round 36: a context block's outlines, table centimetres from the map (`MOJI_BLOCKS`).
+    blocks: jsonData(el.dataset.blocks),
     run: parseFloat(el.dataset.run) || 0,
     // A door the record says is a lift (round 33: the exits of the LookOut and the tunnel).
     lift: el.dataset.lift === "true",
@@ -1883,15 +1885,13 @@ function leaveOverlay(root, trigger) {
                   // Blue Wing Moji is painted blue, and that is the whole reason people photograph
                   // it: a blue bascule against red brick and a dark harbour.
                   drawbridge: "#3f6ea8", ship: "#5a6472",
-                  // Moji Port Station is timber painted cream over dark wood. It reads cream, but
-                  // cream under a hall's lighting, not in daylight: at #c9bda6 the whole facade
-                  // measured 246/255 on screen and the building was a white rectangle with no
-                  // windows in it, because everything it was made of had already blown out.
-                  stationfront: "#8a7d67",
-                  // The three far-bank buildings, each the colour it is known by: the customhouse
-                  // is red brick, Osaka Shosen is pale render, the Dalian hall is brick again and
-                  // darker, so the three do not read as one building stamped four times.
-                  customhouse: "#8f4a3c", osakashosen: "#b0a488", dalianhall: "#7e4b39" };
+                  // The four Moji buildings, each the colour it is known by (round 36, read off
+                  // photographs): the station's cream render, the customhouse's red brick, Osaka
+                  // Shosen's orange facing brick -- not the pale render the table model had -- and
+                  // the Dalian hall's brick striped white. Their painters carry their own palettes;
+                  // these are what the rest of the renderer reads for them.
+                  stationfront: "#c4b68e", customhouse: "#a5492f", osakashosen: "#c46d38", dalianhall: "#a24b36",
+                  massing: "#dedbd2" };
   /* Props are named `kind`, `kind-2`, `kind-left`, `kind-s1`… and the shape/tint tables were keyed
      by the *whole* id — so `front-a` was a flat plane while `front` was a painted recess, and whole
      families of props (banners, crates, snow banks, stall curtains) lost their bodies to a fallback.
@@ -1932,6 +1932,8 @@ function leaveOverlay(root, trigger) {
                   // Moji's kit: the drawbridge the district is known by, and the ships it opens for.
                   drawbridge: "drawbridge", ship: "ship", stationfront: "stationfront",
                   customhouse: "customhouse", osakashosen: "osakashosen", dalianhall: "dalianhall",
+                  // Round 36: the port table's context blocks, in the map's outlines.
+                  massing: "massing",
                   // The market's hall: St. Lawrence Market South as it stands -- a brick hall under
                   // one arched roof, the 1845 block's three stone arches at its north end, and no
                   // cupola, which came down in the 1902 rebuild (round 32).
@@ -2018,6 +2020,295 @@ function leaveOverlay(root, trigger) {
         { n: [0, 1, 0], k: 0.24, p: [[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]] },
       ];
     };
+
+  /* ---- the model kit (round 36) ----
+     The owner looked at Moji Port on its one table and said the models had to come apart: at 1.5 cm to
+     the metre every building on it was a block the size of a shoe. They stand on stands of their own
+     now, all four at one scale (1:25), and at that size a box with a picture on one face reads as a box.
+     A model seen from two metres has to be built -- walls cut into bays, roofs as roofs, towers as
+     towers -- and this kit is what the four painters build with.
+
+     It works in the model's own frame: u along its front (to the right of someone facing it), v out of
+     its front, y up from its base, all in metres of the real building. `k` is the record's width over
+     the building's real length, so the record keeps the scale and the painter keeps the proportions the
+     sources give. Every point goes through P(), so a model can stand turned on its stand (`ry`) and all
+     of it turns -- the table painters drew their fronts on whichever face looked down the lane.
+
+     Sorting is what a painter's algorithm makes you design for. A wall is cut into bays and a window
+     sorts just in front of the bay it is on, never by its own depth: a long front sorted at its middle
+     hides the windows at its far end (round 35's tunnel pipe, met again on a facade). A part that
+     stands through another -- a tower through a roof -- is told to paint late (`d` < 0). */
+  const Z64 = new Array(64).fill(0);
+  // Built models stand on stands that are lit for them; the generic contact shadow, an unrotated box
+  // under the prop's middle, would lie across a turned model's walls, so these four go without it.
+  const MODEL_KINDS = new Set(["stationfront", "customhouse", "osakashosen", "dalianhall", "massing"]);
+  const KEY_L = (() => { const v = [0, 0.85, -0.5], l = Math.hypot(v[0], v[1], v[2]); return v.map((c) => c / l); })();
+  const modelKit = (C, m, drawn, lit, LEN) => {
+    const k = m.w / LEN;
+    /* Detail by what the eye can resolve: `ppm` is how many screen pixels one metre of the building
+       makes from where the visitor stands. A glazing bar under a pixel wide, a band under one, a
+       window under two are not drawn -- from the door the far models are a few hundred pixels across
+       and their bars would only cost fills (the hall measured 6347 fills a frame with them, against
+       1319 for the old table and 2707 for the busiest other page). */
+    const dist = Math.hypot(C.x - m.x, C.eye - (m.y + m.h / 2), C.z - m.z) || 1;
+    const ppm = (focal * k) / dist, seen = (metres, px = 0.8) => metres * ppm >= px;
+    const a = ((m.ry || 0) * Math.PI) / 180;
+    const ux = Math.cos(a), uz = Math.sin(a), nx = Math.sin(a), nz = -Math.cos(a);
+    const P = (u, v, y) => [m.x + (ux * u + nx * v) * k, m.y + y * k, m.z + (uz * u + nz * v) * k];
+    const Nw = (du, dv) => [ux * du + nx * dv, 0, uz * du + nz * dv];
+    const sees = (p, n) => n[0] * (C.x - p[0]) + n[1] * (C.eye - p[1]) + n[2] * (C.z - p[2]) > 0;
+    const tone = (n) => -0.3 + 0.42 * Math.max(0, n[0] * KEY_L[0] + n[1] * KEY_L[1] + n[2] * KEY_L[2]);
+    /* The building's own moment on the room's clock, the rule the table painters kept: counted from
+       nightfall, so a building lit at 0.88 does not go dark again when the phase wraps at midnight. */
+    const ph = dayPhase();
+    const ease01 = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+    const np = ((((ph - 0.7) % 1) + 1) % 1) / 0.6;
+    const NL = m.liton ? NIGHT() * ease01((np - (m.liton - 0.7) / 0.6) / 0.05) : NIGHT();
+    let parent = null, seq = 0;
+    const put = (pts, col, l, glow) => {
+      const q = add(C, pts, Z64, "flat", col);
+      if (!q) return null;
+      q.lit = l;
+      if (glow) q.nolite = true;
+      if (parent !== null) q.sz = parent - 0.25 - (seq++) * 0.002;
+      drawn.push(q);
+      return q;
+    };
+    const late = (q, d) => { if (q && d) q.sz = (q.sz ?? q.z) + d; return q; };
+    const newell = (W) => {
+      let x = 0, y = 0, z = 0;
+      for (let i = 0; i < W.length; i++) {
+        const p = W[i], q = W[(i + 1) % W.length];
+        x += (p[1] - q[1]) * (p[2] + q[2]); y += (p[2] - q[2]) * (p[0] + q[0]); z += (p[0] - q[0]) * (p[1] + q[1]);
+      }
+      const l = Math.hypot(x, y, z) || 1;
+      return [x / l, y / l, z / l];
+    };
+    // A planar face given as [u, v, y] points; its outer side is decided against a point inside.
+    const face = (pts, col, inside, l = 1, d = 0) => {
+      const W = pts.map((p) => P(p[0], p[1], p[2]));
+      let n = newell(W);
+      const c = [0, 1, 2].map((i) => W.reduce((s, p) => s + p[i], 0) / W.length);
+      const I = P(inside[0], inside[1], inside[2]);
+      if (n[0] * (c[0] - I[0]) + n[1] * (c[1] - I[1]) + n[2] * (c[2] - I[2]) < 0) n = n.map((x) => -x);
+      if (!sees(c, n)) return null;
+      const keep = parent; parent = null;
+      const q = late(put(W, mix(col, tone(n)), lit * l), d);
+      parent = keep;
+      return q;
+    };
+    /* A front-facing plane (+v) to lay things on that are not on a wall of `walls` -- a dormer's front,
+       a pediment, a clock -- filed under the quad `q` they sit on. Call `done()` after. */
+    const plane = (u0, v, q, side = 0) => {
+      const nw = Nw(side ? side : 0, side ? 0 : 1);
+      const F = side ? (t, y, o = 0.05) => P(u0 + side * o, v + (side > 0 ? -t : t), y)
+                     : (t, y, o = 0.05) => P(u0 + t, v + o, y);
+      return { F, nw, shade: tone(nw), len: 1e9, n: 1, at: () => { parent = q ? (q.sz ?? q.z) : null; seq = 0; } };
+    };
+    const done = () => { parent = null; };
+    const centre = (poly) => [poly.reduce((s, p) => s + p[0], 0) / poly.length,
+                              poly.reduce((s, p) => s + p[1], 0) / poly.length];
+    /* Walls: a footprint (u, v) stood up from y0 to y1, every wall cut into bays about `bay` metres
+       long. `dress(f)` lays a wall's features: f.F(t, y) runs along it to the right of someone facing
+       it and up it, a hair proud; f.at(t) files what follows under the bay at t. `skip` lists walls
+       that abut a taller part and are never seen. */
+    const walls = (poly, y0, y1, col, bay, dress, skip, d = 0) => {
+      // Which way is out is the footprint's winding, not its centre: a notched outline (the map's
+      // real ones are) has walls whose outside faces the middle.
+      let area2 = 0;
+      poly.forEach((p, i) => { const q = poly[(i + 1) % poly.length]; area2 += p[0] * q[1] - q[0] * p[1]; });
+      const wind = area2 >= 0 ? 1 : -1;
+      poly.forEach((p0, i) => {
+        if (skip && skip.includes(i)) return;
+        let A = p0, B = poly[(i + 1) % poly.length];
+        const len = Math.hypot(B[0] - A[0], B[1] - A[1]);
+        if (len < 1e-6) return;
+        const on = [wind * (B[1] - A[1]) / len, -wind * (B[0] - A[0]) / len];
+        if ((B[0] - A[0]) * on[1] - (B[1] - A[1]) * on[0] < 0) { const swap = A; A = B; B = swap; }
+        const eu = (B[0] - A[0]) / len, ev = (B[1] - A[1]) / len, nw = Nw(on[0], on[1]);
+        const F = (t, y, o = 0.05) => P(A[0] + eu * t + on[0] * o, A[1] + ev * t + on[1] * o, y);
+        if (!sees(F(len / 2, (y0 + y1) / 2, 0), nw)) return;
+        // Bays are for sorting near the eye; from across the hall two or three to a bay do.
+        const shade = tone(nw), n = Math.max(1, Math.round(len / (bay * (ppm < 2.5 ? 3 : ppm < 5 ? 2 : 1)))), zs = [];
+        parent = null;
+        for (let b = 0; b < n; b++) {
+          const t0 = (len * b) / n, t1 = (len * (b + 1)) / n;
+          const q = late(put([F(t0, y0, 0), F(t1, y0, 0), F(t1, y1, 0), F(t0, y1, 0)], mix(col, shade), lit), d);
+          zs.push(q ? (q.sz ?? q.z) : null);
+        }
+        if (!dress) return;
+        dress({ F, nw, shade, len, n, y0, y1, on, i,
+                at: (t) => { parent = zs[Math.max(0, Math.min(n - 1, Math.floor((t / len) * n)))]; seq = 0; } });
+        parent = null;
+      });
+    };
+    // Things laid on a wall: a rectangle, a band across every bay, an opening, a disc.
+    const rect = (f, t0, t1, y0, y1, col, l = 1) => {
+      if (!seen(Math.min(Math.abs(t1 - t0), Math.abs(y1 - y0)), 0.6)) return null;
+      f.at((t0 + t1) / 2);
+      return put([f.F(t0, y0), f.F(t1, y0), f.F(t1, y1), f.F(t0, y1)], mix(col, f.shade), lit * l);
+    };
+    const band = (f, y0, y1, col, l = 1) => {
+      if (!seen(y1 - y0)) return;
+      for (let b = 0; b < f.n; b++) rect(f, (f.len * b) / f.n, (f.len * (b + 1)) / f.n, y0, y1, col, l);
+    };
+    const opening = (f, tc, hw, y0, y1, rise) => {
+      if (!rise) return [f.F(tc - hw, y0), f.F(tc + hw, y0), f.F(tc + hw, y1), f.F(tc - hw, y1)];
+      const ys = y1 - rise, pts = [f.F(tc - hw, y0), f.F(tc + hw, y0)];
+      for (let i = 0; i <= 8; i++) {
+        const th = (i / 8) * Math.PI;
+        pts.push(f.F(tc + hw * Math.cos(th), ys + rise * Math.sin(th)));
+      }
+      return pts;
+    };
+    const disc = (f, tc, yc, r, col, l = 1, glow = false) => {
+      if (!seen(r)) return null;
+      f.at(tc);
+      const pts = [];
+      for (let i = 0; i < 14; i++) pts.push(f.F(tc + r * Math.cos((i / 14) * 2 * Math.PI), yc + r * Math.sin((i / 14) * 2 * Math.PI)));
+      return put(pts, glow ? col : mix(col, f.shade), glow ? l : lit * l, glow);
+    };
+    const GLASS = "#222a35";
+    /* A window: its surround, dark glass by day and lamplight from this building's moment on, and the
+       bars that make it a sash and not a slot. w x h is the opening; o.rise arches its head. */
+    const win = (f, tc, w, y0, h, o = {}) => {
+      if (!seen(w, 1.4)) return;
+      f.at(tc);
+      const hw = w / 2, s = o.fw ?? 0.2, rise = o.rise || 0;
+      if (o.frame && seen(s)) put(opening(f, tc, hw + s, y0 - s, y0 + h + s, rise ? rise + s : 0), mix(o.frame, f.shade), lit);
+      const g = opening(f, tc, hw, y0, y0 + h, rise);
+      put(g, o.glass ? mix(o.glass, f.shade) : GLASS, lit * 0.9);
+      if (NL > 0.02 && o.lamp !== 0) {
+        put(g, `rgba(255,210,146,${(0.82 * NL * (o.lamp ?? 1)).toFixed(3)})`, 1.1 + 0.35 * NL, true);
+      }
+      if (o.bars && seen(Math.max(0.07, w * 0.06), 0.7)) {
+        const b = Math.max(0.07, w * 0.06), c = mix(o.bars, f.shade), cols = o.cols || 2, top = y0 + h - rise * 0.4;
+        for (let i = 1; i < cols; i++) {
+          const t = tc - hw + (w * i) / cols;
+          put([f.F(t - b / 2, y0), f.F(t + b / 2, y0), f.F(t + b / 2, top), f.F(t - b / 2, top)], c, lit);
+        }
+        (o.rows || [0.62]).forEach((r) => {
+          const y = y0 + (h - rise) * r;
+          put([f.F(tc - hw, y - b / 2), f.F(tc + hw, y - b / 2), f.F(tc + hw, y + b / 2), f.F(tc - hw, y + b / 2)], c, lit);
+        });
+      }
+    };
+    /* Roofs. `roof` is hipped over [u0,u1]x[v0,v1], eaves at y0, the ridge h higher along the longer
+       side; an end marked "wall" runs the ridge into a taller part instead of hipping. `frustum` is a
+       sloped band from one footprint up to a smaller one (a mansard's steep slope, a pavilion's cap). */
+    const roof = (u0, u1, v0, v1, y0, h, col, o = {}) => {
+      const cu = (u0 + u1) / 2, cv = (v0 + v1) / 2, hu = (u1 - u0) / 2, hv = (v1 - v0) / 2, y1 = y0 + h;
+      const I = [cu, cv, y0 + h * 0.25], d = o.d || 0, out = {};
+      if (hu >= hv) {
+        const a0 = o.left === "wall" ? u0 : u0 + hv, a1 = o.right === "wall" ? u1 : u1 - hv;
+        out.front = face([[u0, v1, y0], [u1, v1, y0], [a1, cv, y1], [a0, cv, y1]], col, I, 1, d);
+        out.back = face([[u1, v0, y0], [u0, v0, y0], [a0, cv, y1], [a1, cv, y1]], col, I, 1, d);
+        if (o.left !== "wall") out.left = face([[u0, v0, y0], [u0, v1, y0], [a0, cv, y1]], col, I, 1, d);
+        if (o.right !== "wall") out.right = face([[u1, v1, y0], [u1, v0, y0], [a1, cv, y1]], col, I, 1, d);
+      } else {
+        const b0 = o.back === "wall" ? v0 : v0 + hu, b1 = o.front === "wall" ? v1 : v1 - hu;
+        out.right = face([[u1, v1, y0], [u1, v0, y0], [cu, b0, y1], [cu, b1, y1]], col, I, 1, d);
+        out.left = face([[u0, v0, y0], [u0, v1, y0], [cu, b1, y1], [cu, b0, y1]], col, I, 1, d);
+        if (o.front !== "wall") out.front = face([[u0, v1, y0], [u1, v1, y0], [cu, b1, y1]], col, I, 1, d);
+        if (o.back !== "wall") out.back = face([[u1, v0, y0], [u0, v0, y0], [cu, b0, y1]], col, I, 1, d);
+      }
+      return out;
+    };
+    const inset = (poly, s) => {                       // a convex footprint pulled in by s all round
+      const [cu, cv] = centre(poly), L = poly.length, lines = [];
+      for (let i = 0; i < L; i++) {
+        const A = poly[i], B = poly[(i + 1) % L], len = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1;
+        let n = [-(B[1] - A[1]) / len, (B[0] - A[0]) / len];
+        if (n[0] * (cu - A[0]) + n[1] * (cv - A[1]) < 0) n = [-n[0], -n[1]];
+        lines.push({ p: [A[0] + n[0] * s, A[1] + n[1] * s], d: [(B[0] - A[0]) / len, (B[1] - A[1]) / len] });
+      }
+      return lines.map((l1, i) => {
+        const l0 = lines[(i + L - 1) % L], den = l0.d[0] * l1.d[1] - l0.d[1] * l1.d[0];
+        if (Math.abs(den) < 1e-9) return l1.p;
+        const t = ((l1.p[0] - l0.p[0]) * l1.d[1] - (l1.p[1] - l0.p[1]) * l1.d[0]) / den;
+        return [l0.p[0] + l0.d[0] * t, l0.p[1] + l0.d[1] * t];
+      });
+    };
+    const lid = (poly, y, col, d = 0) => {
+      const [cu, cv] = centre(poly);
+      return face(poly.map((p) => [p[0], p[1], y]), col, [cu, cv, y - 1], 1, d);
+    };
+    const frustum = (poly, y0, poly2, y1, col, top, d = 0) => {
+      const [cu, cv] = centre(poly), I = [cu, cv, (y0 + y1) / 2], out = [];
+      poly.forEach((A, i) => {
+        const j = (i + 1) % poly.length;
+        out.push(face([[A[0], A[1], y0], [poly[j][0], poly[j][1], y0], [poly2[j][0], poly2[j][1], y1],
+                       [poly2[i][0], poly2[i][1], y1]], col, I, 1, d));
+      });
+      if (top) lid(poly2, y1, top, d);
+      return out;
+    };
+    const ngon = (cu, cv, r, n, rot = 0) => {
+      const pts = [];
+      for (let i = 0; i < n; i++) pts.push([cu + r * Math.cos(rot + (i / n) * 2 * Math.PI), cv + r * Math.sin(rot + (i / n) * 2 * Math.PI)]);
+      return pts;
+    };
+    const spire = (poly, y0, apex, col, d = 0) => {
+      const [cu, cv] = centre(poly);
+      poly.forEach((A, i) => {
+        const B = poly[(i + 1) % poly.length];
+        face([[A[0], A[1], y0], [B[0], B[1], y0], apex], col, [cu, cv, y0 + 0.05], 1, d);
+      });
+    };
+    const dome = (cu, cv, r, y0, h, n, rot, col, d = 0) => {
+      const I = [cu, cv, y0 + 0.02], R = 3;
+      for (let j = 0; j < R; j++) {
+        const a0 = (j / R) * Math.PI / 2, a1 = ((j + 1) / R) * Math.PI / 2;
+        const r0 = r * Math.cos(a0), r1 = r * Math.cos(a1), h0 = y0 + h * Math.sin(a0), h1 = y0 + h * Math.sin(a1);
+        for (let i = 0; i < n; i++) {
+          const t0 = rot + (i / n) * 2 * Math.PI, t1 = rot + ((i + 1) / n) * 2 * Math.PI;
+          const c0 = [Math.cos(t0), Math.sin(t0)], c1 = [Math.cos(t1), Math.sin(t1)];
+          const pts = j < R - 1
+            ? [[cu + r0 * c0[0], cv + r0 * c0[1], h0], [cu + r0 * c1[0], cv + r0 * c1[1], h0],
+               [cu + r1 * c1[0], cv + r1 * c1[1], h1], [cu + r1 * c0[0], cv + r1 * c0[1], h1]]
+            : [[cu + r0 * c0[0], cv + r0 * c0[1], h0], [cu + r0 * c1[0], cv + r0 * c1[1], h0], [cu, cv, y0 + h]];
+          face(pts, col, I, 1, d);
+        }
+      }
+    };
+    // A finial or a flagpole: two thin crossed blades, which read as a rod from any side.
+    const spike = (u, v, y0, y1, w, col, d = -2) => {
+      late(put([P(u - w, v, y0), P(u + w, v, y0), P(u + w, v, y1), P(u - w, v, y1)], col, lit), d);
+      late(put([P(u, v - w, y0), P(u, v + w, y0), P(u, v + w, y1), P(u, v - w, y1)], col, lit), d);
+    };
+    /* A dormer on a front-facing slope running from (ve, ye) at the eaves to (vr, yr) at the ridge: an
+       upright front with its window, cheeks cut to the slope, and a small roof of two planes. */
+    const dormer = (uc, vf, w, h, ve, ye, vr, yr, col, roofCol, o = {}) => {
+      if (!seen(w, 2)) return;
+      const hw = w / 2, gy = (v) => ye + ((ve - v) / (ve - vr)) * (yr - ye);
+      const yS = gy(vf), yT = yS + h, yA = yT + (o.rise ?? hw * 0.75);
+      const back = (y) => ve - ((y - ye) / (yr - ye)) * (ve - vr);
+      const vt = back(yT), vb = back(yA + 0.1), d = o.d ?? -14, I = [uc, (vf + vt) / 2, yS + 0.02];
+      const front = [[uc - hw, vf, yS], [uc + hw, vf, yS], [uc + hw, vf, yT]];
+      if (o.round) {
+        for (let i = 1; i < 8; i++) {
+          const th = (i / 8) * Math.PI;
+          front.push([uc + hw * Math.cos(th), vf, yT + (yA - yT) * Math.sin(th)]);
+        }
+      } else front.push([uc, vf, yA]);
+      front.push([uc - hw, vf, yT]);
+      const fq = face(front, col, I, 1, d);
+      face([[uc - hw, vf, yS], [uc - hw, vf, yT], [uc - hw, vt, yT]], col, I, 1, d);
+      face([[uc + hw, vf, yS], [uc + hw, vf, yT], [uc + hw, vt, yT]], col, I, 1, d);
+      face([[uc - hw - 0.12, vf + 0.15, yT - 0.05], [uc, vf + 0.15, yA + 0.1], [uc, vb, yA + 0.1], [uc - hw - 0.12, vt, yT - 0.05]],
+           roofCol, [uc, vt, yS], 1, d - 1);
+      face([[uc + hw + 0.12, vf + 0.15, yT - 0.05], [uc, vf + 0.15, yA + 0.1], [uc, vb, yA + 0.1], [uc + hw + 0.12, vt, yT - 0.05]],
+           roofCol, [uc, vt, yS], 1, d - 1);
+      if (fq && o.glass !== false) {
+        const f = plane(uc - hw, vf, fq), ww = w * 0.56;
+        win(f, hw, ww, yS + h * 0.18, h * 0.8 + (o.round ? (yA - yT) * 0.5 : 0),
+            { frame: o.frame, fw: 0.1, rise: o.round ? ww / 2 : 0, lamp: o.lamp ?? 0.6 });
+        done();
+      }
+    };
+    return { k, P, put, face, walls, rect, band, opening, disc, win, roof, inset, lid, frustum, ngon,
+             spire, dome, spike, late, plane, done, dormer, seen, NL, mix, tone };
+  };
 
   const box = (C, q) => {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -3768,7 +4059,7 @@ function leaveOverlay(root, trigger) {
 
       /* Contact shadow: anything standing on a floor or a tabletop throws a soft dark quad at its
          base, or it floats. Wall-hung things are exempt — their shadow is the wall's own darkness. */
-      if (Math.abs(m.x) < WALL - 40 && kind !== "track" && kind !== "glassfloor") {
+      if (Math.abs(m.x) < WALL - 40 && kind !== "track" && kind !== "glassfloor" && !MODEL_KINDS.has(kind)) {
         const fw = (onSide ? m.d : m.w) * 0.68, fd = (onSide ? m.w : m.d) * 0.68;
         const cs = add(C, [[m.x - fw / 2, m.y + 1, m.z - fd / 2], [m.x + fw / 2, m.y + 1, m.z - fd / 2],
                            [m.x + fw / 2, m.y + 1, m.z + fd / 2], [m.x - fw / 2, m.y + 1, m.z + fd / 2]],
@@ -4551,12 +4842,14 @@ function leaveOverlay(root, trigger) {
           const z0 = m.z + (sz < 0 ? -hz : 0), z1 = m.z + (sz > 0 ? hz : 0);
           // The lid is the table's ground — city blocks, rock, cobbles or sand, whichever the
           // record authors — so the model stands on its terrain, not on a cream lid.
+          // A stand for one built model (round 36) authors a plain board colour instead: a ground
+          // tile at world scale under a 1:25 building would be paving stones a few metres across.
           const gq = m.top && PATS[m.top]
             ? add(C, [[x0, m.y + m.h, z0], [x1, m.y + m.h, z0], [x1, m.y + m.h, z1], [x0, m.y + m.h, z1]],
                   [x0 * DPM, z0 * DPM, x1 * DPM, z0 * DPM, x1 * DPM, z1 * DPM, x0 * DPM, z1 * DPM],
                   "pat", PATS[m.top])
             : add(C, [[x0, m.y + m.h, z0], [x1, m.y + m.h, z0], [x1, m.y + m.h, z1], [x0, m.y + m.h, z1]],
-                  ZERO8, "flat", "#d9c9a6");
+                  ZERO8, "flat", m.top && m.top.charAt(0) === "#" ? m.top : "#d9c9a6");
           if (gq) { gq.lit = lightAt((x0 + x1) / 2, m.y + m.h, (z0 + z1) / 2)
                              * (0.8 + 0.55 * NIGHT()); drawn.push(gq); }
         }
@@ -5212,295 +5505,418 @@ function leaveOverlay(root, trigger) {
             });
           }
         }
+      } else if (shape === "massing") {
+        /* The port table's footprints (round 36). The four buildings have their own stands now; the
+           table keeps where they stand the way a site plan does -- low pale plates in the outlines
+           OpenStreetMap gives, so nothing here competes with the models down the hall or claims
+           more than the outline (boxes at the eaves' heights read as four unfinished buildings).
+           Points arrive in table centimetres; the kit runs at k = 1, unturned. */
+        const K = modelKit(C, { ...m, ry: 0 }, drawn, lit, m.w);
+        (m.blocks || []).forEach((b) => {
+          const poly = b.p.map(([x, z]) => [x - m.x, m.z - z]);
+          K.walls(poly, 0, b.h, base, 1e6);
+          K.lid(poly, b.h, "#ecebe4");
+        });
       } else if (shape === "stationfront") {
         /*
-           Moji Port Station, 1914.
+           Moji Port Station, 1914, on its own stand at 1:25 (round 36).
 
-           A wooden two-storey in the neo-Renaissance manner, dead symmetric, and the thing said
-           about it more than anything else is that its centre is shaped like the character 門 --
-           a gate, which is also the first half of the port's own name. So the centre is built as
-           a gate and not drawn as one: two piers, a lintel across them, and a gable riding over,
-           with the entrance a dark opening between the piers where a building of this age would
-           have one. In 1988 it became the first station building in Japan to be designated an
-           Important Cultural Property, and it was restored again between 2012 and 2019.
+           The Agency for Cultural Affairs' record is the plan: a timber building rendered to look like
+           stone, 812.86 m2 on the ground, its centre two storeys "imagining the character 門" with a
+           single storey to either side, symmetric; copper roofs above, slate below (Wikipedia). The
+           photographs of the 2012-19 restoration give the rest, and this is built from them: a cream
+           front with brick-red string courses, flat pilasters paler than the wall, tall sash windows in
+           brown frames, three wide doors under the centre, a pediment with the clock above it, a slate
+           mansard with an iron cresting, and the two corner pavilions -- the gate's two posts -- rising
+           to copper friezes with round dormers, slate caps and finials. The restoration took off the
+           front canopy the 1914 building never had, so there is none here.
 
-           Nothing here claims a train, a platform or a timetable. It is a facade on a table. */
-        const w = m.w, h = m.h, d = m.d;
-        // The volume first, so the building has a body before it has a face.
-        facesOf(m).forEach((f) => {
-          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
-                       + f.n[2] * (C.z - f.p[0][2]);
-          if (toward <= 0) return;
-          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
-          if (q) { q.lit = lit * 0.86; drawn.push(q); }
+           Sizes: the parts' widths are read off the photographs and held to the official area (a 26 x
+           15 m centre and two 17 x 11 m wings, 764 m2 against 812.86); heights are the storeys read
+           against those widths. Approximate, and the hint says so.
+        */
+        const K = modelKit(C, m, drawn, lit, 60);
+        const CREAM = "#c4b68e", PIL = "#d6cba8", BAND = "#8f5038", BASE = "#a09374", SLATE = "#4f5866",
+              COPPER = "#76a389", FRAME = "#7d4f39", SASH = "#ddd4bd", DARK = "#2b2e35";
+        // The single-storey wings, either side of the centre, their inner ends against it.
+        for (const s of [-1, 1]) {
+          const u0 = s < 0 ? -30 : 13, u1 = s < 0 ? -13 : 30;
+          K.walls([[u0, -5], [u1, -5], [u1, 6], [u0, 6]], 0, 5.2, CREAM, 2.9, (f) => {
+            K.band(f, 0, 0.7, BASE);
+            K.band(f, 4.75, 5.2, BAND);
+            const n = Math.max(1, Math.round(f.len / 2.9));
+            for (let i = 0; i < n; i++) {
+              K.win(f, (f.len * (i + 0.5)) / n, 1.3, 1.1, 2.75, { frame: FRAME, fw: 0.15, bars: SASH, rows: [0.66] });
+            }
+          }, [s < 0 ? 1 : 3]);
+          K.roof(u0 - 0.3, u1 + (s < 0 ? 0 : 0.3), -5.3, 6.3, 5.2, 3.4, SLATE,
+                 s < 0 ? { right: "wall" } : { left: "wall" });
+          // Round-headed dormers along the front slope, as the photographs show them.
+          for (let i = 0; i < 3; i++) {
+            K.dormer(u0 + ((u1 - u0) * (i + 0.5)) / 3, 3.9, 1.1, 0.9, 6.3, 5.2, 0.5, 8.6, PIL, SLATE,
+                     { round: true, frame: SASH, rise: 0.55 });
+          }
+        }
+        // The centre: two storeys, its corner pavilions standing 0.6 m proud of the front.
+        const body = [[-13, -7.5], [13, -7.5], [13, 8.1], [8, 8.1], [8, 7.5], [-8, 7.5], [-8, 8.1], [-13, 8.1]];
+        K.walls(body, 0, 10.5, CREAM, 2.4, (f) => {
+          K.band(f, 0, 0.7, BASE);
+          K.band(f, 4.9, 5.3, BAND);                         // the string course between the storeys
+          K.band(f, 9.8, 10.5, BAND);                        // the cornice
+          const front = f.on[1] > 0.9, side = Math.abs(f.on[0]) > 0.9;
+          if (front && f.len > 10) {
+            // The middle of the gate: four pilasters, three wide doors, two windows over each.
+            [1.1, 5.7, 10.3, 14.9].forEach((t) => K.rect(f, t - 0.4, t + 0.4, 0.7, 9.8, PIL));
+            [3.4, 8, 12.6].forEach((t) => {
+              K.win(f, t, 3.0, 0.7, 3.5, { frame: FRAME, fw: 0.15, bars: SASH, cols: 3, rows: [0.74] });
+              K.win(f, t - 0.85, 1.1, 6.2, 2.7, { frame: FRAME, fw: 0.14, bars: SASH, rows: [0.6] });
+              K.win(f, t + 0.85, 1.1, 6.2, 2.7, { frame: FRAME, fw: 0.14, bars: SASH, rows: [0.6] });
+            });
+            K.rect(f, 6.6, 9.4, 5.85, 6.35, DARK);           // the balconette over the doors
+          } else if (front) {
+            // A pavilion: quoins at both edges, one tall window to a storey.
+            K.rect(f, 0, 0.55, 0.7, 9.8, PIL);
+            K.rect(f, f.len - 0.55, f.len, 0.7, 9.8, PIL);
+            K.win(f, f.len / 2, 1.4, 1.2, 2.9, { frame: FRAME, fw: 0.16, bars: SASH, rows: [0.64] });
+            K.win(f, f.len / 2, 1.4, 6.2, 2.7, { frame: FRAME, fw: 0.16, bars: SASH, rows: [0.6] });
+          } else if (side && f.len > 10) {
+            // The ends, over the wing roofs: the upper storey's windows.
+            [2.6, 5.4].forEach((t) => K.win(f, t, 1.2, 6.3, 2.5, { frame: FRAME, fw: 0.14, bars: SASH }));
+            [f.len - 2.6].forEach((t) => K.win(f, t, 1.2, 6.3, 2.5, { frame: FRAME, fw: 0.14, bars: SASH }));
+          } else if (f.len > 10) {
+            for (let i = 0; i < 7; i++) {                     // the platform side
+              const t = (f.len * (i + 0.5)) / 7;
+              K.win(f, t, 1.2, 6.3, 2.5, { frame: FRAME, fw: 0.12 });
+              K.win(f, t, 1.4, 1.2, 2.9, { frame: FRAME, fw: 0.12 });
+            }
+          }
         });
-        // The elevation, laid on the face turned toward the walk. `u` runs across the facade,
-        // `y` runs up it, and everything is mirrored about u = 0 because the building is.
-        const zf = m.z - d / 2 - 0.6;
-        const F = (u, y) => [m.x + u, m.y + y, zf];
-        const Q = (pts, col, l) => {
-          const q = add(C, pts, ZERO8, "flat", col);
-          /* A lit window is its own light and must not be darkened by the night that makes it
-             visible: `nolite` keeps it out of the murk, which is the only reason a model hall
-             goes dim in the first place and the reason its windows still read. */
-          if (q) { q.lit = l; if (String(col).charAt(0) === "r") q.nolite = true; drawn.push(q); }
-        };
-        const rect = (u0, u1, y0, y1, col, l) =>
-          Q([F(u0, y0), F(u1, y0), F(u1, y1), F(u0, y1)], col, l);
-        const tri = (u0, u1, yb, yt, col, l) =>
-          Q([F(u0, yb), F(u1, yb), F((u0 + u1) / 2, yt)], col, l);
-        /* The buildings come alight one after another, which is the whole reason to stand
-           here at dusk rather than at noon: `liton` is this building's own moment on the room's
-           clock, read from the record, and a prop without one simply follows the night. */
-        const p = dayPhase();
-        const ease01 = (v) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
-        /* Night is one span and it crosses midnight, so "how far past this building's moment" has
-           to be measured round the clock and not along it. Measured straight, a building lit at
-           0.88 went dark again the moment the phase wrapped to 0.00, because 0.00 - 0.88 is
-           negative -- the port switched itself off at midnight and came back on at dawn. Counted
-           from nightfall at 0.70 instead, a building stays lit from its own moment until the
-           daylight takes it back. */
-        const np = ((((p - 0.70) % 1) + 1) % 1) / 0.60;
-        const at = (m.liton - 0.70) / 0.60;
-        const N = m.liton ? NIGHT() * ease01((np - at) / 0.05) : NIGHT();
-        // A window: dark glass by day, a lit rectangle after dark, which is what the district's
-        // illumination actually reads as from across the basin.
-        const win = (uc, yc, ww, hh) =>
-          Q([F(uc - ww / 2, yc), F(uc + ww / 2, yc), F(uc + ww / 2, yc + hh), F(uc - ww / 2, yc + hh)],
-            `rgba(255,216,158,${(0.06 + 0.62 * N).toFixed(3)})`,
-            1.15 + 0.4 * N);
-        const gw = w * 0.17;                                  // half the gate's width
-        const cap = h * 0.80;                                  // where the eaves sit
-        // String courses: the horizontal lines a Renaissance building is divided by.
-        rect(-w / 2, w / 2, h * 0.46, h * 0.50, mix(base, -0.30), lit * 0.9);
-        rect(-w / 2, w / 2, cap, cap + h * 0.035, mix(base, -0.34), lit * 0.85);
-        // 門: two piers, the dark entrance between them, the lintel, and the gable over all.
-        rect(-gw - w * 0.045, -gw, 0, h * 0.55, mix(base, -0.16), lit);
-        rect(gw, gw + w * 0.045, 0, h * 0.55, mix(base, -0.16), lit);
-        rect(-gw, gw, 0, h * 0.55, mix(base, -0.62), lit * 0.8);
-        rect(-gw - w * 0.05, gw + w * 0.05, h * 0.55, h * 0.63, mix(base, -0.26), lit);
-        tri(-gw - w * 0.05, gw + w * 0.05, h * 0.63, cap, mix(base, -0.22), lit);
-        // The flanks: two storeys of windows, four a side, mirrored.
-        for (let i = 0; i < 4; i++) {
-          const u = gw + w * 0.115 + i * w * 0.105;
-          const ww = w * 0.072, hh = h * 0.20;
-          if (u + ww / 2 > w / 2 - w * 0.02) continue;
-          win(-u, h * 0.14, ww, hh); win(u, h * 0.14, ww, hh);
-          win(-u, h * 0.60, ww, hh * 0.82); win(u, h * 0.60, ww, hh * 0.82);
+        // The mansard over the centre, its flat top and the iron cresting along it.
+        const roofFoot = [[-13, -7.5], [13, -7.5], [13, 7.5], [-13, 7.5]];
+        K.frustum(K.inset(roofFoot, 0.25), 10.5, K.inset(roofFoot, 2.0), 13.4, SLATE, "#3d434e");
+        K.late(K.put([K.P(-9.5, 5.5, 13.4), K.P(9.5, 5.5, 13.4), K.P(9.5, 5.5, 13.95), K.P(-9.5, 5.5, 13.95)],
+                     "rgba(24,26,32,0.72)", lit), -6);
+        // The pediment over the doors, and the clock over it in its copper frame.
+        const ped = K.face([[-3.4, 7.56, 10.5], [3.4, 7.56, 10.5], [0, 7.56, 12.3]], PIL, [0, 0, 10.6], 1, -34);
+        if (ped) K.face([[-2.85, 7.6, 10.72], [2.85, 7.6, 10.72], [0, 7.6, 11.98]], CREAM, [0, 0, 10.6], 1, -35);
+        let clockQ = null;
+        K.walls([[-1.0, 5.9], [1.0, 5.9], [1.0, 7.0], [-1.0, 7.0]], 12.2, 14.2, COPPER, 9, (f) => {
+          if (f.on[1] > 0.9) clockQ = f;
+        }, null, -36);
+        if (clockQ) {
+          K.disc(clockQ, 1.0, 13.2, 0.74, "#5d8a72");
+          K.disc(clockQ, 1.0, 13.2, 0.6, "#e6dfc8");
+          /* The hands keep the room's own time, the clock the dusk is counted on: no claim about any
+             timetable, only that the station's clock and the hall's light agree. */
+          const hrs = (dayPhase() * 24) % 12, mins = (dayPhase() * 24 * 60) % 60;
+          [[(hrs / 12) * 2 * Math.PI, 0.34, 0.07], [(mins / 60) * 2 * Math.PI, 0.5, 0.05]].forEach(([th, L, w]) => {
+            const dt = Math.sin(th), dy = Math.cos(th), pt = Math.cos(th) * w, py = -Math.sin(th) * w;
+            clockQ.at(1.0);
+            K.put([clockQ.F(1.0 + pt, 13.2 + py, 0.08), clockQ.F(1.0 - pt, 13.2 - py, 0.08),
+                   clockQ.F(1.0 + dt * L - pt, 13.2 + dy * L - py, 0.08),
+                   clockQ.F(1.0 + dt * L + pt, 13.2 + dy * L + py, 0.08)], DARK, lit);
+          });
+          K.done();
+        }
+        K.roof(-1.15, 1.15, 5.75, 7.15, 14.2, 0.55, COPPER, { d: -37 });
+        // The pavilions above the cornice: an attic, the copper frieze with its round dormers, the cap.
+        for (const s of [-1, 1]) {
+          const sq = s < 0 ? [[-13, 3.0], [-8, 3.0], [-8, 8.1], [-13, 8.1]] : [[8, 3.0], [13, 3.0], [13, 8.1], [8, 8.1]];
+          K.walls(sq, 10.5, 11.3, CREAM, 9, (f) => K.band(f, 11.0, 11.3, BAND), null, -30);
+          K.walls(sq, 11.3, 12.7, COPPER, 9, (f) => {
+            if (f.on[1] > 0.9 || f.on[0] * s > 0.9) {
+              K.win(f, f.len / 2, 1.4, 11.45, 1.05, { frame: SASH, fw: 0.12, rise: 0.62, lamp: 0.5 });
+            }
+          }, null, -30);
+          K.frustum(sq, 12.7, K.inset(sq, 1.25), 15.0, SLATE, DARK, -31);
+          K.spike(s * 10.5, 5.55, 15.0, 16.9, 0.09, DARK, -33);
         }
       } else if (shape === "customhouse") {
         /*
-           The former Moji Customhouse, 1912.
+           The former Moji Customs building, 1912, on its own stand at 1:25 (round 36).
 
-           Red brick over a timber frame, in the Renaissance manner, and one of the three giants of
-           Meiji architecture -- 妻木頼黄, of Tokyo's Nihonbashi and the Yokohama Red Brick
-           Warehouse -- had a hand in it. Customs moved out in 1927 and it was a private building
-           until the city restored it in 1994.
-
-           The third floor is an observation room and the first an exhibition room, which is why
-           the top storey here is glazed all along its face while the two below it are punctured
-           by round arches. A Renaissance building is read by its arches before anything else, so
-           the arches are built as arches: two jambs and a semicircular head, with the head's
-           height kept separate from its width, because an arch forced to a semicircle of its own
-           width is a tunnel and not a window. */
-        const w = m.w, h = m.h;
-        facesOf(m).forEach((f) => {
-          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
-                       + f.n[2] * (C.z - f.p[0][2]);
-          if (toward <= 0) return;
-          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
-          if (q) { q.lit = lit * 0.86; drawn.push(q); }
-        });
-        const zf = m.z - m.d / 2 - 0.6;
-        const F = (u, y) => [m.x + u, m.y + y, zf];
-        const Q = (pts, col, l) => {
-          const q = add(C, pts, ZERO8, "flat", col);
-          /* A lit window is its own light and must not be darkened by the night that makes it
-             visible: `nolite` keeps it out of the murk, which is the only reason a model hall
-             goes dim in the first place and the reason its windows still read. */
-          if (q) { q.lit = l; if (String(col).charAt(0) === "r") q.nolite = true; drawn.push(q); }
-        };
-        const rect = (u0, u1, y0, y1, col, l) =>
-          Q([F(u0, y0), F(u1, y0), F(u1, y1), F(u0, y1)], col, l);
-        /* The buildings come alight one after another, which is the whole reason to stand
-           here at dusk rather than at noon: `liton` is this building's own moment on the room's
-           clock, read from the record, and a prop without one simply follows the night. */
-        const p = dayPhase();
-        const ease01 = (v) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
-        /* Night is one span and it crosses midnight, so "how far past this building's moment" has
-           to be measured round the clock and not along it. Measured straight, a building lit at
-           0.88 went dark again the moment the phase wrapped to 0.00, because 0.00 - 0.88 is
-           negative -- the port switched itself off at midnight and came back on at dawn. Counted
-           from nightfall at 0.70 instead, a building stays lit from its own moment until the
-           daylight takes it back. */
-        const np = ((((p - 0.70) % 1) + 1) % 1) / 0.60;
-        const at = (m.liton - 0.70) / 0.60;
-        const N = m.liton ? NIGHT() * ease01((np - at) / 0.05) : NIGHT();
-        const lamp = (a) => `rgba(255,206,132,${(0.04 + a * N).toFixed(3)})`;
-        const arched = (uc, ar, yS, yP, a) => {
-          const p = [F(uc - ar, yS), F(uc + ar, yS), F(uc + ar, yP)];
-          for (let i = 0; i <= 6; i++) {
-            const t = (i / 6) * Math.PI;
-            p.push(F(uc + ar * Math.cos(t), yP + ar * 0.66 * Math.sin(t)));
+           Wikipedia (ja): built in March 1912 as the second Moji Customs house after the first burned,
+           restored by the city and reopened in 1994; two storeys, 897.9 m2 of floors; OpenStreetMap's
+           outline is 33.8 x 21.0 m with a gabled roof. The table model drew three storeys with the top
+           one glazed end to end as an "observation floor": the building has two, and its observation
+           room is upstairs behind ordinary windows -- the photographs settle it. Built from them: red
+           brick over a darker brick base, white stone string courses and window surrounds, white sash
+           windows, the entrance front's three round-arched doors between two corner pavilions that
+           rise above the eaves to stone-capped parapets, a hipped grey slate roof with small
+           copper-hooded dormers, and on the harbour side the pavilions' little green pyramid roofs.
+           Heights are storeys read against the outline's width (eaves about 9.5 m); approximate.
+        */
+        const K = modelKit(C, m, drawn, lit, 33.8);
+        const BRICK = "#a5492f", BASE = "#6c3426", STONE = "#e2dccd", SASH = "#ece8de", SLATE = "#878c94",
+              COPPER = "#78a58b", DARK = "#2b2e35";
+        const foot = [[-16.9, -10.5], [16.9, -10.5], [16.9, 11.0], [11.4, 11.0], [11.4, 10.5], [-11.4, 10.5],
+                      [-11.4, 11.0], [-16.9, 11.0]];
+        const sash = { frame: STONE, fw: 0.16, bars: SASH, rows: [0.62] };
+        K.walls(foot, 0, 9.5, BRICK, 2.5, (f) => {
+          K.band(f, 0, 1.0, BASE);
+          K.band(f, 4.55, 4.85, STONE);                       // the string course
+          K.band(f, 9.0, 9.5, STONE);                         // the cornice
+          const front = f.on[1] > 0.9;
+          if (front && f.len > 10) {
+            // The entrance front between the pavilions: three arched doors, paired sashes over them.
+            const c = f.len / 2;
+            [-2.6, 0, 2.6].forEach((d) => {
+              K.win(f, c + d, 1.9, 1.0, 3.35, { frame: STONE, fw: 0.3, rise: 0.95, lamp: 1.2 });
+              K.win(f, c + d - 0.55, 0.85, 5.6, 2.3, sash);
+              K.win(f, c + d + 0.55, 0.85, 5.6, 2.3, sash);
+            });
+            [-3.9, -1.3, 1.3, 3.9].forEach((d) => K.rect(f, c + d - 0.22, c + d + 0.22, 4.85, 9.0, STONE));
+            [-8.6, -5.5, 5.5, 8.6].forEach((d) => {
+              K.win(f, c + d, 1.1, 1.5, 2.4, sash);
+              K.win(f, c + d, 1.1, 5.6, 2.4, sash);
+            });
+          } else if (front) {
+            // A pavilion: two tall narrow lights below, one window above under a segmental stone head.
+            K.win(f, f.len / 2 - 0.55, 0.72, 1.4, 2.7, sash);
+            K.win(f, f.len / 2 + 0.55, 0.72, 1.4, 2.7, sash);
+            K.win(f, f.len / 2, 1.5, 5.55, 2.3, { frame: STONE, fw: 0.28, rise: 0.36, bars: SASH, cols: 2, rows: [0.6] });
+          } else if (f.len > 4) {
+            // The sides and the harbour front: arched pairs below, square pairs above.
+            const n = Math.max(2, Math.round(f.len / 3.6));
+            for (let i = 0; i < n; i++) {
+              const t = (f.len * (i + 0.5)) / n;
+              K.win(f, t - 0.5, 0.8, 1.4, 2.6, { frame: STONE, fw: 0.14, rise: 0.4, bars: SASH, cols: 1, rows: [0.6] });
+              K.win(f, t + 0.5, 0.8, 1.4, 2.6, { frame: STONE, fw: 0.14, rise: 0.4, bars: SASH, cols: 1, rows: [0.6] });
+              K.win(f, t, 1.8, 5.6, 2.3, { frame: STONE, fw: 0.16, bars: SASH, cols: 2, rows: [0.6] });
+            }
           }
-          Q(p, lamp(a), 1.0 + 0.4 * N);
-        };
-        const hw = w / 2, BAYS = 5;
-        for (let i = 0; i < BAYS; i++) {
-          const u = -hw + (i + 0.5) * (w / BAYS);
-          arched(u, w * 0.055, h * 0.11, h * 0.30, 0.5);     // the exhibition floor
-          arched(u, w * 0.05, h * 0.43, h * 0.57, 0.44);
+        });
+        // The hipped slate roof, its dormers, and the pavilions standing up through its corners.
+        K.roof(-17.2, 17.2, -10.8, 10.8, 9.5, 4.6, SLATE);
+        [-7.5, -2.5, 2.5, 7.5].forEach((uc) => {
+          K.dormer(uc, 8.4, 1.0, 0.85, 10.8, 9.5, 0, 14.1, "#b7b2a6", COPPER, { frame: SASH, rise: 0.5 });
+        });
+        for (const s of [-1, 1]) {
+          const fr = s < 0 ? [[-16.9, 5.5], [-11.4, 5.5], [-11.4, 11.0], [-16.9, 11.0]] : [[11.4, 5.5], [16.9, 5.5], [16.9, 11.0], [11.4, 11.0]];
+          K.walls(fr, 9.5, 11.3, BRICK, 9, (f) => { K.band(f, 9.5, 9.75, STONE); K.band(f, 10.95, 11.3, STONE); }, null, -30);
+          K.lid(fr, 11.3, "#5a5d62", -30);
+          // the stone gablet each entrance pavilion carries over its parapet, a low segmental arch
+          const gu = s < 0 ? -14.15 : 14.15, arc = [];
+          for (let i = 0; i <= 8; i++) arc.push([gu + 1.9 * Math.cos((i / 8) * Math.PI), 11.06, 11.3 + 0.95 * Math.sin((i / 8) * Math.PI)]);
+          K.face(arc, STONE, [gu, 8, 11.4], 1, -32);
+          const bk = s < 0 ? [[-16.9, -10.5], [-11.9, -10.5], [-11.9, -5.5], [-16.9, -5.5]] : [[11.9, -10.5], [16.9, -10.5], [16.9, -5.5], [11.9, -5.5]];
+          K.walls(bk, 9.5, 10.7, BRICK, 9, (f) => K.band(f, 10.45, 10.7, STONE), null, -30);
+          K.frustum(bk, 10.7, K.inset(bk, 2.4), 12.6, COPPER, null, -31);
         }
-        // The observation room: glazed the length of the face, because that is the floor built
-        // to be looked out of.
-        rect(-hw * 0.9, hw * 0.9, h * 0.73, h * 0.93,
-             `rgba(255,214,150,${(0.05 + 0.55 * N).toFixed(3)})`, 1.0 + 0.35 * N);
-        // String courses and the eaves: the horizontal lines a Renaissance front is divided by.
-        rect(-hw, hw, h * 0.38, h * 0.41, mix(base, -0.30), lit * 0.9);
-        rect(-hw, hw, h * 0.71, h * 0.74, mix(base, -0.30), lit * 0.9);
-        rect(-hw, hw, h * 0.93, h * 0.99, mix(base, -0.40), lit * 0.85);
       } else if (shape === "osakashosen") {
         /*
-           The former Osaka Shosen building.
+           The former Osaka Shosen building, 1917, on its own stand at 1:25 (round 36).
 
-           Its face is its big arches -- tall, round-headed, and taking most of the wall, the way
-           a shipping company's offices were built to look solid from the quay -- and its corner
-           carries an octagonal tower, which is the thing you recognise it by from across the
-           water. So the tower is built as an octagon and not suggested by one: eight sides
-           turned out of real trigonometry, and a roof of eight triangles meeting at a point. */
-        const w = m.w, h = m.h, d = m.d;
-        facesOf({ ...m, h: h * 0.86 }).forEach((f) => {
-          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
-                       + f.n[2] * (C.z - f.p[0][2]);
-          if (toward <= 0) return;
-          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
-          if (q) { q.lit = lit * 0.88; drawn.push(q); }
-        });
-        const zf = m.z - d / 2 - 0.6;
-        const F = (u, y) => [m.x + u, m.y + y, zf];
-        const Q = (pts, col, l) => {
-          const q = add(C, pts, ZERO8, "flat", col);
-          /* A lit window is its own light and must not be darkened by the night that makes it
-             visible: `nolite` keeps it out of the murk, which is the only reason a model hall
-             goes dim in the first place and the reason its windows still read. */
-          if (q) { q.lit = l; if (String(col).charAt(0) === "r") q.nolite = true; drawn.push(q); }
-        };
-        /* The buildings come alight one after another, which is the whole reason to stand
-           here at dusk rather than at noon: `liton` is this building's own moment on the room's
-           clock, read from the record, and a prop without one simply follows the night. */
-        const p = dayPhase();
-        const ease01 = (v) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
-        /* Night is one span and it crosses midnight, so "how far past this building's moment" has
-           to be measured round the clock and not along it. Measured straight, a building lit at
-           0.88 went dark again the moment the phase wrapped to 0.00, because 0.00 - 0.88 is
-           negative -- the port switched itself off at midnight and came back on at dawn. Counted
-           from nightfall at 0.70 instead, a building stays lit from its own moment until the
-           daylight takes it back. */
-        const np = ((((p - 0.70) % 1) + 1) % 1) / 0.60;
-        const at = (m.liton - 0.70) / 0.60;
-        const N = m.liton ? NIGHT() * ease01((np - at) / 0.05) : NIGHT();
-        const hw = w / 2, BAYS = 3;
-        for (let i = 0; i < BAYS; i++) {
-          const u = -hw * 0.78 + (i + 0.5) * (w * 0.78 / BAYS);
-          const ar = w * 0.105, yS = h * 0.12, yP = h * 0.46;
-          const p = [F(u - ar, yS), F(u + ar, yS), F(u + ar, yP)];
-          for (let k = 0; k <= 7; k++) {
-            const t = (k / 7) * Math.PI;
-            p.push(F(u + ar * Math.cos(t), yP + ar * 0.92 * Math.sin(t)));
+           Wikipedia (ja): the Moji branch of the Osaka Shosen line, designed by Kawai Ikuji; timber, two
+           storeys, partly brick-form concrete; 670 m2 on the ground (OpenStreetMap's outline, 32.1 x
+           22.4 m, gives 648). What it is known by is in the same article and in every photograph: the
+           corner window under a great arch and the octagonal tower over it, Secession work, and the
+           "vivid colour of the facing brick" -- orange, in grey stone bands, not the pale render the
+           table model wore. So: orange walls banded grey over a grey base, tall sashes upstairs, broad
+           openings below, a balustrade along the eaves and a blue slate mansard with small arched
+           dormers behind it; on the chamfered corner the two-storey arched window with its lattice,
+           and over it the tower -- banded drum, balcony, a lantern of windows, a green copper dome and
+           its finial; on the far end a raised parapet with a round window. Heights are the storeys and
+           the photographs' proportions (tower to cornice about two to one); approximate.
+        */
+        const K = modelKit(C, m, drawn, lit, 32.1);
+        const ORANGE = "#c46d38", GREY = "#9a9a94", PALE = "#c9c6bb", SLATE = "#4f5d78", COPPER = "#4f7d66",
+              SASH = "#dcd8cc", DARK = "#2b2e35";
+        // The footprint with its corner cut where the tower stands (front-left).
+        const foot = [[-16.05, -11.2], [16.05, -11.2], [16.05, 11.2], [-12.05, 11.2], [-16.05, 7.2]];
+        K.walls(foot, 0, 10.0, ORANGE, 2.7, (f) => {
+          K.band(f, 0, 0.9, GREY);                            // the stone base
+          [1.75, 2.65, 3.55].forEach((y) => K.band(f, y, y + 0.24, GREY));   // the banded ground floor
+          K.band(f, 4.5, 5.05, GREY);                         // the string course
+          K.band(f, 5.55, 5.75, GREY);
+          K.band(f, 9.35, 10.0, GREY);                        // the cornice
+          if (f.len < 7) {
+            // The cut corner: the arched window through both storeys, its lattice, its stone hood.
+            const t = f.len / 2;
+            K.win(f, t, 3.3, 1.2, 7.7, { frame: PALE, fw: 0.42, rise: 1.65, glass: "#2a323c", bars: PALE,
+                                         cols: 4, rows: [0.17, 0.34, 0.51, 0.68, 0.85] });
+            return;
           }
-          Q(p, `rgba(255,208,140,${(0.04 + 0.58 * N).toFixed(3)})`, 1.0 + 0.35 * N);
+          const n = Math.max(2, Math.round(f.len / 3.1));
+          for (let i = 0; i < n; i++) {
+            const t = (f.len * (i + 0.5)) / n;
+            K.win(f, t, 1.0, 5.95, 2.9, { frame: SASH, fw: 0.12, bars: SASH, rows: [0.58] });
+            if (i % 2 === 0 || f.len < 25) K.win(f, t, 1.9, 0.9, 3.0, { frame: PALE, fw: 0.22, bars: SASH, cols: 2, rows: [0.7] });
+          }
+        });
+        // The balustrade along the eaves, a gutter behind it, and the mansard set back from it.
+        K.walls(foot, 10.0, 10.85, PALE, 2.8, (f) => {
+          const n = Math.max(1, Math.round(f.len / 1.2));
+          for (let i = 0; i < n; i++) {
+            const t = (f.len * (i + 0.5)) / n;
+            K.rect(f, t - 0.32, t + 0.32, 10.18, 10.68, "#5c5d5b");
+          }
+        });
+        K.lid(foot, 10.85, "#55585c");
+        const mFoot = K.inset(foot, 1.3), mTop = K.inset(foot, 3.2);
+        const slopes = K.frustum(mFoot, 10.85, mTop, 13.0, SLATE, "#3f4859");
+        // Small arched dormers along the front slope.
+        for (let i = 0; i < 5; i++) {
+          const uc = -8 + i * 5.2;
+          K.dormer(uc, 9.6, 0.95, 0.85, 9.9, 10.85, 8.0, 13.0, PALE, SLATE, { round: true, frame: SASH, rise: 0.5 });
         }
-        Q([F(-hw, h * 0.80), F(hw, h * 0.80), F(hw, h * 0.86), F(-hw, h * 0.86)],
-          mix(base, -0.36), lit * 0.85);
-        // The octagonal tower on the corner nearest the basin.
-        const tr = w * 0.20, tx = m.x + hw - tr * 0.95, tz = m.z - d * 0.1;
-        const th = h * 1.42, SEG = 8, spin = Math.PI / SEG;
-        for (let i = 0; i < SEG; i++) {
-          const a0 = (i / SEG) * Math.PI * 2 + spin, a1 = ((i + 1) / SEG) * Math.PI * 2 + spin;
-          const c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
-          const shade = -0.16 + 0.20 * Math.max(0, -s0);      // the face turned to the quay
-          const q = add(C, [[tx + tr * c0, m.y, tz + tr * s0], [tx + tr * c1, m.y, tz + tr * s1],
-                            [tx + tr * c1, m.y + th, tz + tr * s1],
-                            [tx + tr * c0, m.y + th, tz + tr * s0]], ZERO8, "flat", mix(base, shade));
-          if (q) { q.lit = lit * 0.92; drawn.push(q); }
-          // The roof: eight triangles to a point.
-          const rq = add(C, [[tx + tr * c0, m.y + th, tz + tr * s0],
-                             [tx + tr * c1, m.y + th, tz + tr * s1],
-                             [tx, m.y + th + tr * 0.9, tz]], ZERO8, "flat", mix(base, shade - 0.18));
-          if (rq) { rq.lit = lit * 0.8; drawn.push(rq); }
+        // The far end's raised parapet with its round window.
+        let endF = null;
+        K.walls([[15.85, -3.0], [16.15, -3.0], [16.15, 3.0], [15.85, 3.0]], 10.0, 11.6, PALE, 9, (f) => {
+          if (f.on[0] > 0.9) endF = f;
+        }, null, -8);
+        if (endF) {
+          K.disc(endF, 3.0, 10.95, 0.9, GREY);
+          K.disc(endF, 3.0, 10.95, 0.62, "#2a323c");
+          K.done();
         }
+        K.face([[16.15, -3.0, 11.6], [16.15, 3.0, 11.6], [16.15, 0, 12.5]], PALE, [15.0, 0, 11.0], 1, -8);
+        // The tower over the cut corner: banded drum, balcony, lantern, dome, finial.
+        const tu = -13.1, tv = 8.25, rot = Math.PI / 8 + Math.PI / 4;
+        const drum = K.ngon(tu, tv, 3.0, 8, rot);
+        K.walls(drum, 10.0, 14.6, ORANGE, 9, (f) => {
+          [11.3, 12.95].forEach((y) => K.band(f, y, y + 0.22, GREY));
+          if (f.on[1] > 0.2 || f.on[0] < -0.2) K.win(f, f.len / 2, 0.75, 11.75, 1.0, { frame: SASH, fw: 0.1 });
+          K.band(f, 14.3, 14.6, GREY);
+        }, null, -40);
+        const deck = K.ngon(tu, tv, 3.45, 8, rot);
+        K.walls(deck, 14.6, 14.95, GREY, 9, null, null, -41);
+        K.lid(deck, 14.95, "#77786f", -41);
+        K.walls(K.ngon(tu, tv, 2.45, 8, rot), 14.95, 18.0, PALE, 9, (f) => {
+          K.win(f, f.len / 2, 1.05, 15.45, 2.05, { frame: SASH, fw: 0.1, bars: SASH, rows: [0.5] });
+        }, null, -42);
+        K.walls(deck.map((p) => [tu + (p[0] - tu) * 0.97, tv + (p[1] - tv) * 0.97]), 14.95, 15.7, PALE, 9, (f) => {
+          for (let i = 0; i < 3; i++) K.rect(f, (f.len * (i + 0.2)) / 3, (f.len * (i + 0.8)) / 3, 15.08, 15.55, "#5c5d5b");
+        }, null, -43);
+        const crown = K.ngon(tu, tv, 2.75, 8, rot);
+        K.walls(crown, 18.0, 18.4, GREY, 9, null, null, -42);
+        K.dome(tu, tv, 2.55, 18.4, 2.0, 8, rot, COPPER, -43);
+        K.spike(tu, tv, 20.3, 21.9, 0.09, DARK, -44);
       } else if (shape === "dalianhall") {
         /*
-           Kitakyushu's Dalian Friendship Memorial Hall, 1995: brick, and carrying a composite
-           steeple -- a tower that steps from square to octagonal to round before it comes to a
-           point, which is the whole reason it reads as a landmark from the far side of the basin.
-           Each of the three stages is drawn, because a steeple sketched as one cone is a cone. */
-        const w = m.w, h = m.h, d = m.d;
-        facesOf({ ...m, h: h * 0.62 }).forEach((f) => {
-          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
-                       + f.n[2] * (C.z - f.p[0][2]);
-          if (toward <= 0) return;
-          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k));
-          if (q) { q.lit = lit * 0.86; drawn.push(q); }
-        });
-        const zf = m.z - d / 2 - 0.6;
-        const F = (u, y) => [m.x + u, m.y + y, zf];
-        const Q = (pts, col, l) => {
-          const q = add(C, pts, ZERO8, "flat", col);
-          /* A lit window is its own light and must not be darkened by the night that makes it
-             visible: `nolite` keeps it out of the murk, which is the only reason a model hall
-             goes dim in the first place and the reason its windows still read. */
-          if (q) { q.lit = l; if (String(col).charAt(0) === "r") q.nolite = true; drawn.push(q); }
+           The Dalian Friendship Memorial Hall, on its own stand at 1:25 (round 36).
+
+           Wikipedia (ja): a 1995 reinforced-concrete copy, three storeys and 806 m2 of floors, of the
+           Chinese Eastern Railway steamship office the Russian Empire built in Dalian in 1902, put up for
+           the fifteenth year of Kitakyushu's friendship with Dalian (the building in Dalian is itself a
+           copy now); OpenStreetMap's outline is 30.9 x 18.1 m. The table model gave it a tower stepping
+           square to octagonal to round; the photographs show something else, and this is built from
+           them: red brick striped with white stone every course or so over a grey stone base, white
+           sash windows, on the left a half-timbered gable -- white render, dark red-brown timbers --
+           over a bay with a stone balustrade, the entrance under a stone arch with its fanlight, and
+           right of it the polygonal tower, banded like the walls, a timbered frieze under its eaves and
+           a tall dark octagonal spire with a dormer gablet and a finial; dark hipped roofs with small
+           dormers, tall brick chimneys with white caps, and a lower wing to the right. Heights are
+           storeys read against the outline's width; approximate.
+        */
+        const K = modelKit(C, m, drawn, lit, 30.9);
+        const BRICK = "#a24b36", STONE = "#e4dfd2", BASE = "#a29e93", SASH = "#efebe2", TIMBER = "#5c2b24",
+              RENDER = "#e6e0d2", ROOF = "#3a3c42", DARK = "#2b2e35";
+        const stripes = (f, top) => {
+          K.band(f, 0, 1.1, BASE);
+          for (let y = 2.0; y < top - 0.6; y += 1.1) K.band(f, y, y + 0.3, STONE);
+          K.band(f, top - 0.4, top, STONE);
         };
-        /* The buildings come alight one after another, which is the whole reason to stand
-           here at dusk rather than at noon: `liton` is this building's own moment on the room's
-           clock, read from the record, and a prop without one simply follows the night. */
-        const p = dayPhase();
-        const ease01 = (v) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
-        /* Night is one span and it crosses midnight, so "how far past this building's moment" has
-           to be measured round the clock and not along it. Measured straight, a building lit at
-           0.88 went dark again the moment the phase wrapped to 0.00, because 0.00 - 0.88 is
-           negative -- the port switched itself off at midnight and came back on at dawn. Counted
-           from nightfall at 0.70 instead, a building stays lit from its own moment until the
-           daylight takes it back. */
-        const np = ((((p - 0.70) % 1) + 1) % 1) / 0.60;
-        const at = (m.liton - 0.70) / 0.60;
-        const N = m.liton ? NIGHT() * ease01((np - at) / 0.05) : NIGHT();
-        const hw = w / 2, BAYS = 3;
-        for (let i = 0; i < BAYS; i++) {
-          const u = -hw * 0.7 + (i + 0.5) * (w * 0.7 / BAYS);
-          Q([F(u - w * 0.075, h * 0.10), F(u + w * 0.075, h * 0.10),
-             F(u + w * 0.075, h * 0.40), F(u - w * 0.075, h * 0.40)],
-            `rgba(255,206,134,${(0.04 + 0.55 * N).toFixed(3)})`, 1.0 + 0.35 * N);
-        }
-        Q([F(-hw, h * 0.58), F(hw, h * 0.58), F(hw, h * 0.62), F(-hw, h * 0.62)],
-          mix(base, -0.34), lit * 0.85);
-        // The steeple: square drum, octagonal stage, then the spire.
-        const tx = m.x, tz = m.z;
-        const stack = (r0, y0, y1, seg, shade) => {
-          for (let i = 0; i < seg; i++) {
-            const a0 = (i / seg) * Math.PI * 2 + Math.PI / seg;
-            const a1 = ((i + 1) / seg) * Math.PI * 2 + Math.PI / seg;
-            const sh = shade + 0.18 * Math.max(0, -Math.sin(a0));
-            const q = add(C, [[tx + r0 * Math.cos(a0), m.y + y0, tz + r0 * Math.sin(a0)],
-                              [tx + r0 * Math.cos(a1), m.y + y0, tz + r0 * Math.sin(a1)],
-                              [tx + r0 * Math.cos(a1), m.y + y1, tz + r0 * Math.sin(a1)],
-                              [tx + r0 * Math.cos(a0), m.y + y1, tz + r0 * Math.sin(a0)]],
-                            ZERO8, "flat", mix(base, sh));
-            if (q) { q.lit = lit * 0.9; drawn.push(q); }
+        // From far off the stripes are under a pixel; the wall then takes their mix rather than reading
+        // as plain red brick.
+        const BRICKW = K.seen(0.3) ? BRICK : "#b4705f";
+        const sash = { frame: STONE, fw: 0.12, bars: SASH, rows: [0.6] };
+        // The main block, its left bay projecting under the gable.
+        const foot = [[-15.45, -9.05], [7.0, -9.05], [7.0, 9.05], [-7.0, 9.05], [-7.0, 10.5], [-15.45, 10.5]];
+        K.walls(foot, 0, 10.0, BRICKW, 3.0, (f) => {
+          stripes(f, 10.0);
+          const front = f.on[1] > 0.9;
+          if (front && f.len < 10) {
+            // under the gable: two sashes below, a broad three-light window above
+            K.win(f, f.len / 2 - 1.9, 1.2, 1.7, 2.4, sash);
+            K.win(f, f.len / 2 + 1.9, 1.2, 1.7, 2.4, sash);
+            K.win(f, f.len / 2, 3.6, 5.9, 2.2, { frame: STONE, fw: 0.14, bars: SASH, cols: 3, rows: [0.62] });
+          } else if (front) {
+            // the entrance under its stone arch, and the windows either side
+            K.win(f, 3.5, 1.7, 1.1, 3.4, { frame: STONE, fw: 0.42, rise: 0.85, glass: "#d9d4c8", lamp: 0.5 });
+            [1.4, 5.6].forEach((t) => K.win(f, t, 0.95, 1.7, 2.3, sash));
+            [1.4, 3.5, 5.6].forEach((t) => K.win(f, t, 0.9, 5.9, 1.9, sash));
+          } else if (f.len > 4) {
+            const n = Math.max(2, Math.round(f.len / 3.4));
+            for (let i = 0; i < n; i++) {
+              const t = (f.len * (i + 0.5)) / n;
+              K.win(f, t, 1.0, 1.7, 2.3, sash);
+              K.win(f, t, 1.0, 5.9, 2.0, sash);
+            }
           }
-        };
-        const r = w * 0.17;
-        stack(r, h * 0.62, h * 0.92, 4, -0.10);              // square
-        stack(r * 0.78, h * 0.92, h * 1.16, 8, -0.06);       // octagonal
-        for (let i = 0; i < 8; i++) {                        // the spire, eight faces to a point
-          const a0 = (i / 8) * Math.PI * 2 + Math.PI / 8, a1 = ((i + 1) / 8) * Math.PI * 2 + Math.PI / 8;
-          const rr = r * 0.78;
-          const q = add(C, [[tx + rr * Math.cos(a0), m.y + h * 1.16, tz + rr * Math.sin(a0)],
-                            [tx + rr * Math.cos(a1), m.y + h * 1.16, tz + rr * Math.sin(a1)],
-                            [tx, m.y + h * 1.62, tz]], ZERO8, "flat", mix(base, -0.02));
-          if (q) { q.lit = lit * 0.95; drawn.push(q); }
+        }, [1]);
+        // The main block's right wall shows only in front of the wing and above it.
+        K.walls([[7.0, 7.0], [7.4, 7.0], [7.4, 9.05], [7.0, 9.05]], 0, 10.0, BRICKW, 9, (f) => stripes(f, 10.0), [3]);
+        // The lower wing to the right.
+        const wing = [[7.0, -9.05], [15.45, -9.05], [15.45, 7.0], [7.0, 7.0]];
+        K.walls(wing, 0, 8.0, BRICKW, 3.0, (f) => {
+          stripes(f, 8.0);
+          const n = Math.max(2, Math.round(f.len / 3.2));
+          for (let i = 0; i < n; i++) {
+            const t = (f.len * (i + 0.5)) / n;
+            K.win(f, t, 0.95, 1.7, 2.2, sash);
+            K.win(f, t, 0.95, 5.0, 1.9, sash);
+          }
+        }, [3]);
+        K.roof(7.0, 15.75, -9.35, 7.3, 8.0, 3.3, ROOF);
+        K.dormer(11.4, 5.6, 0.9, 0.8, 7.3, 8.0, 2.9, 11.3, RENDER, ROOF, { round: true, frame: SASH, rise: 0.45 });
+        // The main roof, the half-timbered gable over the left bay, the dormers and the chimneys.
+        K.roof(-15.75, 7.3, -9.35, 9.35, 10.0, 5.0, ROOF);
+        [-4.6, -1.6].forEach((uc) => K.dormer(uc, 7.4, 0.9, 0.85, 9.35, 10.0, 0, 15.0, RENDER, ROOF,
+                                               { round: true, frame: SASH, rise: 0.45 }));
+        // The cross-gable's ridge meets the hipped roof at its own ridge (15 m), as the photographs
+        // show it; run higher and longer, it stood up out of the roof as a slab seen from the side.
+        const gq = K.face([[-15.45, 10.5, 10.0], [-7.0, 10.5, 10.0], [-11.22, 10.5, 15.0]], RENDER, [-11.2, 5, 11], 1, -20);
+        K.face([[-15.85, 10.9, 9.65], [-11.22, 10.9, 15.25], [-11.22, 0.3, 15.25], [-15.85, 0.3, 9.65]], ROOF, [-11.2, 5, 10], 1, -18);
+        K.face([[-6.6, 10.9, 9.65], [-11.22, 10.9, 15.25], [-11.22, 0.3, 15.25], [-6.6, 0.3, 9.65]], ROOF, [-11.2, 5, 10], 1, -18);
+        if (gq) {
+          const g = K.plane(-15.45, 10.5, gq);
+          const tb = (pts) => { g.at(); K.put(pts.map(([t, y]) => g.F(t, y, 0.06)), K.mix(TIMBER, g.shade), lit); };
+          tb([[0.3, 10.75], [8.15, 10.75], [8.15, 11.05], [0.3, 11.05]]);           // the tie beam
+          tb([[4.08, 11.05], [4.37, 11.05], [4.37, 14.7], [4.08, 14.7]]);          // the king post
+          tb([[0.9, 11.05], [1.2, 11.05], [3.95, 13.6], [3.65, 13.6]]);            // the braces
+          tb([[7.55, 11.05], [7.25, 11.05], [4.5, 13.6], [4.8, 13.6]]);
+          tb([[0.0, 9.95], [0.45, 9.95], [4.42, 14.85], [4.05, 15.15]]);           // the bargeboards
+          tb([[8.45, 9.95], [8.0, 9.95], [4.03, 14.85], [4.4, 15.15]]);
+          K.win(g, 4.22, 1.0, 11.6, 1.15, { frame: SASH, fw: 0.1, bars: SASH, rows: [0.55] });
+          K.done();
         }
+        // The balcony in front of the bay: a slab and its stone balustrade.
+        K.walls([[-13.1, 10.5], [-9.4, 10.5], [-9.4, 11.5], [-13.1, 11.5]], 4.95, 5.95, STONE, 9, (f) => {
+          const n = Math.max(1, Math.round(f.len / 0.55));
+          for (let i = 0; i < n; i++) K.rect(f, (f.len * (i + 0.25)) / n, (f.len * (i + 0.75)) / n, 5.2, 5.75, "#8d8a83");
+        }, [0], -16);
+        [[-6.2, -1.6, 10.0, 17.3], [12.0, -3.0, 8.0, 13.6]].forEach(([cu, cv, y0, y1]) => {
+          const ch = [[cu - 0.45, cv - 0.45], [cu + 0.45, cv - 0.45], [cu + 0.45, cv + 0.45], [cu - 0.45, cv + 0.45]];
+          K.walls(ch, y0, y1, BRICK, 9, (f) => K.band(f, y1 - 0.45, y1, STONE), null, -22);
+          K.lid(ch, y1, STONE, -22);
+        });
+        // The tower: banded polygon, timbered frieze, eaves, the spire with its gablet, the finial.
+        const tu = 3.5, tv = 8.3, rot = Math.PI / 8, body = K.ngon(tu, tv, 3.0, 8, rot);
+        K.walls(body, 0, 12.4, BRICKW, 9, (f) => {
+          stripes(f, 12.4);
+          if (f.on[1] > 0.3) {
+            K.win(f, f.len / 2, 0.85, 1.8, 2.2, sash);
+            K.win(f, f.len / 2, 0.85, 5.9, 2.0, sash);
+            K.win(f, f.len / 2, 0.75, 9.3, 1.6, sash);
+          }
+        }, null, -30);
+        K.walls(body, 12.4, 13.6, RENDER, 9, (f) => {
+          K.rect(f, 0, 0.18, 12.4, 13.6, TIMBER);
+          K.put([f.F(0.3, 12.45), f.F(0.55, 12.45), f.F(f.len - 0.3, 13.55), f.F(f.len - 0.55, 13.55)], K.mix(TIMBER, f.shade), lit);
+        }, null, -31);
+        const eave = K.ngon(tu, tv, 3.45, 8, rot);
+        K.walls(eave, 13.6, 13.8, DARK, 9, null, null, -32);
+        K.spire(eave, 13.8, [tu, tv, 23.0], ROOF, -33);
+        // the gablet on the spire's front face
+        const gb = K.face([[tu - 0.75, tv + 3.05, 14.3], [tu + 0.75, tv + 3.05, 14.3], [tu + 0.75, tv + 3.05, 15.5],
+                           [tu, tv + 3.05, 16.5], [tu - 0.75, tv + 3.05, 15.5]], RENDER, [tu, tv, 14.5], 1, -36);
+        if (gb) {
+          const g = K.plane(tu - 0.75, tv + 3.05, gb);
+          K.win(g, 0.75, 0.62, 14.55, 1.05, { frame: SASH, fw: 0.08, rise: 0.31, lamp: 0.5 });
+          K.done();
+        }
+        K.spike(tu, tv, 23.0, 24.5, 0.08, DARK, -37);
       } else if (shape === "stall") {
         /* A market stall at table scale: a counter, a dark opening under a striped awning. The
            awning slopes the way an awning does and carries the stripes a market reads by; nothing
@@ -5820,8 +6236,11 @@ function leaveOverlay(root, trigger) {
       /* A prop carried above the floor — a model on a table, a frame or a vent on a wall — has to
          paint after the surface that carries it: the painter sorts by camera depth alone, and one
          big tabletop or wall quad otherwise swallows the thing standing on it. The bias is a nudge
-         in the sort key, not in the geometry; floor props (y 0) keep the plain order. */
-      if (m.y > 40) drawn.forEach((q) => { q.z -= 70; });
+         in the sort key, not in the geometry; floor props (y 0) keep the plain order. The key is
+         `sz` where a painter set one (round 36: a built model files each window under its wall's
+         bay with `sz`), so the nudge moves that too -- moving only `z` slid every wall 70 cm in front
+         of its own windows and painted them out. */
+      if (m.y > 40) drawn.forEach((q) => { q.z -= 70; if (q.sz !== undefined) q.sz -= 70; });
       m.shown = false;
       if (!drawn.length) { m.el.style.visibility = "hidden"; m.el.tabIndex = -1; return; }
       const q = drawn[0];

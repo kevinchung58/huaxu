@@ -178,6 +178,14 @@ a visitor, twice**. The harness proves paint; only a read proves place. Known fa
 | a parapet whose posts are cut off by the wall behind them | one long wall quad per segment beside short posts | cut the wall, its coping and its ironwork cell by cell between the posts |
 | ironwork that greys the view through it | an overlay tile taking the air, night and sun washes over its clear parts | `a` 0, `n`, `d0` on the overlay prim; its colour is its own |
 | a white wireframe down a side tunnel | adjacent world panels filled one by one, the sky showing through each anti-aliased seam | one dark underlay per face, the whole run long, a layer under the panels |
+| a set of buildings that "cannot be seen to be beautiful" on one table | every model at the table's scale (Moji at 1.5 cm/m: a building a few centimetres high) | take them apart onto stands of their own at one larger scale (1:25), so sizes still compare; the table keeps the layout (round 36) |
+| a built model that reads as a box from two metres | a box with decals on one face, and fronts that can only face down the lane | `modelKit`: the model's own (u, v, y) frame turned by `ry`, walls cut into bays, real roofs, dormers, towers |
+| every window of a model on a stand painted out by its own walls | the `y > 40` sort nudge moved `z` and left the `sz` a painter set | the nudge moves the sort key (`sz` too) |
+| the windows at the far end of a long front lost | a long wall sorted at its middle | bays; each window files under its own bay (`f.at(t)`), never by its own depth |
+| a cross-gable standing out of a roof as a slab, seen from the side | its ridge higher and its roof deeper than the hipped roof it meets | the gable's ridge meets the roof's own ridge |
+| context blocks on a site table read as unfinished buildings | white boxes at the eaves' heights | footprints as low plates; the models are elsewhere in the room |
+| paving stones a metre across under a model | a world-scale ground tile on a 1:25 stand | a plain board colour (`top: "#hex"`) |
+| the deepest stop fails the luma gate on a longer tour | the tour runs in real time into the room's own night (Fukuoka's day is 240 s) | count the clock before blaming the frame; drop a redundant stop, never brighten for the number |
 
 Write what each read caught into TODO with the round; a critique pass that reports no catches
 is a pass that was not read.

@@ -1670,8 +1670,8 @@ for it, tile in zip(ALBUM_ITEMS, album_tiles):
 PLACE_GROUP_NOTES = {
     "toronto": "A dark hall of lit tables: the city, its falls and its markets, drawn small.",
     "tokyo": "Nakamise-dori at night: shuttered vermilion rows from Kaminarimon to a lit Hozomon.",
-    "fukuoka": "Moji Port on a table: the station, the customhouse, the Blue Wing drawbridge "
-                "and the ships on the Kanmon Strait, at dusk.",
+    "fukuoka": "Moji Port in a model hall: the station, the customhouse and their neighbours on "
+                "stands of their own, then the Blue Wing and the ships on the Kanmon Strait, at dusk.",
 }
 
 
@@ -2082,6 +2082,46 @@ MOJI_STRAIT = {
               {"from": [-4200, 5000], "to": [1300, 4700], "len": 170, "period": 110, "phase": 0.5}],
 }
 
+
+# Round 36: the four buildings left the table for their own stands; the table keeps where they stand
+# as their footprints -- OpenStreetMap's outlines (lon, lat) at the table's 1.5 cm to the metre, laid
+# on the board as low plates the way a site plan marks a building it does not model. Boxes at their
+# eaves' heights were tried first and read as four unfinished buildings; the models are down the hall.
+MOJI_OUTLINES = (
+    # Mojiko Station, relation 2532442 (outer ways 188008075, 188008098)
+    ((130.9610539, 33.9451938), (130.9611674, 33.9451308), (130.9614933, 33.9449313), (130.9616477, 33.9448255),
+     (130.9618394, 33.9450407), (130.9617446, 33.9451002), (130.9618081, 33.9451705), (130.9614982, 33.9453634),
+     (130.9614526, 33.9453136), (130.9612892, 33.9454064)),
+    # the former Osaka Shosen building, way 627252015
+    ((130.9620254, 33.9461348), (130.962158, 33.9460547), (130.9622006, 33.9461033), (130.9622885, 33.9460502),
+     (130.9622446, 33.9460003), (130.9623058, 33.9459634), (130.9624488, 33.9461263), (130.9621673, 33.9462964)),
+    # the former Moji Customs, way 976479446
+    ((130.9633787, 33.9476961), (130.9634407, 33.9476671), (130.9634617, 33.9476974), (130.9634743, 33.9477155),
+     (130.9637089, 33.947604), (130.9637901, 33.9477203), (130.9637291, 33.9477495), (130.9637213, 33.9477381),
+     (130.9634672, 33.9478621), (130.9634458, 33.9478312), (130.9634659, 33.9478212)),
+    # the Dalian Friendship Memorial Hall, way 823695331
+    ((130.9641855, 33.9479807), (130.9642155, 33.9479872), (130.9642328, 33.9480147), (130.9642789, 33.9479750),
+     (130.9643405, 33.9480243), (130.9642897, 33.9480681), (130.9642984, 33.9480833), (130.9642401, 33.9481056),
+     (130.9642557, 33.9481336), (130.9641459, 33.9481757), (130.9641420, 33.9481687), (130.9641170, 33.9481686),
+     (130.9640928, 33.9481583), (130.9640739, 33.9481665), (130.9640456, 33.9481553), (130.9640499, 33.9481255),
+     (130.9640394, 33.9481070), (130.9640486, 33.9480754), (130.9640671, 33.9480655), (130.9640714, 33.9480400),
+     (130.9640972, 33.9480262), (130.9641147, 33.9480255), (130.9641179, 33.9480311), (130.9641358, 33.9480239),
+     (130.9641248, 33.9480051), (130.9641520, 33.9479942)),
+)
+MOJI_BLOCKS = [{"p": [list(moji_xy(lat, lon)) for lon, lat in ring], "h": 1.2}
+               for ring in MOJI_OUTLINES]
+
+
+def _moji_massing(name, block, title):
+    """One context block as its own prop, its box the outline's own, so it is sited (and checked for
+    clashes) where it stands and not across the whole table."""
+    xs, zs = [p[0] for p in block["p"]], [p[1] for p in block["p"]]
+    return {"id": f"massing-{name}", "kind": "massing", "x": round((min(xs) + max(xs)) / 2, 1),
+            "z": round((min(zs) + max(zs)) / 2 / Z_SCALE, 2), "y": 80, "ry": 0,
+            "w": max(xs) - min(xs), "h": block["h"], "d": max(zs) - min(zs), "blocks": [block],
+            "title": title,
+            "hint": "Its footprint, in the outline the map gives it, at the table's scale. Its model "
+                    "is on a stand down the hall."}
 
 # ---- Surveyed worlds (round 33) ------------------------------------------------------------------
 # The three Toronto-owned child spaces were walked in round 33 against the standard round 32 set
@@ -3226,8 +3266,9 @@ DISTRICTS = [
              "glow": [{"r": 150, "k": 0.7, "dy": 235}],
              "leave": ROOM_BY_ID["fukuoka"]["page"],
              "title": "The door onto Fukuoka",
-             "hint": "It opens onto Moji Port: a harbour on a table, at dusk, with a drawbridge "
-                     "that stands open for a ship."},
+             "hint": "It opens onto Moji Port: a hall of models at dusk -- the port's old buildings "
+                     "on stands of their own, and the harbour on a table, with a drawbridge that "
+                     "stands open for a ship."},
             # The street's own furniture, and the two poles the wires run from.
             {"id": "pole-west", "kind": "utility", "x": -330, "z": 180, "y": 0, "ry": 90,
              "title": "The pole the wires are strung from",
@@ -3539,8 +3580,8 @@ DISTRICTS = [
             {"label": "Tokyo", "note": "Nakamise-dori after closing: the shuttered rows, Kaminarimon "
                                        "behind, Hozomon lit at the far end.",
              "state": "Open — the middle door, on the right."},
-            {"label": "Fukuoka", "note": "Moji Port on a table: the station, the customhouse, the "
-                                         "Blue Wing and the ships, at dusk.",
+            {"label": "Fukuoka", "note": "Moji Port in a model hall: the station and the customhouse "
+                                         "on their own stands, the Blue Wing and the ships, at dusk.",
              "state": "Open — the last door on the left."},
         ],
         # The stations are the places the street is worth standing in, and the last four are the
@@ -3744,16 +3785,18 @@ DISTRICTS = [
                   "owner was in this place.",
     },
     {
-        # Moji Port on a table (round 32: laid out from the map; the sources, the measurement table
-        # and the inventory are in TODO section 0n). The owner's brief stands -- the station, the
-        # customhouse, the Blue Wing and the ships on the Kanmon Strait, a table model, dusk into
-        # night, one yatai -- and what changed is that every model now stands where OpenStreetMap
-        # puts it, at one scale (1.5 cm to the metre), read from the head of the No. 1 basin looking
-        # north-west: the basin in front, the Blue Wing across its mouth, the strait beyond, the
-        # Shimonoseki shore on the far left and the Kanmon Bridge far right (NAVITIME: from the
-        # bridge, "the Kanmon Bridge on the right"). The first table stood all four buildings in one
-        # row at the far edge, two of them on the wrong side of the basin, in a hall still dressed as
-        # the alley it had been. `moji_xy` turns each OSM coordinate into the table's frame.
+        # Moji Port in a model hall (round 32: laid out from the map; round 36: the models taken
+        # apart -- sources in TODO sections 0n and 0r). The owner's brief stands -- the station, the
+        # customhouse, the Blue Wing and the ships on the Kanmon Strait, models, dusk into night, one
+        # yatai. Round 32 stood every model where OpenStreetMap puts it on one table at 1.5 cm to the
+        # metre; at that scale each building was a block a few centimetres high, and the owner asked
+        # for them apart ("門司港那邊模型要拆開", "要分開模型 感覺看不出漂亮"). So the four buildings
+        # stand down the hall on stands of their own at 1:25 -- south-west of the basin on the left,
+        # north-east on the right -- and the table at the end keeps the port's layout at 1.5 cm to the
+        # metre: the basin, the Blue Wing across its mouth, the four buildings' footprints, and the
+        # strait beyond the far wall with the Shimonoseki shore far left and the Kanmon Bridge far right
+        # (NAVITIME: from the bridge, "the Kanmon Bridge on the right"). `moji_xy` turns each OSM
+        # coordinate into the table's frame.
         "id": "fukuoka", "label": "Fukuoka",
         "page": ROOM_BY_ID["fukuoka"]["page"],
         "plates": ROOM_BY_ID["fukuoka"]["plates"],
@@ -3761,31 +3804,42 @@ DISTRICTS = [
         # the table lit, and the far wall open onto the strait at the table's own scale. 8.8 m wide so
         # a walker can still go round the true-scale table by the right-hand aisle.
         "lane": {"w": 880, "d": 900, "ceil": 620, "back": 300},
-        "purpose": "Moji Port on a table, laid out from the map: the station, the customhouse, the "
-                   "Blue Wing and the ships on the Kanmon Strait, from dusk into night",
+        "purpose": "Moji Port in a model hall: the station, the customhouse and their neighbours on "
+                   "stands of their own, and the port laid out from the map with the Blue Wing and "
+                   "the ships on the Kanmon Strait, from dusk into night",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/fukuoka-cover.jpg",
-        "cover_caption": "Moji Port in one sheet: the wooden station, the brick customhouse, the "
-                        "Blue Wing standing open, and the strait beyond it.",
-        "blurb": "The port at model scale, from the head of the basin. The Blue Wing makes its last "
-                 "opening of the day at four, the strait keeps moving, and after dusk the buildings "
+        "cover_caption": "Moji Port in one sheet, a frame of the hall after dusk: the station lit on "
+                        "its stand at 1:25 under its drawn plate, the Osaka Shosen building beyond, "
+                        "and the strait at the far end.",
+        "blurb": "A hall of models: the station, the old customhouse, the Osaka Shosen building and "
+                 "the Dalian hall on stands of their own, then the port itself, where the Blue Wing "
+                 "makes its last opening at four and the strait keeps moving. After dusk the buildings "
                  "come alight one after another.",
-        "clad_note": (" The room is a dark model hall: plain walls, a lit table, and on it Moji Port "
-                      "laid out from the map at one scale -- the station, the former Osaka Shosen "
-                      "building, the basin with the Blue Wing across its mouth, the old customhouse, "
-                      "the Dalian memorial building and the tall Retro tower behind them. Nothing on "
-                      "any of it carries a word."),
+        "clad_note": (" The room is a model hall: plain walls and lit stands. Down the left, Moji Port "
+                      "Station -- a long cream front with copper-and-slate pavilions and a clock -- and "
+                      "the orange brick Osaka Shosen building with its octagonal tower; down the right, "
+                      "the red brick customhouse with its three arched doors and the striped Dalian "
+                      "hall with its tall dark spire, all four at 1:25. At the end a table lays the "
+                      "port out from the map: the basin with the Blue Wing across its mouth, the four "
+                      "buildings' footprints and the tall Retro tower. Nothing on any of it carries "
+                      "a word."),
         "sight_note": (" Past the table the far wall opens onto the Kanmon Strait at the same scale: "
                        "ships crossing, the Shimonoseki shore with the Kaikyo Yume Tower to the left, "
                        "and the Kanmon Bridge to the right."),
         "objects": [
             {"id": "plinth-moji", "kind": "plinth", "x": 0, "z": round(2418 / Z_SCALE, 2), "y": 0, "ry": 0,
-             "w": 720, "h": 80, "d": 376, "top": "cityg",
+             "w": 720, "h": 80, "d": 376, "top": "#8d8a82",
              "glow": [{"r": 170, "k": 0.42, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
              "title": "The table the port stands on",
-             "hint": "A lit table at 1.5 cm to the metre. Every model on it stands where the map "
-                     "puts it, and the strait beyond the far wall is the same scale."},
+             "hint": "A lit table at 1.5 cm to the metre, laid out from the map: the basin, the Blue "
+                     "Wing, the four buildings' outlines, and the strait beyond the far wall at the "
+                     "same scale."},
+            *[_moji_massing(n, b, t) for n, b, t in zip(
+                ("station", "osakashosen", "customhouse", "dalianhall"), MOJI_BLOCKS,
+                ("Where the station stands", "Where the Osaka Shosen building stands",
+                 "Where the customhouse stands", "Where the Dalian hall stands"))],
             # The No. 1 basin between the hotel quay and the customhouse, from its head to the Blue
             # Wing; and the strait, which the table's far edge hands to the backdrop.
             {"id": "pool-moji", "kind": "pool", "x": 115, "z": round(2378 / Z_SCALE, 2), "y": 80, "ry": 0,
@@ -3812,32 +3866,74 @@ DISTRICTS = [
              "title": "A harbour boat",
              "hint": "A boat of the basin's own size, using the openings: out under the raised "
                      "leaves on one, back in on the next. The big ships keep to the strait."},
-            {"id": "stationfront-mj", "kind": "stationfront", "x": -300, "z": round(2305 / Z_SCALE, 2),
-             "y": 80, "ry": 0, "liton": 0.76, "w": 68, "h": 20, "d": 30,
+            # Round 36: the owner asked for the models to come apart ("門司港那邊模型要拆開") -- on the
+            # one table every building was a block a few centimetres high. The four stand on stands of
+            # their own down the hall, all at one scale, 1:25, so the station is still twice the length
+            # of the others, as it is: south-west of the basin on your left (the station, then the Osaka
+            # Shosen building nearer the water), north-east on your right (the customhouse at the
+            # basin's mouth, the Dalian hall beside it). Each is turned on its stand to show its front to
+            # the walk. Outlines from OpenStreetMap, floor areas and storeys from Wikipedia and the
+            # Agency for Cultural Affairs, the rest read off photographs (TODO section 0r). The port
+            # table at the end keeps the basin, the Blue Wing and the strait at 1.5 cm to the metre.
+            {"id": "plinth-station", "kind": "plinth", "x": -305, "z": round(830 / Z_SCALE, 2), "y": 0, "ry": 0,
+             "w": 245, "h": 100, "d": 225, "top": "#8d8a82",
+             "glow": [{"r": 160, "k": 0.36, "dy": 116, "tint": "rgba(255,214,170,0.34)"}],
+             "title": "The station's stand",
+             "hint": "Moji Port Station at 1:25, on a lit stand of its own. The four buildings of the port "
+                     "stand down this hall at the same scale, so their sizes compare as they do on the "
+                     "quay."},
+            {"id": "stationfront-mj", "kind": "stationfront", "x": -305, "z": round(830 / Z_SCALE, 2),
+             "y": 100, "ry": 40, "liton": 0.76, "w": 240, "h": 72, "d": 62.4,
              "title": "Moji Port Station",
-             "hint": "Opened in 1914 and still the station it was: a wooden two-storey in the "
-                     "neo-Renaissance manner, symmetric, its centre shaped like the character "
-                     "\u9580 -- a gate, the first half of the port's own name. In 1988 the first "
-                     "station building in Japan designated an Important Cultural Property; restored "
-                     "2012 to 2019. It stands south-west of the basin, the far left of the table."},
-            {"id": "osakashosen-mj", "kind": "osakashosen", "x": -127, "z": round(2350 / Z_SCALE, 2),
-             "y": 80, "ry": 0, "liton": 0.84, "w": 58, "h": 27, "d": 40,
-             "title": "The former Osaka Shosen building",
-             "hint": "Known by two things, and both are drawn: the tall round-headed arches across "
-                     "its face and the octagonal tower on its corner. It stands between the station "
-                     "and the basin."},
-            {"id": "customhouse-mj", "kind": "customhouse", "x": 193, "z": round(2406 / Z_SCALE, 2), "y": 80,
-             "ry": 0, "liton": 0.80, "w": 57, "h": 21, "d": 44,
+             "hint": "Opened in 1914 and still the station it was: timber rendered to look like stone, "
+                     "neo-Renaissance and dead symmetric, its two-storey centre made to read as the "
+                     "character \\u9580 -- a gate, the first half of the port's own name -- with a single "
+                     "storey either side. The gate's posts are the corner pavilions, with copper friezes "
+                     "and slate caps; the clock sits over the pediment. In 1988 the first station building "
+                     "in Japan named an Important Cultural Property; restored 2012 to 2019, when the front "
+                     "canopy it never had was taken off. At 1:25, about 60 m long; the parts' sizes are "
+                     "read from photographs and approximate."},
+            {"id": "plinth-customhouse", "kind": "plinth", "x": 339, "z": round(1180 / Z_SCALE, 2), "y": 0,
+             "ry": 0, "w": 178, "h": 100, "d": 172, "top": "#8d8a82",
+             "glow": [{"r": 140, "k": 0.36, "dy": 116, "tint": "rgba(255,214,170,0.34)"}],
+             "title": "The customhouse's stand",
+             "hint": "The former Moji Customs house at 1:25, on a lit stand of its own."},
+            {"id": "customhouse-mj", "kind": "customhouse", "x": 339, "z": round(1180 / Z_SCALE, 2), "y": 100,
+             "ry": -40, "liton": 0.80, "w": 135.2, "h": 56.4, "d": 86,
              "title": "The former Moji Customhouse",
-             "hint": "1912, red brick over a timber frame, in the Renaissance manner; Tsumaki "
-                     "Yorinaka had a hand in it. It stands at the basin's mouth, at the north end "
-                     "of the Blue Wing."},
-            {"id": "dalianhall-mj", "kind": "dalianhall", "x": 247, "z": round(2392 / Z_SCALE, 2), "y": 80,
-             "ry": 0, "liton": 0.88, "w": 37, "h": 30, "d": 30,
-             "title": "The Dalian Friendship Memorial building",
-             "hint": "Built in 1995 as a copy of the Russian-era steamship office in Dalian, red "
-                     "brick and white stone, with its composite steeple. It stands beside the old "
-                     "customhouse on the basin's north side."},
+             "hint": "Built in 1912 after the first customs house burned, red brick in the Renaissance "
+                     "manner; restored by the city and reopened in 1994. Two storeys -- the observation "
+                     "room is upstairs, behind ordinary windows -- three arched doors between corner "
+                     "pavilions, white stone courses, a hipped slate roof. It stands at the basin's "
+                     "mouth, at the north end of the Blue Wing. At 1:25, 33.8 m long as the map draws it; "
+                     "its heights are approximate."},
+            {"id": "plinth-osakashosen", "kind": "plinth", "x": -340, "z": round(1480 / Z_SCALE, 2), "y": 0,
+             "ry": 0, "w": 176, "h": 100, "d": 172, "top": "#8d8a82",
+             "glow": [{"r": 140, "k": 0.36, "dy": 116, "tint": "rgba(255,214,170,0.34)"}],
+             "title": "The Osaka Shosen building's stand",
+             "hint": "The former Osaka Shosen building at 1:25, on a lit stand of its own."},
+            {"id": "osakashosen-mj", "kind": "osakashosen", "x": -340, "z": round(1480 / Z_SCALE, 2),
+             "y": 100, "ry": 40, "liton": 0.84, "w": 128.4, "h": 87.6, "d": 89.6,
+             "title": "The former Osaka Shosen building",
+             "hint": "The shipping line's Moji branch, 1917: two storeys of orange facing brick banded "
+                     "with grey stone, and on its cut corner a window under a great arch with an "
+                     "octagonal tower over it -- a balcony, a lantern of windows, a green dome. When it was "
+                     "built its north side met the sea and passengers boarded from its own pier. It "
+                     "stands between the station and the basin. At 1:25, 32.1 m long as the map draws "
+                     "it; its heights are approximate."},
+            {"id": "plinth-dalianhall", "kind": "plinth", "x": 344, "z": round(1780 / Z_SCALE, 2), "y": 0,
+             "ry": 0, "w": 168, "h": 100, "d": 164, "top": "#8d8a82",
+             "glow": [{"r": 140, "k": 0.36, "dy": 116, "tint": "rgba(255,214,170,0.34)"}],
+             "title": "The Dalian hall's stand",
+             "hint": "The Dalian Friendship Memorial Hall at 1:25, on a lit stand of its own."},
+            {"id": "dalianhall-mj", "kind": "dalianhall", "x": 344, "z": round(1780 / Z_SCALE, 2), "y": 100,
+             "ry": -40, "liton": 0.88, "w": 123.6, "h": 98, "d": 81.4,
+             "title": "The Dalian Friendship Memorial Hall",
+             "hint": "Built in 1995, for fifteen years of Kitakyushu's friendship with Dalian, as a copy "
+                     "of the steamship office the Russian Empire put up there in 1902: red brick striped "
+                     "with white stone, a half-timbered gable, and a polygonal tower under a tall dark "
+                     "spire. It stands beside the old customhouse on the basin's north side. At 1:25, "
+                     "30.9 m long as the map draws it; its heights are approximate."},
             {"id": "skyline-retro", "kind": "skyline", "x": 331, "z": round(2434 / Z_SCALE, 2), "y": 80,
              "ry": 0, "liton": 0.82, "w": 34, "h": 190, "d": 30,
              "towers": [{"dx": 0, "dz": 0, "w": 34, "d": 30, "h": 190, "c": "#d9d5cb"}],
@@ -3853,13 +3949,16 @@ DISTRICTS = [
              "hint": "Kept because the owner asked for one, at the table's scale: about three metres "
                      "of stall. Nothing is claimed about what it sells."},
         ],
-        # The hall's light: one warm spot over the table and a dim one over the walk.
+        # The hall's light: a warm spot over each stand and over the table, and a dim one over the walk.
         "lamps": [
             {"x": 0, "y": 560, "z": round(2418 / Z_SCALE, 2), "r": 520, "k": 0.5, "bulb": False,
              "tint": "rgba(255,226,186,0.20)", "of": "plinth-moji"},
             {"x": 0, "y": 560, "z": 160, "r": 300, "k": 0.22,
              "tint": "rgba(206,218,240,0.16)"},
-        ],
+        ] + [{"x": x, "y": 430, "z": round(z / Z_SCALE, 2), "r": 230, "k": 0.34, "bulb": False,
+              "tint": "rgba(255,226,186,0.18)", "of": of}
+             for x, z, of in ((-290, 830, "plinth-station"), (325, 1180, "plinth-customhouse"),
+                              (-325, 1480, "plinth-osakashosen"), (330, 1780, "plinth-dalianhall"))],
         "beams": [90, 240, 340],
         # A model hall's walls: the gallery base and plaster the Toronto hall wears, dark.
         "surfaces": [
@@ -3883,19 +3982,21 @@ DISTRICTS = [
         "frames": [
             # The port's sub-places: the building it is named for, the bridge it is known for, and
             # the water it stands on, hung on the hall's walls as drawn plates.
-            {"id": "station", "src": "IMG/fukuoka-1.jpg", "x": -436, "z": 330, "y": 120, "ry": 90,
+            {"id": "station", "src": "IMG/fukuoka-1.jpg", "x": -436, "z": round(830 / Z_SCALE, 2), "y": 185, "ry": 90,
              "title": "Moji Port Station",
-             "alt": "Illustration of a small wooden two-storey railway station at dusk, symmetric, "
-                    "its centre shaped like a gate and a few windows lit.",
-             "caption": "The building the district is named after, drawn: two storeys of painted "
-                        "timber, dead symmetric, and a centre that reads as a gate."},
-            {"id": "bridge", "src": "IMG/fukuoka-2.jpg", "x": 436, "z": 470, "y": 150, "ry": -90,
+             "alt": "Illustration of a long symmetric station at dusk: a cream two-storey centre "
+                    "between two pavilions with green copper friezes and slate caps, a clock over the "
+                    "pediment, single-storey wings either side, the windows lit.",
+             "caption": "The building the district is named after, drawn: a cream front banded in "
+                        "brick red, the gate's two pavilions in copper and slate, the clock over the "
+                        "doors."},
+            {"id": "bridge", "src": "IMG/fukuoka-2.jpg", "x": 436, "z": round(1480 / Z_SCALE, 2), "y": 150, "ry": -90,
              "title": "The Blue Wing, open",
              "alt": "Illustration of a blue pedestrian drawbridge over a harbour basin at dusk, its "
                     "two leaves raised like wings and lit from below.",
              "caption": "The bridge, drawn at the moment it is worth looking at: both leaves up. "
                         "Its last opening is at four; after dark it is lit, and shut."},
-            {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 436, "z": 600, "y": 120, "ry": -90,
+            {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 436, "z": round(2090 / Z_SCALE, 2), "y": 130, "ry": -90,
              "title": "The strait at dusk",
              "alt": "Illustration of a wide strait at dusk seen from a quay, two low cargo ships "
                     "crossing it and lights along the far shore.",
@@ -3904,13 +4005,13 @@ DISTRICTS = [
         ],
         "slots_title": "Places in the port",
         "slots": [
-            {"label": "Fukuoka, the port in one sheet", "note": "The album's cover plate for this "
-                                                                "room. In the hall it is the table "
-                                                                "itself: the station, the basin and "
-                                                                "the strait in one look.",
-             "state": "Held by the port itself, until a photograph of the quay takes the slot."},
-            {"label": "Moji Port Station", "note": "The table's far left, south-west of the basin, "
-                                                   "where the map puts it.",
+            {"label": "Fukuoka, the port in one sheet", "note": "The album's cover for this room, a "
+                                                                "frame of the hall itself after dusk: "
+                                                                "the station on its stand, the hall "
+                                                                "and the strait beyond.",
+             "state": "Held by the hall itself, until a photograph of the quay takes the slot."},
+            {"label": "Moji Port Station", "note": "The first stand on the left, at 1:25; on the "
+                                                   "port table, the far-left block.",
              "state": "Held by a drawn frame; a photograph of the station takes the slot when one "
                       "arrives."},
             {"label": "The Blue Wing, open", "note": "Across the basin's mouth; it opens on the "
@@ -3926,24 +4027,32 @@ DISTRICTS = [
              "state": "Empty by design. A clip needs its caption before it can play here."},
         ],
         "lanterns": [],
-        # The walk comes up the hall to the table's near edge -- the head of the basin -- and the
-        # last stops stand close enough that the far wall's opening takes in both far landmarks.
+        # The walk passes the four stands in turn, each stop standing off one of them where its front
+        # turns to you, then comes up to the port table at the head of the basin, close enough that
+        # the far wall's opening takes in both far landmarks. One stop at the table, not two: the
+        # second stood 45 cm short of the table's edge and showed the same view.
         "stations": [
-            {"z": 60,  "label": "the door of the hall"},
-            {"z": 330, "label": "coming up to the table"},
-            {"z": 560, "label": "at the table's edge, the head of the basin"},
-            {"z": 690, "label": "over the basin, toward the strait"},
-            {"z": 735, "label": "close, beside the station"},
+            {"z": 60, "x": 0, "label": "the door of the hall"},
+            {"z": round(640 / Z_SCALE, 2), "x": -100, "label": "the station, on your left"},
+            {"z": round(990 / Z_SCALE, 2), "x": 110, "label": "the old customhouse, on your right"},
+            {"z": round(1290 / Z_SCALE, 2), "x": -110, "label": "the Osaka Shosen building, on your left"},
+            {"z": round(1590 / Z_SCALE, 2), "x": 115, "label": "the Dalian hall, on your right"},
+            {"z": round(2100 / Z_SCALE, 2), "x": 0, "label": "at the port table, over the basin toward the strait"},
         ],
         "exit": {"id": "curtain-back", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
                  "title": "The curtain at your back", "hint": "It parts onto the street."},
-        "caveat": "Moji Port as a table model, laid out from OpenStreetMap at 1.5 cm to the metre "
-                  "and read from the head of the No. 1 basin looking north-west; the strait beyond "
-                  "the far wall is the same scale. The buildings' heights are their storeys' (the "
-                  "Retro tower's is sourced); the Mitsui Club, the hotel and Kaikyo Plaza are not "
-                  "modelled. The Blue Wing keeps its real timetable, so it is shut after dark. No "
-                  "sign carries lettering and the yatai sells nothing named. Nothing here says the "
-                  "owner was in any of these places.",
+        "caveat": "Moji Port in a model hall. The four buildings stand on their own stands at one "
+                  "scale, 1:25, south-west of the basin on the left and north-east on the right, each "
+                  "turned to show its front; their lengths are OpenStreetMap's outlines, their floor "
+                  "areas and storeys the Agency for Cultural Affairs' and Wikipedia's, and their "
+                  "heights and the sizes of their parts are read from photographs, so approximate. "
+                  "The port table is laid out from OpenStreetMap at 1.5 cm to the metre, read from "
+                  "the head of the No. 1 basin looking north-west, with the four outlines as "
+                  "footprints; the strait beyond the far wall is the same scale and the Retro tower's "
+                  "height is sourced. The Mitsui Club, the hotel and Kaikyo Plaza are not modelled. "
+                  "The Blue Wing keeps its real timetable, so it is shut after dark. No sign carries "
+                  "lettering and the yatai sells nothing named. Nothing here says the owner was in "
+                  "any of these places.",
     },
     {
         # Toronto, small. The owner's brief was Little Canada — the Toronto attraction where the
@@ -4793,7 +4902,7 @@ def walk_object(o):
     # document like an awning colour, or the renderer never sees them (lane-prop section 7).
     extra_attr = "".join(
         f' data-{k}="{escape(v if isinstance(v, str) else json.dumps(v, separators=(",", ":")))}"'
-        for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run", "lift") if k in o))
+        for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run", "lift", "blocks") if k in o))
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
