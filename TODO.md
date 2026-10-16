@@ -113,6 +113,21 @@ behind 的 A/B：同一流程下舊程式碼 29.8、新程式碼 30.5 → 是時
   展台（約 1:50～1:22，比例寫在各自的 hint），沿走道左右交錯；藍翼橋＋船溜＋船留在原 `plinth-moji`（縮窄、保留側道，e2e 斷言
   可沿用），海峽仍接遠牆。停留點與標籤、Fukuoka 封面與 caption（目前寫「in one sheet」）要一起改。
 
+### 外部 skill 調查（站主問：「能不能打 MCP，或去 GitHub 找做實際環境 3D 的 SKILLS.md」，2026-10-16）
+- **MCP**：這個沙盒沒辦法自己掛 MCP server；能用的是站主連上的 connector（目前一個都沒連）。Blender MCP（VxASI/blender-mcp-vxai、
+  bpy-dev/blender-mcp 等）要本機開著 Blender，這裡沒有。
+- **scottstts/Threejs-Awesome-Graphics-Agent-Skills**（MIT、911★、2026-10-15 還在更新）：24 個「畫面品質」skill——aerial
+  perspective、曝光與調色、相機構圖、濕地面與積水（precipitation-surfaces）、水的光學、程序化植被／建築／材質、SSAO、陰影、體積雲、
+  visual-validation（固定視角、先看沒有後製的 baseline、seed sweep）。**最對題，但全是 three.js／WebGL shader**；我們的 renderer
+  是自己的 Canvas 2D 畫家演算法，shader 類（SSAO、POM、水面折射）搬不過來，方法類（大氣透視、調色、構圖、驗證流程）可以搬。
+- **CloudAI-X/threejs-skills**（3581★）：three.js 入門十個 skill；**沒有 license**，只能讀不能抄。
+- **CesiumGS/cesiumjs-skills**（Apache-2.0，官方）：CesiumJS＋3D Tiles。這條路能直接串 Google Photorealistic 3D Tiles 的真實
+  攝影測量（Niagara、多倫多、門司港都有），細節一步到位；代價是 API key、執行時連 Google、署名與不得快取的條款、檔案重、
+  走路 lane 的設計要換，而且這個沙盒連不到那些主機、沒辦法驗。
+- **判斷**：「大形體對、細節不夠」是現在這個架構的正常上限，不是壞掉——每個細節都是手寫的 quad／tile，加一個就多一次排序風險
+  （本輪的青色楔形、暗板、虛線管都是）和 fill 成本；資料只給位置與高度，細節只能一張張照片讀。要不要換架構（留 Canvas／改
+  three.js／改 Cesium 3D Tiles）是站主的決定，見回報。
+
 ## 0p. 第三十四輪（2026-10-16）：「繼續」——Wikipedia 150 m 以上 117 棟全部照座標與高度放進 LookOut 窗外
 
 **站主原話**：「繼續」，回答第 33 輪結尾的問題「要不要下一輪把 150–214 m 大樓照 Wikipedia 列表補進去？」。
