@@ -26,14 +26,22 @@ Japanese-specific. It does not repeat the intake questions or the build rules.
 The site has two room formats and they answer different questions. Pick before authoring, because
 the choice changes the lane, the stops and the size of every object:
 
-- **The lane** — street level, walked. Tokyo is this: `lane: LANE_FALLBACK` (6.4 m wide, 4.3 m
-  deep by default), one eye height, the frames on the walls beside you. It is right for a place
-  whose identity is a *corridor*: an alley, a shotengai, a shrine approach, a covered arcade.
-- **The table** — a lit plinth in a hall, looked down on. Moji Port is this (`lane: {w:820, d:900,
-  ceil:620, back:300}`); the hall leaves a walkable aisle around the solid 660 cm display plinth. It is right when the subject is a *panorama* — buildings that must all be
-  in one frame, a harbour, a station square, a crossing with a train on it. It also solves one
-  problem a lane cannot: the moment. You cannot stand in a lane and watch a drawbridge open; on a
-  table you can, from a stop that was authored to look at it.
+- **The lane** — street level, walked. Tokyo is this, and since round 32 it is a real street:
+  Nakamise-dori at night (`lane: {w:910, d:1040, ceil:500, back:300, max_d:4500, open:True}`,
+  `floor:"paving"`) — 9.1 m from shopfront to shopfront as OpenStreetMap draws it, open to the sky,
+  walked from Kaminarimon into the plaza under Hozomon. It is right for a place whose identity is a
+  *corridor*: an alley, a shotengai, a shrine approach, a covered arcade. A real corridor longer than
+  the lane keeps its order, its width and each unit's width; it is the *count* of units that shrinks
+  (250 m of shops walk in 30 m, every bay a real shop's width — `_nakamise()` in `_gen_html.py`).
+- **The table** — a lit plinth in a hall, looked down on. Moji Port is this (`lane: {w:880, d:900,
+  ceil:620, back:300}`, a 720 cm plinth with a walkable aisle beside it). Since round 32 its layout
+  stands where OpenStreetMap puts it, at one scale (1.5 cm to the metre, `moji_xy()`), and the hall's
+  far wall opens onto the strait at that same scale, so the panorama is one model. Since round 36 the
+  buildings themselves are not on it: at 1.5 cm/m each was a block a few centimetres high, and the
+  owner asked for them apart. They stand down the hall on stands of their own at one scale (1:25,
+  `modelKit` in `js/site.js`), south-west of the basin on the left and north-east on the right, and
+  the table keeps their OSM footprints as low plates. It is right when the subject is a *panorama* —
+  buildings that must all be
 
 A city is not a subject (SKILLS.md §1). Neither is a period. The subject is one spot with one
 identifying object: the Blue Wing is not "a bridge", it is Japan's largest pedestrian drawbridge

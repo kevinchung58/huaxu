@@ -176,10 +176,16 @@ const goTo = async (stop) => {                          // use the lane's chips,
   const want = parseFloat(chip.style.getPropertyValue("--z")) || 0;
   tap(chip);
   // A jsdom raster spends part of each frame painting the scene, so wall-clock glide time is slower
-  // than the authored 165 cm/s physics step; wait on the body itself and let 30 s be only a deadlock cap.
-  const deadline = Date.now() + 30000;
-  while (Date.now() < deadline) {
-    if (Math.abs(layer.__walk.depth - want) < 1.5) return;
+  // than the authored 165 cm/s physics step; wait on the body itself. The cap is on standing still
+  // (5 s without a centimetre of progress), not on the length of the walk: a flat 30 s stopped the
+  // CN Tower's 15 m walk back to its entrance at 124 cm of 58, still moving, before any gate ran.
+  const hard = Date.now() + 180000;
+  let last = layer.__walk.depth, still = Date.now();
+  while (Date.now() < hard) {
+    const at = layer.__walk.depth;
+    if (Math.abs(at - want) < 1.5) return;
+    if (Math.abs(at - last) >= 1) { last = at; still = Date.now(); }
+    else if (Date.now() - still > 5000) break;
     await sleep(40);
   }
   throw new Error(`station ${stop} stopped at ${layer.__walk.depth.toFixed(1)} cm; wanted ${want} cm`);
@@ -277,13 +283,24 @@ const stopZ = (name) => {
   return stop ? Number(stop[1]) : 0;
 };
 const atVista = (name) => HAS_VISTA && stopZ(name) >= WALL_D - 260;
+/* A window over a city at night, from height, is darker again than a doorway onto a lit street:
+   two thirds of the frame is night sky and the nearest lit thing outside is hundreds of metres
+   down. The LookOut's end glass (rooms-cntower, round 33) measures 48 here, and a photograph taken
+   from that deck at night (r/skyscrapers, 2025, "Toronto Skyline from CN Tower observation deck")
+   measures 37 by this same Rec. 709 mean -- so 50 would ask the room to be brighter than the
+   place. Such a frame's floor is 35: under the real view, still above the 30 that a collapsed
+   night frame shows (the base plate alone), and the colour floor never moved, which is what
+   catches a collapse outright. The page says it is one: a painted world, a sky all round, and no
+   day of its own. */
+const NIGHT_HEIGHT = /"world"\s*:/.test(markup) && /"skyAround"/.test(markup) && !/data-lane-day="1"/.test(markup);
+const OUT_LUMA = NIGHT_HEIGHT ? 35 : 50;
 
 // 1. Every frame at a stop, looked at straight down the lane, is a room and not a plate.
 for (const sh of shots.filter((s) => /-ahead$/.test(s.name))) {
   const m = stats.get(sh.name);
   const outdoor = OPEN_WORLD || atVista(sh.name);
   gate(`${sh.name}: the lane is painted where you stand`,
-       m.luma >= (outdoor ? 50 : 70) && m.colours >= (outdoor ? 30 : 12),
+       m.luma >= (outdoor ? OUT_LUMA : 70) && m.colours >= (outdoor ? 30 : 12),
        `mean luma ${m.luma.toFixed(1)}, ${m.colours} colours${outdoor ? " (open night ground)" : ""}`);
 }
 // 2. The deepest stop is the one that used to collapse: floor, walls and ceiling all nearer than the
@@ -292,7 +309,7 @@ const aheadShots = shots.filter((s) => /-ahead$/.test(s.name));
 const deep = stats.get(aheadShots[aheadShots.length - 1].name);   // the deepest published stop
 const deepOut = OPEN_WORLD || atVista(aheadShots[aheadShots.length - 1].name);
 gate("the deepest stop is not the frame that empties out",
-     deep.colours >= (deepOut ? 30 : 15) && deep.luma >= (deepOut ? 50 : 70),
+     deep.colours >= (deepOut ? 30 : 15) && deep.luma >= (deepOut ? OUT_LUMA : 70),
      `${deep.colours} colours, mean luma ${deep.luma.toFixed(1)}`);
 // 3. Turning round at the entrance shows the lane behind you, not the underside of the world.
 const back = stats.get(shots[shots.length - 1].name);

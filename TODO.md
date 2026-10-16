@@ -1,6 +1,547 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-14 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-16 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0r. 第三十六輪（2026-10-16）：門司港的模型拆開——四棟各自一個展台（1:25），港桌只留配置
+
+**站主原話**：第 35 輪中途「門司港那邊模型要拆開」「要分開模型 感覺看不出漂亮」（拆法的選項題跳過，照字面決定「各自展台」，
+見 §0q 最後一條）；本輪在我回答 MCP／SKILLS.md 的問題之後只回了「.」。解讀：繼續已排定、也不必等架構決定的工作——門司港拆模型。
+架構問題（A 留 Canvas／B 改 three.js／C Blender 離線素材／D Cesium）站主沒選，**仍然待決**，本輪全部在現有引擎裡做。
+
+### 來源（抓來的頁不會留，結論在這裡與 `_gen_html.py`／`js/site.js` 註解）
+- **OSM（rung 3）**：門司港駅 relation 2532442（外框含月台雨棚，OBB 68.4 × 39.7 m）；旧大阪商船 way 627252015（32.1 × 22.4 m，
+  `building:levels=2`、`roof:levels=1`）；旧門司税関 way 976479446（33.8 × 21.0 m、`roof:shape=gabled`）；大連友好記念館 way 823695331
+  （30.9 × 18.1 m、`building:levels=3`，2026-08 由 K_Sakanoshita 重畫）。四個輪廓原樣轉成港桌座標（`MOJI_OUTLINES` → `moji_xy`）。
+- **文化遺産オンライン（文化庁，rung 2）**：門司港駅本屋，木造（モルタル塗、石貼り風）、建築面積 812.86 m²、**中央部二階建、左右平屋**、
+  左右対称、中央は「門」をイメージ。**Wikipedia（ja）**：門司港駅（上部銅板葺／下部スレート葺；2012–2019 復原，正面ひさしは竣工時に
+  無かったので撤去）；北九州市旧大阪商船（1917、河合幾次、木造二階建一部レンガ型枠コンクリート、建築面積 670 m²、隅角部の大アーチ窓と
+  八角塔屋＝ゼツェシオン、「化粧レンガの色鮮やかさ」）；北九州市旧門司税関（1912 年 3 月、**地上 2 階**、延床 897.90 m²、1994 復原）；
+  北九州市大連友好記念館（1995、RC、地上 3 階、延床 806 m²、1902 年ロシア帝国の東清鉄道汽船事務所の複製）。
+- **照片（rung 5，image search，存 `.preview/r36/ref/`，gitignored、不出貨）**：北九州市（門司港駅正面）、Wikipedia 縮圖、
+  LIFULL HOME'S（復原後中央棟的天然石板マンサード、銅板）；じゃらん、北九州市観光ガイド（旧大阪商船×3、旧門司税関×3、大連×1）、
+  門司税関官網（税関正面）、Lemon8、mojiko-retoro9.jp（大連）。
+
+### 測量表（1:25；長度＝OSM 輪廓，面積／樓層＝Wikipedia／文化庁，高度與部件尺寸＝照片對著輪廓寬讀，約略）
+| 建物 | 長 × 深 | 樓層 | 高度（約） | 從照片讀出的辨識特徵 |
+|---|---|---|---|---|
+| 門司港駅 | 60 m（中央 26 × 15、兩翼各 17 × 11，合 764 m² 對 812.86） | 中央 2、兩翼 1 | 簷 10.5、マンサード 13.4、角樓帽 15、尖 16.9 | 奶油色、紅褐腰線、淺色壁柱、褐框上下拉窗、中央三樘大門、山牆＋銅框時鐘、マンサード＋鐵飾、兩角樓銅帶＋圓頂老虎窗＋石板帽 |
+| 旧大阪商船 | 32.1 × 22.4 | 2 | 簷 10、欄杆 10.85、マンサード 13、塔頂 21.9 | 橘色化粧磚＋灰石橫帶、灰石基座、切角的兩層大拱窗（格子）、八角塔（磚身、陽台、燈籠窗、綠銅圓頂）、藍石板マンサード＋小拱老虎窗、端牆圓窗 |
+| 旧門司税関 | 33.8 × 21.0 | 2 | 簷 9.5、角樓 11.3、屋脊 14.1 | 紅磚＋深磚基座、白石腰線與窗框、正面三拱門、兩角樓（石帽＋弧形石山頭）、灰石板四坡頂＋銅帽老虎窗、港側角樓綠銅尖頂 |
+| 大連友好記念館 | 30.9 × 18.1 | 3（2＋閣樓） | 簷 10、屋脊 15、塔尖 23、尖頂 24.5 | 紅磚每約 1.1 m 一道白石帶、灰石基座、左側半木構山牆＋石欄陽台、石拱入口＋扇形窗、多角塔＋木構簷帶＋高深色八角尖頂＋小山牆窗、高磚煙囪白帽、右側較低翼樓 |
+
+### critique 抓到的（改前截圖 `.preview/r36/before-fukuoka/`，每條有證據）
+1. **一張 1.5 cm/m 的桌，每棟只有幾公分高**（before 截圖：桌邊停點 08、站旁停點 14）——站主說的「看不出漂亮」。
+2. **桌上 painter 只把立面畫在朝走道（−z）那一面**，模型不能轉向；整棟是一個盒子＋一面的貼片。
+3. **旧大阪商船顏色錯**：原本「pale render」淺色抹灰；Wikipedia 寫化粧磚色彩鮮豔、照片是橘磚灰帶。
+4. **旧門司税関樓層錯**：原本畫三層、頂層整排玻璃當「展望室」；Wikipedia「地上 2 階」，照片兩層，展望室在二樓、是普通窗。
+5. **大連記念館塔形錯**：原本「方→八角→圓」的複合尖塔；照片是磚石條紋多角塔、半木構簷帶、高深色八角尖頂。
+6. **車站圖卡（`IMG/fukuoka-1.jpg`）不是門司港駅**：畫的是瓦頂木造兩層樓，掛在忠實模型後面一看就穿幫 → 以模型自己的畫面＋來源描述重生
+   （generate_image，無人無字），裁成 1408 × 768。
+7. **第一張截圖所有窗戶都不見**：通用的「y > 40 的 prop 排序往前推 70」只改 `z`、沒改 painter 設的 `sz`，牆跑到自己窗戶前面
+   → 改成 `sz` 一起推（js/site.js 那一行，對其他 prop 無影響：沒有 y > 40 的 prop 原本設 sz）。
+8. **大連的交叉山牆從側面看是一塊立起的板**：屋脊比主屋脊高、屋面伸太深 → 屋脊對齊主屋脊（15 m）。
+9. **港桌上的白色量體方塊像四棟沒蓋完的房子** → 改成貼地的輪廓板（1.2 cm 高）。
+10. **大連陽台沒畫出來**：`skip` 填成正面那面牆 → 改成跳過貼牆那面。
+11. **lane-shot 最深停點 69.4 < 70**：七個停點、兩個都在桌邊（第二個離桌緣 45 cm、畫面一樣），導覽是實時跑的、跑進房間自己的夜
+   → 併成一個桌邊停點，重跑 73.4 PASS。**這個 gate 對時間敏感**（Fukuoka 一天 240 秒），沒有為了數字調亮任何東西。
+
+### 做法（renderer＋record）
+- `js/site.js`：新增 **`modelKit`**——模型自己的 (u, v, y) 座標（u 沿正面、v 朝外、y 向上，單位＝真實公尺，`k`＝record 寬／真實長），
+  `ry` 轉向；`walls`（輪廓立牆、依纏繞方向判斷外側、切成開間，`f.at(t)` 讓窗歸到所在開間排序）、`win`（框＋玻璃＋夜燈＋窗櫺）、
+  `roof`（四坡頂，端點可「頂牆」）、`frustum`／`inset`（マンサード、帽）、`dormer`、`ngon`／`spire`／`dome`／`spike`、`plane`。
+  四個 painter（`stationfront`、`customhouse`、`osakashosen`、`dalianhall`）全部用 kit 重寫；`PROP_TINT` 改真實顏色；
+  這四種＋`massing` 不畫通用的接地陰影（未旋轉的盒子會壓在轉了向的牆上）。新 kind **`massing`**（港桌輪廓板），emitter 多傳 `blocks`。
+  plinth 的 `top` 可以是 `#hex` 板色（世界尺度的地磚放在 1:25 底座上會變成幾公尺大的鋪面）。
+- `_gen_html.py`：四個展台 `plinth-station`／`plinth-customhouse`／`plinth-osakashosen`／`plinth-dalianhall`（高 100、板色 `#8d8a82`、
+  各自一盞燈 `of`）；模型 1:25（車站 240 cm 長）、左側 ry 40、右側 ry −40（正面朝走道與入口）；左＝船溜西南（車站、大阪商船），
+  右＝東北（税關、大連），各側照往海峽的順序；港桌保留船溜、藍翼橋、船、Retro 塔、屋台，四棟改成 `MOJI_OUTLINES` 輪廓板，
+  桌面改板色。停點六個（門口、四個展台各一、港桌）；圖卡移位（車站圖卡掛在車站模型後上方、藍翼橋在税關與大連之間、海峽在桌前右牆）。
+  purpose／blurb／clad_note／caveat／各 hint／slots／街上的門與 Field notes 卡片文字全改；caveat 寫明 1:25、哪些是約略。
+- 封面 `IMG/fukuoka-cover.jpg`：make-cover 的渲染畫面（1024 × 768）——入夜的大廳、車站模型與它的新圖卡、遠處的海峽；
+  取景用的是暫存頁（`data-lane-night=0.93`、停點 1 移到 x 70／z 440），只為了拍這張，不出貨。caption 照畫面寫。
+- skills：`scene-system` §4 新增 8 列；`grounded-scene` 加一段「把模型拆開」；`japan-place` §1 的 table 一條改成現況。
+
+### 驗證
+- 電池（`.preview/r36/gates/summary.txt`，全部 exit 0）：node --check、py_compile、gen、shapes（100 個 prop 都有 painter）、geometry、
+  clash 0、walk **163/163**、chain **96 PASS／0**、e2e **72／0**（Moji 港桌 plinth 實心、側道、桌前停、走過、到最深仍成立）、objects、
+  story **25/25**、impeccable `[]`、idempotent、diff-check。
+- lane-shot（`ROOMS=rooms-fukuoka.html`，`.preview/r36/fin-fukuoka/`）**8/8 PASS**：門口 100.0、車站 93.6、税關 92.1、大阪商船 90.4、
+  大連 82.3、港桌 75.6；入口背面 57.1。每張都打開看過；另外拍了各模型的正面 3/4（±44–50°）、背面（從港桌回看）與入夜
+  （`data-lane-night`）的畫面，在 `.preview/r36/t4*`、`t6*`–`t9*`、`n2*`。
+- 成本（同一支 cost-probe；同一個 16 ms 窗內會數到好幾幀，所以另外量了**每幀**）：Fukuoka 舊版 peak 7420／每幀 1319；
+  新版第一次 27523／**6347**（四個模型的窗櫺、窗框、細帶全畫）→ 加上「看得見才畫」的細節層級（`ppm`：一公尺在畫面上幾像素；
+  窗櫺 < 0.7 px、細帶 < 0.8 px、窗 < 1.4 px、老虎窗 < 2 px 不畫；遠的牆開間合併）後 **14272／3425–3533**。對照：street 每幀 2707、
+  toronto 2500、journey 2227；peak 指標 journey 14170。**仍是全站每幀最重的一頁**（門口同時看到四個模型），實機 FPS 沒量。
+
+### 沒做到／限制（照實）
+- **藍翼橋圖卡（`fukuoka-2.jpg`）兩片橋翼畫成一樣長**；實際是 24.1 m 與 14 m（§0n 有來源）。本輪沒重畫。
+- 部件尺寸與高度是對著輪廓寬讀照片的**約略值**；車站月台側、各棟背面與側面的窗位**沒有來源**，是照正面的節奏補的（caveat 寫約略）。
+- Retro 塔仍在港桌上（1.5 cm/m），沒有自己的展台；三井倶楽部、飯店、海峽プラザ仍未建模（無形體來源）。
+- 大廳本身（牆、天花、燈具）沒動；FPS 沒量；`browser-check.py` 沒跑。
+- lane-shot 的最深停點與入口背面 gate 對時間敏感（見 critique 11）。
+- 架構問題（A／B／C／D）站主未決。
+
+## 0q. 第三十五輪（2026-10-16）：「繼續全部做完整」「瀑布要完整做好」——Table Rock 與 Journey 照照片重做
+
+**站主原話**：「繼續全部做完整」，接著（選項題跳過）「瀑布要完整做好」；中途又說「你瀑布那邊要再做細緻一點」
+「瀑布內部裡面實際環境要做精細一點」，以及「門司港那邊模型要拆開」（見「沒做到」最後一條）。
+解讀：第 34 輪沒做到的清單全部處理，瀑布（`rooms-niagara`、`rooms-journey`）優先而且要經得起「跟真的 Table Rock／Journey
+比」的辨識測試；CN Tower 的圖卡次之。
+
+### 來源（抓來的頁不會留，結論在這裡與 `_gen_html.py` 註解）
+- **照片（rung 5，image search，存 `.preview/r35/ref/`，gitignored、不出貨）**：Getty「railing and lamp post with the Horseshoe
+  Falls … at Table Rock」；torontoareaoutings（Table Rock 欄杆、彩虹）；cliftonhill（從峽谷看 Table Rock Centre 與峭壁；Journey
+  深台）；travelingmitch（Journey 平台兩張）；niagarafallstourism（Table Rock Centre 轉角）；Tripadvisor（Journey 下層平台）。
+  一張「隧道內部」其實是 Niagara Parks Power Station 的 The Tunnel（2022），**不是** Journey，沒拿來用。
+- **OSM API** `way/420548287.json`：Table Rock Centre `building:levels=2`、old_name Table Rock House、note「form partly estimated」。
+  `way/241004747.json`：Skylon `building:levels=3`。
+- **Wikipedia raw**：「Table Rock Welcome Centre」（北棟 1926、Collegiate Gothic、Findlay and Foulis；南棟 1974；2008 Grand Hall）；
+  「Falls Incline Railway」（59.8 m、30°、座標 43.079499,−79.080789 → 爬升 29.9 m、水平 51.8 m）；「Skylon Tower」（街面起 160 m、
+  離瀑布底 236 m → 街面在下游河面上 76 m＝步道上 17.5 m；屋頂 149 m、尖頂 11 m）；「List of tallest buildings in Niagara Falls,
+  Ontario」（11 棟 ≥50 m 等，座標、高度、樓層；轉錄成 `NIA_HOTELS`）。
+- **Nominatim**：Fallsview Boulevard（旅館在它東側、崖頂）；Buffalo Avenue（美國岸，見「沒做」）。
+- **Journey 隧道內部照片（rung 5）**：Niagara Tours（niagara-tours.com 的 Journey 頁）與 mylifeisajourney.com：低矮的弧形拱、
+  粗糙潮濕的混凝土（深色水漬）、**濕的木板走道**（順著隧道鋪）、右牆約 1.9 m 高一條**鍍鋅管**（有接頭、旁邊電箱）、
+  洞口前一道黑色直條欄杆；人的身高約到拱頂的六成 → 拱頂約 2.6 m。
+- **OSM（抓了、本輪沒畫）**：Niagara Parkway 在 Table Rock 旁是北向單行兩線柏油（way 1088538530、1457641425、1097824388），
+  在 Table Rock Centre 底下穿過（way 1088538531，`covered=yes`、`maxheight=4.4`）；南向車道另一條（1119220554）。
+
+### critique 抓到的（改前截圖 `.preview/r35/before-{niagara,journey}/`，每條有證據）
+1. **瀑布像一面有窗的牆**：curtain 是平色帶＋每段 2 條短淺色長方形（寬 0.44/k 段寬、長 0.3 帶高），近看就是窗格（Journey F11、
+   Niagara F10–12）。→ 新 overlay tile **`fallsw`**：52 條貫穿整個落差的水紋（白／深藍綠，沿長度以整數週期明暗，上下無縫），
+   overlay 的 air 與夜放在 alpha（不再蓋 wash，否則透明處被壓暗兩次）；移動水紋改成長 0.55、寬 0.07/k。帶從 3 段改 4 段
+   （0/5/15/42/100%，綠→淺綠→白），綠色 brink 到白色不再是一條硬線。
+2. **潭像一塊石頭／階梯地板**：一條 55% 的硬邊泡沫帶在深色平面水上。追查（`.preview/r35/shot1.mjs`，DROP=m/rb/w/x 對照＋PROBE
+   逐 fill 列出）確認那塊「圓頂」就是潭面＋泡沫，不是霧也不是 bug；腳下的霧其實有畫，只是**白霧疊在白瀑布與白泡沫上看不見**
+   （把 al 拉到 0.95 才確認）。→ 泡沫改成貼圖 **`foam`**（不透明、44 m 內）＋三條逐層變淡的透明帶（0.45/0.22/0.1）；潭水
+   `#2e5a5f`→`#3d706c`；霧改成軟邊（`soft`：從中心到邊緣漸層到 0），盆內兩圈＋一圈外圈，deck 視角不再減弱。
+3. **彩虹是一整個半圓、兩腳插在水面**→ 只畫 0.22π–0.78π 那段，兩端淡出。
+4. **上游河面是平的青綠色**→ 近處（400 m 內）cell 用 **`rapids`** 貼圖（白浪沿水流 NNE），遠處平色＝貼圖量到的平均（`#4b8b8d`）。
+5. **Table Rock Centre 是灰色平頂盒子加藍玻璃帶**；照片與 Wikipedia：淺黃褐石材 Collegiate Gothic、拱窗、陡斜屋頂、Grand Hall
+   有小塔樓。→ 牆貼 **`trcwall`**（9.5 m 一格＝兩層樓，下層拱窗）、屋頂從簷口內縮 2.4 m 升 4 m（`inset_polygon`，驗過 27 邊無翻轉
+   無交叉）、塔樓位置照照片（近似）。凹多邊形的外法線改用繞向（`_outward_ccw`），重心法在凹處會把牆轉反而被剔除。
+6. **峭壁是從崖頂斜到 25% 的暗色斜坡**；照片：直立、水平岩層、下三分之一是長滿綠色的崩積坡。→ 0 到 −38 m 直立
+   （1.5 m 內傾），貼 **`strata`**；崩積坡 `#56663f`。
+7. **Fallsview 的旅館完全沒有**（右 30°、behind 都該看得到）。→ Wikipedia 表上站在崖上的 10 棟照座標／高度／樓層畫
+   （佔地照多倫多規則 30 m；Tower Hotel 是 1962 年觀景塔改的，畫成 16 m 塔身）；白天 `hotelw`、天黑 crossfade 到 `towerwin`
+   （新的 `pn` 機制）。崖用 incline 算出的 29.9 m，線過 incline 座標、讓旅館在上、Skylon 在下（其餘近似）；坡面與坡頂樹冠用
+   **`canopy`**；南端漸降入地而不是一刀切。Skylon 改成街面 +17.5 m 起算：塔身、149 m 屋頂（銅綠）、11 m 尖頂。
+8. **鋪面 moiré（環紋、扇形）**：8 cm 縫在 6 m 外不到 2 px。→ 地板依距離分層：<4.5 m 原 tile、4.5–9 m 拉向平均 50%、
+   9–16 m 80%、>16 m 平均色 `#797570`（量到的平均，`FLATOF` 一起改）。每層平均不變，所以層與層之間沒有色階。
+9. **夜裡貼圖會發亮**：貼圖是白天顏色，而 flat prim 有 `cn`。→ `x` verb：有 `cn` 的貼圖隨天色蓋上 `cn`；有 `pn` 的蓋上夜貼圖。
+10. **Journey 隧道像迷彩**：`paintTunnelC` 的長方形斑塊是 `i*47%128` 排的。→ 種子亂數的細骨料顆粒、16 個軟邊濕斑、14 條
+    滴水痕，邊緣 wrap；平均仍是 `#6e6f6c`（量過）。
+11. **門口與欄杆外的青色楔形／橫帶**（從第 33 輪就在，before 截圖也有）：裁切＋`PROBE` 逐 fill 追到根因是**排序的層，不是深度**：
+    世界 prim 的 sz＝深度＋6000＋s·1e6，地面（s 8.5）與 terrace（s 8.4）的層比水幕（s 0）高，所以水幕永遠在地面之後畫、
+    蓋在地面上；lane 自己的鋪面（z＋4000）又在兩者之後，所以楔形停在近處鋪面。→ rim 視角下岸面以下的 prim（三道水幕、
+    AF 崩積、加拿大岸 0→−38 m 岩層與崩積坡、美國岸峭壁、Goat 峭壁、彩虹）給 `low` 層 8.8；deck 視角不給（眼睛在岸下，
+    岸下的 prim 在旅館前面，而且那裡的地面被剔除）。眼睛在岸上時，y＞0 的東西一定比 y＜0 的先被看到，所以「水→峭壁→地面→物件」是精確的。
+12. **Table Rock 的欄杆是直條鐵欄**；照片（brink 兩張）：粗糙灰色石塊砌的矮牆、牆上一塊塊粗石柱、柱間是黑色圓圈花紋鐵件、
+    高度在腰際。→ lane 的欄杆帶：牆 60 cm、鐵件 60–90 cm（新的 overlay tile **`ironscroll`**：上下橫條、每格一根直條、一個圓圈
+    裡再一個 C 形捲，透明處不吃日光與空氣）、石柱 96 cm、50 cm 見方、每 3 m；brink 沿線的世界欄杆同一做法，**一格一格切**
+    （柱與柱之間的牆、壓頂、鐵件各自一塊），否則長的牆面在畫家排序裡會蓋過它前面的柱。`stonewall` 從方整的 ashlar 改成粗面
+    不規則的灰色石塊（平均 `#5f5c55`，`FLATOF` 一起改）；`parapet-ng` 改 50×96×50。
+13. **燈柱是灰色細桿**；照片：黑色鑄鐵燈柱、頂上一個燈籠。→ `lamp` 加燈籠頭（燈座、玻璃、帽、尖頂），玻璃白天灰、天黑後亮。
+    （`lamp` 這個 kind 只有 Niagara 用，不影響其他房間。）
+14. **Journey 分支口上方一塊暗色厚板**：`portal` 的門楣畫在牆面上 175–187 cm，但那裡已經是拱的起拱線，門楣其實在拱的最低一片
+    後面，卻因為 prop 用自己的深度排序而畫在前面。先把門楣移到起拱線下面，變成眼睛高度的一根橫樑——更糟；→ 開口高到起拱線
+    時不畫門楣（拱就是它的頂）。分支裡一條條白色細線（相鄰面各自填色，接縫透出天空）→ 每個面底下墊一塊同範圍的暗色底（層 0.5）。
+15. **Journey 隧道內部太素**（站主：「瀑布內部裡面實際環境要做精細一點」）→ 照上面兩張照片：地板改成濕木板（新 painter
+    **`paintBoards`**，順著隧道、16 cm 一片、黑縫、整條的濕光；原本一 tile 一個接頭看起來像拼花，拿掉）；右牆一條鍍鋅管
+    （新的 surface kind **`pipe`**：兩色正面＋底面＋每 3 m 一個接頭；近處切成牆的 60 cm 一段、排序放在最近端前面——
+    3 m 一段用中點排序時被前面的牆片蓋掉，變成一截一截的架子）；斷面照照片從拱頂 2.2 m 改成 2.6 m（牆 2.0 m、拱高 0.6 m），
+    分支同步（牆 200、脊 260、地板用木板的平均色），洞口 262。
+
+### 範圍與近似（我決定的，理由）
+- 不畫：Sky Screamer（Marineland 遊樂設施、南 2 km）、Casino Tower／Rainbow Tower（河邊的塔、形狀無來源）、Sheraton on the
+  Falls（形狀無來源）；2 km 外的遠岸（Buffalo Ave 推得出美國岸，但從欄杆看在 Goat Island 樹冠後面、其餘 <2 px）。都寫進 caveat。
+- 燈柱的**位置**仍是「drawn, not surveyed」（外型已照照片改）；欄杆的尺寸是從照片裡人的身高讀的（caveat 寫了）。
+- 圖卡：`niagara-2` 重畫（欄杆在左＝峽谷側、右邊是石造 Table Rock Centre、前方水霧；原圖欄杆在右、樹籬路燈在左，方向錯）；
+  `toronto-tower-1` 重畫（原圖天線上方多一盞不存在的燈）；`toronto-tower-3` 重畫（原圖有鞋子＝人、與虛構的圓形廣場）；alt 同步改。
+  三張都是生成圖，照 IMG 規則標 generated。
+- 封面：`niagara-cover`、`journey-cover`、`cntower-cover` 改用本輪 renderer 畫面（`make-cover.mjs`）；journey record 原本借用
+  niagara-cover 還寫「floodlit after dark」（假的），改指自己的 `journey-cover.jpg`、caption 照實寫。
+
+### 驗證（最終程式碼）
+`.preview/r35/gates.sh`（全部 exit 0）：`node --check`、`py_compile`、generate、`verify-shapes`（92 props 都有 painter）、
+`verify-geometry`、`verify-clash`、`verify-walk` **163/163**、`verify-chain` **96 PASS／0 failure**、`verify-rooms-e2e` **72／0 failure**、
+`verify-objects`、`verify-story` **25/25**、cost-probe（rooms.html 峰值 8317、bad 0、huge 0；niagara 10485、journey 14170、cntower 6189）、
+impeccable `[]`、重跑兩次 md5 相同（idempotent）、`git diff --check`。
+lane-shot（最終程式碼，`.preview/r35/fin2-*`，三張 sheet 都看過）：Niagara **5/6**（ahead 181.7／180.6／153.5／107.7；behind 31.0 **FAIL**，
+見下）、Journey **6/6**（110.9／105.2／125.5／99.6；behind 90.1）、CN Tower **7/7**（110.6／86.5／88.3／86.0；NE 玻璃 48.1；behind 87.5）。
+behind 的 A/B：同一流程下舊程式碼 29.8、新程式碼 30.5 → 是時間點（落在入夜之後），不是畫壞；沒有為了數字把夜調亮。
+
+### 沒做到／要知道的
+- **多倫多 100–150 m 的約 288 棟仍沒有放**：Wikipedia 表只列 150 m 以上；可用的來源是 ArcGIS 上的 2020 3D massing（`MAX_HEIGHT>=100`
+  225 個 polygon，podium／塔分開、2020 後的塔沒有）——本輪瀑布優先，沒做。**地面仍是平的**（多倫多）、**佔地與樓層仍是典型值**、
+  **遠處窗格 moiré** 照舊（理由見 §0p）。
+- **瀑布這邊的近似**（caveat 都寫了）：峽谷北段的崖線、38 m 直立與崩積坡的分界、水的 24 m 拋距與水霧高度、Table Rock Centre 的簷高／
+  屋頂／小塔樓位置、崖線離開 incline 之後的走向、旅館的佔地與外牆、燈柱位置、欄杆的尺寸與花紋（照片讀的）、Journey 斷面與
+  木板與管線（照片讀的）。Skylon 底下的坡沒畫（塔身往下接到平地，頂端高度是對的）。**Niagara Parkway 沒畫**（OSM 已抓，見來源）；
+  terrace 遠處仍是平的平均色（防 moiré 的分層），看起來空；分支隧道仍是直的方盒（線沒有測量來源）。
+- **深夜的 behind 畫面**：lane-shot 單獨跑時 behind 落在黃昏（≥50）；三個 tour 並行時 tour 變慢、落到深夜，量到 29.9（<50 的
+  open-world 門檻）。畫面是真的夜景不是 collapse（顏色數多、亮窗、Skylon），但門檻是用黃昏校的；沒有為了數字把夜調亮。
+- **成本**：cost-probe 峰值 niagara 10031→10485、journey 11405→14170（瀑布紋理 overlay、4 帶、盆內霧、旅館與崖、TRC 屋頂；
+  Niagara 中途一度到 11878，brink 欄杆從約 450 根直條換成一格一格的石牆＋花紋鐵件後降回）；rooms.html 8317、cntower 6189 不變。這兩頁沒有 fill 上限的 gate；實機幀率沒量。
+- **browser-check.py**：沒跑（本輪時間給了瀑布內部；`bc-wrap.py` 已寫在 /tmp，下輪可直接用）。
+- **站主待補（AGENTS 的 backlog）**：ORCID、CV、教學活動日期、Tokyo 封面——需要站主的資料，本輪沒有提供，照規則不編造，維持 held。
+- **門司港「模型要拆開」（站主本輪中途提出）**：本輪沒動。現況：Fukuoka 是一張 1.5 cm/m 的門司港桌上模型（主題是站主早先定的，
+  見 §0n 與 landmark-space 的 table 形式），所有建物擠在一張 720×376 cm 的桌上，每棟都小、看不出漂亮。下一輪要做：把每個地標
+  拆成各自的展台（較大比例、各自打光），e2e 的「Moji 展台近面與側道」斷言要一起改。拆法問了站主（各自展台／真實比例可走的街／一張桌放大拉開），站主跳過；
+  照原話「模型要拆開」「要分開模型」的字面，**決定做「各自展台」**：門司港駅、舊大阪商船、舊門司税關、大連友好記念館各自一個打光
+  展台（約 1:50～1:22，比例寫在各自的 hint），沿走道左右交錯；藍翼橋＋船溜＋船留在原 `plinth-moji`（縮窄、保留側道，e2e 斷言
+  可沿用），海峽仍接遠牆。停留點與標籤、Fukuoka 封面與 caption（目前寫「in one sheet」）要一起改。
+
+### 外部 skill 調查（站主問：「能不能打 MCP，或去 GitHub 找做實際環境 3D 的 SKILLS.md」，2026-10-16）
+- **MCP**：這個沙盒沒辦法自己掛 MCP server；能用的是站主連上的 connector（目前一個都沒連）。Blender MCP（VxASI/blender-mcp-vxai、
+  bpy-dev/blender-mcp 等）要本機開著 Blender，這裡沒有。
+- **scottstts/Threejs-Awesome-Graphics-Agent-Skills**（MIT、911★、2026-10-15 還在更新）：24 個「畫面品質」skill——aerial
+  perspective、曝光與調色、相機構圖、濕地面與積水（precipitation-surfaces）、水的光學、程序化植被／建築／材質、SSAO、陰影、體積雲、
+  visual-validation（固定視角、先看沒有後製的 baseline、seed sweep）。**最對題，但全是 three.js／WebGL shader**；我們的 renderer
+  是自己的 Canvas 2D 畫家演算法，shader 類（SSAO、POM、水面折射）搬不過來，方法類（大氣透視、調色、構圖、驗證流程）可以搬。
+- **CloudAI-X/threejs-skills**（3581★）：three.js 入門十個 skill；**沒有 license**，只能讀不能抄。
+- **CesiumGS/cesiumjs-skills**（Apache-2.0，官方）：CesiumJS＋3D Tiles。這條路能直接串 Google Photorealistic 3D Tiles 的真實
+  攝影測量（Niagara、多倫多、門司港都有），細節一步到位；代價是 API key、執行時連 Google、署名與不得快取的條款、檔案重、
+  走路 lane 的設計要換，而且這個沙盒連不到那些主機、沒辦法驗。
+- **Blender skills**（站主第二次問時補查）：arjun988/blender-skills（MIT、312★，94 個 Blender skill，含 archviz，走 Blender MCP）、
+  kevinbadi/blender-skills（158★、沒有 license）。Blender 本身可以用 PyPI 的 `bpy` 在沙盒裡無頭跑：最新 5.2.2 要 Python 3.13，
+  **5.0.1 有 cp311 manylinux wheel**（本機 Python 3.11.2、glibc 2.36），約 400 MB，**未實測**（可能缺 X／GL 函式庫、只能 CPU 算圖）。
+  用途是當「離線素材工廠」：用 OSM 高度與照片建模，先算好遠景全景或貼圖，網站執行時仍零依賴；缺點是預算好的圖不會隨走動產生視差。
+- **判斷**：「大形體對、細節不夠」是現在這個架構的正常上限，不是壞掉——每個細節都是手寫的 quad／tile，加一個就多一次排序風險
+  （本輪的青色楔形、暗板、虛線管都是）和 fill 成本；資料只給位置與高度，細節只能一張張照片讀。要不要換架構（留 Canvas／改
+  three.js／改 Cesium 3D Tiles）是站主的決定，見回報。
+
+## 0p. 第三十四輪（2026-10-16）：「繼續」——Wikipedia 150 m 以上 117 棟全部照座標與高度放進 LookOut 窗外
+
+**站主原話**：「繼續」，回答第 33 輪結尾的問題「要不要下一輪把 150–214 m 大樓照 Wikipedia 列表補進去？」。
+解讀：要。範圍與做法由我決定（理由見下，回報時講明）。
+
+### 來源
+- **Wikipedia「List of tallest buildings in Toronto」**，wikitext 原文
+  `index.php?title=List_of_tallest_buildings_in_Toronto&action=raw&section=9`（2026-10-16 讀；渲染頁 39 個 chunk，
+  原文只要 9 個，主表在 chunk 0–5，排名 1–117，最後一名 The Saint 150 m）。內文：150 m 以上 117 棟（2026）；
+  infobox 寫 100 m 以上 405 棟（150 m 以上 111 棟是較舊的數字，以表為準）。轉錄：`_gen_html.py` 的 `TOR_TOWERS`
+  （座標、高度、照 purpose 欄定佔地）；工作檔 `.preview/r34/wiki-rows.tsv`（gitignored）。
+- 已有的 23 列逐列對過表：名稱、座標、高度都對。
+
+### critique 抓到的（每條都有證據）
+1. **第 33 輪的「4 km 內 214 m 以上全部」是假的**：漏了 **11 YV**（排名 21、221.91 m、塔北 3.2 km、表上沒有圖片的那一列）。
+   教訓：filter 留下幾列，要對來源的數再說「全部」。
+2. **caveat 沒講地面是平的**（城市從湖邊往北爬升）→ 補上「the ground (drawn level, though the city climbs away
+   from the lake)」。新列 base 一律 0。
+3. **原本想只補 4 km 內（79 列）**，但最後一站往左 30° 看，遠窗看到約 343°：Yonge–Eglinton、One Delisle、
+   Hullmark（352–354°、5.2–13.3 km）在畫面裡，說「看不到」是假的 → **117 列全收**（4 km 外另 15 列）。
+   投影確認（`/tmp/r34/proj.py`，用 renderer 的 cam 算式）：最終截圖 frame 13（yaw −34.6°）裡在 x≈263–285、
+   寬 1.8–4.5 px，整棟落在地平線（y≈417）下方 4–46 px（頂 421–439、底 431–463）；截圖裡確實是幾 px 寬的細條。Humber Bay／Etobicoke（253–268°）在核心背後：畫了讓列表完整，任何 yaw 都
+   不在畫面內（註解寫明，sight_note 不提）。
+4. **窗格斜紋**：`win` 貼圖用 `(8r+k)%3` 決定哪格亮 → 亮窗排在對角線上；117 棟一起看，近處每面都是斜紋、遠處變
+   moiré（`.preview/r34/crop14-near.png`、`crop13-far.png`）。改成塔專用的 lazy tile **`towerwin`**
+   （`paintTowerWindows`）：同 8×8 格、同底色、同 28/64 亮、同兩種顏色（6 暖），所以平均色相同（量過：兩者都是
+   `#263149`，FLATOF 加同值）；亮哪格改成種子亂數。第一個自由抽樣把 3 個暖窗疊在同一欄（自己就是一條紋），所以種子取
+   「從 34117 起，第一個每行每列 2–5 格亮、任何方向連續亮不超過 3、6 個暖窗在 6 個不同的行與列」＝ **86789**。
+   `paintWindows` 沒動（`bd.city` 的街景也用 `winPat`）。
+5. **剩下的 moiré（沒修，記下來）**：3 km 外窗格比一個像素小，pattern fill 沒有 mip，少數幾面仍有條紋。試過
+   box-filter mip（64→8 四層 halving、依較被壓縮的軸選層）：條紋沒了，但中距離大樓變成灰藍斑駁的一塊、亮窗消失——
+   亮窗是點光源，平均值保不住它的亮度。**退回、不出貨**（A/B：`.preview/r34/cmp13-far-v2v3.png`）。
+
+### 範圍與近似（我決定的，理由）
+- **全部 117 列**（不是只 4 km 內）：理由見 critique 3。
+- **佔地**：辦公 40 m；住宅、旅館、混合用途 30 m（典型值，非實測）。兩棟列表大樓在 −16.7° 網格裡靠太近時，**兩棟都
+  縮小、保持 4 m 間距，不移位**（座標是來源的）：55C 與 Chaz Yorkville → 18 m；1 Yorkville 與 Eight Cumberland → 26 m。
+  驗證：117 列、名稱不重複、0 對重疊（`/tmp/r34/overlap.py`）。
+- **地面畫成平的**，caveat 講明；樓層用典型層高（辦公 4.0 m、住宅 3.2 m），不是逐棟。
+- **sight_note 只寫畫面裡有的**：金融區核心、沿 Yonge／Bay 往北到 Bloor（frame 13）、St. Clair 與 Eglinton 的細條、
+  港邊一排大樓、SkyTower（frame 15，屋頂約在眼高）。
+
+### 驗證（最終程式碼）
+- 頁面：`rooms-cntower.html` 94,479 → 194,563 B（gzip -9：15,526 → 27,402）；對照 niagara 183,856、journey 186,304。
+  `js/site.js` +1,763 B（`paintTowerWindows`＋LAZY＋FLATOF 各一筆）。
+- 閘門（最終程式碼一次跑完，`.preview/r34/gates.sh` → `final-summary.txt`）：`node --check`、`py_compile`、產生器
+  exit 0；shapes 92 全解析；geometry OK；clash OK；walk 163/163；chain 0 failure；e2e 0 failure；objects exit 0；
+  story 25/25；cost-probe（rooms.html）peak 8317、bad 0、huge 0（同第 33 輪）；impeccable `[]`；md5 連跑兩次相同；
+  `git diff --check` OK。
+- lane-shot CN Tower 7/7（**16 格每格都看過**，`final-cntower/`）：luma HEAD → 最終 110.8→110.8、86.8→86.9、
+  90.3→85.7、86.1→86.0、48.2→48.1，回頭 87.5→87.3；色數 433／455／286／275／277。注意：lane-shot 每跑一次轉向角
+  會差幾度（frame 13 在 −24.6° 到 −35.2° 之間），luma 因此 ±2–3，不全是程式差異。
+- fills（只算主畫布；`.preview/r34/lane-count.mjs`＝lane-shot 加一個計數，因為 `--dump` 的 "(N fills)" 含每次
+  resize 重畫貼圖的約 2,040 次）：每格 HEAD → 最終 493→788、541→714、508→600、425→765、443→625、417→533、298→630、
+  296→474、338→434、265→599、264→442、310→414、210→542、224→402、265→365、258→316；最多 788（東京 8317、上限 8600）。
+  cost-probe 指向 rooms-cntower（scratch 版 `.preview/r34/cost-probe-any.mjs`）：peak 4958 → 6189、bad 0、huge 0。
+- 截圖：改前 `.preview/r34/before-cntower/`；改後（`win` 斜紋）`after-cntower/`；`towerwin` `after-cntower-v2/`；
+  mip 實驗（退回）`after-cntower-v3/`；最終 `final-cntower/`。
+
+### 沒做到／要知道的
+- **100–150 m 約 288 棟沒有**（405 − 117；這張表不給它們的座標），所以高樓以下的城市是燈，不是建築——caveat 講明。
+- 地面是平的；佔地、層高是典型值；遠處少數幾面仍有 moiré（critique 5）。
+- 故事圖沒有重做；`browser-check.py` 未跑（Playwright 的 Chromium CDN 連不到）。
+
+## 0o. 第三十三輪（2026-10-15）：「其他的多倫多的做好了嗎？」——CN Tower／Niagara／Journey 三個子空間照真實重建
+
+**站主原話**：「其他的多倫多的做好了嗎？」。解讀（回報時講明）：多倫多擁有的三個子空間——CN Tower
+（`rooms-cntower`）、Niagara Falls（`rooms-niagara`）、Journey Behind the Falls（`rooms-journey`，屬 Table Rock）。
+第 32 輪只重做三個主房間；這三個子空間第 21–27 輪雖有測量表，**畫出來的環境卻不是真的**。如實回答：「之前沒有，
+這輪照來源重建了」。
+
+### 改之前查到的「亂做」（HEAD `cf4dbbf`；改前每站截圖 `.preview/r33-before-{cntower,niagara,journey}/`）
+- **CN Tower**：窗外是一張 `aerial` 貼圖當牆（scene-system 的 "City as cladding"）＋通用 `citybelow` painter——
+  一塊貼 `aerialdeep` 的平面，**放在眼睛下方 9 m**（實際 346 m）、只鋪到 1.2 km，900 m 外一條暗帶當湖；
+  沒有任何一棟大樓，湖、島、機場都不是資料畫的；`ledge-cn` 無來源。
+- **Niagara**：兩側牆是 `hedge`（綠籬）＋`mistview`（霧當牆）＋`dado`（磚）；瀑布是大廳桌上模型放大當 prop
+  （`falls-ng`／`falls-am`）；長椅、兩個花台（`planter-go/lu`）無來源。實際 Table Rock 前是石柱＋鐵欄杆（Getty 2026），
+  另一側是 Table Rock Centre。
+- **Journey**：隧道牆是 `rock`（裸岩）——實際 1944 年起是混凝土襯砌拱頂（grokipedia；Niagara Parks 照片）；
+  瀑布是 `falls-jb` prop。
+- **文件錯誤**：`grounded-scene` §2 範例表寫「Rogers Centre｜塔基東北」，本檔 §0b 也寫「Rogers Centre＋鐵道 NE 腳下」——
+  OSM：Rogers Centre 在塔的**西南西約 190 m**。第 32 輪大廳模型放錯邊很可能就是從這個範例抄來的。兩處都已更正。
+
+### 來源（抓來的頁不會留，結論在這裡與 `_gen_html.py` world block 的註解）
+- **OSM**（Nominatim `polygon_geojson`＋`node/{id}/ways.json`；Overpass 502、大 bbox 無用——如實記錄）：
+  Niagara——Recreation Trail way 1319958255（lit、paving_stones；原點 node 26235703）、Horseshoe 56539663、
+  American 217355188、Bridal Veil 515298933、Goat 3743454、Luna 37356202、Table Rock Centre 420548287、
+  Skylon 241004747、Rainbow Bridge 162149070。Toronto——CN Tower way 32742038、Rogers Centre 7969701、
+  Toronto Islands relation 10705563、Billy Bishop 85471、Tommy Thompson 189780702、Union 14744491、Queens Quay W 五段。
+- **Wikipedia「List of tallest buildings in Toronto」（2026）**：塔 4 km 內 214 m 以上 23 棟（座標＋高度；**第 34 輪更正：
+  漏了 11 YV，現在是 150 m 以上全部 117 棟，見 §0p**）；infobox：
+  全市 100 m 以上 405 棟、150 m 以上 111 棟、200 m 以上 34 棟。
+- **CN Tower**：DCN 2017（LookOut 12 bays×7 sections、玻璃 1.61×2.62 m）；CNN（Glass Floor 1994、LookOut 2017 翻修）；
+  torontocntowertour（SkyPod 446.5、EdgeWalk 356、360 餐廳 351、LookOut 346、Glass Floor 342 m）；EBSCO（6 部電梯、58 s）。
+- **Journey**：falzguy（電梯 38 m、隧道 56 m 到平台、約 18 m 處向東南分岔、Cataract 支線 61 m、Great Falls 再 49 m）；
+  grokipedia（2.4×2 m、1944 混凝土襯砌、下平台 1951）；visitniagarafalls（隧道盡頭 Great Falls Portal、上下兩層平台）。
+- **照片（只當參考，不出貨）**：Getty 2026（Table Rock 鐵欄杆＋石柱）、dailyhive／CBC（LookOut 窗、暗色 soffit、
+  吸音天花、地毯）、Niagara Parks（混凝土拱頂、籠燈）、Reddit（平台混凝土柱、管欄杆）、r/skyscrapers OC
+  （LookOut 夜景，同 Rec. 709 公式量得平均 luma 37.0——拿來校 lane-shot，見下）。
+
+### 測量表（摘要；完整數字在 record 與 world block 註解）
+| 項目 | 值 | 方位 | 階梯 |
+|---|---|---|---|
+| Niagara lane | Recreation Trail 最後 43 m，向南走到 Table Rock 欄杆 | S | 3（OSM way） |
+| 左手（峽谷側） | 石柱每 3 m、鐵欄杆 24–108 cm | E | 4（照片） |
+| 右手 | Table Rock Centre（石基、玻璃、簷，高約 10 m） | W | 3＋4 |
+| 瀑布世界 | Horseshoe 頂線、American＋崖錐、Bridal Veil、Goat／Luna、峽谷、河、Rainbow Bridge、Skylon 160 m | — | 3 |
+| Journey 隧道 | 寬 2.4 m、長 56 m、混凝土拱頂、籠燈 | — | 2＋4 |
+| 分岔 | 18 m 處、40°、Cataract 61 m、Great Falls 110 m | SE | 2（畫成直線：路線未測） |
+| LookOut | 346 m；43 m 環上一段 18.6 m 的弦，面向 NE | NE | 2＋3 |
+| 窗 | 竪框間距 161 cm、玻璃落地、暗色 soffit 262–330 cm | SE、NE | 2＋4 |
+| Glass Floor | 24 m²、342 m，真的開洞看到下方城市 | 下 | 2 |
+| 城市 | 地面 −346 m 分環到 43.2 km；湖、群島、半島、機場跑道燈（約略）；23 棟大樓（第 34 輪：117 棟）；Rogers Centre 86 m | — | 3 |
+| 大樓窗格 | 一層 4.0 m（辦公佔地）／3.2 m（住宅佔地） | — | 典型值（非逐棟） |
+
+### 範圍表（in-frame／drawer／off-frame）
+- **CN Tower**：in-frame＝核心牆＋電梯門、吸音天花、地毯、落地窗＋竪框、soffit、Glass Floor（真洞）、SkyPod 電梯；
+  窗外：湖、群島、Tommy Thompson 半島、Billy Bishop 跑道燈、23 棟大樓（亮窗；第 34 輪：117 棟）、城市燈、夜空。drawer（畫了、這段弦看不到）：
+  Rogers Centre（西南西，在核心另一側）。off-frame（理由）：150–214 m 的約 88 棟、100–150 m 的約 300 棟（本輪未轉錄座標；
+  第 34 輪補了 150 m 以上全部，100–150 m 仍沒有）；
+  EdgeWalk（356 m 的外環，不在 LookOut 內）；360 餐廳（另一層）；人；文字。
+- **Niagara**：in-frame＝鋪面、石柱鐵欄杆、Table Rock Centre、燈柱、Horseshoe、American、Bridal Veil、Goat／Luna、峽谷、
+  河、Rainbow Bridge、Skylon、霧、彩虹、夜間點燈、煙火。off-frame：美方岸上建物細節、遊船、人。
+- **Journey**：in-frame＝混凝土拱頂隧道、分岔（燈、兩個 portal 的光）、平台（混凝土柱、牆、管欄杆、頂板）、崖面、瀑布、
+  霧、彩虹。off-frame：portal 內部（不可走入）、雨衣人群。
+
+### 做法（renderer＋record）
+- `_gen_html.py` 新增 world block：`LaneFrame`（經緯度→lane 公分）、`clip_rect`／`dp_simplify`／`resample`、
+  `grid_hprims`（大地面切格，避免近平面破圖）、`world_extrude`；三個 builder `niagara_world`／`toronto_world`／`journey_world`。
+- `js/site.js`：`bd.world` prims（`f` 平面、`x` 貼圖（`u` 公分一格）、`w` 水幕、`m` 霧、`l` 燈點、`rb` 彩虹、`fw` 煙火）；
+  lane 外殼屬性 `lid`／`vault`／`open`／`open-back`／`open-end`／`under`／`wallmat`；cladding 新種類 `open`／`glazing`／`railing`；
+  `skyAround` 全向天空；`data-lane-night`（把時鐘停在夜裡的某一刻）。
+- 物件：Niagara `door-journey`、`door-back`、`lamp-ng1/2`、`parapet-ng`；Journey `portal-jb`、`deckwall-jb`、`door-back`；
+  CN Tower `lift-cn`、`glassfloor-cn`、`lift-skypod`、`door-back`。
+
+### critique 抓到並修掉（每條都有證據，scratch 在 `.preview/`）
+1. **地面破洞**：CN Tower 第 6 格出現一塊淡色多邊形＝天空從地面透出。flat-fill 對照補得起來→是 pattern fill；
+   `shot1dbg` 探針找到 1.4 km 外一個五角細長地格，填色沒蓋滿自己的 clip。改成「clip 角點經反仿射回 uv 的 bbox＋2 px」
+   ＋穩健三角形（`affine()`），一個 quad 仍只有一次 fill（`c6fix-1.png`）。
+2. **遠環漏洞**：分環時以「格中心在內環內」跳過→21.6–28 km 一圈天空露在地平線下。改成「整格在內環內才跳過」，
+   新環 600／1800／5400／10800 m，`cov2.py` 232 格 0 洞。
+3. **FLATOF 錯**：`cityn` 的後備色是未點燈的底色（#151a26），實測貼圖平均 #363136；`win` 同理 #263149。
+4. **霧變黑煙**：霧圈各自吃一次 haze／夜色 overlay，蓋住背後天空——五圈疊起來天空少三分之一。夜色改烤進顏色、霧圈不上 overlay。
+5. **城市燈 moiré**：燈位 `(i*83)%128` 是隱藏晶格，遠看成波紋→種子亂數散佈（同數量、同顏色）。
+6. **樓層數變兩倍**：窗格貼圖一格 8 層卻設 12.8 m（一層 1.6 m）→辦公 4.0 m／住宅 3.2 m。
+7. **隧道裡畫整個峽谷**：Journey 從隧道內，整個瀑布世界在牆後被畫再被蓋掉，fills ×2.6（入口一格 2549 vs 舊 963）。
+   加 `apertures()`：封閉 lane 只畫從隧道口與側開口看得到的世界（入口 2549→1811、中段 1535→894、平台不變）；
+   背後改鋪 lane 自己的材質色，接縫不再露天空（原本地板出現亮線）。
+8. **NaN**：`skyAround` 在第一次 resize 前除以 focal 0，cost-probe `bad 8`→加 guard，三頁 bad 0。
+9. **室內燈跟大廳時鐘走**：非 day 頁的 `lightAt` 跟 240 s 循環，窗外固定夜、室內卻「中午」變亮（stop 134→94）→
+   `"night": 0.92`（`data-lane-night`），室內固定夜間燈光（第一站 t=5 與 t=120 都是 110.2）。
+10. **分岔是平灰色**：改用主隧道同一張混凝土貼圖（64 cm 一格）。
+
+### 閘門改了什麼（為什麼不是放寬）
+- `lane-shot`：「從高處看夜晚城市」的窗（頁面有 world＋`skyAround`、沒有自己的 day）戶外 luma 下限 50→35。依據：
+  同一公式量一張 LookOut 實拍夜景 37.0——50 等於要求房間比真實地點還亮；崩壞的夜幀（只剩底板）約 30；
+  **色數下限 30 沒動**（崩壞靠它抓）。沒有為了數字調亮城市或天空。
+- `verify-rooms-e2e`：Journey 走到平台改成「走到 clamp 不再前進」（隧道變成真的 56 m，固定 600 幀只走到 17.5 m）；
+  S 測試也走回到底（原本走一半就判過）。
+- `verify-story`：`falls-jb` → 平台 `deckwall-jb`＋world 裡確實有水幕（瀑布現在是世界，不是 prop）。
+- `verify-walk`：lid 相關 regex（新外殼屬性）。
+
+### 驗證（全部在最終程式碼上重跑）
+- 靜態：`node --check`（site.js 與四支閘門）、`py_compile`、`git diff --check` OK；產生器冪等（md5 連跑兩次相同）；
+  impeccable `[]`。
+- shapes：92 個 prop 全解析；geometry OK；clash OK。walk 163/163（東京 fills 8317 < 8600，沒動天花板）；
+  objects exit 0；chain 96 PASS／0 failure；e2e 72 PASS／0 failure；story 25/25。
+- cost-probe（量測、非閘門）：東京 peak 8317、bad 0、huge 0；三個子頁 bad 8→0（NaN 修掉）。單幀 fills（`shotcount`）：
+  Journey 入口 2549→1811、中段 1535→894（apertures）、平台 597；CN Tower 604／354；Niagara 1775／1317；
+  對照 HEAD 的 Journey 入口 963（舊場景短很多，只是參考）。
+- lane-shot（真光柵，每站三個方向＋回頭，**每格都看過**）：CN Tower 7/7（112.7／86.7／86.7／86.3／48.2，回頭 87.5；
+  室內固定夜間後各站一致）；Niagara 6/6（181.6／179.6／180.7／165.0，回頭 95.2）；Journey 6/6（110.0／105.7／149.6／
+  151.8，回頭 101.3）。
+- 證據：改前 `.preview/r33-before-{cntower,niagara,journey}/`；改後 `.preview/r33-cntower-v6/`、`r33-niagara-v4/`、
+  `r33-journey-v4/`；A/B：`mist-ab.png`、`nmist-ab.png`（霧）、`jcull-diff.png`（接縫）、`c6fix-1.png`（地面破洞）；
+  夜景參考 `ref-night.png`（gitignored，不出貨）。
+
+### 沒做到／要知道的
+- **CN Tower 窗外只有 23 棟**（4 km 內 ≥214 m）；真實是一整片燈牆（全市 150 m 以上 111 棟、100 m 以上 405 棟）。
+  下一步可把 Wikipedia 表 150–214 m 那段（約 9 個 chunk）轉錄進來——要不要做待站主決定。**→ 第 34 輪站主說「繼續」，
+  已做：117 棟（見 §0p）。**
+- 地面是平的；城市燈是貼圖，不是真實街道；Niagara 鋪面在斜視角仍有輕微 moiré。
+- 近似值：LookOut 弦拉直、寬 5.6 m、大樓佔地（40／30 m）、Glass Floor 形狀、Sugar Beach 以東岸線、跑道燈位置；
+  Niagara 峽谷北段崖線、崖面／崖錐分界、水幕 24 m 拋距、島上樹高 14 m、Table Rock Centre 高 10 m、燈柱位置、Skylon 底座；
+  Journey 隧道方位、平台位置、分岔畫成直線。
+- 故事圖（例如 `IMG/niagara-2.jpg`、CN Tower 的三格）**沒有重做**，仍是舊的生成圖。
+- `browser-check.py` 未跑（Playwright 的 Chromium CDN 連不到，同第 32 輪）。
+
+## 0n. 第三十二輪（2026-10-15）：剩下的房間全部改成「照真實做」——淺草仲見世、門司港照地圖、多倫多照地理
+
+**站主原話**：「你剩下那些rooms裡面環境與物件都要真實做出來不是亂做」。CN Tower／Niagara／Journey 在
+第 21–27 輪已有測量表與來源；「剩下」＝三個主房間（Tokyo、Fukuoka、Toronto）。決策（ask_user，站主選）：
+**Tokyo＝淺草・仲見世通（夜，鐵捲門拉下）**；**Toronto＝保留 Little Canada 式暗廳，模型照真實比例與地理**；
+Fukuoka 的主題站主早已定（門司港全景、桌上模型、黃昏入夜、一個屋台），本輪只「照真實地圖擺」。
+
+### 改之前查到的「亂做」（每一條都有證據）
+- **Tokyo**：整條是通用巷子，record 自己寫 "drawn rather than surveyed"——板條箱、梯子、垃圾桶、販賣機、
+  電話亭、凸面鏡、六盞燈籠掛五條電線，對應不到任何真實地點。
+- **Fukuoka**：大廳牆／地面／天花是舊巷子遺留（hoarding、corrugated、濕石地、橫跨電線、13 盞紙燈籠——無來源）；
+  caveat 還寫 "The alley is drawn"；四棟建築排成一列，其中**大連記念館與舊大阪商船放錯邊**；背景是通用城市＋
+  山；**藍翼橋的葉片以中點為軸（打開變 V 字、兩岸翹起）**、開 72°（實際 60°）、**只在晚上開**（實際 10–16 點、
+  一天 6 次，夜間不開）；大船穿橋（實際只有船溜的小船過橋，大船走海峽）；無障礙描述沿用東京舊巷子的文字。
+- **Toronto**：Rogers Centre 放在塔**東邊**（實際在西邊）；市場桌在**左（西）**（實際在東）；**St. Lawrence
+  Market 模型有圓頂鐘塔——1902 年改建時已拆除**（Wikipedia；Doug Taylor）；Rogers Centre 屋頂畫成東西對開
+  （實際北片固定、中二片北移疊上、南片旋轉收入）；牆上「模型的模型」展示架、廳裡的路樁與長椅、市場桌上的露天攤位
+  （攤商在室內）皆無來源；無障礙描述也沿用東京舊巷子文字。
+- **street**：無障礙描述沿用東京舊巷子（凸面鏡、電錶、消防栓…街上沒有），遠端寫「十字路口、塔、山」（實為港）。
+
+### 來源（抓來的頁不會留，結論寫在這裡與程式註解）
+- 淺草寺官方 senso-ji.jp/guide/guide02.html：仲見世＝表參道，雷門→寶藏門約 250 m，兩側朱塗店舖，1925 鋼筋混凝土。
+- tokyo-trip.org、tour.ne.jp：東側 54 店、西側 35 店（計 89）；石畳「碁盤の目」；全店鐵捲門畫淺草歲事。
+- Wikipedia（Sensō-ji）：雷門 11.7×11.4 m，大提燈 3.9 m 高、3.3 m 徑、700 kg；寶藏門 22.7×21×8 m，中央小舟町
+  提燈 3.75 m、2.7 m 徑、400 kg，兩側銅燈籠 2.75 m；五重塔 53.32 m（tokyotourists）。
+- japan.travel、nightscape.tokyo、chrisnsue.com：19 時前後閉店、鐵捲門上是 1989 年東京藝大的「淺草絵巻」；
+  寶藏門、五重塔、雷門點燈到 23 時。letsgojp：仲見世中央參道露天、無拱廊（交叉的新仲見世才有拱廊）。
+- OpenStreetMap（Nominatim／API，Google Maps 從沙箱無法操作——如實記錄）：仲見世街道軸 4.7°（幾乎正北）、
+  店面對店面 9.1 m、店深約 4 m、新仲見世在 71 m、伝法院通在 181 m、廣場 28 m、五重塔在寶藏門西 56 m 北 19 m。
+- 門司港（OSM）：門司港駅原點；舊大阪商船 (70 E, 113 N) m、三井倶楽部 (102 E, 68 N)、ブルーウィング SW 端
+  (86, 256)→NE 端 (147, 341)（104.5 m、方位 36°）、舊門司税關 (195, 290)、レトロハイマート (246, 368)、
+  プレミアホテル (104, 197)、海峽プラザ (210, 86)、關門橋兩端、海峽ゆめタワー（西約 2.9 km）。
+- ブルーウィングもじ（harady.com、rurubu、charihoi、navitime）：全長 108.1 m；親橋（南側）24.1 m 鋼索絞盤＋
+  主塔、子橋 14 m 油壓，最大約 60°；10/11/13/14/15/16 時開、各約 20 分；夜間點燈；從橋上「右側是關門橋」。
+- tabicocolo：大連友好記念館在第一船溜北側、與舊税關並立（1995，東清鐵道汽船事務所複製）。
+- tabi-mag、skyskysky：レトロハイマート 31 F、126.95 m、黑川紀章、1999；展望室 103 m。yamaguchi.mytabi：
+  ゆめタワー 153 m（展望 143 m、1996）。kotobank／土木遺産：關門橋 1973、全長 1068 m、中央 712 m、側徑間 178 m、
+  桁下 61 m、塔頂 141 m、灰綠色；海峽寬 700 m 餘、每日約 500 隻（NHK）。
+- Toronto（OSM）：Rogers Centre 在塔西 170 m 南 100 m；St. Lawrence Market South 東 1.25 km 北 0.69 km；
+  First Canadian Place (435 E, 689 N)、Scotia Plaza (606, 770)、Royal Bank Plaza (581, 383)、渡輪碼頭東約 1 km、
+  島鏈在南約 2 km。Wikipedia：Rogers Centre 屋頂 86 m、四片、20 分鐘；RBP 南塔 180 m、北塔 114 m、金色玻璃；
+  FCP 298.1 m（白）、Scotia Plaza 275 m（紅花崗岩：一般常識，本輪未重抓）；St. Lawrence Market South：
+  1845 市政廳中段保留，三石拱、議事廳（Market Gallery）、1902 Siddall 改建時拆掉 wings／pediment／cupola。
+
+### 測量表（摘要；完整數字在 record 註解）
+| 項目 | 值 | 方位 | 階梯 |
+|---|---|---|---|
+| 仲見世寬（店面對店面） | 9.1 m | 南北軸 4.7° | 3（OSM 建物輪廓） |
+| 店數／平均店寬 | 東 54／4.7 m、西 35／7.3 m | — | 2 |
+| 交叉街 | 新仲見世 71 m、伝法院通 181 m（共約 265 m 店列） | 東西 | 3 |
+| 寶藏門 | 22.7×21 m，提燈 3.75 m | 正北盡頭 | 2 |
+| 五重塔 | 53.32 m，門西 56 m 北 19 m | 西北 | 2＋3 |
+| 門司港桌 | 1.5 cm/m，看向西北（基準：船溜頭） | — | 3 |
+| 藍翼橋 | 親 24.1 m＋子 14 m，60°，6 次／日 | 跨船溜口 | 2 |
+| 關門橋／ゆめタワー | 右前／左遠，皆照 OSM 換算 | NNW／W | 3 |
+| 多倫多城市桌 | 高度 1:184（塔 553.3 m→300 cm） | 北朝遠 | 2＋3 |
+
+### 範圍表（in-frame／drawer／off-frame）
+- **Tokyo**：in-frame＝雷門（背後，出口）、兩排店（朱柱、鐵捲門＋繪卷底色、燈箱簷、招牌帶空白、瓦）、兩條交叉街
+  （暗帶）、石畳＋側溝、白色球燈、寶藏門＋三燈、五重塔、廣場、夜空。off-frame（理由）：晴空塔（方位 102°，
+  被東列擋）、本堂（被寶藏門擋）、季節裝飾（隨季變，本頁不作）、繪卷人物（不畫人）、雷門風神雷神（人形）、
+  店名／提燈字（文字）。
+- **Fukuoka**：in-frame＝門司港駅、舊大阪商船、船溜、藍翼橋（親子橋＋主塔）、港內小船、舊税關、大連記念館、
+  レトロハイマート、海峽（大船兩艘）、下關岸、ゆめタワー、關門橋、一個屋台（站主要求）。off-frame（理由）：
+  三井倶楽部、Rossi 飯店、海峽プラザ（無高度來源，不建模）；岸上山丘（無高度來源）。
+- **Toronto**：in-frame＝塔、Rogers Centre（西）、FCP／Scotia／RBP 兩塔（東北，高度有來源者才放）、
+  Queens Quay 電車軌道、湖與島、渡輪（南北）、瀑布桌（東南）、市場（東，無圓頂）。off-frame：Commerce Court、
+  TD Centre（本輪未取得高度來源）、Union Station（太長，桌放不下）。
+
+### 做法（renderer＋record）
+- 新形狀 `shopbay`（仲見世一間店）、`gate`（雷門）；新背景 painter `temple`（寶藏門＋五重塔）、`strait`
+  （海峽、兩岸、ゆめタワー、關門橋、船）；`skyline` 可讀 `towers`（真實大樓清單）；`dome` 改真實四片屋頂；
+  `markethall` 重寫（無圓頂）；`drawbridge` 重寫（各自岸邊鉸接、親子不對稱、60°、真實時刻表）；`ship` 改港內小船。
+- lane `open`（無頂蓋：仲見世露天）、`floor: "paving"`（石畳）；emitter 新增 `mural/posts/towers/leaves/run`。
+- 仲見世店列由 `_nakamise()` 從來源數字生成（店寬取各列平均，**縮的是店數不是店寬**）；門司港位置由
+  `moji_xy()` 從 OSM 座標換算；各房 `clad_note`／`sight_note`（無障礙描述）改寫為真實內容。
+- 牌（album plates）移到柱線前（原掛在鐵捲門上時，nearest-first reach 永遠選到店而選不到牌——實際可用性 bug）。
+- 雷門的 press box 改成門洞（下段）：整座門填滿畫面時，原規則（左上角須在畫面內）讓出口在你面對它時消失。
+
+### 閘門改了什麼（為什麼不是放寬）
+- `verify-walk`：section 1 原本盤點舊巷子的發明物件（booth、mirror、6 燈籠 5 電線…），改成仲見世的來源數字契約
+  （9.1 m、露天、店寬、交叉街缺口、繪卷底色、寶藏門尺寸、塔的偏移）；**全站規則全部保留**（每個光有名字可指、
+  band 不出盒、無文字、視線寫進描述）。states 契約（狀態＝幾何＋光）改在 street 上測（仲見世閉店後沒有可操作物，
+  不為了測試發明一個）；以 `__walk.quads` 證明 front-s 換 stop 後幾何真的變了。fill 天花板依文件的 A/B 法重校：
+  HEAD 6380 → 仲見世 8153，天花板 6600 → 8600（第二遍渲染約 16 300，偵測力保留）。
+- `verify-chain`／`verify-rooms-e2e`：東京出口 noren → gate-kaminari；sealed-lane 測試移到 LookOut（東京已開口）；
+  門司港桌貼到遠牆（海峽同比例接續），「走道越過展台」改成「走道沿展台走到大廳盡頭」；步數依新距離加長。
+
+### 驗證（全部在最終程式碼上重跑）
+- 靜態：`node --check`、`py_compile`、`git diff --check` OK；產生器冪等。impeccable `[]`。
+- shapes：7 頁 93 個 prop 全解析；geometry OK；clash OK（新的多倫多擺法第一次跑出 3 個真碰撞＋1 個懸空：
+  Rogers Centre 壓到電車軌道（實際 Queens Quay 在球場南邊→軌道移到桌前緣、球場往北）、兩棵樹貼軌道、市場行道樹
+  懸出桌緣——全部改模型位置，沒動閘門）。
+- walk 163/163；objects exit 0；chain 0 failure；story 25/25；e2e 0 failure。
+- cost-probe（量測、非閘門）：peak 6380 → **8440**（+32%，東京頁變 2.4 倍長且露天），bad 0、huge 0、dark 0.654。
+- lane-shot（真光柵，每格都看過）：Tokyo 8/8（luma 92.6/103.8/81.5/76.9/58.6/56.1，回頭看雷門 81.8）；
+  Fukuoka 7/7（93.5/86.1/87.6/79.1/71.7，回頭 59.6）；Toronto 7/7（83.1/80.4/79.3/94.7/110.6，回頭 64.9）。
+- critique 兩讀抓到並修掉：①回頭看雷門只剩一面灰牆（相機離門 1.2 m，luma 23.7）→ 雷門退到 −2.6 m、第一站
+  前移 1.2 m、門洞畫成門外的夜街；②寶藏門下層是一個黑箱 → 點燈的暖色開間、加寬柱；③廣場無光（luma 42.9）→
+  投光在廣場上的光暈；④門司港遠牆開口六米高、大半是空夜空 → 降到「海峽帶」高度（背景板的做法）。
+- 證據：`.preview/r32-before-{rooms,rooms-fukuoka,rooms-toronto}/`（改前各 16 格）、
+  `.preview/r32-after3-rooms/`、`.preview/r32-after2-rooms-fukuoka/`、`.preview/r32-after-rooms-toronto/`；
+  參考照片在 `ref/r32/`（gitignored，不出貨）。
+
+### 沒做到／要知道的
+- `browser-check.py` 未跑（Playwright 的 Chromium CDN 連不到）。
+- 東京相簿封面 `IMG/tokyo-cover.jpg` 仍是舊的生成圖（雷門燈籠、scramble、塔、櫃台、山）；caption 已改成如實說明。
+  要不要換成仲見世場景的一格（`make-cover.mjs`）——待站主決定。
+- 標為「約略」的數字：藍翼橋主塔高度、市場屋頂高度、大樓佔地、門司港建物高度（依樓層估）；Scotia Plaza 的
+  紅花崗岩是常識、本輪未重抓來源。
+- 門司港：三井倶楽部、Rossi 飯店、海峽プラザ未建模（無形體／高度來源）；兩岸山丘不畫。
+- 仲見世：季節裝飾不畫；繪卷只留底色；交叉街是暗帶（看不到拱廊內部）；廣場兩側是夜色（來源沒有細節）。
+- 多倫多瀑布桌外觀本輪未重做（比例在第 22–27 輪已有來源）。
+
+
+## 0m. 第三十一輪（2026-10-15）：沒畫出來的物件——CN Tower 三個未註冊 prop、側牆門變平板、閘門漏看的頁
+
+站主：「請用 skills並且遵循根AGENTS.MD SKILLS做該做的事情並進行專案。」依 AGENTS 先讀 Karpathy／PUA／real-place-builder／scene-system／lane-prop／grounded-scene，盤點 TODO 與 gates，再以 render 幀為準找缺陷。PR #1–#13 皆已合併，無 open issue；第三十輪「無已知阻擋性缺陷」的結論被以下證據推翻。
+
+**缺陷 1（round 21 起）：CN Tower 四個 prop 有三個沒到自己的 painter。** painter 由 `data-obj` id 前綴經 `kindOf` 決定，record 的 `kind` 只用於 OBJ_SIZE／碰撞、從不進 HTML。`lift-cn`（record 說 door）→ 退回 plane，開門 state 只有字幕；`glass-cn`（glassfloor）→ SHAPE 根本沒有 `glassfloor` 鍵，37 個 painter branch 中唯一的死碼，九輪都畫成 4 cm 高的卡片＋接地陰影；`sky-cn`（ledge）→ fallback 色。閘門沒抓到：`verify-shapes/geometry/clash` 手打四頁清單（123 props），之後建的 cntower／niagara／journey 從未被檢；`verify-story` 只驗 DOM `data-state`，不驗像素。
+- 修法：`SHAPE.glassfloor`；`lift: "door"` alias（`shop`/`front` 先例，id 不變、record 註記）；`glass-cn`→`glassfloor-cn`、`sky-cn`→`ledge-cn`（record 本來就寫 ledge）；`verify-story` 選擇器同步。三個 gate 改為從磁碟推導「含 `data-obj=` 的所有頁」——7 頁 136 props 全 resolve。反向對照：新 `verify-shapes` 套在 HEAD 的 site.js＋cntower 頁 → exit 1，正好列出 `lift-cn glass-cn sky-cn`。
+- 電梯畫法：door painter 加中分電梯變體——兩片拉絲門扇＋中縫＋鋼框，無門板／把手／氣窗（那是街門的）；`door` state 讓門扇縮進兩側門袋、露出亮的車廂。state 現在是幾何。
+
+**缺陷 2（PR #8，2026-09-30 起）：所有側牆門正面看是一塊平板。** door painter 的偏移假設 +v＝門後（端牆門成立），但側牆門的 `dir` 讓 +v 指向走道，於是全尺寸暗色 reveal 站在門扇前 10 cm；沿街看時排序平手剛好藏住，轉身面對門就整片蓋住門扇、門板、把手、氣窗。Chromium 實拍確認：Niagara `door-journey`、街上 Toronto／Tokyo 主門正面皆為單色平板。另外門扇／門板／把手共面、各以自己中心排序，遠側門板與把手會沉到門扇下。
+- 修法：側牆門 reveal 放到門扇後（v=1）；門面各層組成一疊、依建構順序繪製，排序鍵放在「重疊的最近一片牆切片」之前一點點（牆與 cladding 切片建立時標記 `wall/za/zb`，用實際 quad，不重推切片網格——cntower `back: 220` 不在 60 cm 網格上）；地面光暈維持自己的深度。刻意不用固定 −70 偏移：`pole-west` 在 Toronto 門遠緣外 10 cm，固定偏移會讓門蓋過站在它前面的桿子。實拍驗證：三扇門＋journey 門正面皆見門板、把手、氣窗；從街中段回望，桿子仍正確擋在門前；端牆 `door-back` 不變。
+
+**缺陷 3：Glass Floor 尺寸與來源不符。** 來源一致為 24 m²（256–258 sq ft）、64 mm（25 mm 夾層＋25 mm 空氣層＋13 mm 夾層）：Wikipedia「CN Tower」、WikiArquitectura、torontotourism.org 2026 指南、CN Tower FAQ 鏡像；record 的 220×180≈4 m² 只有六分之一（grounded-scene §5：record 與幾何衝突時幾何錯）→ 480×500。另據 kpax（CNN fast facts）、tourbyspot：2017 起 LookOut 346 m 本身也有對齊的玻璃地板，所以放在 LookOut lane 有依據。painter 首次真正執行時，`on` 的 `lit×1.25` 讓暖色 wash 把深色城市磁磚洗成灰地板 → 玻璃不吃室內燈（lit 0.5），`on` 改為清掉反光（sheen 0.16→0.04）。站位：「on the glass floor」站在面板中心，預設 pitch −2°（往上 2°；正 pitch 才是往下）時地板要 ~357 cm 外才入鏡，所以腳下玻璃只在往下拖曳時可見（MAX_PITCH 24，實拍證明）；前兩站（LookOut's glass、LookOut mid）正前方清楚看到整片。
+
+**Harness：** `lane-shot` 的 `goTo` 30 s 牆鐘上限在 cntower 走回入口時於 124/58 cm（仍在移動）丟錯，room gate 從未執行 → 上限改為「5 s 無 1 cm 進度」＋180 s 硬上限。cntower lane-shot 首次完整：16 幀＋sheet，7/7 PASS。
+
+**數值（同 harness、同站點，before → after）：** 02 101.8→101.4、05 101.0→95.8、08 83.9→80.5、11 70.8→71.2（接近 sealed 70 是既有狀態）、14 60.1→60.8；05／08／09 變動 39–42% 像素（玻璃地板出現）、01 19%（電梯）、14 0.1%。全套：`verify-shapes` 136/7 頁、`verify-geometry`／`verify-clash` 7 頁 0、`verify-walk` 173/173（中途一次 172/173＝改 JS 後未重產 cache-buster，重產即過）、`verify-objects` exit 0、e2e 0 failures、chain 0 failures、story 25/25、cost-probe peak 6380／28 frames／bad 0／dark 0.617／huge 0、impeccable `[]`、兩次重產 MD5 一致、`node --check`／`py_compile`／`git diff --check` 通過。街道 lane-shot（續做完成）：31 幀＋sheet，12/12 PASS——10 張 ahead luma 97.5–199.5、色數 153–1000，41 m 走回入口後 entrance-behind 72.2（舊的 30 s 上限走不完這段）；sheet 上看得到門的側視角（mouth-left、middle-right、boards-left）皆見門扇與門板，無平板。
+
+**沒做到／誠實註記：**
+- 第一次街道 lane-shot 在 30/31 幀時被站主中止；之後 sandbox 由快照還原（`node_modules`、`/tmp`、忽略目錄都不保存，工作樹的 TODO.md 也退回舊版——已用 `git restore` 取回 a745306 的本節），`bin/restore-env` 重建環境後重跑完成，結果見上。
+- `browser-check.py` 未跑（需 Playwright 下載 Chromium，CDN 不在允許清單；且只測 rooms.html）。`verify-objects` 只看 Toronto 四個視角（設計如此），門與塔的證據來自 lane-shot 與 Chromium 實拍。
+- 「the cab doors」站的電梯在 ±30° 幀邊緣（相對站點 −67°）；正面證據用 `#at-lift-cn` 實拍。站位未改。
+- 腳下城市燈點稀疏：`aerialdeep` 磁磚與 SkyPod 的 citybelow 背景共用，未動以免改到遠景；屬美感微調，留給站主決定。
+- 接觸面板時卡片「1.9 m ahead」是進入 reach 圈時的舊值（`say()` 只在 reach 換物件時更新），既有行為，未動。
+- 已過時的 TODO：round-18 渡輪動作（boat painter 已有 SAIL 13／BERTH 4／REACH 62 時刻表）、round-19 門司遠岸（customhouse／osakashosen／dalianhall 已存在）。
+
+**一次性探針（用完已刪，做法記此）：** puppeteer-core＋`@sparticuz/chromium` 連 :8080；用 `#at-<prop>` hash 或站點 chip 站位；按住方向鍵並讀回 `__walk.yaw` 轉向；滑鼠拖曳調 pitch（往上拖＝往下看）；E 鍵按壓。等待滑行要以 chip 的 `--z` 為目標——軟體 GL 幀很慢，兩次取樣相同不代表到站。證據（忽略目錄、不進 Git）：`.preview/r31-cntower-before/`、`r31-cntower-after/`（含 sheet）、`r31-probe-before/`、`r31-probe-after/`、`r31-probe-after2/` 已隨快照還原消失，本節的數值與描述就是紀錄；還在的只有 `.preview/r31-street-after/`（31 幀＋sheet）。要重看 cntower：`LD_LIBRARY_PATH=/tmp/al2023/lib ROOMS=rooms-cntower.html node .verify/lane-shot.mjs .preview/<dir>`（約 2.5 分鐘）。
+
+---
 
 ## 0l. 第三十輪（2026-10-14）：建景 skills 強制落地、視覺回歸與 Niagara renderer 修正
 
@@ -272,7 +813,7 @@ Table Rock 視點、馬蹄弧、霧與虹）。District＝promenade lane：西�
 - **§5 忠誠 gate**：每視線追到表、每表行引階梯；critique pass 對照真全景；辨識測試（去過的人
   看 lane-shot 說「這不是那裡」就 fail）；source 與 build 衝突時 build 錯。
 - **§6 CN Tower 修正版**：§7 beats 留作順序，但全部 grounded——LookOut facings 用真方位
-  （大略：湖 S、Rogers Centre＋鐵道 NE 腳下、downtown N/E）、glass floor 真廣場 342 m 下、
+  （大略：湖 S、Rogers Centre＋鐵道 NE 腳下、downtown N/E）〔**第 33 輪更正**：OSM 顯示 Rogers Centre 在塔的西南西約 190 m，不在東北；北側腳下是鐵道走廊，downtown 在 N/NE。〕、glass floor 真廣場 342 m 下、
   電梯真 58 s 運動壓縮時間、SkyPod 保留真差異。沒有任何真樓層被刪。
 
 **同 commit**：`landmark-space` §7 加 round-20 correction 段＋§1 pointer；AGENTS.md 表格第七行

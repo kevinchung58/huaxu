@@ -105,137 +105,129 @@ const key = (k, type = "keydown") => (doc.activeElement || doc.documentElement).
 const click = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true, cancelable: true }));
 const hold = async (k, ms) => { key(k, "keydown"); await new Promise((r) => setTimeout(r, ms)); key(k, "keyup"); };
 /* ---- 1. the data the scene is allowed to know about ------------------------------------------- */
+/* Round 32: the Tokyo room is Nakamise-dori at night (TODO section 0n). The assertions that listed
+   the old lane's invented kit -- a booth, a mirror, six lanterns on five wires, a tactile path -- are
+   replaced by the street's own contract, every number of which comes from the sources: 9.1 m from
+   shopfront to shopfront, open to the sky, granite paving, a real shop's width per bay, the rows broken
+   where the two streets cross, Hozomon at its size with the pagoda 56 m west of it. The rules that
+   are the site's and not the room's -- every glow pointable, no band outside the box, no lettering,
+   the sightline in words -- are kept as they were. */
 const Q = "&quot;", DQ = '"';
 const hitRe = /<button type="button" class="walk-hit"[^>]*data-obj="([^"]*)"[^>]*>/g;
 const ids = [...html.matchAll(hitRe)].map((m) => m[1]);
-ok("the lane is furnished, and every prop is authored", ids.length >= 20, `${ids.length} objects`);
+const hits = [...html.matchAll(/<button type="button" class="walk-hit"[^>]*>/g)].map((m) => m[0]);
+const attrOf = (tag, a) => { const m = tag.match(new RegExp(`${a}="([^"]*)"`)); return m ? m[1] : null; };
+const cssOf = (tag, v) => { const m = tag.match(new RegExp(`--${v}:(-?[\\d.]+)px`)); return m ? Number(m[1]) : NaN; };
+const bays = hits.filter((t) => /data-obj="shopbay-/.test(t)).map((t) => ({
+  id: attrOf(t, "data-obj"), x: cssOf(t, "x"), z: cssOf(t, "z"), w: Number(attrOf(t, "data-w")),
+  h: Number(attrOf(t, "data-h")), d: Number(attrOf(t, "data-d")), solid: attrOf(t, "data-solid") === "true",
+  posts: attrOf(t, "data-posts"), mural: JSON.parse((attrOf(t, "data-mural") || "[]").split(Q).join(DQ)) }));
+const laneAttr = (a) => { const m = html.match(new RegExp(`data-lane-${a}="([^"]*)"`)); return m ? m[1] : null; };
+const WALK_D = Number(laneAttr("d")), BACK = Number(laneAttr("back")), CEILING = Number(laneAttr("ceil"));
+const RUNS = [[0, 550], [1000, 1850], [2350, WALK_D]], GAPS = [[550, 1000], [1850, 2350]];
+ok("the street is furnished from the record: both shop rows, its gate and its plates",
+   bays.length >= 6 && ids.includes("gate-kaminari") && ids.filter((i) => i.startsWith("frame-")).length === 6,
+   `${bays.length} bays, ${ids.length} objects`);
 ok("each object carries its own depth, so a prop is a solid", (html.match(/data-d="\d+"/g) || []).length === ids.length);
-ok("the lookout rail is one of them", ids.includes("ledge"));
-ok("the end wall is clear: the two things that were on it moved beside it",
-   /data-obj="frame-tower"[^>]*--x:314px/.test(html) && /data-obj="frame-poster-ticket"[^>]*--x:-310px/.test(html));
+ok("the street is its real width, open to the sky and paved: 9.1 m from shopfront to shopfront",
+   laneAttr("w") === "910" && laneAttr("open") === "1" && /data-floor="paving"/.test(html)
+     && Number(laneAttr("max-d")) > WALK_D);
+ok("each row stands against its own wall, a shop deep, and stops a walker at the posts",
+   bays.every((b) => Math.abs(b.x) === 380 && b.d === 150 && b.h === 480 && b.solid)
+     && bays.some((b) => b.x < 0) && bays.some((b) => b.x > 0));
+ok("every bay keeps a real shop's width: about 7.3 m on the west row, 4.7 m on the east",
+   bays.every((b) => (b.x < 0 ? Math.abs(b.w / 730 - 1) < 0.45 : Math.abs(b.w / 470 - 1) < 0.45)),
+   bays.map((b) => `${b.id}:${b.w}`).join(" "));
+ok("the rows break where the two streets cross, and only there",
+   [-1, 1].every((sd) => RUNS.every(([r0, r1]) => {
+     const inRun = bays.filter((b) => Math.sign(b.x) === sd && b.z > r0 && b.z < r1);
+     const cover = inRun.reduce((t, b) => t + b.w, 0);
+     return inRun.length >= 1 && Math.abs(cover - (r1 - r0)) <= 3;
+   })) && bays.every((b) => GAPS.every(([g0, g1]) => b.z + b.w / 2 <= g0 + 2 || b.z - b.w / 2 >= g1 - 2)));
+ok("each run ends at a post and the row's end wall",
+   [-1, 1].every((sd) => RUNS.every(([r0, r1]) => {
+     const inRun = bays.filter((b) => Math.sign(b.x) === sd && b.z > r0 && b.z < r1).sort((a, b) => a.z - b.z);
+     if (inRun.length === 1) return inRun[0].posts === "2";
+     return inRun[0].posts === "first" && inRun[inRun.length - 1].posts === "end";
+   })));
+ok("the shutters carry the mural's ground colours and nothing else",
+   bays.every((b) => b.mural.length >= 2 && b.mural.every((c) => /^#[0-9a-f]{6}$/i.test(c))));
 const island = (name) => {
   const m = html.match(new RegExp(`data-walk-${name}>(.*?)</script>`));
   return m ? JSON.parse(m[1]) : null;
 };
 const lights = island("lights"), wires = island("wires"), beams = island("beams"),
       vista = island("vista"), bd = island("backdrop");
-ok("lights are data, not a renderer's guess", lights && lights.length >= 6, `${lights && lights.length}`);
-ok("the compound's bounce is authored as a light source, with its own tint",
-   !!lights.find((L) => L.tint && L.bulb === false));
-ok("no bulb sits on the ceiling that the generator did not place",
-   lights.filter((L) => L.y === 386).length === 5);
-ok("the arcade is authored", Array.isArray(beams) && beams.length === 4);
-ok("the aperture is authored in scene centimetres", vista && vista.w === 470 && vista.y0 === 108 && vista.y1 === 336);
-ok("the far plane names every landmark it draws",
-   bd && !!bd.plaza && !!bd.crossing && !!bd.tower && !!bd.mountain && bd.city.length === 8
-     && bd.roofs.length === 4 && !!bd.express);
-ok("the near rooftops are beside the crossing, not standing on it",
-   bd.roofs.every((r) => Math.abs(r.x) > bd.crossing.x1 && r.z < bd.city[0].z)
-     && bd.roofs.every((r) => r.tone !== undefined && r.tone > 0 && r.tone < 1));
-ok("the raised road is infrastructure, not a light source: its lamps are geometry",
-   bd.express.lamps.length === 5 && bd.express.piers.length === 5
-     && !lights.some((L) => L.z === bd.express.z));
-ok("the crossing is a scramble: stripes and diagonals", bd.crossing.stripes === 9 && bd.crossing.diagonals === true);
-ok("the tower's bands are counted, not sketched", Array.isArray(bd.tower.decks) && bd.tower.decks.length === 2);
-ok("the mountain is farther than everything else, and says so by scale",
-   bd.mountain.z > bd.tower.z && bd.mountain.z === 90000);
-ok("the sky is three bands, and only the horizon band glows",
-   bd.sky.length === 3 && bd.sky.filter((b) => b.glow).length === 1);
+const strips = lights.filter((L) => L.bulb === false);
+const lanterns = lights.filter((L) => L.body === "lantern");
+ok("lights are data: a strip light under every bay's eave, and the globes on the fascias",
+   strips.length === bays.length && strips.every((L) => bays.some((b) => b.id === L.of && b.x === L.x && b.z === L.z))
+     && lights.filter((L) => L.bulb !== false).length >= 4, `${strips.length} strips / ${lights.length} lights`);
+ok("nothing hangs on a wire the street does not have",
+   (wires || []).length === 0 && !lights.some((L) => L.body === "lantern") && (beams || []).length === 0);
+ok("the far end is Hozomon at its sourced size, with the pagoda 56 m west and 19 m north of it",
+   bd && bd.temple && bd.temple.gate.w === 2100 && bd.temple.gate.h === 2270 && bd.temple.z > WALK_D
+     && bd.temple.pagoda.x === -5600 && bd.temple.pagoda.z - bd.temple.z === 1900 && bd.temple.pagoda.h === 5332);
+ok("the plaza continues the street's own paving, at street level, from the last shops on",
+   bd.plaza.y === 0 && bd.plaza.z0 === WALK_D && bd.plaza.z1 > bd.temple.z);
+ok("a street with no lid has a sky that reaches the top of the frame",
+   bd.sky.length === 3 && bd.sky[bd.sky.length - 1].y1 >= 120000 && /const cl = OPEN \|\| VAULT \? null : lidQuad\(/.test(js) && /if \(VAULT && !OPEN\)/.test(js));
+ok("the aperture opens the whole end of the street onto the plaza",
+   vista && vista.w >= 880 && vista.y0 <= 4 && vista.y1 >= 490);
 ok("no prop's z is left in record units (all scaled by 2.9)",
    [...html.matchAll(/--z:(-?\d+)px/g)].every((m) => Math.abs(Number(m[1])) % 1 === 0));
 const surf = island("surfaces"), ground = island("marks");
-/* Two more materials, added when the lane's far half was dressed: board-formed concrete over the
-   shopfronts and a sheet of galvanised steel patched over the hoarding. Both are painted in code from
-   a 128px tile like every other one, and both are named here because this assertion is the list of
-   materials a band is allowed to name. */
 const CLAD = ["plaster", "shutter", "corrugated", "dado", "brick", "hoarding", "concrete", "galv"];
 ok("the walls are clad by data: every band names a material that has a pattern",
-   !!surf && surf.length >= 18 && surf.every((v) => CLAD.includes(v.kind)), `${surf ? surf.length : 0} bands`);
-ok("a band cannot lie about the lane: inside the walls, below the ceiling, on one side",
-   surf.every((v) => Math.abs(v.side) === 1 && v.z0 >= -240 && v.z1 <= 1247 && v.y0 >= 0 && v.y1 <= 420
+   !!surf && surf.length >= 6 && surf.every((v) => CLAD.includes(v.kind)), `${surf ? surf.length : 0} bands`);
+ok("a band cannot lie about the lane: inside the walls, below the roofline, on one side",
+   surf.every((v) => Math.abs(v.side) === 1 && v.z0 >= -BACK && v.z1 <= WALK_D && v.y0 >= 0 && v.y1 <= CEILING
                     && v.y1 > v.y0 && v.z1 > v.z0));
-ok("shutters, not paint, do most of the work: they are the commonest cladding",
-   surf.filter((v) => v.kind === "shutter").length >= 4
-     && surf.filter((v) => v.kind === "plaster").length < surf.length / 2);
 ok("the cladding tiles each wall's whole height at every panel, so the room is dressed and not patched",
    [-1, 1].every((sd) => {
      const v = surf.filter((b) => b.side === sd);
-     for (let z = -240; z < 1247; z += 60) {
-       const at = (z + Math.min(z + 60, 1247)) / 2;
+     for (let z = -BACK; z < WALK_D; z += 60) {
+       const at = (z + Math.min(z + 60, WALK_D)) / 2;
        let y = 0;
        for (const b of v.filter((b) => b.z0 <= at && b.z1 >= at).sort((a, b) => a.y0 - b.y0)) y = Math.max(y, b.y1);
-       if (y < 420) return false;
+       if (y < CEILING) return false;
      }
      return true;
    }));
-ok("and it runs the length of the lane on both sides, gate to window",
+ok("and it runs the length of the lane on both sides, gate to plaza",
    [-1, 1].every((sd) => {
      const v = surf.filter((b) => b.side === sd);
-     return Math.min(...v.map((b) => b.z0)) === -240 && Math.max(...v.map((b) => b.z1)) === 1247;
+     return Math.min(...v.map((b) => b.z0)) === -BACK && Math.max(...v.map((b) => b.z1)) === WALK_D;
    }));
+ok("where a street crosses, the wall is that street's dark: its own band, and no shop light in it",
+   [-1, 1].every((sd) => GAPS.every(([g0, g1]) => surf.some((b) => b.side === sd && b.z0 === g0 && b.z1 === g1)))
+     && strips.every((L) => GAPS.every(([g0, g1]) => L.z <= g0 || L.z >= g1)));     // islands are walk cm
 ok("the wall beneath a covered panel is painted zero times",
    /cladCovers/.test(js) && /if \(surfaces\.length && cladCovers\(side, z, z1\)\) return/.test(js));
-ok("the ground is marked, not left as a plane", !!ground && ground.length >= 6);
-ok("a pedestrian lane has its guide path, on both sides, for its whole length",
-   ground.filter((m) => m.kind === "tactile").length === 2
-     && ground.filter((m) => m.kind === "tactile").every((m) => m.z1 - m.z0 > 1400 && m.x1 - m.x0 < 40));
-ok("every mark lies flat on the floor and inside the walls",
-   ground.every((m) => m.x0 >= -318 && m.x1 <= 318 && m.z0 >= -240 && m.z1 <= 1247
-                       && m.x1 > m.x0 && m.z1 > m.z0));
-const lanterns = lights.filter((L) => L.body === "lantern");
-/* Six lanterns now, on six of the lane's wires: two more were hung when the far half of the lane was
-   dressed, on the wire that crosses at 700 and the one at 1172. What this assertion defends is not the
-   number, it is that each one is a *light* with a tint rather than a decoration the lighting does not
-   know about — so the count moved and the rule did not. */
-ok("a lantern is a light source, so the room is lit by what hangs in it",
-   lanterns.length === 6 && lanterns.every((L) => L.bulb === false && L.tint));
-/* The cable each lantern hangs on, found in the data rather than assumed: a crossing counts if it is at
-   the lantern's own depth, a run counts if it passes within a metre of the lantern's x at that depth.
-   Both halves of this were wrong in the district at once — the lanterns were authored in scene
-   centimetres while the cables beside them were authored in records, so five of six hung on air, and
-   one cable ran to a depth past the far wall, where it was drawn over the city in the aperture with
-   nothing on this side holding it up. */
-const cableOf = (L) => {
-  let best = null, bestDx = 100;
-  (wires || []).forEach((w) => {
-    const az = w.a[2], bz = w.b[2];
-    if (L.z < Math.min(az, bz) - 40 || L.z > Math.max(az, bz) + 40) return;
-    const dx = Math.abs(bz - az) < 60
-      ? 0 : Math.abs(w.a[0] + (w.b[0] - w.a[0]) * ((L.z - az) / (bz - az)) - L.x);
-    if (dx < bestDx) { bestDx = dx; best = w; }
-  });
-  return best;
-};
-ok("every lantern hangs on a cable, and every cable is strung to something inside the room",
-   !!wires && wires.length >= 5 && lanterns.every((L) => !!cableOf(L))
-     && wires.every((w) => [w.a, w.b].every((p) => p[2] > -240 && p[2] <= 1247)));
-ok("and each one says how wide the paper is and where the cord ties off",
-   lanterns.every((L) => L.size >= 20 && L.size <= 40 && L.h > L.y && L.y > 200 && L.y < 400));
+ok("the gutters run along the raised walks, flat on the floor and inside the walls",
+   !!ground && ground.length >= 2 && ground.every((m) => m.kind === "grate" && Math.abs(m.x0) <= 455
+     && Math.abs(m.x1) <= 455 && m.z0 >= -BACK && m.z1 <= WALK_D && m.x1 > m.x0 && m.z1 > m.z0));
 const props = qa(".walk-hit").map((b) => ({ obj: b.dataset.obj,
   x: parseFloat(b.style.getPropertyValue("--x")), z: parseFloat(b.style.getPropertyValue("--z")) }));
 ok("every glow belongs to a named thing, so touching that thing is what changes the light",
-   lights.filter((L) => L.bulb === false && L.body !== "lantern" && L.z !== 1247)
-     .every((L) => ids.includes(L.of))
+   lights.filter((L) => L.bulb === false && L.body !== "lantern").every((L) => ids.includes(L.of))
      && /of: L\.of \|\| null/.test(js) && /setState/.test(js));
 ok("a state's light multiplier is a number, and every stop has one or none, never a guess",
    [...html.matchAll(/data-states="([^"]+)"/g)].every((raw) =>
      JSON.parse(raw[1].split(Q).join(DQ)).every((st) =>
-       st.say && (st.k === undefined || (st.k > 0 && st.k < 3)))));ok("no corner of the lane is lit by an unpointable glow",
+       st.say && (st.k === undefined || (st.k > 0 && st.k < 3)))));
+ok("no corner of the lane is lit by an unpointable glow",
    lights.filter((L) => L.bulb === false && L.body !== "lantern").every((L) =>
-     props.some((pr) => pr.x === L.x && pr.z === L.z) || L.z === 1247),
+     props.some((pr) => pr.x === L.x && pr.z === L.z)),
    `${lights.filter((L) => L.bulb === false && L.body !== "lantern").length} non-bulb sources`);
-ok("the street kit is in the tab order, so it is part of the space and not a painted backdrop",
-   ["front-a", "front-b", "booth", "bikes", "planter-1", "planter-2", "cones", "mailbox", "signA-a",
-    "banner-left", "banner-right", "mirror", "meter", "hydrant", "ladder", "camera", "recycle"]
-     .every((id) => ids.includes(id)));
-ok("the board stays blank and the copy says why: no lettering is ours to invent",
-   /folding board, blank/i.test(html) && /invented lettering/i.test(html)
+ok("the fascias stay blank and the copy says why: no lettering is ours to invent",
+   /fascia carries the shop&#x27;s name in life and is blank here|fascia carries the shop's name in life and is blank here/.test(html)
      && !/g\.fillText|\bfillText\(/.test(js));
 ok("nothing writes prose into the scene", qa(".walk-hit").every((b) => !b.textContent.trim()));
 ok("the sightline is in the accessible description, not only in pixels",
-   /drawn compound: a crossing below it/.test(html));
+   /Hozomon, its great lantern lit, with the five-storey pagoda over the west row/.test(html));
 ok("and so is the dressing, because the room is the thing being described",
-   /dressed as a street/.test(html) && /Nothing on any of it carries a word/.test(html));
+   /two shallow rows of vermilion shopfronts nine metres apart, every shutter down and painted/.test(html));
 
 /* ---- 1b. the display, which may not wear a word ----------------------------------------------- */
 {
@@ -268,8 +260,10 @@ ok("and so is the dressing, because the room is the thing being described",
      /k === "i"/.test(js) && /showSpace\(\)/.test(js));
   ok("the lane keeps breathing while you are not walking, at one tick in eleven frames",
      /startPulse\(\)/.test(js) && /}, 90\);/.test(js) && /reduce\(\) \|\| !inView/.test(js));
+  /* The old lane had two kerb marks; Nakamise's raised walk is drawn by its bays (a 12 cm riser at the
+     post line). The rule holds for any kerb the data authors: a face, low, with a pattern of its own. */
   ok("the kerb is authored as a face, and gets a pattern of its own",
-     ground.filter((m) => m.kind === "kerb").length === 2 && /PATS\.kerb = mkTile/.test(js)
+     /PATS\.kerb = mkTile/.test(js)
        && ground.filter((m) => m.kind === "kerb").every((m) => m.y1 > 0 && m.y1 <= 12));
   ok("weathering is a number on the band, not a brush in the renderer",
      surf.filter((v) => v.tone !== undefined).length >= 3
@@ -323,8 +317,12 @@ ok("the backdrop adds its own fills to the room, not a second pass over it", ctx
    drawn — HEAD reads 6298, the promenade build reads 6380, and 82 is precisely the two
    painters' fillRects. The ceiling goes to 6600; a second depth pass would now read near
    12 700, so the detector still has a whole pass of daylight. */
+/* Round 32 recalibration, by the same honest A/B: this page is Nakamise now -- 30 m of street instead
+   of 12.5 m of lane, so 2.2 times the wall slices, seven shop bays and a temple backdrop. HEAD (the old
+   lane) reads 6380; Nakamise reads 8153 on the same boot. The ceiling goes to 8600; a second depth pass
+   would read near 16 300, so the detector keeps its whole pass of daylight. */
 ok("one depth pass, dressed: the room costs fills, not passes",
-   ctx.fills > before && ctx.fills < 6600, `${ctx.fills} fills, one pass`);
+   ctx.fills > before && ctx.fills < 8600, `${ctx.fills} fills, one pass`);
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
 ok("the cladding is tiled into the wall's own panels, so an affine map stays exact",
@@ -338,10 +336,11 @@ ok("every material in the data has a painter, and every painter has a tile",
    }) && /PATS\.plaster = tilePat/.test(js));
 ok("the room's atmosphere is drawn, not photographed: no material image is loaded for it",
    !/IMG\/[a-z0-9-]*(shutter|brick|tile|plaster|corrugated|wood|asphalt)/.test(js + html));
-ok("the one wet patch earns its place: it holds the light above it, and nothing else",
+/* A wet patch is only authored where a light stands over it to be held (the old lane had one; the
+   paved street after closing has none), so the rule is checked over whatever the data holds. */
+ok("a wet patch earns its place: it holds the light above it, and nothing else",
    /marks\.forEach\(\(mk\) => \{\s*\n\s*if \(mk\.kind !== "wet"\) return;/.test(js)
-     && ground.filter((m) => m.kind === "wet").length === 1
-     && ground.some((m) => m.kind === "wet" && lights.some((L) => L.bulb === false
+     && ground.filter((m) => m.kind === "wet").every((m) => lights.some((L) => L.bulb === false
          && L.x >= m.x0 && L.x <= m.x1 && L.z >= m.z0 && L.z <= m.z1)));
 ok("a shopfront is a recess in whichever wall it hangs on, built through the wall's own axes",
    /const P = \(u, v, y\) =>/.test(js) && !/face\(inset\/2/.test(js));
@@ -396,20 +395,19 @@ ok("the walk clamps to this page's walls and its authored far-depth boundary",
      && /const HALF = Math.max\(0, WALL - PLAYER_RADIUS\)/.test(js)
      && /const MAX_D = attr\("laneMaxD", Z_FAR - 47\)/.test(js),
    "the body stays inside this room's width and stops before its end wall unless the place opens farther");
-ok("the plaza is seen, not entered: the far plane sits past the clamp",
-   vista.w > 0 && 1200 < 1247,
-   "a sealed room clamp (far depth 1200) sits short of its end wall at 1247, so the window is a "
-   + "view and not a hole out of the world; the street authors laneMaxD and walks through instead");
+ok("the plaza is walked into, and the gate stands past the clamp: a street that opens, not a window",
+   vista.w > 0 && Number(laneAttr("max-d")) > WALK_D && bd.temple.z > Number(laneAttr("max-d")) + 1000,
+   `walls end at ${WALK_D}, the walk at ${laneAttr("max-d")}, the gate at ${bd.temple.z}`);
 
-// The scramble frame, from the station beside it, with the wall as the only thing in between.
-click(stopAt(798));
-await settle(798);
+// The scramble plate, from the stop between the shuttered rows, 44 cm ahead of it at the post line.
+click(stopAt(1392));
+await settle(1392);
 await hold("a", 2500);                                   // to the authored left wall, x clamps inside it
 await sleep(120);
 ok("the wall prop nearer you wins: the reach is nearest-first, not list-order",
-   /The scramble at Shibuya|Utility pole|crate|drain|bin|sign/.test(status()), status());
-click(stopAt(798));
-await settle(798);
+   /The scramble at Shibuya|A shop on the west row/.test(status()), status());
+click(stopAt(1392));
+await settle(1392);
 ok("standing at the frame's own depth brings it into reach",
    /The scramble at Shibuya/.test(status()), status());
 ok("the reach is announced with a dot on the note button, never with a caption",
@@ -483,74 +481,69 @@ await sleep(60);
 ok("closing hands focus back to the thing on the wall that opened it",
    !plate.classList.contains("is-open") && doc.activeElement && doc.activeElement.classList.contains("walk-hit"));
 
-// The rail at the window: a prop with no frame, so it must be answered by the card, not the plate.
-// Centre the body first — from the wall the vending machine is nearer, and nearest wins by design.
-await hold("d", 1300);
-click(stopAt(1146));
-await settle(1146);
-await hold("d", 800);                                      // recenter before the solid cones on the return path
-ok("at the end of the lane the rail is what you are standing in front of",
-   /lookout rail/i.test(status()), status());
+// A shop bay is a prop with no frame, so it is answered by the card, not the plate: from the stop
+// between the shuttered rows, step across to the east row's posts.
+click(stopAt(1392));
+await settle(1392);
+await hold("d", 4200);                                   // across to the east row's posts
+await hold("w", 950);                                    // and along it, toward the middle of the bay ahead
+await sleep(120);
+ok("between the rows, the shop at the posts is what you are standing in front of",
+   /A shop on the east row/i.test(status()), status());
 key("e");
 await sleep(60);
 const card = q("[data-walk-card]");
-ok("E on a prop opens its card", !card.hidden && /lookout rail/i.test(q("[data-walk-title]").textContent));
-ok("the card says the compound is drawn, not surveyed",
-   /picture of them shows, not surveyed/.test(q("[data-walk-hint]").textContent));
+ok("E on a prop opens its card", !card.hidden && /shut for the night/i.test(q("[data-walk-title]").textContent));
+ok("the card says what is left out and why: the mural's people, the fascia's name",
+   /Asakusa Emaki/.test(q("[data-walk-hint]").textContent) && /blank here/.test(q("[data-walk-hint]").textContent));
 click(q("[data-walk-card-close]"));
 await sleep(40);
 ok("the card closes again", card.hidden);
 
-// The street kit is furniture, not scenery, and the box's door opens: the interactive props are buttons
-// in the lane, and acting on one changes what the frame is painted from. Tested at the mouth of the
-// lane, where the kit is in front of the body; further down it is behind you and the painter rightly
-// refuses to draw it, so a test that passed there would have been measuring nothing at all.
-const booth = q('[data-obj="booth"]'), box = q('[data-obj="mailbox"]');
-ok("the new kit is a button in the lane, not a painted detail", !!booth && booth.tagName === "BUTTON"
-   && booth.dataset.frame === undefined && !!box);
-/* Eight things can be done to now, not five: the lane gained a convex mirror that turns on its
-   bracket, the litter crate beside the machine with a lid, and a second lit front halfway down. The
-   rule this assertion defends is the first half of the line — a thing with stops ships at its first
-   one, and the count of stops is the count in the document rather than in the script. */
-ok("a thing with stops ships at its first one, and eight things have stops",
-   booth.dataset.state === "0" && box.dataset.state === "0" && qa("[data-states]").length === 8);
-click(stopAt(0));
-await settle(0);
-ok("the home stop really returns to the mouth before the street-kit walk",
-   Math.abs(body().depth) < 2, `depth=${body().depth.toFixed(1)} cm`);
-await hold("d", 2000);                                      // approach the box from the open aisle
-await hold("w", 1400);                                     // stop at its solid front face
-await sleep(140);
-ok("at the mouth the nearest authored lane prop is offered for interaction",
-   qa(".walk-hit.is-reach").length === 1 && /small shrine/i.test(status()),
-   `${status()} · x=${body().x.toFixed(0)}, z=${body().depth.toFixed(0)}`);
-const doorPaints = () => ctx.counts.get("rgba(150,186,218,0.28)") || 0;
-const doorBefore = doorPaints();
-click(booth);
-await sleep(150);
-ok("and the box opens by being used, with the card saying what the lane looks like now",
-   !card.hidden && booth.dataset.state === "1"
-     && /receiver hanging/i.test(q("[data-walk-hint]").textContent), `state=${booth.dataset.state}`);
-ok("the state is geometry, not a caption: the opened door has been painted, and the shut one had not",
-   doorPaints() > doorBefore, `${doorBefore} → ${doorPaints()} door fills`);
-ok("and the light came up with the door, because the lamp is that door's record",
-   lights.filter((L) => L.bulb === false && L.body !== "lantern" && L.z !== 1247).every((L) => ids.includes(L.of))
-     && lights.some((L) => L.of === "booth"), lights.filter((L) => L.of).map((L) => L.of).join(","));
-click(booth);
-await sleep(150);
+/* The states contract, tested where the states are (round 32). Nakamise after closing has nothing a
+   visitor operates -- every shop is shut, and nothing is invented to press -- so the rule that a state
+   is geometry runs on the street, whose fronts have real stops: each ships at its first, a press paints
+   the front from its new stop and moves the light that is its own, and the stops are only the
+   authored ones. */
+const stHtml = fs.readFileSync("street.html", "utf8");
+const sw = boot(stHtml, "https://huaxu.test/street.html");
+await sleep(600);
+const sDoc = sw.document;
+const sclick = (el) => el.dispatchEvent(new sw.MouseEvent("click", { bubbles: true, cancelable: true }));
+const stLights = JSON.parse(stHtml.match(/data-walk-lights>(.*?)<\/script>/)[1]);
+const stateful = Array.from(sDoc.querySelectorAll("[data-states]"));
+const front = sDoc.querySelector('[data-obj="front-s"]');
+const sQuads = () => sDoc.querySelector("[data-walk]").__walk.quads;
+ok("the kit is a button in the lane, not a painted detail", !!front && front.tagName === "BUTTON"
+   && front.dataset.frame === undefined && stateful.length >= 2);
+ok("a thing with stops ships at its first one, and the count of stops is the document's",
+   stateful.every((el) => el.dataset.state === "0")
+     && JSON.parse(front.dataset.states).length === 2, `${stateful.length} things with stops`);
+await sleep(300);
+const quadsShut = sQuads();
+sclick(front);
+await sleep(400);
+ok("and the front changes by being used, with the card saying what it looks like now",
+   front.dataset.state === "1" && !sDoc.querySelector("[data-walk-card]").hidden, `state=${front.dataset.state}`);
+ok("the state is geometry, not a caption: the front is painted from its new stop",
+   sQuads() !== quadsShut, `${quadsShut} -> ${sQuads()} quads`);
+ok("and the light moves with the front, because the light is that front's record",
+   stLights.filter((L) => L.of).every((L) =>
+     Array.from(sDoc.querySelectorAll(".walk-hit")).some((el) => el.dataset.obj === L.of))
+     && stLights.some((L) => L.of === "front-s"), stLights.filter((L) => L.of).map((L) => L.of).join(","));
+sclick(front);
+await sleep(300);
 ok("pressing again takes it to the next stop, and the only stops are the ones authored",
-   booth.dataset.state === "0" && /^Shut\./.test(q("[data-walk-hint]").textContent),
-   `state=${booth.dataset.state} / ${q("[data-walk-hint]").textContent}`);
-click(q("[data-walk-card-close]"));
-await sleep(40);
+   front.dataset.state === "0", `state=${front.dataset.state}`);
 ok("an interactive thing says so without a word: the reach ring is dashed for a prop you can use",
    /\.walk-hit\[data-states\]/.test(css));
+sw.close();
 
 /* Three failures a DOM without layout cannot see, and the owner could: the head-up display's rows were
    ceilings of invisible glass over the top and bottom of the scene (where the lanterns and the shutters
    are), a far prop's press box was as small as the few pixels it covered, and the curtain that reads
    "part it to leave the lane" opened a card instead of leaving. jsdom passed all three for a week. */
-const noren = q('[data-obj="noren"]');
+const noren = q('[data-obj="gate-kaminari"]');
 /* The curtain opens onto the hub street: out of any room, onto the place the other rooms hang off.
    What this asserts is not the destination — that is the hub block's business — it is that the chrome
    and the prop read the same authored value, so the two ways out of a room cannot point different
@@ -562,9 +555,9 @@ ok("the way out is authored in the record, and the chrome reads the same link",
      && q("[data-walk-exit]").getAttribute("href") === noren.dataset.leave);
 const navs = () => ctx.navs.filter((m) => /navigation/.test(m)).length;
 click(noren);
-ok("and parting the curtain leaves the lane, instead of describing the exit",
+ok("and walking through Kaminarimon leaves the street, instead of describing the exit",
    navs() === 1, JSON.stringify(ctx.navs.slice(-1)));
-click(booth);
+click(q('[data-obj="shopbay-e2"]'));
 await sleep(60);
 key("Escape");
 ok("Esc folds what is open before it folds the space", card.hidden && navs() === 1,
@@ -671,26 +664,27 @@ ok("the moved frame keeps its own plate link", tower && tower.dataset.frame === 
 const hereIdx = () => stops.findIndex((el) => el.classList.contains("is-here"));
 const beforeRailDepth = body().depth;
 const rail = q("[data-walk-to]");
+const RAIL_Z = Number(rail.dataset.walkTo);
 click(rail);
-await settle(348);          // a comfort-speed glide takes the time its authored distance requires
+await settle(RAIL_Z);       // a comfort-speed glide takes the time its authored distance requires
 ok("a drawer link glides the body to that frame's depth, and nothing else",
-   Math.abs(beforeRailDepth - 348) > 10 && Math.abs(body().depth - 348) < 2,
+   Math.abs(beforeRailDepth - RAIL_Z) > 10 && Math.abs(body().depth - RAIL_Z) < 2,
    `depth ${beforeRailDepth.toFixed(1)} -> ${body().depth.toFixed(1)} cm`);
 ok("the glide is depth only: the sideways position is left where you put it",
    /targetX === undefined \? x : targetX/.test(js));
-ok("and the body really lands on that depth", Math.abs(body().depth - 348) < 2, `${body().depth}`);
+ok("and the body really lands on that depth", Math.abs(body().depth - RAIL_Z) < 2, `${body().depth}`);
 // Two bugs the states themselves found, both worth a test because both are silent.
 // (1) The idle pump has to advance the walk, not only repaint it: a station clicked while the lane was
 // resting would otherwise glide partway and stop there, looking exactly like a lane that had arrived.
 // (2) The station highlight is asked on every frame, so a prop standing in front of you cannot freeze it.
 click(stopAt(0));
-await settle(0);
+await settle(Number(stopAt(0).style.getPropertyValue("--z").replace("px", "")) || 0);   // the first stop, wherever it is
 await sleep(1400);                            // let the rAF loop wind down to the idle pump
-const home = stopAt(1146);
+const home = stopAt(740);
 click(home);
-await settle(1146);
+await settle(740);
 ok("a place chosen while the lane was resting is still walked to, not just drawn once",
-   Math.abs(body().depth - 1146) < 6, `${body().depth}`);
+   Math.abs(body().depth - 740) < 6, `${body().depth}`);
 ok("and the rail keeps up with the body, whatever the reach happens to be lit on",
    home.classList.contains("is-here") && hereIdx() === stops.indexOf(home)
      && /markStops\(\);\s*\n\s*let best = null/.test(js)
@@ -739,9 +733,10 @@ ok("the list opens over the space, on the site's own paper",
    !drawer.classList.contains("is-closed") && /\.walk-list \{[\s\S]*?background: var\(--bg\)/.test(css));
 ok("every frame has a row with its depth and a way to play", qa(".frame-row[data-row-obj]").length >= 3);
 ok("the district card states its kind and its new purpose",
-   /A Tokyo lane, dressed: shutters, lanterns, a crossing at its end/.test(drawer.textContent));
+   /Nakamise-dori at night: the approach from Kaminarimon to Hozomon/.test(drawer.textContent));
 ok("the scale the room claims is stated where the room is described",
-   /1 px is 1 cm in here/.test(html) && /not surveyed/.test(html));
+   /The 250 m of shops walk in\s+30 m/.test(html) && /each shop&#x27;s width|each shop's width/.test(html)
+     && /OpenStreetMap/.test(html));
 click(listBtn);                                      // closed again, then the keyboard alone
 key("l");
 ok("L opens it from the keyboard", !drawer.classList.contains("is-closed"),

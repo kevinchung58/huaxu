@@ -34,6 +34,14 @@ which of the three cases it is:
 3. a genuinely new shape → a new branch in `js/site.js` **and** an `OBJ_SIZE` entry **and** a
    `SHAPE` entry, in one commit.
 
+Before any of the three, ask whether it is a prop at all. A thing you walk up to, press or stand
+beside is a prop; a gorge, a skyline, the falls seen from a deck are the backdrop's surveyed `world`
+(`district-author` §6, `scene-system` §1), built from map data — round 33 found the falls as two props
+stood at scale and the LookOut's city as a wall tile, and both were the wrong register. The kinds that
+round added are the edge of the place, not its view: `parapet` (stone posts and an iron rail),
+`deckwall` and `lamp` — all three solid, in `WALK_SOLID_KINDS` — and `portal` (an opening's press
+box, not a solid).
+
 **The name is the kind.** `kindOf()` resolves an id by looking for the longest `SHAPE` key the id
 starts with, at a dash or the end of the string: `drawbridge-mj` is a `drawbridge`,
 `front-mj` is a `front`, `pool-moji` is a `pool`. The same rule is how `.verify/verify-shapes.mjs`

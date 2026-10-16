@@ -48,14 +48,14 @@ await page.goto("http://127.0.0.1:8080/rooms-cntower.html", { waitUntil: "networ
 await sleep(1500);
 ok("the space boots with its city-below backdrop",
    await page.evaluate(() => !!document.querySelector("[data-walk-backdrop]")));
-await page.evaluate(() => document.querySelector("[data-obj='glass-cn']").click());
+await page.evaluate(() => document.querySelector("[data-obj='glassfloor-cn']").click());
 await sleep(200);
 ok("the glass floor steps on",
-   (await page.$eval("[data-obj='glass-cn']", (el) => el.dataset.state)) === "1");
-await page.evaluate(() => document.querySelector("[data-obj='glass-cn']").click());
+   (await page.$eval("[data-obj='glassfloor-cn']", (el) => el.dataset.state)) === "1");
+await page.evaluate(() => document.querySelector("[data-obj='glassfloor-cn']").click());
 await sleep(200);
 ok("and steps back off",
-   (await page.$eval("[data-obj='glass-cn']", (el) => el.dataset.state)) === "0");
+   (await page.$eval("[data-obj='glassfloor-cn']", (el) => el.dataset.state)) === "0");
 await page.evaluate(() => document.querySelector("[data-obj='lift-cn']").click());
 await sleep(200);
 ok("the cab doors ride on a press",
@@ -110,8 +110,14 @@ ok("the Journey door leads behind the falls",
    navs.some((u) => u.includes("rooms-journey.html")), navs.join(","));
 await page.goto("http://127.0.0.1:8080/rooms-journey.html", { waitUntil: "networkidle0" });
 await sleep(1500);
-ok("behind the falls boots with the curtain overhead",
-   await page.evaluate(() => !!document.querySelector("[data-obj='falls-jb']")));
+// Round 33: the falls are the surveyed world now (the Horseshoe's sheets of water seen from the
+// deck), not a prop called falls-jb; what the tunnel owns is the deck's parapet at its mouth.
+ok("behind the falls boots in the tunnel, its deck at the mouth and the falls in its world",
+   await page.evaluate(() => {
+     const bd = JSON.parse(document.querySelector("[data-walk-backdrop]")?.textContent || "{}");
+     return !!document.querySelector("[data-obj='deckwall-jb']")
+       && ((bd.world && bd.world.prims) || []).some((p) => p.t === "w");
+   }));
 navs.length = 0;
 await page.evaluate(() => document.querySelector("[data-obj='door-back']").click());
 await sleep(300);

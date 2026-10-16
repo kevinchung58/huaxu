@@ -3,6 +3,7 @@ import hashlib
 import re
 import subprocess
 import json
+import math
 from fnmatch import fnmatch
 from pathlib import Path
 from html import escape
@@ -1552,6 +1553,7 @@ PLACE_TITLES = {
     "IMG/niagara-2.jpg": "The promenade, mist ahead",
     "IMG/niagara-3.jpg": "The American Falls across",
     "IMG/niagara-cover.jpg": "The falls in one sheet",
+    "IMG/journey-cover.jpg": "Behind the falls, the deck in one sheet",
 }
 
 
@@ -1667,9 +1669,9 @@ for it, tile in zip(ALBUM_ITEMS, album_tiles):
 # owns Journey Behind the Falls. Their titles and notes therefore never become album cards.
 PLACE_GROUP_NOTES = {
     "toronto": "A dark hall of lit tables: the city, its falls and its markets, drawn small.",
-    "tokyo": "A night lane with shutters, lanterns, and a vending machine keeping the far end.",
-    "fukuoka": "Moji Port on a table: the station, the customhouse, the Blue Wing drawbridge "
-                "and the ships on the Kanmon Strait, at dusk.",
+    "tokyo": "Nakamise-dori at night: shuttered vermilion rows from Kaminarimon to a lit Hozomon.",
+    "fukuoka": "Moji Port in a model hall: the station, the customhouse and their neighbours on "
+                "stands of their own, then the Blue Wing and the ships on the Kanmon Strait, at dusk.",
 }
 
 
@@ -1904,7 +1906,13 @@ OBJ_SIZE = {
     "ac": (86, 30, 36), "crate": (62, 46, 52), "bin": (68, 86, 68),
     "pipe": (16, 300, 16), "awning": (170, 12, 110), "sign": (120, 40, 10),
     "ledge": (430, 12, 60),
+    # Round 33: a stone post of the Table Rock parapet, the Journey deck's concrete parapet, a
+    # tunnel mouth's reveal, and a lamp post on the trail (each sized per prop in its record).
+    "parapet": (50, 96, 50), "deckwall": (600, 105, 30), "portal": (240, 175, 30),
+    "lamp": (14, 420, 14),
     "glassfloor": (220, 4, 180),
+    # Nakamise (round 32): one bay of the 1925 shop rows (width set per bay), and Kaminarimon.
+    "shopbay": (470, 480, 150), "gate": (910, 700, 60),
     "front": (170, 300, 40), "booth": (110, 215, 110), "bikes": (150, 102, 55),
     "planter": (104, 50, 46), "cones": (74, 70, 34), "mailbox": (52, 74, 36),
     "signA": (70, 86, 52), "banner": (56, 150, 6), "pane": (120, 86, 22),
@@ -1924,7 +1932,8 @@ OBJ_SIZE = {
 WALK_SOLID_KINDS = frozenset({
     "bank", "bench", "bikes", "bin", "bollard", "booth", "cones", "crate",
     "hydrant", "ladder", "mailbox", "meter", "pipe", "planter", "plinth", "pole",
-    "rack", "recycle", "shrine", "sign", "signA", "stall", "tree", "utility", "vending",
+    "rack", "recycle", "shrine", "sign", "signA", "stall", "tree", "utility", "vending", "shopbay",
+    "parapet", "deckwall", "lamp",
 })
 
 EYE = 168                    # the eye is 1.68 m above the floor; 1 px = 1 cm throughout
@@ -1951,8 +1960,9 @@ NIAGARA_STORY = {
                 "into white mist, a faint rainbow, the gorge bending away, a railing at the viewer's edge.",
          "caption": "Table Rock: the water goes over the lip a few metres from the rail."},
         {"src": "IMG/niagara-2.jpg", "title": "The promenade, mist ahead",
-         "alt": "Illustration of the Niagara promenade: iron railing right, hedges and lamp posts "
-                "left, a great column of white mist rising ahead.",
+         "alt": "Illustration of the promenade at Table Rock walking south: rough stone posts and "
+                "black iron railing along the gorge at left with a lantern lamp post, a buff stone "
+                "building with arched windows at right, a column of white mist rising over the falls ahead.",
          "caption": "The Canadian promenade: the falls announce themselves as weather."},
         {"src": "IMG/niagara-3.jpg", "title": "The American Falls across",
          "alt": "Illustration of the American Falls across the gorge: a straight white sheet onto "
@@ -1966,18 +1976,1232 @@ TOWER_STORY = {
     "frames": [
         {"src": "IMG/toronto-tower-1.jpg", "title": "The tower at dusk",
          "alt": "Illustration of the CN Tower at dusk: a white-cream silhouette over a low navy "
-                "skyline, one amber ring at the pod, a pale band of lake behind.",
+                "skyline, one amber ring of windows at the main pod, the small upper pod and the mast "
+                "above it, a pale band of lake behind.",
          "caption": "The one silhouette the city is known by, drawn at dusk."},
         {"src": "IMG/toronto-tower-2.jpg", "title": "The city from above",
          "alt": "Illustration of the night city seen from above through floor-to-ceiling pod "
                 "windows: an aerial grid of navy blocks with amber windows, a dark lake at the shore.",
          "caption": "The LookOut glass at 346 m: the city below reads as a grid with a lake for an edge."},
         {"src": "IMG/toronto-tower-3.jpg", "title": "342 m of drop",
-         "alt": "Illustration looking straight down through a glass floor panel to miniature "
-                "streets far below, the tower's shadow across them, shoe tips at the near edge.",
+         "alt": "Illustration looking straight down through the glass floor's grid of panels: the "
+                "tower's own shaft foreshortened to its three-lobed base, the night streets and the "
+                "rail lands far below.",
          "caption": "The Glass Floor: the whole height of the tower read as the drop under your feet."},
     ],
 }
+# Nakamise's rows, generated from the sourced figures (round 32; TODO section 0n), because every
+# number here is the street's: three runs of shops in the street's own order and share of its length,
+# the two crossings at a street's width, and every bay a real shop's width -- the average of its row
+# (about 250 m of shops, 35 on the west and 54 on the east, so 7.3 m and 4.7 m). Walk centimetres
+# here; each object is turned into record depth (/ Z_SCALE) as it is made. The murals are the
+# ground colours of the Asakusa Emaki read off the night photographs -- sky and water blues, cloud
+# golds, pine greens, the paper's cream, a festival red -- because their scenes, which show people,
+# are not drawn.
+NAKAMISE_RUNS = ((0, 550), (1000, 1850), (2350, 3016))
+NAKAMISE_GAPS = ((550, 1000), (1850, 2350))
+NAKAMISE_MURALS = (("#d6b45a", "#3f78b5", "#e9e2d0"), ("#4f8a5b", "#e2c46a", "#2f5d9a"),
+                   ("#e9e2d0", "#c8473a", "#d6b45a"), ("#2f5d9a", "#e9e2d0", "#4f8a5b"),
+                   ("#c8473a", "#d6b45a", "#3f78b5"))
+
+
+def _nakamise():
+    bays, lamps = [], []
+    for tag, x, ry, width, row, side in (("w", -380, 90, 730, 35, "west"), ("e", 380, -90, 470, 54, "east")):
+        n = 0
+        for z0, z1 in NAKAMISE_RUNS:
+            count = max(1, round((z1 - z0) / width))
+            w = (z1 - z0) / count
+            for i in range(count):
+                n += 1
+                zc = z0 + (i + 0.5) * w
+                first, last = i == 0, i == count - 1
+                o = {"id": f"shopbay-{tag}{n}", "kind": "shopbay", "x": x, "z": round(zc / Z_SCALE, 2),
+                     "y": 0, "ry": ry, "w": round(w), "h": 480, "d": 150, "solid": True,
+                     "mural": list(NAKAMISE_MURALS[(2 * n + (tag == "w")) % len(NAKAMISE_MURALS)]),
+                     "title": f"A shop on the {side} row, shut for the night",
+                     "hint": (f"One bay of the {side} row's {row} shops, at a real shop's width. The "
+                              "shutter is down, as it is after about seven; the Asakusa Emaki painted on "
+                              "it shows festivals and people, so only its ground colours are kept. The "
+                              "fascia carries the shop's name in life and is blank here.")}
+                posts = "2" if first and last else "end" if last else "first" if first else None
+                if posts:
+                    o["posts"] = posts
+                bays.append(o)
+                # the strip light under this bay's eave: the bay's own light, so it is pointable
+                lamps.append({"x": x, "y": 300, "z": round(zc / Z_SCALE, 2), "of": o["id"],
+                              "r": 260, "k": 0.5, "bulb": False, "tint": "rgba(255,236,206,0.22)"})
+    # the white globes standing on the fascias, at the ends of each run, alternating rows
+    for j, (z0, z1) in enumerate(NAKAMISE_RUNS):
+        for k2, zz in enumerate((z0 + 40, z1 - 40)):
+            lamps.append({"x": -305 if (j + k2) % 2 == 0 else 305, "y": 430, "z": round(zz / Z_SCALE, 2),
+                          "r": 200, "k": 0.32, "tint": "rgba(255,246,230,0.20)"})
+    surfaces = []
+    for side in (-1, 1):
+        surfaces.append({"side": side, "z0": -103.45, "z1": 1040, "y0": 0, "y1": 500,
+                         "kind": "concrete", "tone": 0.8})
+        for g0, g1 in NAKAMISE_GAPS:
+            surfaces.append({"side": side, "z0": round(g0 / Z_SCALE, 2), "z1": round(g1 / Z_SCALE, 2),
+                             "y0": 0, "y1": 500, "kind": "concrete", "tone": 0.7})
+    return bays, lamps, surfaces
+
+
+NAKAMISE_BAYS, NAKAMISE_LAMPS, NAKAMISE_SURFACES = _nakamise()
+
+# Moji Port's layout (round 32; TODO section 0n). OpenStreetMap coordinates, turned into metres from
+# Mojiko Station and then into the table's frame: the table is read from the head of the No. 1 basin
+# looking north-west, so its right is north-east, at 1.5 cm to the metre for every model and for the
+# strait beyond the far wall. Walk centimetres out; record depths are these / Z_SCALE.
+MOJI_ORIGIN = (33.9451155, 130.9614754)            # Mojiko Station, OSM relation 2532442
+
+
+def moji_xy(lat, lon):
+    e = (lon - MOJI_ORIGIN[1]) * 92436.0            # metres east, at this latitude
+    n = (lat - MOJI_ORIGIN[0]) * 110922.0           # metres north
+    r, f = (e + n) * 0.70711, (n - e) * 0.70711     # right (north-east), forward (north-west)
+    return round((r - 214) * 1.5), round(2230 + (f + 50) * 1.5)
+
+
+_KANMON_S = moji_xy(33.9590201, 130.9637599)        # the Kanmon Bridge's Moji end (OSM way 1116301427)
+_KANMON_N = moji_xy(33.9643462, 130.9537995)        # and its Shimonoseki end
+_YUME = moji_xy(33.9498014, 130.9297392)            # Kaikyo Yume Tower (OSM way 550189992)
+_ext = lambda a, b, k: [round(b[0] + (b[0] - a[0]) * k), round(b[1] + (b[1] - a[1]) * k)]
+MOJI_STRAIT = {
+    "y": 81, "z0": 2610, "z1": 11000, "half": 9000,
+    # The Moji coast running north on the right, from the table's far corner to the bridge's Moji
+    # end, and the Shimonoseki shore from the bridge's far end west past the tower. Each line runs on
+    # past its last measured point along its own direction (`_ext`): the shore continues, and is not
+    # surveyed there.
+    "moji": [[360, 2610], list(_KANMON_S), _ext((360, 2610), _KANMON_S, 0.5)],
+    "shore": [list(_KANMON_N), list(_YUME), _ext(_KANMON_N, _YUME, 0.6)],
+    "yume": {"x": _YUME[0], "z": _YUME[1], "h": round(153 * 1.5), "sphere": round(143 * 1.5), "r": 16},
+    "kanmon": {"a": list(_KANMON_S), "b": list(_KANMON_N), "tower": round(141 * 1.5),
+               "deck": round(61 * 1.5), "side": round(178 / 1068, 4), "width": 19},
+    # Two of the strait's ships on the house clock, mid-channel between the shores.
+    "ships": [{"from": [1364, 4400], "to": [-4200, 4700], "len": 225, "period": 80, "phase": 0.0},
+              {"from": [-4200, 5000], "to": [1300, 4700], "len": 170, "period": 110, "phase": 0.5}],
+}
+
+
+# Round 36: the four buildings left the table for their own stands; the table keeps where they stand
+# as their footprints -- OpenStreetMap's outlines (lon, lat) at the table's 1.5 cm to the metre, laid
+# on the board as low plates the way a site plan marks a building it does not model. Boxes at their
+# eaves' heights were tried first and read as four unfinished buildings; the models are down the hall.
+MOJI_OUTLINES = (
+    # Mojiko Station, relation 2532442 (outer ways 188008075, 188008098)
+    ((130.9610539, 33.9451938), (130.9611674, 33.9451308), (130.9614933, 33.9449313), (130.9616477, 33.9448255),
+     (130.9618394, 33.9450407), (130.9617446, 33.9451002), (130.9618081, 33.9451705), (130.9614982, 33.9453634),
+     (130.9614526, 33.9453136), (130.9612892, 33.9454064)),
+    # the former Osaka Shosen building, way 627252015
+    ((130.9620254, 33.9461348), (130.962158, 33.9460547), (130.9622006, 33.9461033), (130.9622885, 33.9460502),
+     (130.9622446, 33.9460003), (130.9623058, 33.9459634), (130.9624488, 33.9461263), (130.9621673, 33.9462964)),
+    # the former Moji Customs, way 976479446
+    ((130.9633787, 33.9476961), (130.9634407, 33.9476671), (130.9634617, 33.9476974), (130.9634743, 33.9477155),
+     (130.9637089, 33.947604), (130.9637901, 33.9477203), (130.9637291, 33.9477495), (130.9637213, 33.9477381),
+     (130.9634672, 33.9478621), (130.9634458, 33.9478312), (130.9634659, 33.9478212)),
+    # the Dalian Friendship Memorial Hall, way 823695331
+    ((130.9641855, 33.9479807), (130.9642155, 33.9479872), (130.9642328, 33.9480147), (130.9642789, 33.9479750),
+     (130.9643405, 33.9480243), (130.9642897, 33.9480681), (130.9642984, 33.9480833), (130.9642401, 33.9481056),
+     (130.9642557, 33.9481336), (130.9641459, 33.9481757), (130.9641420, 33.9481687), (130.9641170, 33.9481686),
+     (130.9640928, 33.9481583), (130.9640739, 33.9481665), (130.9640456, 33.9481553), (130.9640499, 33.9481255),
+     (130.9640394, 33.9481070), (130.9640486, 33.9480754), (130.9640671, 33.9480655), (130.9640714, 33.9480400),
+     (130.9640972, 33.9480262), (130.9641147, 33.9480255), (130.9641179, 33.9480311), (130.9641358, 33.9480239),
+     (130.9641248, 33.9480051), (130.9641520, 33.9479942)),
+)
+MOJI_BLOCKS = [{"p": [list(moji_xy(lat, lon)) for lon, lat in ring], "h": 1.2}
+               for ring in MOJI_OUTLINES]
+
+
+def _moji_massing(name, block, title):
+    """One context block as its own prop, its box the outline's own, so it is sited (and checked for
+    clashes) where it stands and not across the whole table."""
+    xs, zs = [p[0] for p in block["p"]], [p[1] for p in block["p"]]
+    return {"id": f"massing-{name}", "kind": "massing", "x": round((min(xs) + max(xs)) / 2, 1),
+            "z": round((min(zs) + max(zs)) / 2 / Z_SCALE, 2), "y": 80, "ry": 0,
+            "w": max(xs) - min(xs), "h": block["h"], "d": max(zs) - min(zs), "blocks": [block],
+            "title": title,
+            "hint": "Its footprint, in the outline the map gives it, at the table's scale. Its model "
+                    "is on a stand down the hall."}
+
+# ---- Surveyed worlds (round 33) ------------------------------------------------------------------
+# The three Toronto-owned child spaces were walked in round 33 against the standard round 32 set
+# ("real, sourced, not made up") and failed it: the LookOut's glass wore a generic aerial tile on both
+# hands, the falls were the hall's table model stood large and mirrored, the tunnel had a daylight
+# sky for a roof. What replaces them is geometry, not art direction: OpenStreetMap coordinates and the
+# sourced heights below, turned into scene centimetres here and drawn by `drawWorld` in js/site.js,
+# which invents nothing. Every list says where it came from; TODO section 0o has the sources.
+
+def ll_m(lat, lon, lat0, lon0):
+    """Metres east and north of (lat0, lon0) on the local tangent plane (WGS84 series)."""
+    phi = math.radians(lat0)
+    k_lat = 111132.954 - 559.822 * math.cos(2 * phi) + 1.175 * math.cos(4 * phi)
+    k_lon = 111412.84 * math.cos(phi) - 93.5 * math.cos(3 * phi)
+    return ((lon - lon0) * k_lon, (lat - lat0) * k_lat)
+
+
+def dp_simplify(pts, tol):
+    """Douglas-Peucker on a 2D polyline in metres: OSM's survey detail kept to `tol` metres."""
+    if len(pts) < 3:
+        return list(pts)
+    (ax, ay), (bx, by) = pts[0], pts[-1]
+    dx, dy = bx - ax, by - ay
+    L = math.hypot(dx, dy) or 1e-9
+    far, idx = -1.0, 0
+    for i in range(1, len(pts) - 1):
+        px, py = pts[i]
+        d = abs(dy * px - dx * py + bx * ay - by * ax) / L
+        if d > far:
+            far, idx = d, i
+    if far <= tol:
+        return [pts[0], pts[-1]]
+    return dp_simplify(pts[:idx + 1], tol)[:-1] + dp_simplify(pts[idx:], tol)
+
+
+def resample(pts, n):
+    """A polyline as n+1 points evenly spaced along its length."""
+    seg = [math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]) for i in range(len(pts) - 1)]
+    total = sum(seg) or 1e-9
+    out, acc, i = [], 0.0, 0
+    for k in range(n + 1):
+        target = total * k / n
+        while i < len(seg) - 1 and acc + seg[i] < target:
+            acc += seg[i]
+            i += 1
+        t = 0.0 if seg[i] == 0 else min(1.0, max(0.0, (target - acc) / seg[i]))
+        out.append((pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t))
+    return out
+
+
+def left_normals(pts):
+    """Unit normals to the left of travel along a polyline (east/north metres)."""
+    out = []
+    for i in range(len(pts)):
+        a = pts[max(0, i - 1)]
+        b = pts[min(len(pts) - 1, i + 1)]
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(dx, dy) or 1e-9
+        out.append((-dy / L, dx / L))
+    return out
+
+
+def clip_rect(poly, x0, y0, x1, y1):
+    """Sutherland-Hodgman: a polygon clipped to an axis-aligned cell."""
+    def clip(pts, inside, cut):
+        out = []
+        for i in range(len(pts)):
+            p, q = pts[i], pts[(i + 1) % len(pts)]
+            pin, qin = inside(p), inside(q)
+            if pin:
+                out.append(p)
+            if pin != qin:
+                out.append(cut(p, q))
+        return out
+    def xcut(x):
+        return lambda p, q: (x, p[1] + (q[1] - p[1]) * (x - p[0]) / ((q[0] - p[0]) or 1e-9))
+    def ycut(y):
+        return lambda p, q: (p[0] + (q[0] - p[0]) * (y - p[1]) / ((q[1] - p[1]) or 1e-9), y)
+    pts = list(poly)
+    for inside, cut in ((lambda p: p[0] >= x0, xcut(x0)), (lambda p: p[0] <= x1, xcut(x1)),
+                        (lambda p: p[1] >= y0, ycut(y0)), (lambda p: p[1] <= y1, ycut(y1))):
+        if not pts:
+            break
+        pts = clip(pts, inside, cut)
+    return pts
+
+
+class LaneFrame:
+    """A place's metres (east, north, up) to a lane's scene centimetres: x right, y up, z ahead."""
+
+    def __init__(self, e0, n0, u0, heading):
+        self.e0, self.n0, self.u0, self.heading = e0, n0, u0, heading
+        h = math.radians(heading)
+        self.s, self.c = math.sin(h), math.cos(h)
+
+    def cm(self, e, n, u):
+        de, dn = e - self.e0, n - self.n0
+        return [round((de * self.c - dn * self.s) * 100), round((u - self.u0) * 100),
+                round((de * self.s + dn * self.c) * 100)]
+
+    def dist(self, e, n):
+        return math.hypot(e - self.e0, n - self.n0)
+
+
+def _fn(fr, de, dn):
+    """A horizontal direction in the place's metres as a unit vector in the lane's x/z."""
+    x, z = de * fr.c - dn * fr.s, de * fr.s + dn * fr.c
+    L = math.hypot(x, z) or 1e-9
+    return [round(x / L, 3), round(z / L, 3)]
+
+
+def _prim(t, pts, **kw):
+    d = {"t": t, "p": pts}
+    d.update({k: v for k, v in kw.items() if v is not None})
+    return d
+
+
+def _hprim(t, fr, pts, elev, **kw):
+    """A horizontal polygon, stamped compactly: one height `h` and flat x/z pairs `q`."""
+    cms = [fr.cm(e, n, elev) for e, n in pts]
+    d = {"t": t, "h": cms[0][1], "q": [v for c in cms for v in (c[0], c[2])]}
+    d.update({k: v for k, v in kw.items() if v is not None})
+    return d
+
+
+def grid_hprims(fr, poly, elev, focus, rings=((25, 100), (100, 400), (400, 1600), (1600, 3200)),
+                tex=None, **kw):
+    """A horizontal polygon cut into square cells round `focus` (place metres), finer near it.
+    `tex` (pat, u, rot, reach) dresses the cells within `reach` metres in a tile; past it the flat
+    colour, which should be the tile's mean (a tile kilometres deep aliases into moire)."""
+    out, inner = [], 0
+    fx, fy = focus
+    for size, reach in rings:
+        k = int(round(reach / size))
+        for i in range(-k, k):
+            for j in range(-k, k):
+                x0, y0 = fx + i * size, fy + j * size
+                cx, cy = x0 + size / 2 - fx, y0 + size / 2 - fy
+                if max(abs(cx), abs(cy)) < inner:
+                    continue
+                cell = clip_rect(poly, x0, y0, x0 + size, y0 + size)
+                if len(cell) >= 3:
+                    if tex and max(abs(cx), abs(cy)) < tex["reach"]:
+                        out.append(_hprim("x", fr, cell, elev, pat=tex["pat"], u=tex["u"], rot=tex["rot"], **kw))
+                    else:
+                        out.append(_hprim("f", fr, cell, elev, **kw))
+        inner = reach
+    return out
+
+
+def world_quads_between(fr, top, bot, u_top, u_bot, colour, air, step=1, out=None, t="f", **kw):
+    """Faces between two corresponding polylines at two heights (a cliff, a talus, a tree line).
+    Each faces outward, square to its own top edge -- toward `bot` across the floor, or, where the
+    two lie on one line, to the polyline's left ("L") or right ("R") -- and is not drawn from
+    behind. (The side test is exact only with the face's own normal: an offset that runs oblique to
+    the edge put a cliff's back in front of the eye 60 m along it.)"""
+    res = []
+    for i in range(0, len(top) - 1, step):
+        j = min(i + step, len(top) - 1)
+        ex, ey = top[j][0] - top[i][0], top[j][1] - top[i][1]
+        nx, ny = -ey, ex                                   # the edge's left
+        if out == "R" or (out is None and nx * (bot[i][0] + bot[j][0] - top[i][0] - top[j][0])
+                          + ny * (bot[i][1] + bot[j][1] - top[i][1] - top[j][1]) < 0):
+            nx, ny = -nx, -ny
+        res.append(_prim(t, [fr.cm(*top[i], u_top), fr.cm(*top[j], u_top),
+                             fr.cm(*bot[j], u_bot), fr.cm(*bot[i], u_bot)],
+                         c=colour, a=air, fn=_fn(fr, nx, ny), **kw))
+    return res
+
+
+def _outward(foot, a, b):
+    """The normal of edge a-b pointing away from the footprint's centroid."""
+    cx = sum(e for e, _ in foot) / len(foot)
+    cy = sum(n for _, n in foot) / len(foot)
+    de, dn = b[1] - a[1], -(b[0] - a[0])
+    mx, my = (a[0] + b[0]) / 2 - cx, (a[1] + b[1]) / 2 - cy
+    return (de, dn) if de * mx + dn * my >= 0 else (-de, -dn)
+
+
+def world_extrude(fr, foot, u0, u1, side, top, air, bands=None, **kw):
+    """A footprint stood up from u0 to u1: its faces (each facing out) and its roof. `bands` slices
+    the faces: [(u_a, u_b, colour), ...] -- a stone base under glass under a fascia."""
+    out = []
+    slices = bands or [(u0, u1, side)]
+    for i in range(len(foot)):
+        a, b = foot[i], foot[(i + 1) % len(foot)]
+        fn = _fn(fr, *_outward(foot, a, b))
+        for (ua, ub, col) in slices:
+            out.append(_prim("f", [fr.cm(*a, ua), fr.cm(*b, ua), fr.cm(*b, ub), fr.cm(*a, ub)],
+                             c=col, a=air, fn=fn, **kw))
+    out.append(_hprim("f", fr, foot, u1, c=top, a=air, **kw))
+    return out
+
+
+# ---- Niagara: Table Rock, the gorge and both falls (OpenStreetMap, read 2026-10-15) ---------------
+# Origin: the Niagara Recreation Trail at Table Rock Centre's north-east corner (OSM node 26235703;
+# the trail is way 1319958255, lit, paving stones). Heights are metres above the trail.
+NIA_O = (43.0791448, -79.0782451)
+NIA_RIVER = -58.5        # the lower river: the Horseshoe's sourced 57 m drop below a crest 1.5 m under the rail
+NIA_CREST = -1.5         # water at the Horseshoe's brink, just under the terrace rail
+NIA_AM_CREST = -1.0      # the American Falls' brink
+NIA_TALUS = -29.0        # top of the American Falls' boulders: a free fall inside the sourced 21-30 m
+NIA_GOAT_TREES = 14.0    # Goat Island's woods over the gorge (approximate canopy, not surveyed)
+
+
+def nia(lat, lon):
+    return ll_m(lat, lon, *NIA_O)
+
+
+# The Horseshoe Falls (OSM way 56539663): its brink, from Table Rock round to Terrapin Point.
+NIA_HS_CREST = [nia(la, lo) for la, lo in (
+    (43.0786657, -79.0784358), (43.0785841, -79.0781523), (43.0783098, -79.0779055),
+    (43.0778749, -79.0776641), (43.0775888, -79.0773208), (43.0773341, -79.076736),
+    (43.0771450, -79.0764078), (43.0771186, -79.0760548), (43.0768443, -79.0755022),
+    (43.0768247, -79.0750033), (43.0769031, -79.07466), (43.0770833, -79.0742738),
+    (43.0772596, -79.0741679), (43.0775927, -79.0739626), (43.0775966, -79.073673),
+    (43.0776162, -79.0732921), (43.0778043, -79.0731312), (43.0778709, -79.0734155),
+    (43.0779493, -79.0738178), (43.0783686, -79.0741289), (43.0787486, -79.0743113),
+    (43.0791052, -79.074365), (43.0792580, -79.0744562), (43.0795244, -79.0745527),
+    (43.0797595, -79.0744937), (43.0799284, -79.0744982), (43.0799669, -79.0746597))]
+# The American Falls (OSM way 217355188): the brink, from Luna Island north to Prospect Point.
+NIA_AM_CREST_L = dp_simplify([nia(la, lo) for la, lo in (
+    (43.0837240, -79.0704815), (43.0838811, -79.0705211), (43.0839594, -79.070277),
+    (43.0840750, -79.0702421), (43.0841671, -79.0699551), (43.0842689, -79.069762),
+    (43.0843963, -79.0696011), (43.0845040, -79.0695421), (43.0846411, -79.069475),
+    (43.0847920, -79.0693865), (43.0849585, -79.0693516), (43.0850741, -79.0693704),
+    (43.0852053, -79.0693355), (43.0853385, -79.0693865), (43.0854169, -79.069188),
+    (43.0854992, -79.0690378), (43.0855599, -79.0688688), (43.0856226, -79.0688195))], 2.0)
+# Bridal Veil Falls (OSM way 515298933): from Goat Island's corner to Luna Island.
+NIA_BV_CREST = [nia(la, lo) for la, lo in ((43.0835070, -79.0709736), (43.0834320, -79.0708507),
+                                           (43.0835194, -79.0706932))]
+# Goat Island (OSM way 3743454) and Luna Island (OSM way 37356202).
+NIA_GOAT = dp_simplify([nia(la, lo) for la, lo in (
+    (43.0802484, -79.0751326), (43.0801428, -79.0747088), (43.0799669, -79.0746597),
+    (43.0798238, -79.0738837), (43.0785824, -79.0717294), (43.0786262, -79.0708196),
+    (43.0784820, -79.0705879), (43.0784570, -79.0699184), (43.0789335, -79.066961),
+    (43.0788957, -79.0664331), (43.0784756, -79.0654037), (43.0784632, -79.0615671),
+    (43.0786450, -79.0607688), (43.0792093, -79.0603311), (43.0795227, -79.0603225),
+    (43.0798863, -79.0606744), (43.0810210, -79.0633438), (43.0816479, -79.0639102),
+    (43.0819802, -79.0645196), (43.0818423, -79.0661504), (43.0824441, -79.0672491),
+    (43.0824880, -79.0675924), (43.0822184, -79.0692232), (43.0822999, -79.0695579),
+    (43.0825318, -79.0700128), (43.0835070, -79.0709736), (43.0838688, -79.0710021),
+    (43.0839066, -79.0712829), (43.0838629, -79.0715685), (43.0835588, -79.0716929),
+    (43.0832641, -79.0721127), (43.0827732, -79.0722015), (43.0814258, -79.0734961),
+    (43.0808396, -79.0749791))], 1.5)
+NIA_GOAT_GORGE = [nia(la, lo) for la, lo in (       # the island's face on the lower river
+    (43.0802484, -79.0751326), (43.0808396, -79.0749791), (43.0814258, -79.0734961),
+    (43.0827732, -79.0722015), (43.0832641, -79.0721127), (43.0835588, -79.0716929),
+    (43.0838629, -79.0715685), (43.0839066, -79.0712829), (43.0838688, -79.0710021))]
+NIA_LUNA = dp_simplify([nia(la, lo) for la, lo in (
+    (43.0835194, -79.0706932), (43.0833272, -79.0704941), (43.0832443, -79.0703909),
+    (43.0831359, -79.070154), (43.0830346, -79.0700129), (43.0828823, -79.0699197),
+    (43.0829120, -79.0697394), (43.0830581, -79.0696044), (43.0832144, -79.069653),
+    (43.0833305, -79.0697787), (43.0833785, -79.0699867), (43.0834513, -79.0701287),
+    (43.0836143, -79.0702215), (43.0837367, -79.0704683), (43.0835366, -79.0706753))], 1.0)
+# The lower river's Canadian edge, north from the Horseshoe's foot (OSM way 1149263109).
+NIA_CA_WATER = [nia(la, lo) for la, lo in (
+    (43.0789579, -79.0779869), (43.0791396, -79.0777287), (43.0792626, -79.0775794),
+    (43.0805733, -79.0776599), (43.0811244, -79.0773907), (43.0817569, -79.077085),
+    (43.0822054, -79.0766206), (43.0837514, -79.0763519), (43.0842591, -79.0758867),
+    (43.0849917, -79.0752942), (43.0852344, -79.0748356), (43.0857741, -79.0739679),
+    (43.0865178, -79.0742049), (43.0870484, -79.0739055), (43.0870636, -79.0727019))]
+# The upper river's Canadian bank, south from the brink (same way, upstream).
+NIA_CA_UPPER = [nia(la, lo) for la, lo in (
+    (43.0785322, -79.0786434), (43.0772604, -79.0788802), (43.0764679, -79.0783282),
+    (43.0756860, -79.0782527), (43.0739517, -79.0766558), (43.0730072, -79.0749109),
+    (43.0713689, -79.0722391), (43.0706873, -79.0712619), (43.0702129, -79.069562),
+    (43.0698013, -79.0676319))]
+NIA_TRAIL = [nia(la, lo) for la, lo in (                 # the Recreation Trail, north to south
+    (43.0801663, -79.0783193), (43.0798741, -79.0783083), (43.0795756, -79.0782919),
+    (43.0791767, -79.0782410), (43.0791448, -79.0782451), (43.0788872, -79.0781453),
+    (43.0787518, -79.0783178), (43.0787002, -79.0785253), (43.0786750, -79.0785684))]
+# Table Rock Centre (OSM way 420548287), its footprint kept to two metres.
+NIA_TABLEROCK = dp_simplify([nia(la, lo) for la, lo in (
+    (43.0794969, -79.0798608), (43.0794258, -79.0797307), (43.0794073, -79.079375),
+    (43.0793951, -79.0793059), (43.0792962, -79.0793385), (43.0792720, -79.0792012),
+    (43.0791392, -79.0792451), (43.0791501, -79.0793068), (43.0787698, -79.0794324),
+    (43.0787569, -79.079359), (43.0789555, -79.0792934), (43.0789137, -79.0790562),
+    (43.0788339, -79.078974), (43.0787966, -79.0787621), (43.0788087, -79.0786949),
+    (43.0788634, -79.0786181), (43.0789136, -79.0785554), (43.0789699, -79.0785361),
+    (43.0790573, -79.078492), (43.0791027, -79.0783746), (43.0790975, -79.0783403),
+    (43.0791381, -79.0783288), (43.0791777, -79.0783484), (43.0792575, -79.0784037),
+    (43.0793161, -79.0785463), (43.0793215, -79.0785797), (43.0795537, -79.0785764),
+    (43.0795684, -79.0786673), (43.0796339, -79.0788406), (43.0796713, -79.0790682),
+    (43.0796348, -79.0791423), (43.0795119, -79.0791829), (43.0795234, -79.079248),
+    (43.0795078, -79.0796773), (43.0795455, -79.0798447))], 2.0)
+NIA_SKYLON = nia(43.0851385, -79.0796926)              # Skylon Tower (OSM way 241004747), 160 m
+NIA_RAINBOW = (nia(43.0915407, -79.0698017), nia(43.0901556, -79.0677042))   # OSM way 162149070
+NIA_PROSPECT = nia(43.0859538, -79.0700909)            # the American Falls' north corner
+NIA_US_RIM_N = nia(43.0886329, -79.0661756)            # the US rim at the bridge (OSM relation 14629795)
+
+
+def _ring_m(points, close=True):
+    return points + ([points[0]] if close else [])
+
+
+# Goat Island's shore on the upper river, from Terrapin Point east (the same OSM way, unsimplified).
+NIA_GOAT_SOUTH = [nia(la, lo) for la, lo in (
+    (43.0799669, -79.0746597), (43.0798238, -79.0738837), (43.0785824, -79.0717294),
+    (43.0786262, -79.0708196), (43.0784820, -79.0705879), (43.0784570, -79.0699184),
+    (43.0789335, -79.066961), (43.0788957, -79.0664331), (43.0784756, -79.0654037),
+    (43.0784632, -79.0615671), (43.0786450, -79.0607688), (43.0792093, -79.0603311))]
+# ...and its shore on the American Rapids, from the island's east end back west to Luna's channel.
+NIA_GOAT_NORTH = [nia(la, lo) for la, lo in (
+    (43.0795227, -79.0603225), (43.0798863, -79.0606744), (43.0810210, -79.0633438),
+    (43.0816479, -79.0639102), (43.0819802, -79.0645196), (43.0818423, -79.0661504),
+    (43.0824441, -79.0672491), (43.0822184, -79.0692232), (43.0825318, -79.0700128),
+    (43.0835070, -79.0709736))]
+# The rim of the Canadian gorge north of the terrace: the trail's own line where it runs along the
+# wall, then the mapped water's edge set about 40 m inland (the rim itself is not in OSM here).
+NIA_RIM_N = [(7.0, 14.0), (3.0, 48), (1.5, 81), (0.5, 113), (25, 160), (47, 221), (70, 290), (106, 340),
+             (128, 512), (165, 568), (212, 648), (250, 675), (320, 736), (330, 900), (520, 1180),
+             (640, 1352)]
+# The terrace's brink, where its rail runs: the trail's corner nearest the falls (OSM node 291955852)
+# round the Horseshoe's Canadian end to the upper bank.
+NIA_BRINK = [(8.0, -29.0), (2.0, -38.0), (-8.0, -47.0), (-15.5, -53.2), (-32.4, -68.0)]
+
+# The Skylon's street (Wikipedia, read 2026-10-16): 160 m from street level and 236 m from the bottom
+# of the falls, so its street is 76 m over the lower river -- 17.5 m above the trail. Roof 149 m, the
+# spire 11 m over it. The hill under it is not drawn, so its shaft is carried down to the ground.
+NIA_SKYLON_STREET = 236.0 - 160.0 + NIA_RIVER
+
+# The Fallsview bluff (round 35). The Falls Incline Railway climbs it beside Table Rock Centre: 59.8 m
+# of track at 30 degrees (Wikipedia, from Ontario.ca), so the bluff rises 29.9 m over a 51.8 m run, at
+# the railway's own coordinates (43.079499, -79.080789). Its line north and south of the railway is
+# drawn to keep the listed hotels on top and the Skylon below -- approximate, not surveyed.
+NIA_BLUFF_RISE = 59.8 * math.sin(math.radians(30))
+NIA_BLUFF_RUN = 59.8 * math.cos(math.radians(30))
+NIA_INCLINE = nia(43.079499, -79.080789)
+NIA_BLUFF_FOOT = [(-215.0, -1000.0), (-205.0, -700.0), (-198.0, -250.0), (NIA_INCLINE[0] + NIA_BLUFF_RUN / 2, NIA_INCLINE[1]),
+                  (-120.0, 330.0), (-200.0, 600.0), (-290.0, 1000.0)]
+# Wikipedia's "List of tallest buildings in Niagara Falls, Ontario" (read 2026-10-16), every entry
+# that is a building and stands on the bluff, with its listed height and floors. Footprints follow the
+# Toronto rule (a hotel 30 m square, round 34) except the Tower Hotel, a converted 1962 observation
+# tower, drawn as its shaft (16 m, approximate). Left out, and named in the caveat: the Sky Screamer
+# (a ride at Marineland, 2 km south), the Casino Tower and the Rainbow Tower (towers by the river
+# 1.4-1.6 km north, forms not sourced), the Sheraton on the Falls (its form not sourced either).
+NIA_HOTELS = [
+    ("Hilton Niagara Falls/Fallsview North Tower", 43.08316, -79.083237, 177.1, 53, 30),
+    ("Embassy Suites by Hilton Niagara Falls Fallsview", 43.079464, -79.082092, 118.0, 36, 30),
+    ("Niagara Fallsview Casino Resort", 43.082172, -79.080612, 111.0, 32, 30),
+    ("Marriott Fallsview Hotel and Spa", 43.07738498, -79.0827426, 107.9, 31, 30),
+    ("Hilton Niagara Falls/Fallsview South Tower", 43.082485, -79.083183, 103.0, 30, 30),
+    ("Tower Hotel", 43.079047, -79.0821064, 99.0, 30, 16),
+    ("Oakes Hotel", 43.080128, -79.081863, 63.4, 21, 30),
+    ("DoubleTree Resort by Hilton Fallsview", 43.087219, -79.084038, 63.4, 18, 30),
+    ("Niagara Falls Marriott on the Falls", 43.078522, -79.081993, 60.0, 20, 30),
+    ("Four Points by Sheraton Fallsview", 43.081654, -79.083244, 51.0, 17, 30),
+]
+
+
+def table_rock_centre(fr, a):
+    """Table Rock Centre: the OSM footprint (two storeys, building:levels 2), its walls in buff stone with
+    tall windows (`trcwall`, one tile the wall's height), under steep dark roofs, and the Grand Hall's
+    cupola -- the building in the photographs. Eaves 9.5 m and the roof's rise are approximate."""
+    out = []
+    foot, eave, rise, inset = NIA_TABLEROCK, 9.5, 4.0, 2.4
+    for i in range(len(foot)):
+        p0, p1 = foot[i], foot[(i + 1) % len(foot)]
+        out.append(_prim("x", [fr.cm(*p0, 0), fr.cm(*p1, 0), fr.cm(*p1, eave), fr.cm(*p0, eave)],
+                         pat="trcwall", u=950, ax="v", c="#7d7566", cn="#1d2026", a=a, dg=0.55,
+                         fn=_fn(fr, *_outward_ccw(foot, p0, p1))))
+    inner = inset_polygon(foot, inset)
+    for i in range(len(foot)):
+        j = (i + 1) % len(foot)
+        out.append(_prim("f", [fr.cm(*foot[i], eave), fr.cm(*foot[j], eave),
+                               fr.cm(*inner[j], eave + rise), fr.cm(*inner[i], eave + rise)],
+                         c="#4f5058", cn="#15181d", a=a, dg=0.5, fn=_fn(fr, *_outward_ccw(foot, foot[i], foot[j]))))
+    out.append(_hprim("f", fr, inner, eave + rise, c="#4a4b52", cn="#15181d", a=a, dg=0.5))
+    # The cupola over the Grand Hall, at the building's east end by the falls (placed from the
+    # photographs, approximate): a lantern on the ridge and its pyramid cap.
+    ce, cn_ = NIA_TRC_CUPOLA
+    lan = [(ce - 1.6, cn_ - 1.6), (ce + 1.6, cn_ - 1.6), (ce + 1.6, cn_ + 1.6), (ce - 1.6, cn_ + 1.6)]
+    out += world_extrude(fr, lan, eave + rise, eave + rise + 3.0, "#d7d3c6", "#4f5058", a, cn="#262a31", dg=0.5)
+    top = eave + rise + 3.0
+    for i in range(4):
+        p0, p1 = lan[i], lan[(i + 1) % 4]
+        out.append(_prim("f", [fr.cm(*p0, top), fr.cm(*p1, top), fr.cm(ce, cn_, top + 2.4)],
+                         c="#4f5058", cn="#15181d", a=a, dg=0.5, fn=_fn(fr, *_outward(lan, p0, p1))))
+    return out
+
+
+def fallsview(fr, air):
+    """The bluff behind Table Rock (a wooded slope, `NIA_BLUFF_*`) and the hotels standing on it."""
+    out = []
+    rise, run = NIA_BLUFF_RISE, NIA_BLUFF_RUN
+    foot = resample(NIA_BLUFF_FOOT, 28)
+    nrm = left_normals(foot)                       # walking north, the left is west: up the bluff
+    top = [(e + nx * run, n + ny * run) for (e, n), (nx, ny) in zip(foot, nrm)]
+    # The slope is wooded, as it is behind the Centre in every photograph from the gorge; its south
+    # end, where this drawing stops, goes down into the ground rather than ending in a cut face.
+    hk = [min(1.0, i / 3) for i in range(len(foot))]
+    for i in range(len(foot) - 1):
+        j = i + 1
+        ex, ey = top[j][0] - top[i][0], top[j][1] - top[i][1]
+        a = air(*foot[i])
+        out.append(_prim("x", [fr.cm(*top[i], rise * hk[i]), fr.cm(*top[j], rise * hk[j]),
+                               fr.cm(*foot[j], 0), fr.cm(*foot[i], 0)],
+                         pat="canopy", u=2000, ax="v", c="#3b5631", cn="#121a1c", a=a, dg=0.45,
+                         fn=_fn(fr, ey, -ex)))
+        # the trees along its top, their crowns 9-15 m over the edge (a seeded run, not a survey)
+        t0, t1 = 9 + (i * 37 % 7), 9 + (j * 37 % 7)
+        out.append(_prim("x", [fr.cm(*top[i], rise * hk[i] + t0 * hk[i]), fr.cm(*top[j], rise * hk[j] + t1 * hk[j]),
+                               fr.cm(*top[j], rise * hk[j]), fr.cm(*top[i], rise * hk[i])],
+                         pat="canopy", u=2000, ax="v", c="#3b5631", cn="#121a1c", a=a, dg=0.45,
+                         fn=_fn(fr, ey, -ex)))
+    plateau = top + [(-2400, top[-1][1]), (-2400, top[0][1])]
+    out.append(_hprim("f", fr, plateau, rise, c="#5f7b47", cn="#1b2430", a=0.2, s=8.45, dg=0.55))
+    for name, la, lo, h, floors, w in NIA_HOTELS:
+        e, n = nia(la, lo)
+        hw = w / 2
+        box = [(e - hw, n - hw), (e + hw, n - hw), (e + hw, n + hw), (e - hw, n + hw)]
+        a = air(e, n)
+        for i in range(4):
+            p0, p1 = box[i], box[(i + 1) % 4]
+            out.append(_prim("x", [fr.cm(*p0, rise), fr.cm(*p1, rise), fr.cm(*p1, rise + h), fr.cm(*p0, rise + h)],
+                             pat="hotelw", pn="towerwin", u=round(800 * h / floors), ax="v", c="#969795",
+                             a=a, dg=0.55, fn=_fn(fr, *_outward(box, p0, p1))))
+        out.append(_hprim("f", fr, box, rise + h, c="#7d7f80", cn="#141c2c", a=a, dg=0.5))
+    return out
+
+
+def _outward_ccw(poly, a, b):
+    """The outward normal of edge a-b from the polygon's own winding: exact on a concave outline,
+    where the centroid test (`_outward`) can turn an edge in a recess the wrong way round."""
+    area = sum(poly[i][0] * poly[(i + 1) % len(poly)][1] - poly[(i + 1) % len(poly)][0] * poly[i][1]
+               for i in range(len(poly)))
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    return (dy, -dx) if area > 0 else (-dy, dx)
+
+
+def inset_polygon(poly, d):
+    """A simple polygon's outline moved `d` metres inward along each edge's normal (mitred corners,
+    the mitre capped at 2.5 d) -- the line a hipped roof's slopes rise to from the eaves."""
+    area = sum(poly[i][0] * poly[(i + 1) % len(poly)][1] - poly[(i + 1) % len(poly)][0] * poly[i][1]
+               for i in range(len(poly)))
+    sgn = 1.0 if area > 0 else -1.0                 # counter-clockwise: the inside is to the left
+    out = []
+    for i in range(len(poly)):
+        a, b, c = poly[i - 1], poly[i], poly[(i + 1) % len(poly)]
+        def nrm(p, q):
+            dx, dy = q[0] - p[0], q[1] - p[1]
+            L = math.hypot(dx, dy) or 1e-9
+            return (-dy / L * sgn, dx / L * sgn)
+        n1, n2 = nrm(a, b), nrm(b, c)
+        bx, by = n1[0] + n2[0], n1[1] + n2[1]
+        L = math.hypot(bx, by) or 1e-9
+        cosh = max(0.4, (n1[0] * bx + n1[1] * by) / L)
+        k = min(2.5, 1.0 / cosh) * d
+        out.append((b[0] + bx / L * k, b[1] + by / L * k))
+    return out
+
+
+NIA_TRC_CUPOLA = (-21.0, 2.0)
+
+
+def niagara_world(fr, view="rim"):
+    """The falls, the gorge and their banks from one lane frame (`view` "rim" or "deck")."""
+    P = []
+    def air(e, n, k=1.0):
+        d = fr.dist(e, n)
+        return round(min(0.5, 0.03 + d / 3200 * 0.5) * k, 3)
+    up = lambda pts, u: [fr.cm(e, n, u) for e, n in pts]
+    # Round 35: what stands below the bank -- the sheets, the gorge walls, the arch -- paints before
+    # the ground on the rim (sort layer `low`). The painter sorts these by depth alone, and a sheet
+    # 80 m off is "farther" than a terrace cell under the eye only on average: from the Centre's
+    # doors the Horseshoe's near end was painted over the terrace it hangs 1.5 m below, a teal wedge
+    # on the pavers. An eye above the bank meets anything above it before anything under it, so on
+    # the rim the order is exact: water, then what stands in the gorge, then the ground. On the deck
+    # the eye is under the bank, the ground is not drawn, and depth keeps the order (no layer).
+    low = 8.8 if view == "rim" else None
+
+    # Canadian ground: west of the rim, the terrace and the upper bank, out to 2.4 km.
+    canada = list(reversed(NIA_CA_UPPER)) + NIA_BRINK[::-1][1:] + [(7.0, -10.0)] + NIA_RIM_N + \
+        [(640, 2400), (-2400, 2400), (-2400, -2400), (863, -2400)]
+    focus = (fr.e0 + 22 * fr.s, fr.n0 + 22 * fr.c)
+    P += grid_hprims(fr, canada, 0, focus, c="#5f7b47", cn="#1b2430", a=0.08, s=8.5, dg=0.55)
+    # The terrace round Table Rock Centre: paved, the colour of the trail's pavers.
+    tpave = NIA_BRINK[:4] + [(-26.0, -52.0), (-40.0, -42.0), (-36.0, -2.0), (-30.0, 60.0)] + \
+        list(reversed(NIA_RIM_N[:4])) + [(7.0, -10.0)]
+    P += grid_hprims(fr, tpave, 0.02, focus, c="#7d7a74", cn="#252a33", a=0.04, s=8.4, dg=1.0)
+    # The terrace rail along the brink (round 35, after the photographs of it at the Horseshoe): a
+    # low wall of rough grey stone, a rough block for a post every 3 m, and between the posts the
+    # black ironwork of rings from the wall's top to 90 cm -- a parapet at the hip, not the bars at
+    # hand height it had been. Cut cell by cell between the posts, so a post is never a long wall
+    # quad's neighbour in the painter's sort (it would be painted over by the wall behind it).
+    blen = sum(math.hypot(q[0] - p[0], q[1] - p[1]) for p, q in zip(NIA_BRINK, NIA_BRINK[1:]))
+    br = resample(NIA_BRINK, max(1, round(blen / 3.0)))
+    for i in range(len(br)):
+        a = br[i]
+        b = br[min(i + 1, len(br) - 1)] if i + 1 < len(br) else None
+        prev = br[i - 1] if i else br[1]
+        ux, uy = (b[0] - a[0], b[1] - a[1]) if b else (a[0] - prev[0], a[1] - prev[1])
+        L = math.hypot(ux, uy) or 1.0
+        ux, uy = ux / L, uy / L
+        nx, ny = -uy, ux                                   # across the wall, toward the terrace
+        if nx * (-36.0 - a[0]) + ny * (-20.0 - a[1]) < 0:
+            nx, ny = -nx, -ny
+        # the post: a rough block 50 cm square, 96 cm high, astride the wall
+        foot = [(a[0] + sx * ux * 0.25 + sy * nx * 0.25, a[1] + sx * uy * 0.25 + sy * ny * 0.25)
+                for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+        for k in range(4):
+            fa, fb = foot[k], foot[(k + 1) % 4]
+            P.append(_prim("x", [fr.cm(*fa, 0.0), fr.cm(*fb, 0.0), fr.cm(*fb, 0.96), fr.cm(*fa, 0.96)],
+                           pat="stonewall", u=110, ax="v", c="#67635b", cn="#1d1f24", a=0.04, dg=0.8,
+                           fn=_fn(fr, *_outward(foot, fa, fb))))
+        P.append(_hprim("f", fr, foot, 0.96, c="#7a766d", cn="#23262b", a=0.04, dg=0.8))
+        if not b:
+            break
+        # the wall and its ironwork between this post and the next
+        p0 = (a[0] + ux * 0.25, a[1] + uy * 0.25)
+        p1 = (b[0] - ux * 0.25, b[1] - uy * 0.25)
+        t0, t1 = (p0[0] + nx * 0.2, p0[1] + ny * 0.2), (p1[0] + nx * 0.2, p1[1] + ny * 0.2)
+        g0, g1 = (p0[0] - nx * 0.2, p0[1] - ny * 0.2), (p1[0] - nx * 0.2, p1[1] - ny * 0.2)
+        P.append(_prim("x", [fr.cm(*t0, 0.0), fr.cm(*t1, 0.0), fr.cm(*t1, 0.6), fr.cm(*t0, 0.6)],
+                       pat="stonewall", u=110, ax="v", c="#67635b", cn="#1d1f24", a=0.04, dg=0.8,
+                       fn=_fn(fr, nx, ny)))
+        P.append(_prim("f", [fr.cm(*t0, 0.6), fr.cm(*t1, 0.6), fr.cm(*g1, 0.6), fr.cm(*g0, 0.6)],
+                       c="#77736a", cn="#22252a", a=0.04, dg=0.8))
+        # the iron, in the wall's middle: the ring tile, a cell 30 cm square, a band one tile high
+        # (60 to 90 cm, where the tile's own rails fall on the band's edges); clear between the iron,
+        # so it takes no air and no sun of its own (`a` 0, `n`, `d0`).
+        P.append(_prim("x", [fr.cm(*p0, 0.6), fr.cm(*p1, 0.6), fr.cm(*p1, 0.9), fr.cm(*p0, 0.9)],
+                       pat="ironscroll", u=30, ax="v", c="rgba(18,19,22,0.4)", a=0, n=1, d0=1))
+
+    # The upper river above the brink: from the crest, along Goat Island, out to the rapids' head.
+    upper = NIA_HS_CREST + NIA_GOAT_SOUTH[1:] + [(1700, 0), (1700, -2400), (863, -2400)] + \
+        list(reversed(NIA_CA_UPPER))
+    # Round 35: the near cells wear the rapids (`rapids`, turned to the current, which runs
+    # north-north-east into the Canadian end of the bowl); past 400 m the flat colour, the tile's mean.
+    P += grid_hprims(fr, upper, NIA_CREST, focus, c="#4b8b8d", cn="#18303a", a=0.1, s=9.0, dg=0.5,
+                     tex=dict(pat="rapids", u=1200, rot=round((20 - fr.heading) % 360, 1), reach=400))
+    for (e0, n0, e1, n1) in ((40, -330, 330, -360), (80, -420, 420, -470), (140, -560, 560, -610),
+                             (330, -300, 520, -200), (380, -120, 600, -60)):
+        P.append(_hprim("f", fr, [(e0, n0), (e1, n1), (e1, n1 - 9), (e0, n0 - 9)], NIA_CREST + 0.05,
+                       c="rgba(236,244,244,0.38)", a=air(e0, n0), s=8.95, d0=1))
+    # The American Rapids between Goat Island and the US shore, then the US mainland and its rim.
+    am_cr = NIA_AM_CREST_L
+    rapids = [am_cr[0], am_cr[-1], (1480, 900), (1700, 400), (1700, 0)] + NIA_GOAT_NORTH + [NIA_LUNA[0]]
+    P.append(_hprim("f", fr, rapids, NIA_AM_CREST, c="#5a9698", cn="#1a3038", a=0.18, s=8.9, dg=0.5))
+    us = [am_cr[-1], NIA_PROSPECT, NIA_US_RIM_N, (1400, 1600), (3200, 1600), (3200, 900), (1480, 900)]
+    P.append(_hprim("f", fr, us, 0, c="#5a7348", cn="#1b2430", a=0.25, s=8.6, dg=0.5))
+    us_rim = resample([NIA_PROSPECT, NIA_US_RIM_N], 6)
+    P += world_quads_between(fr, us_rim, us_rim, 11, 0, "#33492e", air(800, 900), out="L", cn="#121a1c", dg=0.45)
+    us_foot = [(e - 9, n + 4) for e, n in us_rim]
+    P += world_quads_between(fr, us_rim, us_foot, 0, NIA_RIVER, "#6c675c", air(800, 900), cn="#1d2026", dg=0.45,
+                             s=low)
+
+    # The lower river: from the Horseshoe's foot north under the Rainbow Bridge.
+    hs = resample(dp_simplify(NIA_HS_CREST, 1.0), 36)
+    nrm = left_normals(hs)
+    foot = [(e + nx * 24 * min(1.0, i / 4), n + ny * 24 * min(1.0, i / 4))
+            for i, ((e, n), (nx, ny)) in enumerate(zip(hs, nrm))]
+    goat_w = [(e - 8, n) for e, n in NIA_GOAT_GORGE]
+    amn0 = left_normals(am_cr)
+    am_toe = [(e + nx * 36, n + ny * 36) for (e, n), (nx, ny) in zip(am_cr, amn0)]
+    lower = NIA_CA_WATER + [(560, 1250), (760, 1500), (1000, 1300), (NIA_US_RIM_N[0] - 12, NIA_US_RIM_N[1])] + \
+        list(reversed(us_foot)) + list(reversed(am_toe)) + list(reversed(goat_w)) + list(reversed(foot))
+    P += grid_hprims(fr, lower, NIA_RIVER, focus, c="#3d706c", cn="#0f1d26", a=0.12, s=9.6, dg=0.55)
+    # The foam where the sheet lands: white and nearly solid at the foot, thinning to streaks 75 m
+    # out (round 35: one even 55% band read as a grey shelf, not as water churned white).
+    # The churned water itself (`foam`, opaque) to 44 m out, then three translucent bands, each
+    # thinner than the last, so the white has no edge of its own.
+    rings = [foot] + [[(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)] for d in (44, 70, 100, 130)]
+    for b, al in enumerate((None, 0.45, 0.22, 0.1)):
+        for i in range(0, 36, 3):
+            j = min(i + 3, 36)
+            quad = [rings[b][i], rings[b][j], rings[b + 1][j], rings[b + 1][i]]
+            if al is None:
+                P.append(_hprim("x", fr, quad, NIA_RIVER + 0.35, pat="foam", u=1800, rot=0, c="#c5cfcc",
+                               cn="#5f6c74", a=air(*hs[i], 0.8), s=9.5, dg=0.4))
+            else:
+                P.append(_hprim("f", fr, quad, NIA_RIVER + 0.35 - 0.02 * b, c="rgba(232,242,240,%s)" % al,
+                               a=air(*hs[i], 0.8), s=9.5, d0=1))
+    am_foam = [(e + nx * 62, n + ny * 62) for (e, n), (nx, ny) in zip(am_cr, amn0)]
+    for i in range(len(am_cr) - 1):
+        P.append(_hprim("f", fr, [am_toe[i], am_toe[i + 1], am_foam[i + 1], am_foam[i]], NIA_RIVER + 0.3,
+                       c="rgba(232,242,240,0.6)", a=air(*am_cr[i], 0.85), s=9.5, d0=1))
+
+    # The Canadian gorge wall (round 35, after the photographs from the river): a sheer face in
+    # level beds of pale rock for two-thirds of the drop -- a metre and a half of batter, no more --
+    # then the talus, grown over green, down to the water. (It had been a 70-degree slope from the
+    # rim, which read from the trail as a dark ramp rather than a cliff.)
+    rim_w = resample([NIA_BRINK[0]] + NIA_RIM_N[:13], 30)
+    water_w = resample(NIA_CA_WATER[:12], 30)
+    cliff_foot = [(e + (we - e) * 0.04, n + (wn - n) * 0.04) for (e, n), (we, wn) in zip(rim_w, water_w)]
+    P += world_quads_between(fr, rim_w, cliff_foot, 0, -38, "#847d6e", air(60, 200), t="x", pat="strata",
+                             u=1600, ax="v", cn="#1c1f25", dg=0.45, s=low)
+    P += world_quads_between(fr, cliff_foot, water_w, -38, NIA_RIVER, "#56663f", air(60, 200), cn="#141a1c", dg=0.45,
+                             s=low)
+    # North of the lane the rim keeps its parapet: a dark band at hand height.
+    par = resample(NIA_RIM_N[1:7], 10)
+    P += world_quads_between(fr, par, par, 1.1, 0, "#2b2b2e", 0.06, out="R", cn="#121418")
+
+    # Goat Island: woods on top, a canopy edge, and rock where it faces the gorge.
+    P.append(_hprim("f", fr, NIA_GOAT, NIA_GOAT_TREES, c="#3a5532", cn="#121a1c", a=0.2, s=0.002, dg=0.45))
+    ring = NIA_GOAT + [NIA_GOAT[0]]
+    for i in range(len(ring) - 1):
+        a, b = ring[i], ring[i + 1]
+        P.append(_prim("x", [fr.cm(*a, 0), fr.cm(*b, 0), fr.cm(*b, NIA_GOAT_TREES), fr.cm(*a, NIA_GOAT_TREES)],
+                       pat="canopy", u=2000, ax="v", c="#2c4428", cn="#0f1618", a=air(*a), dg=0.45,
+                       fn=_fn(fr, *_outward(NIA_GOAT, a, b))))
+    gg = resample(NIA_GOAT_GORGE, 12)
+    gfoot = [(e - 8, n) for e, n in gg]
+    P += world_quads_between(fr, gg, gfoot, 0, NIA_RIVER, "#6e6a5f", air(400, 300), cn="#1d2026", dg=0.45, s=low)
+    P.append(_hprim("f", fr, NIA_LUNA, 9, c="#3c5734", cn="#121a1c", a=air(650, 560), dg=0.45))
+    lr = NIA_LUNA + [NIA_LUNA[0]]
+    for i in range(len(lr) - 1):
+        P.append(_prim("f", [fr.cm(*lr[i], NIA_TALUS), fr.cm(*lr[i + 1], NIA_TALUS),
+                             fr.cm(*lr[i + 1], 9), fr.cm(*lr[i], 9)], c="#5f5b51", cn="#1b1e24",
+                       a=air(650, 560), dg=0.45, fn=_fn(fr, *_outward(NIA_LUNA, lr[i], lr[i + 1]))))
+
+    # A curtain that leaves its brink and falls in a parabola: `throw` metres out at its foot.
+    def curtain(crest, u_top, u_bot, throw, colours, k_streaks, taper=0, grain=2400):
+        """Four bands down the drop (the glassy brink, its turn white, the upper and the lower sheet),
+        each wearing the falling water's grain (`fallsw`, `grain` cm a tile): faint on the brink,
+        full below."""
+        nr = left_normals(crest)
+        tk = [min(1.0, i / taper) if taper else 1.0 for i in range(len(crest))]
+        cut = [0.0, 0.05, 0.15, 0.42, 1.0]
+        for s in range(4):
+            fa, fb = cut[s], cut[s + 1]
+            ua, ub = u_top + (u_bot - u_top) * fa, u_top + (u_bot - u_top) * fb
+            oa, ob = throw * math.sqrt(fa), throw * math.sqrt(fb)
+            for i in range(len(crest) - 1):
+                j = i + 1
+                pa = (crest[i][0] + nr[i][0] * oa * tk[i], crest[i][1] + nr[i][1] * oa * tk[i])
+                pb = (crest[j][0] + nr[j][0] * oa * tk[j], crest[j][1] + nr[j][1] * oa * tk[j])
+                qa = (crest[i][0] + nr[i][0] * ob * tk[i], crest[i][1] + nr[i][1] * ob * tk[i])
+                qb = (crest[j][0] + nr[j][0] * ob * tk[j], crest[j][1] + nr[j][1] * ob * tk[j])
+                P.append(_prim("w", [fr.cm(*pa, ua), fr.cm(*pb, ua), fr.cm(*qb, ub), fr.cm(*qa, ub)],
+                               c=colours[s], a=air(*crest[i], 0.75), il=1, dg=0.35, s=low,
+                               k=(k_streaks if s > 1 else 0), pat="fallsw", u=grain, pa=(0.55, 0.8, 0.95, 1.0)[s]))
+    curtain(hs, NIA_CREST, NIA_RIVER, 24, ("#3f9c8a", "#7cc3b5", "#c4e2de", "#e4f0ef"), 2, taper=4)
+    amr = resample(am_cr, 12)
+    curtain(amr, NIA_AM_CREST, NIA_TALUS, 4, ("#7fb9ae", "#b6d8d1", "#dfecea", "#e9f2f1"), 2, grain=1400)
+    amn = left_normals(amr)
+    t_top = [(e + nx * 4, n + ny * 4) for (e, n), (nx, ny) in zip(amr, amn)]
+    t_toe = [(e + nx * 36, n + ny * 36) for (e, n), (nx, ny) in zip(amr, amn)]
+    for i in range(len(amr) - 1):
+        P.append(_prim("w", [fr.cm(*t_top[i], NIA_TALUS), fr.cm(*t_top[i + 1], NIA_TALUS),
+                             fr.cm(*t_toe[i + 1], NIA_RIVER), fr.cm(*t_toe[i], NIA_RIVER)],
+                       c="#8d8b84", cn="#22252b", a=air(*amr[i], 0.85), k=2, sp=0.22, dg=0.4, s=low))
+    bvr = resample(NIA_BV_CREST, 3)
+    curtain(bvr, NIA_AM_CREST, NIA_TALUS, 3, ("#7fb9ae", "#b6d8d1", "#dfecea", "#e9f2f1"), 1, grain=1400)
+
+    # The spray: a plume over the Horseshoe's basin, a lower one at the American Falls.
+    mist_k = 1.0
+    # Columns, not blankets: the spray rises where the most water lands, near the apex. Round 35:
+    # each round is soft-edged now (`emit`'s `soft`), so the plume can be as dense as the photographs
+    # show without its rounds reading as plates; and the foot of the sheet is lost in a low cloud
+    # all along the bowl, as it is from every viewpoint on both banks.
+    for (e, n, w, h, al) in ((165, -170, 84, 105, 0.3), (235, -200, 70, 90, 0.27), (95, -110, 60, 70, 0.24)):
+        P.append({"t": "m", "o": fr.cm(e, n, NIA_RIVER + 4), "w": w * 100, "h": h * 100,
+                  "al": round(al * mist_k, 3), "a": 0.02, "il": 1})
+    # The bowl: a cloud low over the water at the foot of the sheet, and another further out --
+    # what hides the plunge from the rim and from the deck alike.
+    # Three rounds a cloud rather than five: a soft round is a costly fill, and three overlapping
+    # ones read the same at this size.
+    for d, step, w, h, al in ((34, 3, 62, 34, 0.34), (80, 4, 84, 44, 0.3), (130, 8, 100, 40, 0.22)):
+        ring = [(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)]
+        for i in range(2, 35, step):
+            P.append({"t": "m", "o": fr.cm(*ring[i], NIA_RIVER + 1), "w": w * 100, "h": h * 100,
+                      "al": round(al * mist_k, 3), "a": 0.02, "il": 1, "np": 3})
+    P.append({"t": "m", "o": fr.cm(610, 650, NIA_RIVER + 2), "w": 7000, "h": 2600, "al": 0.12,
+              "a": 0.04, "il": 1})
+    rc = fr.cm(130, -120, NIA_RIVER - 22)
+    vx, vz = -rc[0], -rc[2]
+    L = math.hypot(vx, vz) or 1
+    P.append({"t": "rb", "o": rc, "r": 6200, "ux": round(-vz / L, 4), "uz": round(vx / L, 4), "west": 1})
+    P.append({"t": "fw", "o": fr.cm(160, -120, 30), "r": 6000})
+
+    P += table_rock_centre(fr, air(-60, 0))
+    # The Fallsview bluff and its hotels (round 35), then the Skylon.
+    P += fallsview(fr, air)
+    se, sn = NIA_SKYLON
+    base = NIA_SKYLON_STREET
+    shaft = [(se - 5, sn - 5), (se + 5, sn - 5), (se + 5, sn + 5), (se - 5, sn + 5)]
+    # After dark the tower is washed in colour (Wikipedia: 12 RGB wash fixtures and projectors).
+    P += world_extrude(fr, shaft, 0, base + 128, "#a4a49e", "#8e8e88", air(se, sn), cn="#262b33", dg=0.5, il=1)
+    pod = [(se + 15 * math.cos(a), sn + 15 * math.sin(a)) for a in [k * math.pi / 4 for k in range(8)]]
+    P += world_extrude(fr, pod, base + 128, base + 149, "#c9c7bf", "#5f8f80", air(se, sn), cn="#30353e", dg=0.5, il=1)
+    spire = [(se - 0.6, sn - 0.6), (se + 0.6, sn - 0.6), (se + 0.6, sn + 0.6), (se - 0.6, sn + 0.6)]
+    P += world_extrude(fr, spire, base + 149, base + 160, "#9a9a94", "#9a9a94", air(se, sn), cn="#262b33", dg=0.5)
+    # The Rainbow Bridge downstream: a steel arch springing near the water, its deck at the rims.
+    (ae, an), (be, bn) = NIA_RAINBOW
+    me, mn = (ae + be) / 2, (an + bn) / 2
+    L = math.hypot(be - ae, bn - an)
+    ux, uy = (be - ae) / L, (bn - an) / L
+    P.append(_prim("f", [fr.cm(ae, an, 2.5), fr.cm(be, bn, 2.5), fr.cm(be, bn, -1.5), fr.cm(ae, an, -1.5)],
+                   c="#56635b", cn="#181e24", a=air(me, mn), dg=0.45))
+    for off in (-8, 8):
+        ox, oy = -uy * off, ux * off
+        prev = None
+        for k in range(11):
+            sx = -145 + 29 * k
+            y = NIA_RIVER + 8 + (-6 - (NIA_RIVER + 8)) * (1 - (sx / 145) ** 2)
+            pt = (me + ux * sx + ox, mn + uy * sx + oy)
+            if prev:
+                P.append(_prim("f", [fr.cm(*prev[0], prev[1]), fr.cm(*pt, y), fr.cm(*pt, y - 4),
+                                     fr.cm(*prev[0], prev[1] - 4)], c="#5d6b62", cn="#181e24",
+                               a=air(me, mn), dg=0.45, s=low))
+            prev = (pt, y)
+    return P
+
+
+# ---- Toronto from the LookOut (OpenStreetMap + Wikipedia's list of tallest buildings) -------------
+TOR_O = (43.6425637, -79.3870872)       # the CN Tower (OSM way 32742038)
+TOR_LOOKOUT = 346.0                     # LookOut level, metres above the base
+TOR_GRID = -16.7                        # the downtown street grid's turn from true north
+
+
+def tor(lat, lon):
+    return ll_m(lat, lon, *TOR_O)
+
+
+# The skyline the LookOut looks at: every tower of 150 m and over in Wikipedia's "List of tallest
+# buildings in Toronto", all 117, at the list's coordinates and heights (read 2026-10-15 for the 23 of
+# 214 m and over within 4 km, the rest 2026-10-16; the list counts topped-out towers, and so does this).
+# Footprints are typical (office 40 m, residential 30 m), not surveyed; bases are the ground's level,
+# and the ground is drawn level, though the city climbs away from the lake.
+TOR_TOWERS = [
+    ("SkyTower at Pinnacle One Yonge", 43.64333, -79.375, 351.8, 34, -4.0),
+    ("First Canadian Place", 43.648838, -79.381744, 298.3, 46, 0),
+    ("The St. Regis Toronto", 43.649818, -79.380341, 276.9, 34, 0),
+    ("Scotia Plaza", 43.649422, -79.379578, 275.0, 44, 0),
+    ("Aura", 43.659431, -79.382812, 271.9, 34, 0),
+    ("TD Canada Trust Tower", 43.646465, -79.378784, 260.9, 40, 0),
+    ("CIBC Square II", 43.64527, -79.3788, 243.1, 44, 0),
+    ("CIBC Square I", 43.644161, -79.377762, 241.3, 44, 0),
+    ("Commerce Court West", 43.648209, -79.379509, 239.0, 42, 0),
+    ("TD Terrace", 43.645195, -79.384583, 236.5, 44, 0),
+    ("ICE Condominiums II", 43.642048, -79.381676, 234.2, 30, 0),
+    ("Harbour Plaza East", 43.642113, -79.379013, 233.0, 30, 0),
+    ("Concord Canada House 1", 43.641399, -79.392265, 231.3, 30, 0),
+    ("Sugar Wharf Tower G", 43.64476, -79.371704, 230.2, 30, -2.0),
+    ("Harbour Plaza West", 43.642109, -79.379616, 224.0, 30, 0),
+    ("Ten York", 43.641106, -79.381248, 224.0, 30, 0),
+    ("TD Bank Tower", 43.647568, -79.381012, 222.8, 40, 0),
+    ("Sugar Wharf Tower F", 43.644562, -79.371086, 218.4, 30, -2.0),
+    ("Prestige at Pinnacle One Yonge", 43.643608, -79.374184, 216.2, 30, -3.0),
+    ("Bay Adelaide Centre West", 43.650269, -79.380508, 214.7, 40, 0),
+    ("Shangri-La Toronto", 43.649086, -79.386177, 214.0, 30, 0),
+    ("One Bloor West", 43.669917, -79.387028, 308.9, 34, 0),
+    ("One Bloor", 43.669983, -79.386147, 257.3, 34, 0),
+    # The rest of the list within the 4 km (read 2026-10-16, the article's own wikitext): 11 YV,
+    # 221.9 m, which the first reading missed, then every tower from 214 m down to 150 m, in the
+    # list's order. The footprint follows the list's purpose column -- an office 40 m, a residence,
+    # hotel or mixed-use tower 30 m -- except where two listed towers stand closer than that: 55C
+    # and Chaz on Charles Street East, and Eight Cumberland between 1 Yorkville and 11 YV, are
+    # narrowed to keep 4 m between them rather than moved off their coordinates.
+    ("11 YV", 43.671486, -79.388222, 221.91, 30, 0),
+    ("Ritz-Carlton Toronto", 43.645226, -79.387009, 209.5, 30, 0),
+    ("488 University Avenue", 43.655064, -79.389008, 207.6, 30, 0),
+    ("Bay-Wellington Tower", 43.647369, -79.378334, 207.0, 40, 0),
+    ("L Tower", 43.646172, -79.376312, 205.0, 30, 0),
+    ("Massey Tower", 43.653683, -79.37915, 204.2, 30, 0),
+    ("Four Seasons Hotel and Residences West", 43.671764, -79.38987, 204.0, 30, 0),
+    ("ICE Condominiums I", 43.641655, -79.382034, 202.3, 30, 0),
+    ("Concord Canada House 2", 43.64101, -79.392715, 202.2, 30, 0),
+    ("YC Condominiums", 43.661823, -79.383675, 202.2, 30, 0),
+    ("88 Scott", 43.648434, -79.376495, 198.2, 30, 0),
+    ("Bay Adelaide Centre East", 43.650723, -79.379471, 196.0, 40, 0),
+    ("Wellesley on the Park", 43.664406, -79.385292, 194.2, 30, 0),
+    ("EY Tower", 43.650162, -79.382515, 188.2, 40, 0),
+    ("Toronto House", 43.648094, -79.388229, 186.5, 30, 0),
+    ("RBC Centre", 43.645622, -79.385735, 184.9, 40, 0),
+    ("Casa II", 43.669441, -79.384201, 184.5, 30, 0),
+    ("U Condominiums East Tower", 43.666916, -79.388718, 184.0, 30, 0),
+    ("1 Yorkville", 43.671604, -79.387764, 183.2, 26, 0),
+    ("TD North Tower", 43.647926, -79.381996, 182.9, 40, 0),
+    ("Maple Leaf Square North Tower", 43.642849, -79.380585, 181.3, 30, 0),
+    ("8 Wellesley", 43.665043, -79.385155, 181.2, 30, 0),
+    ("Casa III", 43.669529, -79.383698, 179.6, 30, 0),
+    ("Rosedale on Bloor", 43.671947, -79.377403, 179.0, 30, 0),
+    ("INDX Tower", 43.650749, -79.382118, 178.2, 30, 0),
+    ("88 Queen Street East", 43.653687, -79.374878, 177.0, 30, 0),
+    ("One King West Hotel & Residence", 43.648808, -79.378204, 176.2, 30, 0),
+    ("8 Spadina at The Well", 43.643082, -79.394661, 174.1, 40, 0),
+    ("Success Tower 2", 43.643204, -79.376892, 173.3, 30, 0),
+    ("Royal Bank Plaza South", 43.646198, -79.379761, 173.0, 40, 0),
+    ("Maple Leaf Square South Tower", 43.642296, -79.380814, 171.3, 30, 0),
+    ("The Selby", 43.671158, -79.377098, 170.6, 30, 0),
+    ("Teahouse Condominiums South", 43.663258, -79.383537, 170.0, 30, 0),
+    ("Eight Cumberland", 43.671314, -79.387718, 169.8, 26, 0),
+    ("55C", 43.668858, -79.383537, 167.0, 18, 0),
+    ("252 Church", 43.656181, -79.377342, 166.1, 30, 0),
+    ("44 Charles Street West", 43.668678, -79.388229, 166.0, 30, 0),
+    ("Karma", 43.661747, -79.384209, 165.9, 30, 0),
+    ("Theatre Park", 43.64761, -79.387352, 164.8, 30, 0),
+    ("Social", 43.656265, -79.376701, 164.8, 30, 0),
+    ("400 King West", 43.6460451, -79.3929238, 164.6, 30, 0),
+    ("Burke Condominiums", 43.671421, -79.376309, 163.3, 30, 0),
+    ("Residences of College Park I", 43.660305, -79.385063, 163.0, 30, 0),
+    ("Burano", 43.662212, -79.386497, 163.0, 30, 0),
+    ("Success Tower 1", 43.642719, -79.377144, 161.9, 30, 0),
+    ("X2", 43.669582, -79.380569, 161.1, 30, 0),
+    ("FIVE", 43.665569, -79.385597, 161.0, 30, 0),
+    ("Alias", 43.652061, -79.375542, 158.7, 30, 0),
+    ("The Uptown Residences", 43.669468, -79.387459, 158.0, 30, 0),
+    ("Three Hundred", 43.644222, -79.389481, 157.9, 30, 0),
+    ("Lighthouse Tower Condominium", 43.645248, -79.369301, 157.9, 30, 0),
+    ("The Well Residential One", 43.642761, -79.395424, 157.3, 30, 0),
+    ("Grid Condos", 43.656948, -79.374092, 157.0, 30, 0),
+    ("16 York", 43.642635, -79.382019, 157.0, 40, 0),
+    ("Delta Toronto Hotel", 43.643208, -79.383827, 156.8, 30, 0),
+    ("One York Street", 43.641617, -79.380264, 156.8, 40, 0),
+    ("Festival Tower", 43.64698, -79.390182, 156.7, 30, 0),
+    ("Hotel Riu Plaza Toronto", 43.64732, -79.39183, 156.1, 30, 0),
+    ("Theatre District Residences", 43.64694, -79.39167, 156.1, 30, 0),
+    ("Dundas Square Gardens", 43.657566, -79.374268, 156.0, 30, 0),
+    ("No. 55 Mercer", 43.64529, -79.391518, 156.0, 30, 0),
+    ("Nobu Residences East Tower", 43.645611, -79.390396, 156.0, 30, 0),
+    ("Nobu Residences West Tower", 43.645451, -79.390976, 156.0, 30, 0),
+    ("King Blue North Tower", 43.646004, -79.39151, 155.8, 30, 0),
+    ("PJ Condos", 43.647514, -79.389877, 155.8, 30, 0),
+    ("Maverick", 43.64613, -79.39109, 154.5, 30, 0),
+    ("U Condominiums West Tower", 43.666927, -79.389389, 154.0, 30, 0),
+    ("87 Peter", 43.647053, -79.392242, 154.0, 30, 0),
+    ("Yonge + Rich", 43.651878, -79.376968, 154.0, 30, 0),
+    ("TD South Tower", 43.646774, -79.381233, 153.6, 40, 0),
+    ("35 Mariner", 43.639828, -79.392036, 153.2, 30, 0),
+    ("Montage", 43.641155, -79.394371, 153.0, 30, 0),
+    ("IMMIX", 43.662724, -79.384033, 153.0, 30, 0),
+    ("Peter & Adelaide", 43.647713, -79.3934323, 153.0, 30, 0),
+    ("The Charles at Church", 43.669559, -79.383041, 152.7, 30, 0),
+    ("Chaz Yorkville Condos", 43.668934, -79.383865, 151.4, 18, 0),
+    ("The 250", 43.654598, -79.380524, 150.6, 30, 0),
+    ("Monde", 43.646305, -79.36512, 150.0, 30, 0),
+    ("The Saint", 43.652061, -79.374992, 150.0, 30, 0),
+    # And the list's 15 beyond 4 km, in its order: Humber Bay and Etobicoke to the west-south-west,
+    # Yonge and Eglinton, One Delisle and North York just west of north -- the far glass looks that
+    # way from the walk's end (they are slivers on its horizon). The western ones stand behind the
+    # core from this chord: drawn so the list is whole, and never in frame.
+    ("Eau du Soleil Sky Tower", 43.623436, -79.480064, 228.2, 30, 0),
+    ("E Condos South", 43.707436, -79.398018, 195.7, 30, 0),
+    ("2221 Yonge", 43.706104, -79.397629, 192.5, 30, 0),
+    ("Water's Edge at the Cove", 43.625999, -79.478714, 182.3, 30, 0),
+    ("Eau Du Soleil Water Tower", 43.623417, -79.478889, 180.8, 30, 0),
+    ("Vita on the Lake", 43.624702, -79.479187, 177.1, 30, 0),
+    ("Hullmark Centre I", 43.761433, -79.409859, 169.6, 30, 0),
+    ("Lago", 43.625473, -79.478897, 167.5, 30, 0),
+    ("Quantum 2", 43.705669, -79.397453, 165.0, 30, 0),
+    ("Pinnacle Etobicoke 2A", 43.63191, -79.54246, 161.9, 30, 0),
+    ("E2 at E Place", 43.707916, -79.396996, 161.8, 30, 0),
+    ("Kipling Station Condos", 43.63814, -79.53779, 160.8, 30, 0),
+    ("One Delisle", 43.6889175, -79.3948974, 158.0, 30, 0),
+    ("Westlake Village 1", 43.622723, -79.483253, 153.3, 30, 0),
+    ("Beyond the Sea Star Tower", 43.621723, -79.482834, 151.5, 30, 0),
+]
+# The Toronto Islands (OSM relation 10705563, simplified to ~40 m) and the Leslie Street Spit
+# (Tommy Thompson Park, OSM way 189780702); Billy Bishop airport (OSM relation 85471).
+TOR_ISLANDS = [tor(la, lo) for lo, la in (
+    (-79.4049155, 43.6278629), (-79.4042908, 43.6264494), (-79.4007385, 43.6244491),
+    (-79.3922309, 43.6178924), (-79.389772, 43.6130676), (-79.3882736, 43.6115568),
+    (-79.3821836, 43.6122351), (-79.3715204, 43.6163625), (-79.3669545, 43.6189773),
+    (-79.3583527, 43.6250963), (-79.354423, 43.6298036), (-79.3494405, 43.6310442),
+    (-79.3530698, 43.6341993), (-79.3567244, 43.6333165), (-79.3563062, 43.6290134),
+    (-79.3592886, 43.6256517), (-79.3657635, 43.6214987), (-79.3704692, 43.6208264),
+    (-79.3766004, 43.6185149), (-79.3817514, 43.6196097), (-79.3865483, 43.6204608),
+    (-79.3893095, 43.6208439), (-79.3903466, 43.6182249), (-79.3899821, 43.6234306),
+    (-79.3889831, 43.6244016), (-79.3896458, 43.6267408), (-79.3885497, 43.6278597),
+    (-79.3896648, 43.6297552), (-79.3874595, 43.6305459), (-79.3889094, 43.6327235),
+    (-79.3921772, 43.6312628), (-79.3949247, 43.6336577))]
+TOR_SPIT = dp_simplify([tor(la, lo) for lo, la in (
+    (-79.3450575, 43.621791), (-79.3435403, 43.6126919), (-79.3366554, 43.6191997),
+    (-79.3272007, 43.6188716), (-79.3236923, 43.6174026), (-79.3220937, 43.6226249),
+    (-79.321205, 43.6293394), (-79.3209657, 43.6331755), (-79.3216044, 43.6377822),
+    (-79.3200464, 43.6458085), (-79.3216818, 43.6521617), (-79.3280425, 43.6500249),
+    (-79.3241548, 43.6472539), (-79.3214683, 43.6453059), (-79.3234378, 43.6375319),
+    (-79.3290549, 43.6336186), (-79.3364677, 43.6294405), (-79.3289148, 43.6309204),
+    (-79.3316982, 43.626645), (-79.3241848, 43.6258715), (-79.3330988, 43.6223337),
+    (-79.3390842, 43.6294174), (-79.3388756, 43.6221511), (-79.3450575, 43.621791))], 25)
+TOR_RUNWAY = (tor(43.6276, -79.4030), tor(43.6309, -79.3900))   # the aerodrome's long axis (approximate)
+# The harbour edge: Queens Quay's own line (OSM ways 352799162, 41789174, 407215251, 24221150,
+# 538879521) set 70 m lakeward for the dock walls; west to Bathurst Quay and east to the Eastern Gap
+# and the spit's root, the edge between them read from the islands' gaps (approximate).
+TOR_SHORE = [tor(la, lo) for la, lo in (
+    (43.6330, -79.4600), (43.6320, -79.4200), (43.6345, -79.4040), (43.6355, -79.3985),
+    (43.6355, -79.3978), (43.6360, -79.3954), (43.6369, -79.3930), (43.6381, -79.3876),
+    (43.6383, -79.3866), (43.6385, -79.3855), (43.6388, -79.3837), (43.6397, -79.3793),
+    (43.6404, -79.3774), (43.6410, -79.3755), (43.6413, -79.3747), (43.6425, -79.3700),
+    (43.6420, -79.3600), (43.6390, -79.3530), (43.6370, -79.3505), (43.6385, -79.3440),
+    (43.6420, -79.3330), (43.6470, -79.3255), (43.6522, -79.3217), (43.6600, -79.3050),
+    (43.6700, -79.2850), (43.6850, -79.2500), (43.7500, -79.1000), (43.8300, -78.9000))]
+TOR_SHORE = [tor(la, lo) for la, lo in ((43.5500, -79.6000), (43.6000, -79.5000))] + TOR_SHORE
+
+
+def toronto_world(fr):
+    """Toronto at night from the LookOut: ground, lake, islands, the skyline, the airport's lights."""
+    P = []
+    g, lake, isl = -TOR_LOOKOUT, -TOR_LOOKOUT - 4, -TOR_LOOKOUT - 2.5
+    def air(e, n):
+        d = math.hypot(e, n)
+        return round(min(0.55, 0.06 + d / 9000 * 0.5), 3)
+    # The ground and the lake, both cut into cells: the city's lights tile at their real size (one
+    # tile = 320 m) without an affine map bending across a cell kilometres deep, and the air thickens
+    # cell by cell with distance, which is what lets the lake fade into the horizon's haze.
+    w_end, e_end = TOR_SHORE[0], TOR_SHORE[-1]
+    R = 42000
+    land = TOR_SHORE + [(R, e_end[1]), (R, R), (-R, R), (-R, w_end[1])]
+    water = TOR_SHORE + [(R, e_end[1]), (R, -R), (-R, -R), (-R, w_end[1])]
+    # Rings of cells, each finer ring inside the next. A cell is left out only when it lies wholly
+    # inside the ring within, so the rings meet without a seam of sky between them: skipping cells
+    # by their centres left the band from 21.6 km to 28 km bare, a line of sky under the horizon.
+    cells, inner = [], 0
+    for size, reach in ((600, 2400), (1800, 7200), (5400, 21600), (10800, 43200)):
+        k = reach // size
+        for i in range(-k, k):
+            for j in range(-k, k):
+                x0, y0 = i * size, j * size
+                if -inner <= x0 and x0 + size <= inner and -inner <= y0 and y0 + size <= inner:
+                    continue
+                cells.append((x0, y0, x0 + size, y0 + size))
+        inner = reach
+    for (x0, y0, x1, y1) in cells:
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+        poly = clip_rect(land, x0, y0, x1, y1)
+        if len(poly) >= 3:
+            P.append(_hprim("x", fr, poly, g, pat="cityn", u=32000, ax="h",
+                           c="#151a26", a=air(cx, cy), s=9, n=1))
+        poly = clip_rect(water, x0, y0, x1, y1)
+        if len(poly) >= 3:
+            P.append(_hprim("f", fr, poly, lake, c="#0b1322", a=air(cx, cy), s=9.5, n=1))
+    P.append(_hprim("f", fr, TOR_ISLANDS, isl, c="#1a2521", a=0.12, s=8.5, n=1))
+    P.append(_hprim("f", fr, TOR_SPIT, isl, c="#10161a", a=0.2, s=8.5, n=1))
+    # The airport's runway lights, along the aerodrome's long axis (approximate).
+    (re0, rn0), (re1, rn1) = TOR_RUNWAY
+    L = math.hypot(re1 - re0, rn1 - rn0)
+    px, py = -(rn1 - rn0) / L * 22, (re1 - re0) / L * 22
+    pts = []
+    for k in range(21):
+        t = k / 20
+        e, n = re0 + (re1 - re0) * t, rn0 + (rn1 - rn0) * t
+        pts += [fr.cm(e + px, n + py, isl + 1), fr.cm(e - px, n - py, isl + 1)]
+    P.append({"t": "l", "pts": pts, "r": 90, "c": "#fff1c8", "a": 0.18})
+    # The islands are parkland and dark at night; no lights are drawn on them (their docks and homes
+    # are not surveyed here).
+    # The skyline: each tower a box on the grid's turn, wearing the towers' window tile (`towerwin`:
+    # which windows are lit is a seeded draw -- the street's tile lights them on diagonals, and a
+    # hundred towers of diagonals read as hatching) at a storey's real height. The tile is eight
+    # storeys tall: 4.0 m apiece on an office footprint, 3.2 m on a
+    # residential one (typical floor-to-floor heights, not each building's own) -- at 1.6 m, which
+    # it was, every tower showed twice its real number of floors.
+    gn = (math.sin(math.radians(TOR_GRID)), math.cos(math.radians(TOR_GRID)))    # the grid's north
+    ge = (gn[1], -gn[0])                                                         # and its east
+    for name, la, lo, h, w, base in TOR_TOWERS:
+        e, n = tor(la, lo)
+        hw = w / 2
+        foot = [(e + sx * hw * ge[0] + sy * hw * gn[0], n + sx * hw * ge[1] + sy * hw * gn[1])
+                for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+        a = air(e, n)
+        for i in range(4):
+            p0, p1 = foot[i], foot[(i + 1) % 4]
+            P.append(_prim("x", [fr.cm(*p0, g + base), fr.cm(*p1, g + base), fr.cm(*p1, g + base + h),
+                                 fr.cm(*p0, g + base + h)], pat="towerwin", u=3200 if w >= 40 else 2560,
+                           ax="v", c="#1b2740",
+                           a=a, n=1, l=0.5, fn=_fn(fr, *_outward(foot, p0, p1))))
+        P.append(_hprim("f", fr, foot, g + base + h, c="#141c2c", a=a, n=1))
+    # Rogers Centre below to the west-south-west: the roof, 86 m, its white panels at night.
+    rc = [tor(la, lo) for lo, la in ((-79.3908121, 43.6421698), (-79.3902364, 43.6407719),
+                                     (-79.389037, 43.6405471), (-79.3882698, 43.6408479),
+                                     (-79.3876575, 43.641308), (-79.3882376, 43.6427464),
+                                     (-79.3891078, 43.6425763), (-79.3903255, 43.6422566))]
+    P += world_extrude(fr, rc, g, g + 86, "#3a4253", "#9aa3ae", 0.08, n=1)
+    return P
+
+
+# ---- Journey Behind the Falls: the tunnel's own furniture, in lane centimetres --------------------
+# The tunnel is 56 m from the elevator to the deck (falzguy.com's measured figures); the deck stands
+# at its mouth on the Canadian cliff, 38 m under the rim (the elevator's sourced descent).
+JOURNEY_FRAME = (-37.0, 4.0, -38.0, 120.0)   # elevator landing (E, N, U) and the tunnel's bearing
+JOURNEY_TUNNEL_CM = 5600
+JOURNEY_BRANCH_CM = (1533, 1906)             # the branch's mouth on the right wall, walk cm
+
+
+def journey_world(fr):
+    """The falls from the deck, the branch to the portals, the deck and the cliff round its mouth."""
+    P = niagara_world(fr, "deck")
+    Zf = JOURNEY_TUNNEL_CM
+    # The branch to the portals: 16-18 m in, to the south-east; the Cataract Portal's spur 61 m along
+    # it, the Great Falls Portal's at its end, 110 m along. Drawn straight (its line is not surveyed),
+    # leaving the main tunnel's right wall at 40 degrees: its two walls start at the opening's two
+    # jambs, which a 2.4 m bore at that angle sets 3.73 m apart along the wall.
+    za, zb = JOURNEY_BRANCH_CM
+    dx, dz = math.sin(math.radians(40)), math.cos(math.radians(40))
+    Lw = lambda t, y: [round(120 + dx * t), y, round(zb + dz * t)]       # the branch's left wall
+    Rw = lambda t, y: [round(120 + dx * t), y, round(za + dz * t)]       # and its right
+    Cw = lambda t, y: [round(120 + dx * t), y, round((za + zb) / 2 + dz * t)]
+    aof = lambda t: round(min(0.5, 0.05 + t / 12000 * 0.45), 3)
+    cuts = [0, 900, 1800, 3000, 4500, 6000, 6240, 8000, 9500, 11000]
+    # The same concrete as the main bore (its tile at the lane's own scale, 64 cm a repeat), so the
+    # branch reads as the tunnel turning, not as another material.
+    con = dict(pat="tunnelc", u=64, n=1)
+    for t0, t1 in zip(cuts, cuts[1:]):
+        a = aof(t0)
+        # the walkway's boards, as in the main tunnel: at the branch's distance their flat colour
+        P.append(_prim("f", [Lw(t0, 0), Lw(t1, 0), Rw(t1, 0), Rw(t0, 0)], c="#4a3f34", a=a, n=1))
+        if (t0, t1) == (6000, 6240):
+            # The Cataract Portal's spur opens off the branch's left wall: daylight through water.
+            P.append(_prim("f", [Lw(t0, 0), Lw(t1, 0), Lw(t1, 200), Lw(t0, 200)],
+                           c="rgba(226,238,240,0.9)", a=a, n=1, d0=1))
+        else:
+            P.append(_prim("x", [Lw(t0, 0), Lw(t1, 0), Lw(t1, 200), Lw(t0, 200)], c="#58595a", a=a, ax="v", **con))
+        P.append(_prim("x", [Rw(t0, 0), Rw(t1, 0), Rw(t1, 200), Rw(t0, 200)], c="#4f5052", a=a, ax="v", **con))
+        P.append(_prim("x", [Lw(t0, 200), Lw(t1, 200), Cw(t1, 260), Cw(t0, 260)], c="#4a4b4a", a=a, ax="v", **con))
+        P.append(_prim("x", [Rw(t0, 200), Rw(t1, 200), Cw(t1, 260), Cw(t0, 260)], c="#454645", a=a, ax="v", **con))
+    # Round 35: a dark underlay under each face of the branch, its whole run long (sort layer 0.5,
+    # painted before the panels). The panels are filled one by one, and the hairline a filled edge
+    # leaves let the sky through: the branch read as a white wireframe. Over the underlay a joint
+    # reads as a joint. The Cataract spur's opening is left out of it.
+    for quad in ([Lw(0, 0), Lw(11000, 0), Rw(11000, 0), Rw(0, 0)],
+                 [Lw(0, 0), Lw(6000, 0), Lw(6000, 200), Lw(0, 200)],
+                 [Lw(6240, 0), Lw(11000, 0), Lw(11000, 200), Lw(6240, 200)],
+                 [Rw(0, 0), Rw(11000, 0), Rw(11000, 200), Rw(0, 200)],
+                 [Lw(0, 200), Lw(11000, 200), Cw(11000, 260), Cw(0, 260)],
+                 [Rw(0, 200), Rw(11000, 200), Cw(11000, 260), Cw(0, 260)]):
+        P.append(_prim("f", quad, c="#2c2d2c", a=0.1, n=1, s=0.5))
+    # The Great Falls Portal's light at the branch's end.
+    P.append(_prim("f", [Lw(11000, 0), Rw(11000, 0), Rw(11000, 200), Cw(11000, 260), Lw(11000, 200)],
+                   c="rgba(220,234,238,0.82)", a=aof(11000), n=1, d0=1))
+    P.append({"t": "l", "pts": [[p[0] + 8, 165, p[2] + 6] for p in (Rw(t, 0) for t in range(500, 10600, 800))],
+              "r": 7, "c": "#ffd08a", "a": 0.1})
+    # The deck at the tunnel's mouth: a slab, side parapets with their pipe rail, the upper deck's
+    # roof over its first metres and the pillar that carries it (Reddit photograph, 2025).
+    P.append({"t": "f", "h": 0, "q": [-350, Zf, 350, Zf, 350, 6330, -350, 6330], "c": "#706e68",
+              "a": 0.04, "dg": 0.7})
+    for sx in (-350, 350):
+        P.append(_prim("f", [[sx, 0, Zf], [sx, 0, 6330], [sx, 105, 6330], [sx, 105, Zf]], c="#6c6a64",
+                       a=0.04, dg=0.7))
+        P.append(_prim("f", [[sx, 105, Zf], [sx, 105, 6330], [sx, 111, 6330], [sx, 111, Zf]], c="#a3a9ae",
+                       a=0.04, dg=0.6))
+    P.append({"t": "f", "h": 262, "q": [-350, Zf, 350, Zf, 350, 5960, -350, 5960], "c": "#4f4e4b", "a": 0.04,
+              "d0": 1, "two": 1})
+    P.append(_prim("f", [[-350, 262, 5960], [350, 262, 5960], [350, 292, 5960], [-350, 292, 5960]],
+                   c="#62615d", a=0.04, dg=0.6))
+    for (x0, z0, x1, z1) in ((305, 5925, 335, 5925), (335, 5925, 335, 5955), (335, 5955, 305, 5955),
+                             (305, 5955, 305, 5925)):
+        P.append(_prim("f", [[x0, 0, z0], [x1, 0, z1], [x1, 262, z1], [x0, 262, z0]], c="#6a6964", a=0.04, dg=0.6))
+    # The cliff the tunnel comes out of, round its mouth, up to the rim 38 m overhead.
+    for quad in ([[-4000, -2000, Zf], [-125, -2000, Zf], [-125, 3800, Zf], [-4000, 3800, Zf]],
+                 [[125, -2000, Zf], [4000, -2000, Zf], [4000, 3800, Zf], [125, 3800, Zf]],
+                 [[-125, 262, Zf], [125, 262, Zf], [125, 3800, Zf], [-125, 3800, Zf]]):
+        P.append(_prim("f", quad, c="#5e5a51", cn="#1c1f25", a=0.06, s=0.001, dg=0.45))
+    return P
+
+
+# The day sky over the falls, all round: elevation stops, a day colour and a night one.
+NIAGARA_SKY = {"stops": [{"e": -2, "c": "#d9e6ee", "n": "#1e2639"}, {"e": 0, "c": "#d4e3ec", "n": "#1d2538"},
+                         {"e": 5, "c": "#b3cde0", "n": "#161d30"}, {"e": 18, "c": "#86aed2", "n": "#101728"},
+                         {"e": 50, "c": "#6593c4", "n": "#0b101e"}, {"e": 90, "c": "#5784b8", "n": "#080c18"}]}
+# Toronto's night over the LookOut: the horizon's glow off the city, the zenith near black.
+TORONTO_SKY = {"stops": [{"e": -2, "c": "#3d4260"}, {"e": 0, "c": "#4a4b66"}, {"e": 2, "c": "#363b58"},
+                         {"e": 8, "c": "#22283f"}, {"e": 30, "c": "#121829"}, {"e": 90, "c": "#080c18"}]}
+
+
+def niagara_parapet_bands(z_back=-200, z_end=4301, every=300, first=150, half=25):
+    """The parapet along the gorge, in record cm: a rough stone post every `every` walk cm, and
+    between the posts a low stone wall carrying a band of ornamental iron, open air above both.
+    Round 35, after the photographs at the brink: the wall 60 cm, the iron's rings to 90 cm, the
+    posts 96 cm and 50 cm square (it had been a 24 cm curb under bars to 108 cm, posts 120 cm)."""
+    edges = [z_back]
+    for q in range(first, z_end, every):
+        edges += [q - half, q + half]
+    edges.append(z_end)
+    zs = lambda z: round(z / Z_SCALE, 1)
+    out = []
+    for i in range(len(edges) - 1):
+        a, b = zs(edges[i]), zs(edges[i + 1])
+        if i % 2 == 1:
+            out += [{"side": -1, "z0": a, "z1": b, "y0": 0, "y1": 96, "kind": "stonewall"},
+                    {"side": -1, "z0": a, "z1": b, "y0": 96, "y1": 400, "kind": "open"}]
+        else:
+            out += [{"side": -1, "z0": a, "z1": b, "y0": 0, "y1": 60, "kind": "stonewall"},
+                    {"side": -1, "z0": a, "z1": b, "y0": 60, "y1": 90, "kind": "railing", "frame": "#1f2126",
+                     "scroll": 1},
+                    {"side": -1, "z0": a, "z1": b, "y0": 90, "y1": 400, "kind": "open"}]
+    return out
+
+
 DISTRICTS = [
     {
         # The hub. The street is the site's own ground — it names no city, carries no lettering, and
@@ -1995,6 +3219,15 @@ DISTRICTS = [
         # The lane runs past its last door into the quay: 3400 walk units past record depth 1040,
         # ending at a walkable rail rather than a wall.
         "lane": {"w": 700, "d": 1040, "ceil": 620, "back": 300, "max_d": 4150},
+        # Its own spoken description (round 32): it had been inheriting the old Tokyo lane's, which
+        # listed a mirror, a meter box and a standpipe this street never had, and a far end of a
+        # crossing, a tower and a mountain where the street's far end is a harbour.
+        "clad_note": (" The street is dressed by region: plaster and brick fronts, shops with their "
+                      "canvases, noren and blank fascias, planters, bins, bicycles, a vending machine "
+                      "and a folding board along the kerbs, and three doors -- Toronto, Tokyo and "
+                      "Fukuoka. Nothing on any of it carries a word."),
+        "sight_note": (" At its far end the street walks out onto a quay over a harbour: moving water, "
+                       "a ferry, a crane, a breakwater and the far shore."),
         # The street is walked in the day. Its record says so, and the renderer answers by giving the
         # page its own clock (fifteen minutes rather than four, opening just before noon) and by
         # adding the sun to every surface rather than washing the night tiles brighter — see the
@@ -2026,15 +3259,16 @@ DISTRICTS = [
              "glow": [{"r": 150, "k": 0.72, "dy": 235}],
              "leave": ROOM_BY_ID["tokyo"]["page"],
              "title": "The door onto Tokyo",
-             "hint": "It opens onto the lane: shutters, lanterns, a vending machine at its end. "
-                     "The curtain inside parts the other way."},
+             "hint": "It opens onto Nakamise-dori at night: Kaminarimon behind you, the shops "
+                     "shuttered, Hozomon lit at the far end. Kaminarimon brings you back."},
             {"id": "door-fukuoka", "kind": "door", "x": -346, "z": 780, "y": 0, "ry": 90,
              "leaf": "#4b4368",
              "glow": [{"r": 150, "k": 0.7, "dy": 235}],
              "leave": ROOM_BY_ID["fukuoka"]["page"],
              "title": "The door onto Fukuoka",
-             "hint": "It opens onto Moji Port: a harbour on a table, at dusk, with a drawbridge "
-                     "that stands open for a ship."},
+             "hint": "It opens onto Moji Port: a hall of models at dusk -- the port's old buildings "
+                     "on stands of their own, and the harbour on a table, with a drawbridge that "
+                     "stands open for a ship."},
             # The street's own furniture, and the two poles the wires run from.
             {"id": "pole-west", "kind": "utility", "x": -330, "z": 180, "y": 0, "ry": 90,
              "title": "The pole the wires are strung from",
@@ -2343,11 +3577,11 @@ DISTRICTS = [
             {"label": "Toronto", "note": "A dark hall of lit tables: the city, its falls and its "
                                          "markets, drawn small.",
              "state": "Open — the first door on the left."},
-            {"label": "Tokyo", "note": "A lane of open shops and awnings, lanterns over it, "
-                                       "machine keeping the far end.",
+            {"label": "Tokyo", "note": "Nakamise-dori after closing: the shuttered rows, Kaminarimon "
+                                       "behind, Hozomon lit at the far end.",
              "state": "Open — the middle door, on the right."},
-            {"label": "Fukuoka", "note": "Moji Port on a table: the station, the customhouse, the "
-                                         "Blue Wing and the ships, at dusk.",
+            {"label": "Fukuoka", "note": "Moji Port in a model hall: the station and the customhouse "
+                                         "on their own stands, the Blue Wing and the ships, at dusk.",
              "state": "Open — the last door on the left."},
         ],
         # The stations are the places the street is worth standing in, and the last four are the
@@ -2377,455 +3611,145 @@ DISTRICTS = [
                   "Nothing here says the owner was anywhere.",
     },
     {
+        # Tokyo is Nakamise-dori at night (round 32; the owner chose it from the places on his own
+        # plates, and the sources, the measurement table and the inventory are in TODO section 0n).
+        # The approach to Senso-ji from Kaminarimon to Hozomon: about 250 m of shops in two rows that
+        # were rebuilt in 1925 in reinforced concrete and painted vermilion (Senso-ji's own guide),
+        # 54 shops on the east side and 35 on the west (tokyo-trip.org; tour.ne.jp), granite paving
+        # laid square, open to the sky. OpenStreetMap puts the rows 9.1 m apart face to face, each
+        # about 4 m deep, the street running 4.7 degrees east of north, the Shin-Nakamise arcade
+        # crossing 71 m in and Denboin-dori 181 m in, the plaza under Hozomon 28 m deep and the
+        # pagoda 56 m west of the gate. The hour is after closing: the shops shut around 19:00, the
+        # shutters come down on the Asakusa Emaki (1989), and the gates and the pagoda stay floodlit
+        # until 23:00 -- the street empties, which is also why there is nobody in it.
         "id": "tokyo", "label": "Tokyo",
-        # The page and the plate prefixes come from the ROOMS table above, so the album and the walk
-        # cannot disagree about which room a plate opens onto. The row also carries the street, which
-        # is what this room's back curtain and the hub's door on it must agree on.
         "page": ROOM_BY_ID["tokyo"]["page"],
         "plates": ROOM_BY_ID["tokyo"]["plates"],
-        # The box the lane stands in. There is no far door: the walk is a hub now, and every room
-        # opens back onto the street, which carries the doors onward.
-        "lane": LANE_FALLBACK,
-        "purpose": "A Tokyo lane, dressed: shutters, lanterns, a crossing at its end",
+        # The box is the street: 9.1 m from shopfront to shopfront, the roofline at 4.8 m, nothing
+        # overhead (`open`), and the far end open onto the plaza (`max_d`, walk units) the way the
+        # hub street walks out onto its quay. 250 m of shops walk in 30 m; the order, the width,
+        # every shop's width and both gates' sizes are kept, and it is the count that shrinks.
+        "lane": {"w": 910, "d": 1040, "ceil": 500, "back": 300, "max_d": 4500, "open": True},
+        "floor": "paving",
+        "purpose": "Nakamise-dori at night: the approach from Kaminarimon to Hozomon, the shutters "
+                   "down and the gates lit",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/tokyo-cover.jpg",
-        "cover_caption": "The district in one sheet: a gate lantern, a scramble, a tower, "
-                         "a counter, a mountain on the skyline.",
-        "blurb": "One lane at night. The light at the end is a vending machine, and the "
-                 "lane is walked toward it.",
-        # Set dressing, and the rule that governs it: an object is here so the lane has an edge, a
-        # rhythm, something to walk round — never so the page can imply a fact. Anything that would
-        # speak about Tokyo (a shop name, a sign's lettering) is deliberately left blank instead.
-        "objects": [
-            {"id": "vending", "kind": "vending", "x": -294, "z": 412, "y": 0, "ry": 90,
-             "glow": [{"r": 130, "k": 1.05}],
-             "title": "The vending machine",
-             "hint": "It keeps the lane's frames. Pressing the lit slot opens the drawer "
-                     "the photographs go into; nothing here reviews Tokyo."},
-            {"id": "bollard", "kind": "bollard", "x": -150, "z": 12, "y": 0, "ry": 0,
-             "title": "A bollard at the mouth of the lane",
-             "hint": "Set dressing, drawn rather than surveyed: it is here so the entrance has "
-                     "an edge. Nothing to open."},
-            {"id": "steps", "kind": "steps", "x": 296, "z": 26, "y": 0, "ry": -90,
-             "title": "Two steps up to a door that is not there yet",
-             "hint": "Drawn. A district gets its doorway when there is a room on the other side "
-                     "of it, and there is not one yet."},
-            {"id": "shrine", "kind": "shrine", "x": 296, "z": 36, "y": 42, "ry": -90,
-             "title": "A small shrine at knee height",
-             "hint": "Draw one slip. The slip picks which slot you look at first; there is "
-                     "no score, because a lane is not a game to win."},
-            {"id": "mirror", "kind": "mirror", "x": -308, "z": 14, "y": 236, "ry": 90,
-             # The only object in the lane that turns. `turn` swings the disc on its bracket, so a press
-             # changes the geometry — and what you can see down the lane does not change at all, because
-             # there is nothing behind the glass to show.
-             "states": [
-                 {"say": "Aimed down the lane, the way it was hung.", "turn": 0.0},
-                 {"say": "Turned to the wall. A mirror is aimed by whoever put it up, and this one "
-                         "has nothing to show either way: it is drawn glass, not silvered.",
-                  "turn": 1.0},
-             ],
-             "title": "A convex mirror on a bracket",
-             "hint": "At the mouth of every lane like this, aimed at the corner you cannot see. Drawn, "
-                     "not silvered: there is no reflection in it, because a mirror that invented one "
-                     "would be the renderer making something up."},
-            {"id": "meter", "kind": "meter", "x": 312, "z": 10, "y": 148, "ry": -90,
-             "title": "A meter box and its conduit",
-             "hint": "Bolted where the supply comes in, with its conduit running up to the wire. It "
-                     "reads nothing, because it is drawn: no reading of anybody's is in this lane."},
-            {"id": "hydrant", "kind": "hydrant", "x": 288, "z": 44, "y": 0, "ry": -90,
-             "title": "A standpipe at the kerb",
-             "hint": "Short, red and unmistakable at thirty metres, which is the whole test for "
-                     "dressing. Nothing is claimed about water, or about anybody's fire."},
-            {"id": "drain", "kind": "drain", "x": -80, "z": 54, "y": 0, "ry": 0,
-             "title": "A drain in the asphalt",
-             "hint": "It is the one thing on the floor that knows the lane is wet."},
-            {"id": "ac-left", "kind": "ac", "x": -302, "z": 66, "y": 250, "ry": 90,
-             "title": "An air-conditioning unit, high on the left wall",
-             "hint": "Drawn, and humming about as loudly as anything at this hour is allowed to."},
-            {"id": "crate", "kind": "crate", "x": -244, "z": 96, "y": 0, "ry": 0,
-             "title": "A crate pushed against the wall",
-             "hint": "Set dressing. Go round it: it is 62 cm wide and the lane is 6.4 m."},
-            {"id": "bin", "kind": "bin", "x": 268, "z": 108, "y": 0, "ry": -90,
-             "title": "A bin, lid shut",
-             "hint": "Nothing is in it, and nothing will be: a district does not get to imply "
-                     "what somebody threw away."},
-            # The lane's three poster images were promoted to sub-places: they hang as frames now,
-            # in the frames list below, at these same coordinates. A picture the walker can open is
-            # a place in the record; a poster pinned over it would be the same picture twice.
-            {"id": "pipe", "kind": "pipe", "x": 308, "z": 170, "y": 0, "ry": -90,
-             "title": "A drainpipe down the right wall",
-             "hint": "The lane's other vertical: the one thing here that runs the whole height."},
-            {"id": "ladder", "kind": "ladder", "x": -300, "z": 165, "y": 0, "ry": 90,
-             "title": "A ladder left against the wall",
-             "hint": "Leaning, not resting: `d` is how far its feet stand out from the wall. It is the "
-                     "one prop here that is pure silhouette, which is exactly why it belongs."},
-            {"id": "camera", "kind": "camera", "x": 306, "z": 196, "y": 182, "ry": -90,
-             "glow": [{"r": 40, "k": 0.22, "tint": "rgba(255,120,110,0.5)", "dy": 6}],
-             "title": "A camera under the awning",
-             "hint": "The only lens in the lane, and it is drawn: a body, a bracket, and a small light "
-                     "that is the whole reason the glow beside it exists. It records nothing, and "
-                     "nothing in this lane is watched."},
-            {"id": "front-b", "kind": "front", "x": 316, "z": 250, "y": 0, "ry": -90,
-             "glow": [{"r": 170, "k": 0.75, "tint": "rgba(255,176,96,0.40)", "dy": 150}],
-             # The second front you can do something to, in the half of the lane that used to be only
-             # scenery. Same three stops as the first, and the same coupling: the shutter's height and
-             # the light the lane gets are one number.
-             "states": [
-                 {"say": "Down, and warm behind the steel. Somewhere back there a room is still lit.",
-                  "shut": 0.0, "k": 0.6},
-                 {"say": "Half up: the counter, the shelf behind it, and nobody at either.", "shut": 0.55,
-                  "k": 1.1},
-                 {"say": "Fully up. An empty room with its light on, which is the most honest thing a "
-                         "lane at this hour can show you.", "shut": 1.0, "k": 1.4},
-             ],
-             "title": "The lit front halfway down",
-             "hint": "The far half of the lane answers now: press it and the shutter rolls, and the "
-                     "light that reaches the asphalt goes with it. Drawn, empty, and not for sale."},
-            {"id": "planter-2", "kind": "planter", "x": -252, "z": 332, "y": 0, "ry": 90,
-             "title": "Two planters further down",
-             "hint": "The second planting in the lane, put where the wall turns from brick to hoarding: "
-                     "an alley with only grey in it is a drawing of an alley."},
-            {"id": "awning", "kind": "awning", "x": 292, "z": 200, "y": 214, "ry": -90,
-             "title": "An awning over a shuttered front",
-             "hint": "Drawn at 12 degrees so it sheds onto the lane. There is no shop behind it; "
-                     "the shutter is the wall."},
-            {"id": "sign", "kind": "sign", "x": -302, "z": 206, "y": 258, "ry": 90,
-             "title": "A sign board with no lettering on it",
-             "hint": "Deliberately blank: invented signage would be the one prop in this lane "
-                     "that pretends to say something about Tokyo."},
-            {"id": "pole", "kind": "utility", "x": 292, "z": 275, "y": 0, "ry": -90,
-             "title": "Utility pole",
-             "hint": "The lane's notice board: what this district is for, and what it does "
-                     "not have yet."},
-            {"id": "crate-2", "kind": "crate", "x": 250, "z": 300, "y": 0, "ry": -90,
-             "title": "Two crates, one on top",
-             "hint": "Set dressing with a shadow under it, which is the whole reason it is here."},
-            {"id": "ac-right", "kind": "ac", "x": 302, "z": 336, "y": 262, "ry": -90,
-             "title": "A second unit, higher up",
-             "hint": "Alleys are mostly this: plant bolted to a wall at a height nobody chose."},
-            {"id": "ledge", "kind": "ledge", "x": 0, "z": 426, "y": 96, "ry": 0,
-             "title": "The lookout rail at the window",
-             "hint": "The crossing, the tower and the mountain beyond are drawn at the size a "
-                     "picture of them shows, not surveyed: 1 px is 1 cm in here, and a mountain does "
-                     "not fit. Nothing out there is a record of anybody standing in it."},
-            {"id": "front-a", "kind": "front", "x": -316, "z": 62, "y": 0, "ry": 90,
-             "glow": [{"r": 190, "k": 0.85, "tint": "rgba(255,166,86,0.42)", "dy": 150}],
-             # Three stops for a shutter, and the light is coupled to them: the spill into the lane is
-             # the same number the interior's brightness is. Pressing it changes what the room looks
-             # like, not only what the card says.
-             "states": [
-                 {"say": "Shutter down. The front is closed and the light stays behind the steel.",
-                  "shut": 0.0, "k": 0.55},
-                 {"say": "Half up: enough to see the counter, not enough to be served.", "shut": 0.55,
-                  "k": 1.0},
-                 {"say": "Fully up. The room is open, warm, and empty; nobody is behind it.",
-                  "shut": 1.0, "k": 1.35},
-             ],
-             "title": "A closed front with its light still on",
-             "hint": "Shutter down, interior light still running: the one hour of a lane where a room "
-                     "is still warm and nobody is in it. Drawn, and nothing is for sale here."},
-            {"id": "booth", "kind": "booth", "x": 246, "z": 85, "y": 0, "ry": -90,
-             "glow": [{"r": 120, "k": 0.6, "tint": "rgba(214,232,255,0.34)", "dy": 160}],
-             "states": [
-                 {"say": "Shut. The light inside comes on when the door moves, and goes when it does "
-                         "not.", "door": 0.0, "k": 0.5},
-                 {"say": "Open. Empty, with the receiver hanging — this is a drawn box, so it holds no "
-                         "somebody's call.", "door": 1.0, "k": 1.3},
-             ],
-             "title": "A telephone box",
-             "hint": "Empty, and it holds no message: a district does not get to leave a note from "
-                     "somebody. Glass is drawn as glass here, which means you can see the far side."},
-            {"id": "bikes", "kind": "bikes", "x": -250, "z": 179, "y": 0, "ry": 0,
-             "title": "Two bicycles, leaned against the wall",
-             "hint": "Drawn bicycles. Nobody is claimed as their owner, and nothing is said about why "
-                     "they are there — a lane has bicycles in it, that is all this asserts."},
-            {"id": "planter-1", "kind": "planter", "x": 236, "z": 148, "y": 0, "ry": -90,
-             "title": "Two planters by a closed front",
-             "hint": "Set dressing with something growing in it, because an alley with only grey in it "
-                     "is a drawing of an alley rather than one."},
-            {"id": "cones", "kind": "cones", "x": -120, "z": 82, "y": 0, "ry": 0,
-             "title": "A pair of cones, stored rather than working",
-             "hint": "Nothing is being repaired here. They are stacked where they were left, which is "
-                     "the only reason they are in the scene."},
-            {"id": "mailbox", "kind": "mailbox", "x": 314, "z": 218, "y": 0, "ry": -90,
-             "states": [
-                 {"say": "Shut.", "flap": 0.0},
-                 {"say": "The flap is open and the box is empty. It is a shape in a lane, not a way to "
-                         "reach anybody.", "flap": 1.0},
-             ],
-             "title": "A post box at the corner",
-             "hint": "Red, boxy, at a corner: the shape that says Tokyo louder than any signage could, "
-                     "and it carries no lettering because none is ours to invent."},
-            {"id": "signA-a", "kind": "signA", "x": -236, "z": 300, "y": 0, "ry": 0,
-             "states": [
-                 {"say": "Blank. This face would carry a menu.", "flip": 0.0},
-                 {"say": "Turned over, and blank again: both faces of a board like this are the shop's "
-                         "to write on, and the shop is not real.", "flip": 1.0},
-             ],
-             "title": "A folding board, blank",
-             "hint": "The one prop that could have carried a menu or a price and does not: invented "
-                     "lettering would be a claim about a shop that does not exist."},
-            {"id": "banner-left", "kind": "banner", "x": -316, "z": 221, "y": 232, "ry": 90,
-             "title": "A cloth banner, hanging still",
-             "hint": "Drawn as cloth so it has a fold and a weight. No text on it, same reason as the "
-                     "board."},
-            {"id": "banner-right", "kind": "banner", "x": 316, "z": 372, "y": 244, "ry": -90,
-             "title": "A second banner, further down",
-             "hint": "Two of them is what a lane has; three would be a set design."},
-            {"id": "pane-a", "kind": "pane", "x": 316, "z": 338, "y": 186, "ry": -90,
-             "glow": [{"r": 150, "k": 0.5, "tint": "rgba(255,196,124,0.34)", "dy": 40}],
-             "title": "A window on the brick",
-             "hint": "Somebody's room, at the height a lane sees it at: the sill, the sash, the curtain "
-                     "edge. Nothing behind it is drawn further than the light that comes out.",
-             "states": [
-                 {"say": "Shut, and lit. The room is a brightness in a frame.", "slide": 0.0, "k": 0.9},
-                 {"say": "Opened a hand's width: the air of the room comes into the lane, and the light "
-                         "with it.", "slide": 1.0, "k": 1.45},
-             ]},
-            {"id": "recycle", "kind": "recycle", "x": -294, "z": 398, "y": 0, "ry": 90,
-             "states": [
-                 {"say": "Lidded.", "flap": 0.0},
-                 {"say": "Lid up, and empty. It stands beside the machine because that is where a crate "
-                         "like this stands; nothing in this lane gets recycled.", "flap": 1.0},
-             ],
-             "title": "The crate beside the machine",
-             "hint": "Every machine on a street like this has one within arm's reach of it. That is the "
-                     "only reason it is here, and nothing is in it."},
-            {"id": "bin-2", "kind": "bin", "x": -262, "z": 356, "y": 0, "ry": 90,
-             "title": "The far bin",
-             "hint": "The last thing before the light at the end of the lane."},
-        ],
-        # Where the light comes from and what carries it. A row of bulbs down the centre of the lane,
-        # plus the machine's own glow, which is derived from the prop rather than placed by the
-        # renderer. Depths are record centimetres like every other record; heights are real.
-        # A bare number is a bulb on the ceiling line at that record depth; a dict is authored whole.
-        # The last one is not a bulb at all: it is the city's own bounce coming in through the window,
-        # which is why the end of the lane is the brightest part of it, and why it draws no glass and
-        # throws no pool on the asphalt.
-        "lamps": [20, 120, 220, 320, 402,
-                  {"z": 430, "y": 240, "x": 0, "r": 900, "k": 0.55, "bulb": False,
-                   "tint": "rgba(146,178,255,0.26)"}],
-        # The arcade's rhythm overhead: where a beam crosses the ceiling, in record centimetres like
-        # every other depth in a district record (the emitter scales them with Z_SCALE).
-        "beams": [75.86, 179.31, 282.76, 386.21],
-        # What the walls are made of. This is the street's own kit, band by band: rolling shutters over
-        # closed fronts, glazed tile up to hand height where a shopfront was glazed, painted plaster
-        # above, corrugated patching where a wall has been opened and closed again, a plank hoarding
-        # where a building is being worked on. Side -1 is the left wall, 1 the right, 0 the end wall;
-        # the depths are record centimetres, and the renderer tiles each band into the same 60 cm panels
-        # as the wall behind it so an affine map stays exact.
-        "surfaces": [
-            {"side": -1, "z0": -82.76, "z1": 20.69, "y0": 0, "y1": 420, "kind": "plaster"},
-            {"side": -1, "z0": 20.69, "z1": 103.45, "y0": 0, "y1": 300, "kind": "shutter"},
-            {"side": -1, "z0": 20.69, "z1": 103.45, "y0": 300, "y1": 420, "kind": "corrugated"},
-            {"side": -1, "z0": 103.45, "z1": 162.07, "y0": 0, "y1": 130, "kind": "dado"},
-            {"side": -1, "z0": 103.45, "z1": 162.07, "y0": 130, "y1": 420, "kind": "brick"},
-            {"side": -1, "z0": 162.07, "z1": 262.07, "y0": 0, "y1": 290, "kind": "shutter"},
-            # Board-formed concrete over that shutter: the lane's own structure showing above the
-            # shopfronts, which is what the second half of a street like this actually looks like.
-            {"side": -1, "z0": 162.07, "z1": 262.07, "y0": 290, "y1": 420, "kind": "concrete", "tone": 1.04},
-            {"side": -1, "z0": 262.07, "z1": 348.28, "y0": 0, "y1": 300, "kind": "hoarding", "tone": 0.86},
-            # ...with a sheet of galvanised steel over the top of the boarding, because a hoarding in a
-            # working lane is patched with whatever was on the truck.
-            {"side": -1, "z0": 262.07, "z1": 348.28, "y0": 300, "y1": 420, "kind": "galv", "tone": 0.94},
-            {"side": -1, "z0": 348.28, "z1": 430, "y0": 0, "y1": 120, "kind": "dado"},
-            {"side": -1, "z0": 348.28, "z1": 430, "y0": 120, "y1": 420, "kind": "brick"},
-            {"side": 1, "z0": -82.76, "z1": 13.79, "y0": 0, "y1": 420, "kind": "brick"},
-            {"side": 1, "z0": 13.79, "z1": 65.52, "y0": 0, "y1": 300, "kind": "shutter"},
-            {"side": 1, "z0": 13.79, "z1": 65.52, "y0": 300, "y1": 420, "kind": "plaster"},
-            {"side": 1, "z0": 65.52, "z1": 162.07, "y0": 0, "y1": 140, "kind": "dado"},
-            {"side": 1, "z0": 65.52, "z1": 162.07, "y0": 140, "y1": 420, "kind": "concrete", "tone": 0.96},
-            {"side": 1, "z0": 162.07, "z1": 227.59, "y0": 0, "y1": 420, "kind": "hoarding", "tone": 0.92},
-            {"side": 1, "z0": 227.59, "z1": 310.34, "y0": 0, "y1": 290, "kind": "shutter"},
-            {"side": 1, "z0": 227.59, "z1": 310.34, "y0": 290, "y1": 420, "kind": "corrugated"},
-            {"side": 1, "z0": 310.34, "z1": 430, "y0": 0, "y1": 130, "kind": "dado", "tone": 1.08},
-            {"side": 1, "z0": 310.34, "z1": 430, "y0": 130, "y1": 420, "kind": "brick"},
-        ],
-        # And on the ground: the tactile guide path that runs beside the walls in a real lane, a painted
-        # gutter line, two grates, a manhole, and one wet patch that holds the machine's light.
+        "cover_caption": "The album's Tokyo sheet, drawn before the room was rebuilt as Nakamise: a "
+                         "gate lantern, a scramble, a tower, a counter, a mountain on the skyline.",
+        "blurb": "The approach to Senso-ji after the shops have shut. Every shutter is down and "
+                 "painted, the eaves are lit, and Hozomon's lantern burns at the far end.",
+        "clad_note": (" The lane is Nakamise-dori after closing: two shallow rows of vermilion "
+                      "shopfronts nine metres apart, every shutter down and painted, a lit eave over a "
+                      "raised walk, a square vermilion post at each bay, granite paving laid square, "
+                      "and two cross streets breaking the rows. Nothing on any fascia carries a word."),
+        "sight_note": (" At its far end the street opens onto the plaza under Hozomon, its great lantern "
+                       "lit, with the five-storey pagoda over the west row; behind you is Kaminarimon "
+                       "and its lantern."),
+        "objects": NAKAMISE_BAYS,
+        # Light: a strip light under every bay's eave, and the white globes that stand on the fascias
+        # (the night photographs), at the ends of each run. Depths are record centimetres.
+        "lamps": NAKAMISE_LAMPS,
+        "beams": [],
+        # Behind the bays the wall is the rows' own structure; where a street crosses, the wall is
+        # that street's own band, dark because no shop light stands in it -- the Shin-Nakamise
+        # arcade on both sides, then Denboin-dori.
+        "surfaces": NAKAMISE_SURFACES,
+        # The gutters along the edge of each raised walk; the paving itself is the floor tile.
         "marks": [
-            {"kind": "tactile", "x0": -300, "x1": -272, "z0": -82.76, "z1": 430},
-            {"kind": "tactile", "x0": 272, "x1": 300, "z0": -82.76, "z1": 430},
-            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 424.14, "z1": 428.97},
-            # The same painted line at the other end of the lane: a straight bar of paint at a mouth is
-            # the one piece of road marking this lane can have without writing a word on the ground.
-            {"kind": "gutter", "x0": -318, "x1": 318, "z0": 8.97, "z1": 13.79},
-            # A channel drain crossing the lane: the kit is the same grate as the two at the kerb, and
-            # crossing the whole width is what a lane does where its own water has to leave it.
-            {"kind": "grate", "x0": -150, "x1": 150, "z0": 219.31, "z1": 224.14},
-            {"kind": "grate", "x0": -118, "x1": -42, "z0": 51.03, "z1": 57.93},
-            {"kind": "grate", "x0": 60, "x1": 136, "z0": 241.38, "z1": 248.28},
-            {"kind": "manhole", "x0": -40, "x1": 40, "z0": 148.28, "z1": 175.86},
-            {"kind": "manhole", "x0": 120, "x1": 200, "z0": 98.62, "z1": 119.31},
-            {"kind": "wet", "x0": -316, "x1": -60, "z0": 337.93, "z1": 427.59},
-            # The kerb: a six centimetre riser where the floor meets the wall, on both sides, so the
-            # lane has a line at its base that light can fall along. Only the face is drawn — the top
-            # of a 46 cm kerb is what you stand on, not what you look at.
-            {"kind": "kerb", "x0": -318, "x1": -272, "z0": -82.76, "z1": 430, "y1": 6},
-            {"kind": "kerb", "x0": 272, "x1": 318, "z0": -82.76, "z1": 430, "y1": 6},
+            {"kind": "grate", "x0": -306, "x1": -297, "z0": -103.45, "z1": 1040},
+            {"kind": "grate", "x0": 297, "x1": 306, "z0": -103.45, "z1": 1040},
         ],
-        # Paper lanterns, hung where a wire already crosses the lane: each one is a light source with a
-        # body, which is the only way the room can be lit by something you can also point at.
-        # Each lantern hangs from a wire, so it has a period and an amplitude: the swing is authored
-        # here rather than taken from a random number, because a lane that moves differently on every
-        # reload is not a drawn place, it is a screensaver. `swing` is centimetres at the foot of the
-        # cord; the light moves with the paper, so the walls brighten and dim where the lamp is.
-        # Every `z` below is a record depth, the same as the cable it hangs from, and each one is the
-        # depth of a crossing in `wires`: a lantern is a light with a cord, and five of the six used to
-        # hang on air because these numbers were written in scene centimetres while the cables beside
-        # them were written in records. `verify-walk` now asserts the pairing rather than trusting it.
-        "lanterns": [
-            # The crossings below are spaced so that every published stop has one in view: a lantern
-            # hung at the mouth of the lane is over your head and out of frame from the entrance, and a
-            # warm light nobody can see is a number, not a room.
-            {"x": -120, "y": 268, "z": 60, "r": 27, "swing": 3.2, "period": 3.1, "phase": 0.0},
-            {"x": 40, "y": 252, "z": 60, "r": 31, "swing": 2.6, "period": 3.9, "phase": 1.7},
-            {"x": 210, "y": 262, "z": 150, "r": 26, "swing": 3.6, "period": 4.4, "phase": 0.9},
-            {"x": -170, "y": 272, "z": 240, "r": 29, "swing": 2.2, "period": 3.4, "phase": 2.6},
-            {"x": -140, "y": 262, "z": 330, "r": 26, "swing": 3.0, "period": 3.6, "phase": 2.1},
-            {"x": 150, "y": 258, "z": 410, "r": 28, "swing": 2.6, "period": 4.1, "phase": 0.6},
-        ],
-        # The window cut in the end wall, and what you see through it. These are NOT record depths and
-        # are not multiplied by Z_SCALE: nothing here is hung from a record, and the far plane is
-        # authored so a picture of Tokyo reads at the scale a picture shows it at. Mount Fuji is not
-        # 900 m away, and the page does not pretend it is.
-        "vista": {"x": 0, "y0": 108, "y1": 336, "w": 470},
+        "lanterns": [],
+        "wires": [],
+        "vista": {"x": 0, "y0": 2, "y1": 498, "w": 900},
         "backdrop": {
-            # The picture beyond the window used to hang its upper half on glow 0: a city at night
-            # with no air behind it, and the two deep stops — the ones that stand at the window and
-            # look through it — came back darker than the lane's own gate allows. The dusk bands
-            # below give the picture its air; the lane stays a night lane.
-            "plaza": {"y": -260, "z0": 1240, "z1": 12000, "half": 3600, "lit": 0.8},
-            # A nearer row of rooftops, flanking the crossing rather than standing on it. Through the
-            # aperture the first thing seen should be a silhouette at the height a lane sees roofs;
-            # eight-storey facades straight out of the window would be a diagram of a city, not a view
-            # of one. Each carries its own tone, so the row is not four photocopies of one block.
-            "roofs": [
-                {"x": -1750, "y": 0, "z": 1900, "w": 780, "h": 470, "tone": 0.5},
-                {"x": -2520, "y": 0, "z": 2040, "w": 900, "h": 640, "tone": 0.25},
-                {"x": 1850, "y": 0, "z": 1860, "w": 720, "h": 520, "tone": 0.7},
-                {"x": 2640, "y": 0, "z": 2100, "w": 940, "h": 760, "tone": 0.35},
-            ],
-            # A raised road crossing the whole view, above the crossing on the ground: the one piece of
-            # infrastructure that says this city is larger than this window. Its lamps are geometry
-            # rather than light sources — nothing out there is allowed to light the lane it is seen
-            # from, and no source in the room is unnamed.
-            "express": {"z": 6300, "y": 1250, "half": 6200, "thick": 170, "depth": 900, "pier": 230,
-                        "ground": -260, "piers": [-4200, -1500, 1100, 3700, 5900],
-                        "lamps": [-4300, -1700, 900, 3500, 5700]},
-            "crossing": {"y": -260, "z0": 2100, "z1": 3600, "x0": -1150, "x1": 1150,
-                         "stripes": 9, "width": 96, "diagonals": True},
-            # `win` is how much of a block is lit; `tone` is how much of that light the air between here
-            # and there has taken out of it. A picture of a city has near and far in it, and without
-            # tones every block came back at exactly the same brightness at every distance.
-            "city": [
-                {"x": -2200, "z": 2900, "w": 900, "h": 900, "win": 0.65, "tone": 0.95},
-                {"x": 2300, "z": 3100, "w": 800, "h": 1100, "win": 0.6, "tone": 0.88},
-                {"x": -1500, "z": 4200, "w": 1300, "h": 1500, "win": 0.5, "tone": 0.7},
-                {"x": -450, "z": 4600, "w": 1500, "h": 2300, "win": 0.42, "tone": 0.62},
-                {"x": 900, "z": 4100, "w": 1100, "h": 1200, "win": 0.6, "tone": 0.74},
-                {"x": 2100, "z": 4800, "w": 1400, "h": 2900, "win": 0.34, "tone": 0.5},
-                {"x": -2900, "z": 5400, "w": 1800, "h": 2600, "win": 0.4, "tone": 0.42},
-                {"x": 3400, "z": 5600, "w": 1600, "h": 1800, "win": 0.5, "tone": 0.58},
-            ],
-            "tower": {"x": 1500, "z": 12000, "half": 520, "top": 4200,
-                      "decks": [1500, 2600], "mast": 4700},
-            "mountain": {"x": -18000, "z": 90000, "base": -260, "top": 14000,
-                         "half": 30000, "crown": 5200, "snow": 0.3},
-            "sky": [{"y0": -260, "y1": 1400, "c": "#46587e", "glow": 0.95},
-                    {"y0": 1400, "y1": 4200, "c": "#2e3b5c"},
-                    {"y0": 4200, "y1": 40000, "c": "#1c2742"}],
+            # A Tokyo night: the sky holds the city's glow low and goes dark overhead, high enough to
+            # cover the frame now that the street has no lid.
+            "sky": [{"y0": -260, "y1": 1600, "c": "#3a4868", "glow": 0.9},
+                    {"y0": 1600, "y1": 7000, "c": "#26314c"},
+                    {"y0": 7000, "y1": 200000, "c": "#161e32"}],
+            # The plaza under Hozomon continues the street's own paving: 28 m from the last shops to
+            # the gate in life, 30 m here, kept nearly whole because the gate's size is the moment.
+            "plaza": {"y": 0, "z0": 3016, "z1": 7600, "half": 2600, "lit": 0.8},
+            "temple": {"x": 0, "z": 6000, "gate": {"w": 2100, "h": 2270},
+                       "pagoda": {"x": -5600, "z": 7900, "h": 5332}},
         },
-        # Cables, in the same units, strung wall to wall and to the pole they are bolted on to.
-        # Five crossings spread down the lane at the record depths the lanterns are hung on, plus the
-        # two runs that make it a street rather than a set of crossings: one from the left wall to the
-        # pole, one from the pole to the end wall. A cable used to be authored at record 700 and to run
-        # to record 1180 — both past the record's own end, which is the far wall: those two were drawn
-        # beyond the room, over the city in the aperture, anchored to nothing on this side of it.
-        "wires": [
-            {"a": [-320, 336, 60], "b": [320, 352, 60], "sag": 46},
-            {"a": [-320, 330, 150], "b": [320, 344, 150], "sag": 40},
-            {"a": [-320, 344, 240], "b": [320, 330, 240], "sag": 52},
-            {"a": [-320, 338, 330], "b": [320, 334, 330], "sag": 44},
-            {"a": [-320, 352, 410], "b": [320, 340, 410], "sag": 30},
-            {"a": [-320, 330, 182], "b": [292, 300, 275], "sag": 38},
-            {"a": [292, 300, 275], "b": [300, 322, 426], "sag": 34},
-        ],
+        # The sub-places: the album's own plates, stood at the post line in front of the shops at eye
+        # height, where the walk passes them and a visitor can reach them -- on the shutters behind
+        # the posts they were always farther than the shop itself, and nearest-first reach could never
+        # offer them. Each is a drawn plate, captioned as one, and none stands in a cross street.
         "frames": [
-            # The sub-places: the small areas inside the place, one drawn plate each, hung where the
-            # walk passes them. A plate is planned from a place the owner actually went; a corner
-            # nobody stood in gets no plate. The titles are the album's own, via the PLACE_TITLES
-            # table above, which this block is checked against at build time.
-            {"id": "sensoji", "src": "IMG/tokyo-sensoji.jpg", "x": 314, "z": 120, "y": 96, "ry": -90,
+            {"id": "sensoji", "src": "IMG/tokyo-sensoji.jpg", "x": -299, "z": 103, "y": 96, "ry": 90,
              "title": "The gate at Asakusa",
-             "alt": "Illustration of a temple gate with a giant hanging lantern and a row of "
-                    "closed shopfronts, empty of people.",
-             "caption": "The gate lantern and a closed shopfront row, drawn. Asakusa as the "
-                        "subject of a picture, not as proof that anyone stood in it."},
-            {"id": "scramble", "src": "IMG/tokyo-scramble.jpg", "x": -314, "z": 290, "y": 96, "ry": 90,
+             "alt": "Illustration of a temple gate at night with a great red paper lantern hanging "
+                    "in its passage.",
+             "caption": "The gate the street begins at, drawn: the lantern in its passage, the red "
+                        "of the posts. It stands by the west row, a few steps from the real one."},
+            {"id": "scramble", "src": "IMG/tokyo-scramble.jpg", "x": -299, "z": 495, "y": 96, "ry": 90,
              "title": "The scramble at Shibuya",
-             "alt": "Illustration of a wide pedestrian scramble crossing seen from above at "
-                    "night, stripes radiating, no people and no cars.",
-             "caption": "The crossing from above, drawn. Empty on purpose: a crowd here would "
-                        "be an invented record, and this frame is not a record."},
-            {"id": "tower", "src": "IMG/tokyo-tower.jpg", "x": 314, "z": 380, "y": 96, "ry": -90,
+             "alt": "Illustration of a wide pedestrian scramble crossing at night, its stripes "
+                    "running every way under tall lit buildings.",
+             "caption": "Shibuya's crossing, drawn: another Tokyo, hung as a plate. It is not on "
+                        "this street and the street does not pretend it is."},
+            {"id": "tower", "src": "IMG/tokyo-tower.jpg", "x": -299, "z": 897, "y": 96, "ry": 90,
              "title": "The tower at dusk",
-             "alt": "Illustration of a lattice radio tower at dusk seen between low rooftops, "
-                    "small lights along its frame.",
-             "caption": "The lattice tower between rooftops, drawn, its own lights the only "
-                        "amber in the frame."},
-            {"id": "poster-lantern", "src": "IMG/tokyo-poster-lantern.jpg", "x": -310, "z": 150, "y": 96, "ry": 90,
+             "alt": "Illustration of a red and white lattice tower against a dusk sky over low "
+                    "rooftops.",
+             "caption": "The tower at dusk, drawn. It stands in Shiba, kilometres south of here, "
+                        "and no window on this street looks at it."},
+            {"id": "poster-lantern", "src": "IMG/tokyo-poster-lantern.jpg", "x": 299, "z": 145, "y": 96,
+             "ry": -90,
              "title": "The paper lantern",
              "alt": "Illustration of a single round paper lantern glowing warm against the dark "
                     "grain of a closed shopfront.",
-             "caption": "One lantern, close up, drawn. It is the shape every light in the lane "
-                        "repeats, hung here at the height a walker reads it."},
-            {"id": "poster-wires", "src": "IMG/tokyo-poster-wires.jpg", "x": 310, "z": 214, "y": 104, "ry": -90,
+             "caption": "One lantern, close up, drawn. The street's own lanterns are the two great "
+                        "ones in its gates."},
+            {"id": "poster-wires", "src": "IMG/tokyo-poster-wires.jpg", "x": 299, "z": 862, "y": 104,
+             "ry": -90,
              "title": "The wires over the lane",
              "alt": "Illustration of a tangle of overhead wires crossing a dark sky, cut into "
                     "short segments by the rooftops.",
-             "caption": "The overhead tangle, drawn. The lane's own wires in the wires island are "
-                        "the same subject at full scale."},
-            {"id": "poster-ticket", "src": "IMG/tokyo-poster-ticket.jpg", "x": -310, "z": 392, "y": 108, "ry": 90,
+             "caption": "Tokyo's overhead wires, drawn. Nakamise itself is strung with none; the "
+                        "plate hangs here as a picture of the city around it."},
+            {"id": "poster-ticket", "src": "IMG/tokyo-poster-ticket.jpg", "x": 299, "z": 985, "y": 108,
+             "ry": -90,
              "title": "The ticket machine",
              "alt": "Illustration of a small ticket machine glowing on a sidewalk at night, its "
                     "buttons drawn as blank studs.",
-             "caption": "The machine's light is the lane's coldest, drawn: one more small light "
-                        "sunk into the wall an arm's length from the vending machine."},
+             "caption": "A ticket machine, drawn: the cold light of a station a few minutes' walk "
+                        "away, hung here as a plate rather than stood in the street."},
         ],
-        # The sub-areas. Each Field notes plate belongs to one little place in the lane, and the
-        # drawn frame with the same name holds that place until a photograph of it arrives; the
-        # album's title for each plate is the place, not the picture. verify-walk asserts the
-        # closure: every frame's title is a slot in this list.
-        "slots_title": "Places in the lane",
+        "slots_title": "Places on the street",
         "slots": [
             {"label": "The lane in one sheet", "note": "The album's cover plate for this room. In "
-                                                       "the lane it is the mouth itself: stand at "
-                                                       "the first chip and the whole lane is the "
-                                                       "sheet.",
-             "state": "Held by the lane itself, until a photograph of the mouth takes the slot."},
-            {"label": "The gate at Asakusa", "note": "The mouth end of the left wall, where the "
-                                                     "curtain is still at your back.",
+                                                       "the street it is Kaminarimon's end itself: "
+                                                       "stand at the first chip and the whole "
+                                                       "approach is the sheet.",
+             "state": "Held by the street itself, until a photograph of the approach takes the slot."},
+            {"label": "The gate at Asakusa", "note": "By the west row's first posts, with "
+                                                     "Kaminarimon itself at your back.",
              "state": "Held by a drawn frame; a photograph of the real gate takes the slot when one "
                       "arrives."},
-            {"label": "The scramble at Shibuya", "note": "Mid left wall, opposite the lit window.",
+            {"label": "The scramble at Shibuya", "note": "By the west row past the Shin-Nakamise "
+                                                         "arcade.",
              "state": "Held by a drawn frame; a photograph of the crossing takes the slot when one "
                       "arrives."},
-            {"label": "The tower at dusk", "note": "The deep end of the left wall, beside the end "
-                                                   "wall the old far door stood in.",
+            {"label": "The tower at dusk", "note": "By the west row's last posts, before the "
+                                                   "plaza.",
              "state": "Held by a drawn frame; a photograph of the tower takes the slot when one "
                       "arrives."},
-            {"label": "The paper lantern", "note": "The poster beside the gate picture, where the "
-                                                   "wall is still close enough to read.",
+            {"label": "The paper lantern", "note": "By the east row's first posts, across from "
+                                                   "the gate picture.",
              "state": "Held by a drawn poster frame; a photograph of the lantern takes the slot "
                       "when one arrives."},
-            {"label": "The wires over the lane", "note": "The poster on the right wall, under the "
-                                                          "crossing of cables the lane is lit by.",
+            {"label": "The wires over the lane", "note": "By the east row past Denboin-dori, "
+                                                          "across from the tower picture.",
              "state": "Held by a drawn poster frame; a photograph of the wires takes the slot when "
                       "one arrives."},
-            {"label": "The ticket machine", "note": "The deep end of the left wall, in front of "
-                                                    "the machine that keeps the lane's far end.",
+            {"label": "The ticket machine", "note": "By the east row's last posts, before the "
+                                                    "plaza.",
              "state": "Held by a drawn poster frame; a photograph of the machine takes the slot "
                       "when one arrives."},
             {"label": "Clips and the lane at 22:40", "note": "Vertical clips and one sound, when "
@@ -2833,277 +3757,302 @@ DISTRICTS = [
              "state": "Empty by design. A clip needs its caption before it can play here, and the "
                       "sound only if a visitor asks for it."},
         ],
-        # Where the stops are, in record centimetres: the chips the reader walks between. Part of the
-        # record because a different room has different places worth standing.
         "stations": [
-            {"z": 0, "label": "the entrance"},
-            {"z": 150, "label": "under the posters"},
-            {"z": 275, "label": "by the pole"},
-            {"z": 350, "label": "by the lit window"},
-            {"z": 395, "label": "in front of the machine"},
+            # 1.2 m in from the first shops and 3.8 m from the gate, so turning round frames Kaminarimon
+            # -- its pillars and its lantern -- instead of a wall of passage at arm's length.
+            {"z": 40, "label": "inside Kaminarimon, its lantern at your back"},
+            {"z": 255, "label": "where the Shin-Nakamise arcade crosses"},
+            {"z": 480, "label": "between the shuttered rows"},
+            {"z": 724, "label": "where Denboin-dori crosses"},
+            {"z": 1000, "label": "the last shops before the plaza"},
+            {"z": 1480, "label": "in the plaza under Hozomon"},
         ],
-        # The curtain at your back opens onto the street: the hub the lane stands off, and the page
-        # every other room is reached from. The wiring block decides the href.
-        "exit": {"id": "noren", "kind": "noren", "x": 0, "z": -44, "y": 178, "ry": 180,
-                 "title": "The curtain at your back", "hint": "It parts onto the street."},
-        "caveat": "The lane is drawn, not surveyed. The wall holds drawn covers and three drawn "
-                  "sights — the temple gate at Asakusa, the crossing at Shibuya, the tower at dusk "
-                  "— and the objects are props; no footage sits in any slot yet. Frames and clips "
-                  "arrive when the owner supplies them, and nothing here implies a place was "
-                  "visited.",
+        # Kaminarimon at your back: the gate the street is entered through and left by. The wiring
+        # block decides the href; the street outside is the hub.
+        "exit": {"id": "gate-kaminari", "kind": "gate", "x": 0, "z": -90, "y": 0, "ry": 0,
+                 "w": 910, "h": 700, "d": 60,
+                 "title": "Kaminarimon, at your back",
+                 "hint": "The outer gate of Senso-ji, 11.7 m tall. Its lantern -- 3.9 m tall, red "
+                         "with black bands over a metal base -- hangs in the passage, and here it "
+                         "carries none of its characters. Walk through it to the street."},
+        "caveat": "Nakamise-dori as it stands after closing, built from public sources -- Senso-ji's "
+                  "own guide, OpenStreetMap's footprints and the street's published measurements -- "
+                  "with night photographs read for light and material. The 250 m of shops walk in "
+                  "30 m: the street's order, its width, each shop's width and both gates' sizes are "
+                  "kept, and the count of shops is what shrinks. The shutters keep only the ground "
+                  "colours of the Asakusa Emaki, whose scenes show people; no fascia, lantern or sign "
+                  "carries lettering. The plates on the shutters are drawn. Nothing here says the "
+                  "owner was in this place.",
     },
     {
+        # Moji Port in a model hall (round 32: laid out from the map; round 36: the models taken
+        # apart -- sources in TODO sections 0n and 0r). The owner's brief stands -- the station, the
+        # customhouse, the Blue Wing and the ships on the Kanmon Strait, models, dusk into night, one
+        # yatai. Round 32 stood every model where OpenStreetMap puts it on one table at 1.5 cm to the
+        # metre; at that scale each building was a block a few centimetres high, and the owner asked
+        # for them apart ("門司港那邊模型要拆開", "要分開模型 感覺看不出漂亮"). So the four buildings
+        # stand down the hall on stands of their own at 1:25 -- south-west of the basin on the left,
+        # north-east on the right -- and the table at the end keeps the port's layout at 1.5 cm to the
+        # metre: the basin, the Blue Wing across its mouth, the four buildings' footprints, and the
+        # strait beyond the far wall with the Shimonoseki shore far left and the Kanmon Bridge far right
+        # (NAVITIME: from the bridge, "the Kanmon Bridge on the right"). `moji_xy` turns each OSM
+        # coordinate into the table's frame.
         "id": "fukuoka", "label": "Fukuoka",
         "page": ROOM_BY_ID["fukuoka"]["page"],
         "plates": ROOM_BY_ID["fukuoka"]["plates"],
-        # A hall, not an alley. Moji is a port panorama -- a 108 m drawbridge and a strait with ships
-        # on it -- and you cannot stand in a lane and see a harbour. So the district is a table now,
-        # the way Toronto is: the port stands small enough to look down on, which is also the only way
-        # a visitor sees the bridge open at all.
-        "lane": {"w": 820, "d": 900, "ceil": 620, "back": 300},
-        "purpose": "Moji Port on a table: the station, the customhouse, the Blue Wing drawbridge "
-                   "and the ships on the Kanmon Strait, seen as a panorama",
+        # A model hall, as the brief asked ("a table, like Toronto's, like Little Canada"): dark walls,
+        # the table lit, and the far wall open onto the strait at the table's own scale. 8.8 m wide so
+        # a walker can still go round the true-scale table by the right-hand aisle.
+        "lane": {"w": 880, "d": 900, "ceil": 620, "back": 300},
+        "purpose": "Moji Port in a model hall: the station, the customhouse and their neighbours on "
+                   "stands of their own, and the port laid out from the map with the Blue Wing and "
+                   "the ships on the Kanmon Strait, from dusk into night",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/fukuoka-cover.jpg",
-        "cover_caption": "Moji Port in one sheet: the wooden station, the brick customhouse, the "
-                        "Blue Wing standing open, and the strait beyond it.",
-        "blurb": "The harbour at dusk, small enough to look down on. The bridge stands open for a "
-                 "ship, the strait moves, and while you are there the buildings come alight one "
-                 "after another.",
-        # The port is drawn. Its proportions come from the reference photographs; every object is a
-        # prop, every sign is blank, and no stall is named or said to be open. The basin sits back
-        # from the table's near edge so there is a quay to stand the stall and the bridge approach
-        # on, and the deck is lifted clear of the waterline -- at the water's own height the closed
-        # bridge was a plane under the surface, and drew nothing at all.
+        "cover_caption": "Moji Port in one sheet, a frame of the hall after dusk: the station lit on "
+                        "its stand at 1:25 under its drawn plate, the Osaka Shosen building beyond, "
+                        "and the strait at the far end.",
+        "blurb": "A hall of models: the station, the old customhouse, the Osaka Shosen building and "
+                 "the Dalian hall on stands of their own, then the port itself, where the Blue Wing "
+                 "makes its last opening at four and the strait keeps moving. After dusk the buildings "
+                 "come alight one after another.",
+        "clad_note": (" The room is a model hall: plain walls and lit stands. Down the left, Moji Port "
+                      "Station -- a long cream front with copper-and-slate pavilions and a clock -- and "
+                      "the orange brick Osaka Shosen building with its octagonal tower; down the right, "
+                      "the red brick customhouse with its three arched doors and the striped Dalian "
+                      "hall with its tall dark spire, all four at 1:25. At the end a table lays the "
+                      "port out from the map: the basin with the Blue Wing across its mouth, the four "
+                      "buildings' footprints and the tall Retro tower. Nothing on any of it carries "
+                      "a word."),
+        "sight_note": (" Past the table the far wall opens onto the Kanmon Strait at the same scale: "
+                       "ships crossing, the Shimonoseki shore with the Kaikyo Yume Tower to the left, "
+                       "and the Kanmon Bridge to the right."),
         "objects": [
-            {"id": "plinth-moji", "kind": "plinth", "x": 0, "z": 540, "y": 0, "ry": 0,
-             "w": 660, "h": 80, "d": 500, "top": "cityg",
+            {"id": "plinth-moji", "kind": "plinth", "x": 0, "z": round(2418 / Z_SCALE, 2), "y": 0, "ry": 0,
+             "w": 720, "h": 80, "d": 376, "top": "#8d8a82",
              "glow": [{"r": 170, "k": 0.42, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
              "title": "The table the port stands on",
-             "hint": "A lit plinth, table height. Everything on it is small; the light under the "
-                     "edge is what makes a model read as a model."},
-            {"id": "pool-moji", "kind": "pool", "x": 0, "z": 500, "y": 80, "ry": 0,
-             "w": 640, "h": 6, "d": 260,
-             "title": "The basin, and the strait beyond it",
-             "hint": "The No. 1 boat basin the Blue Wing crosses, opening onto the Kanmon Strait. "
-                     "Nothing is claimed about the tide."},
-            {"id": "drawbridge-mj", "kind": "drawbridge", "x": 0, "z": 540, "y": 92, "ry": 90,
-             "w": 360, "h": 30, "d": 54,
-             "glow": [{"r": 120, "k": 0.34, "dy": 22}],
+             "hint": "A lit table at 1.5 cm to the metre, laid out from the map: the basin, the Blue "
+                     "Wing, the four buildings' outlines, and the strait beyond the far wall at the "
+                     "same scale."},
+            *[_moji_massing(n, b, t) for n, b, t in zip(
+                ("station", "osakashosen", "customhouse", "dalianhall"), MOJI_BLOCKS,
+                ("Where the station stands", "Where the Osaka Shosen building stands",
+                 "Where the customhouse stands", "Where the Dalian hall stands"))],
+            # The No. 1 basin between the hotel quay and the customhouse, from its head to the Blue
+            # Wing; and the strait, which the table's far edge hands to the backdrop.
+            {"id": "pool-moji", "kind": "pool", "x": 115, "z": round(2378 / Z_SCALE, 2), "y": 80, "ry": 0,
+             "w": 93, "h": 2, "d": 276,
+             "title": "The No. 1 basin",
+             "hint": "The boat basin the Blue Wing crosses, about 60 m wide, opening north-west onto "
+                     "the strait. Nothing is claimed about the tide."},
+            {"id": "pool-strait", "kind": "pool", "x": 0, "z": round(2560 / Z_SCALE, 2), "y": 80, "ry": 0,
+             "w": 720, "h": 2, "d": 90,
+             "title": "The Kanmon Strait",
+             "hint": "A little over 700 m wide at its narrowest and carrying some 500 ships a day; "
+                     "here it starts at the table's edge and runs on past the far wall."},
+            {"id": "drawbridge-mj", "kind": "drawbridge", "x": 120, "z": round(2498 / Z_SCALE, 2), "y": 80,
+             "ry": 0, "w": 157, "h": 6, "d": 7, "leaves": 0.47,
+             "glow": [{"r": 90, "k": 0.3, "dy": 14}],
              "title": "The Blue Wing",
-             "hint": "Blue Wing Moji: 108 m of pedestrian drawbridge, the largest in Japan and the "
-                     "only one of its kind. Two leaves that rise like the wings it is named for, "
-                     "opening six times a day and taking about twenty minutes over it. Here it "
-                     "opens once each evening, for the ship."},
-            {"id": "ship-mj", "kind": "ship", "x": 0, "z": 470, "y": 84, "ry": 0,
-             "w": 300, "h": 34, "d": 44,
-             "title": "A ship on the strait",
-             "hint": "Timed rather than merely moving: it is the reason the bridge opens, so it "
-                     "clears the channel while the leaves stand and is gone before they come down."},
-            {"id": "ship-mj2", "kind": "ship", "x": 0, "z": 590, "y": 84, "ry": 0,
-             "w": 240, "h": 26, "d": 34,
-             "title": "A second ship, further out",
-             "hint": "The strait is never empty. Smaller and further off, which is what makes the "
-                     "near one read as nearer."},
-            {"id": "dalianhall-mj", "kind": "dalianhall", "x": -268, "z": 700, "y": 80, "ry": 0,
-             "liton": 0.88,
-             "w": 118, "h": 92, "d": 64,
-             "title": "The Dalian Friendship Memorial Hall",
-             "hint": "Built in 1995, brick, and carrying a composite steeple: square, then "
-                     "octagonal, then a spire. Every stage of it is drawn, because a steeple "
-                     "sketched as one cone is a cone and not a steeple."},
-            {"id": "customhouse-mj", "kind": "customhouse", "x": 86, "z": 706, "y": 80, "ry": 0,
-             "liton": 0.80,
-             "w": 172, "h": 108, "d": 78,
-             "title": "The former Moji Customhouse",
-             "hint": "1912, red brick over a timber frame, in the Renaissance manner. One of the "
-                     "three giants of Meiji architecture, \u59bb\u6728\u983c\u9ec4, had a hand "
-                     "in it. The top floor is glazed where the ones below are arched, because the "
-                     "third floor is an observation room and the first an exhibition room."},
-            {"id": "osakashosen-mj", "kind": "osakashosen", "x": 244, "z": 700, "y": 80, "ry": 0,
-             "liton": 0.84,
-             "w": 140, "h": 92, "d": 66,
-             "title": "The former Osaka Shosen building",
-             "hint": "Known by two things, and both are drawn: the tall round-headed arches that "
-                     "take most of its face, and the octagonal tower on its corner, eight sides "
-                     "turned out of real trigonometry with a roof of eight triangles."},
-            {"id": "stationfront-mj", "kind": "stationfront", "x": -104, "z": 706, "y": 80, "ry": 0,
-             "liton": 0.76,
-             "w": 196, "h": 118, "d": 84,
+             "hint": "Blue Wing Moji: 108.1 m of pedestrian drawbridge across the basin's mouth, "
+                     "completed 1993. Its 24.1 m south leaf is lifted by a wire rope over its pylon, "
+                     "its 14 m north leaf by a hydraulic ram, both to about 60 degrees, six times a "
+                     "day from 10:00 to 16:00, about twenty minutes each time. Lit after dark; it "
+                     "does not open then."},
+            {"id": "ship-mj", "kind": "ship", "x": 114, "z": round(2500 / Z_SCALE, 2), "y": 81, "ry": 90,
+             "w": 30, "h": 6, "d": 7.5, "run": 140,
+             "title": "A harbour boat",
+             "hint": "A boat of the basin's own size, using the openings: out under the raised "
+                     "leaves on one, back in on the next. The big ships keep to the strait."},
+            # Round 36: the owner asked for the models to come apart ("門司港那邊模型要拆開") -- on the
+            # one table every building was a block a few centimetres high. The four stand on stands of
+            # their own down the hall, all at one scale, 1:25, so the station is still twice the length
+            # of the others, as it is: south-west of the basin on your left (the station, then the Osaka
+            # Shosen building nearer the water), north-east on your right (the customhouse at the
+            # basin's mouth, the Dalian hall beside it). Each is turned on its stand to show its front to
+            # the walk. Outlines from OpenStreetMap, floor areas and storeys from Wikipedia and the
+            # Agency for Cultural Affairs, the rest read off photographs (TODO section 0r). The port
+            # table at the end keeps the basin, the Blue Wing and the strait at 1.5 cm to the metre.
+            {"id": "plinth-station", "kind": "plinth", "x": -305, "z": round(830 / Z_SCALE, 2), "y": 0, "ry": 0,
+             "w": 245, "h": 100, "d": 225, "top": "#8d8a82",
+             "glow": [{"r": 160, "k": 0.36, "dy": 116, "tint": "rgba(255,214,170,0.34)"}],
+             "title": "The station's stand",
+             "hint": "Moji Port Station at 1:25, on a lit stand of its own. The four buildings of the port "
+                     "stand down this hall at the same scale, so their sizes compare as they do on the "
+                     "quay."},
+            {"id": "stationfront-mj", "kind": "stationfront", "x": -305, "z": round(830 / Z_SCALE, 2),
+             "y": 100, "ry": 40, "liton": 0.76, "w": 240, "h": 72, "d": 62.4,
              "title": "Moji Port Station",
-             "hint": "Opened in 1914 and still the station it was: a wooden two-storey in the "
-                     "neo-Renaissance manner, symmetric, its centre shaped like the character "
-                     "\u9580 -- a gate, the first half of the port's own name. In 1988 it became "
-                     "the first station building in Japan to be designated an Important Cultural "
-                     "Property. Restored 2012 to 2019. Nothing here claims a train or a platform."},
-            {"id": "front-mj", "kind": "front", "x": -252, "z": 360, "y": 80, "ry": 90,
-             "liton": 0.74,
-             "w": 78, "h": 66, "d": 62,
-             "glow": [{"r": 110, "k": 0.6, "dy": 44, "tint": "rgba(255,180,110,0.5)"}],
+             "hint": "Opened in 1914 and still the station it was: timber rendered to look like stone, "
+                     "neo-Renaissance and dead symmetric, its two-storey centre made to read as the "
+                     "character \\u9580 -- a gate, the first half of the port's own name -- with a single "
+                     "storey either side. The gate's posts are the corner pavilions, with copper friezes "
+                     "and slate caps; the clock sits over the pediment. In 1988 the first station building "
+                     "in Japan named an Important Cultural Property; restored 2012 to 2019, when the front "
+                     "canopy it never had was taken off. At 1:25, about 60 m long; the parts' sizes are "
+                     "read from photographs and approximate."},
+            {"id": "plinth-customhouse", "kind": "plinth", "x": 339, "z": round(1180 / Z_SCALE, 2), "y": 0,
+             "ry": 0, "w": 178, "h": 100, "d": 172, "top": "#8d8a82",
+             "glow": [{"r": 140, "k": 0.36, "dy": 116, "tint": "rgba(255,214,170,0.34)"}],
+             "title": "The customhouse's stand",
+             "hint": "The former Moji Customs house at 1:25, on a lit stand of its own."},
+            {"id": "customhouse-mj", "kind": "customhouse", "x": 339, "z": round(1180 / Z_SCALE, 2), "y": 100,
+             "ry": -40, "liton": 0.80, "w": 135.2, "h": 56.4, "d": 86,
+             "title": "The former Moji Customhouse",
+             "hint": "Built in 1912 after the first customs house burned, red brick in the Renaissance "
+                     "manner; restored by the city and reopened in 1994. Two storeys -- the observation "
+                     "room is upstairs, behind ordinary windows -- three arched doors between corner "
+                     "pavilions, white stone courses, a hipped slate roof. It stands at the basin's "
+                     "mouth, at the north end of the Blue Wing. At 1:25, 33.8 m long as the map draws it; "
+                     "its heights are approximate."},
+            {"id": "plinth-osakashosen", "kind": "plinth", "x": -340, "z": round(1480 / Z_SCALE, 2), "y": 0,
+             "ry": 0, "w": 176, "h": 100, "d": 172, "top": "#8d8a82",
+             "glow": [{"r": 140, "k": 0.36, "dy": 116, "tint": "rgba(255,214,170,0.34)"}],
+             "title": "The Osaka Shosen building's stand",
+             "hint": "The former Osaka Shosen building at 1:25, on a lit stand of its own."},
+            {"id": "osakashosen-mj", "kind": "osakashosen", "x": -340, "z": round(1480 / Z_SCALE, 2),
+             "y": 100, "ry": 40, "liton": 0.84, "w": 128.4, "h": 87.6, "d": 89.6,
+             "title": "The former Osaka Shosen building",
+             "hint": "The shipping line's Moji branch, 1917: two storeys of orange facing brick banded "
+                     "with grey stone, and on its cut corner a window under a great arch with an "
+                     "octagonal tower over it -- a balcony, a lantern of windows, a green dome. When it was "
+                     "built its north side met the sea and passengers boarded from its own pier. It "
+                     "stands between the station and the basin. At 1:25, 32.1 m long as the map draws "
+                     "it; its heights are approximate."},
+            {"id": "plinth-dalianhall", "kind": "plinth", "x": 344, "z": round(1780 / Z_SCALE, 2), "y": 0,
+             "ry": 0, "w": 168, "h": 100, "d": 164, "top": "#8d8a82",
+             "glow": [{"r": 140, "k": 0.36, "dy": 116, "tint": "rgba(255,214,170,0.34)"}],
+             "title": "The Dalian hall's stand",
+             "hint": "The Dalian Friendship Memorial Hall at 1:25, on a lit stand of its own."},
+            {"id": "dalianhall-mj", "kind": "dalianhall", "x": 344, "z": round(1780 / Z_SCALE, 2), "y": 100,
+             "ry": -40, "liton": 0.88, "w": 123.6, "h": 98, "d": 81.4,
+             "title": "The Dalian Friendship Memorial Hall",
+             "hint": "Built in 1995, for fifteen years of Kitakyushu's friendship with Dalian, as a copy "
+                     "of the steamship office the Russian Empire put up there in 1902: red brick striped "
+                     "with white stone, a half-timbered gable, and a polygonal tower under a tall dark "
+                     "spire. It stands beside the old customhouse on the basin's north side. At 1:25, "
+                     "30.9 m long as the map draws it; its heights are approximate."},
+            {"id": "skyline-retro", "kind": "skyline", "x": 331, "z": round(2434 / Z_SCALE, 2), "y": 80,
+             "ry": 0, "liton": 0.82, "w": 34, "h": 190, "d": 30,
+             "towers": [{"dx": 0, "dz": 0, "w": 34, "d": 30, "h": 190, "c": "#d9d5cb"}],
+             "title": "The Retro High-Mart tower",
+             "hint": "Kurokawa Kisho's 31-storey tower of 1999, 126.95 m, made slender so the hill "
+                     "behind the port could still be seen from the basin; its top floor is the "
+                     "Retro Observation Room at 103 m. At this scale it is the tallest thing on "
+                     "the table, as it is on the waterfront."},
+            {"id": "front-mj", "kind": "front", "x": 40, "z": round(2252 / Z_SCALE, 2), "y": 80, "ry": 0,
+             "liton": 0.74, "w": 5, "h": 4, "d": 4,
+             "glow": [{"r": 36, "k": 0.5, "dy": 4, "tint": "rgba(255,180,110,0.5)"}],
              "title": "One yatai, on the quay",
-             "hint": "Kept, because the owner asked for one. Nothing is claimed about what it "
-                     "sells: the counter is drawn and the cloth is blank."},
+             "hint": "Kept because the owner asked for one, at the table's scale: about three metres "
+                     "of stall. Nothing is claimed about what it sells."},
         ],
+        # The hall's light: a warm spot over each stand and over the table, and a dim one over the walk.
         "lamps": [
-            {"x": -212, "y": 330, "z": 330, "r": 240, "k": 0.36, "bulb": False,
-             "tint": "rgba(186,208,255,0.20)"},
-            {"x": 0, "y": 12, "z": 380, "r": 500, "k": 0.24, "bulb": False,
-             "tint": "rgba(255,206,150,0.20)"},
-        ],
+            {"x": 0, "y": 560, "z": round(2418 / Z_SCALE, 2), "r": 520, "k": 0.5, "bulb": False,
+             "tint": "rgba(255,226,186,0.20)", "of": "plinth-moji"},
+            {"x": 0, "y": 560, "z": 160, "r": 300, "k": 0.22,
+             "tint": "rgba(206,218,240,0.16)"},
+        ] + [{"x": x, "y": 430, "z": round(z / Z_SCALE, 2), "r": 230, "k": 0.34, "bulb": False,
+              "tint": "rgba(255,226,186,0.18)", "of": of}
+             for x, z, of in ((-290, 830, "plinth-station"), (325, 1180, "plinth-customhouse"),
+                              (-325, 1480, "plinth-osakashosen"), (330, 1780, "plinth-dalianhall"))],
         "beams": [90, 240, 340],
+        # A model hall's walls: the gallery base and plaster the Toronto hall wears, dark.
         "surfaces": [
-            # Timber, tile and plaster, with one patch of corrugated sheet where a stall was rebuilt.
-            {"side": -1, "z0": -260, "z1": 80, "y0": 0, "y1": 150, "kind": "dado", "tone": 0.98},
-            {"side": -1, "z0": -260, "z1": 80, "y0": 150, "y1": 380, "kind": "hoarding", "tone": 0.94},
-            {"side": -1, "z0": 80, "z1": 300, "y0": 0, "y1": 380, "kind": "plaster", "tone": 0.9},
-            {"side": -1, "z0": 300, "z1": 380, "y0": 0, "y1": 380, "kind": "brick", "tone": 0.86},
-            {"side": 1, "z0": -260, "z1": 60, "y0": 0, "y1": 380, "kind": "hoarding", "tone": 0.92},
-            {"side": 1, "z0": 60, "z1": 240, "y0": 0, "y1": 160, "kind": "dado", "tone": 1.0},
-            {"side": 1, "z0": 60, "z1": 240, "y0": 160, "y1": 380, "kind": "corrugated", "tone": 0.9},
-            {"side": 1, "z0": 240, "z1": 380, "y0": 0, "y1": 380, "kind": "plaster", "tone": 0.88},
+            {"side": -1, "z0": -103.45, "z1": 900, "y0": 0, "y1": 110, "kind": "hallbase", "tone": 0.8},
+            {"side": -1, "z0": -103.45, "z1": 900, "y0": 110, "y1": 620, "kind": "hallplaster", "tone": 0.62},
+            {"side": 1, "z0": -103.45, "z1": 900, "y0": 0, "y1": 110, "kind": "hallbase", "tone": 0.8},
+            {"side": 1, "z0": -103.45, "z1": 900, "y0": 110, "y1": 620, "kind": "hallplaster", "tone": 0.62},
         ],
-        # Wet stone the whole way down — it is an alley beside water — with a grate, a drain run and
-        # the painted line at the mouth.
-        "marks": [
-            {"kind": "wet", "x0": -260, "x1": 260, "z0": 200, "z1": 380},
-            {"kind": "grate", "x0": -60, "x1": 60, "z0": 330, "z1": 348},
-            {"kind": "gutter", "x0": -260, "x1": 260, "z0": 24, "z1": 36},
-            {"kind": "kerb", "x0": -260, "x1": -230, "z0": -260, "z1": 380, "y1": 7},
-            {"kind": "kerb", "x0": 230, "x1": 260, "z0": -260, "z1": 380, "y1": 7},
-        ],
-        "vista": {"x": 0, "y0": 96, "y1": 300, "w": 460},
-        "wires": [
-            {"a": [-260, 344, 40], "b": [260, 338, 40], "sag": 46},
-            {"a": [-260, 340, 150], "b": [260, 334, 150], "sag": 50},
-            {"a": [-260, 346, 280], "b": [260, 340, 280], "sag": 44},
-            {"a": [214, 300, 84], "b": [220, 316, 330], "sag": 30},
-        ],
+        "marks": [],
+        # The far wall opens as a diorama's backdrop does: a band at the table's own horizon -- the
+        # strait, both shores and the bridge -- with the hall's wall above it, not six metres of sky.
+        "vista": {"x": 0, "y0": 82, "y1": 360, "w": 860},
+        "wires": [],
         "backdrop": {
-            # Night over water: the horizon band glows off the surface, the upper bands hold it.
+            # Dusk over the strait: the horizon band holds the light off the water.
             "sky": [{"y0": -400, "y1": 8000, "c": "#37456a", "glow": 0.62},
                     {"y0": 8000, "y1": 20000, "c": "#243049", "glow": 0.3},
-                    {"y0": 20000, "y1": 40000, "c": "#131d33", "glow": 0.14}],
-            "mountain": [{"x": 600, "y": 420, "w": 2200, "h": 300, "c": "#1c2740"}],
-            "plaza": {"y": -300, "z0": 700, "z1": 7000, "half": 4000},
-            "roofs": [
-                # A backdrop's z is not scaled the way a prop's is -- a prop's z is multiplied by
-                # 2.9 on its way out, a roof's is not. These were authored for the alley, where the
-                # props stopped at record z 350 and a roof at 1250 was safely behind them. The port
-                # table reaches record z 790, which is 2291 once scaled, so every roof here stood in
-                # FRONT of the far bank and hid it: the customhouse and the Osaka Shosen building
-                # were both behind the middle roof and drew nothing at all, and only the Dalian
-                # hall, off to the left of it, was ever visible. Pushed past the table's far edge.
-                {"x": -1200, "y": 0, "z": 2500, "w": 700, "h": 420, "tone": 0.55},
-                {"x": 1300, "y": 0, "z": 2600, "w": 800, "h": 500, "tone": 0.4},
-                {"x": 300, "y": 0, "z": 2450, "w": 620, "h": 360, "tone": 0.68},
-            ],
-            "city": [
-                {"x": -1600, "z": 2800, "w": 1200, "h": 1500, "win": 0.5, "tone": 0.66},
-                {"x": -200, "z": 3200, "w": 1000, "h": 1100, "win": 0.45, "tone": 0.58},
-                {"x": 800, "z": 2900, "w": 1100, "h": 1700, "win": 0.55, "tone": 0.74},
-                {"x": 1900, "z": 3400, "w": 1200, "h": 1000, "win": 0.4, "tone": 0.5},
-                {"x": 2600, "z": 3000, "w": 900, "h": 1400, "win": 0.5, "tone": 0.62},
-            ],
+                    {"y0": 20000, "y1": 60000, "c": "#131d33", "glow": 0.14}],
+            "strait": MOJI_STRAIT,
         },
-                "frames": [
+        "frames": [
             # The port's sub-places: the building it is named for, the bridge it is known for, and
-            # the water it stands on. The alley's three frames were replaced rather than reworded,
-            # because a picture of a stall row is not a picture of a harbour.
-            {"id": "station", "src": "IMG/fukuoka-1.jpg", "x": -284, "z": 120, "y": 96, "ry": 90,
+            # the water it stands on, hung on the hall's walls as drawn plates.
+            {"id": "station", "src": "IMG/fukuoka-1.jpg", "x": -436, "z": round(830 / Z_SCALE, 2), "y": 185, "ry": 90,
              "title": "Moji Port Station",
-             "alt": "Illustration of a small wooden two-storey railway station at dusk, symmetric, "
-                    "its centre shaped like a gate and a few windows lit.",
-             "caption": "The building the district is named after, drawn: two storeys of painted "
-                        "timber, dead symmetric, and a centre that reads as a gate."},
-            {"id": "bridge", "src": "IMG/fukuoka-2.jpg", "x": 284, "z": 240, "y": 150, "ry": -90,
+             "alt": "Illustration of a long symmetric station at dusk: a cream two-storey centre "
+                    "between two pavilions with green copper friezes and slate caps, a clock over the "
+                    "pediment, single-storey wings either side, the windows lit.",
+             "caption": "The building the district is named after, drawn: a cream front banded in "
+                        "brick red, the gate's two pavilions in copper and slate, the clock over the "
+                        "doors."},
+            {"id": "bridge", "src": "IMG/fukuoka-2.jpg", "x": 436, "z": round(1480 / Z_SCALE, 2), "y": 150, "ry": -90,
              "title": "The Blue Wing, open",
              "alt": "Illustration of a blue pedestrian drawbridge over a harbour basin at dusk, its "
                     "two leaves raised like wings and lit from below.",
-             "caption": "The bridge, drawn at the moment it is worth looking at: both leaves up, "
-                        "floodlit against a dark harbour."},
-            {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 284, "z": 350, "y": 96, "ry": -90,
+             "caption": "The bridge, drawn at the moment it is worth looking at: both leaves up. "
+                        "Its last opening is at four; after dark it is lit, and shut."},
+            {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 436, "z": round(2090 / Z_SCALE, 2), "y": 130, "ry": -90,
              "title": "The strait at dusk",
              "alt": "Illustration of a wide strait at dusk seen from a quay, two low cargo ships "
                     "crossing it and lights along the far shore.",
-             "caption": "What the basin opens onto. Drawn: the room walks toward it, and the "
-                        "picture claims nothing about what is on the far shore."},
+             "caption": "What the basin opens onto, drawn: the room's far wall opens onto the same "
+                        "water at the table's scale."},
         ],
-        # Sub-areas, same rule as the other rooms: one little place per Field notes plate, a drawn
-        # frame holding the place until a photograph arrives.
         "slots_title": "Places in the port",
         "slots": [
-            {"label": "Fukuoka, the port in one sheet", "note": "The album's cover plate for this "
-                                                                "room. In the port it is the "
-                                                                "whole panorama in one look: the "
-                                                                "quay, the basin and the strait.",
-             "state": "Held by the port itself, until a photograph of the quay takes the slot."},
-            {"label": "Moji Port Station", "note": "The far bank, left of the middle: the building "
-                                                   "the district is named after.",
+            {"label": "Fukuoka, the port in one sheet", "note": "The album's cover for this room, a "
+                                                                "frame of the hall itself after dusk: "
+                                                                "the station on its stand, the hall "
+                                                                "and the strait beyond.",
+             "state": "Held by the hall itself, until a photograph of the quay takes the slot."},
+            {"label": "Moji Port Station", "note": "The first stand on the left, at 1:25; on the "
+                                                   "port table, the far-left block.",
              "state": "Held by a drawn frame; a photograph of the station takes the slot when one "
                       "arrives."},
-            {"label": "The Blue Wing, open", "note": "The middle of the basin, where the bridge "
-                                                     "stands open for a ship.",
+            {"label": "The Blue Wing, open", "note": "Across the basin's mouth; it opens on the "
+                                                     "hour from ten to four.",
              "state": "Held by a drawn frame; a photograph of the bridge takes the slot when one "
                       "arrives."},
-            {"label": "The strait at dusk", "note": "Beyond the basin, where the water opens out "
-                                                    "and the ships cross.",
+            {"label": "The strait at dusk", "note": "Beyond the basin, past the far wall, where the "
+                                                    "ships cross.",
              "state": "Held by a drawn frame; a photograph of the strait takes the slot when one "
                       "arrives."},
             {"label": "Clips and the port after dark", "note": "Vertical clips and one sound, when "
                                                                "material exists.",
              "state": "Empty by design. A clip needs its caption before it can play here."},
         ],
-        # The lanterns.
-        #
-        # One list, and it lives here. This record used to carry a second `"lanterns"` key up
-        # under `backdrop`; in a dict literal the later key wins silently, so the row that was
-        # being edited was dead and the row on screen was the other one. A duplicate key that
-        # Python accepts without complaint is the sort of thing that eats an afternoon, so now
-        # there is exactly one here and the generator asserts on the count below.
-        #
-        # Re-strung off the walk and onto the table. They ran from z 26 to 348, which is the
-        # floor of the hall you walk down, not the port: a camera standing at z 957 had most of
-        # the row behind it and the nearest lantern 53 units from the lens. Measured against an
-        # empty list, that row was 92% of every warm pixel on screen at the first two stops and
-        # nothing at all at the last three. The brightness this room has been carrying was a
-        # paper lantern pressed against the glass.
-        #
-        # They run down both flanks of the quay now at x +-300, clear of the buildings (x -268
-        # to 244) so each one is a warm point against water or sky rather than against brick,
-        # from the near edge of the table to the far bank. From the furthest stop the row is
-        # 900 units off and a lantern is about 21 px across; from the near stop, 24 px.
-        "lanterns": [
-            {"x": -300, "y": 212, "z": 390, "r": 15},
-            {"x": -300, "y": 205, "z": 440, "r": 17},
-            {"x": -300, "y": 213, "z": 490, "r": 15},
-            {"x": -300, "y": 204, "z": 540, "r": 17},
-            {"x": -300, "y": 214, "z": 590, "r": 15},
-            {"x": -300, "y": 206, "z": 640, "r": 17},
-            {"x": -300, "y": 212, "z": 690, "r": 15},
-            {"x":  300, "y": 206, "z": 415, "r": 16},
-            {"x":  300, "y": 213, "z": 465, "r": 15},
-            {"x":  300, "y": 205, "z": 515, "r": 17},
-            {"x":  300, "y": 214, "z": 565, "r": 15},
-            {"x":  300, "y": 207, "z": 615, "r": 16},
-            {"x":  300, "y": 213, "z": 665, "r": 15},
-        ],
-        # The stations walk up to the table and stop at its edge. Toronto's do the same: each stop
-        # stands 90-170 short of the table it is looking at, because a diorama is looked at from
-        # outside it. The first version of this put the stops at 60-600 with a table spanning
-        # 170-690, so three of the five stood inside the port or past it, looking at nothing.
+        "lanterns": [],
+        # The walk passes the four stands in turn, each stop standing off one of them where its front
+        # turns to you, then comes up to the port table at the head of the basin, close enough that
+        # the far wall's opening takes in both far landmarks. One stop at the table, not two: the
+        # second stood 45 cm short of the table's edge and showed the same view.
         "stations": [
-            {"z": 60,  "label": "the far end of the hall"},
-            {"z": 170, "label": "coming up to the table"},
-            {"z": 260, "label": "at the near edge"},
-            {"z": 330, "label": "over the water"},
-            {"z": 330, "label": "close, over the basin"},
+            {"z": 60, "x": 0, "label": "the door of the hall"},
+            {"z": round(640 / Z_SCALE, 2), "x": -100, "label": "the station, on your left"},
+            {"z": round(990 / Z_SCALE, 2), "x": 110, "label": "the old customhouse, on your right"},
+            {"z": round(1290 / Z_SCALE, 2), "x": -110, "label": "the Osaka Shosen building, on your left"},
+            {"z": round(1590 / Z_SCALE, 2), "x": 115, "label": "the Dalian hall, on your right"},
+            {"z": round(2100 / Z_SCALE, 2), "x": 0, "label": "at the port table, over the basin toward the strait"},
         ],
         "exit": {"id": "curtain-back", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
                  "title": "The curtain at your back", "hint": "It parts onto the street."},
-        "caveat": "The alley is drawn, not surveyed: its proportions come from the owner's own "
-                  "photographs, no stall is named, no sign carries lettering and no date is claimed. "
-                  "Nothing here says the owner was in any of these places.",
+        "caveat": "Moji Port in a model hall. The four buildings stand on their own stands at one "
+                  "scale, 1:25, south-west of the basin on the left and north-east on the right, each "
+                  "turned to show its front; their lengths are OpenStreetMap's outlines, their floor "
+                  "areas and storeys the Agency for Cultural Affairs' and Wikipedia's, and their "
+                  "heights and the sizes of their parts are read from photographs, so approximate. "
+                  "The port table is laid out from OpenStreetMap at 1.5 cm to the metre, read from "
+                  "the head of the No. 1 basin looking north-west, with the four outlines as "
+                  "footprints; the strait beyond the far wall is the same scale and the Retro tower's "
+                  "height is sourced. The Mitsui Club, the hotel and Kaikyo Plaza are not modelled. "
+                  "The Blue Wing keeps its real timetable, so it is shut after dark. No sign carries "
+                  "lettering and the yatai sells nothing named. Nothing here says the owner was in "
+                  "any of these places.",
     },
     {
         # Toronto, small. The owner's brief was Little Canada — the Toronto attraction where the
@@ -3131,38 +4080,55 @@ DISTRICTS = [
             # Table one — the city. A plinth with the skyline on it: the tower reads first because
             # it is the one silhouette nobody mistakes, then the blocks, then the dome.
             {"id": "plinth-sky", "kind": "plinth", "x": 0, "z": 630, "y": 0, "ry": 0,
-             "w": 320, "h": 80, "d": 160, "top": "cityg",
+             "w": 400, "h": 80, "d": 190, "top": "cityg",
              "glow": [{"r": 160, "k": 0.68, "dy": 96, "tint": "rgba(255,214,170,0.54)"}],
              "title": "The table the city stands on",
-             "hint": "A lit plinth, table height. Everything on it is small; the light under the "
-                     "edge is what makes a model read as a model."},
-            {"id": "tower-cn", "kind": "tower", "x": -120, "z": 628, "y": 80, "ry": 0,
+             "hint": "A lit table laid out as the city lies, north away from you: the tower, Rogers "
+                     "Centre to its west, the financial district to its north-east, and the "
+                     "streetcar along the waterfront in front."},
+            {"id": "tower-cn", "kind": "tower", "x": -10, "z": 636.9, "y": 80, "ry": 0,
              "w": 58, "h": 300, "d": 58,
              "story": TOWER_STORY,
              "title": "The tower, small",
              "hint": "A flared, tapering round shaft, broad LookOut deck, smaller SkyPod and long "
-                     "antenna: the tower's silhouette at table scale, with no lettering."},
-            {"id": "skyline-cn", "kind": "skyline", "x": 85, "z": 630, "y": 80, "ry": 0,
-             "w": 140, "h": 150, "d": 80,
-             "title": "The skyline, small",
-             "hint": "A row of blocky towers with a few lit windows, the way a downtown reads from "
-                     "the lake at night. Drawn small; the windows are the only words it has."},
-            {"id": "dome-rc", "kind": "dome", "x": -40, "z": 630, "y": 80, "ry": 0,
-             "w": 84, "h": 44, "d": 84,
-             "title": "The dome, small",
-             "hint": "An oval stadium bowl and a segmented roof that slides open: Rogers Centre "
-                     "kept low beneath the skyline."},
+                     "antenna: the tower's silhouette at table scale (553.3 m to 300 cm, the scale "
+                     "every height on this table keeps), with no lettering."},
+            # The downtown, as real towers (round 32; TODO section 0n): First Canadian Place (298.1 m,
+            # white), Scotia Plaza (275 m, red granite, its notched crown) and Royal Bank Plaza's two
+            # gold towers (180 m and 114 m), at the tower's scale (1:184), standing north-east of it in
+            # their real order -- Royal Bank Plaza nearest the lake, Scotia Plaza farthest. Their
+            # footprints are approximate and the ground between them is drawn at about a third, the
+            # way a model city brings its downtown in; heights and order are not compressed.
+            {"id": "skyline-cn", "kind": "skyline", "x": 70, "z": 643.79, "y": 80, "ry": 0,
+             "w": 100, "h": 162, "d": 90,
+             "towers": [{"dx": -30, "dz": 22, "w": 28, "d": 28, "h": 162, "c": "#e7e9e6"},
+                        {"dx": 8, "dz": -32, "w": 22, "d": 20, "h": 98, "c": "#c9a24a"},
+                        {"dx": 32, "dz": -14, "w": 18, "d": 16, "h": 62, "c": "#c9a24a"},
+                        {"dx": 22, "dz": 30, "w": 24, "d": 24, "h": 149, "c": "#8f3b32", "crown": "v"}],
+             "title": "The financial district, small",
+             "hint": "First Canadian Place, the tallest, in white; Scotia Plaza in red granite with its "
+                     "notched crown; Royal Bank Plaza's two gold towers nearest the lake. Heights at "
+                     "the tower's scale; after dusk their floors light up."},
+            {"id": "dome-rc", "kind": "dome", "x": -102, "z": 621.72, "y": 80, "ry": 0,
+             "w": 111, "h": 47, "d": 111,
+             "title": "Rogers Centre, small",
+             "hint": "West of the tower and a little south, as it stands: the stadium bowl under a roof "
+                     "86 m high in four panels. The north panel is fixed; the two middle panels slide "
+                     "north onto it and the south panel turns round to nest inside, so it opens toward "
+                     "the lake."},
             # A track along the table's front edge and the streetcar that works it: the city's
             # table is the one table where something drives, the way the real one never stops.
-            {"id": "track-c", "kind": "track", "x": 0, "z": 610, "y": 80, "ry": 0,
-             "w": 280, "h": 2, "d": 12,
+            # Queens Quay's streetcar line runs along the waterfront south of the tower: the table's
+            # front edge, and the one table where something drives.
+            {"id": "track-c", "kind": "track", "x": 0, "z": 599.31, "y": 80, "ry": 0,
+             "w": 380, "h": 2, "d": 12,
              "title": "The track, small",
-             "hint": "Ballast and two rails along the front edge: the strip the streetcar runs on."},
-            {"id": "tram-t", "kind": "tram", "x": 0, "z": 610, "y": 80, "ry": 0,
-             "w": 280, "h": 12, "d": 12,
+             "hint": "Ballast and two rails along the front edge: the waterfront line south of the "
+                     "tower."},
+            {"id": "tram-t", "kind": "tram", "x": 0, "z": 599.31, "y": 80, "ry": 0,
+             "w": 380, "h": 12, "d": 12,
              "title": "The streetcar, small",
-             "hint": "A red streetcar shuttling the track, lit from within. The city's table is "
-                     "the one table where something drives."},
+             "hint": "A red streetcar shuttling the waterfront track, lit from within."},
             # Table two — the falls. The water is the one thing in the hall that moves.
             {"id": "plinth-falls", "kind": "plinth", "x": 290, "z": 200, "y": 0, "ry": 0,
              "w": 160, "h": 80, "d": 240, "top": "rock",
@@ -3182,39 +4148,22 @@ DISTRICTS = [
                      "enough to imagine. The one moving thing in the hall; it moves because you "
                      "are here, not because a clock says so."},
             # Table three — the market. Three spaced stalls sit in the forecourt, clear of the hall.
-            {"id": "plinth-market", "kind": "plinth", "x": -290, "z": 400, "y": 0, "ry": 0,
-             "w": 160, "h": 80, "d": 200, "top": "cobble",
+            # Table three -- the market, east of the city as St. Lawrence Market stands 1.25 km east and
+            # 0.69 km north of the tower (OpenStreetMap), so it is on your right, beside the city.
+            {"id": "plinth-market", "kind": "plinth", "x": 290, "z": 586.21, "y": 0, "ry": 0,
+             "w": 160, "h": 80, "d": 200, "top": "cityg",
              "glow": [{"r": 160, "k": 0.4, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
              "title": "The table the market stands on",
-             "hint": "A stall row at table scale. No stall is named and no price is written; a "
-                     "market reads by its awnings and its crates, not its lettering."},
-            {"id": "hall-sl", "kind": "hall", "x": -345, "z": 400, "y": 80, "ry": 90,
-             "w": 170, "h": 130, "d": 48,
-             "title": "St. Lawrence Market, the South Market hall",
-             "hint": "Toronto's first City Hall, built 1845 in red brick, gutted and reopened as a "
-                     "market from 1899. An arcade at street level, a gallery floor of arched "
-                     "windows over it, and a cupola with a clock in it. Nothing on it is lettered: "
-                     "the clock is a disc, and no vendor is named."},
-            {"id": "stall-m1", "kind": "stall", "x": -277, "z": 350, "y": 80, "ry": 90,
-             "w": 44, "h": 50, "d": 34,
-             "title": "A stall, small",
-             "hint": "Awning over a counter, drawn the size of a hand. The market's first stall."},
-            {"id": "stall-m2", "kind": "stall", "x": -277, "z": 400, "y": 80, "ry": 90,
-             "w": 44, "h": 50, "d": 34,
-             "title": "A second stall, small",
-             "hint": "The row continues. Two stalls facing is a market; one is a table."},
-            {"id": "stall-m3", "kind": "stall", "x": -277, "z": 448, "y": 80, "ry": 90,
-             "w": 44, "h": 50, "d": 34,
-             "title": "A third stall, small",
-             "hint": "The last stall before the table's edge, awning lower than the rest."},
-            {"id": "crate-m1", "kind": "crate", "x": -227, "z": 345, "y": 80, "ry": 12,
-             "w": 26, "h": 20, "d": 20,
-             "title": "Crates by the stalls",
-             "hint": "Whatever the market sells arrives in crates. Drawn small, stacked once."},
-            {"id": "crate-m2", "kind": "crate", "x": -227, "z": 372, "y": 80, "ry": -18,
-             "w": 22, "h": 16, "d": 20,
-             "title": "A second crate",
-             "hint": "The market's clutter, at a scale where clutter is a centimetre tall."},
+             "hint": "St. Lawrence Market South at 1:100, its long axis north to south as it lies "
+                     "on Front Street. The vendors are inside it, as they are."},
+            {"id": "hall-sl", "kind": "hall", "x": 290, "z": 586.21, "y": 80, "ry": 90,
+             "w": 115, "h": 18, "d": 50,
+             "title": "St. Lawrence Market, the South Market",
+             "hint": "John Wilson Siddall's 1902 market hall, red brick under one high arched roof "
+                     "with a clerestory, built round the centre of the 1845 City Hall: at the north "
+                     "end on Front Street, three stone archways and the old council chamber over "
+                     "them. The 1845 hall's wings, pediment and clock cupola came down in that "
+                     "rebuild, so none of them is here. Its height is approximate."},
             # Table four — the lake. The city's front door: water, islands, one small ferry.
             {"id": "plinth-lake", "kind": "plinth", "x": -290, "z": 140, "y": 0, "ry": 0,
              "w": 160, "h": 80, "d": 240, "top": "sand",
@@ -3229,88 +4178,39 @@ DISTRICTS = [
                      "reflects the city."},
             # `island-i1` and `island-i2` resolve to a low, irregular landform painter, not to a
             # reusable street planter; `boat-lake` has a hull, wheelhouse, windows, rails and wake.
-            {"id": "island-i1", "kind": "island", "x": -320, "z": 112, "y": 82, "ry": 0,
+            {"id": "island-i1", "kind": "island", "x": -325, "z": 107.93, "y": 82, "ry": 0,
              "w": 44, "h": 16, "d": 30,
              "title": "An island, small",
-             "hint": "A low, irregular island rising from the lake, with a wooded crown."},
-            {"id": "island-i2", "kind": "island", "x": -260, "z": 168, "y": 82, "ry": 0,
+             "hint": "The Toronto Islands lie south of downtown across the harbour: the near end of "
+                     "this table, with a wooded crown."},
+            {"id": "island-i2", "kind": "island", "x": -255, "z": 113.79, "y": 82, "ry": 0,
              "w": 38, "h": 14, "d": 26,
              "title": "A second island, small",
-             "hint": "A second low island beyond the first, part of the Toronto Islands chain."},
+             "hint": "A second low island in the chain, beside the first."},
             {"id": "boat-lake", "kind": "boat", "x": -290, "z": 140, "y": 83, "ry": 90,
              "w": 36, "h": 12, "d": 12,
              "title": "The ferry, small",
-             "hint": "A white double-ended ferry with a blue waterline and an open passenger deck, "
-                     "crossing the lake and leaving a wake."},
+             "hint": "A white double-ended Island ferry with an open passenger deck, crossing north "
+                     "and south between the city's shore (the far end of the table) and the islands "
+                     "(the near end), the way the real ones cross from the foot of Bay Street."},
             # The far wall used to carry the hall's cover plate. It carries the city itself now:
             # a lit case holding the tower, a row of blocks and the dome, built by the same shapes
             # that build the tables, so the deepest stop in the room ends on the model at a glance
             # instead of on a picture of it.
-            {"id": "plinth-cityshelf", "kind": "plinth", "x": 180, "z": 712, "y": 150, "ry": 180,
-             "w": 300, "h": 10, "d": 40, "tone": 0.34,
-             "title": "The city in one case",
-             "hint": "The room ends on a lit case holding the whole city: the tower, a row of "
-                     "blocks, the dome. Built of the same shapes as the tables, so it is the "
-                     "model at a glance rather than a picture of one."},
-            {"id": "tower-mini", "kind": "tower", "x": 200, "z": 712, "y": 160, "ry": 180,
-             "w": 30, "h": 168, "d": 22,
-             "title": "The tower, in the case",
-             "hint": "The same shape as the table's tower, a sixth of the size: a concrete shaft, "
-                     "a pod, and a mast that only the top of the case is tall enough for."},
-            {"id": "skyline-mini", "kind": "skyline", "x": 108, "z": 712, "y": 160, "ry": 180,
-             "w": 92, "h": 74, "d": 22, "tone": 0.5,
-             "title": "The blocks, in the case",
-             "hint": "Four blocks at staggered depths, lit from inside: at this size every window "
-                     "is two pixels, which is what a window in a real skyline is."},
-            {"id": "dome-mini", "kind": "dome", "x": 264, "z": 712, "y": 160, "ry": 180,
-             "w": 64, "h": 36, "d": 22, "tone": 0.5,
-             "title": "The dome, in the case",
-             "hint": "A ribbed cap on a low drum, the third thing the city is known by."},
             # Where the walls carried drawn plates of the three areas, they carry small built
             # cases now: a lit shelf, and on it the thing itself at a sixth of the size. A picture
             # of the falls beside the falls was always the weaker of the two things on that wall.
-            {"id": "plinth-skyshelf", "kind": "plinth", "x": 354, "z": 396, "y": 150, "ry": -90,
-             "w": 120, "h": 10, "d": 40, "tone": 0.34,
-             "title": "A case of blocks",
-             "hint": "A lit shelf on the wall, holding a row of towers with their windows on: "
-                     "the city reduced to the one thing it is recognised by."},
-            {"id": "skyline-mini2", "kind": "skyline", "x": 354, "z": 396, "y": 160, "ry": -90,
-             "w": 96, "h": 72, "d": 24, "tone": 0.5,
-             "title": "The blocks, small",
-             "hint": "Four blocks, staggered in depth so the row has a silhouette, lit from "
-                     "inside the way the table's blocks are."},
-            {"id": "plinth-fallsshelf", "kind": "plinth", "x": 354, "z": 170, "y": 150, "ry": -90,
-             "w": 120, "h": 10, "d": 40, "tone": 0.34,
-             "title": "A case of water",
-             "hint": "A lit shelf on the wall, holding a ledge with water going over it."},
             # A shelf model has to be a model. At 96 x 72 it stood three quarters the size of the
             # falls on the table below it, so the two read as a duplicated waterfall rather than as a
             # diorama and the case it is displayed in.
-            {"id": "falls-mini", "kind": "falls", "x": 354, "z": 170, "y": 160, "ry": -90,
-             "w": 68, "h": 30, "d": 20, "tone": 0.5,
-             "title": "The falls, small",
-             "hint": "A sheet over a ledge into mist, with the same shimmer the table's falls "
-                     "has, moving on the same clock."},
-            {"id": "plinth-marketshelf", "kind": "plinth", "x": -354, "z": 290, "y": 150, "ry": 90,
-             "w": 120, "h": 10, "d": 40, "tone": 0.34,
-             "title": "A case of stalls",
-             "hint": "A lit shelf on the wall, holding one stall under a striped awning."},
-            {"id": "stall-mini", "kind": "stall", "x": -354, "z": 290, "y": 160, "ry": 90,
-             "w": 88, "h": 56, "d": 24, "tone": 0.5,
-             "title": "A stall, small",
-             "hint": "An awning, a counter and the crates under it: a market reads at any size, "
-                     "which is the only reason a market is worth modelling."},
             # The hall's own furniture: a bench between tables and the rope line of a model room.
-            {"id": "bench-t", "kind": "bench", "x": 320, "z": 380, "y": 0, "ry": -90,
-             "title": "A bench in the dark",
-             "hint": "The one seat in the hall, between the city and the market, for looking."},
             # Trees, the one thing a miniature plants by the thousand: two on the islands,
             # a shore pair, corners of the city and the falls, one by the market.
-            {"id": "tree-i1", "kind": "tree", "x": -320, "z": 112, "y": 96, "ry": 0,
+            {"id": "tree-i1", "kind": "tree", "x": -325, "z": 107.93, "y": 96, "ry": 0,
              "w": 14, "h": 24, "d": 14,
              "title": "A tree on the island",
              "hint": "The island keeps a tree; at this scale a tree is a pinch of flock."},
-            {"id": "tree-i2", "kind": "tree", "x": -260, "z": 168, "y": 94, "ry": 0,
+            {"id": "tree-i2", "kind": "tree", "x": -255, "z": 113.79, "y": 94, "ry": 0,
              "w": 12, "h": 20, "d": 12,
              "title": "A tree on the second island",
              "hint": "The second island's tree, smaller, further out."},
@@ -3322,15 +4222,15 @@ DISTRICTS = [
              "w": 14, "h": 24, "d": 14,
              "title": "A second shore tree",
              "hint": "The far corner of the lake table, a tree at the water's edge."},
-            {"id": "tree-c1", "kind": "tree", "x": -150, "z": 612, "y": 80, "ry": 0,
+            {"id": "tree-c1", "kind": "tree", "x": -178, "z": 609.66, "y": 80, "ry": 0,
              "w": 14, "h": 24, "d": 14,
              "title": "A street tree by the city",
              "hint": "The city table keeps street trees; downtown reads by them."},
-            {"id": "tree-c2", "kind": "tree", "x": 145, "z": 648, "y": 80, "ry": 0,
+            {"id": "tree-c2", "kind": "tree", "x": 150, "z": 656.9, "y": 80, "ry": 0,
              "w": 12, "h": 20, "d": 12,
              "title": "A second street tree",
              "hint": "The row continues round the table's left edge."},
-            {"id": "tree-c3", "kind": "tree", "x": 150, "z": 612, "y": 80, "ry": 0,
+            {"id": "tree-c3", "kind": "tree", "x": 178, "z": 609.66, "y": 80, "ry": 0,
              "w": 12, "h": 20, "d": 12,
              "title": "A park tree at the city's corner",
              "hint": "The city's right corner keeps a park's worth of one tree."},
@@ -3342,13 +4242,10 @@ DISTRICTS = [
              "w": 14, "h": 24, "d": 14,
              "title": "A second tree above the falls",
              "hint": "The rim's other side, a tree at the rail."},
-            {"id": "tree-m1", "kind": "tree", "x": -225, "z": 425, "y": 80, "ry": 0,
+            {"id": "tree-m1", "kind": "tree", "x": 226, "z": 614.48, "y": 80, "ry": 0,
              "w": 14, "h": 24, "d": 14,
              "title": "A tree by the market",
              "hint": "The market's corner keeps the one tree a market square allows."},
-            {"id": "bollard-t", "kind": "bollard", "x": 100, "z": 40, "y": 0, "ry": 0,
-             "title": "A bollard at the mouth",
-             "hint": "The hall's entrance keeps an edge the way the street does."},
         ],
         # Dim spots over the walk; the tables carry their own glows from the objects list, so the
         # dioramas are the brightest things in the room and the walk stays a dark hall around them.
@@ -3358,17 +4255,14 @@ DISTRICTS = [
             # One spot per table, close and narrow: the diorama outshines the hall it stands in.
             {"x": -230, "y": 300, "z": 120, "r": 46, "k": 0.5, "spot": True},
             {"x": 230, "y": 300, "z": 170, "r": 46, "k": 0.5, "spot": True},
-            {"x": -230, "y": 300, "z": 290, "r": 46, "k": 0.5, "spot": True},
-            {"x": 0, "y": 300, "z": 396, "r": 52, "k": 0.55, "spot": True},
-            # A picture light over the cover plate on the far wall: the hall ends on the city in
-            # one sheet, and a plate you walk toward is a plate you can read.
-            {"x": 0, "y": 320, "z": 452, "r": 130, "k": 0.7},
+            {"x": 260, "y": 300, "z": 565.52, "r": 46, "k": 0.5, "spot": True},
+            {"x": 0, "y": 300, "z": 606.9, "r": 52, "k": 0.55, "spot": True},
         ],
         "wires": [],
         "beams": [120, 260, 400],
         "surfaces": [
-            # A hall, not a lane: concrete dado at hand height, dark hoarding above, both sides the
-            # whole length, so the walls recede and the lit tables do the talking.
+            # A model hall: the gallery base at hand height and dark plaster above, both sides the whole
+            # length, so the walls recede and the lit tables do the talking.
             {"side": -1, "z0": -260, "z1": 480, "y0": 0, "y1": 120, "kind": "hallbase", "tone": 0.62},
             {"side": -1, "z0": -260, "z1": 480, "y0": 120, "y1": 400, "kind": "hallplaster", "tone": 0.5,
              "grad": True},
@@ -3393,7 +4287,7 @@ DISTRICTS = [
                     "mist on a lit table, a tiny railing along the top.",
              "caption": "The falls at table scale: a sheet of water, a ledge, and mist. The model "
                         "moves; the picture holds still."},
-            {"id": "market", "wall": False, "src": "IMG/toronto-3.jpg", "x": -374, "z": 290, "y": 150, "ry": 90,
+            {"id": "market", "wall": False, "src": "IMG/toronto-3.jpg", "x": 374, "z": 586.21, "y": 150, "ry": -90,
              "title": "St. Lawrence Market, small",
              "alt": "Illustration of a miniature market street on a lit table: small stalls with "
                     "striped awnings, stacked crates, and warm hanging lamps.",
@@ -3423,120 +4317,105 @@ DISTRICTS = [
             {"z": 0, "label": "the mouth of the hall"},
             {"z": 140, "label": "by the lake table"},
             {"z": 200, "label": "by the falls table"},
-            {"z": 400, "label": "by the market table"},
-            {"z": 460, "label": "by the city table"},
+            {"z": 500, "label": "by the market table, on your right"},
+            {"z": 560, "label": "by the city table"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
                  "title": "The door at your back", "hint": "It opens onto the street, at this "
                  "room's own door."},
-        "caveat": "The hall is drawn, not surveyed, and the city in it is a model: proportions "
-                  "are the artist's, the landmarks read by silhouette alone, and nothing on any "
-                  "table carries a name, a date or a claim that the owner stood in Toronto. The "
-                  "model is the point, not the trip.",
+        "caveat": "A model hall in the manner of Little Canada, its tables laid out by the real "
+                  "bearings: the city at the far end with the lake in front of it, the market to "
+                  "its east, the falls across the lake to the south-east. On the city table every "
+                  "height keeps the tower's scale (1:184) and the ground between the towers is "
+                  "brought in; the market is 1:100 and its roof height approximate; only towers "
+                  "with sourced heights stand on the skyline. Nothing on any table carries a name, "
+                  "a date or a claim that the owner stood in Toronto.",
+        "clad_note": (" The room is a dark model hall with lit tables: the city at the far end -- the "
+                      "tower, Rogers Centre to its west, the financial district to its north-east, a "
+                      "streetcar along the front -- the lake with its islands and ferry on your left, "
+                      "the falls on your right, and St. Lawrence Market on your right beside the city. "
+                      "Nothing on any table carries a word."),
     },
     {
-        # Niagara, the Canadian edge (grounded-scene §6's second worked example). The lane is the
-        # promenade's last stretch, walked in the day, ending at the Table Rock rail; beyond it the
-        # niagara painter carries the whole fact: the horseshoe crest (670 m of brink, a 57 m drop,
-        # sources in TODO §0c) spilling into its mist, the American Falls on its talus across to the
-        # left, the islands between, the gorge river below, a rainbow when the sun stands right.
-        # What shrinks is detail; what must not: the crest's breadth-to-drop ratio, Table Rock at
-        # the lip, the river running north behind you, the mist as weather.
+        # Niagara at Table Rock, as it stands (round 33; sources in TODO §0o). The lane is the last
+        # 43 m of the Niagara Recreation Trail (OSM way 1319958255: lit, paving stones) walked south
+        # to the brink, on its real line (bearing 180) and at its real scale: the gorge on the left
+        # behind the parapet, Table Rock Centre's terrace on the right, the Horseshoe's Canadian end at
+        # the far left corner, where the trail comes nearest the falls (OSM node 291955852). Nothing
+        # walls it in: the world round it is surveyed (`niagara_world`) -- the Horseshoe's brink as
+        # OSM maps it, the American and Bridal Veil falls, Goat and Luna Islands, the gorge and both
+        # rivers, the Rainbow Bridge and the Skylon at their bearings -- and it is drawn as geometry,
+        # not as the hall's table model stood large. Round 22-30's promenade had the gorge on the
+        # wrong hand, a hedge nobody surveyed, and three downstream "silhouettes" two of which stand
+        # upstream or up the hill; all three are gone.
         "id": "niagara", "label": "The falls",
         "page": ROOM_BY_ID["niagara"]["page"],
         "plates": ROOM_BY_ID["niagara"]["plates"],
-        # A promenade is narrower than a street and open to the sky: the ceiling is only there so
-        # the box closes overhead, and the day is authored the way the street's is.
-        "lane": {"w": 560, "d": 460, "ceil": 380, "back": 220, "max_d": 1500},
-        "day": {"cycle": 900, "start": 0.55, "gain": 1},
-        "purpose": "The promenade at Niagara Falls: Table Rock at the lip, the horseshoe's mist, the American Falls across, the gorge for an end",
+        "lane": {"w": 1400, "d": 1483, "ceil": 400, "back": 200, "max_d": 4250, "open": True,
+                 "open_back": True, "open_end": True},
+        "floor": "pavers",
+        "day": {"cycle": 900, "start": 0.5, "gain": 1},
+        "purpose": "Table Rock at Niagara Falls: the trail's last stretch to the brink, the gorge, both falls and the islands where they stand",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/niagara-cover.jpg",
-        "cover_caption": "The horseshoe from Table Rock, drawn with its rainbow.",
-        "blurb": "One promenade walked in the day. Hedges and lamps on the park side, a parapet and "
-                 "the mist on the gorge side, and at the rail the whole falls: the crest, the drop, "
-                 "the mist, the rainbow, the American Falls across.",
-        "clad_note": " The lane is the promenade: a hedge and lamp posts on the park side, a stone "
-                     "parapet at hand height on the gorge side and the falls' own mist above it. "
-                     "Nothing on any of it carries a word.",
-        "sight_note": " At its far end the walk stops at the Table Rock rail, and beyond is the "
-                      "whole fact of the falls: the horseshoe crest spilling into mist, the "
-                      "American Falls across on its boulders, the gorge river below, a rainbow in "
-                      "the spray, and downstream in the haze the Rainbow Bridge's wings and the "
-                      "Skylon's dish. After dark the curtain holds the illumination's colour "
-                      "and, in season, fireworks swell over the crest. The cruise boat stays out "
-                      "of the frame: its landing is downstream, and from the lip the basin it "
-                      "works is hidden by the lip itself. Nothing out there is a record of "
-                      "anybody standing in it.",
+        "cover_caption": "The Horseshoe from the parapet at Table Rock, drawn by the renderer.",
+        "blurb": "The last 43 m of the Recreation Trail walked to Table Rock's brink, in the day. "
+                 "The parapet and the gorge on the left, the centre's terrace on the right, and "
+                 "round it the falls where they are: the Horseshoe's brink at the far corner, the "
+                 "American Falls behind you across the gorge, Goat Island between.",
+        "clad_note": " The lane is the trail at Table Rock: paving stones underfoot, along the gorge "
+                     "on the left a low wall of rough grey stone with black ironwork of rings on it "
+                     "between rough stone posts, black lantern lamps, and on the right the open terrace "
+                     "to Table Rock Centre. Nothing walls it in and nothing on it carries a word.",
+        "sight_note": " The world round the trail is drawn from the map: ahead and to the left the "
+                      "Horseshoe's brink curving away to Goat Island with its spray over the basin, "
+                      "a rainbow in it on a sunny afternoon; across the gorge Goat Island's woods "
+                      "and cliff; behind you, north-east, the American Falls on its boulders with "
+                      "the Bridal Veil and Luna Island beside it, the Rainbow Bridge further down, "
+                      "and the Skylon on the hill to the north-north-west; to the west, over the "
+                      "Centre's roofs, the wooded Fallsview bluff with its hotel towers on top. After "
+                      "dark both falls hold the illumination's colour, the hotels' windows light, and, "
+                      "in season, fireworks open over the basin.",
         "objects": [
-            # The park side keeps one bench and the hedge keeps it company: a promenade is walked
-            # slowly, and a bench facing the mist is the one furniture the view asks for.
-            {"id": "bench-ng", "kind": "bench", "x": -250, "z": 240, "y": 0, "ry": 90,
-             "title": "A bench at the hedge",
-             "hint": "It faces the gorge side. The mist is the view; the bench is the pause."},
-            # The falls themselves, stood at real scale in the site's own falls shape: the sheet,
-            # the ledge, the mist — the same draw that reads on the hall's table, at the crest's
-            # own breadth-to-drop ratio. The horseshoe wraps the view; the American Falls stands
-            # to the left on its talus, the islands between.
-            {"id": "falls-ng", "kind": "falls", "x": 300, "z": 2400, "y": -150, "ry": 0,
-             "w": 4200, "h": 900, "d": 120,
-             "title": "The horseshoe, at the rail",
-             "hint": "Six hundred and seventy metres of brink at model breadth, drawn at the "
-                     "rail's own distance: the water goes over the lip a few metres away."},
-            {"id": "falls-am", "kind": "falls", "x": -2600, "z": 3400, "y": -150, "ry": 20,
-             "w": 2600, "h": 600, "d": 90,
-             "title": "The American Falls across",
-             "hint": "A straight sheet onto its talus of boulders, east of the horseshoe, the "
-                     "islands between."},
-            {"id": "planter-go", "kind": "planter", "x": -1400, "z": 2600, "y": -150, "ry": 0,
-             "w": 900, "h": 140, "d": 500,
-             "title": "Goat Island at the crest",
-             "hint": "The green wedge that parts the horseshoe from the bridal veil, at the "
-                     "crest line."},
-            {"id": "planter-lu", "kind": "planter", "x": -1900, "z": 2900, "y": -150, "ry": 0,
-             "w": 460, "h": 100, "d": 300,
-             "title": "Luna Island, small",
-             "hint": "The smaller island, between the American and the bridal veil."},
-            # The real Table Rock Centre is the entrance to Journey Behind the Falls; here the
-            # door stands at the rail end of the promenade, where the terraces stack down.
-            {"id": "door-journey", "kind": "door", "x": 262, "z": 430, "y": 0, "ry": -90,
-             "leaf": "#2b3852",
-             "glow": [{"r": 120, "k": 0.5, "dy": 200, "tint": "rgba(160,210,230,0.4)"}],
-             "title": "The Journey door",
-             "hint": "Journey Behind the Falls: the elevator drops through the bedrock to the "
-                     "tunnels, the portals, the deck at the foot of the curtain.",
+            # Table Rock Centre's wing reaches the trail at E -6.8 m (OSM way 420548287): the doors
+            # stand in its face. Journey Behind the Falls starts inside this building (Niagara
+            # Parks), so its door is here, beside the door back to the hall.
+            {"id": "door-journey", "kind": "door", "x": 678, "z": 469, "y": 0, "ry": -90,
+             "leaf": "#33414e",
+             "glow": [{"r": 110, "k": 0.45, "dy": 200, "tint": "rgba(160,210,230,0.4)"}],
+             "title": "Journey Behind the Falls",
+             "hint": "Inside Table Rock Centre: an elevator drops 38 m through the rock to the 1944 "
+                     "tunnel, its two portals behind the sheet and the deck at the foot of the falls.",
              "leave": ROOM_BY_ID["journey"]["page"]},
+            # The trail is lit (OSM: lit=yes). Two posts stand for its lamps; their spacing is
+            # drawn, not surveyed.
+            {"id": "lamp-ng1", "kind": "lamp", "x": 640, "z": 120, "y": 0, "ry": 0, "w": 14, "h": 420, "d": 14,
+             "title": "A trail lamp", "hint": "The Recreation Trail is lit along the gorge; the post's "
+                                             "place here is drawn, not surveyed."},
+            {"id": "lamp-ng2", "kind": "lamp", "x": 640, "z": 1150, "y": 0, "ry": 0, "w": 14, "h": 420, "d": 14,
+             "title": "A trail lamp", "hint": "The Recreation Trail is lit along the gorge; the post's "
+                                             "place here is drawn, not surveyed."},
+            # The parapet's last stone post, at the brink corner: the closest the trail comes to
+            # the water, the press that answers what the falls are.
+            {"id": "parapet-ng", "kind": "parapet", "x": -670, "z": 1462, "y": 0, "ry": 0,
+             "w": 50, "h": 96, "d": 50,
+             "title": "The Table Rock rail",
+             "hint": "The Horseshoe's brink starts a few metres past this post and runs about 670 m "
+                     "round to Goat Island; the water drops 57 m into the basin. Table Rock itself, "
+                     "the ledge the place is named for, fell into the gorge in 1850."},
         ],
-        "surfaces": [
-            # Park side: a hedge at hand height and park greenery above it to the ceiling line.
-            {"side": -1, "z0": 30, "z1": 470, "y0": 0, "y1": 150, "kind": "hedge", "tone": 1},
-            {"side": -1, "z0": 30, "z1": 470, "y0": 150, "y1": 340, "kind": "hedge", "tone": 0.7},
-            # Gorge side: the stone parapet at hand height, and above it the falls' mist worn as
-            # cladding — the side view is weather, the way the pod's side view was the city.
-            {"side": 1, "z0": 30, "z1": 470, "y0": 0, "y1": 100, "kind": "dado", "tone": 0.9},
-            {"side": 1, "z0": 30, "z1": 470, "y0": 100, "y1": 340, "kind": "mistview", "tone": 1},
-        ],
+        # The gorge side: an iron railing on a stone curb between stone posts, open air above
+        # (the Getty photographs at the wall, May 2026); the terrace side is open to the centre.
+        "surfaces": niagara_parapet_bands() + [
+            {"side": 1, "z0": -69, "z1": 1483, "y0": 0, "y1": 400, "kind": "open"}],
         "lamps": [
-            # The promenade's lamp posts, authored whole: they keep the hedge side honest at dusk
-            # and do almost nothing at noon, because the sun owns the day page.
-            {"x": -252, "y": 210, "z": 120, "r": 90, "k": 0.5},
-            {"x": -252, "y": 210, "z": 340, "r": 90, "k": 0.5},
+            {"x": 640, "y": 410, "z": 120, "r": 90, "k": 0.45},
+            {"x": 640, "y": 410, "z": 1150, "r": 90, "k": 0.45},
         ],
-        # The end wall is a frame, not a stop: one wide aperture over the stone sill, and the
-        # niagara painter carries everything past it from every stop on the promenade.
-        "vista": {"x": 0, "y0": 20, "y1": 340, "w": 520},
         "backdrop": {
-            # The day sky, in the street's own idiom: bands from below the horizon up, glow near
-            # one at the light-bearing band, because the lighting model multiplies what glow gives.
-            "sky": [{"y0": -400, "y1": 3000, "c": "#7fa8cc", "glow": 1.0},
-                    {"y0": 3000, "y1": 30000, "c": "#5d82ac", "glow": 0.7},
-                    {"y0": 30000, "y1": 90000, "c": "#48688f", "glow": 0.5}],
-            "niagara": {"y": -60, "z0": 600, "z1": 20000, "half": 12000,
-                        "crest": {"x": 1000, "w": 14000, "drop": 1100},
-                        "american": {"x": -9000, "w": 6000, "drop": 1600},
-                        "islands": [{"x": -5200, "w": 2600}, {"x": -11000, "w": 3000}],
-                        "rail": 1450},
+            "skyAround": NIAGARA_SKY,
+            "world": {"prims": niagara_world(LaneFrame(0.0, 14.0, 0.0, 180.0))},
         },
         "slots_title": "Places at the falls",
         "slots": [
@@ -3545,202 +4424,227 @@ DISTRICTS = [
                       "American Falls across.",
              "state": "Held by three drawn story frames; a photograph takes the slot when one arrives."},
             {"label": "The Table Rock rail",
-             "note": "The lip at the rail, where the water goes over a few metres away.",
+             "note": "The brink a few metres past the last post, where the trail comes nearest the water.",
              "state": "Held by the rail itself; no plate can stand in for the drop."},
         ],
         "stations": [
-            {"z": 10, "label": "the mouth of the promenade"},
-            {"z": 140, "label": "the hedge and the rail"},
-            {"z": 300, "label": "the mist ahead"},
-            {"z": 480, "label": "the Table Rock rail"},
+            {"z": 21, "x": 0, "label": "the trail at Table Rock Centre"},
+            {"z": 469, "x": 470, "label": "the centre's doors"},
+            {"z": 980, "x": -520, "label": "the parapet over the gorge"},
+            {"z": 1440, "x": -520, "label": "the Table Rock rail"},
         ],
-        "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
-                 "title": "The gate at your back", "hint": "It opens onto the hall, at the falls' "
+        "exit": {"id": "door-back", "kind": "door", "x": 678, "z": 340, "y": 0, "ry": -90, "leaf": "#33414e",
+                 "title": "Back through the centre", "hint": "It opens onto the hall, at the falls' "
                                                            "own table."},
         "back_to": "rooms-toronto.html#at-falls-n",
-        "caveat": "The falls are drawn from public facts — the crest's breadth, the drop, the "
-                  "talus, the islands, the rainbow's habit, the nightly illumination and the "
-                  "seasonal fireworks — and simplified at the detail level only: no crowds, no "
-                  "lettering, the downstream skyline a silhouette, the cruise boat off-frame at "
-                  "its downstream landing, no claim that the owner stood at the rail. The mist "
-                  "is the weather the sources describe. The Parks line north of the gorge "
-                  "bend — White Water Walk, the 1916 Aero Car, the Floral Clock, the Glen — "
-                  "stays in the drawer, beyond the promenade's sight.",
+        "caveat": "The place is drawn from the map and the sources: the trail, the terrace and "
+                  "Table Rock Centre's footprint and two storeys, the Horseshoe's brink, the American "
+                  "and Bridal Veil falls, Goat and Luna Islands and the gorge's edges are "
+                  "OpenStreetMap's; the 57 m drop, the American Falls' 21-30 m onto its boulders, the "
+                  "bridge's 290 m arch, the Skylon's 160 m from a street 76 m over the lower river, "
+                  "the bluff's 30 m rise (the Falls Incline Railway's 59.8 m of track at 30 degrees) "
+                  "and the ten Fallsview hotels' places, heights and floors (Wikipedia's list of the "
+                  "city's tallest buildings) are the sources'. Approximate and said so: the rim of the "
+                  "gorge north of the terrace (drawn 30-40 m inland of the mapped water) and its 38 m "
+                  "of sheer rock above the talus, the falling water's 24 m throw and the spray's "
+                  "height, the woods' height on the islands and the bluff, the bluff's line away from "
+                  "the railway, Table Rock Centre's 9.5 m eaves, its roofs and its cupola's place "
+                  "(read from photographs), the hotels' footprints (30 m; the Tower Hotel's shaft "
+                  "16 m) and their cladding, the parapet's measures (wall 60 cm, ironwork to 90 cm, "
+                  "posts 96 cm every 3 m) and its iron's pattern, read from photographs at the brink, "
+                  "the lamp posts' places. Left out and said so: the Sky "
+                  "Screamer (a ride 2 km south), the Casino and Rainbow towers and the Sheraton on the "
+                  "Falls down by the river (forms unsourced), and the far shores past two kilometres "
+                  "(under two pixels tall from the rail). No crowds, no boats on the water, no "
+                  "lettering, and no claim that the owner stood at the rail. The Parks line "
+                  "downstream -- White Water Walk, the Aero Car, the Floral Clock, the Glen -- stays "
+                  "in the drawer.",
     },
     {
-        # Journey Behind the Falls, compressed not deleted (round-20 fidelity directive): the
-        # elevator is the door on the promenade, the lane is the bedrock tunnel at its real
-        # section — the tunnels run about 2.4 m wide and 2.1 m high — and the far end opens onto
-        # the lower observation deck at the foot of the horseshoe, the curtain thirteen storeys
-        # overhead. Record facts, sources in TODO §0f: descent 125-150 ft through bedrock,
-        # tunnels bored 1889, the Cataract and Great Falls portals behind the sheet, ponchos at
-        # the door, and after dark the floodlit curtain from the deck.
+        # Journey Behind the Falls (round 33; sources in TODO §0o). Not the bedrock strata and the
+        # daylight sky the round-22 tunnel wore: the 1944 tunnel is concrete-lined and electrically
+        # lit (niagarafrontier.com), a barrel vault over wet walls with lamps along one side (Niagara
+        # Parks' own photograph), 2.4 m wide and about 2 m high. The lane is the main tunnel at its
+        # measured 56 m, elevator to deck (falzguy.com); the branch to the portals leaves it on the
+        # right 17 m in and is drawn running off to its two portals, 61 m and 110 m along; the far end
+        # opens onto the upper deck on the cliff, 38 m under the rim, with the falls drawn from the
+        # same surveyed model the promenade uses, seen from where the deck stands.
         "id": "journey", "label": "Behind the falls",
         "page": ROOM_BY_ID["journey"]["page"],
         "plates": ROOM_BY_ID["journey"]["plates"],
-        "lane": {"w": 240, "d": 470, "ceil": 213, "back": 160, "max_d": 1500},
-        "day": {"cycle": 900, "start": 0.55, "gain": 1},
-        "purpose": "Journey Behind the Falls: down through the bedrock, behind the horseshoe's curtain, to the deck at its foot",
+        "lane": {"w": 240, "d": 1931, "ceil": 260, "back": 160, "max_d": 6200, "vault": 60,
+                 "lid": "tunnelc", "under": True, "open_end": True, "wallmat": "tunnelc"},
+        "floor": "tunnel",
+        "day": {"cycle": 900, "start": 0.5, "gain": 1},
+        "purpose": "Journey Behind the Falls: the elevator's 38 m, the 1944 tunnel, the branch to the portals, the deck on the cliff",
         "status": "open",
         "kind": "personal",
-        "cover": "IMG/niagara-cover.jpg",
-        "cover_caption": "The horseshoe from its foot, floodlit after dark.",
-        "blurb": "One tunnel walked in the bedrock: strata on the walls, soft light, the roar "
-                 "rising; at the portal a window of falling water, and at the open end the deck "
-                 "at the foot of the curtain, thirteen storeys overhead.",
-        "clad_note": " The tunnel walls wear the bedrock's own strata in flat bands — limestone "
-                     "and dolostone pale, shale dark — the geology the descent exposes. Nothing "
-                     "on any of it carries a word.",
-        "sight_note": " At the portal the rock opens onto the back of the sheet; at the deck the "
-                      "whole curtain stands overhead into mist. After dark the floodlights hold "
-                      "their colour on the water, the way the real deck sees them.",
+        "cover": "IMG/journey-cover.jpg",
+        "cover_caption": "The curtain from the deck at the tunnel's mouth, drawn by the renderer.",
+        "blurb": "The main tunnel walked from the elevator to the deck, 56 m of wet concrete "
+                 "vault under Table Rock. The branch to the two portals opens on the right, and "
+                 "at the far end the deck stands on the cliff with the Horseshoe's curtain beside it.",
+        "clad_note": " The tunnel is concrete-lined, 2.4 m wide under a low barrel vault, wet, with "
+                     "wet wooden boards underfoot, a galvanised service pipe and caged lamps along its "
+                     "right wall. Nothing on any of it carries a word.",
+        "sight_note": " Seventeen metres in, the branch to the portals runs off to the right, its "
+                      "lamps receding to the Cataract Portal's daylight 61 m along and the Great "
+                      "Falls Portal's at its end. At the deck the curtain stands on your right, "
+                      "the basin and its spray ahead, Goat Island's cliff across the gorge and the "
+                      "American Falls far down it on the left. After dark the curtain holds the "
+                      "illumination's colour.",
         "objects": [
-            # The curtain from below: stood at real scale with its top above the frame, so the
-            # deck reads as the foot of a thirteen-storey wall of water, not a table model.
-            {"id": "falls-jb", "kind": "falls", "x": 0, "z": 2300, "y": -200, "ry": 0,
-             "w": 5200, "h": 3000, "d": 140,
-             "title": "The curtain, from the deck",
-             "hint": "Thirteen storeys of water overhead: the sheet's top stands above the "
-                     "frame, the mist at its foot is the deck's weather."},
+            # The branch's mouth in the right wall: its concrete reveal, the press that tells what
+            # lies along it.
+            {"id": "portal-jb", "kind": "portal", "x": 118, "z": 593, "y": 0, "ry": -90,
+             "w": 373, "h": 200, "d": 2,
+             "title": "The way to the portals",
+             "hint": "A second tunnel, to the south-east: the Cataract Portal opens off it 61 m "
+                     "along, the Great Falls Portal 49 m further, each at the end of a 16 m spur "
+                     "where you stand about 7 m behind the falling water."},
+            # The deck's front parapet: concrete with a pipe rail, the edge of the walk.
+            {"id": "deckwall-jb", "kind": "deckwall", "x": 0, "z": 2172, "y": 0, "ry": 0,
+             "w": 700, "h": 105, "d": 30,
+             "title": "The upper deck",
+             "hint": "The deck is 38 m under the rim at the foot of the cliff; the brink is 36 m over "
+                     "your head and the basin 20 m below. The lower deck, 18 steps down, is shut in "
+                     "deep winter for the ice."},
         ],
         "surfaces": [
-            # The strata, pale over dark, both walls, for the tunnel's length only; the deck
-            # beyond stands open to the sky.
-            {"side": -1, "z0": 20, "z1": 300, "y0": 0, "y1": 70, "kind": "rock", "tone": 0.55},
-            {"side": -1, "z0": 20, "z1": 300, "y0": 70, "y1": 140, "kind": "rock", "tone": 0.8},
-            {"side": -1, "z0": 20, "z1": 300, "y0": 140, "y1": 213, "kind": "rock", "tone": 1},
-            {"side": 1, "z0": 20, "z1": 300, "y0": 0, "y1": 70, "kind": "rock", "tone": 0.55},
-            {"side": 1, "z0": 20, "z1": 300, "y0": 70, "y1": 140, "kind": "rock", "tone": 0.8},
-            {"side": 1, "z0": 20, "z1": 300, "y0": 140, "y1": 213, "kind": "rock", "tone": 1},
+            {"side": -1, "z0": -55, "z1": 1931, "y0": 0, "y1": 200, "kind": "tunnelc"},
+            {"side": 1, "z0": -55, "z1": 528.6, "y0": 0, "y1": 200, "kind": "tunnelc"},
+            {"side": 1, "z0": 528.6, "z1": 657.2, "y0": 0, "y1": 200, "kind": "open"},
+            {"side": 1, "z0": 657.2, "z1": 1931, "y0": 0, "y1": 200, "kind": "tunnelc"},
+            # Round 35: the service pipe the photographs of the tunnels show along the right wall,
+            # galvanised, a coupling every 3 m, under the springing; it stops at the branch's jambs.
+            {"side": 1, "z0": -55, "z1": 528.6, "y0": 182, "y1": 191, "kind": "pipe"},
+            {"side": 1, "z0": 657.2, "z1": 1931, "y0": 182, "y1": 191, "kind": "pipe"},
         ],
         "lamps": [
-            # The tunnels are lit soft and diffused: two low glows, no sun underground.
-            {"x": 0, "y": 200, "z": 90, "r": 70, "k": 0.55},
-            {"x": 0, "y": 200, "z": 230, "r": 70, "k": 0.55},
+            # Caged lamps on the right wall, the photograph's amber, every eight metres.
+            {"x": 104, "y": 160, "z": z, "r": 60, "k": 0.55, "tint": "rgba(255,190,110,0.45)", "bulb": False}
+            for z in (30, 300, 760, 1040, 1320, 1600, 1880)
         ],
-        # The tunnel mouth opens full-height onto the deck: the end wall is a frame with nothing
-        # left in it, and the painter carries the gorge and the rail past it.
-        "vista": {"x": 0, "y0": 0, "y1": 213, "w": 240},
         "backdrop": {
-            "sky": [{"y0": -400, "y1": 3000, "c": "#7fa8cc", "glow": 1.0},
-                    {"y0": 3000, "y1": 30000, "c": "#5d82ac", "glow": 0.7},
-                    {"y0": 30000, "y1": 90000, "c": "#48688f", "glow": 0.5}],
-            "journey": {"y": -60, "foot": -700, "z0": 1200, "z1": 9000, "half": 6000,
-                        "wall": 120, "rail": 1450},
+            "skyAround": NIAGARA_SKY,
+            "world": {"prims": journey_world(LaneFrame(*JOURNEY_FRAME))},
         },
         "slots_title": "Places behind the falls",
         "slots": [
             {"label": "The Cataract Portal",
-             "note": "The rock opens behind the sheet: water for a window, the roar for a wall.",
-             "state": "Held by the portal glow in the tunnel wall; a photograph takes the slot when one arrives."},
-            {"label": "The lower deck",
-             "note": "The foot of the curtain, thirteen storeys overhead, mist for weather.",
+             "note": "Down the branch: the first of the two openings behind the sheet.",
+             "state": "Held by the branch and its light; a photograph takes the slot when one arrives."},
+            {"label": "The upper deck",
+             "note": "On the cliff at the curtain's side, the brink 36 m overhead.",
              "state": "Held by the deck and the curtain; after dark the floodlights hold it."},
         ],
         "stations": [
-            {"z": 10, "label": "the elevator landing"},
-            {"z": 120, "label": "the storied tunnel"},
-            {"z": 230, "label": "the Cataract Portal"},
-            {"z": 460, "label": "the lower deck"},
+            {"z": 20, "x": 0, "label": "the elevator landing"},
+            {"z": 560, "x": 40, "label": "the branch to the portals"},
+            {"z": 1880, "x": 0, "label": "the tunnel's mouth"},
+            {"z": 2120, "x": 0, "label": "the upper deck"},
         ],
-        "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
-                 "title": "The tunnel back", "hint": "It climbs to the promenade at Table Rock."},
+        "exit": {"id": "door-back", "kind": "door", "lift": True, "x": 0, "z": -46, "y": 0, "ry": 0,
+                 "leaf": "#4a4e52",
+                 "title": "The elevator up", "hint": "It climbs the 38 m to Table Rock Centre."},
         "back_to": "rooms-niagara.html#at-door-journey",
-        "caveat": "Journey Behind the Falls is drawn from public facts — the 125-150 ft descent, "
-                  "the 1889 tunnels at their real section, the two portals, the deck at the foot, "
-                  "the nightly illumination — and simplified at the detail level only: no crowds, "
-                  "no lettering, no ponchos on rails, no claim that the owner stood at the deck.",
+        "caveat": "Journey Behind the Falls is drawn from public facts: the 38 m descent, the 1944 "
+                  "concrete-lined tunnel at its 2.4 m section, the main tunnel's 56 m to the deck, the "
+                  "portal branch at 17 m with its portals at 61 m and 110 m (falzguy.com's measured "
+                  "figures), the deck on the cliff, the nightly illumination. Approximate and said "
+                  "so: the tunnel's bearing and the deck's exact place are read from the deck's "
+                  "photographs and the tunnel's length, not surveyed; the section's 2.6 m crown, the "
+                  "boards underfoot and the pipe along the wall are read from visitors' photographs "
+                  "of the tunnels (Niagara Tours, mylifeisajourney.com); the branch is drawn straight; "
+                  "the spray over the basin and the foam's reach are drawn to the photographs, not "
+                  "measured. No crowds, no ponchos, no lettering, and no claim that the owner stood "
+                  "on the deck.",
     },
     {
-        # The whole CN Tower as one walkable space (landmark-space §7, grounded-scene §6): one lane
-        # read as an ascent. The cab doors at the mouth, the LookOut's floor-to-ceiling glass carrying
-        # the city from above, the Glass Floor as the drop underfoot, the SkyPod's higher sky at the
-        # far window. Record facts, sources in TODO §0a/§0b: 553.3 m, opened 1976; LookOut 346 m;
-        # Glass Floor 342 m (the world's first, 1994); SkyPod 446.5 m; the ride, 58 seconds.
-        # Bearings are the real ones (grounded-scene §1 rung 3-4): Lake Ontario due south of the pod,
-        # Rogers Centre and the rail corridor at its base, the downtown grid north and east — the
-        # aerial tile is the city read from above, not a composed backdrop.
+        # The CN Tower's LookOut, as it stands (round 33; sources in TODO §0o). The LookOut is a ring
+        # of floor-to-ceiling window walls round the tower's core: 12 column bays of seven panes, each
+        # 1.61 m wide and 2.62 m high (Daily Commercial News, 2017), so a ring about 43 m across.
+        # The lane is one 18.6 m chord of it on the south-east side, walked north-east: the core on
+        # the left, the glass on the right looking south-east over the harbour and the islands, the
+        # far glass looking north-east at the financial district. The city out there is surveyed
+        # (`toronto_world`): the shore, the islands, the spit, every tower of 150 m and over on
+        # Wikipedia's list at its coordinates and heights. It replaces a generic aerial tile worn on
+        # both hands, which no bearing could be read off.
         "id": "cntower", "label": "The tower",
         "page": ROOM_BY_ID["cntower"]["page"],
         "plates": ROOM_BY_ID["cntower"]["plates"],
-        # A pod is narrower than a street and lower than a hall: the ceiling is the pod's own, and
-        # the mouth holds the cab doors instead of a curtain.
-        "lane": {"w": 560, "d": 640, "ceil": 330, "back": 220},
-        "floor": "pod",
-        "purpose": "The whole CN Tower as one space: the cab doors, the LookOut, the glass underfoot, the higher band",
+        "lane": {"w": 560, "d": 640, "ceil": 330, "back": 220, "lid": "acoustic", "wallmat": "core"},
+        "floor": "carpet",
+        # The city beyond the glass is held at night, so the room inside is too: without this the
+        # LookOut's lamps followed the hall's four-minute day and brightened to noon under a night
+        # sky (round 33: the tour's stops measured 134 falling to 94 for no reason in the place).
+        "night": 0.92,
+        "purpose": "The CN Tower's LookOut at 346 m: one stretch of its window ring, the city where it stands below",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/cntower-cover.jpg",
         "cover_caption": "The pod's own sheet: the city from above through the LookOut glass, drawn.",
-        "blurb": "One lane read as an ascent. The cab doors at the mouth, floor-to-ceiling glass "
-                 "carrying the city from above, a glass floor that is 342 m of drop, and the "
-                 "SkyPod's higher sky at the far window.",
-        "clad_note": " The lane is the pod at 346 m: floor-to-ceiling glass on both hands, the city "
-                     "from above worn as the wall's own material, a steel floor underfoot, and one "
-                     "square of it that is glass. Nothing on any of it carries a word.",
-        "sight_note": " At its far end a window holds a higher band of sky and the city three "
-                      "hundred and more metres below, running to a lake horizon. Nothing out there "
-                      "is a record of anybody standing in it.",
+        "blurb": "One stretch of the LookOut's ring at night: the core and its lifts on the left, "
+                 "floor-to-ceiling glass on the right over the harbour and the islands, the glass "
+                 "floor underfoot, and at the far end the financial district's towers.",
+        "clad_note": " The lane is the LookOut at 346 m: carpet underfoot, an acoustic-tile ceiling, the "
+                     "core's panelled wall on the left, and on the right the window wall's panes, "
+                     "1.61 m each, floor to ceiling. Nothing on any of it carries a word.",
+        # Only what the tour's frames show (round 34): the core, the towers north to Bloor (left
+        # at the far glass), St. Clair and Eglinton as slivers on its horizon, SkyTower (right).
+        # Humber Bay and Etobicoke are drawn too, but west, behind the core from this chord.
+        "sight_note": " Out of the glass Toronto is where it is: the harbour's north shore "
+                      "below, the Toronto Islands and Billy Bishop's runway lights to the south, "
+                      "the Leslie Street Spit to the south-east, and through the far glass the "
+                      "financial district -- First Canadian Place, Scotia Plaza, the St. Regis, "
+                      "TD and Commerce Court -- and the towers going on north up Yonge and Bay "
+                      "to Bloor, those at St. Clair and Eglinton thin on the horizon beyond; "
+                      "towers line the harbour, and SkyTower at Pinnacle One Yonge stands to the "
+                      "east, its roof about at your eye. The lights between the towers are drawn "
+                      "at a lit city's density, not surveyed street by street.",
         "objects": [
-            # The elevator is the door and the moment (landmark-space §7 beat 1): the ride is 58
-            # authored seconds in the real tower, here a press. The shaft's light runs past while
-            # the doors stand open.
+            # The lift landing in the core (landmark-space §7 beat 1): six glass-fronted cars, 58 s.
             {"id": "lift-cn", "kind": "door", "x": -278, "z": 60, "y": 0, "ry": 90,
              "leaf": "#2b3852",
              "glow": [{"r": 130, "k": 0.6, "dy": 210, "tint": "rgba(255,214,170,0.45)"}],
-             "states": [{"say": "The cab doors, shut. The real ride is 58 seconds; here it is a press."},
-                        {"door": 1, "say": "The doors stand open: the shaft's light runs past, and "
-                                          "the pod is the next room."}],
-             "title": "The cab doors",
-             "hint": "Six glass-fronted capsules run this shaft. Press to ride: the doors opening "
-                     "is the transition, not a cutscene."},
-            # The Glass Floor (beat 3): one panel of the floor that is 342 m of drop. `on` is the
-            # step-on state; the deep aerial tile carries the city below.
-            {"id": "glass-cn", "kind": "glassfloor", "x": 0, "z": 430, "y": 0, "ry": 0,
-             "w": 220, "h": 4, "d": 180,
-             "states": [{"say": "The Glass Floor at the rail: 342 m of drop under 64 mm of glass."},
-                        {"on": 1, "say": "On the glass. The plaza is 342 m below — the whole tower "
-                                         "is the drop under your feet."}],
+             "states": [{"say": "The lift doors, shut. The ride up is 58 seconds; here it is a press."},
+                        {"door": 1, "say": "The doors stand open on the lit car."}],
+             "title": "The lift doors",
+             "hint": "Six glass-fronted lifts run the tower's shaft to the LookOut in 58 seconds."},
+            # The LookOut's own glass floor (June 2017), set directly above the 1994 original on the
+            # SkyTerrace level below (seesight-tours; CNN fast facts). Its size is not published:
+            # it is drawn at the original's 24 m2. The floor under it is open to the city.
+            {"id": "glassfloor-cn", "kind": "glassfloor", "x": 0, "z": 430, "y": 0, "ry": 0,
+             "w": 480, "h": 4, "d": 500,
+             "states": [{"say": "The LookOut's glass floor, above the 1994 original one level down."},
+                        {"on": 1, "say": "On the glass: 346 m of air under it. Look down."}],
              "title": "The glass floor",
-             "hint": "The world's first, 1994: a square of floor that is a window straight down the "
-                     "length of the tower. Press to step on, press to step back."},
-            # The SkyPod as a band, not a room (beat 4): the far window's stop. Its real
-            # differentiator is the height — the horizon a shade further, the sky a band higher.
-            {"id": "sky-cn", "kind": "ledge", "x": 0, "z": 610, "y": 0, "ry": 0,
-             "w": 460, "h": 12, "d": 60,
-             "title": "The window at the higher band",
-             "hint": "Where the pod's glass ends and the SkyPod's sky begins: 446 m is mostly a "
-                     "further horizon and a higher band of dark."},
+             "hint": "Added to the LookOut in 2017, directly above the world's first glass floor "
+                     "(1994) on the SkyTerrace level 4 m below. Press to step on, press to step back."},
+            # The SkyPod is 100 m higher by its own lift from this level, not a window at the end
+            # of this one: its door is in the core.
+            {"id": "lift-skypod", "kind": "door", "x": -278, "z": 560, "y": 0, "ry": 90,
+             "leaf": "#3a4458",
+             "states": [{"say": "The SkyPod lift, shut. Its deck is 446.5 m up, 33 storeys over this one."},
+                        {"door": 1, "say": "Open: the SkyPod's own car, a separate ride from this level."}],
+             "title": "The SkyPod lift",
+             "hint": "The SkyPod, 446.5 m, is reached by its own lift from the LookOut level."},
         ],
-        # Floor-to-ceiling glass is a material band: the city from above rides the cladding the way
-        # every wall here wears its material. Both hands, from the cab to the far stop.
         "surfaces": [
-            # Darker than the pod itself: the city below is night outside the glass, and a window
-            # as bright as the room it looks out of is a mirror, not a view.
-            {"side": -1, "z0": 150, "z1": 600, "y0": 12, "y1": 260, "kind": "aerial", "tone": 0.55},
-            {"side": 1, "z0": 150, "z1": 600, "y0": 12, "y1": 260, "kind": "aerial", "tone": 0.55},
+            {"side": -1, "z0": -76, "z1": 640, "y0": 0, "y1": 330, "kind": "core"},
+            # The window wall: panes 1.61 m by 2.62 m, a dark soffit over them to the ceiling.
+            {"side": 1, "z0": -76, "z1": 640, "y0": 0, "y1": 262, "kind": "glazing", "pitch": 161},
+            {"side": 1, "z0": -76, "z1": 640, "y0": 262, "y1": 330, "kind": "soffit"},
         ],
-        # The restaurant that rings the real pod is one warm light band at its own hour, never
-        # modelled — a room with people eating is a room with people.
         "lamps": [
-            # The pod's own dim spots over the walk, the way the hall's tables outshine the room:
-            # the city below is the light this place is about, the fittings only keep the floor.
-            {"x": 0, "y": 296, "z": 100, "r": 240, "k": 0.8},
-            {"x": 0, "y": 296, "z": 260, "r": 240, "k": 0.8},
-            {"x": 0, "y": 296, "z": 420, "r": 240, "k": 0.8},
-            {"x": 0, "y": 296, "z": 580, "r": 240, "k": 0.8},
-            {"x": -250, "y": 252, "z": 300, "r": 140, "k": 0.6, "tint": "rgba(255,178,102,0.4)", "liton": 0.6},
-            {"x": 250, "y": 252, "z": 300, "r": 140, "k": 0.6, "tint": "rgba(255,178,102,0.4)", "liton": 0.6},
+            # Recessed downlights, low at night so the glass is a view and not a mirror.
+            {"x": 0, "y": 320, "z": z, "r": 200, "k": 0.42} for z in (40, 200, 360, 520)
         ],
-        "vista": {"x": 0, "y0": 30, "y1": 300, "w": 460},
+        # The far end is glass too, looking north-east; the core continues on its left.
+        "vista": {"x": 40, "y0": 0, "y1": 262, "w": 480, "pitch": 161},
         "backdrop": {
-            # The higher band and the pale horizon the SkyPod stop faces; below the horizon the
-            # citybelow painter carries the city three hundred metres down.
-            "sky": [{"y0": 300, "y1": 4000, "c": "#0b1424", "glow": 0.10},
-                    {"y0": 236, "y1": 300, "c": "#22375a", "glow": 0.20},
-                    {"y0": 186, "y1": 236, "c": "#31486e", "glow": 0.30}],
-            "citybelow": {"y": -900, "z0": 6000, "z1": 120000, "half": 60000,
-                          "lake": {"d0": 90000}},
+            "skyAround": TORONTO_SKY,
+            "world": {"prims": toronto_world(LaneFrame(5.18, -18.30, 0.0, 45.0))},
         },
         "slots_title": "Places in the tower",
         "slots": [
@@ -3749,26 +4653,36 @@ DISTRICTS = [
                       "from above, the drop under the glass.",
              "state": "Held by three drawn story frames; a photograph takes the slot when one arrives."},
             {"label": "The glass floor",
-             "note": "The one square of floor that is a window straight down.",
-             "state": "Held by the panel itself; no plate can stand in for 342 m."},
+             "note": "The square of floor that is a window down to the city.",
+             "state": "Held by the panel itself; no plate can stand in for 346 m."},
         ],
         "stations": [
-            {"z": 20, "label": "the cab doors"},
-            {"z": 180, "label": "the LookOut's glass"},
-            {"z": 340, "label": "the LookOut, mid"},
-            {"z": 430, "label": "on the glass floor"},
-            {"z": 560, "label": "the higher band"},
+            {"z": 20, "x": -60, "label": "the lift doors"},
+            {"z": 200, "x": 160, "label": "the window wall, south-east"},
+            {"z": 430, "x": 40, "label": "on the glass floor"},
+            {"z": 500, "x": -40, "label": "the SkyPod lift"},
+            {"z": 615, "x": 120, "label": "the north-east glass"},
         ],
-        "exit": {"id": "door-back", "kind": "door", "x": 0, "z": -46, "y": 0, "ry": 0,
-                 "title": "The cab doors at your back", "hint": "They open onto the hall, at the "
-                                                                "tower's own table."},
+        "exit": {"id": "door-back", "kind": "door", "lift": True, "x": 0, "z": -46, "y": 0, "ry": 0,
+                 "leaf": "#2b3852",
+                 "title": "The lift down", "hint": "It opens onto the hall, at the tower's own table."},
         # The landmark space owns its way back (the wiring loop respects an authored back_to): it
-        # returns to the prop that owns it, not to the street — the hall is the hub route in.
+        # returns to the prop that owns it, not to the street -- the hall is the hub route in.
         "back_to": "rooms-toronto.html#at-tower-cn",
-        "caveat": "The tower is drawn at the eye's own scale from public facts — heights, levels, "
-                  "bearings — and the city below is drawn from above, not surveyed. The ride is "
-                  "compressed, the detail is simplified, the experience is the real one's shape. "
-                  "Nothing here carries a name or a claim that the owner stood at 346 m.",
+        "caveat": "The LookOut is drawn from public facts: 346 m, the window wall's 12 bays of 1.61 m "
+                  "by 2.62 m panes, the glass floor of 2017 above the 1994 original, the SkyPod's own "
+                  "lift. The city below is the map's and the record's: the shore, the islands and the "
+                  "spit from OpenStreetMap, and every tower of 150 m and over -- all 117 on "
+                  "Wikipedia's list -- at its coordinates and height. Approximate and said so: the "
+                  "ring's curve straightened into one chord, the walk's 5.6 m width, the towers' "
+                  "footprints, the glass floor's size, the shore east of Sugar Beach, the runway's "
+                  "line, the towers' storeys (a typical office or residential floor, not each "
+                  "building's own), the ground (drawn level, though the city climbs away from the "
+                  "lake), and the lights between the towers, which are a lit city's density rather "
+                  "than its streets. Missing and said so: the city's nearly three hundred towers "
+                  "between 100 and 150 m, which the list does not place, so below the tall towers "
+                  "the city is lights, not buildings. Nothing here carries a name or a claim that "
+                  "the owner stood at 346 m.",
     },
     {
         "id": "undeclared", "label": "Next district", "purpose": "Purpose not declared",
@@ -3983,6 +4897,12 @@ def walk_object(o):
     awn_attr = f' data-awn="{escape(o["awn"])}"' if o.get("awn") else ""
     noren_attr = f' data-noren="{escape(o["noren"])}"' if o.get("noren") else ""
     fascia_attr = f' data-fascia="{escape(o["fascia"])}"' if o.get("fascia") else ""
+    # Round 32: what a real place needed that the street's kit never did -- a shop bay's mural ground
+    # and posts, a skyline's named towers, a bascule's split, a harbour boat's run. They travel in the
+    # document like an awning colour, or the renderer never sees them (lane-prop section 7).
+    extra_attr = "".join(
+        f' data-{k}="{escape(v if isinstance(v, str) else json.dumps(v, separators=(",", ":")))}"'
+        for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run", "lift", "blocks") if k in o))
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
@@ -3996,7 +4916,7 @@ def walk_object(o):
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
             f'data-d="{dep}"{solid_attr} style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
-            f'{states}{leave}{awn_attr}{noren_attr}{fascia_attr}{story_attr}></button>')
+            f'{states}{leave}{awn_attr}{noren_attr}{fascia_attr}{story_attr}{extra_attr}></button>')
 
 
 def walk_html(d, drawer):
@@ -4039,7 +4959,8 @@ def walk_html(d, drawer):
         # screen reader gets without anything being painted over the space.
         chips.append(
             f'<button type="button" class="walk-stop" data-walk-stop="{n}" '
-            f'style="--z:{round(st["z"] * Z_SCALE)}px;--p:{st["z"] * Z_SCALE / walk_d:.3f}" '
+            f'style="--z:{round(st["z"] * Z_SCALE)}px;--p:{st["z"] * Z_SCALE / walk_d:.3f}'
+            f'{f";--x:{st[chr(120)]}px" if "x" in st else ""}" '
             f'aria-label="{escape(st["label"])}, {round(st["z"] * Z_SCALE)} cm in"></button>')
     links = []
     for n, fr in enumerate(d.get("frames", [])):
@@ -4074,6 +4995,16 @@ def walk_html(d, drawer):
     # An open-world far end: the record authors how far the walker may keep going (walk units), and
     # the renderer lets the world continue past the last wall. Absent, the clamp is the wall itself.
     max_d_attr = f' data-lane-max-d="{lane["max_d"]}"' if lane.get("max_d") else ""
+    # A street with nothing over it (Nakamise) says so, and the renderer draws no lid.
+    max_d_attr += ' data-lane-open="1"' if lane.get("open") else ""
+    # Round 33: the rest of the shell is the place's -- what the ceiling is made of, a vault's rise,
+    # no wall behind or ahead, a lane underground (the renderer's `LID`/`VAULT`/`OPEN_*`/`UNDER`).
+    max_d_attr += f' data-lane-lid="{escape(lane["lid"])}"' if lane.get("lid") else ""
+    max_d_attr += f' data-lane-vault="{lane["vault"]}"' if lane.get("vault") else ""
+    max_d_attr += ' data-lane-open-back="1"' if lane.get("open_back") else ""
+    max_d_attr += ' data-lane-open-end="1"' if lane.get("open_end") else ""
+    max_d_attr += ' data-lane-under="1"' if lane.get("under") else ""
+    max_d_attr += f' data-lane-wallmat="{escape(lane["wallmat"])}"' if lane.get("wallmat") else ""
     # A place may own its ground: the pod walks on dark steel, not the street's concrete.
     floor_attr = f' data-floor="{d["floor"]}"' if d.get("floor") else ""
     # A place whose subject is the day: `"day": True` on the record, or a dict to author the cycle,
@@ -4084,6 +5015,10 @@ def walk_html(d, drawer):
     # so a day page runs the hall's own fifteen.
     day = d.get("day")
     day_attr = ""
+    # A place held at one hour of the night (`"night": 0.92`, the cycle's phase): the clock stops
+    # there, for a room whose window shows a night that does not move.
+    if d.get("night"):
+        day_attr = f' data-lane-night="{d["night"]}"'
     if day:
         opts = day if isinstance(day, dict) else {}
         day_attr = (f' data-lane-day="1" data-lane-day-cycle="{opts.get("cycle", 900)}"'

@@ -307,15 +307,33 @@ async function main() {
   ok("Journey's tunnel opens onto its deck at the page-authored walk limit",
      Number.isFinite(journeyLimit) && env.walk().maxDepth === journeyLimit,
      `${env.walk().maxDepth} cm / authored deck limit=${journeyLimit}`);
-  env.key("w"); await env.pump(600); env.keyUp("w"); await env.pump(8);
+  /* Walk until the clamp holds, not for a fixed number of frames: the tunnel is its real 56 m now
+     (round 33), and the 600 frames that used to reach the deck stopped 17 m in -- the same lie
+     walkToDepth's note describes. The cap scales with the authored limit. */
+  env.key("w");
+  for (let i = 0, last = -1; i < Math.ceil(journeyLimit / 2) + 600; i += 20) {
+    await env.pump(20);
+    if (Math.abs(env.walk().depth - last) < 0.01) break;
+    last = env.walk().depth;
+  }
+  env.keyUp("w"); await env.pump(8);
   const deckStop = env.walk().depth;
   env.key("w"); await env.pump(30); env.keyUp("w"); await env.pump(8);
   ok("W cannot walk beyond the authored Journey deck extent",
      deckStop <= journeyLimit + 0.01 && Math.abs(deckStop - journeyLimit) < 1.2
        && Math.abs(env.walk().depth - deckStop) < 0.1,
      `depth=${deckStop.toFixed(2)} / limit=${journeyLimit}`);
-  env.key("s"); await env.pump(600); env.keyUp("s"); await env.pump(8);
-  ok("S cannot walk through the rear boundary either", env.walk().depth >= env.walk().minDepth - 0.01,
+  // And back the whole way, until the rear clamp holds -- a fixed 600 frames now ends mid-tunnel,
+  // where "not through the rear boundary" would be true without ever meeting it.
+  env.key("s");
+  for (let i = 0, last = -1; i < Math.ceil(journeyLimit / 2) + 600; i += 20) {
+    await env.pump(20);
+    if (Math.abs(env.walk().depth - last) < 0.01) break;
+    last = env.walk().depth;
+  }
+  env.keyUp("s"); await env.pump(8);
+  ok("S cannot walk through the rear boundary either",
+     env.walk().depth >= env.walk().minDepth - 0.01 && env.walk().depth - env.walk().minDepth < 1.2,
      `depth=${env.walk().depth.toFixed(2)} / minimum=${env.walk().minDepth}`);
   env.key(" "); await env.pump(10); env.keyUp(" ");
   const peak = env.walk().height;
@@ -326,16 +344,18 @@ async function main() {
      `peak=${peak.toFixed(1)} cm / clearance=${env.walk().maxHeight} cm`);
 
   env.close();
-  env = await boot("rooms.html");
+  // Tokyo is Nakamise now and opens onto its plaza (round 32), so the sealed-lane clamp is proved on
+  // the CN Tower's LookOut, a sealed room with a clear walk to its end wall.
+  env = await boot("rooms-cntower.html");
   const sealed = env.doc.querySelector("[data-walk]");
   const sealedFar = Number(sealed.dataset.laneD) - 47;
-  ok("a sealed Tokyo lane stops 47 cm before its own end wall",
+  ok("a sealed lane (the LookOut) stops 47 cm before its own end wall",
      env.walk().maxDepth === sealedFar,
      `${env.walk().maxDepth} cm / wall at ${Number(sealed.dataset.laneD)} cm`);
-  env.key("w"); await env.pump(600); env.keyUp("w"); await env.pump(8);
+  env.key("w"); await env.pump(900); env.keyUp("w"); await env.pump(8);   // the LookOut is 18.6 m deep
   const wallStop = env.walk().depth;
   env.key("w"); await env.pump(30); env.keyUp("w"); await env.pump(8);
-  ok("W cannot pass through the sealed Tokyo end wall, even when held at the clamp",
+  ok("W cannot pass through the sealed LookOut end wall, even when held at the clamp",
      wallStop <= sealedFar + 0.01 && Math.abs(wallStop - sealedFar) < 1.2
        && Math.abs(env.walk().depth - wallStop) < 0.1,
      `depth=${wallStop.toFixed(2)} / limit=${sealedFar}`);
@@ -354,7 +374,7 @@ async function main() {
   ok("the Moji hall leaves a full-body side aisle around the solid display",
      aisleClearance > 0 && env.walk().halfWidth > plinthHalf + env.walk().radius,
      `${aisleClearance.toFixed(0)} cm spare beyond a 48 cm body`);
-  env.key("w"); await env.pump(700); env.keyUp("w"); await env.pump(8);
+  env.key("w"); await env.pump(900); env.keyUp("w"); await env.pump(8);   // the table stands 22 m in now
   const atPlinth = env.walk().depth;
   env.key("w"); await env.pump(40); env.keyUp("w"); await env.pump(8);
   ok("the walker stops at the near face of the port table instead of entering its volume",
@@ -368,9 +388,12 @@ async function main() {
      `aisle x=${sideX.toFixed(1)}; collider edge=${plinthX + plinthHalf + env.walk().radius}`);
   env.key("w"); await env.pump(250); env.keyUp("w"); await env.pump(8);
   const pastTable = env.walk().depth;
-  ok("the side aisle stays open past the full depth of the display",
-     pastTable > plinthZ + Number(plinth.dataset.d) / 2 + env.walk().radius + 80,
-     `depth=${pastTable.toFixed(0)}; far edge=${plinthZ + Number(plinth.dataset.d) / 2 + env.walk().radius}`);
+  /* Round 32: the true-scale table meets the hall's far wall, where the strait carries on at the same
+     scale, so there is no floor beyond it to walk onto. What this defends is that the table is not a
+     wall across the hall: the aisle beside it stays open for the hall's whole depth, to its clamp. */
+  ok("the side aisle stays open beside the display for the hall's whole depth",
+     pastTable > plinthFront && pastTable >= env.walk().maxDepth - 1.5,
+     `depth=${pastTable.toFixed(0)}; clamp=${env.walk().maxDepth}`);
 
   env.close();
   env = await boot("rooms-toronto.html", "#at-tower-cn");
@@ -452,7 +475,7 @@ async function main() {
   /* ---- 6. Every room exits to the street, by attribute and by Esc ---- */
   out.push("\n-- Rooms: every way out lands on the street --");
   for (const [file, objId, label] of [
-    ["rooms.html", "noren", "Tokyo"],
+    ["rooms.html", "gate-kaminari", "Tokyo"],
     ["rooms-fukuoka.html", "curtain-back", "Fukuoka"],
     ["rooms-toronto.html", "door-back", "Toronto"],
   ]) {
@@ -470,10 +493,13 @@ async function main() {
   }
 
   /* ---- 7. Tokyo inside: the plate still opens, Esc folds it before leaving ---- */
-  out.push("\n-- Tokyo mouth: E acts on the street kit, the noren leaves --");
+  out.push("\n-- Tokyo, inside Kaminarimon: E acts on the first shop, the gate leaves --");
   env = await boot("rooms.html");
-  const mouth = env.reach();
-  ok("tokyo: something street-level is in reach at the mouth", !!mouth, mouth?.dataset.obj || "none");
+  // Nakamise is 9.1 m wide, so nothing stands within arm's reach of the gate's centre line: take a
+  // step in and sidle to the west row, the way a visitor reaches the first shop.
+  await walkToDepth(env, 150);
+  const mouth = await sidleToReach(env, "shopbay-w1", -1) ? env.reach() : null;
+  ok("tokyo: a step inside the gate, the first shop on the west row is in reach", !!mouth, mouth?.dataset.obj || "none");
   const card = env.doc.querySelector("[data-walk-card]");
   env.key("e");
   await env.pump(10);
@@ -514,7 +540,7 @@ async function main() {
     ["street.html", "door-toronto", "rooms-toronto.html", { fwd: 420, side: -1 }],
     ["street.html", "door-tokyo", "rooms.html", { fwd: 1200, side: 1 }],
     ["street.html", "door-fukuoka", "rooms-fukuoka.html", { fwd: 2000, side: -1 }],
-    ["rooms.html", "noren", "street.html", { fwd: 300, side: 0 }],
+    ["rooms.html", "gate-kaminari", "street.html", { fwd: 300, side: 0 }],
     ["rooms-fukuoka.html", "curtain-back", "street.html", { fwd: 300, side: 0 }],
     ["rooms-toronto.html", "door-back", "street.html", { fwd: 300, side: 0 }],
   ]) {

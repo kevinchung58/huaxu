@@ -55,7 +55,7 @@ become one table, committed inside the district record:
 | claim | value | bearing / facing | source rung |
 |---|---|---|---|
 | e.g. Lake Ontario | due south of the pod, horizon ~visible from 346 m | S | rung 3 + rung 4 |
-| e.g. Rogers Centre | at the tower's base, NE of the shaft | NE, close | rung 3 |
+| e.g. Rogers Centre | ~190 m west-south-west of the shaft, roof 86 m | WSW, close | rung 3 (OSM way 7969701) |
 | e.g. Glass Floor | 4 m below the LookOut level, 24 m² | down | rung 2 |
 
 Rows are the things the scene promises: heights that matter, the real order of levels, what each
@@ -146,6 +146,86 @@ the islands between the falls. And the ticketed descent is compressed, not delet
 the rail end opens Journey Behind the Falls — the bedrock tunnel at its real section, the
 portal a window of falling water, the open end the deck at the curtain's foot, floodlit
 after dark — one lane, four stations, every figure from the sources.
+
+The same method, third pass — the rooms that came before the rule (round 32). Tokyo, Moji and the
+Toronto hall had been built before §1 existed, and each was re-read against sources rather than
+patched. What the pass found is the reason this skill exists: a market hall wearing the clock cupola
+that was demolished in 1902; Rogers Centre on the wrong side of the tower and its roof opening the
+wrong way; a drawbridge hinged at its middle, opening only at night when the real one never does; two
+of four Moji buildings on the wrong side of their basin; and a Tokyo "lane" that was no place at all.
+Rung 3 was reachable here as OpenStreetMap (Nominatim search with `polygon_geojson=1`, and the API's
+`map.json` on a tiny bounding box to read building edges — street widths came from those); Google
+Maps and Street View were not, and the records say so. Two rules came out of it. A real corridor
+longer than the lane keeps its order, its width and each unit's width, and the *count* shrinks
+(Nakamise: 250 m in 30 m, every bay a real shop). A table model keeps one scale for every model and for
+the backdrop beyond it, positions turned from map coordinates in code (`moji_xy`), so the bearings
+in the frame are the map's. Where the sources stopped — a hall's height, a tower's footprint — the
+record says "approximate", and a building with no source for its form is left off and named in the
+caveat rather than drawn as a box.
+
+*Correction, round 33.* §2's example table used to put Rogers Centre "NE of the shaft". It
+stands about 190 m west-south-west (OpenStreetMap), and the hall's model had been built on the wrong
+side of the tower until round 32 -- an example in a skill is a source too, and a wrong one travels.
+
+The same method, fourth pass — the owned spaces as surveyed worlds (round 33). The CN Tower, the
+falls and the Journey had measurement tables since rounds 21-27, but what the frames showed was still
+composed: the LookOut's view a wallpaper tile of a city, the falls the hall's table model stood at
+scale between a hedge and a wall of mist, the Journey's tunnel bare rock where the real one has been
+concrete-lined since 1944. A table that is not what the frame draws is not fidelity. Each world is
+now built from the map in the generator: OpenStreetMap polygons (the Recreation Trail, the three
+falls' crests, Goat and Luna Islands, the Toronto Islands, Billy Bishop) turned into lane centimetres by
+`LaneFrame`, the towers from the Wikipedia list at their coordinates and heights (23 of 214 m and over
+within 4 km in round 33; all 117 of 150 m and over in round 34 -- and the 23 had claimed "every tower
+over 214 m within 4 km" while missing one, 11 YV, a row without a picture: count the rows a filter
+kept against the source's own count before claiming "every"), and the LookOut as an 18.6 m chord of
+its real 43 m ring at 346 m, facing north-east. What
+the method teaches: a frame's furniture can be checked against a photograph (an iron railing on stone
+posts, not a hedge), and so can its light -- a night photograph from the deck measures luma 37, which
+is what told the gate its floor, not the room its brightness. Where the sources stop -- the branch
+tunnel's line, the towers below 150 m (the list does not place them), the city's streets, the ground's
+rise from the lake -- the record says so; even 117 real towers stop at 150 m, and the caveat says
+below them the city is lights, not buildings, rather than filling the gap with invented boxes. A
+scope line drawn by distance has to be checked in the frame too: the round-34 draft cut at 4 km and
+would have called the Yonge and Eglinton towers out of sight, and the far glass shows them.
+
+**The falls, corrected (round 35).** Read against photographs of the place (rung 5, fetched by image
+search and kept in `.preview/r35/ref/`, never shipped), the round-33 Table Rock failed the recognition
+test in four ways no map could show: Table Rock Centre is a buff stone Collegiate Gothic building with
+arched windows under steep roofs (Wikipedia names the style; the photographs show it), not a grey box
+with a glass band; the gorge wall under the terrace is sheer rock in level beds for two-thirds of the
+drop and green talus below, not a ramp; the curtain is streaks of water, not a sheet with windows; and
+the bowl is white foam under spray. Where a height was missing it was derived from a sourced
+neighbour rather than guessed: the Fallsview bluff's 29.9 m from the Falls Incline Railway's 59.8 m at
+30 degrees, the Skylon's street 17.5 m over the trail from its 160 m above the street against 236 m
+above the bottom of the falls. The towers on the bluff come from the city's own Wikipedia list at their
+coordinates, heights and floors; what the list holds that is not a building there (a ride, two
+riverside towers, one hotel whose form nobody sourced) is named in the caveat instead of boxed.
+
+**Read the small things off the photographs too (round 35, second pass).** The owner looked at the
+corrected falls and asked for them finer, and inside the falls above all. What the photographs held
+that the first pass had boxed: the Table Rock parapet is a low wall of rough grey stone with rough
+posts and black ironwork of rings between them, at the hip -- not straight bars at hand height; the
+lamps are black lanterns on black posts; Journey's tunnels are floored with wet wooden boards laid
+along the passage, carry a galvanised service pipe along one wall, and stand taller than drawn (people
+reach about six tenths of the crown). Measures read from a photograph are read against the people in
+it, and the caveat says so; a pattern drawn from a photograph (the ironwork's rings) is named as
+such. Not drawn because the source was fetched but the time went to the inside of the falls: the
+Niagara Parkway past the terrace (OSM: northbound, two lanes, under the Centre at 4.4 m) -- recorded,
+so the next pass starts from the ways, not from a search.
+
+**Take the models apart (round 36).** The owner looked at Moji Port on its one table and said the
+models had to come apart -- at 1.5 cm to the metre every building was a block a few centimetres high,
+and nobody could see what made it beautiful. The four buildings now stand on stands of their own down
+the hall, all at one scale (1:25) so the station is still twice the length of the others, and the table
+keeps the port's layout with their OpenStreetMap footprints as low plates. A model seen from two metres
+has to be built from sources the way a scene is: lengths from the map's outlines, floor areas and
+storeys from Wikipedia and the Agency for Cultural Affairs' register, and the rest read off photographs
+(kept in `.preview/r36/ref/`). Read that way, three of the four table painters were wrong in ways the
+table's scale had hidden: Osaka Shosen is orange facing brick banded grey, not pale render; the
+customhouse has two storeys, not three with a glazed top; the Dalian hall's tower is a banded polygon
+under a tall dark spire, not a steeple stepping square to round. And a drawn plate hung behind a
+faithful model is checked against it: the station's plate showed a tiled-roof house that is no part of
+Moji, and was redrawn from the model's own frame and the sources.
 
 ## 7. Refusals
 

@@ -10,8 +10,11 @@
 import { JSDOM } from "jsdom";
 import fs from "node:fs";
 
+// Every page that carries props, read off the disk (a hand-typed list missed every space built after it).
+const PAGES = fs.readdirSync(".").filter((f) => f.endsWith(".html")
+  && fs.readFileSync(f, "utf8").includes('data-obj="')).sort();
 let bad = 0;
-for (const f of ["rooms-toronto.html", "rooms.html", "rooms-fukuoka.html", "street.html"]) {
+for (const f of PAGES) {
   if (!fs.existsSync(f)) continue;
   const doc = new JSDOM(fs.readFileSync(f, "utf8")).window.document;
   const objs = [...doc.querySelectorAll("[data-obj]")].map((el) => {
