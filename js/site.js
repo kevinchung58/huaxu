@@ -881,6 +881,31 @@ function leaveOverlay(root, trigger) {
       c.fillRect(Math.floor(rnd() * 128), Math.floor(rnd() * 128), s, s);
     }
   };
+  /* The LookOut's towers wear their own window tile (round 34). The street's `paintWindows` lights a
+     cell by arithmetic on its index, (8r + k) % 3, which puts the lit windows on diagonals: across a
+     street that reads as a facade, but on a hundred towers seen from 346 m the diagonals ran face
+     after face into hatching. Same grid (eight storeys of eight windows), same glass, the same 28 of
+     64 lit in the same two colours -- so the same mean -- and which ones are lit is a seeded draw.
+     A free draw clumps too (the first one stacked three warm windows in one column, a stripe of its
+     own), so the seed is the first from 34117 whose draw keeps every row and column to two to five
+     lit, no line of more than three lit windows in any direction, and the six warm ones in six
+     different rows and columns. */
+  const paintTowerWindows = (c) => {
+    c.fillStyle = "#1b2740"; c.fillRect(0, 0, 128, 128);
+    let seed = 86789;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const cells = Array.from({ length: 64 }, (_, i) => i);
+    for (let i = 63; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      [cells[i], cells[j]] = [cells[j], cells[i]];
+    }
+    cells.slice(0, 28).forEach((i, n) => {
+      c.fillStyle = n < 6 ? "rgba(255,232,180,0.72)" : "rgba(206,226,255,0.5)";
+      c.fillRect((i % 8) * 16 + 3, Math.floor(i / 8) * 16 + 4, 9, 7);
+    });
+    c.strokeStyle = "rgba(9,14,26,0.55)"; c.lineWidth = 1;
+    for (let r = 0; r <= 8; r++) { c.beginPath(); c.moveTo(0, r * 16); c.lineTo(128, r * 16); c.stroke(); }
+  };
   const paintFloor = (c) => {
     // Wet asphalt at night is a *reflective* surface, which is why it reads mid-tone and not black:
     // the joints and the sheen are what tell you it is under you.
@@ -1347,7 +1372,7 @@ function leaveOverlay(root, trigger) {
     // Round 33's materials (see the painters) are lazy -- painted on first use, see `LAZY`.
     Object.assign(LAZY, { carpet: paintCarpet, acoustic: paintAcoustic, core: paintCore,
                           soffit: paintSoffit, tunnelc: paintTunnelC, stonewall: paintStoneWall,
-                          pavers: paintPavers, cityn: paintCityNight });
+                          pavers: paintPavers, cityn: paintCityNight, towerwin: paintTowerWindows });
     PATS.win = winPat;
     // Locals as well as registry entries: the end wall's face and the parapet's coping are painted in
     // draw() by name, and reading them back off PATS there would be the drawing code doing a lookup for
@@ -1369,7 +1394,9 @@ function leaveOverlay(root, trigger) {
                carpet: "#4b4741", acoustic: "#b4b1a9", core: "#8d8b86", soffit: "#2e323a", tunnelc: "#6e6f6c",
                // cityn and win are their tiles' measured means (round 33): the fallback stands in for the
                // tile, and the city's had been its unlit ground alone, a third of the tile's brightness.
-               stonewall: "#6a655b", pavers: "#7d7a74", cityn: "#363136", win: "#263149" };
+               // towerwin measures the same as win (round 34): same glass, same count, same colours.
+               stonewall: "#6a655b", pavers: "#7d7a74", cityn: "#363136", win: "#263149",
+               towerwin: "#263149" };
   };
 
   /* Two shapes of island live inside the hit layer, and they answer two different questions: a list

@@ -1,6 +1,70 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-15 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-16 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0p. 第三十四輪（2026-10-16）：「繼續」——Wikipedia 150 m 以上 117 棟全部照座標與高度放進 LookOut 窗外
+
+**站主原話**：「繼續」，回答第 33 輪結尾的問題「要不要下一輪把 150–214 m 大樓照 Wikipedia 列表補進去？」。
+解讀：要。範圍與做法由我決定（理由見下，回報時講明）。
+
+### 來源
+- **Wikipedia「List of tallest buildings in Toronto」**，wikitext 原文
+  `index.php?title=List_of_tallest_buildings_in_Toronto&action=raw&section=9`（2026-10-16 讀；渲染頁 39 個 chunk，
+  原文只要 9 個，主表在 chunk 0–5，排名 1–117，最後一名 The Saint 150 m）。內文：150 m 以上 117 棟（2026）；
+  infobox 寫 100 m 以上 405 棟（150 m 以上 111 棟是較舊的數字，以表為準）。轉錄：`_gen_html.py` 的 `TOR_TOWERS`
+  （座標、高度、照 purpose 欄定佔地）；工作檔 `.preview/r34/wiki-rows.tsv`（gitignored）。
+- 已有的 23 列逐列對過表：名稱、座標、高度都對。
+
+### critique 抓到的（每條都有證據）
+1. **第 33 輪的「4 km 內 214 m 以上全部」是假的**：漏了 **11 YV**（排名 21、221.91 m、塔北 3.2 km、表上沒有圖片的那一列）。
+   教訓：filter 留下幾列，要對來源的數再說「全部」。
+2. **caveat 沒講地面是平的**（城市從湖邊往北爬升）→ 補上「the ground (drawn level, though the city climbs away
+   from the lake)」。新列 base 一律 0。
+3. **原本想只補 4 km 內（79 列）**，但最後一站往左 30° 看，遠窗看到約 343°：Yonge–Eglinton、One Delisle、
+   Hullmark（352–354°、5.2–13.3 km）在畫面裡，說「看不到」是假的 → **117 列全收**（4 km 外另 15 列）。
+   投影確認（`/tmp/r34/proj.py`，用 renderer 的 cam 算式）：最終截圖 frame 13（yaw −34.6°）裡在 x≈263–285、
+   寬 1.8–4.5 px，整棟落在地平線（y≈417）下方 4–46 px（頂 421–439、底 431–463）；截圖裡確實是幾 px 寬的細條。Humber Bay／Etobicoke（253–268°）在核心背後：畫了讓列表完整，任何 yaw 都
+   不在畫面內（註解寫明，sight_note 不提）。
+4. **窗格斜紋**：`win` 貼圖用 `(8r+k)%3` 決定哪格亮 → 亮窗排在對角線上；117 棟一起看，近處每面都是斜紋、遠處變
+   moiré（`.preview/r34/crop14-near.png`、`crop13-far.png`）。改成塔專用的 lazy tile **`towerwin`**
+   （`paintTowerWindows`）：同 8×8 格、同底色、同 28/64 亮、同兩種顏色（6 暖），所以平均色相同（量過：兩者都是
+   `#263149`，FLATOF 加同值）；亮哪格改成種子亂數。第一個自由抽樣把 3 個暖窗疊在同一欄（自己就是一條紋），所以種子取
+   「從 34117 起，第一個每行每列 2–5 格亮、任何方向連續亮不超過 3、6 個暖窗在 6 個不同的行與列」＝ **86789**。
+   `paintWindows` 沒動（`bd.city` 的街景也用 `winPat`）。
+5. **剩下的 moiré（沒修，記下來）**：3 km 外窗格比一個像素小，pattern fill 沒有 mip，少數幾面仍有條紋。試過
+   box-filter mip（64→8 四層 halving、依較被壓縮的軸選層）：條紋沒了，但中距離大樓變成灰藍斑駁的一塊、亮窗消失——
+   亮窗是點光源，平均值保不住它的亮度。**退回、不出貨**（A/B：`.preview/r34/cmp13-far-v2v3.png`）。
+
+### 範圍與近似（我決定的，理由）
+- **全部 117 列**（不是只 4 km 內）：理由見 critique 3。
+- **佔地**：辦公 40 m；住宅、旅館、混合用途 30 m（典型值，非實測）。兩棟列表大樓在 −16.7° 網格裡靠太近時，**兩棟都
+  縮小、保持 4 m 間距，不移位**（座標是來源的）：55C 與 Chaz Yorkville → 18 m；1 Yorkville 與 Eight Cumberland → 26 m。
+  驗證：117 列、名稱不重複、0 對重疊（`/tmp/r34/overlap.py`）。
+- **地面畫成平的**，caveat 講明；樓層用典型層高（辦公 4.0 m、住宅 3.2 m），不是逐棟。
+- **sight_note 只寫畫面裡有的**：金融區核心、沿 Yonge／Bay 往北到 Bloor（frame 13）、St. Clair 與 Eglinton 的細條、
+  港邊一排大樓、SkyTower（frame 15，屋頂約在眼高）。
+
+### 驗證（最終程式碼）
+- 頁面：`rooms-cntower.html` 94,479 → 194,563 B（gzip -9：15,526 → 27,402）；對照 niagara 183,856、journey 186,304。
+  `js/site.js` +1,763 B（`paintTowerWindows`＋LAZY＋FLATOF 各一筆）。
+- 閘門（最終程式碼一次跑完，`.preview/r34/gates.sh` → `final-summary.txt`）：`node --check`、`py_compile`、產生器
+  exit 0；shapes 92 全解析；geometry OK；clash OK；walk 163/163；chain 0 failure；e2e 0 failure；objects exit 0；
+  story 25/25；cost-probe（rooms.html）peak 8317、bad 0、huge 0（同第 33 輪）；impeccable `[]`；md5 連跑兩次相同；
+  `git diff --check` OK。
+- lane-shot CN Tower 7/7（**16 格每格都看過**，`final-cntower/`）：luma HEAD → 最終 110.8→110.8、86.8→86.9、
+  90.3→85.7、86.1→86.0、48.2→48.1，回頭 87.5→87.3；色數 433／455／286／275／277。注意：lane-shot 每跑一次轉向角
+  會差幾度（frame 13 在 −24.6° 到 −35.2° 之間），luma 因此 ±2–3，不全是程式差異。
+- fills（只算主畫布；`.preview/r34/lane-count.mjs`＝lane-shot 加一個計數，因為 `--dump` 的 "(N fills)" 含每次
+  resize 重畫貼圖的約 2,040 次）：每格 HEAD → 最終 493→788、541→714、508→600、425→765、443→625、417→533、298→630、
+  296→474、338→434、265→599、264→442、310→414、210→542、224→402、265→365、258→316；最多 788（東京 8317、上限 8600）。
+  cost-probe 指向 rooms-cntower（scratch 版 `.preview/r34/cost-probe-any.mjs`）：peak 4958 → 6189、bad 0、huge 0。
+- 截圖：改前 `.preview/r34/before-cntower/`；改後（`win` 斜紋）`after-cntower/`；`towerwin` `after-cntower-v2/`；
+  mip 實驗（退回）`after-cntower-v3/`；最終 `final-cntower/`。
+
+### 沒做到／要知道的
+- **100–150 m 約 288 棟沒有**（405 − 117；這張表不給它們的座標），所以高樓以下的城市是燈，不是建築——caveat 講明。
+- 地面是平的；佔地、層高是典型值；遠處少數幾面仍有 moiré（critique 5）。
+- 故事圖沒有重做；`browser-check.py` 未跑（Playwright 的 Chromium CDN 連不到）。
 
 ## 0o. 第三十三輪（2026-10-15）：「其他的多倫多的做好了嗎？」——CN Tower／Niagara／Journey 三個子空間照真實重建
 
@@ -27,7 +91,8 @@
   American 217355188、Bridal Veil 515298933、Goat 3743454、Luna 37356202、Table Rock Centre 420548287、
   Skylon 241004747、Rainbow Bridge 162149070。Toronto——CN Tower way 32742038、Rogers Centre 7969701、
   Toronto Islands relation 10705563、Billy Bishop 85471、Tommy Thompson 189780702、Union 14744491、Queens Quay W 五段。
-- **Wikipedia「List of tallest buildings in Toronto」（2026）**：塔 4 km 內 214 m 以上 23 棟（座標＋高度）；infobox：
+- **Wikipedia「List of tallest buildings in Toronto」（2026）**：塔 4 km 內 214 m 以上 23 棟（座標＋高度；**第 34 輪更正：
+  漏了 11 YV，現在是 150 m 以上全部 117 棟，見 §0p**）；infobox：
   全市 100 m 以上 405 棟、150 m 以上 111 棟、200 m 以上 34 棟。
 - **CN Tower**：DCN 2017（LookOut 12 bays×7 sections、玻璃 1.61×2.62 m）；CNN（Glass Floor 1994、LookOut 2017 翻修）；
   torontocntowertour（SkyPod 446.5、EdgeWalk 356、360 餐廳 351、LookOut 346、Glass Floor 342 m）；EBSCO（6 部電梯、58 s）。
@@ -49,13 +114,14 @@
 | LookOut | 346 m；43 m 環上一段 18.6 m 的弦，面向 NE | NE | 2＋3 |
 | 窗 | 竪框間距 161 cm、玻璃落地、暗色 soffit 262–330 cm | SE、NE | 2＋4 |
 | Glass Floor | 24 m²、342 m，真的開洞看到下方城市 | 下 | 2 |
-| 城市 | 地面 −346 m 分環到 43.2 km；湖、群島、半島、機場跑道燈（約略）；23 棟大樓；Rogers Centre 86 m | — | 3 |
+| 城市 | 地面 −346 m 分環到 43.2 km；湖、群島、半島、機場跑道燈（約略）；23 棟大樓（第 34 輪：117 棟）；Rogers Centre 86 m | — | 3 |
 | 大樓窗格 | 一層 4.0 m（辦公佔地）／3.2 m（住宅佔地） | — | 典型值（非逐棟） |
 
 ### 範圍表（in-frame／drawer／off-frame）
 - **CN Tower**：in-frame＝核心牆＋電梯門、吸音天花、地毯、落地窗＋竪框、soffit、Glass Floor（真洞）、SkyPod 電梯；
-  窗外：湖、群島、Tommy Thompson 半島、Billy Bishop 跑道燈、23 棟大樓（亮窗）、城市燈、夜空。drawer（畫了、這段弦看不到）：
-  Rogers Centre（西南西，在核心另一側）。off-frame（理由）：150–214 m 的約 88 棟、100–150 m 的約 300 棟（本輪未轉錄座標）；
+  窗外：湖、群島、Tommy Thompson 半島、Billy Bishop 跑道燈、23 棟大樓（亮窗；第 34 輪：117 棟）、城市燈、夜空。drawer（畫了、這段弦看不到）：
+  Rogers Centre（西南西，在核心另一側）。off-frame（理由）：150–214 m 的約 88 棟、100–150 m 的約 300 棟（本輪未轉錄座標；
+  第 34 輪補了 150 m 以上全部，100–150 m 仍沒有）；
   EdgeWalk（356 m 的外環，不在 LookOut 內）；360 餐廳（另一層）；人；文字。
 - **Niagara**：in-frame＝鋪面、石柱鐵欄杆、Table Rock Centre、燈柱、Horseshoe、American、Bridal Veil、Goat／Luna、峽谷、
   河、Rainbow Bridge、Skylon、霧、彩虹、夜間點燈、煙火。off-frame：美方岸上建物細節、遊船、人。
@@ -115,7 +181,8 @@
 
 ### 沒做到／要知道的
 - **CN Tower 窗外只有 23 棟**（4 km 內 ≥214 m）；真實是一整片燈牆（全市 150 m 以上 111 棟、100 m 以上 405 棟）。
-  下一步可把 Wikipedia 表 150–214 m 那段（約 9 個 chunk）轉錄進來——要不要做待站主決定。
+  下一步可把 Wikipedia 表 150–214 m 那段（約 9 個 chunk）轉錄進來——要不要做待站主決定。**→ 第 34 輪站主說「繼續」，
+  已做：117 棟（見 §0p）。**
 - 地面是平的；城市燈是貼圖，不是真實街道；Niagara 鋪面在斜視角仍有輕微 moiré。
 - 近似值：LookOut 弦拉直、寬 5.6 m、大樓佔地（40／30 m）、Glass Floor 形狀、Sugar Beach 以東岸線、跑道燈位置；
   Niagara 峽谷北段崖線、崖面／崖錐分界、水幕 24 m 拋距、島上樹高 14 m、Table Rock Centre 高 10 m、燈柱位置、Skylon 底座；

@@ -2576,9 +2576,11 @@ def tor(lat, lon):
     return ll_m(lat, lon, *TOR_O)
 
 
-# The skyline the LookOut looks at: every tower over 214 m within four kilometres of the tower, with
-# the coordinates and heights of Wikipedia's "List of tallest buildings in Toronto" (read 2026-10-15).
-# Footprints are typical (office 40 m, residential 30 m), not surveyed; bases are the ground's level.
+# The skyline the LookOut looks at: every tower of 150 m and over in Wikipedia's "List of tallest
+# buildings in Toronto", all 117, at the list's coordinates and heights (read 2026-10-15 for the 23 of
+# 214 m and over within 4 km, the rest 2026-10-16; the list counts topped-out towers, and so does this).
+# Footprints are typical (office 40 m, residential 30 m), not surveyed; bases are the ground's level,
+# and the ground is drawn level, though the city climbs away from the lake.
 TOR_TOWERS = [
     ("SkyTower at Pinnacle One Yonge", 43.64333, -79.375, 351.8, 34, -4.0),
     ("First Canadian Place", 43.648838, -79.381744, 298.3, 46, 0),
@@ -2603,6 +2605,110 @@ TOR_TOWERS = [
     ("Shangri-La Toronto", 43.649086, -79.386177, 214.0, 30, 0),
     ("One Bloor West", 43.669917, -79.387028, 308.9, 34, 0),
     ("One Bloor", 43.669983, -79.386147, 257.3, 34, 0),
+    # The rest of the list within the 4 km (read 2026-10-16, the article's own wikitext): 11 YV,
+    # 221.9 m, which the first reading missed, then every tower from 214 m down to 150 m, in the
+    # list's order. The footprint follows the list's purpose column -- an office 40 m, a residence,
+    # hotel or mixed-use tower 30 m -- except where two listed towers stand closer than that: 55C
+    # and Chaz on Charles Street East, and Eight Cumberland between 1 Yorkville and 11 YV, are
+    # narrowed to keep 4 m between them rather than moved off their coordinates.
+    ("11 YV", 43.671486, -79.388222, 221.91, 30, 0),
+    ("Ritz-Carlton Toronto", 43.645226, -79.387009, 209.5, 30, 0),
+    ("488 University Avenue", 43.655064, -79.389008, 207.6, 30, 0),
+    ("Bay-Wellington Tower", 43.647369, -79.378334, 207.0, 40, 0),
+    ("L Tower", 43.646172, -79.376312, 205.0, 30, 0),
+    ("Massey Tower", 43.653683, -79.37915, 204.2, 30, 0),
+    ("Four Seasons Hotel and Residences West", 43.671764, -79.38987, 204.0, 30, 0),
+    ("ICE Condominiums I", 43.641655, -79.382034, 202.3, 30, 0),
+    ("Concord Canada House 2", 43.64101, -79.392715, 202.2, 30, 0),
+    ("YC Condominiums", 43.661823, -79.383675, 202.2, 30, 0),
+    ("88 Scott", 43.648434, -79.376495, 198.2, 30, 0),
+    ("Bay Adelaide Centre East", 43.650723, -79.379471, 196.0, 40, 0),
+    ("Wellesley on the Park", 43.664406, -79.385292, 194.2, 30, 0),
+    ("EY Tower", 43.650162, -79.382515, 188.2, 40, 0),
+    ("Toronto House", 43.648094, -79.388229, 186.5, 30, 0),
+    ("RBC Centre", 43.645622, -79.385735, 184.9, 40, 0),
+    ("Casa II", 43.669441, -79.384201, 184.5, 30, 0),
+    ("U Condominiums East Tower", 43.666916, -79.388718, 184.0, 30, 0),
+    ("1 Yorkville", 43.671604, -79.387764, 183.2, 26, 0),
+    ("TD North Tower", 43.647926, -79.381996, 182.9, 40, 0),
+    ("Maple Leaf Square North Tower", 43.642849, -79.380585, 181.3, 30, 0),
+    ("8 Wellesley", 43.665043, -79.385155, 181.2, 30, 0),
+    ("Casa III", 43.669529, -79.383698, 179.6, 30, 0),
+    ("Rosedale on Bloor", 43.671947, -79.377403, 179.0, 30, 0),
+    ("INDX Tower", 43.650749, -79.382118, 178.2, 30, 0),
+    ("88 Queen Street East", 43.653687, -79.374878, 177.0, 30, 0),
+    ("One King West Hotel & Residence", 43.648808, -79.378204, 176.2, 30, 0),
+    ("8 Spadina at The Well", 43.643082, -79.394661, 174.1, 40, 0),
+    ("Success Tower 2", 43.643204, -79.376892, 173.3, 30, 0),
+    ("Royal Bank Plaza South", 43.646198, -79.379761, 173.0, 40, 0),
+    ("Maple Leaf Square South Tower", 43.642296, -79.380814, 171.3, 30, 0),
+    ("The Selby", 43.671158, -79.377098, 170.6, 30, 0),
+    ("Teahouse Condominiums South", 43.663258, -79.383537, 170.0, 30, 0),
+    ("Eight Cumberland", 43.671314, -79.387718, 169.8, 26, 0),
+    ("55C", 43.668858, -79.383537, 167.0, 18, 0),
+    ("252 Church", 43.656181, -79.377342, 166.1, 30, 0),
+    ("44 Charles Street West", 43.668678, -79.388229, 166.0, 30, 0),
+    ("Karma", 43.661747, -79.384209, 165.9, 30, 0),
+    ("Theatre Park", 43.64761, -79.387352, 164.8, 30, 0),
+    ("Social", 43.656265, -79.376701, 164.8, 30, 0),
+    ("400 King West", 43.6460451, -79.3929238, 164.6, 30, 0),
+    ("Burke Condominiums", 43.671421, -79.376309, 163.3, 30, 0),
+    ("Residences of College Park I", 43.660305, -79.385063, 163.0, 30, 0),
+    ("Burano", 43.662212, -79.386497, 163.0, 30, 0),
+    ("Success Tower 1", 43.642719, -79.377144, 161.9, 30, 0),
+    ("X2", 43.669582, -79.380569, 161.1, 30, 0),
+    ("FIVE", 43.665569, -79.385597, 161.0, 30, 0),
+    ("Alias", 43.652061, -79.375542, 158.7, 30, 0),
+    ("The Uptown Residences", 43.669468, -79.387459, 158.0, 30, 0),
+    ("Three Hundred", 43.644222, -79.389481, 157.9, 30, 0),
+    ("Lighthouse Tower Condominium", 43.645248, -79.369301, 157.9, 30, 0),
+    ("The Well Residential One", 43.642761, -79.395424, 157.3, 30, 0),
+    ("Grid Condos", 43.656948, -79.374092, 157.0, 30, 0),
+    ("16 York", 43.642635, -79.382019, 157.0, 40, 0),
+    ("Delta Toronto Hotel", 43.643208, -79.383827, 156.8, 30, 0),
+    ("One York Street", 43.641617, -79.380264, 156.8, 40, 0),
+    ("Festival Tower", 43.64698, -79.390182, 156.7, 30, 0),
+    ("Hotel Riu Plaza Toronto", 43.64732, -79.39183, 156.1, 30, 0),
+    ("Theatre District Residences", 43.64694, -79.39167, 156.1, 30, 0),
+    ("Dundas Square Gardens", 43.657566, -79.374268, 156.0, 30, 0),
+    ("No. 55 Mercer", 43.64529, -79.391518, 156.0, 30, 0),
+    ("Nobu Residences East Tower", 43.645611, -79.390396, 156.0, 30, 0),
+    ("Nobu Residences West Tower", 43.645451, -79.390976, 156.0, 30, 0),
+    ("King Blue North Tower", 43.646004, -79.39151, 155.8, 30, 0),
+    ("PJ Condos", 43.647514, -79.389877, 155.8, 30, 0),
+    ("Maverick", 43.64613, -79.39109, 154.5, 30, 0),
+    ("U Condominiums West Tower", 43.666927, -79.389389, 154.0, 30, 0),
+    ("87 Peter", 43.647053, -79.392242, 154.0, 30, 0),
+    ("Yonge + Rich", 43.651878, -79.376968, 154.0, 30, 0),
+    ("TD South Tower", 43.646774, -79.381233, 153.6, 40, 0),
+    ("35 Mariner", 43.639828, -79.392036, 153.2, 30, 0),
+    ("Montage", 43.641155, -79.394371, 153.0, 30, 0),
+    ("IMMIX", 43.662724, -79.384033, 153.0, 30, 0),
+    ("Peter & Adelaide", 43.647713, -79.3934323, 153.0, 30, 0),
+    ("The Charles at Church", 43.669559, -79.383041, 152.7, 30, 0),
+    ("Chaz Yorkville Condos", 43.668934, -79.383865, 151.4, 18, 0),
+    ("The 250", 43.654598, -79.380524, 150.6, 30, 0),
+    ("Monde", 43.646305, -79.36512, 150.0, 30, 0),
+    ("The Saint", 43.652061, -79.374992, 150.0, 30, 0),
+    # And the list's 15 beyond 4 km, in its order: Humber Bay and Etobicoke to the west-south-west,
+    # Yonge and Eglinton, One Delisle and North York just west of north -- the far glass looks that
+    # way from the walk's end (they are slivers on its horizon). The western ones stand behind the
+    # core from this chord: drawn so the list is whole, and never in frame.
+    ("Eau du Soleil Sky Tower", 43.623436, -79.480064, 228.2, 30, 0),
+    ("E Condos South", 43.707436, -79.398018, 195.7, 30, 0),
+    ("2221 Yonge", 43.706104, -79.397629, 192.5, 30, 0),
+    ("Water's Edge at the Cove", 43.625999, -79.478714, 182.3, 30, 0),
+    ("Eau Du Soleil Water Tower", 43.623417, -79.478889, 180.8, 30, 0),
+    ("Vita on the Lake", 43.624702, -79.479187, 177.1, 30, 0),
+    ("Hullmark Centre I", 43.761433, -79.409859, 169.6, 30, 0),
+    ("Lago", 43.625473, -79.478897, 167.5, 30, 0),
+    ("Quantum 2", 43.705669, -79.397453, 165.0, 30, 0),
+    ("Pinnacle Etobicoke 2A", 43.63191, -79.54246, 161.9, 30, 0),
+    ("E2 at E Place", 43.707916, -79.396996, 161.8, 30, 0),
+    ("Kipling Station Condos", 43.63814, -79.53779, 160.8, 30, 0),
+    ("One Delisle", 43.6889175, -79.3948974, 158.0, 30, 0),
+    ("Westlake Village 1", 43.622723, -79.483253, 153.3, 30, 0),
+    ("Beyond the Sea Star Tower", 43.621723, -79.482834, 151.5, 30, 0),
 ]
 # The Toronto Islands (OSM relation 10705563, simplified to ~40 m) and the Leslie Street Spit
 # (Tommy Thompson Park, OSM way 189780702); Billy Bishop airport (OSM relation 85471).
@@ -2692,8 +2798,10 @@ def toronto_world(fr):
     P.append({"t": "l", "pts": pts, "r": 90, "c": "#fff1c8", "a": 0.18})
     # The islands are parkland and dark at night; no lights are drawn on them (their docks and homes
     # are not surveyed here).
-    # The skyline: each tower a box on the grid's turn, wearing the lit-window tile at a storey's real
-    # height. The tile is eight storeys tall: 4.0 m apiece on an office footprint, 3.2 m on a
+    # The skyline: each tower a box on the grid's turn, wearing the towers' window tile (`towerwin`:
+    # which windows are lit is a seeded draw -- the street's tile lights them on diagonals, and a
+    # hundred towers of diagonals read as hatching) at a storey's real height. The tile is eight
+    # storeys tall: 4.0 m apiece on an office footprint, 3.2 m on a
     # residential one (typical floor-to-floor heights, not each building's own) -- at 1.6 m, which
     # it was, every tower showed twice its real number of floors.
     gn = (math.sin(math.radians(TOR_GRID)), math.cos(math.radians(TOR_GRID)))    # the grid's north
@@ -2707,7 +2815,7 @@ def toronto_world(fr):
         for i in range(4):
             p0, p1 = foot[i], foot[(i + 1) % 4]
             P.append(_prim("x", [fr.cm(*p0, g + base), fr.cm(*p1, g + base), fr.cm(*p1, g + base + h),
-                                 fr.cm(*p0, g + base + h)], pat="win", u=3200 if w >= 40 else 2560,
+                                 fr.cm(*p0, g + base + h)], pat="towerwin", u=3200 if w >= 40 else 2560,
                            ax="v", c="#1b2740",
                            a=a, n=1, l=0.5, fn=_fn(fr, *_outward(foot, p0, p1))))
         P.append(_hprim("f", fr, foot, g + base + h, c="#141c2c", a=a, n=1))
@@ -4091,9 +4199,9 @@ DISTRICTS = [
         # The lane is one 18.6 m chord of it on the south-east side, walked north-east: the core on
         # the left, the glass on the right looking south-east over the harbour and the islands, the
         # far glass looking north-east at the financial district. The city out there is surveyed
-        # (`toronto_world`): the shore, the islands, the spit, every tower over 214 m within four
-        # kilometres at Wikipedia's coordinates and heights. It replaces a generic aerial tile worn
-        # on both hands, which no bearing could be read off.
+        # (`toronto_world`): the shore, the islands, the spit, every tower of 150 m and over on
+        # Wikipedia's list at its coordinates and heights. It replaces a generic aerial tile worn on
+        # both hands, which no bearing could be read off.
         "id": "cntower", "label": "The tower",
         "page": ROOM_BY_ID["cntower"]["page"],
         "plates": ROOM_BY_ID["cntower"]["plates"],
@@ -4114,13 +4222,18 @@ DISTRICTS = [
         "clad_note": " The lane is the LookOut at 346 m: carpet underfoot, an acoustic-tile ceiling, the "
                      "core's panelled wall on the left, and on the right the window wall's panes, "
                      "1.61 m each, floor to ceiling. Nothing on any of it carries a word.",
+        # Only what the tour's frames show (round 34): the core, the towers north to Bloor (left
+        # at the far glass), St. Clair and Eglinton as slivers on its horizon, SkyTower (right).
+        # Humber Bay and Etobicoke are drawn too, but west, behind the core from this chord.
         "sight_note": " Out of the glass Toronto is where it is: the harbour's north shore "
                       "below, the Toronto Islands and Billy Bishop's runway lights to the south, "
                       "the Leslie Street Spit to the south-east, and through the far glass the "
                       "financial district -- First Canadian Place, Scotia Plaza, the St. Regis, "
-                      "TD and Commerce Court -- with SkyTower at Pinnacle One Yonge to the east, "
-                      "its roof about at your eye. The lights between the towers are drawn at a "
-                      "lit city's density, not surveyed street by street.",
+                      "TD and Commerce Court -- and the towers going on north up Yonge and Bay "
+                      "to Bloor, those at St. Clair and Eglinton thin on the horizon beyond; "
+                      "towers line the harbour, and SkyTower at Pinnacle One Yonge stands to the "
+                      "east, its roof about at your eye. The lights between the towers are drawn "
+                      "at a lit city's density, not surveyed street by street.",
         "objects": [
             # The lift landing in the core (landmark-space §7 beat 1): six glass-fronted cars, 58 s.
             {"id": "lift-cn", "kind": "door", "x": -278, "z": 60, "y": 0, "ry": 90,
@@ -4191,15 +4304,17 @@ DISTRICTS = [
         "caveat": "The LookOut is drawn from public facts: 346 m, the window wall's 12 bays of 1.61 m "
                   "by 2.62 m panes, the glass floor of 2017 above the 1994 original, the SkyPod's own "
                   "lift. The city below is the map's and the record's: the shore, the islands and the "
-                  "spit from OpenStreetMap, every tower over 214 m within 4 km at Wikipedia's "
-                  "coordinates and heights. Approximate and said so: the ring's curve straightened "
-                  "into one chord, the walk's 5.6 m width, the towers' footprints, the glass floor's "
-                  "size, the shore east of Sugar Beach, the runway's line, the towers' storeys (a "
-                  "typical office or residential floor, not each building's own), and the lights "
-                  "between the towers, which are a lit city's density rather than its streets. "
-                  "Missing and said so: Toronto has over a hundred towers above 150 m and only the "
-                  "23 above 214 m are here, so this skyline is sparser than the real one. Nothing "
-                  "here carries a name or a claim that the owner stood at 346 m.",
+                  "spit from OpenStreetMap, and every tower of 150 m and over -- all 117 on "
+                  "Wikipedia's list -- at its coordinates and height. Approximate and said so: the "
+                  "ring's curve straightened into one chord, the walk's 5.6 m width, the towers' "
+                  "footprints, the glass floor's size, the shore east of Sugar Beach, the runway's "
+                  "line, the towers' storeys (a typical office or residential floor, not each "
+                  "building's own), the ground (drawn level, though the city climbs away from the "
+                  "lake), and the lights between the towers, which are a lit city's density rather "
+                  "than its streets. Missing and said so: the city's nearly three hundred towers "
+                  "between 100 and 150 m, which the list does not place, so below the tall towers "
+                  "the city is lights, not buildings. Nothing here carries a name or a claim that "
+                  "the owner stood at 346 m.",
     },
     {
         "id": "undeclared", "label": "Next district", "purpose": "Purpose not declared",

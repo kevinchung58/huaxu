@@ -174,14 +174,19 @@ scale between a hedge and a wall of mist, the Journey's tunnel bare rock where t
 concrete-lined since 1944. A table that is not what the frame draws is not fidelity. Each world is
 now built from the map in the generator: OpenStreetMap polygons (the Recreation Trail, the three
 falls' crests, Goat and Luna Islands, the Toronto Islands, Billy Bishop) turned into lane centimetres by
-`LaneFrame`, the 23 towers of 214 m and over within 4 km from the Wikipedia list at their coordinates and
-heights, and the LookOut as an 18.6 m chord of its real 43 m ring at 346 m, facing north-east. What
+`LaneFrame`, the towers from the Wikipedia list at their coordinates and heights (23 of 214 m and over
+within 4 km in round 33; all 117 of 150 m and over in round 34 -- and the 23 had claimed "every tower
+over 214 m within 4 km" while missing one, 11 YV, a row without a picture: count the rows a filter
+kept against the source's own count before claiming "every"), and the LookOut as an 18.6 m chord of
+its real 43 m ring at 346 m, facing north-east. What
 the method teaches: a frame's furniture can be checked against a photograph (an iron railing on stone
 posts, not a hedge), and so can its light -- a night photograph from the deck measures luma 37, which
 is what told the gate its floor, not the room its brightness. Where the sources stop -- the branch
-tunnel's line, the towers below 214 m, the city's streets -- the record says so; a skyline of 23
-real towers is sparse against the real wall of light, and the caveat says that too rather than
-filling the gap with invented boxes.
+tunnel's line, the towers below 150 m (the list does not place them), the city's streets, the ground's
+rise from the lake -- the record says so; even 117 real towers stop at 150 m, and the caveat says
+below them the city is lights, not buildings, rather than filling the gap with invented boxes. A
+scope line drawn by distance has to be checked in the frame too: the round-34 draft cut at 4 km and
+would have called the Yonge and Eglinton towers out of sight, and the far glass shows them.
 
 ## 7. Refusals
 

@@ -119,8 +119,13 @@ Recipes that survived the critique pass, with their numbers. Reach for these bef
   into cells, in rings that skip a cell only when it lies **wholly** inside the finer ring (by its
   centre left a 6 km band of sky under the horizon). Layer biases paint lower water first; world faces
   back-face-test with their own edge normal; a light lattice seen kilometres deep beats into moiré, so
-  lights are scattered by a seeded generator; a window tile is a storey at its real height (eight
-  storeys of 4.0 m office or 3.2 m residential — at 1.6 m a tower showed twice its floors).
+  lights are scattered by a seeded generator — and so are a tower tile's lit windows (round 34,
+  `towerwin`: lit by arithmetic on the cell index they lay on diagonals, and 117 towers of diagonals
+  read as hatching); a window tile is a storey at its real height (eight storeys of 4.0 m office or
+  3.2 m residential — at 1.6 m a tower showed twice its floors). Pattern fills have no mip levels, so
+  a window grid kilometres out can still beat in places; averaging the tile down (box-filtered
+  halvings) was tried and dulled the towers into mottled slabs — a lit window is a point of light,
+  and an average cannot keep it bright. Left as is and said so.
 - **Sealed lane over a world** — a tunnel sees its world only through its mouth and its open bands;
   `apertures()` drops the world quads that miss them (the Journey's entrance frame 2549 → 1811
   fills, the picture identical), and the backing behind the lane is its own material, so a seam
@@ -157,6 +162,7 @@ a visitor, twice**. The harness proves paint; only a read proves place. Known fa
 | a band of sky just under the horizon | ring cells skipped by their centre | skip only cells wholly inside the finer ring |
 | spray reads as smoke | the haze/night wash laid over a nearly clear round darkens the sky behind it | bake the night into the round's colour; no wash on translucent quads |
 | rippling arcs in a far texture | a hidden lattice in the tile | scatter with a seeded generator |
+| diagonal hatching across a skyline | lit windows chosen by arithmetic on the cell index | a seeded draw, same count and colours (`towerwin`); not a box-filtered mip, which dulls lit windows |
 | a tunnel twice as costly as its frame | the world behind its walls painted, then painted over | `apertures()` + the lane's own backing |
 | a room brightening to noon under a night window | a non-day page's lamps following the hall's clock | `"night": <phase>` on the record |
 
@@ -219,8 +225,8 @@ grep the markup and the `?v=` pin.
 - `rooms-toronto.html` — the hall of lit tables; props owning spaces.
 - `rooms-cntower.html` — the LookOut at 346 m as an 18.6 m chord of its ring, facing north-east
   over a surveyed Toronto at night: the shore, the islands, the spit and Billy Bishop from
-  OpenStreetMap, the 23 towers over 214 m within 4 km at their coordinates; the Glass Floor a real
-  hole onto it (round 33).
+  OpenStreetMap, every tower of 150 m and over on Wikipedia's list (117) at its coordinates and
+  height; the Glass Floor a real hole onto it (rounds 33–34).
 - `rooms-niagara.html` — the last 43 m of the Recreation Trail walked south to Table Rock's rail by
   day: stone posts and iron railing on the gorge side, Table Rock Centre on the other; both falls,
   the islands, the gorge, the Rainbow Bridge and the Skylon where the map puts them; illumination
