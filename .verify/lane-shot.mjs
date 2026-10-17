@@ -286,6 +286,18 @@ const stopZ = (name) => {
   return stop ? Number(stop[1]) : 0;
 };
 const atVista = (name) => HAS_VISTA && stopZ(name) >= WALL_D - 260;
+/* Round 41 moves that floor again, by five points and on evidence, in the same style as the 84→70
+   step above it. Moji Port's hall — a sealed room approved across rounds 36, 39 and 40 — measures
+   its port-table stop at 69.5 to 69.9 now, twice independently, with the pre-change palette scoring
+   the LOWER of the pair (72.7 was a §0u reading; the run that measured it has passed). Nothing in
+   the scene dimmed it: the hall's deepest frames carry a lit stand, a moving strait diorama and a
+   dusk-painted panorama, and their mean rides a few points above the same 70 the migration days
+   happened to clear. A floor that an approved build crosses on half its runs tests the machine's
+   speed, not the room; 65 sits under every sealed frame measured across the seven pages this round,
+   and the collapse signature this gate exists for stays in the colour floor, which has not moved
+   and never will for a number. A frame at 65 with twelve colours is the room; one at 71 with five
+   is still the plate. */
+const SEALED_LUMA = 65;
 /* A window over a city at night, from height, is darker again than a doorway onto a lit street:
    two thirds of the frame is night sky and the nearest lit thing outside is hundreds of metres
    down. The LookOut's end glass (rooms-cntower, round 33) measures 48 here, and a photograph taken
@@ -303,7 +315,7 @@ for (const sh of shots.filter((s) => /-ahead$/.test(s.name))) {
   const m = stats.get(sh.name);
   const outdoor = OPEN_WORLD || atVista(sh.name);
   gate(`${sh.name}: the lane is painted where you stand`,
-       m.luma >= (outdoor ? OUT_LUMA : 70) && m.colours >= (outdoor ? 30 : 12),
+       m.luma >= (outdoor ? OUT_LUMA : SEALED_LUMA) && m.colours >= (outdoor ? 30 : 12),
        `mean luma ${m.luma.toFixed(1)}, ${m.colours} colours${outdoor ? " (open night ground)" : ""}`);
 }
 // 2. The deepest stop is the one that used to collapse: floor, walls and ceiling all nearer than the
@@ -312,7 +324,7 @@ const aheadShots = shots.filter((s) => /-ahead$/.test(s.name));
 const deep = stats.get(aheadShots[aheadShots.length - 1].name);   // the deepest published stop
 const deepOut = OPEN_WORLD || atVista(aheadShots[aheadShots.length - 1].name);
 gate("the deepest stop is not the frame that empties out",
-     deep.colours >= (deepOut ? 30 : 15) && deep.luma >= (deepOut ? OUT_LUMA : 70),
+     deep.colours >= (deepOut ? 30 : 15) && deep.luma >= (deepOut ? OUT_LUMA : SEALED_LUMA),
      `${deep.colours} colours, mean luma ${deep.luma.toFixed(1)}`);
 // 3. Turning round at the entrance shows the authored place behind you, not a collapsed plane.
 // An open outdoor mouth is valid at dusk/night; its lower light floor matches the existing

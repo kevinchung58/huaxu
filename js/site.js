@@ -1900,9 +1900,10 @@ function leaveOverlay(root, trigger) {
                   drawbridge: "#3f6ea8", ship: "#5a6472",
                   // The Moji buildings, each in the material the photographs and place sources show:
                   // cream station, red customhouse, orange OSK brick, striped Dalian brick, and the
-                  // Retro High Mart's gray concrete/glass grid.
+                  // Retro High Mart's light-grid-over-dark-glass facade (round 41: re-read against
+                  // the sourced photograph; the gray of the flat colour is the concrete, not the glass).
                   stationfront: "#c4b68e", customhouse: "#a5492f", osakashosen: "#c46d38", dalianhall: "#a24b36",
-                  retrohighmart: "#707775", massing: "#dedbd2" };
+                  retrohighmart: "#7d8583", massing: "#dedbd2" };
   /* Props are named `kind`, `kind-2`, `kind-left`, `kind-s1`… and the shape/tint tables were keyed
      by the *whole* id — so `front-a` was a flat plane while `front` was a painted recess, and whole
      families of props (banners, crates, snow banks, stall curtains) lost their bodies to a fallback.
@@ -5944,13 +5945,17 @@ function leaveOverlay(root, trigger) {
       } else if (shape === "retrohighmart") {
         /*
            Mojiko Retro High Mart, the six-node footprint from OSM way 292429354, shown separately
-           at 1:25. CVU/CTBUH lists 127 m including the rooftop helipad; Kitakyushu City and MLIT
-           describe the public observation view at 103 m. OSM's height=115 tag conflicts with that
-           total-height listing. A Nippon.com photograph (gu900211, image 1668287) documents the
-           gray small-window grid, dark X-braced façade band, open crown frame and curved cap; it is
-           visual evidence, not a measured elevation. The photo does not identify whether the band is a
-           structural transfer floor. The 31-floor rhythm, band position and roof framing are
-           deliberately approximate, not a guessed floor schedule or roof plan.
+           at 1:25. The 127 m nominal top (including the rooftop helipad) is CVU/CTBUH's listing,
+           corroborated by the building's own Japanese Wikipedia article (127 m, highest point) and
+           the AIJ landscape-history paper (127 m highest point; 126.95 m, measured 127.4 m, by the
+           tower's architectural record); Kitakyushu City and MLIT describe the public observation
+           view at 103 m. OSM's height=115 tag has no traceable origin and was not adopted — but no
+           source gives the roof-slab height either, so neither number is a surveyed elevation.
+           A Nippon.com photograph (gu900211, image 1668287) documents the light pier-and-spandrel
+           grid over dark teal glass, the dark X-braced transfer band, open crown frame and white
+           curved cap; it is visual evidence, not a measured elevation, and does not identify the
+           band as a structural transfer floor. The 31-floor rhythm, band position and roof framing
+           are deliberately approximate, not a guessed floor schedule or roof plan.
         */
         const poly = Array.isArray(m.footprint) && m.footprint.length >= 3
           ? m.footprint.map(([u, v]) => [Number(u), Number(v)])
@@ -5961,8 +5966,12 @@ function leaveOverlay(root, trigger) {
         const totalH = m.h / K.k, observationH = Math.min(totalH, m.observation || 103);
         const floors = Math.max(2, Math.round(m.floors || 31)), floorH = observationH / floors;
         const bodyH = floorH * (floors - 1);
-        const FACADE = "#747b79", BASE = "#535b5d", SPANDREL = "#929895", FRAME = "#424b4e";
-        const GLASS = "#648080", OBS_GLASS = "#719092", TRANSFER = "#3d464a", BRACE = "#596164";
+        // The grid re-read against the sourced photograph (round 41): light gray piers and spandrels
+        // stand out against dark teal window glass, and the transfer band's X-members are the same
+        // light structure as the piers, standing over a recessed dark inset — the round-40 frame read
+        // them the wrong way round, mid-gray on dark, which is why the band vanished at 2 m.
+        const FACADE = "#8f9795", BASE = "#535b5d", SPANDREL = "#a7adaa", FRAME = "#424b4e";
+        const GLASS = "#37564f", OBS_GLASS = "#48706b", TRANSFER = "#2f383c", BRACE = "#9aa2a2";
         const transferY = Math.round((floors - 1) * 0.43) * floorH, transferH = floorH * 1.45;
 
         // Thirty lower storeys lead to the glazed public room on floor 31. One window per broad bay
@@ -5981,13 +5990,21 @@ function leaveOverlay(root, trigger) {
                     { frame: FRAME, fw: 0.12, glass: GLASS, bars: "#aab2ae", cols: 2, rows: [0.55], lamp: 0.55 });
             }
           }
-          K.band(f, transferY, transferY + transferH, TRANSFER, 1.08);
+          // The band is put 8 cm proud of the wall face instead of riding `K.band`'s flush 5 cm:
+          // the Three.js path draws `__flat` batches without polygonOffset, so quads coplanar
+          // with their own wall are resolved by batch order and the band lost to the facade it
+          // sits on (the Canvas2D path, which sorts by the painter's own key, drew it fine — the
+          // shape of a bug only one of the two renderers shows). The X-members stay proud of the
+          // band, at 9 cm. One `seen` gate covers band and braces, as it once covered both.
           if (K.seen(transferH, 0.8)) {
             for (let b = 0; b < f.n; b++) {
               const lo = (f.len * b) / f.n, hi = (f.len * (b + 1)) / f.n;
+              f.at((lo + hi) / 2);
+              K.put([f.F(lo, transferY, 0.08), f.F(hi, transferY, 0.08),
+                     f.F(hi, transferY + transferH, 0.08), f.F(lo, transferY + transferH, 0.08)],
+                    K.mix(TRANSFER, f.shade), lit * 1.08);
               const pad = Math.min(0.28, (hi - lo) * 0.08), thick = Math.min(0.18, (hi - lo) * 0.045);
               const low = transferY + 0.22, high = transferY + transferH - 0.22;
-              f.at((lo + hi) / 2);
               K.put([f.F(lo + pad, low, 0.09), f.F(lo + pad + thick, low, 0.09),
                      f.F(hi - pad, high, 0.09), f.F(hi - pad - thick, high, 0.09)], K.mix(BRACE, f.shade), lit * 1.05);
               K.put([f.F(hi - pad - thick, low, 0.09), f.F(hi - pad, low, 0.09),

@@ -1998,8 +1998,11 @@ TOWER_STORY = {
 }
 # Nakamise's rows, generated from the sourced figures (round 32; TODO section 0n), because every
 # number here is the street's: three runs of shops in the street's own order and share of its length,
-# the two crossings at a street's width, and every bay a real shop's width -- the average of its row
-# (about 250 m of shops, 35 on the west and 54 on the east, so 7.3 m and 4.7 m). Walk centimetres
+# the two crossings at a street's width, and every bay a real shop's width -- the average of its row.
+# Round 41 adopted the street's own association figures (asakusa-nakamise.jp/about, read 2026-10-17):
+# the present street is about 250 m with 87 shops -- 52 on the east side and 35 on the west -- so a
+# row's average frontage is 4.8 m east and 7.1 m west (250/52, 250/35). The older tourism figures
+# (54/35 for 89 shops) had no official split to prefer and are retired. Walk centimetres
 # here; each object is turned into record depth (/ Z_SCALE) as it is made. The murals are the
 # ground colours of the Asakusa Emaki read off the night photographs -- sky and water blues, cloud
 # golds, pine greens, the paper's cream, a festival red -- because their scenes, which show people,
@@ -2013,7 +2016,7 @@ NAKAMISE_MURALS = (("#d6b45a", "#3f78b5", "#e9e2d0"), ("#4f8a5b", "#e2c46a", "#2
 
 def _nakamise():
     bays, lamps = [], []
-    for tag, x, ry, width, row, side in (("w", -380, 90, 730, 35, "west"), ("e", 380, -90, 470, 54, "east")):
+    for tag, x, ry, width, row, side in (("w", -380, 90, 710, 35, "west"), ("e", 380, -90, 480, 52, "east")):
         n = 0
         for z0, z1 in NAKAMISE_RUNS:
             count = max(1, round((z1 - z0) / width))
@@ -2098,6 +2101,13 @@ MOJI_STRAIT = {
 # OpenStreetMap footprints at 1.5 cm to the metre, laid on the board as low site-plan plates. The
 # Retro High Mart is added here from way 292429354; its separate tower model uses the same ring at
 # 1:25. The six-node outline is mapped geometry, not a surveyed architectural plan.
+# Round 41 settled the two §0u "conflicts" into their kinds. The mapped polygon (~647 m²) and the
+# building's registered 建築面積 (830 m², per ja-wikipedia/skyskysky/eonet; the AIJ paper's table
+# says 803.56 m² — a digits-swap between the secondary records, unresolved) are different
+# measurements — an outline as drawn vs the maximum horizontal section as filed — so the polygon
+# stays the model's footprint and the registered figure is not a correction to it. On height:
+# CVU/CTBUH's 127 m is corroborated by three further independent listings; OSM's height=115
+# remains an unattributed tag nobody has documented, and no source gives a roof-slab height.
 MOJI_RETRO_TOWER_RING = (
     (130.9639904, 33.9484316), (130.9640685, 33.9485535), (130.9641226, 33.9486380),
     (130.9643610, 33.9485329), (130.9642288, 33.9483265), (130.9641068, 33.9483803),
@@ -2112,7 +2122,7 @@ MOJI_TOWER_FOOTPRINT = [[round(r - MOJI_TOWER_CENTRE_M[0], 6),
                         for r, f in MOJI_TOWER_METRIC_RING]
 MOJI_TOWER_WIDTH_M = max(p[0] for p in MOJI_TOWER_FOOTPRINT) - min(p[0] for p in MOJI_TOWER_FOOTPRINT)
 MOJI_TOWER_DEPTH_M = max(p[1] for p in MOJI_TOWER_FOOTPRINT) - min(p[1] for p in MOJI_TOWER_FOOTPRINT)
-MOJI_TOWER_HEIGHT_M = 127.0                 # CVU/CTBUH; includes the rooftop helipad
+MOJI_TOWER_HEIGHT_M = 127.0                 # nominal top incl. the rooftop helipad: CTBUH, ja-wiki (127 m 最高部), AIJ paper (127 m; 126.95 m record, 127.4 m measured); OSM height=115 is an unattributed tag, not adopted
 MOJI_TOWER_OBSERVATION_M = 103.0            # City / MLIT describe the public view at this height
 MOJI_TOWER_FLOORS = 31
 MOJI_TOWER_SCALE = 4.0                      # scene centimetres per metre at 1:25
@@ -3120,7 +3130,11 @@ def toronto_world(fr):
                            a=a, n=1, l=0.5, fn=_fn(fr, *_outward(foot, p0, p1))))
         P.append(_hprim("f", fr, foot, g + base + h, c="#141c2c", a=a, n=1))
     # The City's 2025 massing fills the 100–150 m gap. Use its polygons and AVG_HEIGHT field values
-    # as supplied; the field's exact semantics are not independently verified. Facade/window patterns
+    # as supplied; the field's exact semantics are not independently verified. Round 41 checked the
+    # nearest derivation for a field dictionary (schoolofcities/toronto-buildings at the pinned commit
+    # 7bb3596): it reads the same field off the same 2025 export, displays it as metres, and documents
+    # no definition either — so "approximate extrusion height, not a verified survey height" stands.
+    # Facade/window patterns
     # are absent from the source, so these remain plain night massing. The layer is split into parts,
     # hence these are polygon masses, not a count of distinct buildings.
     for feature in TOR_MASSING_2025_FEATURES:
@@ -4006,10 +4020,13 @@ DISTRICTS = [
              "hint": "Kisho Kurokawa's tower, completed in 1999. The six-node OpenStreetMap outline is "
                      f"about {MOJI_TOWER_WIDTH_M:.2f} × {MOJI_TOWER_DEPTH_M:.2f} m in this table frame "
                      f"({MOJI_TOWER_WIDTH_M * MOJI_TOWER_DEPTH_M:.0f} m² bounding box; mapped polygon "
-                     "area about 647 m²). Its 127 m total height, including the rooftop helipad, is "
-                     "listed by CVU/CTBUH; the City and MLIT place the public observation view at "
+                     "area about 647 m²). Its 127 m nominal top, including the rooftop helipad, is "
+                     "listed by CVU/CTBUH and corroborated by the building's Wikipedia article and an "
+                     "AIJ paper; OSM's unattributed height=115 tag was not adopted. The City and MLIT "
+                     "place the public observation view at "
                      "103 m, not at the building top. The City floor-area figures (755.45 m² exclusive "
-                     "area; 498.38 m² observation room) are not footprint measurements. The gray "
+                     "area; 498.38 m² observation room) are floor areas, and the registered building "
+                     "area (about 830 m²) is a filed section, not this outline. The gray "
                      "window grid, dark X-braced façade band, open crown frame and curved cap follow a sourced "
                      "photograph; floor spacing and roof details remain approximate. At 1:25, the tower "
                      "itself is 508 cm tall; on its 30 cm stand it reaches 538 cm beneath the 620 cm "
@@ -4123,20 +4140,25 @@ DISTRICTS = [
                   "approximate. The Retro High Mart is a separate 1:25 model on a lower 30 cm display "
                   "stand so its 127 m source-listed top fits below the hall ceiling. Its six-node OSM "
                   "outline (way 292429354) measures about 32.17 × 31.37 m by the table projection, "
-                  "with a mapped polygon area of about 647 m². CVU/CTBUH lists 127 m including the "
-                  "helipad; OSM's height=115 tag conflicts. Kitakyushu City and MLIT describe the "
-                  "public observation view at 103 m, not the total building height. The City's 755.45 "
-                  "m² exclusive area and 498.38 m² observation-room area are floor areas, not footprint; "
-                  "a secondary 830 m² building-area figure does not reconcile with the mapped polygon, "
-                  "and no primary footprint plan was found. The tower's gray window grid, dark X-braced façade band, "
-                  "open crown frame and curved cap follow the sourced Nippon.com photograph; exact "
-                  "floor spacing and roof geometry remain approximate. The port table is laid out from "
-                  "OpenStreetMap at 1.5 cm to the metre, read from the head of the No. 1 basin looking "
-                  "north-west, with all five outlines as footprints; the strait beyond the far wall is "
-                  "the same scale. The Mitsui Club, the hotel and Kaikyo Plaza are not modelled because "
-                  "reliable shape and height data remain insufficient. The Blue Wing keeps its real "
-                  "timetable, so it is shut after dark. No sign carries lettering and the yatai sells "
-                  "nothing named. Nothing here says the owner was in any of these places.",
+                  "with a mapped polygon area of about 647 m². The 127 m nominal top, including the "
+                  "rooftop helipad, is listed by CVU/CTBUH and corroborated by the building's Wikipedia "
+                  "article and an AIJ paper; the OSM way's height=115 tag has no traceable origin and "
+                  "was not adopted, and no source gives a roof-slab height. Kitakyushu City and MLIT "
+                  "describe the public observation view at 103 m, not the total building height. The "
+                  "City's 755.45 m² exclusive area and 498.38 m² observation-room area are floor areas, "
+                  "not footprint; the building's registered building area of about 830 m² (803.56 m² in the "
+                  "AIJ table) is a filed maximum horizontal section — a different measurement from the "
+                  "mapped outline — so the model keeps the OSM ring and no primary footprint plan was "
+                  "found. The "
+                  "tower's light pier-and-spandrel grid over dark teal glass, dark X-braced transfer "
+                  "band, open crown frame and curved cap follow the sourced Nippon.com photograph; "
+                  "exact floor spacing and roof geometry remain approximate. The port table is laid out "
+                  "from OpenStreetMap at 1.5 cm to the metre, read from the head of the No. 1 basin "
+                  "looking north-west, with all five outlines as footprints; the strait beyond the far "
+                  "wall is the same scale. The Mitsui Club, the hotel and Kaikyo Plaza are not modelled "
+                  "because reliable shape and height data remain insufficient. The Blue Wing keeps its "
+                  "real timetable, so it is shut after dark. No sign carries lettering and the yatai "
+                  "sells nothing named. Nothing here says the owner was in any of these places.",
     },
     {
         # Toronto, small. The owner's brief was Little Canada — the Toronto attraction where the
@@ -4553,6 +4575,15 @@ DISTRICTS = [
         # right 17 m in and is drawn running off to its two portals, 61 m and 110 m along; the far end
         # opens onto the upper deck on the cliff, 38 m under the rim, with the falls drawn from the
         # same surveyed model the promenade uses, seen from where the deck stands.
+        # Round 41 corroboration (TODO §0w): Wikipedia's own article gives the same section — the two
+        # tunnels run about 46 m behind the falls at 2.4 m wide and about 2 m high (the built crown of
+        # 2.6 m is the barrel's rise over those walls) — and the Commission's history page dates the
+        # 1944 reroute 18 m behind the abandoned original, the lower platform to 1951 and the 1994
+        # renaming; the Cataract Portal stands first off the branch, the Great Falls Portal at its end,
+        # as the visitor routes describe. The portal positions' along-tunnel figures remain falzguy's,
+        # not a surveyed plan. Forward watch (not built): the Commission's 2025-26 announcement reopens
+        # the 1903 tunnel with a new platform in 2027 and redevelops the lower deck by 2028 — the room
+        # authors the pre-redevelopment present and will need re-sourcing when that work completes.
         "id": "journey", "label": "Behind the falls",
         "page": ROOM_BY_ID["journey"]["page"],
         "plates": ROOM_BY_ID["journey"]["plates"],
@@ -4633,11 +4664,15 @@ DISTRICTS = [
                  "title": "The elevator up", "hint": "It climbs the 38 m to Table Rock Centre."},
         "back_to": "rooms-niagara.html#at-door-journey",
         "caveat": "Journey Behind the Falls is drawn from public facts: the 38 m descent, the 1944 "
-                  "concrete-lined tunnel at its 2.4 m section, the main tunnel's 56 m to the deck, the "
+                  "concrete-lined tunnel at the 2.4 m by about 2 m section its records give it, the "
+                  "main tunnel's 56 m to the deck, the "
                   "portal branch at 17 m with its portals at 61 m and 110 m (falzguy.com's measured "
-                  "figures), the deck on the cliff, the nightly illumination. Approximate and said "
+                  "figures; the two tunnels' roughly 46 m behind the falls and their section are also "
+                  "the figures Wikipedia gives, and the lower platform dates to 1951), "
+                  "the deck on the cliff, the nightly illumination. Approximate and said "
                   "so: the tunnel's bearing and the deck's exact place are read from the deck's "
-                  "photographs and the tunnel's length, not surveyed; the section's 2.6 m crown, the "
+                  "photographs and the tunnel's length, not surveyed; the section's 2.6 m crown is that "
+                  "2 m wall under the barrel's rise, and the "
                   "boards underfoot and the pipe along the wall are read from visitors' photographs "
                   "of the tunnels (Niagara Tours, mylifeisajourney.com); the branch is drawn straight; "
                   "the spray over the basin and the foam's reach are drawn to the photographs, not "
@@ -4760,7 +4795,7 @@ DISTRICTS = [
             "license_url": "https://open.toronto.ca/open-data-licence/",
             "attribution_statement": "Contains information licensed under the Open Government Licence – Toronto.",
             "license_metadata_url": "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=387b2e3b-2a76-4199-8b3b-0b7d22e2ec10",
-            "license_metadata_note": "Package notes also say ‘Further to the Open Government Licence’, while structured fields report license_id=notspecified and isopen=false; this metadata mismatch has not been clarified.",
+            "license_metadata_note": "Package notes also say ‘Further to the Open Government Licence’, while structured fields report license_id=notspecified and isopen=false; this metadata mismatch has not been clarified (re-checked against the City API on 2026-10-17: still unresolved after the April 2026 metadata refresh).",
             "source_name": "City of Toronto 3D Massing (2025)",
             "source_url": "https://open.toronto.ca/dataset/3d-massing/",
             "derivative_name": "School of Cities Toronto Building Heights (2025) map",

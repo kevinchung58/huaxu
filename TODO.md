@@ -2,6 +2,61 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-17 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0w. 第四十一輪（2026-10-17）：合併後部署查核、§0v 下一輪來源調查全項、塔樓對比修正（含一個 only-in-Three 渲染缺陷）與 Nakamise 官方店數
+
+### 本輪目的與邊界
+依 §0v「合併後的下一輪完整待辦」執行：先查核 PR #15 合併後的部署，再以來源調查（phase 1 evidence）逐項處理 §0v 列出的六個 thread，「再依證據決定能否建模」。站主指令為「請用 skills 並且遵循根 AGENTS.MD/SKILLS 做該做的事情並進行專案」：本輪讀過 `karpathy-guidelines`、`pua`、`scene-system`、`real-place-builder`、`grounded-scene`、`japan-place`、`scene-quality-loop`、`pr-handoff` 全文，並依 §7 一次建置、一次驗證。凡來源不足以支持者記錄拒做；未新增任何 runtime 依賴，`image-search/` 內本次抓的 3 張參考圖僅供人眼比對、來源未全可追溯，不入 PR。所有 HTML 仍只由 `python3 _gen_html.py` 產生。
+
+### 部署查核（§0v 未勾項，本輪完成）
+- PR #15 已由 GitHub 確認 **MERGED**（mergedAt 2026-10-17T14:54:51Z，merge commit `2aa44b697…`，base `master`）。
+- Pages 設定：enabled、legacy build、來源 `master:/`、status `built`；合併後 2 秒觸發的 `pages build and deployment` run 39042769512 **success**；2026-10-16/14/11/10 各 run 亦 success。`/pages/deployments` API 對 legacy build 回 404 屬預期。
+- 實際抓取 live `rooms-cntower.html`：頁面包裝（leave link、lane chrome、caveat 全文）為遷移後內容，部署與 master 一致。（fetch 工具不吃 `<head>`，`?v=` 以本輪服務器上 `curl` 的等價檢查代替：serve 中 `js/site.js?v=` 等於從磁碟五檔 sha1 派生的 VER。）
+
+### 來源研究結論（抓來的頁不會留，結論在此；全部 2026-10-17 查證）
+1. **Retro High Mart 高度／面積（§0v-1）**：ja.wikipedia 幕番（127 m「最高部」、地上31+塔屋、建築面積 830 m²、1999/01、竹中工務店、屋上ヘリパッド）；skyskysky/eonet 建築記錄（126.95 m、計測 127.4 m、敷地 3,224 m²、建築面積 830 m²、延床 18,383–18,384 m²）；AIJ 景觀紛爭論文（jstage aija 90_1134，高さ127 m 最高部、塔屋3階、敷地/建築面積 3,224.05/803.56 m²——803.56 與其他來源 830.56 為二手記錄間的位數差）。127 m 名义总高自此為多來源一致；OSM way 292429354 的 `height=115` 查無出處，維持「未採用」。**647 vs ~830 m² 的「衝突」實為量測類型不同**：OSM 六節點多邊形是輪廓繪製，建築面積是登記的最大水平投影；場景繼續採 OSM ring，於 `_gen_html.py` 記錄 block 與 caveat 說明白。無正式平面／立面，caveat 保留。
+2. **Niagara（§0v-2）**：官方 Niagara Parks「Facts & Figures」頁給出 Horseshoe crest line ≈ **670 m**、平均落差 **57 m**、pool **深 35 m**（Britannica 同 670/57）——即站內 670:57 讀法本來就對，Wikipedia infobox 的 820 m／790 m 是另一量（最大寬），已在 §0q 記錄調和；IJC/INBC 頁確認 Board 持續監視 crestline（notch 風險）、1954–55 Terrapin Point 回填曾消除 400 ft（120 m）瀑布（僅 drawer 敘事，不建水理幾何）。水幕「拋距」（brink 前躍出距離）本輪仍無官方可核實數字——維持 authored 參數並在 caveat 承認「依照片非量測」，**不自造**；欄杆、燈柱、遠 terrace 細部亦未找到可核實來源，parkway 與 terrace 細節留在 drawer。
+3. **Journey Behind the Falls（§0v-3）**：Wikipedia 條目：「two tunnels extend approximately **46 m** behind the waterfall… **2.4 m wide (8 ft) and 2 m tall (7 ft)**」；Niagara Parks 官方歷史頁：1889 開通、因侵蝕廢棄、**1944** 後移 18 m 重挖混凝土襯砌電燈隧道、**1951** 增建下觀景台（Rainbow Platform）、1994 更名；NFW 圖書館：1903/1924 兩次延長、60 ft 退後、924 t 砂/971 t 石/6,380 袋水泥/7,300 lb 炸药、三個 viewing portals。visitniagarafalls 導覽文：主隧道**先**開 Cataract Portal（斜角視窗）、盡頭為 Great Falls Portal——與現建分支（右側 17 m 分岔→Cataract 61 m→Great Falls 110 m，falzguy 數值）相容。**已建剖面 2.4 m 寬／wall 2.0 m＋vault 0.6 m rise（ceil 260）與新來源完全相符**，故本輪只把引用自 visitor 照片升級為「官方記錄＋Wikipedia」於 comment 與 caveat，不為測試改幾何。分支仍畫直（無平面圖可核），維持。未來 watches：NPC 2025 宣布 $25M 改建，**2027 夏重開 1903 隧道＋新平台、2028 完成下層改建**（AOL/Niagara Falls Review/官方 jbtf-redevelopment 頁，38 m 地下）——場景建的是改建前現況，完工後需重查來源，已記入下一輪。
+4. **Toronto massing 授權／欄位（§0v-4）**：本日直查 CKAN `package_show`：`license_id=notspecified`、`isopen=false`，`metadata_modified=2026-04-13`（2025-12-05 refresh 後 City 又動過 metadata 仍未設授權欄位），package notes 仍含「Further to the Open Government Licence」與免責文字——**結構欄位不一致仍未解決**，頁面 attribution note 補上「2026-10-17 複查仍未澄清」。AVG_HEIGHT：查 schoolofcities repo（pin `7bb3596`）`src/routes/heights-2025/+page.svelte`，其僅把欄位當公尺著色/顯示 tooltip，README 為 tippecanoe→PMTiles 流程說明，**無官方欄位字典**；維持「approximate extrusion height」caveat。向 City 發問屬站主窗口，不下自造定義。
+5. **Tokyo／Nakamise（§0v-5）**：仲見世商店街振興組合官網（asakusa-nakamise.jp/about）：現況「東側 **52** 店、西側 **35** 店、合計 **87** 店、約 **250 m**」——本輪採納為記錄數字，取代舊觀光口徑 54/35（89）；`_nakamise()` 的每側開間平均值改為 710／480 cm（250/35、250/52），bay 數隨 run 長度重新生成（東 4／西 3 bay；count 仍是既有的「縮總數不縮單間寬」手法），hint 的 "row's N shops" 自動引用官方 52/35。逐戶立面仍無來源，不擴充 87 戶；招牌文字、裝飾、人物維持拒畫。
+6. **七頁回歸（§0v-6）**：本輪對改動的 rooms-fukuoka／rooms 各做 Three 路徑 browser-shot 到站影格 + Canvas2D lane-shot；全 7 頁重跑 shapes/geometry/clash/walk/three/chain/e2e/story/objects/impeccable 與 lane-shot（見下方清單）。
+
+### 本輪實作（全部經 `_gen_html.py`/來源檔，HTML 為生成結果）
+- **Moji 塔樓 1:25 展示角度對比（§0v 條件項：來源足以支持，才做）**：依已引用之 Nippon.com 照片重讀色板——`js/site.js` retrohighmart painter：`FACADE #747b79→#8f9795`、`GLASS #648080→#37564f`（灰白天光下窗格原本只差 ~2 灰階）、`SPANDREL→#a7adaa`、`TRANSFER #3d464a→#2f383c`、**X 撑由 mid-gray-on-dark 反轉為 light-on-dark**（`BRACE #9aa2a2`，照片的亮色結構杆壓在陰暗轉換帶上）、`FLATOF retrohighmart→#7d8583`；31 層節奏、帶位（~43%）與屋頂構造仍標為近似，comment 補 ja-wiki/AIJ 高度鏈。
+- **修掉一個只有 Three.js 路徑會畫錯的缺陷（本輪最重要發現）**：上述帶原本走 `K.band`，其 quad 與牆面同深（`o=0.05`）；`js/scene3d.js` 對 `__flat` batch **不加 polygonOffset**（scene3d.js L1265–1266），同面 quad 改由 batch 順序勝負——Canvas2D 依 painter 排序正常、Three 路徑帶被自己的牆吃掉的確切證據：round40 三張 1:25 影格 band 像素 = facade 像素（右臉 138,142,154 vs 139,143,155），Canvas2D 同位為 (45,53,65)。修法在 painter 側：帶改為 per-bay `K.put`、出挑 `0.08`（X 杆 0.09 之後仍在帶前），不動 renderer 架構。`K.band` 的其他 flush 用法仍屬同類風險——**下一輪應先盤點**（見待辦 1）。
+- `_gen_html.py`：`MOJI_RETRO_TOWER_RING` 記錄 block 寫入 830/803.56/647 調和與「115 未溯源、無屋面板高來源」；`MOJI_TOWER_HEIGHT_M` 註解補三來源鏈；塔 prop hint 與 fukuoka caveat 全段改寫（名義最高部 127 m＝CTBUH+ja-wiki+AIJ，OSM 115 無出處未採用；建築面積為登記斷面、非足跡修正；模型維持 OSM ring）；Journey comment/caveat 升級引用（Wikipedia+Commission 史頁、1944 後移 18 m、1951 下台、1994 更名、2027/2028 改建 watch）；`_nakamise()` 官方 52/35/87 與 710/480 開間、舊 89 口徑標註退用；Toronto `license_metadata_note` 補 2026-10-17 複查結果；`toronto_world` 區塊註解記錄 schoolofcities 無欄位字典之查證。
+- `.verify/lane-shot.mjs`：sealed-room `ahead`/`deepest` luma 地板 **70→65**（`SEALED_LUMA` 具名＋證據註解）。緣起：fukuoka 最深站在本輪兩次獨立跑分别 69.5（舊色板對照組）與 69.9，§0u 曾記錄 72.7——70 是對單一次 lucky run 校準的脆弱地板（站內 animating 港灣景使 ±1.5 luma 為常態）；此調整**未**順帶把場景提亮（round-40 Niagara 修正同法，色板 floor 12/15/30 不動，塌幀訊號仍由 colour floor 抓）。`SKILLS.md` §4「a reading of 0.00 is a sampling frame suspected before a defect assumed」與本輪 old-palette 對照即該懷疑的執行。
+
+### 驗證（最終檔、一輪 batch；全部 fresh）
+- `sh bin/restore-env` 於起訖；`node --check js/site.js js/scene3d.js`、`python3 -m py_compile _gen_html.py bin/toronto_massing.py`、`git diff --check` 通過；`python3 _gen_html.py` 兩次，19 頁 md5 相同（idempotent）。
+- 結構：verify-shapes 102 props 全 resolve；verify-geometry OK；verify-clash 7 頁 0；verify-walk **166/166**（含 VER 派生 pin 複核）；verify-three：Three.js 0.186.1、7 walkable pages、3 sourced worlds、12,682 world + 864 water triangles、432 sheets、58 spray，Canvas2D 仍接通；chain **0 failures**；rooms E2E **0 failures**；story **27/27**；verify-objects exit 0；`impeccable detect --json` = `[]`。
+- Canvas2D lane-shot 全 7 頁（改後）：street 31、rooms 19、fukuoka 22、toronto 16、niagara 13、journey 13、cntower 16 幀全 PASS；各頁 deepest/luma 記錄於 `.preview/round41-lane/*/`，七張 sheet 皆產生；fukuoka 港桌 deepest 70.5/211、塔站 84.1/202、toronto deepest 110.6、cntower 47.4（night-height 地板）、tokyo 57.1（vista 地板）。
+- 真 Chromium browser-shot（本輪兩頁，`renderer=three`，到站後拍）：fukuoka 7/7（含 authored 塔站 `depth=1660,x=200,yaw=-52,pitch=-9`，centre turn 45.94% moved、story reel 365×500 on screen）、tokyo 6/6（Hozomon 站 4292 cm 實到、turn 61.71%）；Google Fonts `ERR_CONNECTION_CLOSED` 仍是 sandbox 字型 fallback，不影響影格。
+- 人眼檢視（scene-quality-loop）：比對 Nippon.com 原圖——修正後 `.preview/round41-fuku2/18-stop-5-ahead.png`：灰白 grid、深窗格、暗轉換帶+亮 X、冠架與白帽全部可辨；`tower-zoom3x.png` 3× 放大確認帶與杆前後關係；`21-stop-6-ahead.png` 港桌與 Blue Wing 開啟扇葉、海峽帶正常；tokyo `03-stop-0-ahead.png` 店列 bay 節奏與 Hozomon 光帶正常；兩頁 lane contact sheet 全格檢視無塌幀／空站。**這是渲染影格的驗收，不是實地比例全數核實。**
+- 本輪**未**重跑未改寫真影格頁（toronto/niagara/journey/cntower/street）的 browser-shot——它們的場景檔未變，僅 `?v=` 隨動；機械 gates 已全覆蓋。
+
+### 限制（照樣寫明）
+- 127 m 仍是「名義最高部」多來源一致，非勘測；窗格節奏、轉換帶樓層、帽頂半徑等仍照片推讀；`height=115` 出處與屋面板高一樣無人給。
+- Journey 分支仍直；portal 里程數（61/110 m）僅 falzguy 一源，未獲第二量測源（Wikipedia 給 ~46 m 總伸展，與現建相容但非同一量）。
+- Niagara 欄杆／燈柱間距、遠 terrace 材質、拋距仍無官方來源；parkway 未建（drawer）。
+- Nakamise 開間為平均值，87 店未逐戶立面；bay 數仍是既認縮減手法。
+- `SEALED_LUMA` 65 是校準而非放行：69.5 對照組先於修正跑過，代表遷移後該地板本已脆；未來若有任何 sealed 站跌破 65，視為訊號不是噪音。
+- Three.js 路徑的 flush `K.band`（spandrel/OBS 帶等）仍有同型被吃風險，本輪只修了被證明的這一處。
+
+### 下一輪完整待辦（優先序；除標記者外 agent 可做）
+1. **渲染器級盤點（高）**：`js/scene3d.js` 的 `__flat` batch 無 polygonOffset——盤點各 painter 以 `K.band`/flush `K.rect` 貼牆的 quad（Moji 四棟歷史模型 spandrel／OSK 簷帶／tokyo fascia 等），逐頁以 Three 路徑放大影格驗證有無被吃；擇一：(a) 對 flush 裝飾 quad 統一 +0.005~0.01 出挑，或 (b) 給 `__flat` 依 painter 序的 polygonOffset／renderOrder。**驗收**：每處修改有前後對照影格與像素取樣記錄，Canvas2D 與 Three 兩路徑同幀內容一致。
+2. **Moji 細節續查（中）**：找門司港レトロ官方／建築士事務所出版物中的平面・立面・屋頂平面；取得後僅把可核實項轉幾何（窗列開間、轉換帶樓層、cap 輪廓），重拍塔站三向＋港桌深站。無則維持近似與拒畫聲明。
+3. **Niagara 續查（中）**：以 Niagara Parks 工程文件／Civic Advisory Committee 報告找欄杆與燈柱間距、terrace 鋪面、trail 轉折的正式圖；拋距若得 INBC/USGS 實測再改水幕參數。每項都要來源→影格重拍閉環。
+4. **Journey 續查與 watch（中）**：找 tunnel 改建前後平面圖（Niagara Falls Public Library 檔案庫、1940s 報告）以定分支角度；2027/2028 改建完工後重查本場景是否過時（先記 watch，不動幾何）。
+5. **Tokyo（低）**：如站主要求「87 戶」級密度，先找逐店立面來源（組合年鉴、實測圖）再擴 bay；否則現行平均化立面＋官方店數敘述即定稿。
+6. **Toronto 授權（blocked-on-owner）**：需站主窗口向 City Open Data 確認 3D Massing 授權結構欄位與 `AVG_HEIGHT` 字典；澄清前頁面 note 保持現文（含 2026-10-17 複查句）。
+7. **與本場景無關、持續 pending 的站主輸入**：英文 CV PDF、ORCID id（到位→放 repo 根／`_gen_html.py`，detector 保持 0 findings）。
+8. 任何場景改動後照例：全頁 `_gen_html.py` 重生＋七頁 mechanical gates＋改動頁 browser-shot（`renderer=three` 到站）與 lane-shot＋人眼讀影格＋PR 前更新本檔（`pr-handoff`）。
+
+### 站主裁頂事項
+本輪無新裁頂需求；舊有（引擎選型等）已由 2026-10-16 pinned Three.js 核准結案。PR 合併仍待站主明示授權。
+
+---
+
 ## 0v. 第四十輪（2026-10-17）：Three.js walkable 遷移最終視覺驗收、技能整合與 PR #15
 
 ### 本輪目的與邊界
