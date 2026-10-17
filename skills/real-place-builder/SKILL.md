@@ -33,7 +33,7 @@ Before authoring geometry:
 
 ## 4. Build once, then inspect the real rendered scene
 
-The code/test gate is necessary but not sufficient. The visitor sees the renderer output.
+The code/test gate is necessary but not sufficient. The visitor sees the renderer output. Use `skills/scene-quality-loop/SKILL.md` as the governing capture/inspection/repair loop and PUA for root-cause diagnosis; the steps below are the local scene-specific minimum, not a replacement for that review.
 
 1. Regenerate with `python3 _gen_html.py`; inspect the diff and confirm generated pages include the expected scene and cache-buster.
 2. Use `.verify/lane-shot.mjs` or the current browser harness against the generated page. A capture is valid only after the walk has actually reached the station depth. Do not treat a fixed-delay or early-arrival frame as an object review.

@@ -7,18 +7,29 @@ not have to relearn it.
 It is called SKILLS and not RULES because it is a craft rather than a checklist. Where AGENTS.md
 says what must be true of the repository, this file says how to get a district right.
 
-The loadable halves of it live in `skills/`, and those are what an agent should open when the work
-starts: `district-author` (the record, the build rules, the gate), `place-intake` (photographs to a
-record), `japan-place` (what a Japanese place is made of — the object table in centimetres, the
-night, the prohibitions, and the sakura-crossing study note), `street-commons` (the hub street, a
-new region along it, a promenade, and the honest cost of daylight), `lane-prop` (one object, light
-or state, and the measurement that proves it arrived), `landmark-space` (a real parent prop and its
-owned room), `grounded-scene` (source-based spatial fidelity), `karpathy-guidelines` (simple,
-surgical, assumption-aware coding), `pua` (persistent evidence-first debugging), and
-`real-place-builder` (the end-to-end scene and visual-review gate). This file is the method behind
-them all. `AGENTS.md` requires the Karpathy and PUA practices for non-trivial implementation and
-requires the scene-builder/grounding/domain skills before every environment build or substantial
-revision.
+**Renderer decision (owner approval, 2026-10-16; full walkable migration):** all seven walkable
+pages use the pinned, MIT-licensed Three.js 0.186.1 runtime as their primary environment/object
+renderer. Authored `backdrop.world.prims` are added when present; all scene geometry stays grounded
+in the existing records. Canvas2D remains the complete no-WebGL fallback. The Activities album
+remains CSS 3D and outside this renderer decision.
+
+The loadable halves live in tracked `skills/` files. Route a real-place build through
+`scene-system` (the orchestrator) → `real-place-builder` plus `grounded-scene` and the matching
+domain skill (`district-author`, `place-intake`, `japan-place`, `street-commons`, `lane-prop`, or
+`landmark-space`) → `scene-quality-loop` for rendered-frame acceptance, using `pua` for diagnosis and
+verification. `karpathy-guidelines` keeps implementation surgical. Before every PR creation/update,
+`pr-handoff` requires an accurate, prioritized next-round plan in `TODO.md`.
+
+The individual skills remain useful on their own: `district-author` owns the record/build rules/gate;
+`place-intake` turns supplied photographs into a record; `japan-place` covers Japanese place
+vocabulary, real centimetres, night, prohibitions, and the sakura-crossing study; `street-commons`
+owns the hub street, regions, promenades, and daylight; `lane-prop` owns one object, light, or state;
+`landmark-space` owns a real parent prop and its walkable child; `grounded-scene` owns source-based
+spatial fidelity; `real-place-builder` coordinates the actual build; `scene-quality-loop` owns visual
+acceptance; `pua` is the evidence-first debugging method; and `pr-handoff` owns the PR/TODO contract.
+`AGENTS.md` requires the Karpathy and PUA practices for non-trivial implementation, the scene,
+grounding, and domain skills before environment work, the visual loop before sign-off, and the PR
+handoff before every PR operation.
 
 ---
 

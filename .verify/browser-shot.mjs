@@ -66,12 +66,76 @@ await sleep(400); await shot("03-mouth-yaw-left");
 await page.mouse.down(); await page.mouse.move(512, 384, { steps: 8 }); await page.mouse.up();
 await sleep(300);
 
-// the page's own station chips: stand where the room publishes stops, look three ways
-const stops = await page.$$("[data-walk-stop]");
+// The mouth turn is a gesture test, not part of a station's view. Reload before taking station
+// frames so neither that gesture nor the previous station's left/right look can leak yaw into the
+// next "ahead" image. Each station is a real chip click from the authored spawn; the separate
+// movement gates cover continuous walking between places.
+await page.reload({ waitUntil: "networkidle0", timeout: 30000 });
+await page.waitForFunction(() => document.querySelector("[data-walk]")?.__walk?.renderer,
+  { timeout: 20000 });
+await sleep(500);
+
+// The page's own station chips: stand where the room publishes stops, look three ways. A fixed
+// delay is not arrival: the software renderer may advance only a few centimetres per second in
+// headless Chromium, so wait for the authored depth and lateral position (and any authored view)
+// before calling the screenshot a stop frame.
+let stops = await page.$$("[data-walk-stop]");
+const stopCount = stops.length;
+const stopTarget = (button) => button.evaluate((el) => {
+  const read = (key) => {
+    const value = Number.parseFloat(getComputedStyle(el).getPropertyValue(key));
+    return Number.isFinite(value) ? value : null;
+  };
+  const view = (key) => {
+    const value = Number(el.dataset[key]);
+    return el.dataset[key] !== undefined && Number.isFinite(value) ? value : null;
+  };
+  return { z: read("--z"), x: read("--x"), yaw: view("viewYaw"), pitch: view("viewPitch"),
+           label: el.getAttribute("aria-label") || "unnamed stop" };
+});
+const waitForStop = async (target, index, timeoutMs) => {
+  if (!Number.isFinite(target.z)) throw new Error(`stop ${index} has no numeric --z target`);
+  await page.waitForFunction((want) => {
+    const state = document.querySelector("[data-walk]")?.__walk;
+    if (!state) return false;
+    const near = (actual, value, tolerance) => value === null
+      || (Number.isFinite(actual) && Math.abs(actual - value) <= tolerance);
+    return near(state.depth, want.z, 2) && near(state.x, want.x, 2)
+      && near(state.yaw, want.yaw, 0.5) && near(state.pitch, want.pitch, 0.5);
+  }, { timeout: timeoutMs, polling: 100 }, target);
+  // Let the final movement tick clear its glide and paint the settled camera transform.
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const state = await page.evaluate(() => {
+    const s = document.querySelector("[data-walk]")?.__walk || {};
+    return { depth: s.depth, x: s.x, yaw: s.yaw, pitch: s.pitch, renderer: s.renderer };
+  });
+  console.log(`STOP ${index}: ${target.label} → ${JSON.stringify(state)}`);
+};
 let n = 3;
-for (let i = 0; i < stops.length; i++) {
+for (let i = 0; i < stopCount; i++) {
+  const target = await stopTarget(stops[i]);
+  const before = await page.evaluate(() => {
+    const s = document.querySelector("[data-walk]")?.__walk || {};
+    return { depth: s.depth, x: s.x, yaw: s.yaw, pitch: s.pitch, renderer: s.renderer };
+  });
+  // Long authored lanes can take longer in software WebGL than the walker's nominal speed
+  // suggests. Budget the real source-to-stop distance (the Journey deck reaches ~168 s here),
+  // with a hard four-minute cap so a broken movement gate never becomes an unbounded wait.
+  const targetX = Number.isFinite(target.x) ? target.x : before.x;
+  const travelCm = Math.hypot(target.z - before.depth, targetX - before.x);
+  const timeoutMs = Math.min(240000, Math.max(120000, Math.ceil(30000 + travelCm * 28)));
+  console.log(`TARGET ${i}: ${JSON.stringify({ ...target, before, travelCm: Math.round(travelCm), timeoutMs })}`);
   await stops[i].click();
-  await sleep(1500);
+  try {
+    await waitForStop(target, i, timeoutMs);
+  } catch (error) {
+    const state = await page.evaluate(() => {
+      const s = document.querySelector("[data-walk]")?.__walk || {};
+      return { depth: s.depth, x: s.x, yaw: s.yaw, pitch: s.pitch, renderer: s.renderer };
+    });
+    console.log(`STOP ${i} TIMEOUT: ${JSON.stringify({ target, state })}`);
+    throw error;
+  }
   await shot(`${String(n).padStart(2, "0")}-stop-${i}-ahead`); n++;
   await page.mouse.move(512, 384);
   await page.mouse.down(); await page.mouse.move(700, 384, { steps: 6 }); await page.mouse.up();
@@ -80,6 +144,16 @@ for (let i = 0; i < stops.length; i++) {
   await sleep(400); await shot(`${String(n).padStart(2, "0")}-stop-${i}-left`); n++;
   await page.mouse.down(); await page.mouse.move(512, 384, { steps: 6 }); await page.mouse.up();
   await sleep(300);
+  if (i + 1 < stopCount) {
+    // Make the next ahead frame independent of any pointer drift in the three-view sample above.
+    // The target remains a real click-to-glide from this newly booted spawn.
+    await page.reload({ waitUntil: "networkidle0", timeout: 30000 });
+    await page.waitForFunction(() => document.querySelector("[data-walk]")?.__walk?.renderer,
+      { timeout: 20000 });
+    await sleep(500);
+    stops = await page.$$("[data-walk-stop]");
+    if (stops.length !== stopCount) throw new Error("walk-stop count changed after page reload");
+  }
 }
 /* The one layout claim a real browser can make that jsdom cannot, so it is a gate and not a
    photograph: the reel shows one frame at a time, so the frame on screen has to be *on screen*.

@@ -67,10 +67,12 @@ them — the two rooms already built have committed to them.
 
 ## 3. Materials: the renderer paints tiles, it does not sample photographs
 
-`js/site.js` draws every material as a 128 px tile in code, mapped across the 60 cm panel the walls
-already use, and `FLATOF` gives each a flat fallback colour for grazing angles. What exists today:
-`shutter, dado, brick, corrugated, hoarding, plaster, tactile, kerb, grate, lantern, concrete,
-galv, wood, cobble, glass, track, water, terrain, cityg, skyline`.
+`js/site.js` authors each lane material as a procedural 128 px tile. The Canvas2D fallback maps
+that tile across the 60 cm wall panel and uses `FLATOF` for the grazing-angle flat colour; Three.js
+uses the same lane tile canvas as a texture on the 3D surface. Sourced-world tiles are also
+procedural `CanvasTexture`s in `js/scene3d.js`. None of these material patterns are photographs.
+What exists today: `shutter, dado, brick, corrugated, hoarding, plaster, tactile, kerb, grate,
+lantern, concrete, galv, wood, cobble, glass, track, water, terrain, cityg, skyline`.
 
 An unknown name fails **silently and differently depending on where it is used**, which is why a
 misspelled material is worth checking for before anything else:

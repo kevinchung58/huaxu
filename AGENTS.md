@@ -1,14 +1,18 @@
 # AGENTS.md
 
 Personal academic site for Hua-Xu Zhong (鍾華栩), PhD — educational technology, AI in education, design thinking.
-Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo root of `master`
-(see "Operational notes" below if the live site ever 404s).
+Static HTML, **no npm build step or runtime package install**. Deployed via GitHub Pages from the repo root
+of `master` (see "Operational notes" below if the live site ever 404s). One owner-approved exception is
+pinned, MIT-licensed Three.js 0.186.1, vendored under `js/vendor/` and dynamically imported on every
+walkable page as its primary environment/object renderer; sourced `backdrop.world` records are added
+when present. Canvas2D remains the complete no-WebGL fallback. The Activities album is out of scope;
+no package manifest, CDN, or additional runtime dependency is implied.
 
 ## Critical: source of truth
 
 - The cache-buster is **derived, not hand-bumped**: `VER` in `_gen_html.py` is the sha1 of
-  `css/site.css` + `js/site.js`, truncated, and both the stylesheet link and the footer `<script>`
-  read that one value. It used to be a literal that a human had to remember, and it went stale the
+  `css/site.css`, `js/site.js`, `js/scene3d.js`, and the two pinned Three.js runtime files, truncated;
+  the stylesheet, classic script and module script read that one value. It used to be a literal that a human had to remember, and it went stale the
   first time the renderer changed in a commit that forgot: new rooms, old `?v=`, and the only person
   who would ever see the bug is a returning visitor whose browser drew them with the last renderer.
   `verify-walk.mjs` now recomputes the hash from disk and fails if a page asks for anything else.
@@ -16,13 +20,11 @@ Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo 
   page and grep for the new markup and the pin. Pages already on disk make a crashing
   generator look healthy, so `python3 _gen_html.py` exiting 0 is a precondition for
   committing, not a nice-to-have.
-- WebKit flattening: a non-visible `overflow`, or a `filter`, on an element declaring
-  `transform-style: preserve-3d` forces that element flat, and a universal `preserve-3d` makes
-  the scene vanish. Here `preserve-3d` lives only on `.room-world` and `.ig-grid`, neither of
-  which has `overflow` or `filter`; the clip and `perspective` sit one level up on
-  `.room-stage`, and the scene's only `filter` is on a leaf. Never move `overflow` or `filter`
-  onto a `preserve-3d` element and never add `preserve-3d` to one that has either — it
-  flattens the 3D on iPhone, looks correct in Chrome, and produces no detector finding.
+- WebKit flattening is a CSS-3D concern for the Activities album, not the walkable renderer: the
+  walkable lane and objects use Three.js (Canvas2D fallback), while `.ig-grid` is the only current
+  `preserve-3d` selector and `.ig-wall` owns its `perspective`. Keep non-visible `overflow` off
+  `.ig-grid`, keep `filter`/`backdrop-filter` off the perspective wrapper, and never add a universal
+  `preserve-3d` rule. These can flatten the album silently in Safari while appearing fine in Chrome.
 - Authoring a district (intake, record, build rules, gate) is a skill:
   `skills/district-author/SKILL.md`, with `skills/place-intake/` before it when the material is
   photographs of a real place, `skills/japan-place/` whenever the place is in Japan,
@@ -33,15 +35,18 @@ Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo 
   fidelity rule). These scene-authoring skills live in `skills/` and **are tracked** — unlike
   everything under `.claude/`, which is local-only. Follow the matching one before doing the matching
   kind of work.
-- **Installed agent practices are mandatory (owner request, 2026-10-14):** before any non-trivial
-  implementation, read `skills/karpathy-guidelines/SKILL.md` and `skills/pua/SKILL.md`. Before every
-  new or revised walkable environment, landmark, or substantial scene build, also read
-  `skills/real-place-builder/SKILL.md` and `skills/grounded-scene/SKILL.md`, then the matching
-  domain skills above. These are tracked project skills, not optional suggestions. Apply PUA as an
-  evidence-first method—diagnose, change approach when stalled, inspect related effects, and verify
-  the actual artifact. Do **not** use shaming, threats, fabricated performance reviews/KPIs, endless
-  retries, or PUA as authority to bypass permissions, user constraints, safety, or tests. A scene is
-  not visually complete until its rendered objects and walkable stops have been inspected.
+- **Installed agent practices are mandatory (owner request, 2026-10-14; workflow extended 2026-10-17):**
+  before any non-trivial implementation, read `skills/karpathy-guidelines/SKILL.md` and
+  `skills/pua/SKILL.md`. For every new or revised walkable environment, landmark, or substantial
+  scene build, also read `skills/scene-system/SKILL.md`, `skills/real-place-builder/SKILL.md`,
+  `skills/grounded-scene/SKILL.md`, and the matching domain skills above. Before the visual gate,
+  read `skills/scene-quality-loop/SKILL.md`; before any PR is opened or updated, read
+  `skills/pr-handoff/SKILL.md` and update `TODO.md` with a complete, prioritized plan for the next
+  round. These are tracked project skills, not optional suggestions. Apply PUA as an evidence-first
+  method—diagnose, change approach when stalled, inspect related effects, and verify the actual
+  artifact. Do **not** use shaming, threats, fabricated performance reviews/KPIs, endless retries,
+  or PUA as authority to bypass permissions, user constraints, safety, or tests. A scene is not
+  visually complete until its required rendered objects and walkable stops have been inspected.
 - **The hub is a street with regions on it, and that is the owner's brief** (2026-10-08): one street
   to walk, a region for Japan and a region for Toronto, and a door to each of the three main places.
   Owned landmark/sub-spaces are discovered through their real parent props, not added as more hub
@@ -73,6 +78,18 @@ Static HTML, **no build step, no npm**. Deployed via GitHub Pages from the repo 
   pavement, along the one spine, with a station that makes it a place worth standing in. The layout
   arithmetic is `skills/street-commons/references/street-system.md`.
 
+
+## Mandatory PR handoff: update TODO.md first
+
+**Owner request (2026-10-17): before every PR creation or update, first refresh `TODO.md` and
+plan the next round's complete outstanding work.** Read `skills/pr-handoff/SKILL.md` before running
+`gh pr create`, `gh pr edit`, or pushing commits intended to update an open PR. The new top section
+must reflect the current diff, exact verification and visual-review evidence, limitations, and a
+prioritized next-round task list with observable acceptance criteria; separate owner-input blockers
+from work the agent can do. Preserve historical round notes, audit all affected open items, and do
+not invent or omit tasks. Review the updated file before committing or touching GitHub. Before merge,
+confirm the PR number, base, checks, diff, and TODO state; report merge status only after GitHub
+confirms it.
 
 **All `*.html` pages are GENERATED by `_gen_html.py`.** Never hand-edit the HTML files —
 your edits will be silently overwritten the next time the generator runs.
@@ -124,7 +141,15 @@ records what may be taken (the object vocabulary and its measured proportions, t
 the flood-fill waypoint probe, and a refusal list that arrived at nearly the same place ours did)
 and what may not (its signage system, which paints an invented Japanese string on every surface —
 legitimate for a fictional town, forbidden in a scene here — and its npm/Vite/three.js stack, which
-is the dependency rule and not a precedent for it).
+was not a precedent for the dependency rule). The owner later approved a separate, pinned Three.js
+runtime for walkable-world rendering on 2026-10-16; that does not license the sister build's other tooling.
+
+A selective 2026-10-17 survey of agent `SKILL.md` workflows for Three.js scenes, game environments,
+visual QA, and plan/PR handoff lives in
+`skills/scene-quality-loop/references/upstream-practices.md`. It records reviewed commits, licenses,
+what was adopted, and why MCP/CDN/API-key pipelines, project-specific score thresholds, and unlicensed
+skill packs were not installed. It is a research ledger, not an additional runtime dependency; the
+repo-specific workflow and owner constraints remain authoritative.
 
 ## Operational notes (2026-08)
 
@@ -193,7 +218,8 @@ lives in `js/site.js` (the `[data-dot-*]` block). Contract to keep intact, in th
   screen-reader route into the game.
 - Playback has a `prefers-reduced-motion` branch; keep it when touching `watch()`.
 - Verify by playing panels 1, 5, and 8 (one per act) at `python3 -m http.server 8080`, and
-  keep the detector at 0 findings. No test framework — the site stays dependency-free.
+  keep the detector at 0 findings. No test framework or package-manager runtime; the approved vendored
+  Three.js exception is limited to walkable-scene pages.
 
 ## Interactive: the photo plate
 
@@ -259,13 +285,10 @@ intact:
   plate can shift, and `loading="lazy"` stays on the tiles.
 - `inertOutside` / `trapTab` / `enterOverlay` / `leaveOverlay` are the site's shared overlay
   plumbing; the plate and the dot game both use them. Keep them shared.
-- Depth is **CSS transforms only**. The tilt and the angled roll are `perspective()` plus
-  `rotateY`/`translateZ`, chosen over WebGL for three measured reasons: three.js is ~149 KB
-  gzipped against the ~16 KB the whole site ships today; Pointer Lock (the `WASD` walk the
-  reference site uses) is unsupported on every iOS Safari and on Chrome for Android, so a
-  walk-through would be desktop-only; and a flat JPEG is not a space until something
-  estimates its depth, which needs a model and offline work, not a stylesheet. Keep it that
-  way unless the owner asks otherwise.
+- Depth in the **Activities album and its story plate** remains CSS transforms only. Their tilt and
+  angled roll are `perspective()` plus `rotateY`/`translateZ`; this owner-approved Three.js decision
+  (2026-10-16) is scoped to walkable environments and does not redesign or WebGL-ify the album.
+  The album's flat-JPEG surfaces remain DOM content, not reconstructed 3D geometry.
 - The frames' perspective is written **inside each frame's own transform**: a scroll container
   flattens its children, so a `perspective` inherited from the plate would be ignored.
 
@@ -303,6 +326,11 @@ change and gets committed with the work that motivated it.
 | Skill | Path | Use when |
 |---|---|---|
 | **scene-system** | `skills/scene-system/SKILL.md` | Starting any new place, or when the scene skills' order is unclear: the eight-phase pipeline that conducts place-intake / grounded-scene / district-author / landmark-space / lane-prop / street-commons, the renderer contract, the proven idioms with their numbers, the critique failure table, and the gate battery. Read first, then the phase skills. |
+| **real-place-builder** | `skills/real-place-builder/SKILL.md` | Building or substantially revising any grounded walkable place, district, or landmark; translates evidence and the repository's records into an implementation and acceptance plan. |
+| **scene-quality-loop** | `skills/scene-quality-loop/SKILL.md` | Final visual review after a substantial Three.js environment, object, camera, or renderer change; captures settled route/prop views, separates visual critique from mechanical gates, and requires recapture after fixes. See its upstream survey for selected methods and refusals. |
+| **pua** | `skills/pua/SKILL.md` | Non-trivial implementation, repeated failure, stalled diagnosis, or any task requiring complete end-to-end verification; evidence-first and root-cause oriented. |
+| **karpathy-guidelines** | `skills/karpathy-guidelines/SKILL.md` | Non-trivial code changes: keep the implementation simple, surgical, and grounded in the actual repository. |
+| **pr-handoff** | `skills/pr-handoff/SKILL.md` | Before every PR creation/update and before merge; requires a fresh, prioritized next-round plan in `TODO.md` before GitHub operations. |
 | **district-author** | `skills/district-author/SKILL.md` | Adding or changing a district (a place whose frames, objects and clips hang in one lane), when the owner asks for "3D" or a stories-style viewer, or before choosing any renderer for one. |
 | **place-intake** | `skills/place-intake/SKILL.md` | The owner supplies photographs of a real place — a trip, a site, an alley they walked — and it is to become a room. Runs before `district-author`, before any geometry is written. |
 | **japan-place** | `skills/japan-place/SKILL.md` | The place is in Japan: Tokyo, 福岡/Moji, 屋台, 商店街, 踏切, 参道, 提灯, 自動販売機. Carries the object table with real centimetres (`references/japan-vocabulary.md`) and the sakura-crossing study note (`references/sakura-crossing.md`). |
@@ -397,7 +425,11 @@ proposal until they have read it, and the loop is not finished until they have.
 
 ## Conventions
 
-- Keep the site dependency-free: no frameworks, no build tooling, no `npm run build`.
+- Keep the static site free of package-manager installs and build tooling: no framework, no `package.json`,
+  and no `npm run build`. The sole approved runtime library is the pinned, vendored MIT Three.js 0.186.1
+  for all walkable-scene geometry and objects; it is dynamically imported on each walkable page, and
+  consumes `backdrop.world.prims` when present. Canvas2D remains the complete fallback. Do not extend
+  that exception to the Activities album or add another dependency without approval.
 - Preserve accessibility features already present: skip link, `aria-*` attributes, semantic landmarks.
 - Inline SVG icons (Heroicons-style paths) are defined in `_gen_html.py`; add new icons there.
 - Commit generated HTML together with the `_gen_html.py` change that produced it.
@@ -442,10 +474,11 @@ proposal until they have read it, and the loop is not finished until they have.
     stand in is built from what the photographs show. `IMG/` is a registry and every file in it must
     match a rule — putting a personal photograph there would pull it onto the album wall.
 
-- **The walk pages are shells, not articles.** The street and every room are built by `shell_page()`: no
-    nav, no footer, no `reveal`, and its reading material lives in a drawer that ships open and is
-    folded by JS. Adding a section, a `reveal` class or a navy drawer surface to that page is a
-    defect, not a design choice — it either hides content from visitors without scripting or drops
-    borrowed components to 2:1 contrast. The scene itself is a canvas raster with no library in it;
-    its box is authored (`data-lane-w/-d/-ceil`, `data-eye`) and read by the renderer, so do not put
-    geometry back into CSS transforms or invent a second set of numbers in `js/site.js`.
+- **The walk pages are shells, not articles.** The street and every room are built by `shell_page()`:
+    no nav, no footer, no `reveal`, and the reading material lives in a drawer that ships open and
+    is folded by JS. Adding a section, a `reveal` class or a navy drawer surface is a defect: it can
+    hide content without scripting or drop borrowed components to 2:1 contrast. The lane, props and
+    sourced outdoor world are rendered in the pinned Three.js scene with the authored box
+    (`data-lane-w/-d/-ceil`, `data-eye`). Canvas2D is the complete no-WebGL fallback, not an overlay
+    behind the WebGL world. Do not put scene geometry into CSS transforms or invent a second set of
+    dimensions in `js/site.js` or `js/scene3d.js`.

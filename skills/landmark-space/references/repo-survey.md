@@ -28,9 +28,10 @@ street:
 
 ## 2. Nice-Wolf-Studio/claude-skills-threejs-ecs-ts — the engineering principles
 
-A three.js skill pack (ECS + renderer topics). Its value here is not code — it is WebGL and we ship
-none — but the *checklists* state, in one line each, the things our raster re-derived the hard way,
-which is evidence they are medium-wide rules:
+A three.js skill pack (ECS + renderer topics). At the time this survey was written, its value here
+was not code — WebGL was not approved — but the *checklists* state, in one line each, the things our
+raster re-derived the hard way. Three.js was later approved for walkable scenes; these principles
+still matter across both render paths:
 
 | their line | our equivalent, already committed |
 |---|---|
@@ -83,7 +84,7 @@ a *graph of viewpoints* needs, and every item has a twin in this repo:
 | `sceneFadeDuration` | the plate's view transition; a room change is a walk, not a fade (`AGENTS.md`) |
 | `preview` image before load | the album plate is the preview of a room — the round-18 link contract makes that literal |
 | `autoRotate` after inactivity | we refuse it: nothing moves on a clock of its own except authored motion; idle shows the *idle pump*, not a camera spin |
-| CSS-3D `fallbackPath` when WebGL is absent | our whole renderer *is* the fallback, and the list/drawer is the fallback of the renderer |
+| CSS-3D `fallbackPath` when WebGL is absent | Canvas2D remains the complete walkable-scene fallback; the list/drawer is the no-script content fallback |
 
 The one pannellum idea with no twin here, and the one the link contract takes: **the hotspot that
 is a door carries the pose you arrive in** (`targetYaw`/`targetPitch`/`sameAzimuth`). Our `#at-`
@@ -101,7 +102,7 @@ which the owner has twice refused for us. Cited so the next session does not re-
 
 ## Refusals, collected
 
-- three.js/Vite/npm from any of the above — the dependency rule, unchanged, its own PR if ever.
+- Vite/npm and any extra rendering packages from these packs — the site's separately approved pinned Three.js runtime does not authorize their tooling or dependencies.
 - pannellum's auto-rotate and fade-between-scenes — a room change is a walk; idle is not a spin.
 - The slide skill's CDN libraries and glassmorphism panels — the site's world is the journal cover
   (`DESIGN.md`), not glass.

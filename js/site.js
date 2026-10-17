@@ -594,25 +594,22 @@ function leaveOverlay(root, trigger) {
 })();
 
 /* ---- Districts: the walk (rooms page) ----
-   The lane owns the viewport. That is the reference site's arrangement and it is the whole
-   brief: entering a district has to read as standing in a place, not as looking at a figure set
-   inside an article. Its level chips, its YOU marker, its `W A S D walk · Space jump · Drag to
-   turn · E open` and its `Level 1 ready.` all float over a view that fills the screen, and every
-   one of those verbs has a touch twin (`Jump` sits there as a button for exactly that reason).
+   The lane owns the viewport: entering a district should read as standing in a place, not looking at
+   a figure set inside an article. Its level rail, accessible status and controls float over the view;
+   W A S D, the touch stick, jump, turning and object use all share the same body and camera state.
 
    Deliberate limits, each one a trade rather than an oversight:
-     - the eye does not move; the world is dragged the other way, so a corridor with one axis of
-       travel needs no matrix math, no render library and no WebGL — and 0 KB of dependency;
-     - yaw is free and pitch is clamped to ±35°, because past that the eye leaves the box and the
-       visitor sees the ceiling edge instead of a lane;
-     - turning is drag, never Pointer Lock: the reference does the same, and lock is unsupported on
-       every iOS Safari, which would make the space unreachable on a phone;
-     - 1 px = 1 cm, and the numbers are walking numbers: eye at 168, 235 cm/s at foot, 411 cm/s
-       at a run, a 0.45 m jump under 2400 cm/s² of gravity;
-     - the space is closed on six sides, so turning around shows the lane rather than its edge.
-   What is not here: a lightmap, a physics engine, occlusion, or a claim that this is a survey.
-   Frames are hung on the wall and are opened where you stand in front of them, which is the only
-   reason the 3D exists at all — a picture you cannot walk up to does not need a corridor. */
+     - the body remains at eye height; the 3D camera and every authored surface use world coordinates,
+       while horizontal input is projected into the view plane and collisions keep the body in its box;
+     - yaw is free and pitch is clamped to ±24°; turning is drag or keys, never Pointer Lock, so the
+       space remains operable on phones where Pointer Lock is unavailable;
+     - world units are centimetres: eye at 168, walk at 165 cm/s, run at 206 cm/s, and a 420 cm/s
+       jump impulse under 2400 cm/s² of gravity;
+     - openings are authored by each place; Three.js depth testing handles occlusion, and Canvas2D
+       remains the complete fallback when WebGL is unavailable.
+   This is not a lightmap, a physics engine or a claim that every detail is a survey. Sourced world
+   records and authored props share a camera and depth buffer so a surface, its shadow and its hit target
+   stay in the same place. */
 (function () {
   const layer = document.querySelector("[data-walk]");
   if (!layer) return;
@@ -689,16 +686,22 @@ function leaveOverlay(root, trigger) {
   // Where across the lane a stop stands you (round 33): at the rail, not in the middle of a 14 m
   // terrace. Absent, a glide keeps the walker's own x, as it always did.
   const stopX = stops.map((el) => { const v = el.style.getPropertyValue("--x"); return v ? parseFloat(v) : undefined; });
+  const stopView = stops.map((el) => {
+    const view = (key) => {
+      const v = parseFloat(el.dataset[`view${key}`]);
+      return Number.isFinite(v) ? v : null;
+    };
+    return { yaw: view("Yaw"), pitch: view("Pitch") };
+  });
 
-  /* ---- the raster ----
-     A canvas, one projection, a painter's algorithm. No WebGL, no library, nothing vendored: the
-     whole viewport is 3D and it is still this repo's own code, so a browser that cannot run it gets
-     the written district instead of a black rectangle. Walls are split into 60 cm panels because an
-     affine map is exact across a panel that narrow, and each panel carries a *tiling* pattern rather
-     than a photograph — nobody surveyed this alley, and a stretched stock texture would be the one
-     lie a renderer like this tells easily. Fog, the amber pool and the bulbs are all distance
-     functions of the same projection, so no depth cue can disagree with the geometry the way an
-     overlaid gradient would. What this is not: a lightmap, a raytracer, or a survey. */
+  /* ---- authored surfaces and the projection bridge ----
+     This file remains the scene authoring and interaction layer: one camera defines walking, picking,
+     the Canvas2D fallback, and the exact world-space polygons consumed by scene3d.js. Three.js is the
+     primary depth-tested renderer; this canvas stays transparent in that mode and becomes the complete
+     written-scene fallback when WebGL is absent. Walls are split into 60 cm panels
+     because an affine map is exact across a panel that narrow, and each carries the authored tiling
+     material rather than a stock photograph. Fog, the amber pool and the bulbs remain functions of the
+     same projection, so a renderer change cannot move an interaction target away from its surface. */
   const SEG = 60, NEAR = 24, DPM = 2;   // panel, near plane, pattern scale: the renderer's own
   let W = 0, H = 0, focal = 620, tilePat = null, floorPat = null, floorTiers = null, winPat = null,
       concretePat = null, galvPat = null;
@@ -719,6 +722,9 @@ function leaveOverlay(root, trigger) {
     },
   });
   const pics = new Map();
+  const PIC_KEY = new WeakMap();
+  const PATTERN_SOURCE = new WeakMap();
+  let patternSerial = 0;
   const loadPics = () => {
     objs.forEach((el) => {
       const src = el.dataset.tex;
@@ -727,6 +733,7 @@ function leaveOverlay(root, trigger) {
       img.decoding = "async";
       img.src = src;
       pics.set(src, img);
+      PIC_KEY.set(img, src);
     });
   };
   const mkTile = (paint) => {
@@ -735,7 +742,9 @@ function leaveOverlay(root, trigger) {
     const c = t.getContext("2d");
     if (!c) return null;
     paint(c);
-    return g.createPattern(t, "repeat");
+    const pattern = g.createPattern(t, "repeat");
+    if (pattern && typeof pattern === "object") PATTERN_SOURCE.set(pattern, { canvas: t, id: `tile-${++patternSerial}` });
+    return pattern;
   };
   const paintWall = (c) => {
     c.fillStyle = "#465572"; c.fillRect(0, 0, 128, 128);
@@ -1640,6 +1649,8 @@ function leaveOverlay(root, trigger) {
     // the void's navy — it falls back to the flat colour of the stuff it is made of, and the wedge
     // a thin slice leaves reads as shade, not as a hole.
     PATKEY = new Map(Object.keys(PATS).map((k) => [PATS[k], k]));
+    if (floorPat) PATKEY.set(floorPat, `floor-${layer.dataset.floor || "default"}`);
+    (floorTiers || []).forEach((pat, i) => { if (pat) PATKEY.set(pat, `floor-tier-${i}`); });
     FLATOF = { wall: "#465572", floor: "#37435c", shutter: "#4d5f5a", dado: "#3f5170",
                brick: "#4a4038", glass: "#1d2b42", towerc: "#98a1ab", wood: "#77573a",
                terrain: "#4c6a3a", pedestal: "#2a3242", water: "#27496a", track: "#3a3f4a",
@@ -1692,8 +1703,10 @@ function leaveOverlay(root, trigger) {
     // the element, like an awning colour, or the renderer never sees it (lane-prop section 7).
     mural: jsonData(el.dataset.mural), posts: el.dataset.posts || null,
     towers: jsonData(el.dataset.towers), leaves: parseFloat(el.dataset.leaves) || 0,
-    // Round 36: a context block's outlines, table centimetres from the map (`MOJI_BLOCKS`).
-    blocks: jsonData(el.dataset.blocks),
+    // Round 36/39: context-block outlines on the port table, and the tower's local metre footprint.
+    blocks: jsonData(el.dataset.blocks), footprint: jsonData(el.dataset.footprint),
+    floors: parseFloat(el.dataset.floors) || 0,
+    observation: parseFloat(el.dataset.observation) || 0,
     run: parseFloat(el.dataset.run) || 0,
     // A door the record says is a lift (round 33: the exits of the LookOut and the tunnel).
     lift: el.dataset.lift === "true",
@@ -1885,13 +1898,11 @@ function leaveOverlay(root, trigger) {
                   // Blue Wing Moji is painted blue, and that is the whole reason people photograph
                   // it: a blue bascule against red brick and a dark harbour.
                   drawbridge: "#3f6ea8", ship: "#5a6472",
-                  // The four Moji buildings, each the colour it is known by (round 36, read off
-                  // photographs): the station's cream render, the customhouse's red brick, Osaka
-                  // Shosen's orange facing brick -- not the pale render the table model had -- and
-                  // the Dalian hall's brick striped white. Their painters carry their own palettes;
-                  // these are what the rest of the renderer reads for them.
+                  // The Moji buildings, each in the material the photographs and place sources show:
+                  // cream station, red customhouse, orange OSK brick, striped Dalian brick, and the
+                  // Retro High Mart's gray concrete/glass grid.
                   stationfront: "#c4b68e", customhouse: "#a5492f", osakashosen: "#c46d38", dalianhall: "#a24b36",
-                  massing: "#dedbd2" };
+                  retrohighmart: "#707775", massing: "#dedbd2" };
   /* Props are named `kind`, `kind-2`, `kind-left`, `kind-s1`… and the shape/tint tables were keyed
      by the *whole* id — so `front-a` was a flat plane while `front` was a painted recess, and whole
      families of props (banners, crates, snow banks, stall curtains) lost their bodies to a fallback.
@@ -1929,9 +1940,11 @@ function leaveOverlay(root, trigger) {
                   // The tower's own: a panel of floor you see 342 m down through. Its branch
                   // shipped in round 21 without this key, so for nine rounds it drew as a 4 cm card.
                   glassfloor: "glassfloor",
-                  // Moji's kit: the drawbridge the district is known by, and the ships it opens for.
+                  // Moji's kit: the drawbridge the district is known by, the ships it opens for, and
+                  // the mapped Retro High Mart tower modeled separately at 1:25.
                   drawbridge: "drawbridge", ship: "ship", stationfront: "stationfront",
                   customhouse: "customhouse", osakashosen: "osakashosen", dalianhall: "dalianhall",
+                  retrohighmart: "retrohighmart",
                   // Round 36: the port table's context blocks, in the map's outlines.
                   massing: "massing",
                   // The market's hall: St. Lawrence Market South as it stands -- a brick hall under
@@ -1971,6 +1984,7 @@ function leaveOverlay(root, trigger) {
   };
   const ZERO8 = [0, 0, 0, 0, 0, 0, 0, 0];
   const quads = [];
+  let threeRenderer = null;
   const add = (C, corners, uv, mode, arg, img) => {
     const pts = corners.map((c, i) => {
       const o = camPt(C, c[0], c[1], c[2]);
@@ -2000,7 +2014,14 @@ function leaveOverlay(root, trigger) {
        kept, so nothing that used to be drawn has stopped being drawn. */
     if (bx1 < -80 || bx0 > W + 80 || by1 < -80 || by0 > H + 80) return null;
     let z = 0; cp.forEach((q) => { z += q.z; });
-    const quad = { z: z / cp.length, pts: cp, mode, arg, img,
+    const texture = mode === "pat" && arg ? PATTERN_SOURCE.get(arg) : null;
+    const quad = { z: z / cp.length, pts: cp, world: corners.map((c) => [c[0], c[1], c[2]]),
+                   uv: corners.map((_, i) => [Number(uv[i * 2]) || 0, Number(uv[i * 2 + 1]) || 0]),
+                   mode, arg, img,
+                   textureSource: texture && texture.canvas,
+                   textureKey: texture && (PATKEY && PATKEY.get(arg) || texture.id),
+                   imageKey: img && PIC_KEY.get(img),
+                   fallback: mode === "pat" && PATKEY ? (FLATOF[PATKEY.get(arg)] || "#2b3a56") : null,
                    // Kept so the night can skip quads too small for it to matter: darkening a
                    // 4-pixel speck costs a fill and changes nothing anyone can see.
                    area: (bx1 - bx0) * (by1 - by0) };
@@ -2023,10 +2044,11 @@ function leaveOverlay(root, trigger) {
 
   /* ---- the model kit (round 36) ----
      The owner looked at Moji Port on its one table and said the models had to come apart: at 1.5 cm to
-     the metre every building on it was a block the size of a shoe. They stand on stands of their own
-     now, all four at one scale (1:25), and at that size a box with a picture on one face reads as a box.
-     A model seen from two metres has to be built -- walls cut into bays, roofs as roofs, towers as
-     towers -- and this kit is what the four painters build with.
+     the metre every building on it was a block the size of a shoe. The four historic buildings now
+     stand on their own stands at 1:25, and the Retro High Mart joins them at that scale on a lower
+     base so it fits the hall. At that size a box with a picture on one face reads as a box. A model
+     seen from two metres has to be built -- walls cut into bays, roofs as roofs, towers as towers --
+     and this kit is what the five painters build with.
 
      It works in the model's own frame: u along its front (to the right of someone facing it), v out of
      its front, y up from its base, all in metres of the real building. `k` is the record's width over
@@ -2040,8 +2062,8 @@ function leaveOverlay(root, trigger) {
      stands through another -- a tower through a roof -- is told to paint late (`d` < 0). */
   const Z64 = new Array(64).fill(0);
   // Built models stand on stands that are lit for them; the generic contact shadow, an unrotated box
-  // under the prop's middle, would lie across a turned model's walls, so these four go without it.
-  const MODEL_KINDS = new Set(["stationfront", "customhouse", "osakashosen", "dalianhall", "massing"]);
+  // under the prop's middle, would lie across a turned model's walls, so their painters omit it.
+  const MODEL_KINDS = new Set(["stationfront", "customhouse", "osakashosen", "dalianhall", "retrohighmart", "massing"]);
   const KEY_L = (() => { const v = [0, 0.85, -0.5], l = Math.hypot(v[0], v[1], v[2]); return v.map((c) => c / l); })();
   const modelKit = (C, m, drawn, lit, LEN) => {
     const k = m.w / LEN;
@@ -2910,7 +2932,7 @@ function leaveOverlay(root, trigger) {
     const sa = bd.skyAround;
     // Not before the first resize: with no focal length yet the screen quad's corners divide by
     // zero, and a NaN corner is a call the canvas silently drops (the cost probe counted eight).
-    if (sa && Array.isArray(sa.stops) && typeof g.createLinearGradient === "function" && focal > 0) {
+    if (!threeRenderer && sa && Array.isArray(sa.stops) && typeof g.createLinearGradient === "function" && focal > 0) {
       const dl = DAY(), pr = (pitch * Math.PI) / 180;
       const yOf = (e) => {
         const a = Math.max(-1.55, Math.min(1.55, (e * Math.PI) / 180 + pr));
@@ -2948,9 +2970,9 @@ function leaveOverlay(root, trigger) {
                      air: 0, lit: 0, day: false, nolite: true, pts: at(box[0], box[1], box[2], box[3]) });
       }
     }
-    if (bd.world) drawWorld(C);
+    if (bd.world && !threeRenderer) drawWorld(C);
     const skyBands = bd.sky || [];
-    if (bd.skyGradient && skyBands.length && typeof g.createLinearGradient === "function") {
+    if (bd.skyGradient && skyBands.length && !threeRenderer && typeof g.createLinearGradient === "function") {
       // The record's height bands are colour samples, not separate slabs: project their centres to
       // the far plane and let one canvas gradient interpolate between them. Thirteen hard edges were
       // still visible as stripes; a gradient keeps the same authored palette and gives the opening a
@@ -2980,7 +3002,7 @@ function leaveOverlay(root, trigger) {
                         [150000, topY, 120000], [-150000, topY, 120000]],
                     ZERO8, "flat", gradient, null);
       if (q) { q.air = 0; q.lit = 0; q.day = false; }
-    } else {
+    } else if (!(bd.skyGradient && skyBands.length && threeRenderer)) {
       // Keep the established scene idiom for every backdrop that has not asked for the continuous
       // outdoor gradient; the street's port is a scoped treatment, not a global reskin of room skies.
       skyBands.forEach((b) => {
@@ -3677,6 +3699,8 @@ function leaveOverlay(root, trigger) {
     const half = clamp(0.6 / zoom, 0.34, 0.92);
     focal = W * 0.5 / Math.tan(half);
     const C = cam();
+    // Quads are staged in the scene's world coordinates below; the Three.js pass runs only after
+    // every shell, prop, backdrop and state-driven surface has been rebuilt for this camera.
     quads.length = 0;
     // Whether the authored bands tile a panel's whole height: if they do, the wall's own tiling is
     // not painted at all, because the cladding will be. Anything less than full coverage keeps it, so
@@ -5506,11 +5530,11 @@ function leaveOverlay(root, trigger) {
           }
         }
       } else if (shape === "massing") {
-        /* The port table's footprints (round 36). The four buildings have their own stands now; the
-           table keeps where they stand the way a site plan does -- low pale plates in the outlines
-           OpenStreetMap gives, so nothing here competes with the models down the hall or claims
-           more than the outline (boxes at the eaves' heights read as four unfinished buildings).
-           Points arrive in table centimetres; the kit runs at k = 1, unturned. */
+        /* The port table's footprints (round 36/39). The historic buildings and the Retro High Mart
+           have their own stands now; the table keeps all five mapped outlines the way a site plan does
+           -- low pale plates in OpenStreetMap's geometry, so nothing here competes with the models
+           down the hall or claims more than those outlines. Points arrive in table centimetres; the
+           kit runs at k = 1, unturned. */
         const K = modelKit(C, { ...m, ry: 0 }, drawn, lit, m.w);
         (m.blocks || []).forEach((b) => {
           const poly = b.p.map(([x, z]) => [x - m.x, m.z - z]);
@@ -5917,6 +5941,130 @@ function leaveOverlay(root, trigger) {
           K.done();
         }
         K.spike(tu, tv, 23.0, 24.5, 0.08, DARK, -37);
+      } else if (shape === "retrohighmart") {
+        /*
+           Mojiko Retro High Mart, the six-node footprint from OSM way 292429354, shown separately
+           at 1:25. CVU/CTBUH lists 127 m including the rooftop helipad; Kitakyushu City and MLIT
+           describe the public observation view at 103 m. OSM's height=115 tag conflicts with that
+           total-height listing. A Nippon.com photograph (gu900211, image 1668287) documents the
+           gray small-window grid, dark X-braced façade band, open crown frame and curved cap; it is
+           visual evidence, not a measured elevation. The photo does not identify whether the band is a
+           structural transfer floor. The 31-floor rhythm, band position and roof framing are
+           deliberately approximate, not a guessed floor schedule or roof plan.
+        */
+        const poly = Array.isArray(m.footprint) && m.footprint.length >= 3
+          ? m.footprint.map(([u, v]) => [Number(u), Number(v)])
+          : [[-m.w / 8, -m.d / 8], [m.w / 8, -m.d / 8], [m.w / 8, m.d / 8], [-m.w / 8, m.d / 8]];
+        const u0 = Math.min(...poly.map((p) => p[0])), u1 = Math.max(...poly.map((p) => p[0]));
+        const v0 = Math.min(...poly.map((p) => p[1])), v1 = Math.max(...poly.map((p) => p[1]));
+        const widthM = u1 - u0, K = modelKit(C, m, drawn, lit, widthM);
+        const totalH = m.h / K.k, observationH = Math.min(totalH, m.observation || 103);
+        const floors = Math.max(2, Math.round(m.floors || 31)), floorH = observationH / floors;
+        const bodyH = floorH * (floors - 1);
+        const FACADE = "#747b79", BASE = "#535b5d", SPANDREL = "#929895", FRAME = "#424b4e";
+        const GLASS = "#648080", OBS_GLASS = "#719092", TRANSFER = "#3d464a", BRACE = "#596164";
+        const transferY = Math.round((floors - 1) * 0.43) * floorH, transferH = floorH * 1.45;
+
+        // Thirty lower storeys lead to the glazed public room on floor 31. One window per broad bay
+        // and a light spandrel per floor reproduce the photographed rhythm without claiming a plan.
+        K.walls(poly, 0, bodyH, FACADE, 4.6, (f) => {
+          K.band(f, 0, 1.0, BASE);
+          for (let floor = 0; floor < floors - 1; floor++) {
+            const y = floor * floorH, top = y + floorH;
+            if (y < transferY + transferH && top > transferY) continue;
+            K.band(f, top - 0.14, top, SPANDREL);
+            const bay = f.len / f.n;
+            const ww = Math.min(1.75, bay * 0.46), wh = Math.min(2.05, floorH - 1.25);
+            for (let b = 0; b < f.n; b++) {
+              const tc = (f.len * (b + 0.5)) / f.n;
+              K.win(f, tc, ww, y + 0.60, wh,
+                    { frame: FRAME, fw: 0.12, glass: GLASS, bars: "#aab2ae", cols: 2, rows: [0.55], lamp: 0.55 });
+            }
+          }
+          K.band(f, transferY, transferY + transferH, TRANSFER, 1.08);
+          if (K.seen(transferH, 0.8)) {
+            for (let b = 0; b < f.n; b++) {
+              const lo = (f.len * b) / f.n, hi = (f.len * (b + 1)) / f.n;
+              const pad = Math.min(0.28, (hi - lo) * 0.08), thick = Math.min(0.18, (hi - lo) * 0.045);
+              const low = transferY + 0.22, high = transferY + transferH - 0.22;
+              f.at((lo + hi) / 2);
+              K.put([f.F(lo + pad, low, 0.09), f.F(lo + pad + thick, low, 0.09),
+                     f.F(hi - pad, high, 0.09), f.F(hi - pad - thick, high, 0.09)], K.mix(BRACE, f.shade), lit * 1.05);
+              K.put([f.F(hi - pad - thick, low, 0.09), f.F(hi - pad, low, 0.09),
+                     f.F(lo + pad + thick, high, 0.09), f.F(lo + pad, high, 0.09)], K.mix(BRACE, f.shade), lit * 1.05);
+            }
+          }
+        }, null, -16);
+
+        // The 31st-floor observation room is a single transparent band placed at the published
+        // 103 m viewing datum. Sources do not give its exact floor elevation or ceiling, so the band
+        // straddles that datum rather than pretending to be a surveyed floor schedule.
+        K.walls(poly, bodyH, observationH, "#5b6668", 4.6, (f) => {
+          K.band(f, bodyH, bodyH + 0.18, FRAME);
+          K.band(f, observationH - 0.22, observationH, FRAME);
+          const bay = f.len / f.n, ww = Math.min(2.65, bay * 0.64);
+          for (let b = 0; b < f.n; b++) {
+            const tc = (f.len * (b + 0.5)) / f.n;
+            K.win(f, tc, ww, bodyH + 0.42, observationH - bodyH - 0.78,
+                  { frame: FRAME, fw: 0.15, glass: OBS_GLASS, bars: "#aab9b7", cols: 2, rows: [0.56], lamp: 0.72 });
+          }
+        }, null, -18);
+        K.lid(poly, observationH, "#4b5457", -18);
+
+        // An open, braced crown frame stands between the observation room and the curved roof cap.
+        const frameBase = observationH, frameTop = Math.max(frameBase + 1, totalH - 9);
+        const frameFoot = [[-3.0, -2.5], [3.0, -2.5], [3.0, 2.5], [-3.0, 2.5]];
+        const postSize = 0.42;
+        for (const [u, v] of [[-2.78, -2.28], [2.78, -2.28], [2.78, 2.28], [-2.78, 2.28]]) {
+          const post = [[u - postSize / 2, v - postSize / 2], [u + postSize / 2, v - postSize / 2],
+                        [u + postSize / 2, v + postSize / 2], [u - postSize / 2, v + postSize / 2]];
+          K.walls(post, frameBase, frameTop, FRAME, 1e6, null, null, -23);
+          K.lid(post, frameTop, FRAME, -23);
+        }
+        [frameBase + 0.18, frameBase + (frameTop - frameBase) * 0.52, frameTop - 0.42].forEach((y) =>
+          K.walls(frameFoot, y, y + 0.28, "#596164", 6.2, null, null, -23));
+        const braceBase = frameBase + 0.42, braceTop = frameTop - 0.42, braceMid = (braceBase + braceTop) / 2;
+        const frameBar = (pts) => K.face(pts, BRACE, [0, 0, braceMid], 1, -25);
+        const lu = -2.48, ru = 2.48, lv = -1.98, rv = 1.98, t = 0.23;
+        for (const side of [-1, 1]) {
+          const v = side * 2.49, u = side * 3.0;
+          frameBar([[lu, v, braceBase], [lu + t, v, braceBase], [ru, v, braceTop], [ru - t, v, braceTop]]);
+          frameBar([[ru - t, v, braceBase], [ru, v, braceBase], [lu + t, v, braceTop], [lu, v, braceTop]]);
+          frameBar([[u, lv, braceBase], [u, lv + t, braceBase], [u, rv, braceTop], [u, rv - t, braceTop]]);
+          frameBar([[u, rv - t, braceBase], [u, rv, braceBase], [u, lv + t, braceTop], [u, lv, braceTop]]);
+        }
+
+        // A shallow elliptical shell and a curved front fascia echo the distinctive cap in the
+        // sourced photograph. The cap's exact radius, profile and structural details are not known.
+        const capBase = frameTop, capH = Math.max(1, totalH - capBase), capU = 12.0, capV = 7.8;
+        const capFoot = [];
+        for (let i = 0; i < 20; i++) {
+          const a = (i / 20) * Math.PI * 2;
+          capFoot.push([capU * Math.cos(a), capV * Math.sin(a)]);
+        }
+        const capRings = 4, capSegments = 20;
+        for (let ring = 0; ring < capRings; ring++) {
+          const a0 = (ring / capRings) * Math.PI / 2, a1 = ((ring + 1) / capRings) * Math.PI / 2;
+          const u0 = capU * Math.cos(a0), v0 = capV * Math.cos(a0), y0 = capBase + capH * Math.sin(a0);
+          const u1 = capU * Math.cos(a1), v1 = capV * Math.cos(a1), y1 = capBase + capH * Math.sin(a1);
+          for (let i = 0; i < capSegments; i++) {
+            const t0 = (i / capSegments) * Math.PI * 2, t1 = ((i + 1) / capSegments) * Math.PI * 2;
+            const c0 = [Math.cos(t0), Math.sin(t0)], c1 = [Math.cos(t1), Math.sin(t1)];
+            const pts = ring < capRings - 1
+              ? [[u0 * c0[0], v0 * c0[1], y0], [u0 * c1[0], v0 * c1[1], y0],
+                 [u1 * c1[0], v1 * c1[1], y1], [u1 * c0[0], v1 * c0[1], y1]]
+              : [[u0 * c0[0], v0 * c0[1], y0], [u0 * c1[0], v0 * c1[1], y0], [0, 0, totalH]];
+            K.face(pts, "#d7d9d4", [0, 0, capBase - 0.2], 1, -27);
+          }
+        }
+        K.face(capFoot.map(([u, v]) => [u, v, capBase + 0.04]), "#929896", [0, 0, capBase + 1], 0.92, -28);
+        const fascia = [[-capU, capV, capBase], [capU, capV, capBase], [capU, capV, capBase + 0.3]];
+        for (let i = 20; i >= 0; i--) {
+          const u = (i / 20) * capU * 2 - capU;
+          const y = capBase + 0.3 + 4.0 * (1 - (u / capU) ** 2);
+          fascia.push([u, capV, y]);
+        }
+        K.face(fascia, "#e0e1dc", [0, 0, capBase + 1], 1, -29);
       } else if (shape === "stall") {
         /* A market stall at table scale: a counter, a dark opening under a striped awning. The
            awning slopes the way an awning does and carries the stripes a market reads by; nothing
@@ -6276,12 +6424,38 @@ function leaveOverlay(root, trigger) {
     });
 
     g.setTransform(1, 0, 0, 1, 0, 0);
-    g.fillStyle = "#141e36";
-    g.fillRect(0, 0, W, H);
-    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = "source-over";
     quads.sort((p, q) => (q.sz ?? q.z) - (p.sz ?? p.z));
-    quads.forEach(emit);
+    if (threeRenderer) {
+      if (typeof g.clearRect === "function") g.clearRect(0, 0, W, H);
+      try {
+        threeRenderer.render({ camera: C, width: W, height: H, focal, time: T, quads,
+                              day: DAY(), dayPage: DAYPAGE, night: NIGHT(), sunAz: sunAz(),
+                              fogMax: FOG_MAX, dayGain: DAY_GAIN,
+                              effects: { lamps, wires, marks, surfaces, wall: WALL, ceil: CEIL,
+                                zBack: Z_BACK, zFar: Z_FAR, phase: phaseNow(), reducedMotion: reduce() } });
+      } catch (err) {
+        const failed = threeRenderer;
+        threeRenderer = null;
+        try { if (failed.dispose) failed.dispose(); } catch (_) {}
+        layer.dataset.walkRenderer = "canvas2d";
+        if (window.console && typeof console.warn === "function") console.warn("Three.js frame fallback:", err);
+        // Rebuild once with the complete Canvas2D path: this failed frame was assembled for the
+        // WebGL scene, so the next frame must include its fallback-rendered distant world too.
+        window.setTimeout(() => draw(), 0);
+      }
+    }
+    if (!threeRenderer) {
+      g.fillStyle = "#141e36";
+      g.fillRect(0, 0, W, H);
+      quads.forEach(emit);
+    }
+    g.setTransform(1, 0, 0, 1, 0, 0);
 
+    // In WebGL mode every environment effect is world-space Three.js geometry too. This detailed
+    // screen-projection pass is retained exclusively for the no-WebGL/failed-context fallback.
+    if (!threeRenderer) {
     // The bulbs and the machine are glows, not geometry: same projection, drawn afterwards, so the
     // amber pool cannot disagree with where the machine actually is.
     g.globalCompositeOperation = "lighter";
@@ -6653,6 +6827,7 @@ function leaveOverlay(root, trigger) {
       g.ellipse(sx, sy, Math.max(4, focal * 26 / sh.z), Math.max(2, focal * 9 / sh.z), 0, 0, 6.2832);
       g.fill();
     }
+    }
   };
 
   const liveEl = layer.querySelector("[data-walk-live]");
@@ -6760,10 +6935,14 @@ function leaveOverlay(root, trigger) {
       if (keys.has("d")) mx += 1;
       const len = Math.hypot(mx, md) || 1;
       const r = keys.has("shift") ? RUN : 1;
-      // Walking stays on the lane's authored axes. Looking changes what is in front of you, not
-      // where W or A/D put your next step; turning is rate-limited so a held arrow cannot whip the view.
-      const wishX = (mx / len) * SPEED * r;
-      const wishD = (md / len) * SPEED * r;
+      // WASD and the stick live in the view plane, not the room's fixed axes. `camPt` maps a
+      // camera-forward step to (sin(yaw), cos(yaw)) in the lane, and camera-right to
+      // (cos(yaw), -sin(yaw)); using the same basis here keeps movement and the view aligned after
+      // either a drag or a turn key. Pitch is intentionally excluded so looking up never lifts the
+      // walker off the floor. Turning remains rate-limited for comfort.
+      const heading = a(), sy = Math.sin(heading), cy = Math.cos(heading);
+      const wishX = ((mx * cy) + (md * sy)) / len * SPEED * r;
+      const wishD = ((-mx * sy) + (md * cy)) / len * SPEED * r;
       const k = 1 - Math.exp(-ACCEL * dt);
       vx += (wishX - vx) * k;
       vd += (wishD - vd) * k;
@@ -6812,11 +6991,10 @@ function leaveOverlay(root, trigger) {
 
   /* An idle repaint, at eleven frames a second rather than sixty.
 
-     The lamp cords swing and the machine flickers whether or not you are moving, and a scene that only
-     animates while it is being driven looks like a screenshot the moment you stop. The budget is
-     deliberate: a walking frame costs 2 926 fills, so an idle tick is roughly one in six of the work
-     of a moving one, it stops when the page scrolls away or the plate is open, and `prefers-reduced-motion`
-     turns it off at the source instead of cancelling it after it has been paid for. */
+     The lamp cords and scene state continue to breathe when the walker stops. Rebuilding the authored
+     surfaces for every idle tick is deliberately kept below the moving-frame rate; it stops when the
+     page scrolls away or the plate is open, and `prefers-reduced-motion` turns it off at the source
+     instead of cancelling motion after the render work has already been paid for. */
   let pulse = 0, inView = true;
   const stopPulse = () => { if (pulse) { clearTimeout(pulse); pulse = 0; } };
   const startPulse = () => {
@@ -6983,7 +7161,11 @@ function leaveOverlay(root, trigger) {
   /* --- input: every verb has both a key and a finger --- */
   const drawerClose = layer.querySelector("[data-walk-list-close]");
   if (drawerClose) drawerClose.addEventListener("click", () => toggleList(false));
-  stops.forEach((el, i) => el.addEventListener("click", () => { glideTo(stopZ[i], stopX[i]); }));
+  stops.forEach((el, i) => el.addEventListener("click", () => {
+    if (stopView[i].yaw !== null) yaw = wrapYaw(stopView[i].yaw);
+    if (stopView[i].pitch !== null) pitch = clamp(stopView[i].pitch, -MAX_PITCH, MAX_PITCH);
+    glideTo(stopZ[i], stopX[i]);
+  }));
   Array.from(layer.querySelectorAll("[data-walk-to]")).forEach((btn) => btn.addEventListener("click", () => {
     glideTo(parseFloat(btn.getAttribute("data-walk-to")) || 0);
     toggleList(false);
@@ -7171,12 +7353,20 @@ function leaveOverlay(root, trigger) {
   // Read-only, for the harness: a jsdom that can only assert "the picture changed" cannot tell a
   // camera that walks from one that jitters, and the numbers that matter are already in scope here.
   layer.__walk = { get depth() { return depth; }, get x() { return x; }, get height() { return height; },
-                   get yaw() { return yaw; }, get focal() { return focal; }, get quads() { return quads.length; },
+                   get yaw() { return yaw; }, get pitch() { return pitch; }, get focal() { return focal; }, get quads() { return quads.length; },
+                   get drawQuads() { return quads; },
                    get wallHalf() { return WALL; }, get radius() { return PLAYER_RADIUS; },
                    get halfWidth() { return HALF; },
                    get minDepth() { return MIN_D; }, get maxDepth() { return MAX_D; },
                    get maxHeight() { return MAX_HEIGHT; }, get bob() { return bob; },
-                   get maxSpeed() { return SPEED * RUN; }, get turnRate() { return TURN_RATE; } };
+                   get maxSpeed() { return SPEED * RUN; }, get turnRate() { return TURN_RATE; },
+                   get renderer() { return threeRenderer ? "three" : "canvas2d"; },
+                   get backdrop() { return bd; }, get day() { return DAY(); }, get dayPage() { return DAYPAGE; },
+                   attachThree(engine) {
+                     if (!engine || typeof engine.render !== "function") return false;
+                     threeRenderer = engine; draw();
+                     return threeRenderer === engine;
+                   } };
   if (listPanel) listPanel.classList.add("is-closed");   // scripting present: fold it, then obey
   if (listBtn) listBtn.setAttribute("aria-expanded", "false");
   draw();

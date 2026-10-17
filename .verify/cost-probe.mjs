@@ -1,8 +1,8 @@
 /* how much does one repaint cost? Boots the harness's recorder, drives W for 700 ms, and reports the
    largest number of draw calls seen in any 16 ms window: the closest thing to a per-frame budget that
    exists without a browser. The frame counter also proves the loop is motion-driven — at rest the walk
-   repaints nothing. Run: node .verify/cost-probe.mjs. Not part of the gate; it is the instrument the
-   SPEC's fill counts were taken with. */
+   repaints nothing. Run: node .verify/cost-probe.mjs; set ROOMS=rooms-cntower.html to probe another
+   generated room. Not part of the gate; it is the instrument the SPEC's fill counts were taken with. */
 /* verify-walk.mjs — the lane, its furniture, the compound beyond the window, and the album.
 
    jsdom has no canvas, so the 2D context is replaced by a recorder: what is asserted is what the
@@ -11,7 +11,7 @@
    `node .verify/verify-walk.mjs`. */
 import fs from "node:fs";
 
-const rooms = fs.readFileSync("rooms.html", "utf8");
+const rooms = fs.readFileSync(process.env.ROOMS || "rooms.html", "utf8");
 const act = fs.readFileSync("activities.html", "utf8");
 const css = fs.readFileSync("css/site.css", "utf8");
 const js = fs.readFileSync("js/site.js", "utf8");
