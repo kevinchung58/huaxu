@@ -23,7 +23,7 @@
 - 補跑 `.verify/verify-tables.mjs` 的舊角度診斷：exit 0，但它每站只固定等 2.5 秒、沒有驗證到站；Toronto stop1/2 回報 0/9 與 0/4 framed，不能解讀成真實物件消失，也不能當成 gate pass。它不是本輪視覺證據；以有實際深度／橫向／view 到站檢查的 browser-shot 影格和人眼檢視為準。
 
 ### PR 狀態、工作樹與本輪尚需完成
-- PR **#15** 仍 open、base `master`，fetch 時 head 為 `c613e13962339d1d45062beb75063a87852e2bcb`；本輪主實作 commit `b56a4ab` 與 TODO handoff commit（本檔變更）已在固定分支 `arena/c1a643e9-huaxu`，尚未 push。沒有 hard reset。push／更新前最後查到 `mergeStateStatus=CLEAN`，無 status checks 回報；合併前須重新向 GitHub 確認。
+- PR **#15** 仍 open、base `master`；本輪主實作 commit `b56a4ab` 與 TODO handoff commit 已 push 至固定分支，遠端 head `d6fb08325126ac262582661e732447cdb694db97`。PR body 已以 GitHub REST API 更新並 GET 核實；`gh pr edit` 因 classic Projects GraphQL deprecation 回 exit 1，未更動 body，隨後 REST PATCH 成功。`gh pr checks 15` 回報無 checks；merge 前仍須最後查 `mergeStateStatus`／branch/head，再依站主授權合併。沒有 hard reset。
 - `image-search/` 內 5 張 Moji 參考圖來源未追溯，**不可加入 PR**。只提交具來源紀錄的程式、文件、生成 HTML 與授權 runtime 檔案。
 - 此 TODO 段落目前是 PR 操作前 handoff。下列「本輪提交前」未勾選項必須先完成、記錄新鮮結果，再更新 PR；不宣稱尚未跑的 validator／最終 gates 通過。
 
@@ -34,7 +34,8 @@
 - [x] 最終結構與互動 gates：`node bin/verify-three.mjs`（Three.js 0.186.1、7 walk pages、3 sourced worlds、12,682 world + 864 water triangles、432 falls sheets、58 spray layers、Canvas2D fallback wired）；shapes 102 props 全 resolve；geometry OK；clash 7 頁 0；`verify-walk` 166/166；chain 0 failures；rooms E2E 0 failures；story 27/27；`verify-objects` exit 0；`impeccable detect --json` 為 `[]`。`browser-shot` 七頁實際 renderer/到站結果與 173 張原圖檢視見上；Canvas2D lane-shot 七頁通過並已看七張 fallback contact sheet。靜態 Three gate 不充當視覺簽核。
 - [x] 暫存並檢查 PR diff：`git diff --cached --check` 通過；staged diff 為 46 個有意修改的 tracked/generated 檔（含 3 個新 skill 文件），不含 `image-search/`、debug 圖、contact sheet 或 ignored preview；改動 HTML／sitemap 是 generator 再生結果。`image-search/` 5 張未追溯照片仍 untracked、未 stage。
 - [x] 將上述 46 檔提交到固定分支 `arena/c1a643e9-huaxu`，commit `b56a4ab`（`Render walkable scenes with pinned Three.js`）。
-- [ ] 尚需 push 此 commit、更新 PR #15 的描述／檢查狀態，再由站主已明確授權的 PR 編號 #15 合併；合併後再查 `state`、`mergedAt`、merge commit 與可用部署狀態。
+- [x] 已 push 至 `arena/c1a643e9-huaxu` 並更新 PR #15 body；REST GET 確認 body/head。`gh pr checks 15` 說明目前沒有 checks 回報，不能寫成「CI 全綠」。
+- [ ] 合併前最後確認 head/base/state/`mergeStateStatus`，使用站主授權的明確 PR 編號 #15 執行 merge；之後查 `state`、`mergedAt`、merge commit 與可用部署狀態。此 TODO handoff 記錄的是執行合併前的狀態；下一個 agent 若在合併後讀取，先以 GitHub 為準。
 
 ### 合併後的下一輪完整待辦（以來源為先，不以「畫滿」冒充完整）
 1. **Moji Port／Retro High Mart（§0u、§0t、§0s）**：查找可解決 127 m vs OSM 115 m、OSM polygon 約 647 m² vs 次級來源約 830 m² 的官方／可核實資料；取得正式平面、立面、樓層／屋頂資料前維持 caveat。若來源足以支持，再改善塔樓 X 撐帶與窗格對比並重拍 1:25 展示角度；若仍無來源，保持近似／拒畫聲明，不把照片推讀改稱測量。
