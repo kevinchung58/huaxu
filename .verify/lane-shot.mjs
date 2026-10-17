@@ -12,7 +12,8 @@
    `.verify/browser-check.py` is where a press has to land.
 
    It ends in a gate of its own, over the pictures it just took: at every stop on the published
-   route, looking down the lane, the frame has to be a *room* — a floor, walls, a ceiling,
+   route, in its authored view (or lane-forward if none is authored), the frame has to be a *room* —
+   a floor, walls, a ceiling,
    more than a dozen distinct colours and a mean luminance above 90 — and turning round at the entrance
    has to show the lane behind you rather than the underside of the world. Those three numbers are the
    ones that separated the current renderer from the one that collapsed to a flat plate when you stood
@@ -174,6 +175,8 @@ const goTo = async (stop) => {                          // use the lane's chips,
   const chip = chips[stop];
   if (!chip) throw new Error(`missing station ${stop}`);
   const want = parseFloat(chip.style.getPropertyValue("--z")) || 0;
+  const authoredYaw = parseFloat(chip.dataset.viewYaw);
+  const viewYaw = Number.isFinite(authoredYaw) ? authoredYaw : 0;
   tap(chip);
   // A jsdom raster spends part of each frame painting the scene, so wall-clock glide time is slower
   // than the authored 165 cm/s physics step; wait on the body itself. The cap is on standing still
@@ -183,7 +186,7 @@ const goTo = async (stop) => {                          // use the lane's chips,
   let last = layer.__walk.depth, still = Date.now();
   while (Date.now() < hard) {
     const at = layer.__walk.depth;
-    if (Math.abs(at - want) < 1.5) return;
+    if (Math.abs(at - want) < 1.5) return viewYaw;
     if (Math.abs(at - last) >= 1) { last = at; still = Date.now(); }
     else if (Date.now() - still > 5000) break;
     await sleep(40);
@@ -206,10 +209,10 @@ const TOUR = [...markup.matchAll(
 const SIDE_ANGLE = Math.max(10, Math.min(120, Number(process.env.LANE_SIDE_ANGLE) || 30));
 let n = 0;
 for (const [i, label] of TOUR) {
-  await goTo(i);
-  await lookTo(-SIDE_ANGLE); shot(`${String(++n).padStart(2, "0")}-${label}-left-${SIDE_ANGLE}`);
-  await lookTo(0);          shot(`${String(++n).padStart(2, "0")}-${label}-ahead`);
-  await lookTo(SIDE_ANGLE); shot(`${String(++n).padStart(2, "0")}-${label}-right-${SIDE_ANGLE}`);
+  const centreYaw = await goTo(i);
+  await lookTo(centreYaw - SIDE_ANGLE); shot(`${String(++n).padStart(2, "0")}-${label}-left-${SIDE_ANGLE}`);
+  await lookTo(centreYaw);              shot(`${String(++n).padStart(2, "0")}-${label}-ahead`);
+  await lookTo(centreYaw + SIDE_ANGLE); shot(`${String(++n).padStart(2, "0")}-${label}-right-${SIDE_ANGLE}`);
 }
 await goTo(0);
 await lookTo(180); shot(`${String(++n).padStart(2, "0")}-entrance-behind`);
@@ -295,7 +298,7 @@ const atVista = (name) => HAS_VISTA && stopZ(name) >= WALL_D - 260;
 const NIGHT_HEIGHT = /"world"\s*:/.test(markup) && /"skyAround"/.test(markup) && !/data-lane-day="1"/.test(markup);
 const OUT_LUMA = NIGHT_HEIGHT ? 35 : 50;
 
-// 1. Every frame at a stop, looked at straight down the lane, is a room and not a plate.
+// 1. Every stop's ahead frame (authored view where supplied) is a room and not a plate.
 for (const sh of shots.filter((s) => /-ahead$/.test(s.name))) {
   const m = stats.get(sh.name);
   const outdoor = OPEN_WORLD || atVista(sh.name);
@@ -311,9 +314,18 @@ const deepOut = OPEN_WORLD || atVista(aheadShots[aheadShots.length - 1].name);
 gate("the deepest stop is not the frame that empties out",
      deep.colours >= (deepOut ? 30 : 15) && deep.luma >= (deepOut ? OUT_LUMA : 70),
      `${deep.colours} colours, mean luma ${deep.luma.toFixed(1)}`);
-// 3. Turning round at the entrance shows the lane behind you, not the underside of the world.
+// 3. Turning round at the entrance shows the authored place behind you, not a collapsed plane.
+// An open outdoor mouth is valid at dusk/night; its lower light floor matches the existing
+// world-view floor, while a colour floor still rejects a flat, empty frame. Closed-room returns
+// keep the brighter room threshold. The page's clock is sampled from the same frame sequence.
 const back = stats.get(shots[shots.length - 1].name);
-gate("the lane behind the entrance is a room", back.luma >= 55, `mean luma ${back.luma.toFixed(1)}`);
+const openBack = /data-lane-open-back="1"/.test(markup);
+const backDay = Number(layer.__walk?.day) || 0;
+const backLumaFloor = openBack ? (backDay < 0.05 ? 35 : 50) : 55;
+const backColoursFloor = openBack ? 30 : 12;
+gate("the entrance return shows the authored place",
+     back.luma >= backLumaFloor && back.colours >= backColoursFloor,
+     `mean luma ${back.luma.toFixed(1)} / ${backLumaFloor}, ${back.colours} colours / ${backColoursFloor}`);
 
 /* The proof sheet: thirteen frames on one page, because a screenshot someone has to open one at a
    time is a screenshot nobody looks at. It is written whether or not the gate passed — the point of

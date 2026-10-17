@@ -1,17 +1,20 @@
 # SPEC: the Activities space — one room, a list of places, a camera
 
-> status: **proposal, nothing built.** v2, 2026-09-14. Rewritten after reading the
-> reference (`https://jalangmbb.tanwanjern.com/`) as an interface in three separate
-> render passes plus six probe URLs, instead of trusting one screenshot-sized text dump.
-> The owner's order stands: look → spec → only then research engines (§9 is the test
-> the research must pass; no library is picked here).
+> status: **Activities-space proposal; no album-space implementation built.** v2, 2026-09-14.
+> Rewritten after reading the reference (`https://jalangmbb.tanwanjern.com/`) as an interface in
+> three separate render passes plus six probe URLs, instead of trusting one screenshot-sized text
+> dump. The owner's order stands: look → spec → only then research engines (§9 is the test the
+> research must pass; this album proposal has not picked a library).
 >
 > v1 of this file was wrong in an important way. It described the reference as a
 > *building*. It is not. See §2.
 >
-> Scope note, 2026-10-16: the owner separately approved Three.js/WebGL for **walkable
-> environments**. This spec is still only about the Activities album and story plate; that approval
-> does not change its CSS-3D proposal or authorize a WebGL album migration.
+> Scope note, 2026-10-16/17: the owner separately approved pinned Three.js/WebGL for **all
+> walkable environments and objects**; the seven walkable pages now use Three.js 0.186.1 as their
+> primary renderer with a complete Canvas2D fallback. This spec remains only about the Activities
+> album and story plate. Older engine comparisons and renderer descriptions below are proposal/history,
+> not current walkable-renderer documentation; this approval does not change the album's CSS-3D
+> proposal or authorize a WebGL album migration.
 
 ## 1. Method: what I actually read, and what I could not
 

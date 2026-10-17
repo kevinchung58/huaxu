@@ -85,26 +85,28 @@ only the clock shrinks); people to zero (no scene here has people anyway).
   `street-commons` §3 apply.
 
 And the round-19 lesson stated as a rule: **a beat may be compressed, never deleted to save
-work.** Compression (58 s → a few seconds, 360° → authored facings) is detail-level and allowed;
-deletion (no exterior at all, no SkyPod at all, no glass floor because it needs a new tile) is
-cutting the experience and is refused.
+work.** Compression (58 s → a few seconds, presenting a 360° room through authored facings) is
+detail-level and allowed; deletion (no exterior at all, no SkyPod at all, no glass floor because it
+needs another rendering technique) is cutting the experience and is refused.
 
 ## 4. Fidelity inside this renderer
 
-The renderer's honest price (`landmark-space` §4) stands: 168 cm eye, one authored aperture per
-stop and `Z_SCALE` 2.9; the scene currently composes a Canvas2D lane with an owner-approved Three.js
-world layer where sourced `backdrop.world.prims` exist, and falls back to Canvas2D without WebGL.
-Grounding does not renegotiate those camera/data contracts — it governs *what is chosen* within them:
+The renderer's current contract (`landmark-space` §4) stands: 168 cm eye, a full yaw turn, pitch
+bounded at ±24°, and `Z_SCALE` 2.9; all walkable lane and object geometry is rendered through the
+owner-approved Three.js 0.186.1 scene, with sourced `backdrop.world.prims` added when present.
+Canvas2D remains the complete fallback without WebGL. The actual room records and openings determine
+what is visible; there is no one-aperture renderer limit. Grounding governs *what is chosen* within
+those camera and data contracts:
 
 - Fidelity here means fidelity to **what the eye sees from the stop**, not to a model of the
-  object. A 360° observation pod is three or four authored facings — and those facings are picked
-  from the measurement table's real bearings, not from whatever composes best.
-- Verticality is carried by what is real about it: the moving elevator shaft, the drop read
-  through the glass floor, the city-from-above — each grounded in a rung, none needing a pitch
-  the renderer does not have.
+  object. For a 360° observation pod, three or four authored facings can make the measured bearings
+  legible; they are a presentation choice, not a restriction imposed by the renderer.
+- Verticality is carried by what is real about it: the elevator experience, the drop read through
+  the glass floor, and the city-from-above — each grounded in a rung and viewed within the camera's
+  actual pitch range. Do not imply an unrestricted look straight up or down.
 - The exterior silhouette remains the photograph's beat (`landmark-space` §2 link contract) — not
-  because the experience drops it, but because the IG-story plate *is* the real exterior, at full
-  photographic fidelity, one press away. That is the most grounded the exterior can be.
+  because the walkable renderer cannot draw it, but because the IG-story plate carries the real
+  exterior photograph as evidence. The model and the photograph remain distinct.
 
 ## 5. The fidelity gate
 
@@ -122,15 +124,16 @@ On top of the `district-author` gate and the beauty gate (`landmark-space` §5):
 
 ## 6. Worked example — the CN Tower, corrected
 
-The beats of `landmark-space` §7 survive as the *sequence*, and every one is now grounded rather
-than composed: the LookOut's facings come from real bearings (Lake Ontario to the south, Rogers
-Centre and the rail corridor at the base, the downtown grid to the north and east); the Glass
-Floor shows the real plaza and streets 342 m below, 64 mm of glass between; the elevator keeps
-the real 58-second motion in compressed time; the SkyPod band keeps its real differentiator
-(height, horizon, the narrower window band the sources describe). Simplified: materials,
-decoration, window counts, the clock. Not simplified: which way you face, what is there, which
-level comes next. The round-19 drops are re-priced under §3 — the exterior stays with the
-photograph (that is maximum fidelity, not a drop), and no real level is deleted.
+The current built CN Tower page is a grounded **LookOut segment**, not a complete tower journey:
+one 18.6 m chord of the window ring at 346 m, with stops based on the sourced bearings (Lake Ontario
+to the south, Rogers Centre and the rail corridor at the base, the downtown grid to the north and
+east), plus `toronto_world` geometry placed 346 m below the deck. The lane's glass floor is the
+2017 LookOut addition at 346 m; the original 1994 Glass Floor is a distinct level at 342 m, four
+metres below. The lift and SkyPod are represented by authored doors/states and their sourced facts;
+there is **no moving 58-second shaft or full-height tower climb** in this page. That distinction is
+important: Three.js makes such geometry possible, but neither the current record nor its browser
+tests prove the unbuilt ride. Any extension must source and author the intervening levels rather
+than imply that this LookOut segment is the whole tower.
 
 The same method, second place — Niagara Falls (round 22): the measurement table came first
 (crest ~670 m, drop 57 m, plunge pool 35 m; American Falls 21-34 m onto its talus; Table Rock

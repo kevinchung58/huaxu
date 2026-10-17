@@ -42,7 +42,11 @@ If a task remains blocked after repeated attempts, do these in order and retain 
 
 ## Scene-build application
 
-For any place/environment build, pair this skill with `skills/real-place-builder/SKILL.md` and `skills/grounded-scene/SKILL.md`, then read the applicable domain skill. The minimum close-out is: regenerated page, regression gates, a walk to each authored stop, and actual inspection of standard plus object-facing frames. If an object reads as a generic box/card, if its defining feature is missing, or if a nearby model obscures it, treat that as an unfinished deliverable even when its code branch exists.
+For any place/environment build, pair this skill with `skills/scene-system/SKILL.md`, `skills/real-place-builder/SKILL.md`, and `skills/grounded-scene/SKILL.md`, then read the applicable domain skill. After authoring, use `skills/scene-quality-loop/SKILL.md` to capture and inspect the settled browser frames, distinguish visual findings from mechanical gates, and re-capture every repair. The minimum close-out is: regenerated page, relevant regression gates, a walk to each authored stop, and actual inspection of standard plus object-facing frames. If an object reads as a generic box/card, if its defining feature is missing, or if a nearby model obscures it, treat that as an unfinished deliverable even when its code branch exists.
+
+## PR and next-round handoff
+
+Before opening or updating any PR, apply `skills/pr-handoff/SKILL.md`: update `TODO.md` first with the complete, prioritized next-round plan, exact fresh verification/visual evidence, limitations, and blockers. PUA's final report must match the updated handoff and actual workspace state; do not call the handoff complete based on a draft or an unrun check.
 
 ## Long-task checkpoint
 

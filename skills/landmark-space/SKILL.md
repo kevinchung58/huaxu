@@ -125,42 +125,42 @@ with its source in `references/repo-survey.md`:
 
 ## 4. The renderer, honestly priced
 
-What exists today covers the plaza form end to end: one-point lane, vista + backdrop, stations,
-states, day/night, the shadow and pool system. The deck form needs two things the renderer does
-not have, each priced, each its own decision:
+### Current contract (2026-10-17)
 
-- **More than one aperture.** A deck looks out on more than one side, but a lane authors one
-  vista, and yaw clamps at ±35° for the reason `district-author` §2 states — past it the walls
-  show their own edges. The honest forms inside the rule: a deck whose glass wraps as *bands* of
-  the backdrop painter (the skyline painter already composites sky, masses, water), or a turn of
-  authored stops where each stop is a facing (`stations` already pose you). A true panoramic yaw
-  is a renderer change and takes the SPEC §9 conversation with the owner — it is not smuggled.
-- **A city under glass.** The day-variant textures (`street-commons` §3's open item: the night
-  window grid read at noon) must exist before the deck does, because the deck's floor-to-ceiling
-  window is that texture at full frame.
+The owner approved pinned, vendored Three.js 0.186.1 for the complete walkable-scene migration.
+All seven walkable pages use it as the primary renderer for lane surfaces, props and scene effects;
+sourced `backdrop.world.prims` become world-space meshes when present. The same authored records
+feed the complete Canvas2D fallback, while accessible DOM buttons remain the hit layer. This is one
+scene render, not a WebGL backdrop behind a separate 2D room. No additional runtime dependency,
+CDN or npm build is authorized, and the Activities album remains CSS 3D and out of scope.
 
-So the build order when the owner says go: **plaza first** — it is the form the renderer speaks,
-it makes the silhouette and the moment, and it is the room the owner's brief pictures — then the
-deck as the second district, once the day-variant city exists. Never both in one record: two open
-districts in one page is the floating-objects regression `AGENTS.md` names.
+The camera supports a full yaw turn and bounded pitch (±24°); neither is a substitute for authored
+sightlines. The room shell, openings/cladding and sourced world geometry decide what exists in each
+direction. A complete 360° experience therefore needs complete, evidence-based geometry around the
+visitor; free yaw alone cannot invent a panorama or make a wall transparent. Multiple 3D surfaces,
+world geometry and floor openings are renderer capabilities, not a reason to defer a place until a
+new engine is approved. A live Chromium inspection of CN Tower stop 2 confirmed the glass opening
+contains no opaque `floor-carpet` quads; that geometry check does not by itself prove the full visual
+or survey accuracy of the glass floor and city below it.
 
-**What the two shipped spaces taught (rounds 21-22).** The prices above held, and three new
-ones are now proven rather than predicted: a day page's open end works for a landmark exactly
-as it does for the hub street (the last stop walks past the end wall to a rail, and the
-backdrop painter owns the world beyond it); a landmark's signature object may reuse the
-site's proven small-scale shape at real scale when a bespoke panorama washes out under the
-affine-plus-flat-colour math (the falls), while a city-from-above rides a wall cladding tile
-(the pod) — fidelity lives in the bearings and the ratios, not in the drawing technique; and
-sky bands must start below the horizon and end above the frame's top with glow near one, or
-the day sky reads as night murk (the street's idiom, reused). Each of these stayed inside the
-dependency rule in rounds 21–24: new tiles, one painter, no library. The owner later approved a
-limited Three.js layer for source-backed walkable-world geometry (2026-10-16; see `AGENTS.md`); that
-renderer decision does not change the evidence or parent-door rules below. Round 24 added two more proven prices:
-a space may itself own a space the way the real Table Rock owns Journey Behind the Falls —
-the door stands where the real entrance stands, the sub-space unwinds to its owner, and the
-gates follow each page's walk-exit chain to the street; and a landmark's night is a fact of
-the landmark (the falls are floodlit every night), so the day cycle the page already carries
-switches the sheet to the illumination's held colour after dark, rather than adding a page.
+The conversion changes how authored scene geometry is drawn, not what it may claim. Procedural
+tiles are surface patterns, not photographs or surveys; measurements, bearings, source caveats and
+the parent-door contract remain the authority. The earlier round-18–24 planning text that priced
+multiple apertures and a city under glass as renderer changes is superseded: both can now be authored
+in this renderer, while their fidelity remains a scene-level evidence and visual-review question.
+
+**What the shipped spaces taught (rounds 21–24).** A day page's open end works for a landmark just
+as it does for the hub street (the last stop walks past the end wall to a rail, and the sourced
+world owns what lies beyond it); a landmark's signature object may reuse the site's proven
+small-scale shape at real scale when a bespoke panorama washes out under the older affine-plus-flat
+math (the falls), while a city-from-above rides a wall cladding tile where survey data is not
+available (the pod) — fidelity lives in bearings and ratios, not drawing technique; and sky bands
+must start below the horizon and end above the frame's top with glow near one, or the day sky reads
+as night murk. Those rooms were built under the then-current no-library rule; Three.js approval
+later superseded that renderer constraint without changing their evidence standard. Round 24 also
+proved two structural rules: a real parent may own a child space (Table Rock owns Journey Behind the
+Falls), whose exit returns to its owner; and a landmark's real night illumination belongs in its
+existing day cycle rather than requiring another page.
 
 ## 5. The gate
 
@@ -180,16 +180,24 @@ switches the sheet to the illumination's held colour after dark, rather than add
 ## 7. The whole structure, simplified — the vertical narrative
 
 The round-19 owner's brief: not one form of the landmark, *the whole of it* — 「整個CN塔的空間」 —
-with permission to simplify appropriately. This is the doctrine for that, and it is a doctrine about
-narrative, not geometry: **a renderer whose eye is at 168 cm and whose pitch stops at +10° can never
-show a 553 m object in one frame, so "the whole" must be compressed into the beats only a space can
-give, and the beats a photograph gives better are handed to the photograph.**
+with permission to simplify appropriately. This is a doctrine about narrative and grounded scope,
+not a renderer ceiling: **a camera at a 168 cm eye with pitch bounded at ±24° cannot show a 553 m
+tower in one frame, so "the whole" must be paced through the beats only a space can give, and the
+beats a photograph gives better are handed to the photograph.** Three.js uses world-space height;
+vertical geometry is possible when its dimensions and levels are sourced.
 
 The split falls out of the link contract (§2): the IG story carries the exterior — the silhouette,
 the skyline, the postcard — because a real photograph of a tower is evidence and reads at any scale;
 the space carries what a photograph cannot — the ascent, the height under your feet, the city as a
 floor. A plaza page that re-draws the silhouette in code would be a worse picture of the thing the
 album already holds, which is the backdrop-of-a-backdrop failure `place-intake` exists to prevent.
+
+**Implementation status (2026-10-17):** `rooms-cntower.html` currently models one 18.6 m chord of
+the LookOut at 346 m, its sourced city view, the 2017 glass-floor panel and door/state props for the
+main and SkyPod lifts. It does **not** implement a moving 58-second elevator ride, the full tower
+shaft, the 342 m original Glass Floor level, or a walkable SkyPod level. The sequence below remains
+a design contract, not a claim that those beats already ship. Those omissions are authored-scope and
+measurement work, not a limitation of the Three.js renderer; do not imply the whole tower is done.
 
 So the whole structure becomes one district, one lane, read as a vertical journey:
 
@@ -199,10 +207,11 @@ So the whole structure becomes one district, one lane, read as a vertical journe
    and the doors opening *is* the transition into the next beat. The elevator is not a page and not
    a cutscene: it is a stop with a state, and reduced-motion gets the doors without the run.
 2. **The LookOut is the main room.** The city below is the room's content: the backdrop's city,
-   read from above, wrapped as bands the stops face into (the one-aperture rule of §4, honestly
-   used: a 360° pod is three or four authored facings, not a renderer change). Floor-to-ceiling
-   glass is a material band, not a view; the restaurant that rings the pod is one warm light band
-   at its own `liton` and is never modelled — a room with people eating is a room with people.
+   read from above through the authored glazing. A 360° pod can use three or four measured stop
+   facings to make its bearings legible; that is a presentation choice, not a renderer limitation.
+   Floor-to-ceiling glass is a material band as well as an opening onto the sourced view; the
+   restaurant that rings the pod is one warm light band at its own `liton` and is never modelled —
+   a room with people eating is a room with people.
 3. **The Glass Floor is the moment the whole tower exists.** Standing on 24 m² of glass and looking
    straight down the length of the shaft is the CN Tower's roof-that-opens: the 553 m reads as the
    drop under your feet, which is the one frame no photograph of the exterior can give. It is one
@@ -213,14 +222,15 @@ So the whole structure becomes one district, one lane, read as a vertical journe
    hazy day is small, and a second room that repeats the first with a thinner horizon is length,
    not a place (`street-commons` §1).
 
-What is dropped, and why each drop is the simplification rather than a loss: the exterior page
-(the photograph's beat), the antenna climb (nothing new to see above the SkyPod band), the
-restaurant interior (people), the SkyPod room (repetition), and the literal vertical geometry —
-the vertical is carried by the moving shaft, the drop under the glass and the city-from-above,
-because in a one-point lane *altitude is a texture and a vista, never a coordinate*. The facts
-the record cites, with sources: 553.3 m, opened 1976; LookOut 346 m floor-to-ceiling 360°;
-Glass Floor 342 m, 24 m², the world's first (1994); SkyPod 446.5 m; the glass-fronted elevator's
-58-second ride.
+What this design deliberately simplifies: the exterior remains the photograph's beat; the antenna
+climb may be omitted only if it adds no distinct sourced experience; the restaurant interior is not
+populated; and the SkyPod is a separate level only if its distinct view warrants one. Three.js does
+not make altitude a texture-only problem: heights are world-space coordinates. But the current
+LookOut page is only the segment listed above, so it must not be described as a complete vertical
+journey. The design's cited facts are 553.3 m total height, opened 1976; LookOut at 346 m with
+floor-to-ceiling glass; the original 24 m² Glass Floor at 342 m (1994); SkyPod at 446.5 m; and the
+58-second glass-fronted elevator ride. Their evidence does not mean their corresponding levels or
+motion are all implemented in the current page.
 
 Build order inside this doctrine: the LookOut first (it owns the vista the elevator doors open
 onto), then the glass floor's tile and state, then the elevator stop, then the SkyPod band — each

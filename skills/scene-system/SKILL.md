@@ -18,7 +18,7 @@ skip.
 | 2b scope | this skill §2b | the inventory table: every sourced item placed in-frame / drawer / off-frame, each with a reason | the caveat mirrors the frame, the drawer mirrors the table |
 | 3 form | this skill §2, `landmark-space` §2-3, `district-author` §0 | one decision: hub room / landmark space / owned sub-space / open district | the decision is stated with its doctrine |
 | 4 author | `district-author` §2-3, `lane-prop`, `street-commons`, `japan-place` | the record in `_gen_html.py`, painters in `js/site.js` | `python3 _gen_html.py` exits 0 |
-| 5 critique | this skill §3-4 | frames read twice, fixes listed in TODO | two consecutive reads find nothing new |
+| 5 critique | `scene-quality-loop` + `pua` | settled browser frames, a location-specific finding/fix ledger in TODO | every required route/object view is inspected; critical or major in-scope defects are fixed or explicitly bounded, and every fix is recaptured |
 | 6 wire | this skill §5 | ROOMS row, owning `back_to`, and either a main-place card or a parent-owned prop entry; IMG rule | the hierarchy and wiring gates pass |
 | 7 verify | this skill §6 | the full gate battery, green | every harness exits 0 and says so |
 
@@ -51,11 +51,13 @@ assume; change one and re-run the whole battery.
   `under`, `wallmat`, stamped as `data-lane-*` — and cladding bands of kind `open`, `glazing` (a
   mullion every `pitch` cm) and `railing`. `skyAround` is a sky all round the eye;
   `"night": <phase>` on the record holds a page's clock at one hour of the night.
-- WebKit rules: `preserve-3d` only on `.room-world`/`.ig-grid`; never `overflow`/`filter` on a
-  preserve-3d ancestor. The approved renderer exception (2026-10-16) is a pinned, vendored Three.js
-  0.186.1 layer for sourced `backdrop.world.prims`; it is lazy-loaded only on those walkable pages.
-  The lane interior stays Canvas2D and is the fallback. No framework, npm build, package manifest,
-  or album WebGL migration is authorized by that exception.
+- CSS 3D remains only in the Activities album: `.ig-grid` declares `preserve-3d`, `.ig-wall` owns
+  `perspective`; keep non-visible `overflow` off the former and `filter`/`backdrop-filter` off the
+  latter. Walkable-scene geometry does not use CSS transforms. Its approved renderer exception
+  (2026-10-16; full walkable migration) is pinned, vendored Three.js 0.186.1 for all walkable lane
+  and object geometry; sourced `backdrop.world.prims` are consumed when present. Canvas2D is the
+  complete no-WebGL fallback. No framework, npm build, package manifest, or Activities album WebGL
+  migration is authorized by that exception.
 
 ## 2b. The inventory — completeness as a table
 
@@ -147,8 +149,7 @@ Recipes that survived the critique pass, with their numbers. Reach for these bef
 
 ## 4. The critique pass
 
-Regenerate, shoot the lane (`.verify/lane-shot.mjs`, `ROOMS=<page>`), and **read the frames as
-a visitor, twice**. The harness proves paint; only a read proves place. Known failure shapes:
+The capture and visual-signoff procedure is `skills/scene-quality-loop/SKILL.md`; follow it after authoring, using PUA to diagnose and verify repairs. Capture settled browser-route frames with `.verify/browser-shot.mjs`, plus `.verify/lane-shot.mjs` for the applicable fallback/route checks, and inspect the actual output files. A contact sheet supports route coverage but does not replace full-size inspection of changed or suspect objects. The harness proves mechanics and paint; only comparison with the source-backed claim proves the rendered place. The table below is a diagnostic catalogue, not a scorecard. Known failure shapes:
 
 | Symptom in the frame | Cause | Lever |
 |---|---|---|
@@ -189,8 +190,7 @@ a visitor, twice**. The harness proves paint; only a read proves place. Known fa
 | paving stones a metre across under a model | a world-scale ground tile on a 1:25 stand | a plain board colour (`top: "#hex"`) |
 | the deepest stop fails the luma gate on a longer tour | the tour runs in real time into the room's own night (Fukuoka's day is 240 s) | count the clock before blaming the frame; drop a redundant stop, never brighten for the number |
 
-Write what each read caught into TODO with the round; a critique pass that reports no catches
-is a pass that was not read.
+Record each finding, its evidence path, cause, repair, and fresh re-capture in the current `TODO.md` round. An empty finding list is acceptable only when every required frame was actually inspected against its stated claim; it is not a substitute for the read. Do not repeat a capture ritual that yields no new evidence—use PUA to change the hypothesis or close the gate honestly.
 
 ## 5. Wiring, album, registry
 
@@ -219,9 +219,10 @@ What each harness proves, so a green run can be named:
 - `verify-shapes` / `verify-geometry` / `verify-clash` — the prop registers: sizes, overlaps,
   the thresholds (≥70/12, deepest ≥70/15, behind ≥55).
 - `verify-objects` — every object the page names exists and answers.
+- `verify-three` (`node bin/verify-three.mjs`) — the pinned runtime, Three.js geometry conversion, supported world verbs, and finite emitted attributes; structural proof, not visual sign-off.
 - `verify-rooms-e2e` — the rooms end-to-end in a served browser.
 - `verify-story` — the link contract pressed end-to-end, both directions, every space.
-- `lane-shot` + a human read — §4. `impeccable` — the stylesheet and pages at zero findings.
+- `browser-shot` — the actual browser route, settled authored stops, active renderer, and saved frames; `lane-shot` — rasterized Canvas2D/fallback frames and its route gates. A human read under `scene-quality-loop` is a separate requirement. `impeccable` — the stylesheet and pages at zero findings.
 
 Run cheap statics after each edit; run the whole battery before a commit that touched a
 scene. Verification is the artefact the browser asks for: regenerate, curl the served page,

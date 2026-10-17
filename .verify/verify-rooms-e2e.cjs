@@ -8,7 +8,7 @@
      2. The narrow Journey lane clamps to its own walls and authored deck extent;
         a sealed Tokyo lane independently proves the end-wall clamp, and jumps respect the ceiling.
      3. Solid display plinths stop the walker without sealing the side aisle, while
-        movement stays smooth and axes stay independent of camera turning.
+        camera-relative movement stays smooth and world-space collision bounds stay fixed.
      4. Child-space exits respawn beside the owning prop, ready to interact again.
      5. The street's own back door leaves for the album, not for another room.
 
@@ -115,8 +115,8 @@ function boot(file, hash = "") {
   });
 }
 
-/* W follows the street's depth axis regardless of camera yaw; sidestepping to
-   correct camera drift would hide a movement bug, so the walk is one-dimensional. */
+/* W follows the camera's floor-projected forward direction. Straight lane walks
+   below begin at the authored default heading; angled movement is tested by projection. */
 async function walkDeep(env, forwardFrames) {
   env.key("w");
   await env.pump(forwardFrames);
@@ -131,20 +131,35 @@ async function tapTurn(env, key = "arrowright") {
   env.keyUp(key);
   await env.pump(2);
 }
+const wrapYaw = (degrees) => ((degrees + 180) % 360 + 360) % 360 - 180;
+async function turnToYaw(env, target) {
+  const delta = wrapYaw(target - env.walk().yaw);
+  if (Math.abs(delta) < 0.4) return;
+  const key = delta < 0 ? "arrowleft" : "arrowright";
+  const frames = Math.max(1, Math.round(Math.abs(delta) / (env.walk().turnRate * 0.017)));
+  env.key(key);
+  await env.pump(frames);
+  env.keyUp(key);
+  await env.pump(3);
+}
 async function turnToReach(env, objId, maxTaps = 60) {
+  const el = env.doc.querySelector(`[data-obj="${objId}"]`);
   for (let i = 0; i < maxTaps; i++) {
     const r = env.reach();
     if (r && r.dataset.obj === objId) return true;
-    await tapTurn(env);
+    if (!el) return false;
+    const targetX = parseFloat(el.style.getPropertyValue("--x"));
+    const targetZ = parseFloat(el.style.getPropertyValue("--z"));
+    const targetYaw = Math.atan2(targetX - env.walk().x, targetZ - env.walk().depth) * 180 / Math.PI;
+    await tapTurn(env, wrapYaw(targetYaw - env.walk().yaw) < 0 ? "arrowleft" : "arrowright");
   }
   const r = env.reach();
   return !!(r && r.dataset.obj === objId);
 }
 
-/* Sidle along the street (A or D, no forward motion) until the wanted door is
-   the one in reach once you face it. Doors sit flush to a wall at x ±346; the
-   walker's stop keeps ~60 cm off the wall, well inside the 190 cm reach, so
-   the whole problem is being beside the door in z — edging solves that. */
+/* Sidle with A/D in the view plane until near the wanted door, then turn toward
+   its world-space centre. Doors sit flush to a wall at x ±346; the walker's stop
+   keeps ~60 cm off the wall, well inside the 190 cm reach. */
 async function sidleToReach(env, objId, dir = -1, maxFrames = 400) {
   const k = dir < 0 ? "a" : "d";
   env.key(k);
@@ -225,23 +240,29 @@ async function main() {
        return el && el.dataset.leave && el.dataset.leave !== "street.html";
      }));
 
-  // DESIGN.md promises screen-axis movement. Turning the view must not rotate W into an accidental
-  // sidestep, and A must not add an accidental stride down the lane.
+  // Turning the view rotates movement in the floor plane. W must have no rightward component;
+  // A must have no forward component, even though both now change world x and depth together.
   const yaw0 = env.walk().yaw;
   env.key("arrowright"); await env.pump(2); env.keyUp("arrowright"); await env.pump(2);
-  const yaw1 = env.walk().yaw;
+  const yaw1 = env.walk().yaw, angle = yaw1 * Math.PI / 180;
   const beforeW = { ...env.walk() };
   env.key("w"); await env.pump(60); env.keyUp("w"); await env.pump(35);
   const afterW = { ...env.walk() };
-  ok("street movement: W advances down the lane without yaw drift",
-     yaw1 !== yaw0 && Math.abs(afterW.x - beforeW.x) < 0.01 && afterW.depth > beforeW.depth + 100,
-     `yaw ${yaw0}->${yaw1}; x ${beforeW.x.toFixed(1)}->${afterW.x.toFixed(1)}; depth +${(afterW.depth - beforeW.depth).toFixed(1)}`);
+  const wX = afterW.x - beforeW.x, wD = afterW.depth - beforeW.depth;
+  const wForward = wX * Math.sin(angle) + wD * Math.cos(angle);
+  const wRight = wX * Math.cos(angle) - wD * Math.sin(angle);
+  ok("street movement: W follows the turned camera without yaw drift",
+     yaw1 !== yaw0 && Math.abs(afterW.yaw - yaw1) < 0.01 && wForward > 100 && Math.abs(wRight) < 1.5,
+     `yaw ${yaw0.toFixed(1)}->${afterW.yaw.toFixed(1)}; forward ${wForward.toFixed(1)} cm, side ${wRight.toFixed(1)} cm`);
   const beforeA = { ...env.walk() };
   env.key("a"); await env.pump(30); env.keyUp("a"); await env.pump(35);
   const afterA = { ...env.walk() };
-  ok("street movement: A stays lateral without changing depth",
-     afterA.x < beforeA.x - 35 && Math.abs(afterA.depth - beforeA.depth) < 0.5,
-     `x ${beforeA.x.toFixed(1)}->${afterA.x.toFixed(1)}; depth ${beforeA.depth.toFixed(1)}->${afterA.depth.toFixed(1)}`);
+  const aX = afterA.x - beforeA.x, aD = afterA.depth - beforeA.depth;
+  const aForward = aX * Math.sin(angle) + aD * Math.cos(angle);
+  const aRight = aX * Math.cos(angle) - aD * Math.sin(angle);
+  ok("street movement: A stays perpendicular to the turned camera's forward axis",
+     aRight < -35 && Math.abs(aForward) < 4,
+     `right ${aRight.toFixed(1)} cm; forward drift ${aForward.toFixed(1)} cm`);
   ok("movement uses a calm walk speed and a sub-centimetre head cue",
      env.walk().maxSpeed <= 210 && env.walk().turnRate <= 90,
      `${env.walk().maxSpeed.toFixed(0)} cm/s max; ${env.walk().turnRate}°/s turn`);
@@ -295,13 +316,19 @@ async function main() {
   ok("A stops at the narrow tunnel's inside wall, never beyond it",
      leftWall >= -tunnelHalf - 0.01 && Math.abs(leftWall + tunnelHalf) < 1.1,
      `x=${leftWall.toFixed(2)} / limit=-${tunnelHalf}`);
-  const atLeftDepth = env.walk().depth;
-  env.key("d"); await env.pump(180); env.keyUp("d"); await env.pump(8);
-  const rightWall = env.walk().x;
+  await env.pump(45); // let the view-plane sidestep's release inertia settle before measuring D
+  const leftStop = { ...env.walk() }, tunnelYaw = leftStop.yaw * Math.PI / 180;
+  env.key("d");
+  for (let i = 0; i < 180 && env.walk().x < tunnelHalf - 0.5; i++) await env.pump(1);
+  env.keyUp("d"); await env.pump(45);
+  const rightStop = { ...env.walk() };
+  const tunnelDx = rightStop.x - leftStop.x, tunnelDd = rightStop.depth - leftStop.depth;
+  const tunnelForward = tunnelDx * Math.sin(tunnelYaw) + tunnelDd * Math.cos(tunnelYaw);
+  const tunnelRight = tunnelDx * Math.cos(tunnelYaw) - tunnelDd * Math.sin(tunnelYaw);
   ok("D reaches the opposite wall without widening the 2.4 m tunnel",
-     rightWall <= tunnelHalf + 0.01 && Math.abs(rightWall - tunnelHalf) < 1.1
-       && Math.abs(env.walk().depth - atLeftDepth) < 0.5,
-     `x=${rightWall.toFixed(2)} / limit=+${tunnelHalf}`);
+     rightStop.x <= tunnelHalf + 0.01 && Math.abs(rightStop.x - tunnelHalf) < 1.1
+       && tunnelRight > tunnelHalf * 1.9 && Math.abs(tunnelForward) < 2,
+     `x=${rightStop.x.toFixed(2)} / limit=+${tunnelHalf}; forward drift=${tunnelForward.toFixed(2)} cm`);
 
   const journeyLimit = Number(tunnel.dataset.laneMaxD);
   ok("Journey's tunnel opens onto its deck at the page-authored walk limit",
@@ -362,6 +389,8 @@ async function main() {
 
   env.close();
   env = await boot("rooms-fukuoka.html");
+  // The aisle route is authored along world x/z, so face the lane axis before walking it.
+  await turnToYaw(env, 0);
   const plinth = env.doc.querySelector('[data-obj="plinth-moji"]');
   const plinthX = parseFloat(plinth.style.getPropertyValue("--x"));
   const plinthZ = parseFloat(plinth.style.getPropertyValue("--z"));
@@ -496,7 +525,8 @@ async function main() {
   out.push("\n-- Tokyo, inside Kaminarimon: E acts on the first shop, the gate leaves --");
   env = await boot("rooms.html");
   // Nakamise is 9.1 m wide, so nothing stands within arm's reach of the gate's centre line: take a
-  // step in and sidle to the west row, the way a visitor reaches the first shop.
+  // step in and sidle to the west row, then face the shop before testing its reach.
+  await turnToYaw(env, 0);
   await walkToDepth(env, 150);
   const mouth = await sidleToReach(env, "shopbay-w1", -1) ? env.reach() : null;
   ok("tokyo: a step inside the gate, the first shop on the west row is in reach", !!mouth, mouth?.dataset.obj || "none");
@@ -523,7 +553,9 @@ async function main() {
   ok("fukuoka has pressable objects visible at the mouth",
      [...env.doc.querySelectorAll(".walk-hit")].filter((e) => e.style.visibility === "visible").length >= 3);
   // The solid port table is a visual anchor, not a wall across the hall: approach it, take the
-  // authored right-hand aisle, pass the model's far edge, then continue toward the harbour.
+  // authored right-hand aisle, pass the model's far edge, then continue toward the harbour. The
+  // test path is world-axis aligned; visitors can approach it at any heading in the actual scene.
+  await turnToYaw(env, 0);
   env.key("w"); await env.pump(700); env.keyUp("w"); await env.pump(8);
   env.key("d"); await env.pump(180); env.keyUp("d"); await env.pump(8);
   env.key("w"); await env.pump(250); env.keyUp("w"); await env.pump(8);

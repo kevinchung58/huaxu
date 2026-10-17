@@ -19,9 +19,9 @@ def _asset_ver() -> str:
     pages went on asking for `?v=20260923c`, so a returning visitor would have drawn the two new rooms
     with the old renderer and seen them wrong — the one class of bug that no gate here can see, because
     it only happens in somebody's browser cache. Derived, it is correct by construction: touch either
-    asset and every page asks for the new bytes. The walkable-world module and the pinned Three.js
+    asset and every page asks for the new bytes. The walkable-scene module and the pinned Three.js
     runtime are included too: the module has its own script URL, and a stale engine under a current
-    page pin is the same browser-cache bug as a stale Canvas renderer.
+    page pin is the same browser-cache bug as a stale Canvas fallback.
     """
     h = hashlib.sha1()
     for f in ("css/site.css", "js/site.js", "js/scene3d.js",
@@ -1915,6 +1915,8 @@ OBJ_SIZE = {
     "parapet": (50, 96, 50), "deckwall": (600, 105, 30), "portal": (240, 175, 30),
     "lamp": (14, 420, 14),
     "glassfloor": (220, 4, 180),
+    # The 1:25 Retro High Mart model; the record overrides its exact footprint-derived dimensions.
+    "retrohighmart": (129, 508, 126),
     # Nakamise (round 32): one bay of the 1925 shop rows (width set per bay), and Kaminarimon.
     "shopbay": (470, 480, 150), "gate": (910, 700, 60),
     "front": (170, 300, 40), "booth": (110, 215, 110), "bikes": (150, 102, 55),
@@ -2059,10 +2061,15 @@ NAKAMISE_BAYS, NAKAMISE_LAMPS, NAKAMISE_SURFACES = _nakamise()
 MOJI_ORIGIN = (33.9451155, 130.9614754)            # Mojiko Station, OSM relation 2532442
 
 
+def moji_metric_xy(lat, lon):
+    """The table's unrounded right/forward metres, before its 1.5 cm/m display scale."""
+    e = (lon - MOJI_ORIGIN[1]) * 92436.0
+    n = (lat - MOJI_ORIGIN[0]) * 110922.0
+    return (e + n) * 0.70711, (n - e) * 0.70711
+
+
 def moji_xy(lat, lon):
-    e = (lon - MOJI_ORIGIN[1]) * 92436.0            # metres east, at this latitude
-    n = (lat - MOJI_ORIGIN[0]) * 110922.0           # metres north
-    r, f = (e + n) * 0.70711, (n - e) * 0.70711     # right (north-east), forward (north-west)
+    r, f = moji_metric_xy(lat, lon)                  # right (north-east), forward (north-west)
     return round((r - 214) * 1.5), round(2230 + (f + 50) * 1.5)
 
 
@@ -2087,10 +2094,29 @@ MOJI_STRAIT = {
 }
 
 
-# Round 36: the four buildings left the table for their own stands; the table keeps where they stand
-# as their footprints -- OpenStreetMap's outlines (lon, lat) at the table's 1.5 cm to the metre, laid
-# on the board as low plates the way a site plan marks a building it does not model. Boxes at their
-# eaves' heights were tried first and read as four unfinished buildings; the models are down the hall.
+# Round 36: the buildings left the table for their own stands; the table keeps their locations as
+# OpenStreetMap footprints at 1.5 cm to the metre, laid on the board as low site-plan plates. The
+# Retro High Mart is added here from way 292429354; its separate tower model uses the same ring at
+# 1:25. The six-node outline is mapped geometry, not a surveyed architectural plan.
+MOJI_RETRO_TOWER_RING = (
+    (130.9639904, 33.9484316), (130.9640685, 33.9485535), (130.9641226, 33.9486380),
+    (130.9643610, 33.9485329), (130.9642288, 33.9483265), (130.9641068, 33.9483803),
+)
+MOJI_TOWER_METRIC_RING = [moji_metric_xy(lat, lon) for lon, lat in MOJI_RETRO_TOWER_RING]
+MOJI_TOWER_CENTRE_M = (
+    (min(p[0] for p in MOJI_TOWER_METRIC_RING) + max(p[0] for p in MOJI_TOWER_METRIC_RING)) / 2,
+    (min(p[1] for p in MOJI_TOWER_METRIC_RING) + max(p[1] for p in MOJI_TOWER_METRIC_RING)) / 2,
+)
+MOJI_TOWER_FOOTPRINT = [[round(r - MOJI_TOWER_CENTRE_M[0], 6),
+                         round(MOJI_TOWER_CENTRE_M[1] - f, 6)]
+                        for r, f in MOJI_TOWER_METRIC_RING]
+MOJI_TOWER_WIDTH_M = max(p[0] for p in MOJI_TOWER_FOOTPRINT) - min(p[0] for p in MOJI_TOWER_FOOTPRINT)
+MOJI_TOWER_DEPTH_M = max(p[1] for p in MOJI_TOWER_FOOTPRINT) - min(p[1] for p in MOJI_TOWER_FOOTPRINT)
+MOJI_TOWER_HEIGHT_M = 127.0                 # CVU/CTBUH; includes the rooftop helipad
+MOJI_TOWER_OBSERVATION_M = 103.0            # City / MLIT describe the public view at this height
+MOJI_TOWER_FLOORS = 31
+MOJI_TOWER_SCALE = 4.0                      # scene centimetres per metre at 1:25
+
 MOJI_OUTLINES = (
     # Mojiko Station, relation 2532442 (outer ways 188008075, 188008098)
     ((130.9610539, 33.9451938), (130.9611674, 33.9451308), (130.9614933, 33.9449313), (130.9616477, 33.9448255),
@@ -2111,6 +2137,8 @@ MOJI_OUTLINES = (
      (130.9640394, 33.9481070), (130.9640486, 33.9480754), (130.9640671, 33.9480655), (130.9640714, 33.9480400),
      (130.9640972, 33.9480262), (130.9641147, 33.9480255), (130.9641179, 33.9480311), (130.9641358, 33.9480239),
      (130.9641248, 33.9480051), (130.9641520, 33.9479942)),
+    # Mojiko Retro High Mart, the six-node building way 292429354 (outline only; height tag conflicts)
+    MOJI_RETRO_TOWER_RING,
 )
 MOJI_BLOCKS = [{"p": [list(moji_xy(lat, lon)) for lon, lat in ring], "h": 1.2}
                for ring in MOJI_OUTLINES]
@@ -3808,10 +3836,10 @@ DISTRICTS = [
         # customhouse, the Blue Wing and the ships on the Kanmon Strait, models, dusk into night, one
         # yatai. Round 32 stood every model where OpenStreetMap puts it on one table at 1.5 cm to the
         # metre; at that scale each building was a block a few centimetres high, and the owner asked
-        # for them apart ("門司港那邊模型要拆開", "要分開模型 感覺看不出漂亮"). So the four buildings
-        # stand down the hall on stands of their own at 1:25 -- south-west of the basin on the left,
-        # north-east on the right -- and the table at the end keeps the port's layout at 1.5 cm to the
-        # metre: the basin, the Blue Wing across its mouth, the four buildings' footprints, and the
+        # for them apart ("門司港那邊模型要拆開", "要分開模型 感覺看不出漂亮"). So the four historic
+        # buildings stand down the hall on their own stands at 1:25, joined by the tower at that scale
+        # on a lower base; the table at the end keeps the port's layout at 1.5 cm to the metre: the
+        # basin, the Blue Wing across its mouth, all five buildings' footprints, and the
         # strait beyond the far wall with the Shimonoseki shore far left and the Kanmon Bridge far right
         # (NAVITIME: from the bridge, "the Kanmon Bridge on the right"). `moji_xy` turns each OSM
         # coordinate into the table's frame.
@@ -3822,42 +3850,45 @@ DISTRICTS = [
         # the table lit, and the far wall open onto the strait at the table's own scale. 8.8 m wide so
         # a walker can still go round the true-scale table by the right-hand aisle.
         "lane": {"w": 880, "d": 900, "ceil": 620, "back": 300},
-        "purpose": "Moji Port in a model hall: the station, the customhouse and their neighbours on "
-                   "stands of their own, and the port laid out from the map with the Blue Wing and "
-                   "the ships on the Kanmon Strait, from dusk into night",
+        "purpose": "Moji Port in a model hall: the station, the customhouse, their neighbours and the "
+                   "Retro High Mart on stands of their own, with the port laid out from the map and "
+                   "the Blue Wing and ships on the Kanmon Strait beyond, from dusk into night",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/fukuoka-cover.jpg",
-        "cover_caption": "Moji Port in one sheet, a frame of the hall after dusk: the station lit on "
-                        "its stand at 1:25 under its drawn plate, the Osaka Shosen building beyond, "
-                        "and the strait at the far end.",
-        "blurb": "A hall of models: the station, the old customhouse, the Osaka Shosen building and "
-                 "the Dalian hall on stands of their own, then the port itself, where the Blue Wing "
-                 "makes its last opening at four and the strait keeps moving. After dusk the buildings "
-                 "come alight one after another.",
+        "cover_caption": "Mojiko Retro High Mart in its hall model after dark: the gray 1:25 tower "
+                        "on its low stand, with the port table and Kanmon Strait beyond, drawn by the "
+                        "renderer.",
+        "blurb": "A hall of models: the station, the old customhouse, the Osaka Shosen building, the "
+                 "Dalian hall and the Retro High Mart tower on stands of their own, then the port itself, "
+                 "where the Blue Wing makes its last opening at four and the strait keeps moving. After "
+                 "dusk the buildings come alight one after another.",
         "clad_note": (" The room is a model hall: plain walls and lit stands. Down the left, Moji Port "
                       "Station -- a long cream front with copper-and-slate pavilions and a clock -- and "
                       "the orange brick Osaka Shosen building with its octagonal tower; down the right, "
                       "the red brick customhouse with its three arched doors and the striped Dalian "
-                      "hall with its tall dark spire, all four at 1:25. At the end a table lays the "
-                      "port out from the map: the basin with the Blue Wing across its mouth, the four "
-                      "buildings' footprints and the tall Retro tower. Nothing on any of it carries "
-                      "a word."),
+                      "hall with its tall dark spire; at the far end, the gray Retro High Mart with its "
+                      "small-window grid, open crown frame and curved rooftop cap. CVU/CTBUH lists a "
+                      "rooftop helipad in its total height. The historic models are at 1:25; the tower "
+                      "keeps that scale on a lower stand. The table lays the port "
+                      "out from the map: the basin with the Blue Wing across its mouth, and all five "
+                      "building footprints. Nothing on any of it carries a word."),
         "sight_note": (" Past the table the far wall opens onto the Kanmon Strait at the same scale: "
                        "ships crossing, the Shimonoseki shore with the Kaikyo Yume Tower to the left, "
                        "and the Kanmon Bridge to the right."),
         "objects": [
             {"id": "plinth-moji", "kind": "plinth", "x": 0, "z": round(2418 / Z_SCALE, 2), "y": 0, "ry": 0,
-             "w": 720, "h": 80, "d": 376, "top": "#8d8a82",
+             "w": 740, "h": 80, "d": 376, "top": "#8d8a82",
              "glow": [{"r": 170, "k": 0.42, "dy": 96, "tint": "rgba(255,214,170,0.36)"}],
              "title": "The table the port stands on",
              "hint": "A lit table at 1.5 cm to the metre, laid out from the map: the basin, the Blue "
-                     "Wing, the four buildings' outlines, and the strait beyond the far wall at the "
+                     "Wing, the five buildings' outlines, and the strait beyond the far wall at the "
                      "same scale."},
             *[_moji_massing(n, b, t) for n, b, t in zip(
-                ("station", "osakashosen", "customhouse", "dalianhall"), MOJI_BLOCKS,
+                ("station", "osakashosen", "customhouse", "dalianhall", "retrohighmart"), MOJI_BLOCKS,
                 ("Where the station stands", "Where the Osaka Shosen building stands",
-                 "Where the customhouse stands", "Where the Dalian hall stands"))],
+                 "Where the customhouse stands", "Where the Dalian hall stands",
+                 "Where the Retro High Mart stands"))],
             # The No. 1 basin between the hotel quay and the customhouse, from its head to the Blue
             # Wing; and the strait, which the table's far edge hands to the backdrop.
             {"id": "pool-moji", "kind": "pool", "x": 115, "z": round(2378 / Z_SCALE, 2), "y": 80, "ry": 0,
@@ -3884,20 +3915,20 @@ DISTRICTS = [
              "title": "A harbour boat",
              "hint": "A boat of the basin's own size, using the openings: out under the raised "
                      "leaves on one, back in on the next. The big ships keep to the strait."},
-            # Round 36: the owner asked for the models to come apart ("門司港那邊模型要拆開") -- on the
-            # one table every building was a block a few centimetres high. The four stand on stands of
-            # their own down the hall, all at one scale, 1:25, so the station is still twice the length
-            # of the others, as it is: south-west of the basin on your left (the station, then the Osaka
-            # Shosen building nearer the water), north-east on your right (the customhouse at the
-            # basin's mouth, the Dalian hall beside it). Each is turned on its stand to show its front to
-            # the walk. Outlines from OpenStreetMap, floor areas and storeys from Wikipedia and the
-            # Agency for Cultural Affairs, the rest read off photographs (TODO section 0r). The port
-            # table at the end keeps the basin, the Blue Wing and the strait at 1.5 cm to the metre.
+            # Round 36/39: the owner asked for the models to come apart ("門司港那邊模型要拆開") --
+            # on the one table every building was a block a few centimetres high. The four historic
+            # buildings have stands of their own down the hall at 1:25; the Retro High Mart joins them
+            # at that scale on a lower base to fit the ceiling. The historic models remain south-west
+            # of the basin on the left (station, then Osaka Shosen nearer the water), north-east on the
+            # right (customhouse at the basin's mouth, Dalian hall beside it). Each turns to show its
+            # front to the walk. Outlines from OpenStreetMap; floor areas/storeys from Wikipedia and
+            # the Agency for Cultural Affairs; the rest read from sourced photographs (TODO §§0r/0u).
+            # The port table keeps the basin, Blue Wing, five footprints and strait at 1.5 cm/m.
             {"id": "plinth-station", "kind": "plinth", "x": -305, "z": round(830 / Z_SCALE, 2), "y": 0, "ry": 0,
              "w": 245, "h": 100, "d": 225, "top": "#8d8a82",
              "glow": [{"r": 160, "k": 0.36, "dy": 116, "tint": "rgba(255,214,170,0.34)"}],
              "title": "The station's stand",
-             "hint": "Moji Port Station at 1:25, on a lit stand of its own. The four buildings of the port "
+             "hint": "Moji Port Station at 1:25, on a lit stand of its own. The other four port models "
                      "stand down this hall at the same scale, so their sizes compare as they do on the "
                      "quay."},
             {"id": "stationfront-mj", "kind": "stationfront", "x": -305, "z": round(830 / Z_SCALE, 2),
@@ -3952,14 +3983,37 @@ DISTRICTS = [
                      "with white stone, a half-timbered gable, and a polygonal tower under a tall dark "
                      "spire. It stands beside the old customhouse on the basin's north side. At 1:25, "
                      "30.9 m long as the map draws it; its heights are approximate."},
-            {"id": "skyline-retro", "kind": "skyline", "x": 331, "z": round(2434 / Z_SCALE, 2), "y": 80,
-             "ry": 0, "liton": 0.82, "w": 34, "h": 190, "d": 30,
-             "towers": [{"dx": 0, "dz": 0, "w": 34, "d": 30, "h": 190, "c": "#d9d5cb"}],
-             "title": "The Retro High-Mart tower",
-             "hint": "Kurokawa Kisho's 31-storey tower of 1999, 126.95 m, made slender so the hill "
-                     "behind the port could still be seen from the basin; its top floor is the "
-                     "Retro Observation Room at 103 m. At this scale it is the tallest thing on "
-                     "the table, as it is on the waterfront."},
+            # A separate 1:25 tower model. Its mapped six-node footprint is reused from the table
+            # plate; height 127 m is CTBUH's total including the helipad, while 103 m is the public
+            # observation viewpoint in City/MLIT material. The low display stand is intentional: the
+            # full-scale model would otherwise leave only 12 cm below this 6.2 m hall's ceiling.
+            # Its stand position and 21-degree turn are exhibit framing, not a surveyed building site
+            # or compass bearing; the table's low footprint plate retains the mapped orientation.
+            {"id": "plinth-retrohighmart", "kind": "plinth", "x": -300, "z": round(2050 / Z_SCALE, 2),
+             "y": 0, "ry": 0, "w": 190, "h": 30, "d": 190, "top": "#8d8a82",
+             "glow": [{"r": 170, "k": 0.42, "dy": 38, "tint": "rgba(255,214,170,0.36)"}],
+             "title": "The Retro High-Mart tower's low stand",
+             "hint": "A 30 cm presentation stand, lower than the other models so the full-height 1:25 "
+                     "tower model has 82 cm of headroom below the hall ceiling."},
+            {"id": "retrohighmart-mj", "kind": "retrohighmart", "x": -300, "z": round(2050 / Z_SCALE, 2),
+             "y": 30, "ry": 21, "liton": 0.82,
+             "w": round(MOJI_TOWER_WIDTH_M * MOJI_TOWER_SCALE, 1),
+             "h": round(MOJI_TOWER_HEIGHT_M * MOJI_TOWER_SCALE),
+             "d": round(MOJI_TOWER_DEPTH_M * MOJI_TOWER_SCALE, 1),
+             "footprint": MOJI_TOWER_FOOTPRINT, "floors": MOJI_TOWER_FLOORS,
+             "observation": MOJI_TOWER_OBSERVATION_M,
+             "title": "Mojiko Retro High Mart",
+             "hint": "Kisho Kurokawa's tower, completed in 1999. The six-node OpenStreetMap outline is "
+                     f"about {MOJI_TOWER_WIDTH_M:.2f} × {MOJI_TOWER_DEPTH_M:.2f} m in this table frame "
+                     f"({MOJI_TOWER_WIDTH_M * MOJI_TOWER_DEPTH_M:.0f} m² bounding box; mapped polygon "
+                     "area about 647 m²). Its 127 m total height, including the rooftop helipad, is "
+                     "listed by CVU/CTBUH; the City and MLIT place the public observation view at "
+                     "103 m, not at the building top. The City floor-area figures (755.45 m² exclusive "
+                     "area; 498.38 m² observation room) are not footprint measurements. The gray "
+                     "window grid, dark X-braced façade band, open crown frame and curved cap follow a sourced "
+                     "photograph; floor spacing and roof details remain approximate. At 1:25, the tower "
+                     "itself is 508 cm tall; on its 30 cm stand it reaches 538 cm beneath the 620 cm "
+                     "ceiling. Its night window lights are representative, not surveyed."},
             {"id": "front-mj", "kind": "front", "x": 40, "z": round(2252 / Z_SCALE, 2), "y": 80, "ry": 0,
              "liton": 0.74, "w": 5, "h": 4, "d": 4,
              "glow": [{"r": 36, "k": 0.5, "dy": 4, "tint": "rgba(255,180,110,0.5)"}],
@@ -3976,7 +4030,9 @@ DISTRICTS = [
         ] + [{"x": x, "y": 430, "z": round(z / Z_SCALE, 2), "r": 230, "k": 0.34, "bulb": False,
               "tint": "rgba(255,226,186,0.18)", "of": of}
              for x, z, of in ((-290, 830, "plinth-station"), (325, 1180, "plinth-customhouse"),
-                              (-325, 1480, "plinth-osakashosen"), (330, 1780, "plinth-dalianhall"))],
+                              (-325, 1480, "plinth-osakashosen"), (330, 1780, "plinth-dalianhall"))] + [
+            {"x": -300, "y": 590, "z": round(2050 / Z_SCALE, 2), "r": 350, "k": 0.34, "bulb": False,
+             "tint": "rgba(255,226,186,0.18)", "of": "plinth-retrohighmart"}],
         "beams": [90, 240, 340],
         # A model hall's walls: the gallery base and plaster the Toronto hall wears, dark.
         "surfaces": [
@@ -4046,32 +4102,41 @@ DISTRICTS = [
              "state": "Empty by design. A clip needs its caption before it can play here."},
         ],
         "lanterns": [],
-        # The walk passes the four stands in turn, each stop standing off one of them where its front
-        # turns to you, then comes up to the port table at the head of the basin, close enough that
-        # the far wall's opening takes in both far landmarks. One stop at the table, not two: the
-        # second stood 45 cm short of the table's edge and showed the same view.
+        # The walk passes the four historic stands in turn, then views the much taller Retro High
+        # Mart from across the lane, pitched up to keep both its low stand and crown in frame. It then
+        # comes up to the port table at the head of the basin, where one stop takes in both far landmarks.
         "stations": [
             {"z": 60, "x": 0, "label": "the door of the hall"},
             {"z": round(640 / Z_SCALE, 2), "x": -100, "label": "the station, on your left"},
             {"z": round(990 / Z_SCALE, 2), "x": 110, "label": "the old customhouse, on your right"},
             {"z": round(1290 / Z_SCALE, 2), "x": -110, "label": "the Osaka Shosen building, on your left"},
             {"z": round(1590 / Z_SCALE, 2), "x": 115, "label": "the Dalian hall, on your right"},
+            {"z": round(1660 / Z_SCALE, 2), "x": 200, "yaw": -52, "pitch": -9,
+             "label": "the Retro High Mart, on its stand to your left"},
             {"z": round(2100 / Z_SCALE, 2), "x": 0, "label": "at the port table, over the basin toward the strait"},
         ],
         "exit": {"id": "curtain-back", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
                  "title": "The curtain at your back", "hint": "It parts onto the street."},
-        "caveat": "Moji Port in a model hall. The four buildings stand on their own stands at one "
-                  "scale, 1:25, south-west of the basin on the left and north-east on the right, each "
-                  "turned to show its front; their lengths are OpenStreetMap's outlines, their floor "
-                  "areas and storeys the Agency for Cultural Affairs' and Wikipedia's, and their "
-                  "heights and the sizes of their parts are read from photographs, so approximate. "
-                  "The port table is laid out from OpenStreetMap at 1.5 cm to the metre, read from "
-                  "the head of the No. 1 basin looking north-west, with the four outlines as "
-                  "footprints; the strait beyond the far wall is the same scale and the Retro tower's "
-                  "height is sourced. The Mitsui Club, the hotel and Kaikyo Plaza are not modelled. "
-                  "The Blue Wing keeps its real timetable, so it is shut after dark. No sign carries "
-                  "lettering and the yatai sells nothing named. Nothing here says the owner was in "
-                  "any of these places.",
+        "caveat": "Moji Port in a model hall. The four historic buildings stand on their own stands "
+                  "at 1:25, south-west of the basin on the left and north-east on the right; their mapped "
+                  "lengths follow OpenStreetMap, while heights and parts read from photographs are "
+                  "approximate. The Retro High Mart is a separate 1:25 model on a lower 30 cm display "
+                  "stand so its 127 m source-listed top fits below the hall ceiling. Its six-node OSM "
+                  "outline (way 292429354) measures about 32.17 × 31.37 m by the table projection, "
+                  "with a mapped polygon area of about 647 m². CVU/CTBUH lists 127 m including the "
+                  "helipad; OSM's height=115 tag conflicts. Kitakyushu City and MLIT describe the "
+                  "public observation view at 103 m, not the total building height. The City's 755.45 "
+                  "m² exclusive area and 498.38 m² observation-room area are floor areas, not footprint; "
+                  "a secondary 830 m² building-area figure does not reconcile with the mapped polygon, "
+                  "and no primary footprint plan was found. The tower's gray window grid, dark X-braced façade band, "
+                  "open crown frame and curved cap follow the sourced Nippon.com photograph; exact "
+                  "floor spacing and roof geometry remain approximate. The port table is laid out from "
+                  "OpenStreetMap at 1.5 cm to the metre, read from the head of the No. 1 basin looking "
+                  "north-west, with all five outlines as footprints; the strait beyond the far wall is "
+                  "the same scale. The Mitsui Club, the hotel and Kaikyo Plaza are not modelled because "
+                  "reliable shape and height data remain insufficient. The Blue Wing keeps its real "
+                  "timetable, so it is shut after dark. No sign carries lettering and the yatai sells "
+                  "nothing named. Nothing here says the owner was in any of these places.",
     },
     {
         # Toronto, small. The owner's brief was Little Canada — the Toronto attraction where the
@@ -4936,7 +5001,8 @@ def walk_object(o):
     # document like an awning colour, or the renderer never sees them (lane-prop section 7).
     extra_attr = "".join(
         f' data-{k}="{escape(v if isinstance(v, str) else json.dumps(v, separators=(",", ":")))}"'
-        for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run", "lift", "blocks") if k in o))
+        for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run", "lift", "blocks",
+                                         "footprint", "floors", "observation") if k in o))
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.

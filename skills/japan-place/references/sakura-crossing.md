@@ -5,8 +5,9 @@ A study note on `https://github.com/Kenton-GMI/sakura-crossing`, read for the Ja
 modules, one shipped music track, no image assets.
 
 It is a **reference, not a dependency** — the same rule as every other pack in `AGENTS.md`. At the
-2026-07 study date, this site shipped no scene library. On 2026-10-16 the owner later approved one
-pinned, MIT Three.js runtime for source-backed walkable-world rendering; that separate exception does
+2026-07 study date, this site shipped no scene library. On 2026-10-16 the owner later approved pinned,
+MIT Three.js 0.186.1 as the primary renderer for all walkable environments and objects, with sourced
+world records consumed when present and Canvas2D retained as fallback. That separate exception does
 not make this project a dependency or import its Vite tooling, source, or invented signage. Fetch it to read:
 
 ```bash
@@ -78,10 +79,10 @@ eye level, the noren's proportions — and never the words. See `japan-place` §
 **2. Its declared structure.** It is npm, Vite, three.js, ES modules, a `public/` folder, 859 k
 triangles at 1.2 M submitted per frame, a half-float render target at 1.5–2×, FXAA, a depth-texture
 ink pass, an inverted-hull outline pass. At the time this note was written, our lane was a Canvas2D
-raster and `AGENTS.md` rejected WebGL. The later owner approval is much narrower: the current site
-vendors only the pinned Three.js runtime for sourced walkable-world backdrops, keeps Canvas2D as its
-lane/fallback renderer, and still has no npm build. Nothing in this pack justifies adopting its Vite
-stack, render pipeline, signage or geometry.
+raster and `AGENTS.md` rejected WebGL. The later owner approval changed the walkable renderer to
+pinned Three.js 0.186.1 for lane and object geometry across all walkable pages, while retaining the
+Canvas2D fallback and no npm build. Nothing in this pack justifies adopting its Vite stack, render
+pipeline, signage or geometry.
 
 **3. The planet.** Its whole world is authored flat and bent onto a 160 m sphere by one projection
 layer that runs once, with the railway on the equator so the loop closes exactly, and content far

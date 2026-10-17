@@ -1,14 +1,15 @@
 /*
- * Three.js bridge for surveyed walkable-world backdrops.
+ * Three.js renderer for every walkable scene.
  *
- * This is the first, deliberately narrow WebGL slice of the walk renderer: the outdoor world behind
- * Niagara, Journey and the CN Tower is built from the existing sourced `backdrop.world.prims` record.
- * The authored lane and its hit targets stay in their current coordinate system, drawn by site.js on
- * the transparent 2D overlay; Canvas2D remains the complete fallback when WebGL is missing.
+ * The lane, authored props, compact far backdrops and sourced `backdrop.world.prims` are all submitted
+ * as world-space meshes to one camera and depth buffer. site.js remains the authoring/interaction layer:
+ * it supplies each frame's polygons, camera, light values and hit targets. Its transparent Canvas2D
+ * surface is transparent while this renderer is active and remains the complete Canvas2D fallback
+ * when WebGL is absent or a context fails; lamps, pools, shadows and wires are Three.js geometry too.
  *
- * No location, dimensions, labels or scene detail are authored here. This file only turns the record's
- * polygons and typed effects into meshes. Pattern maps are procedural grayscale material samples,
- * never photographs or invented signage.
+ * No location, dimensions, labels or scene detail are authored here. This file only turns scene records
+ * and per-frame polygons into meshes. Pattern maps are procedural material samples, never invented
+ * signage or a replacement for the authored surfaces.
  */
 
 const THREE_VERSION = "0.186.1";
@@ -318,6 +319,256 @@ function setGeometry(THREE, data, dynamic = false) {
   return geometry;
 }
 
+const laneTextureIds = new WeakMap();
+let laneTextureSerial = 0;
+const laneAlphaCache = new WeakMap();
+
+function laneObjectId(value) {
+  if (!value || (typeof value !== "object" && typeof value !== "function")) return "none";
+  let id = laneTextureIds.get(value);
+  if (!id) { id = `source-${++laneTextureSerial}`; laneTextureIds.set(value, id); }
+  return id;
+}
+
+function laneColor(THREE, value) {
+  const text = String(value || FALLBACK_COLOR).trim();
+  const rgb = text.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i);
+  const color = new THREE.Color();
+  if (rgb) color.setRGB(Number(rgb[1]) / 255, Number(rgb[2]) / 255, Number(rgb[3]) / 255, THREE.SRGBColorSpace);
+  else if (/^#[\da-f]{3}(?:[\da-f]{3})?$/i.test(text)) color.set(text);
+  else {
+    try { color.setStyle(text, THREE.SRGBColorSpace); }
+    catch (_) { color.set(FALLBACK_COLOR); }
+  }
+  return { rgb: [color.r, color.g, color.b], alpha: rgb && rgb[4] !== undefined ? clamp(Number(rgb[4]), 0, 1) : 1 };
+}
+
+function laneTextureHasAlpha(source) {
+  if (!source || typeof source !== "object") return false;
+  const cached = laneAlphaCache.get(source);
+  if (cached !== undefined) return cached;
+  let alpha = true;
+  try {
+    const context = typeof source.getContext === "function" && source.getContext("2d");
+    if (context && source.width && source.height) {
+      const pixels = context.getImageData(0, 0, source.width, source.height).data;
+      alpha = false;
+      for (let i = 3; i < pixels.length; i += 4) {
+        if (pixels[i] < 255) { alpha = true; break; }
+      }
+    }
+  } catch (_) { alpha = true; }
+  laneAlphaCache.set(source, alpha);
+  return alpha;
+}
+
+function projectLanePoint(point, state) {
+  const camera = state.camera || {};
+  const dx = point[0] - (Number(camera.x) || 0), dz = point[2] - (Number(camera.z) || 0);
+  const sy = Number(camera.sy) || 0, cy = Number.isFinite(Number(camera.cy)) ? Number(camera.cy) : 1;
+  const sp = Number(camera.sp) || 0, cp = Number.isFinite(Number(camera.cp)) ? Number(camera.cp) : 1;
+  const x = dx * cy - dz * sy, az = dx * sy + dz * cy, ay = (Number(camera.eye) || 0) - point[1];
+  const y = ay * cp - az * sp, z = az * cp + ay * sp;
+  if (z <= 1e-4) return [0.5, 0.5];
+  const width = Math.max(1, Number(state.width) || 1), height = Math.max(1, Number(state.height) || 1);
+  const focal = Math.max(1, Number(state.focal) || 1);
+  const sx = width * 0.5 + focal * x / z, syScreen = height * 0.5 + focal * y / z;
+  return [sx, syScreen];
+}
+
+/* The lane painter already emits each surface as a world-space polygon. This staging step keeps those
+   exact corners, UVs, dynamic colors, opacity, and light values, then submits triangles to one mesh
+   per material instead of flattening the scene to the Canvas2D projection. */
+export function buildLaneGeometry(THREE, quads, state = {}) {
+  const groups = new Map();
+  let triangles = 0, quadCount = 0;
+  const day = clamp(Number(state.day) || 0, 0, 1);
+  const night = clamp((Number(state.night) || 0) * 0.5, 0, 0.72);
+  const dayPage = Boolean(state.dayPage);
+  const fogMax = clamp(state.fogMax === undefined ? 0.6 : Number(state.fogMax), 0, 0.6);
+  const dayGain = Number.isFinite(Number(state.dayGain)) ? Number(state.dayGain) : 1;
+  const sourceQuads = Array.isArray(quads) ? quads : [];
+
+  for (const q of sourceQuads) {
+    if (!q || !Array.isArray(q.world) || q.world.length < 3) continue;
+    const points = [], texcoords = [];
+    for (let i = 0; i < q.world.length; i++) {
+      const p = q.world[i];
+      if (!Array.isArray(p) || p.length < 3 || !p.slice(0, 3).every(Number.isFinite)) continue;
+      const last = points[points.length - 1];
+      if (last && Math.hypot(p[0] - last[0], p[1] - last[1], p[2] - last[2]) <= 1e-5) continue;
+      points.push([p[0], p[1], p[2]]);
+      const uv = Array.isArray(q.uv) && Array.isArray(q.uv[i]) ? q.uv[i] : [0, 0];
+      texcoords.push([Number(uv[0]) || 0, Number(uv[1]) || 0]);
+    }
+    if (points.length > 3 && Math.hypot(points[0][0] - points[points.length - 1][0],
+        points[0][1] - points[points.length - 1][1], points[0][2] - points[points.length - 1][2]) <= 1e-5) {
+      points.pop(); texcoords.pop();
+    }
+    if (points.length < 3) continue;
+
+    const textureSource = q.mode === "pat" && q.textureSource ? q.textureSource : null;
+    const image = q.mode === "pic" && q.img && q.img.complete && q.img.naturalWidth ? q.img : null;
+    const soft = q.soft && typeof q.soft === "object" ? q.soft : null;
+    const textureKind = soft ? "soft" : textureSource ? "pattern" : image ? "image" : "flat";
+    const textureKey = textureKind === "pattern"
+      ? (q.textureKey || laneObjectId(textureSource))
+      : textureKind === "image" ? (q.imageKey || laneObjectId(image))
+        : textureKind === "soft" ? "radial-soft" : "flat";
+
+    let colorText = "#ffffff";
+    if (soft) colorText = `rgb(${soft.rgb || "238,244,247"})`;
+    else if (textureKind === "flat") {
+      if (q.mode === "flat") colorText = q.arg;
+      else colorText = q.fallback || FALLBACK_COLOR;
+    }
+    const color = laneColor(THREE, colorText);
+    const alpha = clamp(color.alpha * (q.alpha === undefined ? 1 : Number(q.alpha) || 0)
+      * (soft ? clamp(Number(soft.a) || 0, 0, 1) : 1), 0, 1);
+    const texturedAlpha = textureKind === "pattern" ? laneTextureHasAlpha(textureSource) : textureKind === "image" || textureKind === "soft";
+    const transparent = alpha < 0.999 || texturedAlpha;
+    const key = `${textureKind}:${textureKey}|${transparent ? "blend" : "solid"}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = { key, textureKey, textureKind, textureSource, image,
+        transparent, positions: [], uvs: [], colors: [], opacities: [],
+        lights: [], air: [], darkness: [], daylight: [], quads: 0, triangles: 0 };
+      groups.set(key, group);
+    }
+
+    let uvForPoint;
+    if (textureKind === "pattern") {
+      uvForPoint = (i) => [texcoords[i][0] / 128, texcoords[i][1] / 128];
+    } else if (textureKind === "image") {
+      const iw = Math.max(1, Number(image.naturalWidth) || 1), ih = Math.max(1, Number(image.naturalHeight) || 1);
+      uvForPoint = (i) => [texcoords[i][0] / iw, -texcoords[i][1] / ih];
+    } else if (textureKind === "soft") {
+      const radius = Math.max(1, Number(soft.r) || 1), aspect = Math.max(0.01, Number(soft.k) || 1);
+      uvForPoint = (i) => {
+        const [sx, sy] = projectLanePoint(points[i], state);
+        return [0.5 + (sx - Number(soft.x || 0)) / (2 * radius),
+                0.5 + (sy - Number(soft.y || 0)) / (2 * radius * aspect)];
+      };
+    } else uvForPoint = () => [0, 0];
+
+    const air = q.air === undefined
+      ? clamp((Number(q.z) - 420) / 2450, 0, 1) * fogMax * (dayPage ? 1 - 0.62 * day : 1)
+      : clamp(Number(q.air) || 0, 0, 0.6);
+    const lit = Number(q.lit) || 0;
+    const isNoLight = Boolean(q.nolite);
+    const darkness = isNoLight ? 0 : night;
+    const sun = q.day === false || isNoLight ? 0
+      : day * dayGain * (q.daygain === undefined ? 1 : Number(q.daygain));
+    const faces = triangulate(THREE, points);
+    if (!faces.length) continue;
+    for (const face of faces) {
+      for (const index of face) {
+        const p = points[index], uv = uvForPoint(index);
+        group.positions.push(p[0], p[1], p[2]);
+        group.uvs.push(uv[0], uv[1]);
+        group.colors.push(color.rgb[0], color.rgb[1], color.rgb[2]);
+        group.opacities.push(alpha);
+        group.lights.push(lit);
+        group.air.push(air);
+        group.darkness.push(darkness);
+        group.daylight.push(sun);
+      }
+      group.triangles++;
+      triangles++;
+    }
+    group.quads++;
+    quadCount++;
+  }
+  return { groups: [...groups.values()], triangles, quads: quadCount };
+}
+
+function laneShaderMaterial(THREE, map, transparent) {
+  const material = new THREE.MeshBasicMaterial({
+    map: map || null, vertexColors: true, side: THREE.DoubleSide, transparent,
+    depthWrite: !transparent, depthTest: true, fog: false,
+  });
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uLaneWarm = { value: new THREE.Color("#ffe4ba") };
+    shader.uniforms.uLaneNight = { value: new THREE.Color("#16223c") };
+    shader.uniforms.uLaneSun = { value: new THREE.Color("#928874") };
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", `#include <common>
+        attribute float aOpacity; attribute float aLit; attribute float aAir;
+        attribute float aDarkness; attribute float aDaylight;
+        varying float vLaneOpacity; varying float vLaneLit; varying float vLaneAir;
+        varying float vLaneDarkness; varying float vLaneDaylight;`)
+      .replace("#include <begin_vertex>", `#include <begin_vertex>
+        vLaneOpacity=aOpacity; vLaneLit=aLit; vLaneAir=aAir;
+        vLaneDarkness=aDarkness; vLaneDaylight=aDaylight;`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", `#include <common>
+        uniform vec3 uLaneWarm; uniform vec3 uLaneNight; uniform vec3 uLaneSun;
+        varying float vLaneOpacity; varying float vLaneLit; varying float vLaneAir;
+        varying float vLaneDarkness; varying float vLaneDaylight;`)
+      .replace("#include <color_fragment>", `#include <color_fragment>
+        float laneWarm=clamp(vLaneLit-0.55,0.0,1.15)*0.24;
+        float laneDark=min(0.72,1.0-(1.0-clamp(vLaneAir,0.0,0.6))*(1.0-clamp(vLaneDarkness,0.0,0.72)));
+        diffuseColor.rgb=mix(diffuseColor.rgb,uLaneWarm,laneWarm);
+        diffuseColor.rgb=mix(diffuseColor.rgb,uLaneNight,laneDark);
+        diffuseColor.rgb+=uLaneSun*max(0.0,vLaneDaylight)*0.62;
+        diffuseColor.a*=clamp(vLaneOpacity,0.0,1.0);`);
+  };
+  material.customProgramCacheKey = () => "huaxu-walk-lane-v1";
+  material.userData.huaxuWalkLane = true;
+  return material;
+}
+
+function softLaneTexture(THREE) {
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 128;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gradient.addColorStop(0, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.5, "rgba(255,255,255,0.62)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  context.fillStyle = gradient; context.fillRect(0, 0, 128, 128);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  return texture;
+}
+
+function updateLaneMesh(THREE, mesh, data) {
+  const vertexCount = data.positions.length / 3;
+  if (!vertexCount) { mesh.geometry.setDrawRange(0, 0); mesh.visible = false; return; }
+  let geometry = mesh.geometry;
+  let capacity = geometry.userData.vertexCapacity || 0;
+  if (capacity < vertexCount) {
+    capacity = Math.max(256, 2 ** Math.ceil(Math.log2(vertexCount)));
+    const next = new THREE.BufferGeometry();
+    const attributes = [
+      ["position", 3], ["uv", 2], ["color", 3], ["aOpacity", 1], ["aLit", 1],
+      ["aAir", 1], ["aDarkness", 1], ["aDaylight", 1],
+    ];
+    for (const [name, itemSize] of attributes) {
+      const attribute = new THREE.BufferAttribute(new Float32Array(capacity * itemSize), itemSize);
+      attribute.setUsage(THREE.DynamicDrawUsage);
+      next.setAttribute(name, attribute);
+    }
+    next.userData.vertexCapacity = capacity;
+    if (geometry) geometry.dispose();
+    mesh.geometry = geometry = next;
+  }
+  const attributes = [
+    ["position", data.positions], ["uv", data.uvs], ["color", data.colors], ["aOpacity", data.opacities],
+    ["aLit", data.lights], ["aAir", data.air], ["aDarkness", data.darkness], ["aDaylight", data.daylight],
+  ];
+  for (const [name, values] of attributes) {
+    const attribute = geometry.getAttribute(name);
+    attribute.array.set(values);
+    attribute.needsUpdate = true;
+  }
+  geometry.setDrawRange(0, vertexCount);
+  mesh.visible = true;
+}
+
 function updateColorAttribute(THREE, geometry, items, state) {
   const attr = geometry.getAttribute("color");
   if (!attr) return;
@@ -530,7 +781,9 @@ function makeFireworks(THREE, scene, prims) {
 }
 
 function skyColorAt(stops, elevation, dayPage, day) {
-  const ss = stops.slice().sort((a, b) => Number(a.e) - Number(b.e));
+  const ss = (Array.isArray(stops) ? stops : []).filter((s) => s && Number.isFinite(Number(s.e)) && s.c)
+    .slice().sort((a, b) => Number(a.e) - Number(b.e));
+  if (!ss.length) return FALLBACK_COLOR;
   let lo = ss[0], hi = ss[ss.length - 1];
   for (let i = 0; i < ss.length - 1; i++) {
     if (elevation >= ss[i].e && elevation <= ss[i + 1].e) { lo = ss[i]; hi = ss[i + 1]; break; }
@@ -543,12 +796,27 @@ function skyColorAt(stops, elevation, dayPage, day) {
   return blendHex(a || FALLBACK_COLOR, b || FALLBACK_COLOR, amount);
 }
 
+function backdropSkyStops(backdrop, dayPage, day) {
+  backdrop = backdrop || {};
+  const stops = backdrop.skyAround && Array.isArray(backdrop.skyAround.stops) ? backdrop.skyAround.stops : [];
+  if (stops.length || !backdrop.skyGradient || !Array.isArray(backdrop.sky)) return stops;
+  // The hub street's authored sky is a continuous height gradient rather than an equirectangular
+  // colour table. Its far-plane heights map to elevation angles at the authored 120 m horizon.
+  const dayColor = (hex, gain) => dayPage && day > 0.01
+    ? blendHex(hex, blendHex(hex, "#d3e3f4", 0.62), day * gain) : hex;
+  return backdrop.sky.map((band) => ({
+    e: Math.atan2(((Number(band.y0) + Number(band.y1)) * 0.5) - 168, 120000) * 180 / Math.PI,
+    c: dayColor(band.c || FALLBACK_COLOR, 0.8 + 0.12 * (Number(band.glow) || 0)),
+  }));
+}
+
 function makeSkyTexture(THREE, backdrop, dayPage, day) {
+  backdrop = backdrop || {};
   if (typeof document === "undefined") return new THREE.Color(FALLBACK_COLOR);
   const canvas = document.createElement("canvas");
   canvas.width = 256; canvas.height = 128;
   const c = canvas.getContext("2d");
-  const stops = backdrop.skyAround && Array.isArray(backdrop.skyAround.stops) ? backdrop.skyAround.stops : [];
+  const stops = backdropSkyStops(backdrop, dayPage, day);
   if (!c || !stops.length) return new THREE.Color(FALLBACK_COLOR);
   for (let y = 0; y < canvas.height; y++) {
     const elevation = 90 - (180 * y) / (canvas.height - 1);
@@ -624,20 +892,369 @@ function updateFireworks(THREE, fireworks, state, reducedMotion) {
   if (fireworks.geometry.userData.object) fireworks.geometry.userData.object.visible = dark;
 }
 
+function effectMaskTexture(THREE, draw) {
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 128;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  draw(context);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = true;
+  return texture;
+}
+
+function effectTextures(THREE) {
+  const radial = effectMaskTexture(THREE, (context) => {
+    const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gradient.addColorStop(0, "rgba(255,255,255,1)");
+    gradient.addColorStop(0.45, "rgba(255,255,255,0.66)");
+    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    context.fillStyle = gradient; context.fillRect(0, 0, 128, 128);
+  });
+  const beam = effectMaskTexture(THREE, (context) => {
+    const vertical = context.createLinearGradient(0, 0, 0, 128);
+    vertical.addColorStop(0, "rgba(255,255,255,0.55)");
+    vertical.addColorStop(0.46, "rgba(255,255,255,0.22)");
+    vertical.addColorStop(1, "rgba(255,255,255,0)");
+    context.fillStyle = vertical; context.fillRect(0, 0, 128, 128);
+    context.globalCompositeOperation = "destination-in";
+    const across = context.createLinearGradient(0, 0, 128, 0);
+    across.addColorStop(0, "rgba(255,255,255,0)");
+    across.addColorStop(0.5, "rgba(255,255,255,1)");
+    across.addColorStop(1, "rgba(255,255,255,0)");
+    context.fillStyle = across; context.fillRect(0, 0, 128, 128);
+  });
+  const spill = effectMaskTexture(THREE, (context) => {
+    const along = context.createLinearGradient(0, 0, 0, 128);
+    along.addColorStop(0, "rgba(255,255,255,0.96)");
+    along.addColorStop(0.45, "rgba(255,255,255,0.58)");
+    along.addColorStop(1, "rgba(255,255,255,0)");
+    context.fillStyle = along; context.fillRect(0, 0, 128, 128);
+    context.globalCompositeOperation = "destination-in";
+    const across = context.createLinearGradient(0, 0, 128, 0);
+    across.addColorStop(0, "rgba(255,255,255,0)");
+    across.addColorStop(0.5, "rgba(255,255,255,1)");
+    across.addColorStop(1, "rgba(255,255,255,0)");
+    context.fillStyle = across; context.fillRect(0, 0, 128, 128);
+  });
+  return { radial, beam, spill };
+}
+
+function scaledEffectTint(THREE, tint, strength, dayPage, forceScale = false) {
+  const info = laneColor(THREE, tint || "#ffd69e");
+  const isHex = /^#[\da-f]{3}(?:[\da-f]{3})?$/i.test(String(tint || ""));
+  let opacity = info.alpha;
+  if (isHex) opacity = dayPage || forceScale ? strength : 1;
+  else opacity *= strength;
+  return { color: new THREE.Color().setRGB(info.rgb[0], info.rgb[1], info.rgb[2]), opacity: clamp(opacity, 0, 1) };
+}
+
+export function createSceneEffects(THREE, scene, source, materials = [], textures = new Map()) {
+  source = source || {};
+  const lamps = Array.isArray(source.lamps) ? source.lamps : [];
+  const wires = Array.isArray(source.wires) ? source.wires : [];
+  const marks = Array.isArray(source.marks) ? source.marks : [];
+  const radial = effectTextures(THREE);
+  for (const [key, texture] of Object.entries(radial)) if (texture) textures.set(`effects-${key}`, texture);
+  const geometries = [];
+  const makeMaterial = (parameters) => {
+    const material = new THREE.MeshBasicMaterial({ toneMapped: false, ...parameters });
+    materials.push(material);
+    return material;
+  };
+  const makeSpriteMaterial = (parameters) => {
+    const material = new THREE.SpriteMaterial({ toneMapped: false, depthTest: true, depthWrite: false,
+      transparent: true, blending: THREE.AdditiveBlending, ...parameters });
+    materials.push(material);
+    return material;
+  };
+  const planeGeometry = new THREE.PlaneGeometry(1, 1);
+  geometries.push(planeGeometry);
+  const addGroundPlane = (name, map, color, opacity, blending = THREE.AdditiveBlending) => {
+    const material = makeMaterial({ map, color, opacity, transparent: true, depthTest: true,
+      depthWrite: false, blending, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(planeGeometry, material);
+    mesh.name = name; mesh.rotation.x = -Math.PI / 2; mesh.frustumCulled = false;
+    scene.add(mesh);
+    return mesh;
+  };
+  const makeSprite = (name, map, color, opacity) => {
+    const material = makeSpriteMaterial({ map, color, opacity });
+    const sprite = new THREE.Sprite(material);
+    sprite.name = name; sprite.frustumCulled = false; scene.add(sprite);
+    return sprite;
+  };
+
+  const lampEntries = lamps.map((lamp, index) => {
+    const glow = makeSprite(`3D lamp halo ${index + 1}`, radial.radial, "#ffffff", 0);
+    const bulb = lamp.bulb ? makeSprite(`3D lamp source ${index + 1}`, radial.radial, "#fff0ce", 0.92) : null;
+    const pool = addGroundPlane(`3D ground pool ${index + 1}`, radial.radial, "#ffa454", 0);
+    const reflection = addGroundPlane(`3D wet reflection ${index + 1}`, radial.radial, "#ffd69e", 0);
+    let spill = null;
+    if (lamp.spill) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(12), 3).setUsage(THREE.DynamicDrawUsage));
+      geometry.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
+      geometry.setIndex([0, 1, 2, 0, 2, 3]);
+      geometries.push(geometry);
+      const material = makeMaterial({ map: radial.spill, color: "#ffd69e", opacity: 0, transparent: true,
+        depthTest: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+      spill = new THREE.Mesh(geometry, material);
+      spill.name = `3D window-light spill ${index + 1}`; spill.frustumCulled = false; scene.add(spill);
+    }
+    const beams = [];
+    if (lamp.body === "lantern") {
+      for (const [name, width, gain] of [["lantern penumbra", 2.5, 0.30], ["lantern beam", 1, 0.22]]) {
+        const radiusTop = Math.max(1, (lamp.size || 24) * 0.85 * width);
+        const radiusBottom = Math.max(2, (lamp.size || 24) * 2.9 * width);
+        const beamGeometry = new THREE.CylinderGeometry(radiusTop, radiusBottom,
+          Math.max(1, (lamp.y || 0) - (lamp.size || 24) - 2), 16, 1, true);
+        geometries.push(beamGeometry);
+        const material = makeMaterial({ map: radial.beam, color: "#ffd69e", opacity: 0, transparent: true,
+          depthTest: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+        const mesh = new THREE.Mesh(beamGeometry, material);
+        mesh.name = `3D ${name} ${index + 1}`; mesh.frustumCulled = false; scene.add(mesh);
+        beams.push({ mesh, width, gain, core: gain === 0.22 });
+      }
+    }
+    let spot = null;
+    if (lamp.spot) {
+      const geometry = new THREE.CylinderGeometry(16, Math.max(2, (lamp.r || 46) * 1.7),
+        Math.max(1, (lamp.y || 0) - 90), 16, 1, true);
+      geometries.push(geometry);
+      const material = makeMaterial({ map: radial.beam, color: "#ffe2b2", opacity: 0, transparent: true,
+        depthTest: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+      spot = new THREE.Mesh(geometry, material);
+      spot.name = `3D diorama spotlight ${index + 1}`; spot.frustumCulled = false; scene.add(spot);
+    }
+    return { lamp, glow, bulb, pool, reflection, spill, beams, spot };
+  });
+
+  const reflectors = [];
+  for (const mark of marks) {
+    if (mark.kind !== "wet") continue;
+    for (const entry of lampEntries) {
+      const lamp = entry.lamp;
+      if (lamp.wet || lamp.x < mark.x0 || lamp.x > mark.x1 || lamp.z < mark.z0 || lamp.z > mark.z1) continue;
+      const mesh = addGroundPlane(`3D wet-mark reflection ${reflectors.length + 1}`, radial.radial, "#ffd69e", 0.15);
+      reflectors.push({ mesh, lamp, radius: (lamp.r || 30) * 2.2 });
+    }
+  }
+
+  const wireMaterial = new THREE.LineBasicMaterial({ color: "#090f1c", transparent: true, opacity: 0.9,
+    depthTest: true, depthWrite: false, toneMapped: false });
+  materials.push(wireMaterial);
+  const lineSpecs = wires.map((wire) => ({ type: "wire", a: wire.a, b: wire.b, sag: wire.sag || 40 }));
+  for (const { lamp } of lampEntries) {
+    if (lamp.wet) lineSpecs.push({ type: "wet-cord", lamp });
+    if (lamp.body === "lantern") lineSpecs.push({ type: "lantern-cord", lamp });
+  }
+  const lines = lineSpecs.map((spec, index) => {
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(9 * 3);
+    const position = new THREE.BufferAttribute(positions, 3);
+    position.setUsage(THREE.DynamicDrawUsage);
+    geometry.setAttribute("position", position);
+    geometries.push(geometry);
+    const line = new THREE.Line(geometry, wireMaterial);
+    line.name = `3D wire or lamp cord ${index + 1}`; line.frustumCulled = false; line.renderOrder = 6;
+    scene.add(line);
+    return { spec, line };
+  });
+
+  const shadowGeometry = new THREE.BufferGeometry();
+  const shadowPositions = new Float32Array(12 * 3);
+  shadowGeometry.setAttribute("position", new THREE.BufferAttribute(shadowPositions, 3).setUsage(THREE.DynamicDrawUsage));
+  shadowGeometry.setDrawRange(0, 0);
+  geometries.push(shadowGeometry);
+  const umbra = new THREE.Mesh(shadowGeometry, makeMaterial({ color: "#0c1222", transparent: true,
+    opacity: 0, depthTest: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true,
+    polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+  umbra.name = "3D authored wall shadow"; umbra.frustumCulled = false; umbra.renderOrder = 4; scene.add(umbra);
+  const penumbraGeometry = shadowGeometry.clone();
+  penumbraGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(12 * 3), 3).setUsage(THREE.DynamicDrawUsage));
+  geometries.push(penumbraGeometry);
+  const penumbra = new THREE.Mesh(penumbraGeometry, makeMaterial({ color: "#0c1222", transparent: true,
+    opacity: 0, depthTest: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true,
+    polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+  penumbra.name = "3D authored wall penumbra"; penumbra.frustumCulled = false; penumbra.renderOrder = 4; scene.add(penumbra);
+
+  const bodyShadow = addGroundPlane("3D walker ground shadow", radial.radial, "#03060e", 0.5, THREE.NormalBlending);
+  const smooth = (v) => v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v);
+  const radialLimit = (state, worldRadius, depth, minimumPixels) => {
+    const focal = Math.max(1, Number(state.focal) || 1);
+    return Math.max(worldRadius, minimumPixels * Math.max(1, depth) / focal);
+  };
+  const poolRadius = (lamp) => clamp(138 * Math.sqrt(Math.max(40, lamp.y || 0) / 300)
+    * (0.55 + 0.75 * (lamp.k === undefined ? 0.5 : lamp.k))
+    * (lamp.body === "lantern" ? Math.max(1, (lamp.size || 22) / 22) * 0.74 : 1), 46, 330);
+
+  function update(state) {
+    const effectState = state.effects || source;
+    const day = clamp(Number(state.day) || 0, 0, 1), night = clamp(Number(state.night) || 0, 0, 1);
+    const dayPage = Boolean(state.dayPage), time = Number(state.time) || 0;
+    const phase = Number.isFinite(Number(effectState.phase)) ? Number(effectState.phase) : (time / 240) % 1;
+    const reduced = Boolean(effectState.reducedMotion);
+    const dayFall = (value) => dayPage ? value * (1 - 0.88 * day) : value;
+    const litOn = (lamp) => lamp.liton ? smooth((phase - lamp.liton) / 0.08) : 1;
+    const strength = (lamp) => (lamp.k === undefined ? 0.5 : lamp.k)
+      * dayFall(0.12 + 0.88 * night) * litOn(lamp);
+    const sway = (lamp) => (!lamp.swing || reduced)
+      ? 0 : Math.sin(time * 2 * Math.PI / (lamp.period || 4) + (lamp.phase || 0)) * lamp.swing;
+
+    for (const entry of lampEntries) {
+      const { lamp, glow, bulb, pool, reflection, spill, beams, spot } = entry;
+      const dx = sway(lamp), amount = strength(lamp), point = new THREE.Vector3(lamp.x + dx, lamp.y, lamp.z);
+      glow.position.copy(point);
+      const glowRadius = radialLimit(state, Math.max(6, lamp.r || 30), Math.hypot(lamp.x - state.camera.x, lamp.z - state.camera.z), 6);
+      glow.scale.set(glowRadius * 2, glowRadius * 2, 1);
+      const glowTint = scaledEffectTint(THREE, lamp.tint || "rgba(255,216,158,0.42)", amount, dayPage);
+      glow.material.color.copy(glowTint.color); glow.material.opacity = glowTint.opacity;
+      glow.visible = glowTint.opacity > 0.002;
+
+      if (bulb) {
+        bulb.position.copy(point);
+        const depth = Math.max(1, Math.hypot(lamp.x - state.camera.x, lamp.z - state.camera.z));
+        const radius = radialLimit(state, 9, depth, 1.5);
+        bulb.scale.set(radius * 2, radius * 2, 1);
+        bulb.visible = true;
+      }
+
+      const radius = poolRadius(lamp);
+      pool.position.set(lamp.x + dx, 3, lamp.z);
+      pool.scale.set(radius * 2, radius * 0.68, 1);
+      const poolTint = scaledEffectTint(THREE, lamp.tint || "rgba(255,216,158,0.42)", 0.8 * amount, dayPage, true);
+      pool.material.color.copy(poolTint.color); pool.material.opacity = poolTint.opacity;
+      pool.visible = amount > 0.05 && !lamp.spill;
+
+      const reflectionRadius = Math.max(8, (lamp.r || 30) * 3.6);
+      reflection.position.set(lamp.x + dx, 4, lamp.z);
+      reflection.scale.set(reflectionRadius * 2, reflectionRadius * 0.62, 1);
+      reflection.material.opacity = 0.15;
+      reflection.visible = lamp.wet && !dayPage;
+
+      if (spill) {
+        const widthRadius = radius, length = Math.min(210, widthRadius * (lamp.spill || 1));
+        const sign = lamp.x >= 0 ? -1 : 1, x0 = lamp.x + sign * 8, x1 = lamp.x + sign * (length + 40);
+        const positions = spill.geometry.getAttribute("position");
+        positions.setXYZ(0, x0, 3, lamp.z - widthRadius);
+        positions.setXYZ(1, x0, 3, lamp.z + widthRadius);
+        positions.setXYZ(2, x1, 3, lamp.z + widthRadius * 0.6);
+        positions.setXYZ(3, x1, 3, lamp.z - widthRadius * 0.6);
+        positions.needsUpdate = true;
+        const tint = scaledEffectTint(THREE, lamp.tint || "rgba(255,216,158,0.42)", 0.7 * amount, dayPage, true);
+        spill.material.color.copy(tint.color); spill.material.opacity = tint.opacity;
+        spill.visible = amount > 0.05;
+      }
+
+      for (const beam of beams) {
+        const top = (lamp.y || 0) - (lamp.size || 24), bottom = 2;
+        beam.mesh.position.set(lamp.x + dx * 1.25, (top + bottom) / 2, lamp.z);
+        beam.mesh.visible = amount > 0.05;
+        const scalar = beam.core ? 0.15 + beam.gain * amount : beam.gain * amount;
+        const tint = scaledEffectTint(THREE, lamp.tint || "rgba(255,216,158,0.42)", scalar, dayPage, true);
+        beam.mesh.material.color.copy(tint.color); beam.mesh.material.opacity = tint.opacity;
+      }
+      if (spot) {
+        spot.position.set(lamp.x, ((lamp.y || 0) + 90) / 2, lamp.z);
+        spot.visible = dayFall(1) >= 0.06;
+        spot.material.opacity = 0.05;
+      }
+    }
+
+    for (const reflector of reflectors) {
+      const depth = Math.max(1, Math.hypot(reflector.lamp.x - state.camera.x, reflector.lamp.z - state.camera.z));
+      const radius = radialLimit(state, reflector.radius, depth, 8);
+      reflector.mesh.position.set(reflector.lamp.x, 4, reflector.lamp.z);
+      reflector.mesh.scale.set(radius * 2, radius * 0.3, 1);
+      reflector.mesh.visible = !dayPage;
+    }
+
+    for (const entry of lines) {
+      const { spec, line } = entry, positions = line.geometry.getAttribute("position");
+      let a, b, sag;
+      if (spec.type === "wire") { a = spec.a; b = spec.b; sag = spec.sag; }
+      else {
+        const lamp = spec.lamp, dx = sway(lamp);
+        a = [lamp.x, Number(effectState.ceil) || 0, lamp.z];
+        b = spec.type === "wet-cord" ? [lamp.x + dx * 0.4, lamp.y + 6, lamp.z]
+          : [lamp.x + dx, lamp.h || (lamp.y + 14), lamp.z];
+        sag = 0;
+      }
+      for (let i = 0; i <= 8; i++) {
+        const t = i / 8;
+        positions.setXYZ(i,
+          a[0] + (b[0] - a[0]) * t,
+          a[1] + (b[1] - a[1]) * t - Math.sin(Math.PI * t) * sag,
+          a[2] + (b[2] - a[2]) * t);
+      }
+      positions.needsUpdate = true;
+    }
+
+    const wall = Number(effectState.wall) || 0, zFar = Number(effectState.zFar) || 0, zBack = Number(effectState.zBack) || 0;
+    const azimuth = Number(state.sunAz) || 0;
+    const wallSide = azimuth < 0 ? -1 : 1, cross = Math.min(1, Math.abs(azimuth));
+    const surfaces = Array.isArray(effectState.surfaces) ? effectState.surfaces : [];
+    const wallThere = !surfaces.some((surface) => surface.side === wallSide && surface.kind === "open");
+    const sun = clamp(1 - night, 0, 1), altitude = (8 + 62 * sun) * Math.PI / 180;
+    const length = wallThere && dayPage && day > 0.05
+      ? Math.min(wall * 1.6, (620 / Math.tan(altitude)) * cross) : 0;
+    if (length > 6) {
+      const x0 = wallSide * (wall - 4), x1 = x0 - wallSide * length, x2 = x1 - wallSide * length * 0.45;
+      const setStrip = (mesh, start, end, opacity) => {
+        const attr = mesh.geometry.getAttribute("position");
+        const points = [[start, 2, zFar], [end, 2, zFar], [end, 2, zBack], [start, 2, zBack]];
+        attr.setXYZ(0, ...points[0]); attr.setXYZ(1, ...points[1]); attr.setXYZ(2, ...points[2]); attr.setXYZ(3, ...points[0]);
+        attr.setXYZ(4, ...points[2]); attr.setXYZ(5, ...points[3]);
+        attr.needsUpdate = true; mesh.geometry.setDrawRange(0, 6); mesh.material.opacity = opacity; mesh.visible = true;
+      };
+      setStrip(umbra, x1, x0, 0.30 * day);
+      setStrip(penumbra, x2, x1, 0.14 * day);
+    } else {
+      umbra.visible = false; penumbra.visible = false;
+      umbra.geometry.setDrawRange(0, 0); penumbra.geometry.setDrawRange(0, 0);
+    }
+
+    const camera = state.camera || {};
+    bodyShadow.position.set(Number(camera.x) || 0, 2, (Number(camera.z) || 0) + 40);
+    bodyShadow.scale.set(52, 18, 1);
+    bodyShadow.visible = true;
+  }
+
+  return {
+    update,
+    dispose() { for (const geometry of geometries) geometry.dispose(); },
+  };
+}
+
 function buildRenderer(THREE, canvas, backdrop, api) {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: true, powerPreference: "low-power" });
   renderer.setPixelRatio(1);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;
   renderer.setClearColor(0x141e36, 1);
+  backdrop = backdrop || {};
   const scene = new THREE.Scene();
   scene.background = makeSkyTexture(THREE, backdrop, api.dayPage, api.day);
   scene.fog = new THREE.FogExp2(FALLBACK_COLOR, 0.000005);
   const camera = new THREE.PerspectiveCamera(45, 1, 20, 600000);
-  const staged = buildWorldGeometry(THREE, backdrop.world);
+  const staged = buildWorldGeometry(THREE, backdrop.world || {});
   const materials = [];
   const colorBatches = [];
   const textures = new Map();
+  const laneTextures = new Map();
+  const laneMaterials = new Map();
+  const laneMeshes = new Map();
+  let laneSoftTexture = null;
+  let sceneEffects = null;
+  const stats = { triangles: staged.triangles, waterTriangles: 0, waterSheets: staged.water.length,
+    mistLayers: staged.mist.length, batches: staged.groups.length, unsupported: staged.unsupported,
+    laneTriangles: 0, laneQuads: 0, laneMeshes: 0 };
 
   for (const batch of staged.groups) {
     const geometry = setGeometry(THREE, batch);
@@ -656,6 +1273,7 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   }
 
   const waterData = buildWaterGeometry(THREE, staged);
+  stats.waterTriangles = waterData.indices.length / 3;
   let water = null;
   if (waterData.positions.length) {
     const geometry = setGeometry(THREE, waterData);
@@ -727,6 +1345,71 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   const reducedMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   let width = 0, height = 0, lastSky = "", lastDay = -1, lastHeld = -1, lastDayPage = null;
 
+  const laneTextureFor = (group) => {
+    if (group.textureKind === "flat") return null;
+    if (group.textureKind === "soft") {
+      if (!laneSoftTexture) laneSoftTexture = softLaneTexture(THREE);
+      return laneSoftTexture;
+    }
+    const source = group.textureKind === "image" ? group.image : group.textureSource;
+    if (!source) return null;
+    const cacheKey = `${group.textureKind}:${group.textureKey}`;
+    let entry = laneTextures.get(cacheKey);
+    if (!entry) {
+      const texture = group.textureKind === "image" ? new THREE.Texture(source) : new THREE.CanvasTexture(source);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = texture.wrapT = group.textureKind === "pattern" ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.needsUpdate = true;
+      entry = { texture, source };
+      laneTextures.set(cacheKey, entry);
+    } else if (entry.source !== source) {
+      entry.source = source;
+      entry.texture.image = source;
+      entry.texture.needsUpdate = true;
+    }
+    return entry.texture;
+  };
+
+  const updateLane = (state) => {
+    const lane = buildLaneGeometry(THREE, state.quads, state);
+    const active = new Set();
+    for (const group of lane.groups) {
+      active.add(group.key);
+      let entry = laneMeshes.get(group.key);
+      const map = laneTextureFor(group);
+      if (!entry) {
+        const materialKey = `${group.textureKind}:${group.textureKey}|${group.transparent ? "blend" : "solid"}`;
+        let material = laneMaterials.get(materialKey);
+        if (!material) {
+          material = laneShaderMaterial(THREE, map, group.transparent);
+          laneMaterials.set(materialKey, material);
+          materials.push(material);
+        }
+        const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
+        mesh.name = `walk lane: ${group.textureKind}/${group.textureKey}`;
+        mesh.frustumCulled = false;
+        scene.add(mesh);
+        entry = { mesh, textureKey: `${group.textureKind}:${group.textureKey}` };
+        laneMeshes.set(group.key, entry);
+      }
+      if (entry.mesh.material.map !== map) {
+        entry.mesh.material.map = map;
+        entry.mesh.material.needsUpdate = true;
+      }
+      updateLaneMesh(THREE, entry.mesh, group);
+    }
+    for (const [key, entry] of laneMeshes) {
+      if (active.has(key)) continue;
+      entry.mesh.visible = false;
+      entry.mesh.geometry.setDrawRange(0, 0);
+    }
+    stats.laneTriangles = lane.triangles;
+    stats.laneQuads = lane.quads;
+    stats.laneMeshes = lane.groups.length;
+  };
+
   function render(state) {
     const w = Math.max(1, Math.round(state.width)), h = Math.max(1, Math.round(state.height));
     if (w !== width || h !== height) { renderer.setSize(w, h, false); width = w; height = h; }
@@ -768,12 +1451,17 @@ function buildRenderer(THREE, canvas, backdrop, api) {
     }
     if (fireworks) updateFireworks(THREE, fireworks, { ...state, day, time }, reducedMotion);
     if (lights && lights.material) lights.material.opacity = state.dayPage && day > 0.6 ? 0.62 : 0.9;
+    updateLane({ ...state, day, dayPage, time });
+    if (state.effects) {
+      if (!sceneEffects) sceneEffects = createSceneEffects(THREE, scene, state.effects, materials, textures);
+      sceneEffects.update({ ...state, day, dayPage, time });
+    }
 
     if (Math.abs(day - Number(lastSky.split("|")[0])) > 0.004 || lastSky.endsWith(`|${Boolean(state.dayPage)}`) === false) {
       const texture = makeSkyTexture(THREE, backdrop, Boolean(state.dayPage), day);
       if (scene.background && scene.background.isTexture) scene.background.dispose();
       scene.background = texture;
-      const stops = backdrop.skyAround && backdrop.skyAround.stops || [];
+      const stops = backdropSkyStops(backdrop, Boolean(state.dayPage), day);
       const horizon = skyColorAt(stops, 0, Boolean(state.dayPage), day);
       scene.fog.color.set(horizon);
       lastSky = `${day}|${Boolean(state.dayPage)}`;
@@ -784,10 +1472,19 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   return {
     version: THREE_VERSION,
     render,
-    dispose() { canvas.hidden = true; renderer.dispose(); for (const texture of textures.values()) texture.dispose(); },
-    stats: { triangles: staged.triangles, waterTriangles: waterData.indices.length / 3,
-      waterSheets: staged.water.length, mistLayers: staged.mist.length,
-      batches: staged.groups.length, unsupported: staged.unsupported },
+    dispose() {
+      canvas.hidden = true;
+      for (const entry of laneMeshes.values()) entry.mesh.geometry.dispose();
+      for (const material of laneMaterials.values()) material.dispose();
+      for (const texture of laneTextures.values()) texture.texture.dispose();
+      if (laneSoftTexture) laneSoftTexture.dispose();
+      if (sceneEffects) sceneEffects.dispose();
+      if (scene.background && scene.background.isTexture) scene.background.dispose();
+      renderer.dispose();
+      for (const texture of textures.values()) texture.dispose();
+      for (const material of materials) material.dispose();
+    },
+    stats,
   };
 }
 
@@ -795,9 +1492,8 @@ async function mount() {
   const layer = document.querySelector(".walk[data-walk]");
   const canvas = layer && layer.querySelector("[data-walk-three]");
   const api = layer && layer.__walk;
-  const backdrop = api && api.backdrop;
-  const prims = backdrop && backdrop.world && backdrop.world.prims;
-  if (!layer || !canvas || !api || !Array.isArray(prims) || !prims.length || typeof api.attachThree !== "function") return;
+  const backdrop = api && api.backdrop || {};
+  if (!layer || !canvas || !api || typeof api.attachThree !== "function") return;
   try {
     const THREE = await import(`./vendor/three-${THREE_VERSION}/three.module.js`);
     const engine = buildRenderer(THREE, canvas, backdrop, api);

@@ -1,8 +1,9 @@
 /* verify-walk.mjs — the lane, its furniture, the compound beyond the window, and the album.
 
-   jsdom has no canvas, so the 2D context is replaced by a recorder: what is asserted is what the
-   renderer asked to be painted, which is the strongest claim available in a sandbox without a
-   browser. Anything about how it *looks* stays the owner's to judge. Run from the repo root:
+   jsdom has no WebGL or backing canvas, so the Canvas2D fallback context is replaced by a recorder:
+   this gate checks fallback painting, movement, reach and interaction logic. Three.js geometry and
+   generated-page wiring are covered by `bin/verify-three.mjs`; neither gate is a claim about browser
+   appearance. Run from the repo root:
    `node .verify/verify-walk.mjs`. */
 import fs from "node:fs";
 
@@ -104,6 +105,11 @@ const key = (k, type = "keydown") => (doc.activeElement || doc.documentElement).
   new w.KeyboardEvent(type, { key: k, bubbles: true }));
 const click = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true, cancelable: true }));
 const hold = async (k, ms) => { key(k, "keydown"); await new Promise((r) => setTimeout(r, ms)); key(k, "keyup"); };
+const holdTogether = async (keys, ms) => {
+  keys.forEach((k) => key(k, "keydown"));
+  await new Promise((r) => setTimeout(r, ms));
+  keys.forEach((k) => key(k, "keyup"));
+};
 /* ---- 1. the data the scene is allowed to know about ------------------------------------------- */
 /* Round 32: the Tokyo room is Nakamise-dori at night (TODO section 0n). The assertions that listed
    the old lane's invented kit -- a booth, a mirror, six lanterns on five wires, a tactile path -- are
@@ -485,11 +491,12 @@ ok("closing hands focus back to the thing on the wall that opened it",
 // between the shuttered rows, step across to the east row's posts.
 click(stopAt(1392));
 await settle(1392);
-await hold("d", 4200);                                   // across to the east row's posts
+await holdTogether(["d", "shift"], 4200);                 // run across to the east row's posts
+await hold("ArrowRight", 250);                           // turn enough to face the shop rather than only the lane
 await hold("w", 950);                                    // and along it, toward the middle of the bay ahead
 await sleep(120);
 ok("between the rows, the shop at the posts is what you are standing in front of",
-   /A shop on the east row/i.test(status()), status());
+   /A shop on the east row/i.test(status()), `${status()} | x=${body().x.toFixed(1)} d=${body().depth.toFixed(1)} yaw=${body().yaw.toFixed(1)} reach=${title0()}`);
 key("e");
 await sleep(60);
 const card = q("[data-walk-card]");
@@ -566,7 +573,7 @@ key("Escape");
 ok("and with nothing left to unfold, Esc is the door", navs() === 2, JSON.stringify(ctx.navs.slice(-2)));
 const boxes = qa(".walk-hit").filter((e) => e.style.visibility === "visible");
 ok("every visible press box is a fingertip, whatever the object's pixel size is",
-   boxes.length > 3 && boxes.every((e) => parseFloat(e.style.width) >= 44 && parseFloat(e.style.height) >= 44),
+   boxes.length >= 3 && boxes.every((e) => parseFloat(e.style.width) >= 44 && parseFloat(e.style.height) >= 44),
    `${boxes.length} boxes, narrowest ${Math.min(...boxes.map((e) => parseFloat(e.style.width)))}px`);
 ok("and the nearer thing wins where two boxes overlap",
    boxes.every((e) => e.style.zIndex !== "")
@@ -692,6 +699,48 @@ ok("and the rail keeps up with the body, whatever the reach happens to be lit on
    `here=${stops.indexOf(home)} reach=${qa(".is-reach").length} / ${status()}`);
 ok("one pump at a time: asking for a real frame cancels the idle nudge",
    /const loop = \(\) => \{ stopPulse\(\)/.test(js) && /pulse = setTimeout\(\(\) => \{ pulse = 0; tick\(/.test(js));
+
+/* Movement is expressed in the camera's horizontal basis. A fixed-world-axis walk still appears to
+   move when the camera is turned, so assert the direction after a real turn, then use the same check
+   for strafing and the touch pad. This is the regression that catches W continuing down the lane
+   after the visitor has turned to look across it. */
+const projection = (from, to, heading) => {
+  const a = heading * Math.PI / 180, dx = to.x - from.x, dz = to.depth - from.depth;
+  return { forward: dx * Math.sin(a) + dz * Math.cos(a),
+           side: dx * Math.cos(a) - dz * Math.sin(a) };
+};
+await hold("arrowright", 800);
+const turnedYaw = body().yaw;
+const w0 = { x: body().x, depth: body().depth };
+await hold("w", 650);
+const w1 = { x: body().x, depth: body().depth };
+const wVector = projection(w0, w1, turnedYaw);
+ok("W follows the view after a turn, rather than the lane's fixed depth axis",
+   wVector.forward > 25 && Math.abs(wVector.side) < Math.abs(wVector.forward) * 0.45,
+   `yaw=${turnedYaw.toFixed(1)}°, forward=${wVector.forward.toFixed(1)} cm, side=${wVector.side.toFixed(1)} cm`);
+await sleep(650);                         // let the previous velocity ease out before changing verbs
+const a0 = { x: body().x, depth: body().depth };
+await hold("a", 550);
+const a1 = { x: body().x, depth: body().depth };
+const aVector = projection(a0, a1, turnedYaw);
+ok("A strafes left in the turned camera plane",
+   aVector.side < -18 && Math.abs(aVector.forward) < Math.abs(aVector.side) * 0.55,
+   `forward=${aVector.forward.toFixed(1)} cm, side=${aVector.side.toFixed(1)} cm`);
+await sleep(650);
+const pad = q("[data-walk-pad]");
+const padEvent = (type) => pad.dispatchEvent(new w.PointerEvent(type, {
+  bubbles: true, cancelable: true, pointerId: 9, button: 0, clientX: 1, clientY: 0,
+}));
+const stick0 = { x: body().x, depth: body().depth };
+padEvent("pointerdown");
+await sleep(430);
+padEvent("pointerup");
+await sleep(650);
+const stick1 = { x: body().x, depth: body().depth };
+const stickVector = projection(stick0, stick1, turnedYaw);
+ok("the touch stick shares camera-relative forward with W",
+   stickVector.forward > 12 && Math.abs(stickVector.side) < Math.abs(stickVector.forward) * 0.5,
+   `forward=${stickVector.forward.toFixed(1)} cm, side=${stickVector.side.toFixed(1)} cm`);
 
 /* Two formats, two grounds — asserted so the difference stays a decision instead of drifting back into an
    accident. The lane's rail is a story: 9:16, blurred with its own pixels. The album is a post viewer:

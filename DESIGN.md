@@ -97,17 +97,19 @@ cord for it) or **spill** (`"bulb": false`: light with no body — a pool, a bou
 aperture). Canada's four spill entries were authored as fixtures once, which hung four white bulbs over
 a walkway with one lamp post in it.
 
-Camera rule of the world: the eye never moves — `.room-world` is translated and rotated in
-the opposite direction. That is what keeps the lane free of a 3D library, and it is why
-movement is in screen axes (a lane has one axis of travel, so turning never changes where
-the next step lands).
+Camera rule of the world: the Three.js `PerspectiveCamera` follows the walker's world-space position
+at eye height; yaw and pitch aim it without rotating the scene itself. The Canvas2D fallback uses the
+same camera basis in `camPt()`, so fallback projection and WebGL movement agree. The older fixed-eye
+screen-axis rule made W walk away from the direction the visitor had turned to look; it is retired.
 
 Looking can turn freely around the room, but pitch is bounded at ±24° to keep the camera from
 whipping above or below the scene. Keyboard turns are rate-limited to 75°/s; drag sensitivity is
 0.09° per CSS pixel, and vertical head bob is under 6 mm with no camera roll. The default walk is
-165 cm/s (206 cm/s with Shift). These are comfort constraints, not performance shortcuts: W/A/S/D
-stay on the authored lane axes regardless of look direction, and the view does not snap on key repeat.
-Turning is direct drag/arrow input, never Pointer Lock, so the phone stays usable.
+165 cm/s (206 cm/s with Shift). These are comfort constraints, not performance shortcuts: W/S move
+along the camera's forward vector projected onto the floor, A/D move along camera-right, and the
+stick uses the same yaw basis. Pitch never lifts the walker; collision bounds remain in authored
+world axes and resolve against lane limits and solid props. Turning is direct drag/arrow input,
+never Pointer Lock, so the phone stays usable.
 
 Three more are properties of *these* rooms rather than of the mechanism, and each cost a fix when a
 room was built: an opening is sized against the wall it is cut in **and** the stop it is seen from
@@ -149,28 +151,32 @@ Consequences that are now structural, not stylistic:
 - **No URL state.** There is no `#walk-tokyo` to open and nothing about the camera is addressable;
   `#frame-tokyo-*` still marks the row it names. A visit is not a fact worth linking.
 
-The walkable view is now a narrow hybrid, not a stylesheet trick. On pages with a sourced
-`backdrop.world.prims`, a pinned, vendored Three.js 0.186.1 WebGL canvas renders that outdoor geometry
-in the same walk camera; a transparent Canvas2D canvas still paints the lane, props and hit targets
-above it. The original Canvas2D world painter remains the complete fallback, so a device without
-WebGL still gets the whole place. The Three.js layer translates existing source records; its
-procedural grayscale material maps are not photographs and do not add scene facts. The Activities
-album remains CSS 3D and outside this exception. What the original Canvas2D painter buys, and what it
-cannot:
+The walkable view now uses one Three.js renderer, not a WebGL backdrop behind a 2D room. Every one
+of the seven walkable pages mounts the pinned, vendored Three.js 0.186.1 runtime. It triangulates the
+lane and object quads into dynamic world-space buffer geometry, builds sourced `backdrop.world.prims`
+as static 3D geometry, and renders the sky, patterns, water, spray, clouds, and scene lights in the
+same camera. No scene facts are invented by the conversion: procedural material maps are surface
+patterns, not photographs. A transparent Canvas2D canvas remains stacked for the complete no-WebGL
+fallback; accessible DOM buttons remain the hit layer and are projected from the same world records.
+The Activities album remains CSS 3D and outside this walkable-scene migration.
 
-- **A quad is culled by the bounds its projected points occupy, never by its corners.** Both failure
-  modes have now been paid for: the far plane (a sky covers the view by being larger than it, so every
-  corner is off-screen) and the near one (stand deep in the lane and the floor under you, the walls
-  beside you and the roof over you are each one panel wider than the screen — every quad you are
-  inside of was dropped at once and the frame collapsed to its base plate under a fog gradient).
-  `add()` projects first and compares the box; anything whose box misses the viewport by more than
-  80 px is dropped, which is a superset of what the corner test kept.
+Cross-backend rendering invariants:
+
+- **A lane quad is culled by the bounds its projected points occupy, never by its corners.** Both
+  failure modes have now been paid for: the far plane (a sky covers the view by being larger than it,
+  so every corner is off-screen) and the near one (stand deep in the lane and the floor under you,
+  the walls beside you and the roof over you are each one panel wider than the screen — every quad
+  you are inside of was dropped at once and the frame collapsed to its base plate under a fog
+  gradient). `add()` projects first and compares the box; anything whose box misses the viewport by
+  more than 80 px is dropped, which is a superset of what the corner test kept. Visible quads retain
+  their world corners and UVs for Three.js triangulation; the fallback emits those same quads to 2D.
 - **Nothing is drawn that the data did not ask for, and everything the data asks for is drawn.** The
   window, the opening in the end wall and the compound beyond it (plaza, crossing, eight city blocks,
   the tower, the mountain, the sky bands) live in the `data-walk-vista` / `data-walk-backdrop` islands
   and were invisible for as long as a single island could be read as a list. The district's own
   harness rendered it that way for months without noticing, which is why `.verify/lane-shot.mjs` now
-  rasterises the lane's canvas and gates on what the frame is made of.
+  rasterises the Canvas2D fallback and gates on what that backend's frame is made of; `bin/verify-three.mjs`
+  separately gates the world-space geometry and Three.js scene-object path.
 - Movement is collision-bound to the scene record: the body centre clamps at `laneW / 2 - 24 cm`,
   the sealed far end stops 47 cm before its wall, and jumps stop below `lane.ceil` with headroom. The
   authored solid props also block their floor footprints and allow axis sliding. Those bounds are
@@ -199,8 +205,9 @@ cannot:
   (ambient 0.6, murk 0.4) from the operating system's own switch rather than a widget in the corner —
   a dim laptop is the visitor's to correct, not mine to guess at. The HUD answer is a scrim that fades
   the viewport's edges to navy, not a heavier typeface.
-- No canvas, no black rectangle: `boot()` says so in the status line, opens the drawer and leaves the
-  whole district readable — the reference's own move, and the only honest one.
+- **No black rectangle on a WebGL failure.** `boot()` reports the status, keeps the authored
+  Canvas2D renderer available as the complete fallback, and leaves the drawer readable. With
+  scripting disabled, the drawer ships open and still contains the full written district.
 - Motion is declined where the numbers live: no bob, no sway, no flicker under
   `prefers-reduced-motion: reduce`, which is decided inside the integrator rather than cancelled in
   CSS after it has been paid for.
@@ -250,33 +257,24 @@ renders as shut — `Purpose not declared`, `Not open yet` — because an honest
 is cheaper than a confidently wrong one. An owned sub-space follows its parent's entry and
 return contract and does not get a top-level card.
 
-#### Two WebKit flattening traps, and why this scene is built around them
+#### CSS 3D remains only in the Activities album
 
-The research that mattered for the lane was not "which library" — it was two documented ways a
-CSS 3D scene silently renders flat in Safari and WebKit:
+The walkable environments no longer use CSS perspective as their scene renderer: pinned Three.js
+0.186.1 renders the lane, objects and sourced world, with Canvas2D as the complete no-WebGL
+fallback. This CSS note applies only to the Activities album's small `.ig-grid` tilt, which remains
+intentionally outside that migration.
 
-1. `overflow` other than `visible` forces that element's `transform-style` to `flat`; the
-   reported fix is `overflow: visible !important` on the `preserve-3d` element itself, not on
-   its ancestor;
-2. a `filter` or `backdrop-filter` on the element carrying `perspective` kills `preserve-3d`
-   for its whole subtree;
-3. and a universal `* { transform-style: preserve-3d }` makes the scene vanish outright.
+Two WebKit behaviours still matter there:
 
-Checked against the built stylesheet rather than hoped: `preserve-3d` is declared on exactly
-two selectors, `.room-world` (the lane) and `.ig-grid` (the Activities tilt), and neither block
-carries `overflow` or `filter`. The clip that keeps the lane inside its frame and the
-`perspective` both live one level up on `.room-stage`; the only `filter` inside the scene is
-`blur(3px)` on `.room-floor::after`, a leaf with no 3D children. A parser over the whole
-stylesheet agrees: no rule mixes `preserve-3d` with `overflow` or `filter`.
+1. `overflow` other than `visible` on a `preserve-3d` element forces its `transform-style` flat;
+2. `filter` or `backdrop-filter` on the element carrying `perspective` flattens its 3D subtree;
+3. a universal `* { transform-style: preserve-3d }` can make the scene vanish.
 
-So the structure is flat-safe today, and the rule for whoever edits it next is: **do not move
-`overflow` or `filter` onto a `preserve-3d` element, and do not add `preserve-3d` to a selector
-that has either.** These are not style preferences — moving the clip onto the wrapper is the
-kind of tidy-up a future agent will do, it looks perfect in Chrome, flattens the scene on every
-iPhone, and raises no detector finding.
+Checked against the current stylesheet: `.ig-grid` is the only selector declaring
+`transform-style: preserve-3d`; `.ig-wall` owns its `perspective`. Neither currently mixes in
+`overflow` or `filter`. Keep those boundaries, and do not add a universal `preserve-3d` rule. The
+walkable fallback remains Canvas2D, and the always-readable drawer remains the no-script path.
 
-What this sandbox cannot do is measure. There is no iOS Safari here, so nested-layer behaviour
-on mobile is unverified rather than proven, and an earlier promise in SPEC §6 to research a
-maximum layer count was chasing the wrong failure mode: the documented one is flattening by
-`overflow` or `filter`, not a layer budget. What needs no measurement is the fallback — the
-captioned list is always readable.
+There is no iOS Safari in this sandbox, so album behaviour on that browser is unmeasured rather
+than proven. The old SPEC §6 maximum-layer-count question was about the proposal's CSS scene; it is
+not a requirement for the current Three.js walkable renderer.

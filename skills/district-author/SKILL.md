@@ -112,12 +112,12 @@ place fails the gate; so does a place with nothing holding it.
   renderer derives the horizontal clamp as `laneW / 2 - PLAYER_RADIUS`; it must never use a fixed
   width shared across unlike rooms. The generator writes `data-lane-w/-d/-ceil/-back` and `data-eye`,
   and the renderer reads them. Do not restate scene dimensions in CSS or a second authored table.
-- The lane interior remains a Canvas2D raster: one projection, walls in 60 cm panels, affine-textured
-  tiling patterns, quads painted far-to-near, fog and light from the same transform. By owner approval
-  (2026-10-16), a page whose sourced record has `backdrop.world.prims` also draws that outdoor world
-  with pinned Three.js 0.186.1 in a WebGL layer behind the 2D overlay; the Canvas2D world painter is
-  the complete fallback. This is a renderer transition, not permission to invent geometry, and it does
-  not affect the Activities album's CSS 3D.
+- All walkable environment and object geometry is rendered by the pinned, vendored Three.js 0.186.1
+  scene. The lane painter stages existing world corners, UVs, materials and lighting data into dynamic
+  triangle buffers; sourced `backdrop.world.prims` become 3D world meshes when present. The transparent
+  Canvas2D canvas is only the complete no-WebGL fallback, not a second layer over the WebGL scene.
+  Rendering is a conversion of authored records, not permission to invent geometry, and does not affect
+  the Activities album's CSS 3D.
 - Lighting is part of the model, not a coat of paint: one `AMBIENT`, one `FOG_MAX`, and every wall,
   floor and prop lit by `lightAt()` — the falloff of the same `lamps` list the glows and the wet-floor
   reflections are drawn from. Never brighten a surface by hand, or it glows where nothing shines.
@@ -160,7 +160,7 @@ python3 _gen_html.py; echo "exit=$?"          # exit 0 or nothing else counts
 md5sum *.html > /tmp/a && python3 _gen_html.py >/dev/null && md5sum *.html > /tmp/b
 diff -q /tmp/a /tmp/b                          # the generator must be idempotent
 node .verify/verify-walk.mjs           # lane, generated markup and cache-buster invariants
-node bin/verify-three.mjs               # pinned Three.js import + sourced-world geometry
+node bin/verify-three.mjs               # Three.js lane, effects + sourced-world geometry
 node .verify/verify-chain.mjs          # the hub door graph, booted page by page
 node .verify/verify-rooms-e2e.cjs      # the walk driven by keys: street -> each room, room -> street
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
@@ -190,8 +190,9 @@ bollard, a blank sign) is authorised art direction and says so in its own hint; 
 An image may not reach a page before it reaches `IMG_RULES`. No student or bystander
 faces presented as content. No new vendored library or npm tooling without the owner's explicit
 approval in `AGENTS.md`. The owner approved one exception on 2026-10-16: pinned, MIT-licensed Three.js
-0.186.1 for sourced walkable-world backdrops, with no package manifest or build tooling. That exception
-is not permission to migrate the Activities album or add another dependency. When a hoist or splice of this single-file generator is involved,
+0.186.1 for all walkable environment and object rendering, with no package manifest or build tooling;
+Canvas2D remains the complete fallback. That exception is not permission to migrate the Activities
+album or add another dependency. When a hoist or splice of this single-file generator is involved,
 check ordering: a slice with `i > j` produces a duplicated region that still parses, passes
 `ast.parse`, and fails only at runtime. And patch a file by applying, writing, then re-grepping the
 written file — an assert that runs after an in-memory mutation loses the whole round when it fires
@@ -199,14 +200,14 @@ late, which has now happened four times.
 
 ## 6. What is a solid, and what is a plate
 
-The lane interior remains **one Canvas2D raster**; for a sourced `backdrop.world`, a Three.js WebGL
-canvas now sits behind that transparent overlay, sharing the same walk camera. This is one composed
-view, not separately transformed webpage panels. If WebGL is unavailable, the existing Canvas2D
-painter still draws the whole scene. What remains 3D in CSS is the album wall and plate, where WebKit
-still bites: a non-visible `overflow`, or a `filter`, on the element that declares
-`transform-style: preserve-3d` silently forces it flat, and a universal `preserve-3d` rule makes the
-whole thing vanish. So `preserve-3d` goes on `.ig-grid` only, the `perspective` one level up on
-`.ig-wall`, and the frames' depth **inside each frame's own transform**, because a scroll container
+The walkable scene is **one Three.js render**, not a 3D backdrop behind a 2D room. The pinned
+Three.js camera renders lane surfaces, props, sourced worlds and dynamic scene effects together.
+A transparent Canvas2D canvas becomes the complete fallback if WebGL is unavailable; DOM buttons
+remain the accessible hit layer. What remains 3D in CSS is the Activities album wall and plate, where
+WebKit still bites: non-visible `overflow` on a `preserve-3d` element flattens it; `filter` or
+`backdrop-filter` on the `perspective` wrapper flattens its subtree; and a universal `preserve-3d`
+rule can make the scene vanish. So `preserve-3d` goes on `.ig-grid` only, the `perspective` one level
+up on `.ig-wall`, and each frame's depth stays inside its own transform, because a scroll container
 flattens its children.
 
 Inside the raster, the equivalent rule is that nothing may be invented by the renderer, and there is
