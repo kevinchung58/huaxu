@@ -2976,6 +2976,12 @@ TOR_TOWERS = [
     ("Westlake Village 1", 43.622723, -79.483253, 153.3, 30, 0),
     ("Beyond the Sea Star Tower", 43.621723, -79.482834, 151.5, 30, 0),
 ]
+# The under-150 m context comes from 2025 City massing: z14 AVG_HEIGHT polygons, clipped to the
+# lookout's 15 km view and prepared as local east/north metres. The data file includes the audit
+# flags and source metadata; only candidates outside 40 m of a named TOR_TOWERS proxy are rendered.
+TOR_MASSING_2025 = json.loads((ROOT / "data/toronto-massing-2025.json").read_text(encoding="utf-8"))
+TOR_MASSING_2025_FEATURES = [x for x in TOR_MASSING_2025["features"] if x["candidate_for_scene"]]
+assert len(TOR_MASSING_2025_FEATURES) == TOR_MASSING_2025["stats"]["distance_bands"][-1]["candidates"]
 # The Toronto Islands (OSM relation 10705563, simplified to ~40 m) and the Leslie Street Spit
 # (Tommy Thompson Park, OSM way 189780702); Billy Bishop airport (OSM relation 85471).
 TOR_ISLANDS = [tor(la, lo) for lo, la in (
@@ -3085,6 +3091,15 @@ def toronto_world(fr):
                            ax="v", c="#1b2740",
                            a=a, n=1, l=0.5, fn=_fn(fr, *_outward(foot, p0, p1))))
         P.append(_hprim("f", fr, foot, g + base + h, c="#141c2c", a=a, n=1))
+    # The City's 2025 massing fills the 100–150 m gap. Use its polygons and AVG_HEIGHT field values
+    # as supplied; the field's exact semantics are not independently verified. Facade/window patterns
+    # are absent from the source, so these remain plain night massing. The layer is split into parts,
+    # hence these are polygon masses, not a count of distinct buildings.
+    for feature in TOR_MASSING_2025_FEATURES:
+        height = feature["avg_height_m"]
+        for foot in feature["polygons_en_m"]:
+            e, n = feature["centroid_en_m"]
+            P += world_extrude(fr, foot, g, g + height, "#1b2740", "#141c2c", air(e, n), n=1)
     # Rogers Centre below to the west-south-west: the roof, 86 m, its white panels at night.
     rc = [tor(la, lo) for lo, la in ((-79.3908121, 43.6421698), (-79.3902364, 43.6407719),
                                      (-79.389037, 43.6405471), (-79.3882698, 43.6408479),
@@ -4570,10 +4585,11 @@ DISTRICTS = [
         # 1.61 m wide and 2.62 m high (Daily Commercial News, 2017), so a ring about 43 m across.
         # The lane is one 18.6 m chord of it on the south-east side, walked north-east: the core on
         # the left, the glass on the right looking south-east over the harbour and the islands, the
-        # far glass looking north-east at the financial district. The city out there is surveyed
-        # (`toronto_world`): the shore, the islands, the spit, every tower of 150 m and over on
-        # Wikipedia's list at its coordinates and heights. It replaces a generic aerial tile worn on
-        # both hands, which no bearing could be read off.
+        # far glass looking north-east at the financial district. The city out there is sourced
+        # (`toronto_world`): shore/island geometry, all 117 towers of 150 m and over on Wikipedia's
+        # list at their coordinates and heights, plus anonymous 100–150 m context polygons from the
+        # City's 2025 massing data. It replaces a generic aerial tile worn on both hands, which no
+        # bearing could be read off.
         "id": "cntower", "label": "The tower",
         "page": ROOM_BY_ID["cntower"]["page"],
         "plates": ROOM_BY_ID["cntower"]["plates"],
@@ -4604,8 +4620,9 @@ DISTRICTS = [
                       "TD and Commerce Court -- and the towers going on north up Yonge and Bay "
                       "to Bloor, those at St. Clair and Eglinton thin on the horizon beyond; "
                       "towers line the harbour, and SkyTower at Pinnacle One Yonge stands to the "
-                      "east, its roof about at your eye. The lights between the towers are drawn "
-                      "at a lit city's density, not surveyed street by street.",
+                      "east, its roof about at your eye. The lower skyline between them uses anonymous "
+                      "2025 massing polygons; city lights remain an aggregate density, not surveyed "
+                      "street by street.",
         "objects": [
             # The lift landing in the core (landmark-space §7 beat 1): six glass-fronted cars, 58 s.
             {"id": "lift-cn", "kind": "door", "x": -278, "z": 60, "y": 0, "ry": 90,
@@ -4673,20 +4690,33 @@ DISTRICTS = [
         # The landmark space owns its way back (the wiring loop respects an authored back_to): it
         # returns to the prop that owns it, not to the street -- the hall is the hub route in.
         "back_to": "rooms-toronto.html#at-tower-cn",
+        "attribution": {
+            "license_name": "Open Government Licence – Toronto",
+            "license_url": "https://open.toronto.ca/open-data-licence/",
+            "attribution_statement": "Contains information licensed under the Open Government Licence – Toronto.",
+            "license_metadata_url": "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=387b2e3b-2a76-4199-8b3b-0b7d22e2ec10",
+            "license_metadata_note": "Package notes also say ‘Further to the Open Government Licence’, while structured fields report license_id=notspecified and isopen=false; this metadata mismatch has not been clarified.",
+            "source_name": "City of Toronto 3D Massing (2025)",
+            "source_url": "https://open.toronto.ca/dataset/3d-massing/",
+            "derivative_name": "School of Cities Toronto Building Heights (2025) map",
+            "derivative_url": "https://schoolofcities.github.io/toronto-buildings/heights-2025",
+        },
         "caveat": "The LookOut is drawn from public facts: 346 m, the window wall's 12 bays of 1.61 m "
                   "by 2.62 m panes, the glass floor of 2017 above the 1994 original, the SkyPod's own "
-                  "lift. The city below is the map's and the record's: the shore, the islands and the "
-                  "spit from OpenStreetMap, and every tower of 150 m and over -- all 117 on "
-                  "Wikipedia's list -- at its coordinates and height. Approximate and said so: the "
-                  "ring's curve straightened into one chord, the walk's 5.6 m width, the towers' "
-                  "footprints, the glass floor's size, the shore east of Sugar Beach, the runway's "
-                  "line, the towers' storeys (a typical office or residential floor, not each "
-                  "building's own), the ground (drawn level, though the city climbs away from the "
-                  "lake), and the lights between the towers, which are a lit city's density rather "
-                  "than its streets. Missing and said so: the city's nearly three hundred towers "
-                  "between 100 and 150 m, which the list does not place, so below the tall towers "
-                  "the city is lights, not buildings. Nothing here carries a name or a claim that "
-                  "the owner stood at 346 m.",
+                  "lift. The city below uses OpenStreetMap shore and island geometry, all 117 listed "
+                  "150 m+ towers at their published coordinates and heights, and 390 anonymous City "
+                  "massing polygons with AVG_HEIGHT from 100 to under 150 m within 15 km. The latter "
+                  "are source polygons, not 390 distinct buildings: parts near a listed tower are "
+                  "left out to avoid doubling its proxy; footprints under 100 m² are omitted; remaining "
+                  "outlines are simplified by 1.5 m and extruded to the field named AVG_HEIGHT (displayed by the "
+                  "source map in metres); its definition is not independently verified, so it is an "
+                  "approximate extrusion height here, not a surveyed roof maximum. The City supplies the model "
+                  "for illustrative use and disclaims completeness, accuracy and fitness for precision "
+                  "work. Other approximations remain: the LookOut ring is one straight chord, tower "
+                  "footprints are typical squares, the Glass Floor's outline is approximate, the ground "
+                  "is level, and lights between buildings are a city's density rather than surveyed "
+                  "streets or windows. Nothing here names an unverified building or claims that the "
+                  "owner stood at 346 m.",
     },
     {
         "id": "undeclared", "label": "Next district", "purpose": "Purpose not declared",
@@ -5158,6 +5188,26 @@ open_districts = sorted((d for d in DISTRICTS if d["status"] == "open"),
                         key=lambda d: ROOM_ORDER[d["id"]])
 
 
+def source_attribution(d):
+    """A room's open-data notice: displayed attribution, metadata note and source links."""
+    a = d.get("attribution")
+    if not a:
+        return ""
+    lic_name = escape(a["license_name"])
+    lic = (f'<a href="{escape(a["license_url"])}" target="_blank" rel="noopener">'
+           f'{lic_name}</a>')
+    statement = escape(a["attribution_statement"]).replace(lic_name, lic)
+    metadata = (f'<a href="{escape(a["license_metadata_url"])}" target="_blank" rel="noopener">'
+                "City CKAN package metadata</a>")
+    metadata_note = escape(a["license_metadata_note"])
+    src = (f'<a href="{escape(a["source_url"])}" target="_blank" rel="noopener">'
+           f'{escape(a["source_name"])}</a>')
+    derivative = (f'<a href="{escape(a["derivative_url"])}" target="_blank" rel="noopener">'
+                  f'{escape(a["derivative_name"])}</a>')
+    return (f'<p class="when">Attribution displayed on the City dataset page: “{statement}” '
+            f'{metadata}: {metadata_note} Source: {src}; tile derivative: {derivative}.</p>')
+
+
 def district_drawer(d):
     """One room's reading material, for that room's drawer.
 
@@ -5171,6 +5221,7 @@ def district_drawer(d):
         '<ul class="slot-list">\n      ' + INDENT.join(slot_row(d, sl) for sl in d["slots"])
         + "\n    </ul>",
         f'<p class="when">{escape(d["caveat"])}</p>' if d.get("caveat") else "",
+        source_attribution(d),
     ] if x)
 
 

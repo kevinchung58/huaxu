@@ -1,6 +1,38 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-16 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-17 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0t. 第三十八輪（2026-10-17）：Toronto 2025 massing 匯出並加入 CN Tower 視景；授權結構欄位不一致
+
+延續「把真實環境做得更完整，依可靠來源區分已核實、近似、缺漏與刻意排除」。補的是匿名城市量體背景，不是完整建築清冊；五個環境仍各有未完成處，**不得宣稱場景已完整**。
+
+### 來源與核實範圍
+- 官方資料集：[City of Toronto 3D Massing](https://open.toronto.ca/dataset/3d-massing/)；官方頁面標示 City Planning、Open Government Licence – Toronto，並聲明模型僅供 illustrative use、對 accuracy/completeness 不保證。City 頁面 last refreshed 2025-12-05；資源名稱含 2025，**但未把更新日期當成實際測量／資料 vintage**。
+- 直接使用的是 [School of Cities 2025 Toronto Building Heights](https://schoolofcities.github.io/toronto-buildings/heights-2025) 的 PMTiles 向量磚衍生物；固定在 [repo commit `7bb3596`](https://github.com/schoolofcities/toronto-buildings/tree/7bb3596ae7a443f403324857912dd7e361bb8f4d) 的 `static/buildings-2025.pmtiles.gz`（46,739,374 bytes）。程式碼 repo 的 MIT 標示不代表資料本身採 MIT。PMTiles SHA-256：`a0f3cc388857f054a4bf93507eba3b401d3e1390534750ba89bcd60142e645f0`。
+- **授權結構欄位不一致**：[City 資料集頁](https://open.toronto.ca/dataset/3d-massing/)顯示 OGL–Toronto；[CKAN package API](https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=387b2e3b-2a76-4199-8b3b-0b7d22e2ec10) 的敘述也寫「Further to the Open Government Licence」，但結構欄位仍回 `license_id=notspecified`、`isopen=false`。頁面保留 City 要求的 attribution，並如實說明這個結構 metadata mismatch 尚未獲 City 釐清；若需要更高法律確定性，直接向 City 確認。
+- PMTiles 的 `AVG_HEIGHT` 欄位由 2025 map 展示為 metres；尚未找到官方 field dictionary 核實其數學定義，所以按來源欄位名使用為近似 extrusion height，**不稱實測屋頂最高高度**。
+
+### 匯出與場景整合
+- 新增 `bin/toronto_massing.py`（PMTiles／MVT 審核及 compact JSON 輸出；`pmtiles`、`mapbox-vector-tile`、`shapely` 只供臨時資料處理，沒有新增網站 runtime dependency），輸出 `data/toronto-massing-2025.json`。讀取 z14 的 484 個磚（225 個非空），877 個 tile hits 合併為 730 個 ID；沒有缺 ID、無效幾何、height mismatch 或需修補的 union。
+- 篩選以 CN Tower 為原點、feature centroid 在 15 km 內、`100 <= AVG_HEIGHT < 150 m`。730 個 tile-merged source features → 面積 ≥100 m² 的 423 個；排除與已列名塔 proxy 的重疊過多或 centroid 距塔中心 ≤40 m 後，390 個 `candidate_for_scene`。它們是 **source massing features／polygon parts，不是 390 棟已核實的獨立建築**。5 km 內有 260 個候選。
+- 輸出轉成局部 east/north metres；簡化容差 1.5 m、座標量化 0.5 m；只輸出 exterior ring，11 個候選的 interior holes 未畫。`_gen_html.py` 用現有 `world_extrude` 從平地到 `AVG_HEIGHT` 拉出簡單夜間量體；不補造窗戶、立面或名稱。`rooms-cntower.html` 現為 3,827 world primitives、8,755 Three.js world triangles；原有來源不足近似仍保留。
+- visible caveat 說明 polygon 不是 unique-building count、`AVG_HEIGHT` 欄位定義未核實且只作 approximate extrusion height、來源免責、地面仍畫平、塔 footprint 多採典型方形、城市燈為整體密度而非街道／窗戶調查。此整合只補 100–150 m 的匿名量體 gap，並不把 Toronto 或任何其他環境算作完成。
+
+### 視覺與測試（2026-10-17）
+- Canvas2D `lane-shot`：16 幀＋sheet，5 個 ahead 停點、最深停點非空、入口背面，共 **7/7 PASS**；已檢視整張 `.preview/toronto-massing-2025/sheet.png` 與完整尺寸 `.preview/toronto-massing-2025/08-on-the-glass-floor-ahead.png`。另用真 Chromium／Three.js 拍 `.preview/toronto-massing-2025/three-glass-floor.png`：頁面確實是 `renderer=three`、3 batches、8,755 triangles、0 unsupported。兩種路徑皆看得到 anonymous blocks；它們不帶來源未提供的立面細節。
+- 結構／互動 gates：Three.js 三世界共 12,682 world + 864 water triangles、Canvas2D fallback 仍接通；shapes 100 props 全 resolve；walk 163/163；geometry、clash、chain、rooms E2E **0 failures**；story **27/27**；`verify-objects` exit 0（該工具量的是 Toronto 大廳物件，不是新 massing）。Python compile、生成器與 JS syntax 皆通過。
+- `.verify/cost-probe.mjs` 可用 `ROOMS=rooms-cntower.html` 量本頁：peak 12,689 fills／16 ms 視窗、16 RAF frames、5,099/5,099 save/restore、bad 0、huge 0。這是 Canvas2D recorder 的診斷值，**不是實機 FPS**；比舊 CN Tower probe peak 6,189 高，低階裝置效能仍未實測。
+- HTML attribution note 列出 City 頁面要求的 OGL attribution，以及 CKAN 敘述文字／結構欄位之間的 mismatch。不要只引用 OGL attribution 而省略 `license_id=notspecified`、`isopen=false`；PR 仍未合併。
+
+### 仍未完成（最新場景盤點）
+- **Tokyo／Nakamise**：89 間店未逐戶實測；店列為平均化概括立面；季節裝飾、人、招牌／燈籠文字刻意不畫。
+- **Moji Port**：Retro Tower 仍只在港桌、沒有獨立展台；三井倶楽部、飯店、海峽プラザ因缺可靠形體／高度資料不建；部分側／背面窗位是按正面節奏概括。
+- **Toronto／CN Tower**：補上部分 100–150 m massing context；不是唯一建築清冊。無資料立面、地形仍平、燈仍為 aggregate density；LookOut 弧形取直、玻璃地板 outline 與塔 footprint 仍近似。
+- **Niagara Falls**：Niagara Parkway 尚未畫，遠 terrace 仍是防 moiré 平均色；崖線、talus、水幕拋距／霧高、欄杆與燈柱位置非全數測量。
+- **Journey Behind the Falls**：branch route 仍畫成直方盒；缺可靠路線／剖面測量，管線與隧道尺寸部分按照片估讀。
+- 頁面／互動／geometry gates 通過不等於實地完整或比例已全核實。不要臆造位置、尺寸、文字或使用者到訪事實。
+
+---
 
 ## 0s. 第三十七輪（2026-10-16）：Tokyo 實景封面、Niagara rail 停點取景、穩定 story gate、五個環境的未完成清單
 
