@@ -1,6 +1,59 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-17 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-18 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0x. 第四十二輪（2026-10-17/18 跨日）：卡牆的實測、無引擎碰撞求解的對法修正、kit 級 flush-quad 出挑、探測器入庫
+
+### 本輪目的與邊界
+站主兩句指令：「持續全部檢查」＋「還有一個問題是卡牆……調研相關 GitHub repo 專案怎麼做的，系統性幫我們全部弄好」。執行路徑 = 先量化症状（不猜）→ 查同型專案 → 只做證據支持的修正 → 全閘門＋影格重拍 → 本節交接。本輪同時閉掉 §0v/§0w 掛著的「渲染器級盤點」項。
+
+### 卡牆的诊断（`.verify/wall-probe.cjs`，本輪新增的探測器，先記錄它抓到了什麼）
+新寫 jsdom＋確定性 rAF 泵的探測器（非閘門、exit 0），七頁各跑 24 向正面撞、斜角壓牆滑、每個 solid prop 四角對角撞、rail 全站 glide、受困反鍵脫困：
+- **角落楔死（真 bug，最核心的抱怨源）**：舊 `moveBody` 只逐軸 reject。W+A 對箱角恰好 45° 時 wish 沿對角、兩軸各自都碰 → 全軸拒絕、速度清零 → **站死**（改前 fukuoka 6 例 FREE/WEDGE、street/toronto/tokyo 皆有）。
+- **貼牆被壁座吃停**：pedestal 的 radius-margin 與牆 clamp 帶重疊時 d 軸同幀被拒 → 貼牆走被整幅擋停（改前 fukuoka `stall wall (416,…)` 一系列）。
+- **rail glide 中斷擱淺（真 bug）**：`moved<0.001 → gliding=null` 把被擋的自動行走直接放棄；探測器第一次跑還誤報 tokyo 616–2004 cm——那是**探測器自身**被前序列污染的站位＋固定 pump(700) 預算不足（165 cm/s 下長站位根本走不完）；修預算後真值 = journey stop#2/#3 在電梯台旁 abort。教訓已寫進探測器註解：glide 判定必須新 boot ＋ 距離預算。
+- **探測器修正自身**：wall 判定的浮點邊界（355.4 vs hw-0.6）與 jitter 的 <20 cm/s 亞噪門檻都是量具缺陷，先修量具再定罪。
+
+### GitHub 調研（同型專案的做法，全部對得上本次採納的三件套）
+- **three.js 官方 `misc_controls_pointerlock`**：逐軸 `checkCol` ＋ 命中面把速度沿法線投影清零（tangential slide 保留）。我們的逐軸語義保留，加的就是它的法線投影。
+- **Colythme 自建 Octree 碰撞**（「Three.js – Self-built Collision World」2023）：`capsuleIntersect` 回傳 (normal, depth) → `position.add(normal×depth)` **穿透推離**；`sphereWallCollision` 再把 `velocity` 沿 normal 反射去除。→ 本輪 `pushAt()`（circle-OBB 最小穿透推離）＋受困自動脫困分支就是這條。
+- **CS Miami《Collision Detection》講義 ch.11／gamedev.SE 標準答案**：命中後把剩餘位移投到接觸面切平面（`v−n(v·n)`）。
+- 反例記錄：Physijs/CANNON/Rapier 全部被 SO 回答推薦，但本專案零依賴紅線（AGENTS）——一個 6 盒場景不配物理引擎，上訴「手寫對法」是站內一致立場。
+- 未採納：raycast-fan（多射線減速）——靜態盒世界裡 circle-OBB 更便宜且無穿牆風險。
+
+### 實作（全部在 `js/site.js`，HTML 僅 `?v=` 隨動）
+1. **`pushAt()`（colliders 區之後）**：body-circle vs 旋轉盒的最短脫離向量（面法線＋穿透深），內部退化分支沿最淺軸推出；雙碰取最深。
+2. **`moveBody` 重寫**：開頭先做「受困推離」（任何原因讓 body 停在 margin 內，下一幀自行退出，不再站死幾何裡）；保留逐軸語義（e2e 的「pedestal 擋正面但不封側走道」「port table 前停住」原樣通過）；**兩軸都拒＝楔角分支**：取 hit 法線、沿切向滑，`along` 以 wish 速度投影為準（牆的 `vx=0` 每幀重置候選位移——不讀 wish 的話滑動永遠進不了死區外），滑動成功只殺「入面」速度分量、切向保留動量；**死區 1.2 cm/幀** 防法線交替抖動（改前探測器可見 jitter 8 次/30 幀×多發）；**角落輔助**：切向分量≈0（正對角線撞）時以 ±creep 115 cm/s 試探 4 步前瞻淨空，選淨空側繞行，`cornerAssist` 記憶防左右顛覆，兩側都淨空則往道中側。
+3. **glide 繞障**：`detourAround()`——被擋不再立刻放棄，先找 ±20..220 cm 帶帶淨空的側道（當前＋前方 150 cm 都無碰），記 origX；繞過去後 `homeGlide()` 每幀檢查原目標線淨空即歸位；真無側道（Niagara 全幅欄杆、2.4 m 隧道裡 48 cm 身位放不下）才放棄——**被擋是事實，放棄擱淺不是**。
+4. **kit 級 flush-quad 出挑（§0w item 1 閉案）**：`modelKit.rect()`（`K.band` 的底）從牆面共面 0.05 提到 **0.08**。本輪 wall audit 的證據鏈：`__flat` batch 無 polygonOffset（scene3d L1265-66）→ 共面時後畫的 band 被自己牆吃掉（fukuoka 塔實測）；窗/live 元素走 `face`（有 offset）旁證成立。出挑 3 cm 為 kit 內統一規則：**装饰一律比牆面出挑**，Moji 四座歷史模型的 string course／BASE 帶、街屋帶一次全治。fukuoka 塔的手動 0.08 迴圈保留（已證明，語義與 kit 一致）。**未**做 polygonOffset 渲染器改動——影格實測出挑已足夠，渲染器加偏移會影響全部 `__flat` 批量排序，屬下一輪選項。
+5. `.verify/wall-probe.cjs` 入庫（新探測器，用法在檔頭；它是量具不是閘門,exit 0 恆真,數值要人讀）。
+
+### 驗證（最終檔，全部實測）
+- `node --check` site/scene3d、`py_compile`、`git diff --check`、regen ×3 md5 相同（IDEMPOTENT-OK）。
+- **wall-probe 前後**（同版探測器,預算/邊界已修）：改後七頁 **glide-aborts 0／WEDGE 0／bounds 0／jitter 0／ESCAPE・AROUND・SLIDE-FAIL 0**；殘留 8 條 `stall FREE` 全部是 90° 側面貼 contact 的合法慢爬（wish 切向分量 5.8 cm/s 之類,探測器 <5 速度閘門的邊界artifact）與 `stall wall`（正面壓牆正確停）——逐條位置核對過 prop margin。user-visible stranding：25 → 13 → **0**（FREE 類皆合法）。
+- verify-walk **166/166**（含新 pin `b2c88dd1be→`再派生；pin 由本輪最終檔 sha1 推得,e2e 讀 served 檔）。chain **0**、rooms-e2e **0**（pedestal 停擋、port-table 正面停、側走道不封的既有斷言在滑動/推離語義下原樣通過）、story **27/27**、objects exit 0、impeccable `[]`、shapes 102/geometry/clash/three 全綠且三角形 12,682+864 **不變**（出挑只移同一批 quad）。
+- 光柵回歸（relief 影響 Canvas2D 投影）：lane-shot fukuoka 全 22 幀 PASS,deepest 70.2/212（colour 211→212：出挑讓帶面多畫出一點,非塌）；tokyo 19 幀 PASS（plaza 58.1/85）。
+- 真 Chromium Three 路徑重拍：fukuoka 7/7（塔站 turn 45.93%）、tokyo 6/6（61.72%）、street 全停到達（rail 站 4117.1 cm）；`09-stop-2-ahead.png` 逐行取樣：站體玻璃帶行 rgb(38,49,74)／string-course 行 rgb(66,76,106+)／牆底 rgb(141,139,132) 三者分明=帶不再互吃；fuku3/tokyo2/street 三頁影格人眼檢視無鬼影、無摩爾、無雙影（3 cm 出挑在任何取景距離不可見）。
+- `.preview/round41-{fuku3,street,tokyo2,lane2}` 為本轮擷取（沙箱易失,不入帳）。
+
+### 限制與故意不做
+- 探測器只覆蓋「盒 collider＋牆 clamp」世界;梯子、滑動門、Niagara 欄杆的「可倚靠」仍無物理（站內從來如此,場景也不需要）。
+- `cornerAssist` 的 4 步前瞻是贪心規則,不是路徑規劃;極窄夾縫(身體放不进但 wish 指向它)會原地淨空失敗——正確行為,人應該轉開。
+- 渲染器級 polygonOffset/renderOrder 方案保留為下一輪選項（當新 painter 出現大面積共面裝飾、或 3 cm 出挑被實測看到時再上）。
+- glides 仍走「側道帶」而不是真正的 A*;被全幅 obstacle 擋住的 stop 是 authored 事實,探測器現在能区分兩者。
+- 本輪**未**重跑五個未改場景頁的 browser-shot（場景檔零改動,只有 `?v=` 隨動）;機械閘已全覆蓋七頁。
+
+### 下一輪完整待辦（優先序）
+1. **合并 PR #16（blocked-on-owner）**：本節＋§0w 全內容在 #16（OPEN、MERGEABLE、base master）。站主一句授權 → `gh pr merge 16 --merge`,合併後照 §0w 部署查核法核 Pages。
+2. **corner assist 實機複檢（低）**：headless Chromium 裡用真鍵盤跑 10 秒「貼牆繞桌」連段（wall-probe 已是鍵盤語義,可加一個 e2e 變體）;驗收=無 stall 報告。若站主手玩再報任何卡點,以 wall-probe 對該幀定位。
+3. **渲染器 polygonOffset 選項（中,可選）**：若下一輪新增貼牆裝飾,優先以 `__flat` 批內 sub-batch（牆面/裝飾兩層 material）取代逐 kit 出挑;驗收=影格 pixel 對照 + verify-three 三角形不變。
+4. **§0w 場景 thread 續查全部保持**（Moji 立面圖、Niagara 欄杆/燈柱/parkway、Journey 分支平面圖＋2027 watch、Tokyo 逐戶立面、Toronto 授權=站主窗口）——原文見 §0w,未完成項未變。
+5. 站主輸入 persistent 佇列：英文 CV PDF、ORCID id。
+6. 任何場景改動後照例全庫：regen 冪等＋七頁機械閘＋改動頁 browser-shot（`renderer:"three"` 到站）＋lane-shot＋人眼讀格＋wall-probe（碰移動/碰撞碼必跑）＋PR 前更新本檔。
+
+### 站主裁頂事項
+本輪無新裁頂需求（對法修正與 relief 都是證據閉環,非美學取捨;零依賴紅線下不上物理引擎與站內立場一致,已列為裁頂候補若未來 wants 真物理）。
+
 
 ## 0w. 第四十一輪（2026-10-17）：合併後部署查核、§0v 下一輪來源調查全項、塔樓對比修正（含一個 only-in-Three 渲染缺陷）與 Nakamise 官方店數
 

@@ -600,7 +600,10 @@ function leaveOverlay(root, trigger) {
 
    Deliberate limits, each one a trade rather than an oversight:
      - the body remains at eye height; the 3D camera and every authored surface use world coordinates,
-       while horizontal input is projected into the view plane and collisions keep the body in its box;
+       while horizontal input is projected into the view plane and collisions keep the body in its box
+       — per-axis rejection against the walls, and against solids a contact-normal slide with
+       push-out recovery, so a braced shoulder against a plinth lets the visitor walk past it (round
+       41; the reject-only version pinned bodies at corners and sealed the wall aisles);
      - yaw is free and pitch is clamped to ±24°; turning is drag or keys, never Pointer Lock, so the
        space remains operable on phones where Pointer Lock is unavailable;
      - world units are centimetres: eye at 168, walk at 165 cm/s, run at 206 cm/s, and a 420 cm/s
@@ -1747,6 +1750,38 @@ function leaveOverlay(root, trigger) {
     const outD = Math.max(Math.abs(localD) - b.d / 2, 0);
     return outX * outX + outD * outD < PLAYER_RADIUS * PLAYER_RADIUS;
   });
+  /* The push a body needs to leave a solid's surface: for every collider, the shortest vector from
+     the body centre back out to the rectangle grown by the body radius, as the face normal and the
+     overlap. Two contacts resolve deepest-first. This is the projection step every engineless walk
+     sim in the field converges on (the three.js pointer-lock demo kills the velocity component into
+     the face; the Octree-based ones push the position along `normal * depth`) — ours was reject-only,
+     and `wall-probe` measured what that costs: a diagonal touch at a plinth's corner froze the body
+     with legal movement left on both sides (6 FREE/WEDGE stalls on the Moji hall alone). */
+  const pushAt = (px, pz) => {
+    let best = null;
+    const R = PLAYER_RADIUS;
+    for (const b of colliders) {
+      const dx = px - b.x, dz = pz - b.z;
+      const lx = dx * b.c + dz * b.s, ld = -dx * b.s + dz * b.c;
+      const qx = Math.max(-b.w / 2, Math.min(b.w / 2, lx));
+      const qd = Math.max(-b.d / 2, Math.min(b.d / 2, ld));
+      const ox = lx - qx, od = ld - qd;
+      const dist2 = ox * ox + od * od;
+      if (dist2 >= R * R) continue;
+      let lnx, lnd, pen;
+      if (dist2 > 1e-9) {
+        const dist = Math.sqrt(dist2);
+        lnx = ox / dist; lnd = od / dist; pen = R - dist;
+      } else {
+        const ex = b.w / 2 - Math.abs(lx), ed = b.d / 2 - Math.abs(ld);
+        if (ex < ed) { lnx = lx >= 0 ? 1 : -1; lnd = 0; pen = R + ex; }
+        else { lnx = 0; lnd = ld >= 0 ? 1 : -1; pen = R + ed; }
+      }
+      const wnx = lnx * b.c - lnd * b.s, wnz = lnx * b.s + lnd * b.c;
+      if (!best || pen > best.p) best = { nx: wnx, nz: wnz, p: pen };
+    }
+    return best;
+  };
   const wires = readIsland("[data-walk-wires]");
   const beams = readIsland("[data-walk-beams]");
   const vista = readOne("[data-walk-vista]");
@@ -2166,10 +2201,17 @@ function leaveOverlay(root, trigger) {
       });
     };
     // Things laid on a wall: a rectangle, a band across every bay, an opening, a disc.
+    // A rect stands 0.08 out from its face while the face itself sits at 0.05: round 41's transfer-band
+    // erasure showed what equality costs — the wall's surface and its flat decoration shared one plane,
+    // the `__flat` batch has no polygonOffset, and the depth test let the facade draw over its own band.
+    // Three centimetres of relief is invisible from any distance the kit paints at, and it makes every
+    // painter's string courses, spandrels and glass safe at once instead of one hand-nudged loop at a
+    // time. Windows and braces that survived before did so by batch order — luck; relief is the design.
     const rect = (f, t0, t1, y0, y1, col, l = 1) => {
       if (!seen(Math.min(Math.abs(t1 - t0), Math.abs(y1 - y0)), 0.6)) return null;
       f.at((t0 + t1) / 2);
-      return put([f.F(t0, y0), f.F(t1, y0), f.F(t1, y1), f.F(t0, y1)], mix(col, f.shade), lit * l);
+      return put([f.F(t0, y0, 0.08), f.F(t1, y0, 0.08), f.F(t1, y1, 0.08), f.F(t0, y1, 0.08)],
+                 mix(col, f.shade), lit * l);
     };
     const band = (f, y0, y1, col, l = 1) => {
       if (!seen(y1 - y0)) return;
@@ -6915,17 +6957,115 @@ function leaveOverlay(root, trigger) {
   };
 
   const wrapYaw = (degrees) => ((degrees + 180) % 360 + 360) % 360 - 180;
-  const moveBody = (nextX, nextDepth) => {
+  let cornerAssist = 0;   // which side of a corner the creep last chose; see the wedge branch
+  const moveBody = (nextX, nextDepth, dt = 0.0166) => {
+    // A body resting inside a margin — after a respawn next to a plinth, a clipped glide target —
+    // leaves it on the next move rather than standing frozen inside the geometry (the push-out
+    // every collision solver needs after its reject test; the probe called this ESCAPE-FAIL risk).
+    const trapped = pushAt(x, depth);
+    if (trapped) {
+      x = clamp(x + trapped.nx * trapped.p, -HALF, HALF);
+      depth = clamp(depth + trapped.nz * trapped.p, MIN_D, MAX_D);
+    }
     const oldX = x, oldDepth = depth;
     const cx = clamp(nextX, -HALF, HALF);
-    if (!collidesAt(cx, depth)) x = cx;
-    else if (Math.abs(cx - x) > 0.001) vx = 0;
     const cz = clamp(nextDepth, MIN_D, MAX_D);
-    if (!collidesAt(x, cz)) depth = cz;
-    else if (Math.abs(cz - depth) > 0.001) vd = 0;
+    let nx2 = oldX, nz2 = oldDepth, blockedX = false, blockedD = false;
+    if (!collidesAt(cx, oldDepth)) nx2 = cx; else blockedX = true;
+    if (!collidesAt(nx2, cz)) nz2 = cz; else blockedD = true;
+    let projected = false;
+    if (blockedX && blockedD && (cx !== oldX || cz !== oldDepth)) {
+      // Both axes refused: the corner wedge. Take the contact normal, slide the intended move along
+      // its tangent, and push that candidate clear — the same order of operations as the
+      // pointer-lock demo's slide, kept continuous so a diagonal touch against a plinth's face
+      // turns into walking past it instead of standing at it with the keys doing nothing.
+      const hit = pushAt(cx, cz) || pushAt(oldX, oldDepth);
+      if (hit) {
+        const tX = -hit.nz, tD = hit.nx;
+        let along = (cx - oldX) * tX + (cz - oldDepth) * tD;
+        // the wall clamp zeroes the into-wall velocity after every frame, so a braced body's
+        // per-frame candidate can be almost nothing — the wedge slide must read the WISH, not
+        // only what the blocked candidate happened to carry this frame; the two agree whenever
+        // the walk is free and this branch does not run.
+        const wishAlong = (vx * tX + vd * tD) * dt;
+        if (Math.abs(wishAlong) > Math.abs(along)) along = wishAlong;
+        if (Math.abs(along) < 1.9) {
+          // Straight into a corner: the bisector leaves neither face a tangent to ride, and W+A
+          // is exactly 45° to an axis-aligned box — the old solver's signature freeze. Assist it
+          // like the 2-D games do: pick the side whose next steps are clear and creep round it,
+          // remembering the choice so the two faces cannot alternate the body between them.
+          const creep = 115 * dt;
+          const clear = (sgn) => {
+            let px = oldX, pd = oldDepth;
+            for (let k = 0; k < 4; k++) {
+              px = clamp(px + tX * sgn * creep, -HALF, HALF);
+              pd = clamp(pd + tD * sgn * creep, MIN_D, MAX_D);
+              if (collidesAt(px, pd)) return 0;
+            }
+            return 1;
+          };
+          let sgn = cornerAssist
+            || (clear(1) === clear(-1)
+                 ? (-(Math.sign(oldX) || 1) * tX >= 0 ? 1 : -1)      // both clear: round the inner side
+                 : (clear(1) ? 1 : -1));
+          if (!clear(sgn)) sgn = -sgn;
+          cornerAssist = clear(sgn) ? sgn : 0;
+          if (cornerAssist) along = creep * cornerAssist;
+        }
+        let sx = clamp(oldX + tX * along, -HALF, HALF);
+        let sd = clamp(oldDepth + tD * along, MIN_D, MAX_D);
+        const h2 = pushAt(sx, sd);
+        if (h2) {
+          sx = clamp(sx + h2.nx * h2.p, -HALF, HALF);
+          sd = clamp(sd + h2.nz * h2.p, MIN_D, MAX_D);
+        }
+        // dead zone: a slide shorter than 1.2 cm this frame is a corner flip-flop in the making —
+        // the normal can alternate between two faces while the wish straddles them, and every frame
+        // of that is a visible buzz. The projection below keeps the tangent velocity accumulating,
+        // so a held key walks past the zone a frame or two later instead of stalling in it.
+        if (!collidesAt(sx, sd) && Math.hypot(sx - oldX, sd - oldDepth) > 1.2) {
+          nx2 = sx; nz2 = sd; blockedX = false; blockedD = false;
+        }
+        // kill only the component into the face — whether the slide ran or not, so the tangent
+        // keeps its momentum and the blunt zeroing never starves the ramp the dead zone waits for
+        const into = vx * hit.nx + vd * hit.nz;
+        if (into < 0) { vx -= hit.nx * into; vd -= hit.nz * into; }
+        projected = true;
+      }
+    }
+    if (!projected && blockedX && Math.abs(cx - oldX) > 0.001) vx = 0;
+    if (!projected && blockedD && Math.abs(cz - oldDepth) > 0.001) vd = 0;
+    if (!projected) cornerAssist = 0;      // the moment a free axis exists, the creep stands down
+    x = nx2; depth = nz2;
     if (x === -HALF || x === HALF) vx = 0;
     if (depth === MIN_D || depth === MAX_D) vd = 0;
     return Math.hypot(x - oldX, depth - oldDepth);
+  };
+  /* An auto-walk must not strand the visitor where a stand happens to cross its line (round 41:
+     `wall-probe` measured rail glides aborting 581 to 1849 cm short in the Journey lane). When the
+     straight line is blocked, aim around it: the nearest strip of free floor with body room ahead and
+     beside, on either side; once the stop's own x is clear again ahead, home back onto it. If no
+     width has a legal side — a full-width railing, a plinth in a 2.4 m tunnel — the glide still
+     gives up, because being walled off from a stop is truer than pretending through it. */
+  const detourAround = () => {
+    if (!gliding) return false;
+    for (let off = 20; off <= 220; off += 20) {
+      for (const sg of (x >= 0 ? [1, -1] : [-1, 1])) {
+        const gx = clamp(x + sg * off, -HALF, HALF);
+        if (Math.abs(gx - x) < 12) continue;              // the wall ate it: no strip there
+        if (collidesAt(gx, depth) || collidesAt(gx, Math.min(depth + 150, gliding.to))) continue;
+        if (gliding.origX === undefined) gliding.origX = gliding.x;
+        gliding.x = gx;
+        return true;
+      }
+    }
+    return false;
+  };
+  const homeGlide = () => {
+    if (!gliding || gliding.origX === undefined || gliding.origX === gliding.x) return;
+    if (collidesAt(gliding.origX, Math.min(depth + 150, gliding.to))) return;  // still box alongside
+    gliding.x = gliding.origX;
+    delete gliding.origX;
   };
 
   const stepMotion = (dt, glideOnly = false) => {
@@ -6940,7 +7080,9 @@ function leaveOverlay(root, trigger) {
         const moved = moveBody(x + dx * stride / distance, depth + dd * stride / distance);
         const remaining = Math.hypot(gliding.x - x, gliding.to - depth);
         if (remaining < 1.2) gliding = null;
-        else if (moved < 0.001) gliding = null;  // a solid object, not an endless auto-walk
+        else if (moved < 0.001 && !detourAround())
+          gliding = null;     // a solid object with no room round it is still the truth —
+        else homeGlide();     // but an auto-walk must not abandon the visitor mid-lane
       }
     } else if (!glideOnly) {
       const turn = (keys.has("arrowright") ? 1 : 0) - (keys.has("arrowleft") ? 1 : 0);
