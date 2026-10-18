@@ -2,6 +2,41 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-18 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0y. 第四十三輪（2026-10-18）：卡牆的永久閘門 `verify-collision.cjs`——連帶抓到量具自己的兩個 bug、實機複核歸零、來源最終輪三項拒證確認
+
+### 本輪目的與邊界
+站主「繼續做完整」＝把 §0x 掛著的尾巴做完（本輪**不是**合併授權）。佇列：① 把卡牆修正升級成可提交的回歸閘門（不能只靠一次性的 wall-probe）；② 實機鍵盤複核＋幀時間讀數（§0x item 2）；③ 來源最終輪（門司港立面圖、Niagara 欄杆、Journey 平面圖——預設是拒證確認）；④ SKILLS.md 閘門清單。求解器本輪**未改**：中途據錯誤數據動過 `moveBody`（contactKeep 特例）,數據被推翻後即 `git checkout` 回退——HEAD 仍是 §0x 的已驗證版本。
+
+### 新閘門 `.verify/verify-collision.cjs`（三性質,21/21）
+jsdom 啟動（`.cjs` 副檔名是硬要求：package.json `type:module` 讓 `require("jsdom")` 在 `.mjs` 裡必炸——量具也歸 repo,踩過一次記一次）,七頁各驗：
+- **V1 held input always answers**：8 向掃＋w+a/w+d＋每個 solid prop 四角對角撞；「凍結」＝連續 24 幀位移速度 < 2 cm/s **且** 按鍵 wish 前方有合法出口（8×45 cm 探針、投影 ≥0.35|wish|、淨空且在道內——只認「前方」,側後方能脫的不算卡）且背貼 prop（8×6 cm 探針碰得到）。
+- **V2 every rail stop arrives**：**新 boot** 後逐站點 rail,預算＝直線時間(dist/165)＋140 幀沉降,**不計繞行餘裕**——rail 許的是直線速度,超算＝FAIL。
+- **V3 no margin rest**：任何停駐點不得在 solid margin 內。
+- `GATE_DEBUG=1` 印每次凍結的完整現場（位置/朝向/inside/gap/出口/前 14 幀 ring buffer）——ring buffer 就是判 V1 性質（死停 vs 合法慢爬）靠的證據。
+
+### 量具自己的兩代 bug（教訓：measure-never-assert **包括量具本身**,本輪又兩次應驗）
+1. **語義 v1**：把「正面壓牆停住」也計為凍結 → 124 誤報。正對牆、無前方可去而停是**正確行為**（站內語義）,收紧成「前方有合法出口才算卡」。
+2. **live-getter 别名**：`__walk` 是單一 live 物件,`const a=env.walk(); …; const b=env.walk()` 兩次讀取是**同一個參考**——位移恆零,任何按住鍵的 24 幀都成「凍結」（39→25 例全是這個）。修法是字面快照 `{x,depth}` before/after（wall-probe 的 sample() 一開始就寫對了,閘門抄錯）。連帶教訓：**獨立重現腳本也中了同一 bug**,它印的「v 0.0」把死停假象又餵了一輪——印速度的程式必須自己先快照。
+3. 修完取樣後殘留 3 例,ring buffer 全顯示 **2.6–4.5 cm/s 的切向蠕爬**（x 或 depth 之一完全不動、另一個以 wish 投影速度走）——那是「貼著圓柱按偏 1–2°」的標準 FPS 答案（速度投影,大小是玩家自己的輸入）,不是求解器缺陷。門檻從 5 降到 2 cm/s（死停才輸）,**註解把語義寫死在碼裡**,防止下輪再把慢爬誤判成 bug。
+
+### 咬合測試（閘門必須抓得住舊 bug,否則只是裝飾）
+`git show ef4583e:js/site.js`（§0x 修正前）→ 同一閘門 → **FAIL exit 1：street 4＋fukuoka 5 例 wedge 凍結**,修復版 21/21——V1 有牙。V2 補充事實：舊求解器的「glide 擱淺」是 wedge 的**衍生病變**（先卡住才擱淺）,乾淨 boot 直線 glide 舊版也到站——tight budget 留著防的是「未來繞行邏輯壞掉、軌道不守抵達承諾」的回歸,不是為了重現舊案。踩坑記錄：全量閘門約 28 分鐘,**不能用 `| head` 截線**（SIGPIPE 把 run 中斷在半途,最後統計就丟了）；跑舊版對比要單頁選取（`GATE_PAGE=rooms-journey`）,而且**替換 site.js 的對比跑完務必 `git checkout --` 復原**——本輪 timeout 讓修復鏈在背景沒走完,工作區一度停在舊版,是 `grep -c pushAt` 抓回來的。
+
+### 實機複核 `.verify/wall-live.mjs`（§0x item 2 閉案）
+真 Chromium（@sparticuz）＋**真鍵盤事件**：每頁按住 W、每 30° 轉一次向、每次轉後全力壓 1.6 s,頁面內自記 50 ms 取樣；「死停且前方 1.8 s 行程內有淨空地板」才計數。結果：**七頁 ×12 向、3,253 幀取樣,dead-stops = 0**。幀時間 p50 50–150 ms／p95 ≤300 ms——這是沙箱 llvmpipe 無 GPU 的軟體渲染水準,**是環境特徵不是效能結論**（真 GPU 上遠好）；本倉庫無低端實體,此數就是能给的全部。wall-live 是量具（exit 0 恆真,數字要人讀）,閘門歸 verify-collision。
+
+### 來源最終輪（三項全為拒證確認,文案不動）
+- **門司港立面尺寸圖**：黑川紀章建築都市設計事務所处無公開圖面;jstage 論文（AIJ 90_1134）只有「設計者語」文字（北向住戶、南向核心、玻璃帷幕）——無可量註。立面維持「畫出來的,非測繪」。
+- **Niagara 欄杆**：esd.ny.gov 的 Gorge Gateway Park ITB 檔案確有護欄詳圖（L-536..539）,但那是 2024 年**鄰近新建街區公園**的圖,不是 Recreation Trail 沿崖欄杆的來源——不可移植,`hint` 的 drawn-not-surveyed 原樣。
+- **Journey 展館平面圖**：NYPL MssCol 2233 有 1939 世 Expo 全園 General Plan 與 Trylon/Perisphere 鋼構圖,無 Try and Believe 展館內部平面digitized → 館內「配置是畫的」維持。
+
+### 收尾
+SKILLS.md §4 閘門清單加入 `node .verify/verify-collision.cjs`（列於 verify-walk 之後）。本輪全閘門最終檔實測：shapes／geometry／clash／walk 166／**collision 21/21**／rooms-e2e 0／objects 0／three PASS（三角形 12,682+864 不動）／chain 0／story 27/27／tables 0／impeccable `[]`／regen 冪等。`VER` 派生自 `_gen_html.py`（AGENTS「derived, not hand-bumped」——本輪 `js/site.js`、`css/site.css` 零改動,`?v=` 不動屬正常）。image-search/ 未入庫。
+
+### 本輪沒做、下輪才做得動的
+- 合併 PR #16（等站主明確授權,pr-handoff 的紅線）。
+- `__flat` 批次的 polygonOffset 渲染器級方案（§0x 記的下一輪選項,出挑 0.08 已夠用,不動是證據原則）。
+
 ## 0x. 第四十二輪（2026-10-17/18 跨日）：卡牆的實測、無引擎碰撞求解的對法修正、kit 級 flush-quad 出挑、探測器入庫
 
 ### 本輪目的與邊界

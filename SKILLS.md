@@ -153,6 +153,7 @@ node .verify/verify-shapes.mjs
 node .verify/verify-geometry.mjs
 node .verify/verify-clash.mjs
 node .verify/verify-walk.mjs
+node .verify/verify-collision.cjs        # the walker must not catch on walls (round 42)
 node .verify/verify-objects.mjs          # needs LD_LIBRARY_PATH=/tmp/al2023/lib
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 md5sum *.html; python3 _gen_html.py; md5sum *.html   # idempotent
