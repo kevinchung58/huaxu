@@ -207,3 +207,26 @@ and look at the picture at the end.
 The exception that proves the rule: a load-time crash (an undefined function, a syntax error) is
 caught by `node -e "new Function(...)"` in milliseconds and is allowed after every edit. It is the
 slow *visual* round-trips that are batched, not the cheap static ones.
+
+## 8. Nothing waits for "next round"
+
+Standing order from the owner (2026-10-18): everything gets done to the fullest completeness. In
+this repo that is operational, not aspirational:
+
+- **An identified gap with the evidence to close it is this round's to-do.** If the source exists,
+  the geometry is known, or it is a quality fix inside the author's remit (style, feel, legibility
+  of what is drawn), it ships in the round that found it. "Recorded as a next-round option" without
+  a blocking reason is a rule violation, not a plan.
+- **"Done" means verified, not written.** A behaviour fix ships with the gate that pins it — the
+  template is `.verify/verify-collision.cjs`: named properties, explicit thresholds, and a
+  demonstrated *bite* (run the gate against the pre-fix artifact and show it fails). A visual fix
+  ships with freshly eyeballed frames from the served artifact, not from the code that made it.
+- **A measured "not needed" closes an option; silence does not.** An open question is completed by
+  adjudicating it this round — run the inventory, print the count, cite the result — and the
+  disposition goes in the ledger with the command that produced it. Rejected sources close the same
+  way: what was searched, what was found, why it does not support the change (the §0y source round
+  is the template). A refusal with citations is completeness; a parked TODO is not.
+- **The rule never outranks §5 (nothing invented).** Completeness applies to backlog and craft,
+  never to facts. A missing source stays a recorded refusal — "full" never means "full of".
+- **Owner-gated things wait for the owner**: deploys, licensing windows, merge authorization. They
+  are the owner's checklist; carry them as named blockers, never as silent ones.

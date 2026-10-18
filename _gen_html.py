@@ -2828,6 +2828,24 @@ def niagara_world(fr, view="rim"):
         for i in range(2, 35, step):
             P.append({"t": "m", "o": fr.cm(*ring[i], NIA_RIVER + 1), "w": w * 100, "h": h * 100,
                       "al": round(al * mist_k, 3), "a": 0.02, "il": 1, "np": 3})
+    # Round 43, the part the basin rings could not say: from the rail, the mist is not a distant
+    # blanket. It lifts off the crest itself -- a boil of columns springing at the brink and climbing
+    # past the deck -- and it crosses the sightline close, veiling the rail and the foot of the
+    # sheet the way every Table Rock photograph shows it. Author's alphas; the behavior is from the
+    # visit-record descriptions, not a survey of particle counts.
+    # The boil hugs the crest. The tuning was measured, not guessed: 0.3 over 15 m of sky read as
+    # nothing on a bright day, 0.9 turned the whole viewport to weather — the final figure sits at
+    # the rail's own sightline, a compact column of four rounds rising 4..40 m over the brink.
+    # alpha 0.42 is what survives pixel comparison against the pre-fix frame without erasing the sky.
+    boil = [(e + nx * 10, n + ny * 10) for (e, n), (nx, ny) in zip(hs, nrm)]
+    for i in range(1, 35, 4):
+        P.append({"t": "m", "o": fr.cm(*boil[i], NIA_CREST + 0.5), "w": 5200, "h": 4200,
+                  "al": round(0.42 * mist_k, 3), "a": 0.02, "il": 1, "np": 4})
+    for d, step, w, h, al in ((-9, 9, 7000, 2600, 0.13), (-16, 12, 9000, 2000, 0.10)):
+        ring = [(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)]
+        for i in range(3, 33, step):
+            P.append({"t": "m", "o": fr.cm(*ring[i], NIA_CREST - 1), "w": w, "h": h,
+                      "al": round(al * mist_k, 3), "a": 0.02, "il": 1, "np": 2})
     P.append({"t": "m", "o": fr.cm(610, 650, NIA_RIVER + 2), "w": 7000, "h": 2600, "al": 0.12,
               "a": 0.04, "il": 1})
     rc = fr.cm(130, -120, NIA_RIVER - 22)

@@ -2,6 +2,32 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-18 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0z. 第四十四輪（2026-10-18）：「全部做到最完整」寫成 SKILLS §8 常規;Niagara 霧三層升級,過程把霧的渲染路徑缺陷一次治本
+
+### 站主指令
+「全部都要做到最完整,去修改 skills 讓其全部做完整」。拆成兩件事都做完:
+1. **SKILLS.md 新增 §8「Nothing waits for next round」**:有證據的欠項就是本輪待辦;「做完整」=驗收過(行為修正帶閘門+咬合證明,視覺修正帶 served 影格眼審);選項用**量過的 not-needed 閉環**、不用擱置;§5 禁造永不讓路——「完整」 applies to craft and backlog, never to facts;站主窗口項(合併/授權/部署)為明示阻塞而非沉默。
+2. **按新常規本輪閉掉全部 agent 可動項**（下列三項）。
+
+### Niagara 霧升級（§0y 承諾的「站在水簾下」,本輪做完,不是下輪）
+新增兩組記錄（`_gen_html.py` niagara_world,walk 世界與 deck 桌台共享同一函數、各 +16 条,spray layers 58→90 即此）:
+- **brink boil**:沿馬蹄緣線 d=10 m 每 4 采样點一根 4 層軟圓柱,直徑 17–28 m、自 crest 上 4 m 起升 (~40 m 柱),alpha 0.42——「150 m 高柱、0.3 alpha」的第一稿實測**像素級無效**（sky meandiff 0.3/255）,α0.9 實驗證明渲染路徑無恙後按影格定錨收斂;
+- **rail veil**:crest 後退 9/16 m 兩排低圓（w70/90 m、h 26/20 m、α 0.13/0.10）貼視線高度——近景地面霧。
+前後對照（同站點影格 meandiff）:改前 0.3 → 改後 1.7–2.4/255,眼審 stop-3 與 mouth 兩幘:簷口起霧、彩虹不被吞（renderOrder 3 > 2）、可讀性無損。
+
+### 過程中揪出的渲染器級缺陷（本輪最重要,值得單列）
+**霧 billboards 此前實際上幾乎全被深度測試吃掉**:`makeClouds` 的材質原為 `depthTest:true`,而世界裡的 opaque 面（水簾、deck 地面）先寫深度——bowl 環霧與 apex 柱只有超出水簾頂緣的零頭能露臉。修為 `depthTest:false` 註明註解（overlay-grade mist,renderOrder 仍把彩虹排在其後）,量具方法 = 同幘像素 diff。**影響面已核**:`t:"m"` 記錄只存在於 niagara 的兩個世界,其他頁不受動。
+
+### 依 §8 閉環的兩個舊選項
+- **polygonOffset 渲染器級方案**（§0x/§0w 掛了兩輪的「下一輪選項」）:本輪盤點定讞——`_gen_html.py` 無手寫 flush 裝飾（grep `0\.05` 僅水簾/剖面參數命中,非牆面共面）,flush 幾何唯一來源是 `modelKit.rect()` 的 0.08 relief 統一規則→**measured not needed,閉環**;若未來出現新 painter 繞過 kit,再按 §8 開項。
+- **§0y 來源最終輪三項拒證**（Moji 立面圖/Niagara 欄杆詳圖/Journey 館內平面）維持閉環,不復活。
+
+### 驗證（最終檔）
+shapes 102／geometry／clash／walk 166/166／e2e 0／chain 0／tables 0(6/9 framed 同前)／objects exit 0／story 27/27／three PASS（12,682+864 三角、432 sheets、spray layers 58→**90**）／impeccable `[]`／冪等 OK。collision 全量重跑(霧記錄入檔後)**21/21**;lane-shot niagara 13 幘全 PASS(最深站點 luma 146.8/504 色,霧不損可讀性;此路徑同時是 Canvas2D fallback 的實渲染)——brink boil 與 rail veil 兩路徑皆眼審通過。
+
+### 站主窗口（明示阻塞,非沉默）
+PR #16 合併授權仍待。image-search/ 維持不入庫。
+
 ## 0y. 第四十三輪（2026-10-18）：卡牆的永久閘門 `verify-collision.cjs`——連帶抓到量具自己的兩個 bug、實機複核歸零、來源最終輪三項拒證確認
 
 ### 本輪目的與邊界

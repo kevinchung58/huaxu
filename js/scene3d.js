@@ -689,7 +689,12 @@ function makeClouds(THREE, scene, prims) {
       void main(){ vUv=uv; vColor=aColor; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
     fragmentShader: `uniform sampler2D uCloud; varying vec2 vUv; varying vec4 vColor;
       void main(){ vec4 tex=texture2D(uCloud,vUv); gl_FragColor=vec4(vColor.rgb, tex.a*vColor.a); }`,
-    transparent: true, depthWrite: false, depthTest: true, side: THREE.DoubleSide,
+    // depthTest off, deliberately: spray is overlay-grade. The sheet it rises from and the deck it
+    // crosses are opaque writers that render first, so a depth-tested billboard anchored behind them
+    // is clipped to nothing — measured in round 43 (a full record set, 0.3/255 of visible change).
+    // The veil over the rail is the whole effect, and renderOrder 2 still puts it after the water and
+    // before the rainbow.
+    transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide,
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = "surveyed spray billboards";
