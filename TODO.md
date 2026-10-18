@@ -2,7 +2,33 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-18 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
-## 0z. 第四十四輪（2026-10-18）：「全部做到最完整」寫成 SKILLS §8 常規;Niagara 霧三層升級,過程把霧的渲染路徑缺陷一次治本
+## 0aa. 第四十五輪（2026-10-18）：站主遊玩實測推翻「已修」宣稱——移動手感對齐 pointer-lock demo、塗裝世界牆入碰撞體、量具同輪補眼
+
+### 站主指令
+「整個操作非常有問題」「奇怪的WASD移動」＋**牆還是穿得過去**。指令按 §8 執行：查 three.js 等參考 repo、把**全部**移動與穿牆問題系統性修掉，不逐房打補丁；round-42/43 的「fixed」宣稱對穿牆一類**作廢**，本輪以實測取代。
+
+### 移動手感（site.js walker）
+- 參考 `misc_controls_pointerlock.html`：速度**每幀由輸入直接赋值**（exp(-dt/0.05) ACCEL 平滑刪除——那是「奇怪 WASD」的滯後源）、放開按鍵只剩 exp(-dt/0.09) 衰減、1.2 cm/s 下歸零（crisp start/stop）；
+- 轉向不再只有 ArrowLeft/Right 75°/s：**Q/E 加入**（按住連轉、單按即轉一次），**雙擊進入 Pointer Lock 滑鼠視角**、拖曳保留給手機（repo 設計註解「never REQUIRE Pointer Lock」的理由成立、原「never use」註解據此改寫）;
+- HOW_TO_WALK 與 walk-view aria-label 同步（HTML 一律經 `_gen_html.py`）。
+
+### 穿牆根治：碰撞體從**塗裝幾何**推導
+three.js demo 的碰撞世界就是場景本體（`walls = objects.filter(o => o.userData.wall)`）——本專案對應物是 backdrop JSON 的 `world.prims`。修前實測（`.verify/_wallgap.mjs`，DOM 屬實掃描）：**niagara 526 / journey 786 個可站立自由點在 130cm 高以上的塗裝牆面內**，其餘頁 0——穿牆一類被證明。修法：合規牆面四邊形進 colliders（零厚條帶），外加 moveBody **≤2.6 cm 微步 sweep**（高速一步 47 cm 直接跨過 24 cm 半徑容差是第二條穿牆路徑）。接受謂詞三道濾鏡各有教訓：①只有底邊（全邊環把門楣封死）②clip 到巷寬（斜交外接牆把 journey 兩端封死，V2 stranded x2 抓到）③**len > WALL 剖面 tell**（峽谷護岸牆的投影斜跨隧道框、連 clipped 版都會封 240cm 巷——隧道側牆由 HALF 夾管，不是漏網）。
+### 滑動死區（本輪真 bug）
+「反抖動」死區把**首次**接受也設了 1.2 cm/幀門檻：側向 0.69 cm/幀（41 cm/s 的正常斜頂）永遠被拒→ slideDir 永遠設不起來→ fukuoka 展台角 4 例 0.2 cm/s 卡死。語義改為**只有反向幀付門檻**（抖動=反向；首步無歷史可矛盾）、單調蠕行免費。修後 4→1→0。
+- 教訓（寫入錯誤簿）：試圖把 wedge 泛化成「位移腰斬即輔助」觸發過廣——正常過彎擦到 margin 就側推 40 cm，verify-walk 6 退；**回退**。卡牆感的正解是死區修準+判準收窄，不是輔助廣撒網。
+
+### 量具同輪進化（§8：閘門要能咬、不哭狼）
+- gate V4「塗裝地板牆擋身體」上線（謂詞與 site.js 逐行同步，掃描全巷切片）；**V4 咬合證明**：臨時癱瘓 strip 收集→ V4 必須 FAIL（見驗證）。
+- V1 freeze 判準修正：舊版以 sp<2 cm/s + 前向出口 + braced 即報——把**合法貼牆蠕行**（輸入 0.4° 偏法線、引擎已花掉切向分量）誤判為凍結。加「視窗全幀 <0.5 cm/s（第 43 輪位移噪聲地板）才immobile」——657 類蠕行排除、2161 硬鎖由死區修好，fukuoka 4/4。
+- `wall-live.mjs` 的探測**改問 live 求解器本體**（`__walk.blockedAt`）：round-42 版自行重寫 props-only 謂詞，正是站主穿牆在它面前通過無語的原因——**儀器與求解器零重寫漂移**自此為常規。
+- 新增 `wall-pierce-live.mjs`：真瀏覽器 12 向環繞、逐樣本幾何判「身體在牆條帶 8cm 內」＝穿透；每頁必須 ≥1 次牆接觸，空測不通過。
+
+### 驗證（最終檔）
+collision 全量 **28/28**（7 頁 ×4 性質，V4 新性質含在內）；**V4 咬合證明**：臨時 `if (1) continue;` 癱瘓 strip 收集 → niagara `FAIL holes x1 — 2 runs scanned`、恢復 → PASS（往例：儀器不咬合的 PASS 不算數）。walk 166/166、shapes 102、geometry OK、clash clean、chain 0、rooms-e2e 0。冪等：regen md5 一致。**真瀏覽器實測（站主的遊玩面）**：`wall-pierce-live.mjs` 7 頁 ×12 向 ×160 幀=**13,440 live 樣本、0 個「身體在牆條帶 8cm 內」、每頁 ≥630 次真實 braced 接觸**（空測守衛：segs>0 而 contact=0 即 FAIL）→ CLEAN exit 0；`wall-live.mjs`（探測改問求解器後）0 dead stops / 706 樣本。swiftshader 下 journey 幀時 p50 已錄 1,183ms——實機渲染器速度限制、非求解器問題，數值留檔。
+- 附帶揪出並修掉**量具級**缺陷兩項（同輪按 §8 閉環）：wall-live 的 round-42 版自行重寫 props-only 謂詞（站主穿牆在它面前通過無語的根因）→ 改問 `blockedAt`；`_audit/audit-all.mjs` 草稿的 `best[id]` 單值 vs `.filter` 数组錯用為既存自身 bug、非本輪引入、不擴修。
+
+
 
 ### 站主指令
 「全部都要做到最完整,去修改 skills 讓其全部做完整」。拆成兩件事都做完:

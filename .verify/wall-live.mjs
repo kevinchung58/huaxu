@@ -56,14 +56,13 @@ for (const name of PAGES) {
       last = t;
       requestAnimationFrame(tick);
     })(performance.now());
+    // Ask the LIVE SOLVER, don't re-implement it: round 42's version probed props only, which
+    // is exactly why it passed while painted world walls were walk-through (the owner's round-45
+    // report). blockedAt is the page's own colliders() — props and wall strips — so a probe
+    // answer here is the solver's real answer at an arbitrary reachable point.
     window.__liveCollides = (x, z) => {
-      const R = w().radius, hw = w().halfWidth, mn = w().minDepth, mx = w().maxDepth;
-      return window.__live.props.some((b) => {
-        const a = b.ry * Math.PI / 180, c = Math.cos(a), si = Math.sin(a);
-        const dx = x - b.x, dz = z - b.z;
-        const lx = dx * c + dz * si, ld = -dx * si + dz * c;
-        return Math.max(Math.abs(lx) - b.w / 2, 0) ** 2 + Math.max(Math.abs(ld) - b.d / 2, 0) ** 2 < R * R;
-      }) || Math.abs(x) > hw || z < mn || z > mx;
+      const st = w();
+      return st.blockedAt(x, z) || Math.abs(x) > st.halfWidth || z < st.minDepth || z > st.maxDepth;
     };
   });
   // hold W and turn a full circle in 12 steps: every heading drives into whatever the room has

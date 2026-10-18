@@ -1704,8 +1704,9 @@ def _place_card(r):
 # you are inside, how you get back, and that the street's far end is open. It sits above the places,
 # because the moment after "walk in" is exactly where a first-time visitor is lost.
 HOW_TO_WALK = ("These three doors step into Toronto, Tokyo, or Fukuoka: W A S D to walk, "
-               "arrow keys or a gentle drag to turn, E to use what is in front of you, or the "
-               "on-screen pad on a phone. A landmark's own object may lead to another real space; "
+               "arrow keys or Q/E (or a gentle drag) to turn, E while standing still to use what "
+               "is in front of you, double-click to let the mouse look, or the on-screen pad on a "
+               "phone. A landmark's own object may lead to another real space; "
                "Esc returns to its owner, then to the street, and finally to this wall.")
 
 
@@ -5182,8 +5183,9 @@ def walk_html(d, drawer):
        data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
        data-lane-back="{lane["back"]}"{max_d_attr}{day_attr}{floor_attr} data-eye="{EYE}">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
-       aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
-       Space to jump, E to open what you are standing in front of, L for the list, I for this note.
+       aria-label="{label}, a lane you walk in person.{clad}{sight} Drag, arrow keys or Q/E to turn,
+       W A S D to walk, Shift to run, Space to jump, E while standing still to open what you are
+       facing, double-click to let the mouse look, L for the list, I for this note.
        Nothing is written over the space: every sentence is behind a button.">
     <canvas class="walk-three-canvas" data-walk-three width="16" height="9" aria-hidden="true"></canvas>
     <canvas class="walk-canvas" data-walk-canvas width="16" height="9" aria-hidden="true"></canvas>

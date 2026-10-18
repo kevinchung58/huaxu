@@ -190,7 +190,11 @@ async function pageGate(file) {
           }
           return false;
         })();
-        if (still === 24 && keys.length && forwardExit && bracedOnProp(s.x, s.depth)) {
+        if (still === 24 && keys.length && forwardExit && bracedOnProp(s.x, s.depth) &&
+            // and the window is truly immobile: a ring holding anything over 0.5 cm/s is the
+            // legal tangent creep spending what the press asks for (0.5 is the round-43 position
+            // noise floor; a 1.2 cm/s crawl along a braced face is walking, the engine spends it)
+            ring.every((r) => r[2] < 0.5)) {
           freezes++;
           if (process.env.GATE_DEBUG) {
             const near = props.map((b) => {
@@ -245,6 +249,52 @@ async function pageGate(file) {
       await watch(["w"], 160);
     }
   }
+  // V4 (round 45): painted walls the body can reach are collider strips — a world quad standing on
+  // the walkable floor (base within a hand's width of it), taller than the chest line, with a bottom
+  // edge running inside the box, must leave NO free standing point on its floor line. Measured
+  // against the page's own blockedAt, never a re-implementation. Pre-fix: 526/786 free points on
+  // niagara and journey — that scan is this check's bite.
+  {
+    const layer = env.doc.querySelector("[data-walk]");
+    const WALL0 = Number(layer.dataset.laneW ?? 640) / 2;
+    const MIND0 = Number(layer.dataset.laneStart ?? 0), MAXD0 = Number(layer.dataset.laneLen ?? 6000);
+    let bd = {};
+    try { bd = JSON.parse((env.doc.querySelector("[data-walk-backdrop]") || {}).textContent || "{}"); } catch (e) {}
+    const segd = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1];
+      const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz || 1)));
+      return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t); };
+    const runs = [];
+    for (const p of (bd.world || {}).prims || []) {
+      if (p.t !== "f" && p.t !== "x") continue;
+      const pts = p.p || []; if (!pts.length || pts.some((c) => !Array.isArray(c) || c.length < 3)) continue;
+      const ys = pts.map((c) => c[1]); const base = Math.min(...ys);
+      if (Math.max(...ys) - base < 130 || base < -20 || base > 120) continue;
+      for (let i = 0; i < pts.length; i++) {
+        const q0 = pts[i], q1 = pts[(i + 1) % pts.length];
+        if (Math.abs(q0[1] - base) > 30 || Math.abs(q1[1] - base) > 30) continue;   // bottom edges only
+        let a = [q0[0], q0[2]], b2 = [q1[0], q1[2]];
+        if (Math.max(a[1], b2[1]) < MIND0 - 4 || Math.min(a[1], b2[1]) > MAXD0 + 4) continue;
+        if (a[0] < b2[0]) { const t = a; a = b2; b2 = t; }
+        const x0 = -WALL0 - 4, x1 = WALL0 + 4;
+        if (a[0] > x1) { const t = (x1 - b2[0]) / (a[0] - b2[0] || 1); a = [x1, b2[1] + (a[1] - b2[1]) * t]; }
+        if (b2[0] < x0) { const t = (x0 - a[0]) / (b2[0] - a[0] || 1); b2 = [x0, a[1] + (b2[1] - a[1]) * t]; }
+        if (a[0] <= b2[0] || Math.hypot(b2[0] - a[0], b2[1] - a[1]) < 10 || Math.hypot(b2[0] - a[0], b2[1] - a[1]) > WALL0) continue;
+        // same cross-section tell as site.js: a run wider than half the lane is not a wall the floor meets.
+        // Mirror rule, measured against the LIVE blockedAt — the pre-fix scan (526/786 free points) is
+        // this run's bite; disabling site.js's strip collection makes holes>0 here, verified round 45.
+        runs.push([a, b2]);
+      }
+    }
+    const blockedAt = env.walk().blockedAt;
+    const half = env.walk().halfWidth;
+    let holes = 0;
+    outer: for (let x = -half; x <= half && !holes; x += 8) for (let z = MIND0; z <= Math.min(MAXD0, 30000); z += 8) {
+      for (const [a, b2] of runs) if (segd(x, z, a, b2) < 14.4 && !blockedAt(x, z)) { holes++; continue outer; }
+    }
+    ok(`${file}: painted floor-walls block the body (holes x${holes})`, holes === 0,
+       `${runs.length} bottom-edge runs scanned`);
+  }
+
   // V2: every rail stop on a FRESH boot — the §0x probe's own lesson (round 42): measuring a
   // glide from a braced position left by the contact sweep strands the verdict in sequence noise.
   const env2 = await boot(file);

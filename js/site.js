@@ -604,8 +604,9 @@ function leaveOverlay(root, trigger) {
        — per-axis rejection against the walls, and against solids a contact-normal slide with
        push-out recovery, so a braced shoulder against a plinth lets the visitor walk past it (round
        41; the reject-only version pinned bodies at corners and sealed the wall aisles);
-     - yaw is free and pitch is clamped to ±24°; turning is drag or keys, never Pointer Lock, so the
-       space remains operable on phones where Pointer Lock is unavailable;
+     - yaw is free and pitch is clamped to ±24°; turning is drag or keys (Q/E, arrows) with double-click
+       Pointer Lock as a desktop bonus — the space stays operable on phones, where drag is the whole
+       control and Pointer Lock is unavailable;
      - world units are centimetres: eye at 168, walk at 165 cm/s, run at 206 cm/s, and a 420 cm/s
        jump impulse under 2400 cm/s² of gravity;
      - openings are authored by each place; Three.js depth testing handles occlusion, and Canvas2D
@@ -679,7 +680,7 @@ function leaveOverlay(root, trigger) {
   const HIT = 44;
   // A slower, eased walk and a limited turn rate are deliberate comfort choices. Camera roll is
   // removed, and the remaining head bob is sub-centimetre so motion never fights the place being read.
-  const SPEED = 165, RUN = 1.25, ACCEL = 7.5, TURN_RATE = 75;
+  const SPEED = 165, RUN = 1.25, TURN_RATE = 75;   // release decay tau is 90 ms, in stepMotion
   const GRAV = 2400, JUMP = 420, GLIDE_SPEED = 165;
   let zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
   let vx = 0, vd = 0, phase = 0, bob = 0, raf = 0, last = 0, here = -1, reach = null;
@@ -1740,6 +1741,56 @@ function leaveOverlay(root, trigger) {
     return { x: m.x, z: m.z, w: m.w, d: m.d, c, s,
              minX: m.x - hx, maxX: m.x + hx, minD: m.z - hz, maxD: m.z + hz };
   });
+  /* Walls the lane draws are walls the body meets — the pointer-lock demo's rule (its `walls`
+     array is the painted geometry itself, not a parallel hand-marked one). A world quad that
+     stands on the walkable floor (base within a hand's width of it), rises past the knee-chest
+     line, and runs inside the box becomes a zero-thickness strip collider; its top-and-sky
+     siblings (canopies at y0 950, portals at y0 262, gorge faces below the deck) are excluded
+     by the base test alone. Without this, `wall-probe` measured 786 free standing points inside
+     the journey tunnel's own walls — a visitor walks through exactly what they see (round 45). */
+  {
+    const bdEl = layer.querySelector("[data-walk-backdrop]");
+    let world = null;
+    try { world = (JSON.parse(bdEl.textContent).world || {}); } catch (err) { world = null; }
+    for (const p of (world && world.prims) || []) {
+      if (p.t !== "f" && p.t !== "x") continue;
+      const pts = p.p || [];
+      if (pts.length < 3 || pts.some((q) => !Array.isArray(q) || q.length < 3)) continue;
+      const ys = pts.map((q) => q[1]);
+      const base = Math.min(...ys), span = Math.max(...ys) - base;
+      if (span < 130 || base < -20 || base > 120) continue;
+      for (let i = 0; i < pts.length; i++) {
+        // bottom edges only, clipped to the lane's own x span: a face's closing and top returns
+        // run over the doorway, and an outside wall crossing the lane diagonally (the gorge's revetment
+        // at the tunnel's mouth) must contribute only the stub the visitor can actually meet. The
+        // full-length diagonal of the first cut sealed the journey lane at both ends — V2 caught it.
+        const q0 = pts[i], q1 = pts[(i + 1) % pts.length];
+        if (Math.abs(q0[1] - base) > 30 || Math.abs(q1[1] - base) > 30) continue;
+        let a = [q0[0], q0[2]], b2 = [q1[0], q1[2]];
+        if (Math.max(a[1], b2[1]) < MIN_D - 4 || Math.min(a[1], b2[1]) > MAX_D + 4) continue;
+        if (a[0] < b2[0]) { const t = a; a = b2; b2 = t; }          // a is now the +x end
+        const x0 = -WALL - 4, x1 = WALL + 4;
+        if (a[0] > x1) { const t = (x1 - b2[0]) / (a[0] - b2[0] || 1); a = [x1, b2[1] + (a[1] - b2[1]) * t]; }
+        if (b2[0] < x0) { const t = (x0 - a[0]) / (b2[0] - a[0] || 1); b2 = [x0, a[1] + (b2[1] - a[1]) * t]; }
+        if (a[0] <= b2[0]) continue;                                 // the segment never enters the lane
+        const len = Math.hypot(b2[0] - a[0], b2[1] - a[1]);
+        if (len < 10 || len > WALL) continue;
+        //  len > WALL is the cross-section tell: a floor wall may lean into the lane, but nothing
+        //  real spans more than its half-width from inside the lane — the journey tunnel runs under
+        //  the gorge rim, whose deck-side retaining walls project diagonally ACROSS the tunnel frame
+        //  (10 m of "wall" over a 2.4 m lane); accepting them sealed the rail stops V2 just caught.
+        const ang = Math.atan2(b2[1] - a[1], b2[0] - a[0]);         // segment heading in lane space
+        const th = 6;                                                // 3 cm of relief each side of the face
+        colliders.push({ x: (a[0] + b2[0]) / 2, z: (a[1] + b2[1]) / 2, w: len, d: th,
+                         c: Math.cos(ang), s: Math.sin(ang) });
+      }
+    }
+    for (const b of colliders) {                                   // broad-phase boxes, as per props
+      const hx = (b.w * Math.abs(b.c) + b.d * Math.abs(b.s)) / 2 + PLAYER_RADIUS;
+      const hz = (b.w * Math.abs(b.s) + b.d * Math.abs(b.c)) / 2 + PLAYER_RADIUS;
+      b.minX = b.x - hx; b.maxX = b.x + hx; b.minD = b.z - hz; b.maxD = b.z + hz;
+    }
+  }
   // Use the distance from the body circle to the prop's rotated rectangle, rather than colliding
   // with its radius-expanded bounding *box*. The box clipped corners and made a visitor touching a
   // prop's front face unable to slide along it; a circle/OBB test preserves the real clearance.
@@ -6958,7 +7009,26 @@ function leaveOverlay(root, trigger) {
 
   const wrapYaw = (degrees) => ((degrees + 180) % 360 + 360) % 360 - 180;
   let cornerAssist = 0;   // which side of a corner the creep last chose; see the wedge branch
+  let slideDir = 0;       // the direction of the last accepted slide; see the dead zone below
   const moveBody = (nextX, nextDepth, dt = 0.0166) => {
+    // Sweep insurance: any candidate hop longer than 2.6 cm is walked in micro-steps through the
+    // same axis logic, so no frame of any speed — run, glide, a slow browser's long dt — can
+    // resolve a start-free/end-free pair that crosses a thin wall between them. The field calls
+    // this continuous collision; the engineless demos get it by clamping steps instead.
+    const gx = clamp(nextX, -HALF, HALF), gz = clamp(nextDepth, MIN_D, MAX_D);
+    const startX = x, startD = depth;
+    const hopX = gx - startX, hopD = gz - startD;
+    const hops = Math.max(1, Math.ceil(Math.max(Math.abs(hopX), Math.abs(hopD)) / 2.6));
+    if (hops > 1) {
+      // each micro-step advances from wherever the last one ended — a slide or a push-out made
+      // there is carried, not fought — in the pattern the character controllers call stepping.
+      let moved = 0;
+      for (let i = 1; i <= hops; i++) moved += moveStep(x + hopX / hops, depth + hopD / hops, dt / hops);
+      return moved;
+    }
+    return moveStep(gx, gz, dt);
+  };
+  const moveStep = (nextX, nextDepth, dt = 0.0166) => {
     // A body resting inside a margin — after a respawn next to a plinth, a clipped glide target —
     // leaves it on the next move rather than standing frozen inside the geometry (the push-out
     // every collision solver needs after its reject test; the probe called this ESCAPE-FAIL risk).
@@ -7019,12 +7089,18 @@ function leaveOverlay(root, trigger) {
           sx = clamp(sx + h2.nx * h2.p, -HALF, HALF);
           sd = clamp(sd + h2.nz * h2.p, MIN_D, MAX_D);
         }
-        // dead zone: a slide shorter than 1.2 cm this frame is a corner flip-flop in the making —
-        // the normal can alternate between two faces while the wish straddles them, and every frame
-        // of that is a visible buzz. The projection below keeps the tangent velocity accumulating,
-        // so a held key walks past the zone a frame or two later instead of stalling in it.
-        if (!collidesAt(sx, sd) && Math.hypot(sx - oldX, sd - oldDepth) > 1.2) {
+        // The dead zone is anti-flip-flop, not anti-slow: buzz means the normal alternating and
+        // the slide reversing — a reversal pays the 1.2 cm threshold, a monotone creep never does,
+        // and a first accepted slide has no history to contradict. (The old formulation also gated
+        // the FIRST acceptance on the threshold: a 0.69 cm/frame tangent — 41 cm/s, an ordinary
+        // angled press — was refused, could never set slideDir, and froze four fukuoka braced
+        // holds at 0.2 cm/s with a legal 45° exit.)
+        const hop2 = Math.hypot(sx - oldX, sd - oldDepth);
+        const dir = along > 0.01 ? 1 : along < -0.01 ? -1 : 0;
+        const buzz = dir !== 0 && slideDir !== 0 && dir !== slideDir;
+        if (!collidesAt(sx, sd) && hop2 > 0.01 && (!buzz || hop2 > 1.2)) {
           nx2 = sx; nz2 = sd; blockedX = false; blockedD = false;
+          if (dir) slideDir = dir;
         }
         // kill only the component into the face — whether the slide ran or not, so the tangent
         // keeps its momentum and the blunt zeroing never starves the ramp the dead zone waits for
@@ -7035,7 +7111,7 @@ function leaveOverlay(root, trigger) {
     }
     if (!projected && blockedX && Math.abs(cx - oldX) > 0.001) vx = 0;
     if (!projected && blockedD && Math.abs(cz - oldDepth) > 0.001) vd = 0;
-    if (!projected) cornerAssist = 0;      // the moment a free axis exists, the creep stands down
+    if (!projected) { cornerAssist = 0; slideDir = 0; }   // a free axis: the creep stands down
     x = nx2; depth = nz2;
     if (x === -HALF || x === HALF) vx = 0;
     if (depth === MIN_D || depth === MAX_D) vd = 0;
@@ -7085,7 +7161,7 @@ function leaveOverlay(root, trigger) {
         else homeGlide();     // but an auto-walk must not abandon the visitor mid-lane
       }
     } else if (!glideOnly) {
-      const turn = (keys.has("arrowright") ? 1 : 0) - (keys.has("arrowleft") ? 1 : 0);
+      const turn = (keys.has("arrowright") || keys.has("e") ? 1 : 0) - (keys.has("arrowleft") || keys.has("q") ? 1 : 0);
       if (turn) yaw = wrapYaw(yaw + turn * TURN_RATE * dt);
       let mx = stick ? stick.x : 0, md = stick ? -stick.y : 0;
       if (keys.has("w") || keys.has("arrowup")) md += 1;
@@ -7102,9 +7178,12 @@ function leaveOverlay(root, trigger) {
       const heading = a(), sy = Math.sin(heading), cy = Math.cos(heading);
       const wishX = ((mx * cy) + (md * sy)) / len * SPEED * r;
       const wishD = ((-mx * sy) + (md * cy)) / len * SPEED * r;
-      const k = 1 - Math.exp(-ACCEL * dt);
-      vx += (wishX - vx) * k;
-      vd += (wishD - vd) * k;
+      // the pointer-lock demo's model, measured against ours: input frames set the velocity —
+      // no ramp to feel like skating — and only a released body decays (tau 90 ms: gone inside
+      // a step and a half, no drift past the wall the old 400 ms exponential eased through).
+      if (mx || md) { vx = wishX; vd = wishD; }
+      else { const dmp = Math.exp(-dt / 0.09); vx *= dmp; vd *= dmp;
+             if (Math.hypot(vx, vd) < 1.2) { vx = 0; vd = 0; } }
       moveBody(x + vx * dt, depth + vd * dt);
     }
     if (height > 0 || vy !== 0) {
@@ -7485,7 +7564,15 @@ function leaveOverlay(root, trigger) {
       else showSpace();     // a prop's card is replaced by the lane's note, not buried under it
       return;
     }
-    if (k === "e") { event.preventDefault(); act(reach); return; }
+    if (k === "e") {
+      // While a move key is held, e is the turn key and must not use the object; still, a tap
+      // of e is the "use" key it has always been.
+      if (["w", "a", "s", "d", "shift", "e"].some((m) => keys.has(m))) {
+        event.preventDefault(); keys.add("e"); gliding = null; loop(); return;
+      }
+      event.preventDefault(); act(reach); return;
+    }
+    if (k === "q") { event.preventDefault(); keys.add("q"); gliding = null; loop(); return; }
     if (k === " ") { event.preventDefault(); jump(); return; }
     if (k === "enter" && document.activeElement === view && reach) { event.preventDefault(); act(reach); return; }
     if (["w", "a", "s", "d", "shift", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) {
@@ -7508,6 +7595,19 @@ function leaveOverlay(root, trigger) {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") releaseInput();
   });
+  // Desktop bonus, never a requirement: double-clicking the view locks the pointer the way the
+  // three.js demo does; Esc releases it (the browser reserves that key while locked, so the
+  // unwinding below never sees it). Phones keep dragging — the control they always had.
+  view.addEventListener("dblclick", () => {
+    if (document.pointerLockElement || typeof view.requestPointerLock !== "function") return;
+    try { view.requestPointerLock(); } catch (err) { /* an embedded frame may refuse the lock; drag remains */ }
+  });
+  document.addEventListener("mousemove", (event) => {
+    if (document.pointerLockElement !== view) return;
+    yaw = wrapYaw(yaw + (event.movementX || 0) * 0.14);
+    pitch = clamp(pitch - (event.movementY || 0) * 0.10, -MAX_PITCH, MAX_PITCH);
+    loop();
+  });
   window.addEventListener("resize", () => { size(); draw(); });
   // Read-only, for the harness: a jsdom that can only assert "the picture changed" cannot tell a
   // camera that walks from one that jitters, and the numbers that matter are already in scope here.
@@ -7518,6 +7618,9 @@ function leaveOverlay(root, trigger) {
                    get halfWidth() { return HALF; },
                    get minDepth() { return MIN_D; }, get maxDepth() { return MAX_D; },
                    get maxHeight() { return MAX_HEIGHT; }, get bob() { return bob; },
+                   // the harness reads the real answer, not a re-implementation of it: the wall-gap
+                   // gate calls this on positions a visitor could reach and requires no wall quad frees
+                   get blockedAt() { return collidesAt; },
                    get maxSpeed() { return SPEED * RUN; }, get turnRate() { return TURN_RATE; },
                    get renderer() { return threeRenderer ? "three" : "canvas2d"; },
                    get backdrop() { return bd; }, get day() { return DAY(); }, get dayPage() { return DAYPAGE; },
