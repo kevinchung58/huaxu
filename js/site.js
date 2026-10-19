@@ -7144,6 +7144,14 @@ function leaveOverlay(root, trigger) {
     delete gliding.origX;
   };
 
+  // One motion step, in the pipeline vocabulary adopted in round 46 (Mint spatial-contracts §2):
+  // inputs (held keys, a rail glide's target, a jump's nudge) are read as INTENT — desired motion,
+  // never positions; constraints (walls, height, reach, the comfort clamp on RUN) resolve that intent
+  // against the committed state; x/depth/yaw are committed once, at the bottom; and only then does
+  // anything present (draw, the plate, the guide strip, `__walk`). Presentation never moves the
+  // body, and no consumer — test, instrument, or guide — samples render geometry to learn where the
+  // body is: they read the committed state, which is why a claim about movement and a measurement of
+  // it can never diverge by construction.
   const stepMotion = (dt, glideOnly = false) => {
     if (gliding) {
       const dx = gliding.x - x, dd = gliding.to - depth;
@@ -7216,6 +7224,7 @@ function leaveOverlay(root, trigger) {
     } else bob = 0;
     draw();
     checkReach();
+    tutorFrame();
     // Keep asking for frames while anything is still moving — including a turn in place or a jump.
     // Held input keeps the pump alive at a wall; the idle pulse is for a genuinely resting walker.
     const hasWalkInput = ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"]
@@ -7319,6 +7328,7 @@ function leaveOverlay(root, trigger) {
   };
   const showCard = (m) => {
     if (!card) return;
+    tutorCardOpened();          // the guide's third step completes on a card actually opening
     const where = card.querySelector("[data-walk-where]");
     const title = card.querySelector("[data-walk-title]");
     const hint = card.querySelector("[data-walk-hint]");
@@ -7334,6 +7344,53 @@ function leaveOverlay(root, trigger) {
     const btn = card.querySelector("[data-walk-card-close]");
     if (btn) btn.focus({ preventScroll: true });
   };
+  /* --- the guide: a first-visit strip that teaches the keys by having them used (round 46) ---
+     The rule is that nothing is written over the space, and the guide honours it: it lives in the
+     bottom chrome, takes no input away, grabs no focus, and never returns once learned. Each step
+     waits for the real thing — a turn that actually turned, a stride that actually moved the body,
+     a card that actually opened — so the hands learn the lane, not a dialog. The strip polls the
+     committed state through the same getters `__walk` publishes (spatial-contracts §4: consume the
+     solver, never re-implement it) — a guide measuring its own copy of the body could lie. */
+  const tutorEl = layer.querySelector("[data-walk-tutor]");
+  const tutorText = tutorEl && tutorEl.querySelector("[data-walk-tutor-text]");
+  const tutorCount = tutorEl && tutorEl.querySelector("[data-walk-tutor-count]");
+  const tutorSkip = tutorEl && tutorEl.querySelector("[data-walk-tutor-skip]");
+  const tutorDoneBtn = tutorEl && tutorEl.querySelector("[data-walk-tutor-done]");
+  const TUTOR_FLAG = "huaxu.walk-guide.v1";
+  const tutStore = {
+    done() { try { return window.localStorage.getItem(TUTOR_FLAG) === "1"; } catch (e) { return false; } },
+    set() { try { window.localStorage.setItem(TUTOR_FLAG, "1"); } catch (e) { /* private mode: this visit only */ } },
+  };
+  const TUT = [
+    "Turn first: the lane continues behind you. Arrow keys or Q / E, or drag the view.",
+    "Now walk in: hold W; Shift lets it run. The walls hold you — nothing here is a picture to walk through.",
+    "Stand in front of anything worth reading and press E, or tap it: every record lives behind a button, never painted on the scene.",
+    "Those ticks above are the rail. Press one and the lane carries you to where the view is worth stopping for; Esc walks you back out.",
+  ];
+  let tutStep = -1, tutYaw = 0, tutX = 0, tutD = 0;
+  const showTutor = (i) => {
+    if (!tutorEl) return;
+    tutStep = i;
+    if (i < 0) { tutorEl.hidden = true; return; }
+    tutorEl.hidden = false;
+    if (tutorText) tutorText.textContent = TUT[i];
+    if (tutorCount) tutorCount.textContent = (i + 1) + " / " + TUT.length;
+    if (tutorSkip) tutorSkip.hidden = i === TUT.length - 1;
+    if (tutorDoneBtn) tutorDoneBtn.hidden = i !== TUT.length - 1;
+    tutYaw = yaw; tutX = x; tutD = depth;
+  };
+  const endTutor = () => { tutStore.set(); showTutor(-1); };
+  if (tutorSkip) tutorSkip.addEventListener("click", endTutor);
+  if (tutorDoneBtn) tutorDoneBtn.addEventListener("click", endTutor);
+  const tutorReplay = layer.querySelector("[data-walk-tutor-replay]");
+  if (tutorReplay) tutorReplay.addEventListener("click", () => showTutor(0));
+  const tutorFrame = () => {
+    if (tutStep < 0) return;
+    if (tutStep === 0 && Math.abs((((yaw - tutYaw) % 360) + 540) % 360 - 180) > 25) showTutor(1);
+    else if (tutStep === 1 && Math.hypot(x - tutX, depth - tutD) > 180) showTutor(2);
+  };
+  const tutorCardOpened = () => { if (tutStep === 2) showTutor(3); };
+
   /* The space's own text — the legend, the disclaimer, the fallback sentence — is written into the
      page inside a card that is closed until you ask for it. Nothing in the head-up display is a
      sentence; the icons are the only chrome, and this is the one button that opens prose. */
@@ -7633,6 +7690,7 @@ function leaveOverlay(root, trigger) {
                      threeRenderer = engine; draw();
                      return threeRenderer === engine;
                    } };
+  if (tutorEl && !tutStore.done()) showTutor(0);   // a first visit is taught in place, once
   if (listPanel) listPanel.classList.add("is-closed");   // scripting present: fold it, then obey
   if (listBtn) listBtn.setAttribute("aria-expanded", "false");
   draw();

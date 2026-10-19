@@ -26,7 +26,7 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","@id":"https://kevinchung58.github.io/huaxu/street.html","url":"https://kevinchung58.github.io/huaxu/street.html","isPartOf":{"@type":"WebSite","name":"Hua-Xu Zhong","url":"https://kevinchung58.github.io/huaxu/index.html"}}</script>
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
   <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
-  <link rel="stylesheet" href="css/site.css?v=3da1040f52" />
+  <link rel="stylesheet" href="css/site.css?v=902f09d65a" />
 </head>
 <body class="shell">
 <div class="walk" id="walk-street" data-walk="The street" data-walk-id="street"
@@ -35,7 +35,7 @@
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="The street, a lane you walk in person. The street is dressed by region: plaster and brick fronts, shops with their canvases, noren and blank fascias, planters, bins, bicycles, a vending machine and a folding board along the kerbs, and three doors -- Toronto, Tokyo and Fukuoka. Nothing on any of it carries a word. At its far end the street walks out onto a quay over a harbour: moving water, a ferry, a crane, a breakwater and the far shore. Drag, arrow keys or Q/E to turn,
        W A S D to walk, Shift to run, Space to jump, E while standing still to open what you are
-       facing, double-click to let the mouse look, L for the list, I for this note.
+       facing, double-click to let the mouse look, L for the list, I for this note. The first visit is walked through once by a guide strip at the bottom of the screen; it is replayable from this note.
        Nothing is written over the space: every sentence is behind a button.">
     <canvas class="walk-three-canvas" data-walk-three width="16" height="9" aria-hidden="true"></canvas>
     <canvas class="walk-canvas" data-walk-canvas width="16" height="9" aria-hidden="true"></canvas>
@@ -85,6 +85,12 @@
       </div>
     </div>
     <div class="walk-bottom">
+      <div class="walk-tutor" data-walk-tutor hidden>
+        <b class="walk-tutor-n" data-walk-tutor-count></b>
+        <p class="walk-tutor-step" data-walk-tutor-text></p>
+        <button type="button" class="walk-tutor-act" data-walk-tutor-skip aria-label="Skip the guide">Skip</button>
+        <button type="button" class="walk-tutor-act" data-walk-tutor-done hidden aria-label="Finish the guide">Got it</button>
+      </div>
       <div class="walk-tools">
         <span class="walk-fov"><button type="button" class="walk-icon" data-walk-fov="-1"
           aria-label="Wider view"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button
@@ -108,6 +114,8 @@
       <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
         <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open a thing ·
         <kbd>L</kbd> the list · <kbd>I</kbd> this note · <kbd>Esc</kbd> close, then leave</p>
+      <p class="walk-note"><button type="button" class="walk-tutor-replay" data-walk-tutor-replay>
+        Show the guide again</button> — four steps, taught where they are used.</p>
       <p class="walk-note">With a finger: drag to turn, tap the wall in front of you to open it, tap
         again to put it down. Three ways out — the arrow in the corner, the curtain at the mouth of the
         lane, and a second <kbd>Esc</kbd> once nothing is open any more.</p>
@@ -156,7 +164,7 @@
   </div>
 </div>
 
-<script src="js/site.js?v=3da1040f52"></script>
-<script type="module" src="js/scene3d.js?v=3da1040f52"></script>
+<script src="js/site.js?v=902f09d65a"></script>
+<script type="module" src="js/scene3d.js?v=902f09d65a"></script>
 </body>
 </html>

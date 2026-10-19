@@ -1706,7 +1706,8 @@ def _place_card(r):
 HOW_TO_WALK = ("These three doors step into Toronto, Tokyo, or Fukuoka: W A S D to walk, "
                "arrow keys or Q/E (or a gentle drag) to turn, E while standing still to use what "
                "is in front of you, double-click to let the mouse look, or the on-screen pad on a "
-               "phone. A landmark's own object may lead to another real space; "
+               "phone. On the first visit a short guide teaches those keys in place, once, and the "
+               "info card replays it. A landmark's own object may lead to another real space; "
                "Esc returns to its owner, then to the street, and finally to this wall.")
 
 
@@ -2798,7 +2799,7 @@ def niagara_world(fr, view="rim"):
                 P.append(_prim("w", [fr.cm(*pa, ua), fr.cm(*pb, ua), fr.cm(*qb, ub), fr.cm(*qa, ub)],
                                c=colours[s], a=air(*crest[i], 0.75), il=1, dg=0.35, s=low,
                                k=(k_streaks if s > 1 else 0), pat="fallsw", u=grain, pa=(0.55, 0.8, 0.95, 1.0)[s]))
-    curtain(hs, NIA_CREST, NIA_RIVER, 24, ("#3f9c8a", "#7cc3b5", "#c4e2de", "#e4f0ef"), 2, taper=4)
+    curtain(hs, NIA_CREST, NIA_RIVER, 24, ("#3f9c8a", "#7cc3b5", "#d8ecea", "#eef6f5"), 2, taper=4)
     amr = resample(am_cr, 12)
     curtain(amr, NIA_AM_CREST, NIA_TALUS, 4, ("#7fb9ae", "#b6d8d1", "#dfecea", "#e9f2f1"), 2, grain=1400)
     amn = left_normals(amr)
@@ -2824,10 +2825,10 @@ def niagara_world(fr, view="rim"):
     # what hides the plunge from the rim and from the deck alike.
     # Three rounds a cloud rather than five: a soft round is a costly fill, and three overlapping
     # ones read the same at this size.
-    for d, step, w, h, al in ((34, 3, 62, 34, 0.34), (80, 4, 84, 44, 0.3), (130, 8, 100, 40, 0.22)):
+    for d, step, w, h, al, up in ((34, 3, 62, 44, 0.42, 7), (80, 4, 84, 48, 0.32, 4), (130, 8, 100, 40, 0.22, 1)):
         ring = [(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)]
         for i in range(2, 35, step):
-            P.append({"t": "m", "o": fr.cm(*ring[i], NIA_RIVER + 1), "w": w * 100, "h": h * 100,
+            P.append({"t": "m", "o": fr.cm(*ring[i], NIA_RIVER + up), "w": w * 100, "h": h * 100,
                       "al": round(al * mist_k, 3), "a": 0.02, "il": 1, "np": 3})
     # Round 43, the part the basin rings could not say: from the rail, the mist is not a distant
     # blanket. It lifts off the crest itself -- a boil of columns springing at the brink and climbing
@@ -5185,7 +5186,7 @@ def walk_html(d, drawer):
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="{label}, a lane you walk in person.{clad}{sight} Drag, arrow keys or Q/E to turn,
        W A S D to walk, Shift to run, Space to jump, E while standing still to open what you are
-       facing, double-click to let the mouse look, L for the list, I for this note.
+       facing, double-click to let the mouse look, L for the list, I for this note. The first visit is walked through once by a guide strip at the bottom of the screen; it is replayable from this note.
        Nothing is written over the space: every sentence is behind a button.">
     <canvas class="walk-three-canvas" data-walk-three width="16" height="9" aria-hidden="true"></canvas>
     <canvas class="walk-canvas" data-walk-canvas width="16" height="9" aria-hidden="true"></canvas>
@@ -5206,6 +5207,12 @@ def walk_html(d, drawer):
       </div>
     </div>
     <div class="walk-bottom">
+      <div class="walk-tutor" data-walk-tutor hidden>
+        <b class="walk-tutor-n" data-walk-tutor-count></b>
+        <p class="walk-tutor-step" data-walk-tutor-text></p>
+        <button type="button" class="walk-tutor-act" data-walk-tutor-skip aria-label="Skip the guide">Skip</button>
+        <button type="button" class="walk-tutor-act" data-walk-tutor-done hidden aria-label="Finish the guide">Got it</button>
+      </div>
       <div class="walk-tools">
         <span class="walk-fov"><button type="button" class="walk-icon" data-walk-fov="-1"
           aria-label="Wider view">{ICON_FOV_OUT}</button
@@ -5229,6 +5236,8 @@ def walk_html(d, drawer):
       <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
         <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open a thing ·
         <kbd>L</kbd> the list · <kbd>I</kbd> this note · <kbd>Esc</kbd> close, then leave</p>
+      <p class="walk-note"><button type="button" class="walk-tutor-replay" data-walk-tutor-replay>
+        Show the guide again</button> — four steps, taught where they are used.</p>
       <p class="walk-note">With a finger: drag to turn, tap the wall in front of you to open it, tap
         again to put it down. Three ways out — the arrow in the corner, the curtain at the mouth of the
         lane, and a second <kbd>Esc</kbd> once nothing is open any more.</p>

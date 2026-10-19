@@ -128,6 +128,17 @@ If a room is merely correct, it has not met this standard.
    **{−90, −45, 0, 45, 90} at every stop**, 25 viewpoints, in batches, because one process over all
    of them runs out of memory.
 
+### Instruments read the solver, not the render
+
+Adopted in round 46 from the one-world-query rule (Mint spatial-contracts §4), because round 45
+earned the lesson twice over: position-based feel metrics derived from wall-clock gaps disagreed in
+opposite directions under the 0.12 s physics clamp, and the 穿牆 report that invalidated two rounds
+of "fixed" claims had survived review precisely because the instruments re-implemented the movement
+instead of consuming it. The rule: any measurement of movement, blocking, or standing reads the
+committed state the site itself publishes (`__walk`'s `depth`/`x`/`yaw`/`velocity`/`blockedAt`), and
+nothing outside the solver decides where the body is by sampling scene geometry or re-integrating
+velocity. When the site can answer, the answer comes from the site.
+
 ### Other traps, all of them hit
 
 - **A short window misses a slow cycle.** Sampling 2.1 s of a 42 s roof cycle measures it as dead.
@@ -221,6 +232,12 @@ this repo that is operational, not aspirational:
   template is `.verify/verify-collision.cjs`: named properties, explicit thresholds, and a
   demonstrated *bite* (run the gate against the pre-fix artifact and show it fails). A visual fix
   ships with freshly eyeballed frames from the served artifact, not from the code that made it.
+- **Handoff reports what actually ran, in those words.** A round closes by listing the gates that
+  were executed with their tallies, and by naming what could not run and why, in the same breath —
+  never by letting "verified" imply a browser was opened when only a headless harness was (round 46
+  found the external verification policy stating exactly this, and it matches this repo's measure-
+  never-assert rule rather than competing with it; the PR body is the handoff, and it tells the
+  truth about its own evidence).
 - **A measured "not needed" closes an option; silence does not.** An open question is completed by
   adjudicating it this round — run the inventory, print the count, cite the result — and the
   disposition goes in the ledger with the command that produced it. Rejected sources close the same
