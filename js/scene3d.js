@@ -492,9 +492,10 @@ export function buildLaneGeometry(THREE, quads, state = {}) {
 }
 
 function laneShaderMaterial(THREE, map, transparent) {
-  const material = new THREE.MeshBasicMaterial({
+  const material = new THREE.MeshStandardMaterial({
     map: map || null, vertexColors: true, side: THREE.DoubleSide, transparent,
-    depthWrite: !transparent, depthTest: true, fog: false,
+    depthWrite: !transparent, depthTest: true, fog: false, flatShading: true,
+    roughness: 0.92, metalness: 0, envMapIntensity: 0.45,
   });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uLaneWarm = { value: new THREE.Color("#ffe4ba") };
@@ -822,6 +823,36 @@ function backdropSkyStops(backdrop, dayPage, day) {
     e: Math.atan2(((Number(band.y0) + Number(band.y1)) * 0.5) - 168, 120000) * 180 / Math.PI,
     c: dayColor(band.c || FALLBACK_COLOR, 0.8 + 0.12 * (Number(band.glow) || 0)),
   }));
+}
+
+function makeSkyEnvironment(THREE, renderer, backdrop, dayPage, day) {
+  if (typeof document === "undefined" || !renderer || !THREE.PMREMGenerator) return null;
+  const stops = backdropSkyStops(backdrop || {}, dayPage, day);
+  if (!stops.length) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = 64; canvas.height = 128;   // azimuth is uniform; only the elevation axis carries data
+  const c = canvas.getContext("2d");
+  if (!c) return null;
+  for (let y = 0; y < canvas.height; y++) {
+    const elevation = 90 - (180 * y) / (canvas.height - 1);
+    c.fillStyle = skyColorAt(stops, elevation, dayPage, day);
+    c.fillRect(0, y, canvas.width, 1);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.mapping = THREE.EquirectangularReflectionMapping;
+  texture.colorSpace = THREE.NoColorSpace;   // the site's own convention (see buildRenderer): display
+                                             // values are the working space; a decode here would dim the
+                                             // reflections against the very sky they were sampled from
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const env = pmrem.fromEquirectangular(texture).texture;
+    pmrem.dispose();
+    texture.dispose();
+    return env;
+  } catch (e) {
+    texture.dispose();
+    return null;   // no environment is a worse-looking but complete scene; a throw is not
+  }
 }
 
 function makeSkyTexture(THREE, backdrop, dayPage, day) {
@@ -1249,12 +1280,36 @@ export function createSceneEffects(THREE, scene, source, materials = [], texture
 function buildRenderer(THREE, canvas, backdrop, api) {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: true, powerPreference: "low-power" });
   renderer.setPixelRatio(1);
+  // Round 48, the lighting base the owner signed off on. The palette of this site is authored as
+  // display values and the renderer's SRGB output (an encode every surface used to get, which the
+  // tuned colours already compensate for) is KEPT — the filmic curve rides on top of it, so the
+  // one-line diff against the old look is literally `enc(aces(in))` versus `enc(in)`: highlights
+  // roll off, the deepest darks firm up, midtones barely move. Exposure 0.75 (against three's
+  // internal /0.6) is the calibrated amount that keeps the authored sky inside a stop of before.
+  // The 2D mirror in site.js reproduces the same composite transform, matrix for matrix.
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.75;
+  // Glow sprites stay outside the curve on purpose — a lantern is allowed to blow out, a wall is not.
+
   renderer.setClearColor(0x141e36, 1);
   backdrop = backdrop || {};
   const scene = new THREE.Scene();
   scene.background = makeSkyTexture(THREE, backdrop, api.dayPage, api.day);
+  // The environment is the same authored sky the backdrop is painted from — one elevation table,
+  // sampled once, turned into a prefiltered radiance map by PMREM. Reflections and the visible sky
+  // cannot disagree, because they read the same record (the one-world-query rule, pointed at light).
+  const environment = makeSkyEnvironment(THREE, renderer, backdrop, api.dayPage, api.day);
+  if (environment) scene.environment = environment;
+  // A hemisphere light, coloured from the same elevation table as the sky and the environment:
+  // it is the floor under which a scene may never go black — PMREM can fail on a weak software
+  // renderer, and a lit-painted world must degrade to "gentle sky bounce", not to "unlit black".
+  {
+    const hs = backdropSkyStops(backdrop, api.dayPage, api.day);
+    const skyC = hs.length ? skyColorAt(hs, 45, api.dayPage, api.day) : FALLBACK_COLOR;
+    const gndC = hs.length ? skyColorAt(hs, -45, api.dayPage, api.day) : FALLBACK_COLOR;
+    scene.add(new THREE.HemisphereLight(skyC, gndC, 0.5));
+  }
   scene.fog = new THREE.FogExp2(FALLBACK_COLOR, 0.000005);
   const camera = new THREE.PerspectiveCamera(45, 1, 20, 600000);
   const staged = buildWorldGeometry(THREE, backdrop.world || {});
@@ -1275,8 +1330,12 @@ function buildRenderer(THREE, canvas, backdrop, api) {
     const map = batch.key === "__flat" ? null : (textures.get(batch.key) || makeTexture(THREE, batch.key, renderer));
     if (map && !textures.has(batch.key)) textures.set(batch.key, map);
     const transparent = batch.opacity < 0.999 || batch.key === "ironscroll";
-    const material = new THREE.MeshBasicMaterial({ map, vertexColors: true, side: THREE.DoubleSide,
-      opacity: batch.opacity, transparent, depthWrite: !transparent, fog: true,
+    // Lit but not shiny: the world is painted, and PBR here is about the sky's ambient wrapping
+    // the volumes, not about pretending to be varnished. flatShading is load-bearing — the batches
+    // carry no normal attribute, and the derivative path needs none.
+    const material = new THREE.MeshStandardMaterial({ map, vertexColors: true, side: THREE.DoubleSide,
+      opacity: batch.opacity, transparent, depthWrite: !transparent, fog: true, flatShading: true,
+      roughness: 0.95, metalness: 0, envMapIntensity: 0.55,
       polygonOffset: batch.key !== "__flat", polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = `surveyed world: ${batch.key}`;
@@ -1487,6 +1546,7 @@ function buildRenderer(THREE, canvas, backdrop, api) {
     version: THREE_VERSION,
     render,
     dispose() {
+      if (environment) environment.dispose();
       canvas.hidden = true;
       for (const entry of laneMeshes.values()) entry.mesh.geometry.dispose();
       for (const material of laneMaterials.values()) material.dispose();

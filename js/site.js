@@ -621,6 +621,77 @@ function leaveOverlay(root, trigger) {
   const view = layer.querySelector("[data-walk-view]");
   const cv = layer.querySelector("[data-walk-canvas]");
   const g = cv && cv.getContext ? cv.getContext("2d") : null;
+  /* Round 48 strict parity. The Three surface now finishes every lit material with
+     `enc(saturate(aces(in)))` — the filmic curve applied to the authored display values (the maps
+     are NoColorSpace: nothing is linearised on either path) followed by the sRGB encode that
+     `colorspace_fragment` performs. A fallback visitor must see the same picture, so the same
+     transform — matrix for matrix, exponent for exponent, from the vendored three's own shader —
+     is applied once here, at the only two places where colours become pixels: the scene canvas and
+     the pattern tiles that feed it. Glow is deliberately outside it, exactly as the additive
+     sprites are `toneMapped: false` on the WebGL side, and a gradient is a glow. Instrumented
+     contexts from the test harness (no initial fillStyle string) are left alone: the recorder
+     measures authored colours, and rewriting them would rewrite the contract it checks. */
+  const toneMirror = (ctx) => {
+    if (!ctx || typeof ctx.fillStyle !== "string" || !ctx.fillStyle) return ctx;
+    const e = 0.75 / 0.6;              // toneMappingExposure over the divisor the shader itself applies
+    const fit = (v) => (v * (v + 0.0245786) - 0.000090537) / (v * (0.983729 * v + 0.432951) + 0.238081);
+    const aces = (r, gc, b) => {
+      r *= e; gc *= e; b *= e;
+      // mat3(v0, v1, v2) in GLSL multiplies COLUMN-wise: result.x = v0.x*r + v1.x*g + v2.x*b.
+      // (A row-major reading passes any grey test and hue-shifts every colour — round 48 learned
+      // that by turning the Niagara sky magenta in a screenshot.)
+      let x = 0.59719 * r + 0.35458 * gc + 0.04823 * b;
+      let y = 0.07600 * r + 0.90834 * gc + 0.01566 * b;
+      let z = 0.02840 * r + 0.13383 * gc + 0.83777 * b;
+      x = fit(x); y = fit(y); z = fit(z);
+      r = 1.60475 * x - 0.53108 * y - 0.07367 * z;
+      gc = -0.10208 * x + 1.10813 * y - 0.00605 * z;
+      b = -0.00327 * x - 0.07276 * y + 1.07602 * z;
+      const enc = (u) => { u = u < 0 ? 0 : u > 1 ? 1 : u;
+        return u <= 0.0031308 ? u * 12.92 : 1.055 * (u ** (1 / 2.4)) - 0.055; };   // colorspace_fragment
+      return [enc(r), enc(gc), enc(b)];
+    };
+    const HEX = /^(#)([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+    const RGB = /^(rgba?\()\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(,[^)]*)?(\))$/;
+    const map = (style) => {
+      if (typeof style !== "string") return style;
+      const m = HEX.exec(style);
+      const rgb = m ? null : RGB.exec(style);
+      try {
+        if (m) {
+          let h = m[2];
+          if (h.length === 3 || h.length === 4) h = h.split("").map((ch) => ch + ch).join("");
+          const alpha = h.length === 8 ? h.slice(6) : "";
+          const r = parseInt(h.slice(0, 2), 16) / 255, gc = parseInt(h.slice(2, 4), 16) / 255,
+                b = parseInt(h.slice(4, 6), 16) / 255;
+          const o = (v) => Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, "0");
+          const t = aces(r, gc, b);
+          return `#${o(t[0])}${o(t[1])}${o(t[2])}${alpha}`;
+        }
+        if (rgb) {
+          const t = aces(+rgb[2] / 255, +rgb[3] / 255, +rgb[4] / 255);
+          const c8 = (v) => Math.round(Math.max(0, Math.min(1, v)) * 255);
+          return `rgb${rgb[5] ? "a" : ""}(${c8(t[0])},${c8(t[1])},${c8(t[2])}${rgb[5] || ""})`;
+        }
+      } catch (e2) { /* an unparsable colour is somebody else's problem, and unchanged */ }
+      return style;
+    };
+    // Shadow the prototype's accessors — and forward to them. An instance property that merely
+    // stores the mapped colour never reaches the rasteriser, which is how the first version of this
+    // mirror painted the fallback black: the canvas read its native fillStyle, still the default.
+    const proto = Object.getPrototypeOf(ctx);
+    for (const prop of ["fillStyle", "strokeStyle"]) {
+      const native = Object.getOwnPropertyDescriptor(proto, prop);
+      if (!native || !native.set) return ctx;
+      Object.defineProperty(ctx, prop, {
+        get() { return native.get.call(this); },
+        set(v) { native.set.call(this, map(v)); },
+        configurable: true,
+      });
+    }
+    return ctx;
+  };
+  toneMirror(g);
   const noRaster = layer.querySelector("[data-walk-fallback]");
   const statusEl = layer.querySelector("[data-walk-status]");
   const recordEl = layer.querySelector("[data-walk-record]");
@@ -745,6 +816,7 @@ function leaveOverlay(root, trigger) {
     t.width = 128; t.height = 128;
     const c = t.getContext("2d");
     if (!c) return null;
+    toneMirror(c);   // the tile is a lit surface in the 3D mode; it arrives tone-mapped the same once
     paint(c);
     const pattern = g.createPattern(t, "repeat");
     if (pattern && typeof pattern === "object") PATTERN_SOURCE.set(pattern, { canvas: t, id: `tile-${++patternSerial}` });

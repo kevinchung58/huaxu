@@ -2563,3 +2563,11 @@ impeccable `[]` · idempotent · 五站 60 fps。
 - 查證過的技術來源（全部 MIT、純程式碼、與 js/vendor three 同版 r186）：`Sky.js`（大氣散射，**只作環境光來源、不上畫面**——記錄無太陽方位，畫太陽=發明時間，§5 紅線）、`Water2.js`（flowMap 可選、法線圖自己用 canvas 程序生成，不引 waternormals.jpg）、`RoomEnvironment`（零素材 envmap）、`Reflector`、`GroundedSkybox`、`UnrealBloomPass`/`OutputPass`。已斃：jbouny/ocean（2017 停更+自帶素材）、3DGS 檢視器（掃描資產不存在於我們的事實場景）、mint 雲端素材管線（§5+零依賴）。
 - 落地方式照 repo 慣例：vendor 目錄只放 three 本體，examples 的 GLSL/JS **內聯進 scene3d.js 並註明出處**（瀑布著色器已是這個模式）；材質轉換逐頁推進（先 niagara 當先鋒、對照前後幀，再街道/夜間組），每頁過 verify-three/walk-feel/對照截圖才算完成。
 - 順序建議（4 輪）：R48 光照基礎建設（tone mapping+env+Standard 先鋒頁 niagara）→ R49 水與濕地（Water2 河面/水潭/瀑布潭 + Reflector）→ R50 夜間發光組（glow 材質化+bloom 進 canvas 鏡像）→ R51 全頁收尾與降級器追平。
+### R48 已完成（本輪，見對應 commit）
+- ACESFilmicToneMapping exposure 0.75（保留 SRGB 輸出——本站調色在 enc 之上标定，曲線疊在同一 space；painter 鏡像逐式複刻 `enc(aces(in))`，矩陣必須按 GLSL 欄乘（灰階測試查不出錯置，彩色會偏——教訓入 §4 儀器條目旁注）。
+- 環境光＝天空同一資料：makeSkyEnvironment 以 skyColorAt 高度表畫 equirect canvas → PMREM；**加 HemisphereLight 保底**（PMREM 在弱軟體渲染器失敗時 Standard+無燈=全黑，swiftshader 實測過；有保底最多變柔不會變黑）。
+- 世界批次與車道材質轉 MeshStandardMaterial(roughness .92-.95, flatShading)——flatShading 讓**無 normal 屬性的幾何**直接可用（derivatives 路徑，attribute 被 DCE）；瀑布著色器早已自帶 tonemapping/colorspace include，自動跟隨。
+- toneMirror 教訓：實例屬性遮蔽 prototype setter 會切斷真繪製（首版 2d 全黑），必須轉發 native descriptor。
+- A/B 用 `.verify/_ab.cjs`（同機位同 clock、只換 build：stash→regen→拍→pop）；**日夜節拍 900 秒**是拍對照幀的頭號污染源，視窗 640×400 是 swiftshader 下唯一穩定組合（1024×640 本沙盒黃昏後頻繁 Target closed）。
+- 已知差距（R51 結算）：painter 只鏡像了輸出變換，未重演 hemisphere/env 的材質減光 → 2d 亮度整體高於 3d；2d 構圖與 3d 為既有投影慣例差（old-2d 同形，非本輪引入）。
+- Gates：verify-walk 176/176、verify-three PASS、walk-feel niagara CLEAN。collision 跳過之理由：本輪未觸碰 solver/碰撞代碼（純輸出管線）。
