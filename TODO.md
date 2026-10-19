@@ -2556,3 +2556,10 @@ impeccable `[]` · idempotent · 五站 60 fps。
       「有 vs 沒有」才是量測，「有多少」不是。
 - **立面會一次爆掉**：車站量到 246/255，原因是底色太亮＋窗戶夜間 84% 不透明＋建築自己的
   glow 疊在檯面 glow 上。分開量三次才拆出來。
+
+## Round 48 起 — 擬真化主線（owner 2026-10-19 拍板）
+- **岔路已選：材質全面升級成受光 PBR**（MeshStandard/Physical + PMREM 環境光），不是只做色調映射增強。畫面語言會整個改變：夜間提燈、濕地反光、瀑布霧的發光是本主線的红利；風格從「平面彩繪」走向「有光在動」。
+- **canvas2d 降級器採【嚴格一致】**：WebGL 出現的每個視覺線索（色調映射後的明度、水面反光條紋、霧的濃度）都要在 2D 繪畫器有對應實作。這等於把 GLSL 的效果在 canvas 再實作一遍——工作量計入每一輪，驗收也加一條「雙渲染器對照截圖」gate（同機位各拍一張，人眼比對）。
+- 查證過的技術來源（全部 MIT、純程式碼、與 js/vendor three 同版 r186）：`Sky.js`（大氣散射，**只作環境光來源、不上畫面**——記錄無太陽方位，畫太陽=發明時間，§5 紅線）、`Water2.js`（flowMap 可選、法線圖自己用 canvas 程序生成，不引 waternormals.jpg）、`RoomEnvironment`（零素材 envmap）、`Reflector`、`GroundedSkybox`、`UnrealBloomPass`/`OutputPass`。已斃：jbouny/ocean（2017 停更+自帶素材）、3DGS 檢視器（掃描資產不存在於我們的事實場景）、mint 雲端素材管線（§5+零依賴）。
+- 落地方式照 repo 慣例：vendor 目錄只放 three 本體，examples 的 GLSL/JS **內聯進 scene3d.js 並註明出處**（瀑布著色器已是這個模式）；材質轉換逐頁推進（先 niagara 當先鋒、對照前後幀，再街道/夜間組），每頁過 verify-three/walk-feel/對照截圖才算完成。
+- 順序建議（4 輪）：R48 光照基礎建設（tone mapping+env+Standard 先鋒頁 niagara）→ R49 水與濕地（Water2 河面/水潭/瀑布潭 + Reflector）→ R50 夜間發光組（glow 材質化+bloom 進 canvas 鏡像）→ R51 全頁收尾與降級器追平。
