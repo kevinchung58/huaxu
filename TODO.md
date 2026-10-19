@@ -2571,3 +2571,7 @@ impeccable `[]` · idempotent · 五站 60 fps。
 - A/B 用 `.verify/_ab.cjs`（同機位同 clock、只換 build：stash→regen→拍→pop）；**日夜節拍 900 秒**是拍對照幀的頭號污染源，視窗 640×400 是 swiftshader 下唯一穩定組合（1024×640 本沙盒黃昏後頻繁 Target closed）。
 - 已知差距（R51 結算）：painter 只鏡像了輸出變換，未重演 hemisphere/env 的材質減光 → 2d 亮度整體高於 3d；2d 構圖與 3d 為既有投影慣例差（old-2d 同形，非本輪引入）。
 - Gates：verify-walk 176/176、verify-three PASS、walk-feel niagara CLEAN。collision 跳過之理由：本輪未觸碰 solver/碰撞代碼（純輸出管線）。
+### R48 補充：owner「進去看是黑的」的兩個實查解釋（皆已閉合）
+1. **成品窗口污染**：本沙盒 server 直接讀盤，R48 中途存在過兩個黑幀版本（Linear 輸出半成品 ~20 分鐘、toneMirror 遮蔽 setter 的 2d 全黑 ~40 分鐘）。已修、已提交（5c74bea），real-browser 日夜四幀（.preview/round48-ab/cycle-{3d,2d}-{day,night}.png）證明**任何時鐘、任何渲染路徑都不黑**——夜間=深蓝天空+受光瀑布+可辨欄杆。
+2. **頁面自帶 15 分鐘日夜循環**（round-33 設計，Little Canada 據）：進頁 ≈6.5 分鐘後入黃昏、≈8.5 分全黑夜。這是特色不是故障；若節奏要放緩改 `data-lane-day-cycle`（作者參數）即可，等 owner 表態。
+3. 夜間瀑布面**變色（綠紅藍紫琥珀）= NIGHT_LAMPS 7 秒輪色**，事實依據為尼加拉夜間照明換色；2d/3d 同表同算法，拍到的顏色差只是時刻差。曲線讓紅色階段偏粉——列入 R50 夜間發光組校色。
