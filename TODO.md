@@ -2590,3 +2590,16 @@ impeccable `[]` · idempotent · 五站 60 fps。
 ### Gates
 - verify-walk **188/188**（新 hour uite：預設白晝、點擊翻轉、localStorage 跨頁、cntower 無按鈕且訪客選擇蓋不掉 authored 時辰、emissive/lane-fold 語義斷言）；verify-three PASS；hourprobe PASS（本輪的 appearance gate of record）。boot() 加 seedHour 第三參數。
 - 順手修的坑：layer 狀態屬性名 `data-walk-hour` 會和按鈕選擇器撞名（querySelector 先命中 layer，測試全綠但事件沒接）→ 狀態改名 `layer.dataset.walkClock`。命名規則：**狀態屬性與控件選擇器不得共用 token**。
+
+## Round 50 — 東京狀態回答 + 攤販遊戲（owner 2026-10-19:「東京的都有做好嗎？順便做一些有趣的日本攤販遊戲在那環境裡面可以直接玩」）
+### 東京的真實狀態（回答用）
+- 東京**沒有獨立走道頁**：`("tokyo", "Tokyo", "rooms.html", ["tokyo-"], "open")`（_gen_html:100）——它是 rooms.html 牆上的場域（27 處 field notes、六張圖）＋ **street.html 遠半段的仲見世**（`_nakamise()` 的 bay/燈串/立面、door-tokyo、店前燈）。browser-shot 全站點最終態：street 10/10、lane-shot street 31 幀 PASS。**§0v 遺留**：逐戶 87 店立面無來源 → 平均化立面為定稿；招牌文字/人群/季節裝飾照舊拒畫。低優先項保持掛號（有來源才動）。
+### 攤販遊戲（本輪交付）
+- 兩座屋台掛在 street 燈串區：`stall-kingyo`（夾魚，record z330 東牆）與 `stall-menya`（面具射擊，z700 西牆）。**全部是 DOM magnet＋CSS 彩繪**（.walk-stall：琥珀條紋簷＋暗木台＋水盆），**零新增 surveyed 幾何**；obj hint 與面板腳註都自報「A toy, not a survey / stand at no surveyed address」——延續 repo「set dressing, drawn rather than surveyed」語義（bollard 同先例）。
+- `js/games.js`（新 classic script、defer、進 cache-buster 清單）：兩個確定性狀態機（xorshift 固定 seed）＋薄繪圖層＋共用對話框（.walk-game，role=dialog aria-modal，EnterOverlay 慣例、Esc 關、focus 歸位）。配色零發明：水＝murk navy #16223c/#1b3247，魚與面具＝NIGHT_LAMPS 三色＋#eef4f7，燈暈＝#ffd9a0。reduced-motion 降速；規則唸進 aria-live status。
+- 接線一行：`act()` 在 story 之前走 `dataset.game → huaxuStalls.open`（按下即玩，不被說明卡擋）；面板只在宣告 stall 的 district 產生（其他頁 markup 零增重，games.js 找不到面板即 early-return）。
+- 攤位燈：lights JSON 各加一盞 `body:"lantern"`、`of:"stall-*"`、liton .78/.81——夜間按鈕轉夜時攤位自己被燈串點亮（截圖佐證）。
+### 驗證（一次建置、一次驗證）
+- 新閘門 `.verify/verify-games.mjs` **18/18**：markup 宣告/免打擾頁零面板/按下開盤/focus/Esc/亂 id 禮貌拒絕；狀態機契約——深浸急拉必定破網、45 秒鐘必定收攤、12 發必定結算、miss 斷連擊（本輪順手修的真 bug：空槍不重置 streak＋一段死碼）。
+- 外观閘門 `.verify/_gamesshot.cjs` **GAMESHOT-PASS**（真 Chromium、滑鼠實際玩 50 幀）：kingyo luma 42.1/286 色、menya 42.6/423 色（**真打下一張面具進框**）、夜市街景含攤位 61.7/634。影格 `.preview/round50-stalls/`。
+- verify-walk 188/188（recorder 補 fillText；cache-buster 鏡面收 games\.js）、verify-three PASS。hourprobe 未重跑：本輪零光照改動，新增皆疊加 DOM，風險方向為更亮。

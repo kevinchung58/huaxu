@@ -47,6 +47,7 @@ function recorder() {
       if (/^rgba\(255,228,186,/.test(c)) ctx.warm++;
     },
     stroke() { ctx.strokes++; },
+    fillText() { ctx.text++; }, strokeText() { ctx.text++; },
     drawImage(...a) { ctx.imgs++; fin(a.slice(1)); },
     setTransform(...a) { fin(a); ctx.frames++; ctx.frame = []; },
     transform(...a) { fin(a); },
@@ -847,7 +848,7 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
 {
   const { createHash } = await import("node:crypto");
   const hash = createHash("sha1");
-  ["css/site.css", "js/site.js", "js/scene3d.js",
+  ["css/site.css", "js/site.js", "js/scene3d.js", "js/games.js",
    "js/vendor/three-0.186.1/three.core.js", "js/vendor/three-0.186.1/three.module.js"]
     .forEach((asset) => hash.update(fs.readFileSync(asset)));
   const digest = hash.digest("hex").slice(0, 10);
@@ -856,7 +857,7 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   const wrong = [];
   pages.forEach((f) => {
     const html = fs.readFileSync(f, "utf8");
-    const tags = [...html.matchAll(/(?:site\.css|site\.js|scene3d\.js)\?v=([0-9a-z]+)/g)].map((m) => m[1]);
+    const tags = [...html.matchAll(/(?:site\.css|site\.js|scene3d\.js|games\.js)\?v=([0-9a-z]+)/g)].map((m) => m[1]);
     tags.forEach((t) => tokens.add(t));
     // Every page must ask for the bytes on disk, and ask for both with one token: two tokens is how a
     // build ships a new renderer under an old key, which no other gate here can see because it only

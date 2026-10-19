@@ -24,7 +24,7 @@ def _asset_ver() -> str:
     page pin is the same browser-cache bug as a stale Canvas fallback.
     """
     h = hashlib.sha1()
-    for f in ("css/site.css", "js/site.js", "js/scene3d.js",
+    for f in ("css/site.css", "js/site.js", "js/scene3d.js", "js/games.js",
               "js/vendor/three-0.186.1/three.core.js", "js/vendor/three-0.186.1/three.module.js"):
         h.update((ROOT / f).read_bytes())
     return h.hexdigest()[:10]
@@ -235,7 +235,8 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v={VER}"></script>"""
+<script src="js/site.js?v={VER}"></script>
+<script src="js/games.js?v={VER}" defer></script>"""
 
 
 # Structured data. Google resolves a person's name largely from schema.org markup, and the site had
@@ -344,6 +345,7 @@ def shell_page(title: str, body: str, path: str, cover: str = "IMG/1.jpg",
 <body class="shell">
 {body}
 <script src="js/site.js?v={VER}"></script>
+<script src="js/games.js?v={VER}" defer></script>
 <script type="module" src="js/scene3d.js?v={VER}"></script>
 </body>
 </html>
@@ -3373,6 +3375,24 @@ DISTRICTS = [
             {"id": "bin-s", "kind": "bin", "x": 322, "z": 540, "y": 0, "ry": -90,
              "title": "A bin by the middle door",
              "hint": "Lid shut, nothing implied about what is in it."},
+            # The festival stalls (round 50, at the owner's request: an English phrase — 「做一些有趣的
+            # 日本攤販遊戲在那環境裡面可以直接玩」). They are deliberately NOT surveyed geometry: a
+            # stall that played games at a real address would be an invented fact, while a stall the
+            # page names as a toy is honest furniture. Their whole body is the CSS of .walk-stall,
+            # their lights join the authored lamp field so night lights them like everything else,
+            # and `game` rides to the script as data-game — press it and the toy opens over the lane.
+            {"id": "stall-kingyo", "kind": "board", "w": 170, "h": 128, "d": 90,
+             "x": 322, "z": 330, "y": 0, "ry": -90, "game": "kingyo",
+             "title": "The goldfish stall, under the first lanterns",
+             "hint": "A toy, not a survey: paper net, a basin of dark water, and goldfish that are "
+                     "the street's own lamp colours. Press it to play; nothing here claims a shop "
+                     "stood at this address."},
+            {"id": "stall-menya", "kind": "board", "w": 170, "h": 128, "d": 90,
+             "x": -322, "z": 700, "y": 0, "ry": 90, "game": "menya",
+             "title": "The mask targets, along the lantern string",
+             "hint": "A toy, not a survey: blank wooden masks on a beaded curtain, a pellet gun of "
+                     "twelve shots. The masks carry no faces for the same reason the shopfronts "
+                     "carry no lettering."},
             {"id": "planter-s1", "kind": "planter", "x": -300, "z": 880, "y": 0, "ry": 90,
              "title": "A planter of dark leaves",
              "hint": "Set dressing: the one green thing on the street, drawn as a silhouette."},
@@ -3528,6 +3548,15 @@ DISTRICTS = [
              "size": 22, "h": 312, "swing": 1.5, "period": 4.9, "phase": 1.1, "liton": 0.72},
             {"x": 279, "y": 300, "z": 470, "r": 30, "k": 0.48, "body": "lantern",
              "size": 22, "h": 300, "swing": 1.6, "period": 5.4, "phase": 3.0, "liton": 0.75},
+            # One lantern each, hung at the stall: `of` ties the light to the prop (the vending
+            # machine's trick) so the pool belongs to the stand and the hour button finds them lit
+            # or dark with the rest of the string.
+            {"x": 300, "y": 252, "z": 330, "r": 34, "k": 0.55, "body": "lantern",
+             "size": 18, "h": 252, "swing": 1.3, "period": 5.5, "phase": 2.4, "liton": 0.78,
+             "of": "stall-kingyo"},
+            {"x": -300, "y": 252, "z": 700, "r": 34, "k": 0.55, "body": "lantern",
+             "size": 18, "h": 252, "swing": 1.4, "period": 4.8, "phase": 0.9, "liton": 0.81,
+             "of": "stall-menya"},
             {"x": -279, "y": 316, "z": 780, "r": 30, "k": 0.5, "body": "lantern",
              "size": 22, "h": 316, "swing": 1.4, "period": 5.8, "phase": 1.2, "liton": 0.71},
             {"x": -99, "y": 302, "z": 780, "r": 30, "k": 0.5, "body": "lantern",
@@ -5061,7 +5090,7 @@ def walk_object(o):
     extra_attr = "".join(
         f' data-{k}="{escape(v if isinstance(v, str) else json.dumps(v, separators=(",", ":")))}"'
         for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run", "lift", "blocks",
-                                         "footprint", "floors", "observation") if k in o))
+                                         "footprint", "floors", "observation", "game") if k in o))
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
@@ -5071,7 +5100,8 @@ def walk_object(o):
         # page's state, and a reader who never presses anything still gets told where it starts.
         states = (f' data-states="{escape(json.dumps(o["states"], ensure_ascii=False))}"'
                   f' data-state="{o.get("state", 0)}"')
-    return (f'<button type="button" class="walk-hit" data-obj="{escape(o["id"])}" '
+    stall = " walk-stall" if o.get("game") else ""
+    return (f'<button type="button" class="walk-hit{stall}" data-obj="{escape(o["id"])}" '
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
             f'data-d="{dep}"{solid_attr} style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
@@ -5185,6 +5215,25 @@ def walk_html(d, drawer):
         day_attr = (f' data-lane-day="1" data-lane-day-cycle="{opts.get("cycle", 900)}"'
                     f' data-lane-day-start="{opts.get("start", 0.45)}"'
                     f' data-lane-day-gain="{opts.get("gain", 1)}"')
+    # The festival stalls (round 50, the owner's 「攤販遊戲」): one dialog, shared by whatever
+    # `game` props the district declares. It is authored markup and a classic script — no stall
+    # pretends to be a survey surface, and a district that names no game never ships the dialog.
+    stall_games = sorted({o["game"] for o in d.get("objects", []) if o.get("game")})
+    game_panel = (f"""
+    <div class="walk-game" data-walk-game role="dialog" aria-modal="true" hidden
+         aria-label="A festival stall: a game to play, not a place to survey">
+      <div class="walk-game-head">
+        <b class="walk-game-title" data-game-title>{escape(stall_games[0])}</b>
+        <button type="button" class="walk-game-close" data-game-close
+                aria-label="Put the game down and stand back on the street">Close</button>
+      </div>
+      <canvas class="walk-game-canvas" width="640" height="400"
+              aria-hidden="true"></canvas>
+      <p class="walk-game-status" data-game-status role="status" aria-live="polite"></p>
+      <p class="walk-game-note">A toy set on the street, not a part of its record — the stalls are
+        drawn for play and stand at no surveyed address. Everything here answers the same keys the
+        lane does; press the stall again and the toy is waiting where you left it.</p>
+    </div>""" if stall_games else "")
     return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}"
        data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
        data-lane-back="{lane["back"]}"{max_d_attr}{day_attr}{floor_attr} data-eye="{EYE}">
@@ -5199,6 +5248,7 @@ def walk_html(d, drawer):
       {INDENT.join(parts)}
       {walk_islands(d, placed)}
     </div>
+    {game_panel if game_panel else ""}
   </div>
   <div class="walk-hud">
     <div class="walk-top">

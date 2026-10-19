@@ -7528,6 +7528,9 @@ function leaveOverlay(root, trigger) {
     // which is the worst kind of dead end — a control that describes an exit instead of being one.
     const leave = m.el.dataset.leave;
     if (leave) { window.location.assign(leave); return; }
+    // A stall with a game plays before it explains: the owner asked for toys you press in the
+    // environment itself, and a card that says "press to play" instead of playing is a dead end.
+    if (m.el.dataset.game && window.huaxuStalls && window.huaxuStalls.open(m.el.dataset.game, m.el)) return;
     if (m.el.dataset.story && openStoryRail(m.el.dataset.story, m.el)) return;
     if (m.el.dataset.frame !== undefined && openDistrictRail(Number(m.el.dataset.frame), m.el)) return;
     if (m.el.dataset.obj === "vending" && openDistrictRail(0, m.el)) return;
