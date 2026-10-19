@@ -2239,6 +2239,19 @@ body.shell {
 .walk-tutor-act:focus-visible {
   border-color: var(--accent-bright);
 }
+.walk-hour .walk-hour-moon {
+  display: none;
+}
+.walk-hour.is-night .walk-hour-sun {
+  display: none;
+}
+.walk-hour.is-night .walk-hour-moon {
+  display: block;
+}
+.walk-hour[aria-pressed] {
+  /* the state lives in the icon that shows; the attribute is for the reader, not the eye */
+  -webkit-tap-highlight-color: transparent;
+}
 .walk-tutor-replay {
   border: 0;
   padding: 0;

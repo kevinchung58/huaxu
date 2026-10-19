@@ -125,6 +125,8 @@ ICON_MAIL = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M21.75 
 ICON_SCHOLAR = svg('<path d="M5.242 13.769L0 9.5L12 0l12 9.5l-5.242 4.269L12 10.731l-6.758 3.038zm0 0L12 18l6.758-4.231L12 22l-6.758-4.231z" />', filled=True)
 ICON_CASE = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 .414-.336.75-.75.75h-15a.75.75 0 01-.75-.75v-4.25m16.5 0a2.25 2.25 0 00.75-1.687V8.25A2.25 2.25 0 0018.75 6h-5.379a1.5 1.5 0 01-1.06-.44L11.25 4.5H5.25A2.25 2.25 0 003 6.75v5.713c0 .651.287 1.269.75 1.687m16.5 0H3.75" />')
 ICON_MENU = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />')
+ICON_SUN = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364 2.363l-1.591 1.591M21 12h-2.25m-.363 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m8.485-2.485a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />')
+ICON_MOON = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />')
 ICON_UP = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />')
 ICON_CARET = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />')
 ICON_BOOK = svg('<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />')
@@ -1707,7 +1709,9 @@ HOW_TO_WALK = ("These three doors step into Toronto, Tokyo, or Fukuoka: W A S D 
                "arrow keys or Q/E (or a gentle drag) to turn, E while standing still to use what "
                "is in front of you, double-click to let the mouse look, or the on-screen pad on a "
                "phone. On the first visit a short guide teaches those keys in place, once, and the "
-               "info card replays it. A landmark's own object may lead to another real space; "
+               "info card replays it. The sun-or-moon button in the chrome holds the lane in day or "
+               "brings on night, and the choice carries to every lane; a room whose window shows one "
+               "fixed night keeps its own hour. A landmark's own object may lead to another real space; "
                "Esc returns to its owner, then to the street, and finally to this wall.")
 
 
@@ -5175,6 +5179,7 @@ def walk_html(d, drawer):
     # there, for a room whose window shows a night that does not move.
     if d.get("night"):
         day_attr = f' data-lane-night="{d["night"]}"'
+    hour_held = bool(d.get("night"))
     if day:
         opts = day if isinstance(day, dict) else {}
         day_attr = (f' data-lane-day="1" data-lane-day-cycle="{opts.get("cycle", 900)}"'
@@ -5219,6 +5224,7 @@ def walk_html(d, drawer):
         ><button type="button" class="walk-icon" data-walk-fov="1"
           aria-label="Narrower view">{ICON_FOV_IN}</button></span>
         <button type="button" class="walk-icon walk-jump" data-walk-jump aria-label="Jump">{ICON_UP}</button>
+        {'<button type="button" class="walk-icon walk-hour" data-walk-hour aria-pressed="false" aria-label="The hour"><span class="walk-hour-sun">' + ICON_SUN + '</span><span class="walk-hour-moon">' + ICON_MOON + '</span></button>' if not hour_held else ''}
         <button type="button" class="walk-icon walk-info" data-walk-info aria-expanded="false"
           aria-controls="walk-card-{did}" aria-label="What this lane is, and how to move in it">{ICON_CHAT}</button>
         <button type="button" class="walk-icon" data-walk-list aria-expanded="false"

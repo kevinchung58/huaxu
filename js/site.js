@@ -2552,8 +2552,24 @@ function leaveOverlay(root, trigger) {
      Its cycle is fifteen minutes. Ours is four: a visitor to a web page does not stay fifteen
      minutes, and a cycle nobody sees is decoration rather than day. The walk opens in the late
      afternoon so the lamps come up while you are standing there instead of after you have gone. */
-  const DAYLEN = 240;                                  // seconds for one full day
-  const dayPhase = () => ((T + 78) / DAYLEN) % 1;      // 0 midnight · 0.25 dawn · 0.5 noon · 0.75 dusk
+  const DAYLEN = 240;                                  // seconds for one full day (kept for held
+                                                         // places' internal breath; the visitor's clock
+                                                         // no longer runs on it — see below)
+  /* The hour is the visitor's, not the browser's clock (round 49, at the owner's insistence: the
+     fifteen-minute hall had people walking into a blackout they never asked for). A lane opens in
+     full day and stays there until the sun/moon button says otherwise; the choice rides
+     localStorage across every lane. NIGHT is held at 0.92 — the hour the records themselves hold
+     their authored nights at (the LookOut's window), so lamps, lit windows and the falls' own
+     colours come up exactly as authored, and the murk stays the navy the painter folds by. A place
+     held at its own hour (`laneNight`) keeps it and gets no button: its clock is a fact. */
+  const HOUR_KEY = "huaxu.walk-hour.v1";
+  const HOUR_NIGHT = 0.92;
+  let hourPref = "day";
+  let hourPhaseSet = 0.5;
+  try { if (window.localStorage.getItem(HOUR_KEY) === "night") { hourPref = "night"; hourPhaseSet = HOUR_NIGHT; } }
+  catch (e) { /* private mode: the choice lives this visit only */ }
+  const dayPhase = () => hourPhaseSet;                  // the station clock reads the hour the visitor
+                                                         // chose, so the hands and the light agree
   const SUN = () => clamp(Math.sin((dayPhase() - 0.25) * Math.PI * 2) * 0.5 + 0.5, 0, 1);
   const NIGHT = () => 1 - sunNow();
   /* A lane whose place is a day.
@@ -2574,7 +2590,8 @@ function leaveOverlay(root, trigger) {
   // A place held at one hour of the night (`data-lane-night`, a phase): the LookOut's window shows a
   // night that does not move, so its lamps and air stop following the hall's clock (round 33).
   const HELD = attr("laneNight", 0);
-  const phaseNow = () => (HELD ? HELD : DAYPAGE ? ((T / DAY_LEN) + DAY_AT) % 1 : dayPhase());
+  if (HELD) hourPhaseSet = HELD;   // held places pin the clock — and (no button) the visitor's choice
+  const phaseNow = () => hourPhaseSet;
   const sunNow = () => clamp(Math.sin((phaseNow() - 0.25) * Math.PI * 2) * 0.5 + 0.5, 0, 1);
   /* How much sun is on the place, as a factor rather than a truth: 0 from dusk to dawn, 1 at noon.
      The floor is what decides whether a room reads as "lit by its own lamps" or "outdoors", and 0.45
@@ -7763,6 +7780,36 @@ function leaveOverlay(root, trigger) {
                      return threeRenderer === engine;
                    } };
   if (tutorEl && !tutStore.done()) showTutor(0);   // a first visit is taught in place, once
+  /* The hour button: one icon in the chrome's tools row, sun by day and moon by night. The label
+     states the choice it will make, the announcement goes to the live region the reader already
+     listens to, and nothing about the toggle writes itself over the scene. */
+  const hourBtn = layer.querySelector("[data-walk-hour]");
+  if (hourBtn && !HELD) {
+    const hourLabel = () => hourBtn.setAttribute("aria-label", hourPref === "night"
+      ? "Night now. Switch this lane back to day." : "Daylight now. Bring on the night.");
+    const setHour = () => {
+      layer.dataset.walkClock = hourPref;
+      hourBtn.classList.toggle("is-night", hourPref === "night");
+      hourBtn.setAttribute("aria-pressed", hourPref === "night" ? "true" : "false");
+      hourLabel();
+      // the card's own nudge, for the same reason: a repaint that goes through the tick keeps a
+      // gliding body gliding; a bare draw would strand it between frames.
+      pulse = setTimeout(() => { pulse = 0; tick(performance.now()); }, 90);
+    };
+    hourBtn.addEventListener("click", () => {
+      hourPref = hourPref === "day" ? "night" : "day";
+      hourPhaseSet = hourPref === "night" ? HOUR_NIGHT : 0.5;
+      try { window.localStorage.setItem(HOUR_KEY, hourPref); } catch (e) { /* this visit only */ }
+      setHour();
+      if (recordEl) recordEl.textContent = hourPref === "night"
+        ? "Night comes: the lamps, the lit windows, and the falls' own colours."
+        : "Daylight returns over the lane.";
+    });
+    layer.dataset.walkClock = hourPref;
+    hourBtn.classList.toggle("is-night", hourPref === "night");
+    hourBtn.setAttribute("aria-pressed", hourPref === "night" ? "true" : "false");
+    hourLabel();
+  }
   if (listPanel) listPanel.classList.add("is-closed");   // scripting present: fold it, then obey
   if (listBtn) listBtn.setAttribute("aria-expanded", "false");
   draw();

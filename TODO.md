@@ -2575,3 +2575,18 @@ impeccable `[]` · idempotent · 五站 60 fps。
 1. **成品窗口污染**：本沙盒 server 直接讀盤，R48 中途存在過兩個黑幀版本（Linear 輸出半成品 ~20 分鐘、toneMirror 遮蔽 setter 的 2d 全黑 ~40 分鐘）。已修、已提交（5c74bea），real-browser 日夜四幀（.preview/round48-ab/cycle-{3d,2d}-{day,night}.png）證明**任何時鐘、任何渲染路徑都不黑**——夜間=深蓝天空+受光瀑布+可辨欄杆。
 2. **頁面自帶 15 分鐘日夜循環**（round-33 設計，Little Canada 據）：進頁 ≈6.5 分鐘後入黃昏、≈8.5 分全黑夜。這是特色不是故障；若節奏要放緩改 `data-lane-day-cycle`（作者參數）即可，等 owner 表態。
 3. 夜間瀑布面**變色（綠紅藍紫琥珀）= NIGHT_LAMPS 7 秒輪色**，事實依據為尼加拉夜間照明換色；2d/3d 同表同算法，拍到的顏色差只是時刻差。曲線讓紅色階段偏粉——列入 R50 夜間發光組校色。
+
+## Round 49 —  selectable hour (owner 2026-10-19:「白天/黑夜要讓訪客自己選」「黑夜你自己進去看都是黑的」不接受）
+### 做了什麼
+- **時辰是訪客的，不是瀏覽器時鐘的**。`huaxu.walk-hour.v1`（localStorage）＝ "day"|"night"，預設白晝；`hourPhaseSet` 0.5 / 0.92 —— 夜間凍在 cntower 作者自己凍的那個時刻，所以燈光、窗光、瀑布夜色系全部按 authored 方式亮起。走道頁原本的 240s 自動日-cycle 關掉（that was the blackout culprit），held 頁（`data-lane-night`）釘死自己的時辰且**不出現按鈕**（它的時刻是事實，不是選項）。
+- 太陽/月亮圖示按鈕進 walk-tools：aria-label 說出它將做什麼、aria-pressed 記狀態、record 區語音播報、90ms pulse 重繪（保持滑行動畫不卡幀）。CSS 兩 span 切換，無文字按鈕。
+- 生成器（_gen_html.py）產按鈕（held 頁跳過）、HOW_TO 文案加一句「日/夜按鈕…固定夜之房間保留自己的時辰」。
+### 夜間可读性 ——量出来的，不是講的
+- 新閘門 `.verify/_hourprobe.cjs`：真瀏覽器 × 雙渲染路徑 × 三頁，取畫面下方地面帶（x10–90%, y55–90%）算 luma mean/std，地板線 **26/9**。先量再調（floor 由數字訂，不由斷言訂）。
+- **3D 夜黑幕的機制的真相**（花了一整段考古）：2D 是畫家算法—— authored 夜色很暗（niagara 河床格 `cn:#0f1d26`，luma 24，_gen_html.py:2731）是因為畫家會在上面**疊加** wash/燈暈；3D 是光線×albedo，暗 albedo 乘什麼光都是黑。實測：ambient 0.42→2.0、lane shader glow、hemisphere 全數**無感**（26.9→27.0）——因為那些像素根本不是 lane 材質，是 surveyed world 批次（`blendHex(p.cn, p.c, day)` 於 scene3d.js:125）。
+- 修法（不發明星色）：world 批次材質拿到 `emissive 0x16223c`（＝2D wash 的同一支 navy）× `4.5*nightK` 自發光 —— 畫家疊加的 3D 對應物。加上 lane shader 的 `+= uLaneNight*min(.62,vLaneDarkness)*3.2` 與 nightAmbient 0.62（dusk 提前 .45 開閘）、夜折線放寬（×0.40 cap 0.58，shader laneDark cap 0.62）。
+- 結果（後→前）：3d niagara 夜地面帶 **26.8/6.2 → 66.4/10.7**、street 78.4/20.7、cntower(held) 50.9→56.1/22.3；白晝全部不動（emissive×nightK=0）；2D 路徑零改變。**HOURPROBE-PASS**。
+- 教訓：**光線救不了暗 albedo** ——加法 wash 語義的夜間底色在 PBR 管線要翻譯成 emissive，不是強度。測的是合成後頁面截圖（napi-rs 解碼），canvas readback/WebGL preserve 那條路是死的。
+### Gates
+- verify-walk **188/188**（新 hour uite：預設白晝、點擊翻轉、localStorage 跨頁、cntower 無按鈕且訪客選擇蓋不掉 authored 時辰、emissive/lane-fold 語義斷言）；verify-three PASS；hourprobe PASS（本輪的 appearance gate of record）。boot() 加 seedHour 第三參數。
+- 順手修的坑：layer 狀態屬性名 `data-walk-hour` 會和按鈕選擇器撞名（querySelector 先命中 layer，測試全綠但事件沒接）→ 狀態改名 `layer.dataset.walkClock`。命名規則：**狀態屬性與控件選擇器不得共用 token**。

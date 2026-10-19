@@ -60,7 +60,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const out = [];
 const ok = (n, c, e = "") => out.push(`${c ? "PASS" : "FAIL"}  ${n}${e ? "  — " + e : ""}`);
 
-function boot(markup, url) {
+function boot(markup, url, seedHour) {
   const { JSDOM, VirtualConsole } = globalThis.__JSDOM;
   // jsdom refuses to navigate, which is the one thing a walk-through of the exit needs to be heard
   // about: an attempted navigation lands here instead of on a console the owner has to read.
@@ -92,6 +92,7 @@ function boot(markup, url) {
     get src() { return this._s; }
     get complete() { return !!this._s; }
   };
+  if (seedHour !== undefined) w.localStorage.setItem("huaxu.walk-hour.v1", seedHour);
   w.eval(js);
   return w;
 }
@@ -1096,6 +1097,54 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
 }
 
 const fail = out.filter((l) => l.startsWith("FAIL")).length;
+
+/* ---- the hour is the visitor's (round 49) --------------------------------------------------------
+   The owner's ruling: no browser clock may darken a lane behind the visitor's back. The page opens
+   in day, one button trades it for night, the choice carries across lanes, and a place held at its
+   own authored night (the LookOut) gets no button at all. */
+{
+  const h = boot(rooms, "https://huaxu.test/rooms-hour.html");
+  const hl = h.document.querySelector("[data-walk]");
+  const hb = h.document.querySelector("[data-walk-hour]");
+  ok("a lane opens in day, held there — the chrome carries the hour", hl.dataset.walkClock === "day" && !!hb, hl.dataset.walkHour);
+  ok("the button is an icon with a label that says what it will do",
+     !hb.textContent.trim() && /Daylight now\. Bring on the night\./.test(hb.getAttribute("aria-label") || ""));
+  ok("the sun shows by day, the moon is waiting", /walk-hour-sun/.test(hb.innerHTML) && /walk-hour-moon/.test(hb.innerHTML)
+     && !hb.classList.contains("is-night"));
+  hb.dispatchEvent(new h.MouseEvent("click", { bubbles: true, cancelable: true }));
+  ok("one press brings night: state, pressed, the moon, the label, the announcement",
+     hl.dataset.walkClock === "night" && hb.classList.contains("is-night") && hb.getAttribute("aria-pressed") === "true"
+     && /Night now\. Switch/.test(hb.getAttribute("aria-label")) && /Night comes/.test(h.document.querySelector("[data-walk-record]").textContent),
+     `${hl.dataset.walkClock} ${hb.getAttribute("aria-label")}`);
+  ok("and the choice is remembered for the site", h.localStorage.getItem("huaxu.walk-hour.v1") === "night");
+  const h2 = boot(rooms, "https://huaxu.test/rooms-hour2.html", "night");
+  ok("a lane entered with the choice set opens already in night",
+     h2.document.querySelector("[data-walk]").dataset.walkClock === "night"
+       && h2.document.querySelector("[data-walk-hour]").classList.contains("is-night"));
+  h2.document.querySelector("[data-walk-hour]").dispatchEvent(new h2.MouseEvent("click", { bubbles: true, cancelable: true }));
+  ok("back to day crosses the lane the same way", h2.localStorage.getItem("huaxu.walk-hour.v1") === "day");
+  const held = fs.readFileSync("rooms-cntower.html", "utf8");
+  ok("a room whose window shows one fixed night carries no hour button at all",
+     !/data-walk-hour/.test(held) && /data-lane-night/.test(held));
+  const heldBoot = boot(held, "https://huaxu.test/rooms-cntower.html", "day");
+  ok("…and the visitor's choice cannot overwrite the authored hour there",
+     heldBoot.localStorage.getItem("huaxu.walk-hour.v1") === "day" && !heldBoot.document.querySelector("[data-walk-hour]"));
+  {
+    const scjs = fs.readFileSync("js/scene3d.js", "utf8");
+    ok("the lit path folds the same navy the painter calls murk, as the sun goes",
+       /nightAmbient\.intensity = [\d.]+ \* nightK/.test(scjs)
+       && /AmbientLight\(0x16223c, 0\)/.test(scjs) && /const nightK = /.test(scjs));
+    ok("and the night fold keeps a readable floor under it, never full murk",
+       /clamp\(\(Number\(state\.night\) \|\| 0\) \* 0\.40, 0, 0\.58\)/.test(scjs)
+       && /laneDark=min\(0\.62,/.test(scjs)
+       && /diffuseColor\.rgb\+=uLaneNight\*min\(0\.62,vLaneDarkness\)\*3\.2/.test(scjs));
+    ok("and the surveyed world's own materials carry the night wash as a self-lit emissive",
+       /material\.userData\.nightGlow = true/.test(scjs)
+       && /emissive: new THREE\.Color\(0x16223c\), emissiveIntensity: 0/.test(scjs)
+       && /m\.emissiveIntensity = [\d.]+ \* nightK/.test(scjs));
+  }
+}
+
 console.log(out.join("\n"));
 
 console.log(`\n${out.length - fail}/${out.length} pass`);

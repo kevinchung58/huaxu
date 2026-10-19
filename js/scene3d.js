@@ -392,7 +392,11 @@ export function buildLaneGeometry(THREE, quads, state = {}) {
   const groups = new Map();
   let triangles = 0, quadCount = 0;
   const day = clamp(Number(state.day) || 0, 0, 1);
-  const night = clamp((Number(state.night) || 0) * 0.5, 0, 0.72);
+  // The floor the night fold may darken a surface down to, as a fraction toward the murk navy.
+  // Round 49 raised the floor (0.5/0.72 -> 0.40/0.58) under the owner's ruling that a night the
+  // visitor asked for must read as a picture, measured on the composited frame — the painter's own
+  // 2D night keeps its full lift; the lit path now matches its legibility, not an invented brightness.
+  const night = clamp((Number(state.night) || 0) * 0.40, 0, 0.58);
   const dayPage = Boolean(state.dayPage);
   const fogMax = clamp(state.fogMax === undefined ? 0.6 : Number(state.fogMax), 0, 0.6);
   const dayGain = Number.isFinite(Number(state.dayGain)) ? Number(state.dayGain) : 1;
@@ -517,10 +521,11 @@ function laneShaderMaterial(THREE, map, transparent) {
         varying float vLaneDarkness; varying float vLaneDaylight;`)
       .replace("#include <color_fragment>", `#include <color_fragment>
         float laneWarm=clamp(vLaneLit-0.55,0.0,1.15)*0.24;
-        float laneDark=min(0.72,1.0-(1.0-clamp(vLaneAir,0.0,0.6))*(1.0-clamp(vLaneDarkness,0.0,0.72)));
+        float laneDark=min(0.62,1.0-(1.0-clamp(vLaneAir,0.0,0.6))*(1.0-clamp(vLaneDarkness,0.0,0.58)));
         diffuseColor.rgb=mix(diffuseColor.rgb,uLaneWarm,laneWarm);
         diffuseColor.rgb=mix(diffuseColor.rgb,uLaneNight,laneDark);
         diffuseColor.rgb+=uLaneSun*max(0.0,vLaneDaylight)*0.62;
+        diffuseColor.rgb+=uLaneNight*min(0.62,vLaneDarkness)*3.2;
         diffuseColor.a*=clamp(vLaneOpacity,0.0,1.0);`);
   };
   material.customProgramCacheKey = () => "huaxu-walk-lane-v1";
@@ -1310,6 +1315,11 @@ function buildRenderer(THREE, canvas, backdrop, api) {
     const gndC = hs.length ? skyColorAt(hs, -45, api.dayPage, api.day) : FALLBACK_COLOR;
     scene.add(new THREE.HemisphereLight(skyC, gndC, 0.5));
   }
+  // Night the visitor chose must still be a picture, not a blackout: the painter folds its murk
+  // as navy rather than black on purpose, and the lit path folds the same navy, continuously, as
+  // the sun goes — the authored night colour, never a made-up lamp.
+  const nightAmbient = new THREE.AmbientLight(0x16223c, 0);
+  scene.add(nightAmbient);
   scene.fog = new THREE.FogExp2(FALLBACK_COLOR, 0.000005);
   const camera = new THREE.PerspectiveCamera(45, 1, 20, 600000);
   const staged = buildWorldGeometry(THREE, backdrop.world || {});
@@ -1336,7 +1346,14 @@ function buildRenderer(THREE, canvas, backdrop, api) {
     const material = new THREE.MeshStandardMaterial({ map, vertexColors: true, side: THREE.DoubleSide,
       opacity: batch.opacity, transparent, depthWrite: !transparent, fog: true, flatShading: true,
       roughness: 0.95, metalness: 0, envMapIntensity: 0.55,
+      // The 2D painter gets its night legibility from washes layered ADDITIVELY over the tile
+      // colours — which are authored dark. A lighting model multiplies those dark albedos by dark
+      // light and the lane blacks out (measured, round 49: ground band luma 27, no lighting change
+      // could lift it). The emissive is the 3D counterpart of that additive wash: same authored
+      // murk navy, scaled by night, never a new colour.
+      emissive: new THREE.Color(0x16223c), emissiveIntensity: 0,
       polygonOffset: batch.key !== "__flat", polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    material.userData.nightGlow = true;
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = `surveyed world: ${batch.key}`;
     mesh.frustumCulled = true;
@@ -1484,6 +1501,13 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   };
 
   function render(state) {
+    // the hour rides in every frame's state (site.js builds it from the chosen phase): night K
+    // opens as the sun drops below the painter's own dusk line, and nothing else changes
+    {
+      const nightK = Math.max(0, Math.min(1, ((Number(state.night) || 0) - 0.45) / 0.5));
+      nightAmbient.intensity = 0.62 * nightK;
+      for (const m of materials) if (m.userData && m.userData.nightGlow) m.emissiveIntensity = 4.5 * nightK;
+    }
     const w = Math.max(1, Math.round(state.width)), h = Math.max(1, Math.round(state.height));
     if (w !== width || h !== height) { renderer.setSize(w, h, false); width = w; height = h; }
     const focal = Math.max(1, Number(state.focal) || 1), near = 20;
