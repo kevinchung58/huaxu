@@ -7621,6 +7621,10 @@ function leaveOverlay(root, trigger) {
                    // the harness reads the real answer, not a re-implementation of it: the wall-gap
                    // gate calls this on positions a visitor could reach and requires no wall quad frees
                    get blockedAt() { return collidesAt; },
+                   // the model's own velocity magnitude, cm/s — walk-feel reads this instead of
+                   // dividing position deltas by wall-clock, which renderer clamps (0.12 s/frame)
+                   // and swiftshader cadence (0.3-1.2 s/frame) distort in opposite directions
+                   get velocity() { return Math.hypot(vx, vd); },
                    get maxSpeed() { return SPEED * RUN; }, get turnRate() { return TURN_RATE; },
                    get renderer() { return threeRenderer ? "three" : "canvas2d"; },
                    get backdrop() { return bd; }, get day() { return DAY(); }, get dayPage() { return DAYPAGE; },
