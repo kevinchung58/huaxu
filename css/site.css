@@ -2191,6 +2191,70 @@ body.shell {
   position: absolute;
   inset: -8px -4px;
 }
+/* The guide strip (round 46): first-visit teaching in the chrome, never over the scene. It is a
+   status line with two buttons, styled as the plates beside it, and it disappears the moment the
+   visitor has done the thing — the lane keeps drawing underneath it the whole time. */
+.walk-tutor {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  margin: 0 auto 0.5rem;
+  padding: 0.4rem 0.7rem;
+  max-width: min(46rem, 94%);
+  border: 1px solid rgba(205, 214, 238, 0.34);
+  border-radius: 8px;
+  background: rgba(6, 11, 26, 0.74);
+}
+.walk-tutor[hidden] {
+  display: none;
+}
+.walk-tutor-n {
+  color: var(--gold);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.walk-tutor-step {
+  margin: 0;
+  flex: 1 1 auto;
+  color: var(--muted-navy);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.walk-tutor-act {
+  white-space: nowrap;
+  border: 1px solid rgba(205, 214, 238, 0.34);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent-bright);
+  font: inherit;
+  font-size: 0.76rem;
+  padding: 0.15rem 0.55rem;
+  cursor: pointer;
+}
+.walk-tutor-act[hidden] {
+  display: none;
+}
+.walk-tutor-act:hover,
+.walk-tutor-act:focus-visible {
+  border-color: var(--accent-bright);
+}
+.walk-tutor-replay {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(205, 214, 238, 0.45);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.walk-tutor-replay:hover,
+.walk-tutor-replay:focus-visible {
+  color: var(--accent-bright);
+}
+
 /* Leaving is not a tool among tools. The lane is a whole viewport with no page underneath it, so the
    one control that must never be discovered by hunting gets the larger plate, the warmer edge, and the
    glyph of an arrow going out of a frame — no word, and no guessing. */

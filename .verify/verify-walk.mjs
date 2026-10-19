@@ -243,8 +243,12 @@ ok("and so is the dressing, because the room is the thing being described",
   // wrapper is not what is painted over the space.
   const ownText = (el) => Array.from(el.childNodes).filter((n) => n.nodeType === 3)
     .map((n) => n.textContent.trim()).join(" ").trim();
-  const words = [...hud.querySelectorAll("*")].filter((el) => !spoken(el) && ownText(el));
-  ok("nothing painted over the space is a sentence, a label, or even a glyph",
+  // The one licensed exception is the first-visit guide (round 46, at the owner's request): prose
+  // may ride the bottom chrome only inside [data-walk-tutor], only until it is learned, and the
+  // tests below prove both halves. Everything else on the display still stays wordless.
+  const words = [...hud.querySelectorAll("*")].filter((el) => !spoken(el) && ownText(el)
+                                                                  && !el.closest("[data-walk-tutor]"));
+  ok("nothing painted over the space is a sentence, a label, or even a glyph — the guide strip excepted, once",
      words.length === 0, words.map((e) => `${e.tagName}.${e.className}:${e.textContent.trim()}`).join(" "));
   ok("the live regions are still there to be heard, and only to be heard",
      q("[data-walk-status]").classList.contains("sr-only")
@@ -256,9 +260,11 @@ ok("and so is the dressing, because the room is the thing being described",
        && /--p:[\d.]+/.test(b.getAttribute("style") || "")));
   ok("and the profile is data, not a look: each tick's height comes from its own depth",
      /height: calc\(0\.42rem \+ var\(--p, 0\)/.test(css));
+  const hudBtns = qa(".walk-hud button, .walk-hud a").filter((el) => !el.closest("[data-walk-tutor]"));
   ok("every control on the display is an icon button with an accessible name",
-     qa(".walk-hud button, .walk-hud a").every((el) => (el.getAttribute("aria-label") || "").length > 3
-       && !el.textContent.trim()));
+     hudBtns.every((el) => (el.getAttribute("aria-label") || "").length > 3 && !el.textContent.trim()));
+  ok("the guide's two word-buttons carry accessible names too",
+     qa("[data-walk-tutor] button").every((el) => (el.getAttribute("aria-label") || "").length > 3));
   ok("the prose that used to sit there is emitted inside the card it now hides in",
      /data-walk-aside/.test(html) && /drag to turn/.test(q("[data-walk-aside]").textContent)
        && q("[data-walk-card]").hidden === true);
@@ -1029,7 +1035,68 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
      !/id="ig-field-notes-/.test(act));
 }
 
-console.log(out.join("\n"));
+
+
+/* ---- the guide teaches once, in place, and never comes back --------------------------------------
+   Round 46: the owner asked for a first-visit walkthrough. The contract is that every step waits
+   for the real thing — a turn, a stride, an opened card — and that a visitor who has learned is
+   never taught again. A fresh environment with empty storage runs the flow end to end; the rail's
+   own glide deliberately comes after the walking step, so a carried body can never impersonate
+   strides. */
+{
+  const g = boot(rooms, "https://huaxu.test/rooms-guide.html");
+  const gdoc = g.document;
+  const gq = (s) => gdoc.querySelector(s);
+  const gkey = (k, type = "keydown") => (gdoc.activeElement || gdoc.documentElement)
+    .dispatchEvent(new g.KeyboardEvent(type, { key: k, bubbles: true }));
+  const gclick = (el) => el.dispatchEvent(new g.MouseEvent("click", { bubbles: true, cancelable: true }));
+  const ghold = async (k, ms) => { gkey(k); await sleep(ms); gkey(k, "keyup"); };
+  const gholdT = async (ks, ms) => { ks.forEach((k) => gkey(k)); await sleep(ms); ks.forEach((k) => gkey(k, "keyup")); };
+  const gbody = () => gq("[data-walk]").__walk;
+  const gsettle = async (want) => {
+    for (let i = 0; i < 240; i++) { await sleep(40); if (Math.abs(gbody().depth - want) < 2) return; }
+  };
+  const gt = () => gq("[data-walk-tutor-text]").textContent;
+  const status0 = () => gq("[data-walk-status]").textContent.trim();
+  const gc = () => gq("[data-walk-tutor-count]").textContent;
+  ok("a first visit opens on the turn step before anything is touched",
+     gq("[data-walk-tutor]").hidden === false && gc() === "1 / 4" && /Turn first/.test(gt()), gt());
+  ok("the guide is chrome, not a paint-over: it rides the bottom strip and the plate stays closed",
+     gq("[data-walk-card]").hidden === true && /\.walk-tutor \{/.test(css));
+  await ghold("ArrowRight", 400); await sleep(300);
+  ok("a turn that actually turned hands over the walking step",
+     gc() === "2 / 4" && /Now walk in/.test(gt()), `${gc()} ${gt()}`);
+  await gholdT(["w", "shift"], 1800); await sleep(300);
+  ok("real strides of two metres — not the rail's carrying — open the reading step",
+     gc() === "3 / 4" && /press E/.test(gt()), `${gc()} d-moved ok`);
+  const gstops = [...gdoc.querySelectorAll("[data-walk-stop]")];
+  const gstop = (z) => gstops.reduce((best, el) =>
+    Math.abs(parseFloat(el.style.getPropertyValue("--z")) - z) <
+    Math.abs(parseFloat(best.style.getPropertyValue("--z")) - z) ? el : best, gstops[0]);
+  const gz = parseFloat(gstop(1392).style.getPropertyValue("--z"));
+  gclick(gstop(1392)); await gsettle(gz);
+  await gholdT(["d", "shift"], 4200); await ghold("ArrowRight", 250); await ghold("w", 950);
+  await sleep(120);
+  gkey("e"); await sleep(80);
+  ok("opening a card finishes the teaching: last step, a way out where Skip was",
+     !gq("[data-walk-card]").hidden && gc() === "4 / 4" && /rail/.test(gt())
+       && gq("[data-walk-tutor-done]").hidden === false && gq("[data-walk-tutor-skip]").hidden === true,
+     `${gc()} card=${!gq("[data-walk-card]").hidden} ${status0()} ${gt()}`);
+  gclick(gq("[data-walk-tutor-done]"));
+  ok("Got it closes the guide and marks it learned for this browser",
+     gq("[data-walk-tutor]").hidden === true && g.localStorage.getItem("huaxu.walk-guide.v1") === "1");
+  gclick(gq("[data-walk-tutor-replay]"));
+  ok("the info card's replay line brings it back on purpose",
+     gq("[data-walk-tutor]").hidden === false && gc() === "1 / 4");
+  gclick(gq("[data-walk-tutor-skip]"));
+  ok("Skip ends it on the same terms", gq("[data-walk-tutor]").hidden === true);
+  ok("and a boot after that start never auto-opens it: the flag is what gates the strip",
+     /if \(tutorEl && !tutStore\.done\(\)\) showTutor\(0\);/.test(js));
+  g.close();
+}
+
 const fail = out.filter((l) => l.startsWith("FAIL")).length;
+console.log(out.join("\n"));
+
 console.log(`\n${out.length - fail}/${out.length} pass`);
 process.exit(fail ? 1 : 0);

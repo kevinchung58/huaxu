@@ -7,6 +7,15 @@
  * surface is transparent while this renderer is active and remains the complete Canvas2D fallback
  * when WebGL is absent or a context fails; lamps, pools, shadows and wires are Three.js geometry too.
  *
+ * Spatial basis, declared once (round 46, from the Mint spatial-contracts §1 review — an
+ * experiment showed that a basis left undeclared gets re-invented, wrongly, by every consumer):
+ * world units are centimetres with +y up; the lane plane is (x across, depth along); the walker's
+ * facing is a yaw in DEGREES whose zero looks down +depth, forward being (sin yaw, cos yaw), and
+ * the eye sits at the authored height plus the body's own height and bob. Every mesh reaching this
+ * renderer is already in those world centimetres — site.js normalizes once, before submission, and
+ * no object re-derives the basis per piece. Screen space is derived, never authored: one projection
+ * (projectLanePoint) maps world to canvas for the 2D fallback, camera matrices do it for WebGL.
+ *
  * No location, dimensions, labels or scene detail are authored here. This file only turns scene records
  * and per-frame polygons into meshes. Pattern maps are procedural material samples, never invented
  * signage or a replacement for the authored surfaces.
@@ -212,8 +221,8 @@ function patternCanvas(name) {
     c.clearRect(0, 0, 128, 128);
     let seed = 35071;
     const flow = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 52; i++) {
-      const x = flow() * 128, w = 0.8 + flow() * 3.6, a = 0.1 + flow() * 0.34;
+    for (let i = 0; i < 64; i++) {
+      const x = flow() * 128, w = 0.8 + flow() * 4.2, a = 0.12 + flow() * 0.42;
       const dark = i % 4 === 0, periods = 1 + Math.floor(flow() * 2), phase = flow() * Math.PI * 2;
       const gradient = c.createLinearGradient(0, 0, 0, 128);
       for (let k = 0; k <= 8; k++) {
@@ -689,7 +698,12 @@ function makeClouds(THREE, scene, prims) {
       void main(){ vUv=uv; vColor=aColor; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
     fragmentShader: `uniform sampler2D uCloud; varying vec2 vUv; varying vec4 vColor;
       void main(){ vec4 tex=texture2D(uCloud,vUv); gl_FragColor=vec4(vColor.rgb, tex.a*vColor.a); }`,
-    transparent: true, depthWrite: false, depthTest: true, side: THREE.DoubleSide,
+    // depthTest off, deliberately: spray is overlay-grade. The sheet it rises from and the deck it
+    // crosses are opaque writers that render first, so a depth-tested billboard anchored behind them
+    // is clipped to nothing — measured in round 43 (a full record set, 0.3/255 of visible change).
+    // The veil over the rail is the whole effect, and renderOrder 2 still puts it after the water and
+    // before the rainbow.
+    transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide,
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = "surveyed spray billboards";
@@ -1315,10 +1329,10 @@ function buildRenderer(THREE, canvas, backdrop, api) {
           // band color visible; the old per-quad sine repeated a high-frequency "window" moire.
           vec4 grain=texture2D(uStreaks,vec2(vUv.x,vUv.y+uTime*0.38*uMotion));
           float lightStreak=smoothstep(0.18,0.78,grain.r);
-          vec3 bright=mix(base,min(vec3(1.0),base*1.14+vec3(0.035)),0.75);
-          vec3 dark=base*vec3(0.62,0.82,0.86);
+          vec3 bright=min(vec3(1.0),base*1.32+vec3(0.06));
+          vec3 dark=base*vec3(0.52,0.71,0.77);
           vec3 strand=mix(dark,bright,lightStreak);
-          float coverage=vFall<0.0?0.0:clamp(grain.a*vOpacity,0.0,0.58);
+          float coverage=vFall<0.0?0.0:clamp(grain.a*vOpacity,0.0,0.75);
           vec3 color=mix(base,strand,coverage);
           gl_FragColor=vec4(color,1.0);
           #include <tonemapping_fragment>
