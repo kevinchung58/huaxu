@@ -29,8 +29,19 @@ const PAGES = fs.readdirSync(".").filter((f) => f.endsWith(".html")
 let bad = 0, total = 0;
 for (const f of PAGES) {
   if (!fs.existsSync(f)) continue;
-  const ids = [...fs.readFileSync(f, "utf8").matchAll(/data-obj="([A-Za-z0-9-]+)"/g)].map((m) => m[1]);
-  const miss = ids.filter((id) => SHAPE[kindOf(id)] === undefined);
+  const page = fs.readFileSync(f, "utf8");
+  const ids = [...page.matchAll(/data-obj="([A-Za-z0-9-]+)"/g)].map((m) => m[1]);
+  // Round 54: resolve by the kind the record actually declares.  Names like `luna-island` or
+  // `midway-stall` were authored as an island and a stall — the id heuristic called them
+  // unresolved while the site was drawing them fine, and it missed the two kinds (board,
+  // foodstall) that were genuinely falling through under ids that looked resolved.
+  const kinds = {};
+  for (const b of page.matchAll(/<button[^>]*>/g)) {
+    const o = b[0].match(/data-obj="([A-Za-z0-9-]+)"/);
+    const k = b[0].match(/data-kind="([A-Za-z0-9-]+)"/);
+    if (o && k) kinds[o[1]] = k[1];
+  }
+  const miss = ids.filter((id) => SHAPE[kindOf(kinds[id] || id)] === undefined);
   total += ids.length;
   console.log(`${f}: ${ids.length} props, ${miss.length} unresolved`);
   if (miss.length) { bad += miss.length; console.log("   draws as a plain plane: " + miss.join("  ")); }

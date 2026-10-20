@@ -174,9 +174,10 @@ Cross-backend rendering invariants:
   window, the opening in the end wall and the compound beyond it (plaza, crossing, eight city blocks,
   the tower, the mountain, the sky bands) live in the `data-walk-vista` / `data-walk-backdrop` islands
   and were invisible for as long as a single island could be read as a list. The district's own
-  harness rendered it that way for months without noticing, which is why `.verify/lane-shot.mjs` now
-  rasterises the Canvas2D fallback and gates on what that backend's frame is made of; `bin/verify-three.mjs`
-  separately gates the world-space geometry and Three.js scene-object path.
+  harness rendered it that way for months without noticing. The Canvas2D rasteriser that answered for
+  it (`.verify/lane-shot.mjs`) was retired together with the painter in round 54 — the frame contract
+  now lives in the browser's own gates — and `bin/verify-three.mjs` guards the world-space geometry
+  and Three.js scene-object path, including the ruling that no lane painter may come back.
 - Movement is collision-bound to the scene record: the body centre clamps at `laneW / 2 - 24 cm`,
   the sealed far end stops 47 cm before its wall, and jumps stop below `lane.ceil` with headroom. The
   authored solid props also block their floor footprints and allow axis sliding. Those bounds are

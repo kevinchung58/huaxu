@@ -15,10 +15,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const page = await browser.newPage();
 const waitForRoute = (path, hash = "") => page.waitForFunction(
   (p, h) => location.pathname.endsWith(p) && (!h || location.hash === h),
-  { timeout: 15_000 }, path, hash);
+  // round 54: these boots run WebGL through software rasterisation on the test box; the old
+  // 15 s window measured the harness's impatience, not the site's navigation.
+  { timeout: 45_000 }, path, hash);
 const waitForReach = (id) => page.waitForFunction(
   (obj) => document.querySelector(".walk-hit.is-reach")?.dataset.obj === obj,
-  { timeout: 15_000 }, id);
+  { timeout: 45_000 }, id);
 
 await page.goto("http://127.0.0.1:8080/rooms-toronto.html", { waitUntil: "networkidle0" });
 await sleep(1500);

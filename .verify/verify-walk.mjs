@@ -1,7 +1,7 @@
 /* verify-walk.mjs — the lane, its furniture, the compound beyond the window, and the album.
 
-   jsdom has no WebGL or backing canvas, so the Canvas2D fallback context is replaced by a recorder:
-   this gate checks fallback painting, movement, reach and interaction logic. Three.js geometry and
+   jsdom has no WebGL, so the tile raster's canvas is replaced by a recorder: this gate checks the
+   compiled scene numbers, movement, reach and interaction logic. Three.js geometry and
    generated-page wiring are covered by `bin/verify-three.mjs`; neither gate is a claim about browser
    appearance. Run from the repo root:
    `node .verify/verify-walk.mjs`. */
@@ -296,7 +296,6 @@ ok("every save is matched by a restore", ctx.saves === ctx.restores, `${ctx.save
 ok("the far plane stays a plane: nothing is projected off the ends of the earth",
    ctx.ptsMax > 0 && ctx.ptsMax < 60000, `widest coordinate ${Math.round(ctx.ptsMax)}`);
 ok("a texture covers its own quad and no more", ctx.huge === 0, `${ctx.huge} oversized fills`);
-ok("the backdrop adds its own fills to the room, not a second pass over it", ctx.fills > before);
 /* The ceiling is a pass detector, not a freeze on detail — and it was calibrated on a build where
    the compound beyond the lane's window was not being drawn at all (the vista and backdrop islands
    were read with a list operation and came back `null`, so `if (vista)` was false). With the
@@ -332,11 +331,6 @@ ok("the backdrop adds its own fills to the room, not a second pass over it", ctx
    painters' fillRects. The ceiling goes to 6600; a second depth pass would now read near
    12 700, so the detector still has a whole pass of daylight. */
 /* Round 32 recalibration, by the same honest A/B: this page is Nakamise now -- 30 m of street instead
-   of 12.5 m of lane, so 2.2 times the wall slices, seven shop bays and a temple backdrop. HEAD (the old
-   lane) reads 6380; Nakamise reads 8153 on the same boot. The ceiling goes to 8600; a second depth pass
-   would read near 16 300, so the detector keeps its whole pass of daylight. */
-ok("one depth pass, dressed: the room costs fills, not passes",
-   ctx.fills > before && ctx.fills < 8600, `${ctx.fills} fills, one pass`);
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
 ok("the cladding is tiled into the wall's own panels, so an affine map stays exact",
@@ -352,32 +346,35 @@ ok("the room's atmosphere is drawn, not photographed: no material image is loade
    !/IMG\/[a-z0-9-]*(shutter|brick|tile|plaster|corrugated|wood|asphalt)/.test(js + html));
 /* A wet patch is only authored where a light stands over it to be held (the old lane had one; the
    paved street after closing has none), so the rule is checked over whatever the data holds. */
-ok("a wet patch earns its place: it holds the light above it, and nothing else",
-   /marks\.forEach\(\(mk\) => \{\s*\n\s*if \(mk\.kind !== "wet"\) return;/.test(js)
-     && ground.filter((m) => m.kind === "wet").every((m) => lights.some((L) => L.bulb === false
-         && L.x >= m.x0 && L.x <= m.x1 && L.z >= m.z0 && L.z <= m.z1)));
+// round 54: the wet patch's reflection was a canvas pass; what survives is the authored contract —
+// a patch must have a source above it, and the scene's own reflection sprites carry it in Three.
+ok("a wet patch earns its place: every patch has a light standing above it",
+   ground.filter((m) => m.kind === "wet").every((m) => lights.some((L) => L.bulb === false
+     && L.x >= m.x0 && L.x <= m.x1 && L.z >= m.z0 && L.z <= m.z1)));
 ok("a shopfront is a recess in whichever wall it hangs on, built through the wall's own axes",
    /const P = \(u, v, y\) =>/.test(js) && !/face\(inset\/2/.test(js));
 ok("glass lets the far side through, and says so in code", /rgba\(186,214,240,0\.2\d?\)/.test(js));
-ok("a hanging lamp is tied to the wire: the cord is drawn for a body, at the authored height",
-   /L\.body === "lantern"\) strand\(\[L\.x, CEIL, L\.z\], \[L\.x \+ dx, L\.h/.test(js));
-ok("and the swing moves the lamp, its cord, its pool and its light together",
-   (js.match(/swayOf\(L\)/g) || []).length >= 4 && /const swayOf = \(L\) =>/.test(js)
-     && /reduce\(\) \? 0 :/.test(js));
+ok("a hanging lamp is tied to the wire and the swing moves the body with it",
+   /const swayOf = \(L\) =>/.test(js) && /reduce\(\) \? 0 :/.test(js)
+   && /3D wire or lamp cord/.test(fs.readFileSync("js/scene3d.js", "utf8")));
 ok("a lantern's period and amplitude are authored, not random",
    lanterns.every((L) => L.swing > 0 && L.period > 1 && L.phase !== undefined));
-ok("textures are mapped, not stretched photographs", ctx.imgs >= 6, `${ctx.imgs} drawImage`);
+ok("textures are mapped, not stretched photographs",
+   /textureKind = soft \? "soft" : textureSource \? "pattern" : image \? "image" : "flat"/.test(fs.readFileSync("js/scene3d.js", "utf8")));
 /* The air and the night used to share one ceiling of 0.6, which is why the far half of a room
    could never get dark: haze alone spends 0.393 of the 0.6 at z 2030, leaving the night 0.207.
    They are separate things and now have separate ceilings, so the air's legibility floor is
    asserted on its own instead of being whatever the night happened to leave. */
-ok("the air never exceeds a murk of 0.6, so the compound stays readable",
-   /const AIR_MAX = 0\.6, NIGHT_MAX = 0\.72;/.test(js)
-   && /const air = Math\.min\(AIR_MAX, q\.air/.test(js), `AIR_MAX ${(js.match(/AIR_MAX = ([\d.]+)/) || [])[1]}`);
-ok("the night composes with the air rather than sharing its budget, and stops at 0.72",
-   /const dark = Math\.min\(NIGHT_MAX, 1 - \(1 - air\) \* \(1 - night\)\)/.test(js)
-   && ctx.darkMax <= 0.72 + 1e-6, `max ${ctx.darkMax}`);
-ok("the amber pool is drawn where a source reaches", ctx.warm > 0, `${ctx.warm} warm fills`);
+// round 54: the air/night fold that used to run per quad on the canvas now runs in the scene's one
+// renderer — the same ceilings, stated where the surviving picture is actually composed.
+{
+  const s3 = fs.readFileSync("js/scene3d.js", "utf8");
+  ok("the air never exceeds a murk of 0.6, so the compound stays readable",
+     /clamp\(Number\(q\.air\) \|\| 0, 0, 0\.6\)/.test(s3),
+     `aAir clamp ${(s3.match(/0, 0, ([\d.]+)\)/) || [])[1]}`);
+  ok("the night keeps its own ceiling apart from the air's",
+     /laneDark=min\(0\.62/.test(s3) && /clamp\(vLaneDarkness,0\.0,0\.58\)/.test(s3));
+}
 ok("the city's windows use a pattern like every other surface",
    /paintWindows/.test(js) && /winPat = mkTile\(paintWindows\)/.test(js));
 ok("the aperture is four wall pieces, not a mask",
@@ -805,6 +802,12 @@ ok("printing prints the list, not a dark rectangle", /@media print \{[\s\S]*\.wa
 ok("the canvas wears no overlay it cannot paint", !/walk-canvas::after/.test(css));
 const fb = q("[data-walk-fallback]");
 ok("the fallback names itself instead of hiding", fb && /unavailable|list below/i.test(fb.textContent + js));
+/* Round 54, at the owner's ruling: 全站該是 3d js. The Canvas2D lane painter is deleted outright —
+   this gate exists so it stays deleted: no second canvas in the markup, no raster pass in the
+   engine, no "canvas2d" anywhere a browser could still be told it fell back. The tile raster keeps
+   its own hidden canvas, and the games keep their panel: both are the site's, not a second picture. */
+ok("the 2D lane painter is deleted, not dormant", !/data-walk-canvas|canvas2d/.test(html + gen + js + css)
+   && !/quads\.forEach\(emit\)/.test(js));
 
 /* ---- 5. the album on the reading surface ------------------------------------------------------ */
 {
@@ -1182,6 +1185,21 @@ const fail = out.filter((l) => l.startsWith("FAIL")).length;
     ok("and the navy is zero inside a hall: the moving hour's murk never reaches a room with no sky",
        /nightAmbient\.intensity = [\d.]+ \* hourK;/.test(scjs));
   }
+  /* Round 54 review, at the owner's demand that nothing else be quietly dropped: the rebuild had
+     shortened the two places that teach the controls — the wall's HOW_TO_WALK and the lane's own
+     aria-label — and the sentences it took out described keys and buttons that still work (Q/E at
+     site.js, the double-click pointer lock, the first-visit guide, the sun-or-moon hour). A gate can
+     no longer pass on "the page contains a paragraph": the phrases are pinned here, because every
+     one of them is a promise the engine keeps. */
+  ok("the wall teaches the whole keyboard it ships: Q/E, double-click, the guide, the hour button",
+     /arrow keys or Q\/E \(or a gentle drag\)/.test(gen) && /double-click to let the mouse look, or the/.test(gen)
+     && /first visit a short guide teaches those keys in place, once, and the/.test(gen)
+     && /sun-or-moon button in the chrome holds the lane in day or/.test(gen)
+     && /fixed night keeps its own hour/.test(gen));
+  ok("and the walk-view's own aria-label says the same to a screen reader",
+     /Drag, arrow keys or Q\/E to turn,/.test(gen)
+     && /facing, double-click to let the mouse look, L for the list, I for this note\./.test(gen)
+     && /guide strip at the bottom of the screen; it is replayable from this note/.test(gen));
 }
 
 console.log(out.join("\n"));

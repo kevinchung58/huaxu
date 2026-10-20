@@ -1610,6 +1610,14 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   };
 }
 
+// The lane has one renderer now, so a failure names itself instead of degrading into a second
+// picture: the authored sentence in the info card is raised, and the list still reads.
+function noteNoWebGL(layer, why) {
+  const note = layer.querySelector("[data-walk-fallback]");
+  if (note) note.hidden = false;
+  if (window.console && typeof console.warn === "function") console.warn(why);
+}
+
 async function mount() {
   const layer = document.querySelector(".walk[data-walk]");
   const canvas = layer && layer.querySelector("[data-walk-three]");
@@ -1620,14 +1628,16 @@ async function mount() {
     const THREE = await import(`./vendor/three-${THREE_VERSION}/three.module.js`);
     const engine = buildRenderer(THREE, canvas, backdrop, api);
     if (!api.attachThree(engine)) {
-      engine.dispose(); canvas.hidden = true; layer.dataset.walkRenderer = "canvas2d"; return;
+      engine.dispose(); canvas.hidden = true; layer.dataset.walkRenderer = "off";
+      noteNoWebGL(layer, "Three.js refused the scene:"); return;
     }
     layer.dataset.walkRenderer = "three";
     layer.__walk.threeStats = engine.stats;
   } catch (error) {
     canvas.hidden = true;
-    layer.dataset.walkRenderer = "canvas2d";
-    if (window.console && typeof console.warn === "function") console.warn("Three.js world fallback:", error);
+    layer.dataset.walkRenderer = "off";
+    noteNoWebGL(layer, "Three.js world failed:");
+    if (window.console && typeof console.warn === "function") console.warn("Three.js world could not mount:", error);
   }
 }
 

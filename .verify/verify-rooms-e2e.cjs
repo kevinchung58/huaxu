@@ -415,7 +415,12 @@ async function main() {
      sideX > plinthX + plinthHalf + env.walk().radius
        && sideX <= env.walk().halfWidth + 0.01,
      `aisle x=${sideX.toFixed(1)}; collider edge=${plinthX + plinthHalf + env.walk().radius}`);
-  env.key("w"); await env.pump(250); env.keyUp("w"); await env.pump(8);
+  /* round 54 review: the fixed pump was budgeted for the hall as R32 authored it — since the lane
+     runs on to the quay (d 900→1100), 250 frames no longer reaches the far clamp. What the gate
+     guards is the aisle's OPENNESS, so let it walk until it arrives or the budget (3× the old) runs. */
+  env.key("w");
+  for (let i = 0; i < 40 && env.walk().depth < env.walk().maxDepth - 1.5; i++) await env.pump(20);
+  env.keyUp("w"); await env.pump(8);
   const pastTable = env.walk().depth;
   /* Round 32: the true-scale table meets the hall's far wall, where the strait carries on at the same
      scale, so there is no floor beyond it to walk onto. What this defends is that the table is not a

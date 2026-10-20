@@ -25,10 +25,15 @@ const { loadImage } = await import("@napi-rs/canvas");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const VIEWS = [
-  // [label, page, clickLastStop, mode]  mode: "" | "night" (press the hour) | "2d" (kill the lit path)
+  // [label, page, clickLastStop, mode]  mode: "" | "night" (press the hour)
   ["toronto", "rooms-toronto.html", true, ""],
   ["fukuoka", "rooms-fukuoka.html", true, ""],
-  ["toronto-2D", "rooms-toronto.html", true, "2d"],
+  ["tokyo-hall", "rooms.html", true, ""],
+  ["cntower", "rooms-cntower.html", false, ""],
+  ["journey", "rooms-journey.html", false, ""],
+  ["niagara-day", "rooms-niagara.html", false, ""],
+  ["niagara-night", "rooms-niagara.html", false, "night"],
+  ["goat-day", "rooms-goat.html", false, ""],
   ["street-noon", "street.html", false, ""],
   ["street-night", "street.html", false, "night"],
 ];
@@ -38,27 +43,32 @@ const browser = await puppeteer.launch({
   args: [...chromium.args, "--no-sandbox", "--disable-dev-shm-usage"],
   headless: true, defaultViewport: { width: 1024, height: 640 },
 });
-const page = await browser.newPage();
-page.on("pageerror", (e) => console.log("PAGEERROR", String(e).slice(0, 140)));
+// The sandbox has no route to the font hosts, and chromium's retries on an unreachable css2 request
+// can outlast `load` itself; every non-local request is aborted at the page level below.
+const arm = async (p) => {
+  await p.setRequestInterception(true);
+  p.on("request", (req) => (req.url().includes("127.0.0.1:8080") || req.url().startsWith("data:")
+    ? req.continue().catch(() => {}) : req.abort().catch(() => {})));
+  p.on("pageerror", (e) => console.log("PAGEERROR", String(e).slice(0, 140)));
+};
 
 for (const [label, url, clickStop, mode] of VIEWS) {
-  page.removeAllListeners("request");
-  if (mode === "2d") {
-    await page.setCacheEnabled(false);   // scene3d.js?v=<digest> is cache-immortal; only a cold cache lets the abort through
-    await page.setRequestInterception(true);
-    page.on("request", (req) => {
-      if (/scene3d\.js/.test(req.url())) return req.abort();
-      req.continue();
-    });
-  } else {
-    await page.setCacheEnabled(true);
-    await page.setRequestInterception(false);
-  }
-  await page.goto(`http://127.0.0.1:8080/${url}`, { waitUntil: "load", timeout: 60000 });
+  // Round 54: one fresh page per view. A painter-era probe, this; the same-tab carryover it used
+  // to survive is not worth debugging now that the second renderer it compared is gone.
+  const page = await browser.newPage();
+  await arm(page);
+  await page.evaluateOnNewDocument((v) => { try { localStorage.setItem("huaxu.walk-hour.v1", v); } catch (e) {} },
+    mode === "night" ? "night" : "day");
+  // domcontentloaded, not load: a same-tab nav away from the previous view leaves its subresource
+  // requests abandoned, and `load` can wait on them; the boot wait below is the real gate.
+  await page.goto(`http://127.0.0.1:8080/${url}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.waitForFunction("document.querySelector('[data-walk]')?.__walk", { timeout: 30000 });
   if (mode === "night") {
-    await page.evaluate(() => document.querySelector("[data-walk-hour]").click());
-    await page.waitForFunction("document.querySelector('[data-walk]').dataset.walkClock === 'night'", { timeout: 15000 });
+    await page.evaluate(() => {
+      const b = document.querySelector("[data-walk-hour]");
+      if (document.querySelector("[data-walk]").dataset.walkClock !== "night") b.click();
+    });
+    await page.waitForFunction("document.querySelector('[data-walk]').dataset.walkClock === 'night'", { timeout: 25000 });
   }
   if (clickStop) {
     await page.evaluate(() => {
@@ -101,8 +111,8 @@ for (const [label, url, clickStop, mode] of VIEWS) {
     if (h >= 225 && h < 250 && sat > 0.15 && mx > 40) violetSky++;
     if (b > r + 12 && b > gg + 12) cold++;
   }
-  if (mode === "2d" && renderer !== "canvas2d") console.log(`!! ${label}: abort did not reach the fallback, renderer=${renderer}`);
   console.log(`${label.padEnd(13)} [${renderer}] luma ${(sl / n).toFixed(1).padStart(5)}  mean RGB ${(sr / n).toFixed(0)},${(sg / n).toFixed(0)},${(sb / n).toFixed(0)}` +
     `  purple ${(100 * purple / n).toFixed(1).padStart(5)}%  violet ${(100 * violetSky / n).toFixed(1).padStart(5)}%  cold ${(100 * cold / n).toFixed(1).padStart(5)}%`);
+  await page.close();
 }
 await browser.close();

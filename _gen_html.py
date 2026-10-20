@@ -1708,8 +1708,12 @@ def _place_card(r):
 # you are inside, how you get back, and that the street's far end is open. It sits above the places,
 # because the moment after "walk in" is exactly where a first-time visitor is lost.
 HOW_TO_WALK = ("These three doors step into Toronto, Tokyo, or Fukuoka: W A S D to walk, "
-               "arrow keys or a gentle drag to turn, E to use what is in front of you, or the "
-               "on-screen pad on a phone. A landmark's own object may lead to another real space; "
+               "arrow keys or Q/E (or a gentle drag) to turn, E while standing still to use what "
+               "is in front of you, double-click to let the mouse look, or the on-screen pad on a "
+               "phone. On the first visit a short guide teaches those keys in place, once, and the "
+               "info card replays it. The sun-or-moon button in the chrome holds the lane in day or "
+               "brings on night, and the choice carries to every lane; a room whose window shows one "
+               "fixed night keeps its own hour. A landmark's own object may lead to another real space; "
                "Esc returns to its owner, then to the street, and finally to this wall.")
 
 
@@ -4204,6 +4208,13 @@ DISTRICTS = [
         # The walk passes the four historic stands in turn, then views the much taller Retro High
         # Mart from across the lane, pitched up to keep both its low stand and crown in frame. It then
         # comes up to the port table at the head of the basin, where one stop takes in both far landmarks.
+        # Round 54 review: the quay stops the rebuild authored down the left of the table could never
+        # be arrived at — its flank is at ±370 and a body needs 394 to pass, so x=−350 sat INSIDE the
+        # plinth's collision box, and every straight glide the rail makes crossed it. The record's own
+        # aisle (R52: "a walker can still go round the true-scale table by the right-hand aisle", the
+        # 22 cm the e2e gate measures) is what the rail now rides: out to the aisle mouth before the
+        # table's near face, up past the flank at 405, round the far corner, and in onto the quay
+        # behind the table, where every hop is a straight line no stand crosses.
         "stations": [
             {"z": 60, "x": 0, "label": "the door of the hall"},
             {"z": round(640 / Z_SCALE, 2), "x": -100, "label": "the station, on your left"},
@@ -4213,8 +4224,10 @@ DISTRICTS = [
             {"z": round(1660 / Z_SCALE, 2), "x": 200, "yaw": -52, "pitch": -9,
              "label": "the Retro High Mart, on its stand to your left"},
             {"z": round(2100 / Z_SCALE, 2), "x": 0, "label": "at the port table, over the basin toward the strait"},
-            {"z": round(2450 / Z_SCALE, 2), "x": -350, "yaw": -32,
+            {"z": round(2200 / Z_SCALE, 2), "x": 405, "label": "the right aisle, beside the table's flank"},
+            {"z": round(2450 / Z_SCALE, 2), "x": 405,
              "label": "the Blue Wing on its berth"},
+            {"z": round(2700 / Z_SCALE, 2), "x": 405, "label": "the quay's turn, past the table's corner"},
             {"z": round(2660 / Z_SCALE, 2), "x": 0, "label": "the canal's stone"},
             {"z": round(2800 / Z_SCALE, 2), "x": 140, "label": "the harbour mouth"},
             {"z": round(2950 / Z_SCALE, 2), "x": 0, "label": "ship lights across the strait"},
@@ -4627,7 +4640,7 @@ DISTRICTS = [
              "hint": "The rock the incline is cut into, and the falls' mist ends here. Thirty metres "
                      "of gorge lip stand five and a half up in this lane, the way every other distance "
                      "between the Centre and Clifton is kept."},
-            {"id": "fallsview-deck", "kind": "board", "x": 500, "z": 1795, "y": 546, "ry": 0,
+            {"id": "fallsview-deck", "kind": "board", "x": 520, "z": 1795, "y": 546, "ry": 0,
              "w": 320, "h": 7, "d": 620, "leaf": "#797570",
              "title": "The Fallsview deck",
              "hint": "The upper station's apron, level with the bluff's lip: the parking lot and the "
@@ -5129,7 +5142,7 @@ DISTRICTS = [
                  "title": "The way back across the Rainbow",
                  "hint": "440 metres of steel opened 1 November 1941, and twenty minutes of "
                          "walkway back to Clifton Hill and the Canadian drawing of the same water."},
-        "back_to": "rooms-niagara.html",
+        "back_to": "rooms-niagara.html#at-curtain-rainbow",
         "caveat": "The American bank seen from its own island, at the strip's measure: the "
                   "American Falls' 290 m crest and 21-30 m drop onto the 1969 boulders, Luna "
                   "Island's 350 ft of dolostone and its 1954-72 closure, the Horseshoe's 57 m and "
@@ -5367,10 +5380,14 @@ def walk_object(o):
     # colour borrowed, no geometry surveyed); the class rides the class list, or the dressed button
     # and the painted prop cannot disagree about what the stall looks like.
     stall = " walk-stall" if o.get("game") else ""
+    # Round 54: the record's kind rides the button so the site stops deriving it from the id.
+    # An id like `luna-island` was an island only if the prefix heuristic happened to agree; the
+    # authored field is the truth, and the shape table reads it directly now.
+    kind_attr = f' data-kind="{escape(o["kind"])}"' if o.get("kind") else ""
     return (f'<button type="button" class="walk-hit{stall}" data-obj="{escape(o["id"])}" '
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
-            f'data-d="{dep}"{solid_attr} style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
+            f'data-d="{dep}"{solid_attr}{kind_attr} style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
             f'{states}{leave}{awn_attr}{noren_attr}{fascia_attr}{story_attr}{extra_attr}></button>')
 
 
@@ -5549,11 +5566,11 @@ def walk_html(d, drawer):
        data-lane-back="{lane["back"]}"{max_d_attr}{day_attr}{floor_attr}{zones_attr}{floors_attr}{ws_attr}
        data-eye="{EYE}">{banner_html}
   <div class="walk-view" tabindex="0" data-walk-view role="application"
-       aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
-       Space to jump, E to open what you are standing in front of, L for the list, I for this note.
+       aria-label="{label}, a lane you walk in person.{clad}{sight} Drag, arrow keys or Q/E to turn,
+       W A S D to walk, Shift to run, Space to jump, E while standing still to open what you are
+       facing, double-click to let the mouse look, L for the list, I for this note. The first visit is walked through once by a guide strip at the bottom of the screen; it is replayable from this note.
        Nothing is written over the space: every sentence is behind a button.">
     <canvas class="walk-three-canvas" data-walk-three width="16" height="9" aria-hidden="true"></canvas>
-    <canvas class="walk-canvas" data-walk-canvas width="16" height="9" aria-hidden="true"></canvas>
     <div class="walk-hits" data-walk-hits>
       {INDENT.join(parts)}
       {walk_islands(d, placed)}

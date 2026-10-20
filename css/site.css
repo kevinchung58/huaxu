@@ -2104,21 +2104,14 @@ body.shell {
   outline: 2px solid var(--accent-bright);
   outline-offset: -2px;
 }
-.walk-three-canvas,
-.walk-canvas {
+.walk-three-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
-}
-.walk-three-canvas {
   z-index: 1;
   pointer-events: none;
-}
-.walk-canvas {
-  z-index: 2;
-  pointer-events: none; /* transparent in Three mode; the full Canvas2D fallback otherwise */
 }
 .walk-hits {
   position: absolute;

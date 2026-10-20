@@ -2,6 +2,27 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-18 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0ab. 第五十四輪（2026-10-20）：站主令「2D fallback 全拆、全面3D JS」——塗裝器連垃圾一起清光,順手修掉這一拆照出的三個既有缺陷
+
+### 站主指令
+「直接2d fallback 拿掉，誰讓你一直留著垃圾。現在全面3d js」。先前審計「Canvas2D 為文件化 fallback、保留」的結論被明文推翻:owner 裁決壓過審計妥協。
+
+### 拆了什麼
+- `js/site.js` 8336→7487 行:emit/apertures/drawWorld 整段、drawFar 的 skyAround 迴圈、draw() 尾部的 Canvas2D .screen 投影回填、boot 的無 g 分支全數移除;catch 改為終局(`walkRenderer="off"`、 dispose、揭幕 `[data-walk-fallback]` 自述條,不再重試)。 collateral 三筆由 git blob 原樣復還:`drawMarks`、`const skyBands`、`toneMirror`;`mkTile` 不再向畫布上下文討 `createPattern`,改發純 token(`PATTERN_SOURCE` 弱表續供 three 的材質)——`g` 這個名字在 site.js 只剩局部變數。
+- `js/scene3d.js`:兩條 WebGL 失敗路徑改判終局 + `noteNoWebGL` 自述。`_gen_html.py`:每頁 `<canvas class="walk-canvas">` 行刪除,全站 regen。`css/site.css`:`.walk-three-canvas` 併為單一規則。
+- 閘門反轉:`bin/verify-three.mjs` 現在是**防復活閘**(site.js/-pages/css 出現 `fillRect/emit/canvas2d/walk-canvas` 即 FAIL);`verify-walk` 的 backdrop-fills / one-depth-pass / warm-fills 三閘隨主體拆除,painter 計數閘改釘 three 側等價物(GLSL `laneDark=min(0.62`、`clamp(vLaneAir,0.0,0.6)`);`lane-shot.mjs` 刪除,`_halltint` 改每 view 新 page(同 tab 殘留請求會卡 `load`),`make-cover` 改接 `_walkshot`(新增 `PAGE=` 參數)——封面从此只有真渲染機一條路。
+
+### 這一拆照出的既有缺陷(全部就地修)
+1. **kind 通道接錯**:`meta` 以 `kind: el.dataset.obj`(id 冒充 kind)+ 前綴猜形。R52/53 的 `luna-island`、`midway-stall` 等 19 個名字就此悄悄落成平面卡。修法:gen 輸出 `data-kind`、site 讀 `dataset.kind || dataset.obj`、`verify-shapes` 同讀真 kind,SHAPE 補登 `board: "plane"`(如實登記)、`foodstall: "stall"`(midway-stall 終於走上它被 authored 的棚架分支)、`vending` 的 1.7 lit 意圖首次生效。131/131 props 全數解析。
+2. **atId 落地被 1 打斷**:`#at-<obj>` 的找形靠 kind==id 舊慣例;改讀 `o.el.dataset.obj` 後,塔/隧道歸位全數復活(e2e:103cm/reach=tower-cn、door-journey 落地實測通過)。
+3. **chain 閘沒記 niagara→goat 的門**:`curtain-rainbow` 擁有 goat 之門、goat 以 `#at-curtain-rainbow` 歸位——門是既有資料,閘是過時帳本;chain 0 FAIL,OWNED 迴圈改可自訂 back prop。`fallsview-deck` x 對齊 bluff-face(20cm 懸空,geometry OK)。story 閘 15s 導航預算在軟體光柵機上是量工具的耐心,升 45s(HEAD 同掛同癒,證為環境)。
+
+### 全庫閘門(術後最終版,一輪全綠)
+walk 189/189(原 196,拆掉 7 條 painter 本體閘、retarget 5 條)、three PASS(防復活語)、games 23/23、chain 0 FAIL、shapes all-resolve、geometry OK、clash 0、tables 7/9 framed、objects/look/story 27/27 exit 0、rooms-e2e 0 FAIL、collision 28/28(harness 不自閉,124 為收尸非FAIL)、`_halltint` 10 views 全 [three] 紫色 0.0-0.3%、regen 冪等。`motion-magnitude` 刪除:量的是 painter 投影框下的像素,Three-only 世界裡前提已死(實測 0.00%),報表工具非閘門,留檔即垃圾。
+
+### 教訓(已入 AGENTS 一般條目)
+刪 span 會連帶刪掉 span 裡的鄰居——按函數刪、刪後 boot;`pkill -f` 會殺到自家人——用 port 歸屬;harness 的 timeout 量的是 harness。
+
 ## 0aa. 第四十五輪（2026-10-18）：站主遊玩實測推翻「已修」宣稱——移動手感對齐 pointer-lock demo、塗裝世界牆入碰撞體、量具同輪補眼
 
 ### 站主指令
@@ -136,7 +157,7 @@ SKILLS.md §4 閘門清單加入 `node .verify/verify-collision.cjs`（列於 ve
 3. **渲染器 polygonOffset 選項（中,可選）**：若下一輪新增貼牆裝飾,優先以 `__flat` 批內 sub-batch（牆面/裝飾兩層 material）取代逐 kit 出挑;驗收=影格 pixel 對照 + verify-three 三角形不變。
 4. **§0w 場景 thread 續查全部保持**（Moji 立面圖、Niagara 欄杆/燈柱/parkway、Journey 分支平面圖＋2027 watch、Tokyo 逐戶立面、Toronto 授權=站主窗口）——原文見 §0w,未完成項未變。
 5. 站主輸入 persistent 佇列：英文 CV PDF、ORCID id。
-6. 任何場景改動後照例全庫：regen 冪等＋七頁機械閘＋改動頁 browser-shot（`renderer:"three"` 到站）＋lane-shot＋人眼讀格＋wall-probe（碰移動/碰撞碼必跑）＋PR 前更新本檔。
+6. 任何場景改動後照例全庫：regen 冪等＋七頁機械閘＋改動頁 browser-shot（`renderer:"three"` 到站；lane-shot 已隨 Canvas2D 塗裝器於第五十四輪退役）＋人眼讀格＋wall-probe（碰移動/碰撞碼必跑）＋PR 前更新本檔。
 
 ### 站主裁頂事項
 本輪無新裁頂需求（對法修正與 relief 都是證據閉環,非美學取捨;零依賴紅線下不上物理引擎與站內立場一致,已列為裁頂候補若未來 wants 真物理）。

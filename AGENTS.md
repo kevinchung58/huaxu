@@ -30,6 +30,23 @@ no package manifest, CDN, or additional runtime dependency is implied.
   `python3 _gen_html.py`, grep the *emitted HTML* for the new attributes — a script that dies on an
   assert writes nothing, and the pages already on disk make a silently-skipped patch look healthy
   (same failure class as the bullet above about generator exits).
+- **Deleting a span of code deletes every neighbour the span happened to contain, and a pattern-kill
+  deletes the shell that ran it.** Two mechanics cost a full round each, so both are rules now. When a
+  patch removes a block by start/end markers (round 54's painter excision: `emit` through `drawFar`),
+  the survivors inside the span's line range — a shared helper, a trailing `};`, the `const` the next
+  section needs — must be re-grepped for consumers and booted in the harness before the removal is
+  called done; delete by function, not by geometry. And `pkill -f <name>` matches the killing shell's
+  own command line, which contains `<name>`: kill by port (`fuser -k 8080/tcp`) or by pid file, or
+  exclude with a character class — and remember the class does not protect you from the *other*
+  occurrences of the literal string in the same command line.
+- **A harness timeout measures the harness.** The story gate's 15 s `waitForRoute` on click-navigations
+  began failing on a machine that renders WebGL in software: the page navigated fine, the poller lost
+  the race, and the round spent its budget diagnosing a site that was healthy. Before treating a
+  timing-out headless gate as a defect, reproduce the exact flow with a probe that prints the page's
+  own state at timeout; if the site answered and the harness blinked, fix the budget (or the lifecycle
+  event waited on: `domcontentloaded` plus a state wait, not `load` over abandoned subresources) and
+  say so in the gate's comment.
+
 - **The unit rule, all of it:** only the depth axis converts — record `z` and `d` cross into walk
   space ×2.9 (`Z_SCALE`), while `x`, `y`, `w`, `h`, stop `--x` and every dataset passthrough field
   (ride/deck/dia/axle/period, stop view `h`) are scene centimetres as authored, unscaled, the same
@@ -528,6 +545,15 @@ proposal until they have read it, and the loop is not finished until they have.
     is folded by JS. Adding a section, a `reveal` class or a navy drawer surface is a defect: it can
     hide content without scripting or drop borrowed components to 2:1 contrast. The lane, props and
     sourced outdoor world are rendered in the pinned Three.js scene with the authored box
-    (`data-lane-w/-d/-ceil`, `data-eye`). Canvas2D is the complete no-WebGL fallback, not an overlay
-    behind the WebGL world. Do not put scene geometry into CSS transforms or invent a second set of
-    dimensions in `js/site.js` or `js/scene3d.js`.
+    (`data-lane-w/-d/-ceil`, `data-eye`). There is no second picture: the Canvas2D lane painter was
+    deleted in round 54 on the owner's ruling, and where WebGL is absent the lane says so in its own
+    words and retires — the compiled state (rail, list, reading, keys) keeps answering without it.
+    No Canvas2D lane painting may return to `js/site.js`. Do not put scene geometry into CSS
+    transforms or invent a second set of dimensions in `js/site.js` or `js/scene3d.js`.
+
+- **A gate that re-derives what the site derives, measures its own approximation.** Where the site
+    inferred a prop's shape kind from its id (`kind: el.dataset.obj` plus a prefix heuristic), the
+    audit gate copied the inference — and when new names arrived that did not fit the convention,
+    both the site and the gate went wrong together and the mismatch between them looked like noise.
+    Name the channel once (the emitted field), have the renderer, the generator and every gate read
+    that channel, and let convention only ever be a fallback clearly labelled as one.

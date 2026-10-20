@@ -38,17 +38,17 @@ assert.match(sceneSource, /3D lamp halo[\s\S]*3D ground pool[\s\S]*3D wire or la
   "lighting, reflections, wall shadows and overhead lines must stay in world space");
 assert.match(siteSource, /effects: \{ lamps, wires, marks, surfaces, wall: WALL/,
   "site.js must submit the authored light records to the Three.js frame");
-assert.match(siteSource, /screen-projection pass is retained exclusively for the no-WebGL\/failed-context fallback\.[\s\S]*?if \(!threeRenderer\) \{/,
-  "screen-projected effects must only run in the full Canvas2D fallback");
-assert.match(cssSource, /\.walk-three-canvas \{\s*z-index: 1/);
-assert.match(cssSource, /\.walk-canvas \{\s*z-index: 2/);
+// round 54, at the owner's ruling ("全站該是 3d js"): the Canvas2D lane painter is deleted, and
+// this gate is what keeps it deleted — any revival of paint calls or of the second canvas fails here.
+assert.doesNotMatch(siteSource, /g\.fillRect|forEach\(emit\)|canvas2d|getContext\("2d"\)(?![\s\S]{0,80}tile)/,
+  "no Canvas2D lane painting may return to site.js");
+assert.match(cssSource, /\.walk-three-canvas \{\s*position: absolute;[\s\S]{0,140}z-index: 1/);
+assert.doesNotMatch(cssSource, /\.walk-canvas/, "the fallback canvas has no styles to inherit back to life");
 assert.match(cssSource, /\.walk-hits \{[\s\S]*?z-index: 3/);
 assert.match(siteSource, /if \(bd\) drawFar\(C\);/,
   "compact distant scenes must also reach the 3D renderer");
-assert.match(siteSource, /if \(bd\.world && !threeRenderer\) drawWorld\(C\);/,
-  "sourced world geometry must stay Canvas2D-only in fallback mode to avoid duplicate Three meshes");
-assert.match(siteSource, /if \(threeRenderer\) \{\s*if \(typeof g\.clearRect === "function"\)/,
-  "the 2D overlay must clear to transparency only while the Three.js canvas is active");
+assert.doesNotMatch(siteSource, /drawWorld\(/,
+  "the surveyed world is scene3d's alone now: no second painter may redraw it");
 assert.match(generator, /js\/scene3d\.js/);
 assert.match(generator, /three-0\.186\.1\/three\.core\.js/);
 assert.match(generator, /three-0\.186\.1\/three\.module\.js/);
@@ -61,8 +61,8 @@ for (const file of pageFiles) {
   walkPages++;
   assert.match(html, /<canvas class="walk-three-canvas" data-walk-three/,
     `${file} needs a Three.js scene canvas`);
-  assert.match(html, /<canvas class="walk-canvas" data-walk-canvas/,
-    `${file} needs a transparent effects canvas and Canvas2D fallback`);
+  assert.doesNotMatch(html, /data-walk-canvas/,
+    `${file} must not carry a fallback canvas — the lane is Three.js only`);
   assert.match(html, /<script type="module" src="js\/scene3d\.js\?v=[0-9a-z]+"><\/script>/,
     `${file} needs the cache-busted Three.js bridge`);
   const match = html.match(/<script type="application\/json" data-walk-backdrop>([\s\S]*?)<\/script>/);
@@ -249,4 +249,4 @@ assert.ok(worldPages > 0, "at least one generated sourced world must exercise ba
 assert.ok(totalWater >= 216, "the waterfall worlds must retain all authored water sheets");
 console.log(`PASS  Three.js ${VERSION} imported; ${walkPages} walkable pages, ${worldPages} sourced worlds, ` +
   `${totalTriangles} world + ${totalWaterTriangles} water triangles, ${totalWater} waterfall sheets, ` +
-  `${totalMist} spray layers; Canvas2D fallback remains wired.`);
+  `${totalMist} spray layers; no Canvas2D lane painter anywhere (owner ruling, round 54).`);
