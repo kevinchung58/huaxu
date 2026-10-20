@@ -47,6 +47,7 @@ function recorder() {
       if (/^rgba\(255,228,186,/.test(c)) ctx.warm++;
     },
     stroke() { ctx.strokes++; },
+    fillText() { ctx.text++; }, strokeText() { ctx.text++; },
     drawImage(...a) { ctx.imgs++; fin(a.slice(1)); },
     setTransform(...a) { fin(a); ctx.frames++; ctx.frame = []; },
     transform(...a) { fin(a); },
@@ -60,7 +61,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const out = [];
 const ok = (n, c, e = "") => out.push(`${c ? "PASS" : "FAIL"}  ${n}${e ? "  — " + e : ""}`);
 
-function boot(markup, url) {
+function boot(markup, url, seedHour) {
   const { JSDOM, VirtualConsole } = globalThis.__JSDOM;
   // jsdom refuses to navigate, which is the one thing a walk-through of the exit needs to be heard
   // about: an attempted navigation lands here instead of on a console the owner has to read.
@@ -92,6 +93,7 @@ function boot(markup, url) {
     get src() { return this._s; }
     get complete() { return !!this._s; }
   };
+  if (seedHour !== undefined) w.localStorage.setItem("huaxu.walk-hour.v1", seedHour);
   w.eval(js);
   return w;
 }
@@ -243,8 +245,12 @@ ok("and so is the dressing, because the room is the thing being described",
   // wrapper is not what is painted over the space.
   const ownText = (el) => Array.from(el.childNodes).filter((n) => n.nodeType === 3)
     .map((n) => n.textContent.trim()).join(" ").trim();
-  const words = [...hud.querySelectorAll("*")].filter((el) => !spoken(el) && ownText(el));
-  ok("nothing painted over the space is a sentence, a label, or even a glyph",
+  // The one licensed exception is the first-visit guide (round 46, at the owner's request): prose
+  // may ride the bottom chrome only inside [data-walk-tutor], only until it is learned, and the
+  // tests below prove both halves. Everything else on the display still stays wordless.
+  const words = [...hud.querySelectorAll("*")].filter((el) => !spoken(el) && ownText(el)
+                                                                  && !el.closest("[data-walk-tutor]"));
+  ok("nothing painted over the space is a sentence, a label, or even a glyph — the guide strip excepted, once",
      words.length === 0, words.map((e) => `${e.tagName}.${e.className}:${e.textContent.trim()}`).join(" "));
   ok("the live regions are still there to be heard, and only to be heard",
      q("[data-walk-status]").classList.contains("sr-only")
@@ -256,9 +262,11 @@ ok("and so is the dressing, because the room is the thing being described",
        && /--p:[\d.]+/.test(b.getAttribute("style") || "")));
   ok("and the profile is data, not a look: each tick's height comes from its own depth",
      /height: calc\(0\.42rem \+ var\(--p, 0\)/.test(css));
+  const hudBtns = qa(".walk-hud button, .walk-hud a").filter((el) => !el.closest("[data-walk-tutor]"));
   ok("every control on the display is an icon button with an accessible name",
-     qa(".walk-hud button, .walk-hud a").every((el) => (el.getAttribute("aria-label") || "").length > 3
-       && !el.textContent.trim()));
+     hudBtns.every((el) => (el.getAttribute("aria-label") || "").length > 3 && !el.textContent.trim()));
+  ok("the guide's two word-buttons carry accessible names too",
+     qa("[data-walk-tutor] button").every((el) => (el.getAttribute("aria-label") || "").length > 3));
   ok("the prose that used to sit there is emitted inside the card it now hides in",
      /data-walk-aside/.test(html) && /drag to turn/.test(q("[data-walk-aside]").textContent)
        && q("[data-walk-card]").hidden === true);
@@ -374,7 +382,7 @@ ok("the city's windows use a pattern like every other surface",
    /paintWindows/.test(js) && /winPat = mkTile\(paintWindows\)/.test(js));
 ok("the aperture is four wall pieces, not a mask",
    (js.match(/wallPiece\(/g) || []).length === 5, "4 pieces + the closed fallback");
-ok("a district with no vista still gets a closed wall", /else \{\s*\n\s*wallPiece\(-WALL, 0, WALL, CEIL/.test(js));
+ok("a district with no vista still gets a closed wall", /else \{\s*\n\s*wallPiece\(-W, 0, W, CEIL/.test(js));   // W: round 52, the half is per-slice
 
 /* ---- 3. walking, reaching, opening ------------------------------------------------------------- */
 const stops = qa("[data-walk-stop]");
@@ -840,7 +848,7 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
 {
   const { createHash } = await import("node:crypto");
   const hash = createHash("sha1");
-  ["css/site.css", "js/site.js", "js/scene3d.js",
+  ["css/site.css", "js/site.js", "js/scene3d.js", "js/games.js",
    "js/vendor/three-0.186.1/three.core.js", "js/vendor/three-0.186.1/three.module.js"]
     .forEach((asset) => hash.update(fs.readFileSync(asset)));
   const digest = hash.digest("hex").slice(0, 10);
@@ -849,7 +857,7 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   const wrong = [];
   pages.forEach((f) => {
     const html = fs.readFileSync(f, "utf8");
-    const tags = [...html.matchAll(/(?:site\.css|site\.js|scene3d\.js)\?v=([0-9a-z]+)/g)].map((m) => m[1]);
+    const tags = [...html.matchAll(/(?:site\.css|site\.js|scene3d\.js|games\.js)\?v=([0-9a-z]+)/g)].map((m) => m[1]);
     tags.forEach((t) => tokens.add(t));
     // Every page must ask for the bytes on disk, and ask for both with one token: two tokens is how a
     // build ships a new renderer under an old key, which no other gate here can see because it only
@@ -1029,7 +1037,150 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
      !/id="ig-field-notes-/.test(act));
 }
 
-console.log(out.join("\n"));
+
+
+/* ---- the guide teaches once, in place, and never comes back --------------------------------------
+   Round 46: the owner asked for a first-visit walkthrough. The contract is that every step waits
+   for the real thing — a turn, a stride, an opened card — and that a visitor who has learned is
+   never taught again. A fresh environment with empty storage runs the flow end to end; the rail's
+   own glide deliberately comes after the walking step, so a carried body can never impersonate
+   strides. */
+{
+  const g = boot(rooms, "https://huaxu.test/rooms-guide.html");
+  const gdoc = g.document;
+  const gq = (s) => gdoc.querySelector(s);
+  const gkey = (k, type = "keydown") => (gdoc.activeElement || gdoc.documentElement)
+    .dispatchEvent(new g.KeyboardEvent(type, { key: k, bubbles: true }));
+  const gclick = (el) => el.dispatchEvent(new g.MouseEvent("click", { bubbles: true, cancelable: true }));
+  const ghold = async (k, ms) => { gkey(k); await sleep(ms); gkey(k, "keyup"); };
+  const gholdT = async (ks, ms) => { ks.forEach((k) => gkey(k)); await sleep(ms); ks.forEach((k) => gkey(k, "keyup")); };
+  const gbody = () => gq("[data-walk]").__walk;
+  const gsettle = async (want) => {
+    for (let i = 0; i < 240; i++) { await sleep(40); if (Math.abs(gbody().depth - want) < 2) return; }
+  };
+  const gt = () => gq("[data-walk-tutor-text]").textContent;
+  const status0 = () => gq("[data-walk-status]").textContent.trim();
+  const gc = () => gq("[data-walk-tutor-count]").textContent;
+  ok("a first visit opens on the turn step before anything is touched",
+     gq("[data-walk-tutor]").hidden === false && gc() === "1 / 4" && /Turn first/.test(gt()), gt());
+  ok("the guide is chrome, not a paint-over: it rides the bottom strip and the plate stays closed",
+     gq("[data-walk-card]").hidden === true && /\.walk-tutor \{/.test(css));
+  await ghold("ArrowRight", 400); await sleep(300);
+  ok("a turn that actually turned hands over the walking step",
+     gc() === "2 / 4" && /Now walk in/.test(gt()), `${gc()} ${gt()}`);
+  await gholdT(["w", "shift"], 1800); await sleep(300);
+  ok("real strides of two metres — not the rail's carrying — open the reading step",
+     gc() === "3 / 4" && /press E/.test(gt()), `${gc()} d-moved ok`);
+  const gstops = [...gdoc.querySelectorAll("[data-walk-stop]")];
+  const gstop = (z) => gstops.reduce((best, el) =>
+    Math.abs(parseFloat(el.style.getPropertyValue("--z")) - z) <
+    Math.abs(parseFloat(best.style.getPropertyValue("--z")) - z) ? el : best, gstops[0]);
+  const gz = parseFloat(gstop(1392).style.getPropertyValue("--z"));
+  gclick(gstop(1392)); await gsettle(gz);
+  await gholdT(["d", "shift"], 4200); await ghold("ArrowRight", 250); await ghold("w", 950);
+  await sleep(120);
+  gkey("e"); await sleep(80);
+  ok("opening a card finishes the teaching: last step, a way out where Skip was",
+     !gq("[data-walk-card]").hidden && gc() === "4 / 4" && /rail/.test(gt())
+       && gq("[data-walk-tutor-done]").hidden === false && gq("[data-walk-tutor-skip]").hidden === true,
+     `${gc()} card=${!gq("[data-walk-card]").hidden} ${status0()} ${gt()}`);
+  gclick(gq("[data-walk-tutor-done]"));
+  ok("Got it closes the guide and marks it learned for this browser",
+     gq("[data-walk-tutor]").hidden === true && g.localStorage.getItem("huaxu.walk-guide.v1") === "1");
+  gclick(gq("[data-walk-tutor-replay]"));
+  ok("the info card's replay line brings it back on purpose",
+     gq("[data-walk-tutor]").hidden === false && gc() === "1 / 4");
+  gclick(gq("[data-walk-tutor-skip]"));
+  ok("Skip ends it on the same terms", gq("[data-walk-tutor]").hidden === true);
+  ok("and a boot after that start never auto-opens it: the flag is what gates the strip",
+     /if \(tutorEl && !tutStore\.done\(\)\) showTutor\(0\);/.test(js));
+  g.close();
+}
+
 const fail = out.filter((l) => l.startsWith("FAIL")).length;
-console.log(`\n${out.length - fail}/${out.length} pass`);
-process.exit(fail ? 1 : 0);
+
+/* ---- pressed models demonstrate (round 51) -------------------------------------------------------
+   The owner split the ask: games where the water runs, interaction where the models stand. A press
+   on the Blue Wing plays the opening back as a 24-second demonstration over the clock's own
+   schedule, and a press on a basin skips a toy stone. The record's hours are never rewritten — the
+   demo is an envelope, and it says so. */
+{
+  const fuk = boot(fs.readFileSync("rooms-fukuoka.html", "utf8"), "https://huaxu.test/rooms-fukuoka.html");
+  await sleep(260);
+  const bridge = fuk.document.querySelector('[data-obj="drawbridge-mj"]');
+  const basin = fuk.document.querySelector('[data-obj="pool-moji"]');
+  ok("the drawbridge and both basins carry their demo contract in the markup",
+     bridge.dataset.demo === "open" && basin.dataset.demo === "ripple");
+  bridge.dispatchEvent(new fuk.MouseEvent("click", { bubbles: true, cancelable: true }));
+  ok("pressing the bridge starts the demonstration and speaks it to the reader, without a card",
+     bridge.__demoAt > 0 && /demonstration runs/.test(fuk.document.querySelector("[data-walk-record]").textContent),
+     `at=${!!bridge.__demoAt}`);
+  basin.dispatchEvent(new fuk.MouseEvent("click", { bubbles: true, cancelable: true }));
+  ok("a pressed basin answers about its stone rings",
+     /stone skipped/.test(fuk.document.querySelector("[data-walk-record]").textContent));
+  ok("the bridge's hint still reads as the record first, demonstration second",
+     /six times a day/.test(bridge.dataset.hint) && /real bridge keeps its/.test(bridge.dataset.hint));
+  fuk.close();
+}
+
+/* ---- the hour is the visitor's (round 49) --------------------------------------------------------
+   The owner's ruling: no browser clock may darken a lane behind the visitor's back. The page opens
+   in day, one button trades it for night, the choice carries across lanes, and a place held at its
+   own authored night (the LookOut) gets no button at all. */
+{
+  const h = boot(rooms, "https://huaxu.test/rooms-hour.html");
+  const hl = h.document.querySelector("[data-walk]");
+  const hb = h.document.querySelector("[data-walk-hour]");
+  ok("a lane opens in day, held there — the chrome carries the hour", hl.dataset.walkClock === "day" && !!hb, hl.dataset.walkHour);
+  ok("the button is an icon with a label that says what it will do",
+     !hb.textContent.trim() && /Daylight now\. Bring on the night\./.test(hb.getAttribute("aria-label") || ""));
+  ok("the sun shows by day, the moon is waiting", /walk-hour-sun/.test(hb.innerHTML) && /walk-hour-moon/.test(hb.innerHTML)
+     && !hb.classList.contains("is-night"));
+  hb.dispatchEvent(new h.MouseEvent("click", { bubbles: true, cancelable: true }));
+  ok("one press brings night: state, pressed, the moon, the label, the announcement",
+     hl.dataset.walkClock === "night" && hb.classList.contains("is-night") && hb.getAttribute("aria-pressed") === "true"
+     && /Night now\. Switch/.test(hb.getAttribute("aria-label")) && /Night comes/.test(h.document.querySelector("[data-walk-record]").textContent),
+     `${hl.dataset.walkClock} ${hb.getAttribute("aria-label")}`);
+  ok("and the choice is remembered for the site", h.localStorage.getItem("huaxu.walk-hour.v1") === "night");
+  const h2 = boot(rooms, "https://huaxu.test/rooms-hour2.html", "night");
+  ok("a lane entered with the choice set opens already in night",
+     h2.document.querySelector("[data-walk]").dataset.walkClock === "night"
+       && h2.document.querySelector("[data-walk-hour]").classList.contains("is-night"));
+  h2.document.querySelector("[data-walk-hour]").dispatchEvent(new h2.MouseEvent("click", { bubbles: true, cancelable: true }));
+  ok("back to day crosses the lane the same way", h2.localStorage.getItem("huaxu.walk-hour.v1") === "day");
+  const held = fs.readFileSync("rooms-cntower.html", "utf8");
+  ok("a room whose window shows one fixed night carries no hour button at all",
+     !/data-walk-hour/.test(held) && /data-lane-night/.test(held));
+  const heldBoot = boot(held, "https://huaxu.test/rooms-cntower.html", "day");
+  ok("…and the visitor's choice cannot overwrite the authored hour there",
+     heldBoot.localStorage.getItem("huaxu.walk-hour.v1") === "day" && !heldBoot.document.querySelector("[data-walk-hour]"));
+  {
+    const scjs = fs.readFileSync("js/scene3d.js", "utf8");
+    ok("the lit path folds the same navy the painter calls murk, as the sun goes",
+       /nightAmbient\.intensity = [\d.]+ \* litK/.test(scjs)
+       && /AmbientLight\(0x16223c, 0\)/.test(scjs) && /const nightK = /.test(scjs)
+       && /const litK = Math\.max\(nightK, hallK\)/.test(scjs));
+    ok("and the night fold keeps a readable floor under it, never full murk",
+       /clamp\(\(Number\(state\.night\) \|\| 0\) \* 0\.40, 0, 0\.58\)/.test(scjs)
+       && /laneDark=min\(0\.62,/.test(scjs)
+       && /diffuseColor\.rgb\+=uLaneNight\*min\(0\.62,vLaneDarkness\)\*3\.2/.test(scjs));
+    ok("and the surveyed world's own materials carry the night wash as a self-lit emissive",
+       (scjs.match(/material\.userData\.nightGlow = true/g) || []).length >= 2
+       && /emissive: new THREE\.Color\(0x16223c\), emissiveIntensity: 0/.test(scjs)
+       && /m\.emissiveIntensity = [\d.]+ \* litK/.test(scjs));
+    // measured round 51: the fukuoka hall's lit path collapsed to 4.2 luma on a stop where the
+    // painter held 123.6, because a hall has no sky and its tiles kept no floor. The fix is
+    // structural — interiors keep their light whatever the hour — and it must not be undone.
+    ok("and an interior hall keeps that floor as a constant, its dusk never depending on a sun it has no window for",
+       /const hallK = state\.dayPage \? 0 : 1;/.test(scjs));
+  }
+}
+
+console.log(out.join("\n"));
+
+// the counter used to be threaded through the hand-written blocks, and every gate added since has
+// quietly not been part of it — the count is recomputed from the lines themselves, so a FAIL can
+// never again ride out of here with exit code 0.
+const failsN = out.filter((l) => /^FAIL  /.test(l)).length;
+console.log(`\n${out.length - failsN}/${out.length} pass${failsN ? `, ${failsN} FAIL` : ""}`);
+process.exit(failsN ? 1 : 0);

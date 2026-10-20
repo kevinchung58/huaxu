@@ -600,9 +600,13 @@ function leaveOverlay(root, trigger) {
 
    Deliberate limits, each one a trade rather than an oversight:
      - the body remains at eye height; the 3D camera and every authored surface use world coordinates,
-       while horizontal input is projected into the view plane and collisions keep the body in its box;
-     - yaw is free and pitch is clamped to ±24°; turning is drag or keys, never Pointer Lock, so the
-       space remains operable on phones where Pointer Lock is unavailable;
+       while horizontal input is projected into the view plane and collisions keep the body in its box
+       — per-axis rejection against the walls, and against solids a contact-normal slide with
+       push-out recovery, so a braced shoulder against a plinth lets the visitor walk past it (round
+       41; the reject-only version pinned bodies at corners and sealed the wall aisles);
+     - yaw is free and pitch is clamped to ±24°; turning is drag or keys (Q/E, arrows) with double-click
+       Pointer Lock as a desktop bonus — the space stays operable on phones, where drag is the whole
+       control and Pointer Lock is unavailable;
      - world units are centimetres: eye at 168, walk at 165 cm/s, run at 206 cm/s, and a 420 cm/s
        jump impulse under 2400 cm/s² of gravity;
      - openings are authored by each place; Three.js depth testing handles occlusion, and Canvas2D
@@ -617,6 +621,77 @@ function leaveOverlay(root, trigger) {
   const view = layer.querySelector("[data-walk-view]");
   const cv = layer.querySelector("[data-walk-canvas]");
   const g = cv && cv.getContext ? cv.getContext("2d") : null;
+  /* Round 48 strict parity. The Three surface now finishes every lit material with
+     `enc(saturate(aces(in)))` — the filmic curve applied to the authored display values (the maps
+     are NoColorSpace: nothing is linearised on either path) followed by the sRGB encode that
+     `colorspace_fragment` performs. A fallback visitor must see the same picture, so the same
+     transform — matrix for matrix, exponent for exponent, from the vendored three's own shader —
+     is applied once here, at the only two places where colours become pixels: the scene canvas and
+     the pattern tiles that feed it. Glow is deliberately outside it, exactly as the additive
+     sprites are `toneMapped: false` on the WebGL side, and a gradient is a glow. Instrumented
+     contexts from the test harness (no initial fillStyle string) are left alone: the recorder
+     measures authored colours, and rewriting them would rewrite the contract it checks. */
+  const toneMirror = (ctx) => {
+    if (!ctx || typeof ctx.fillStyle !== "string" || !ctx.fillStyle) return ctx;
+    const e = 0.75 / 0.6;              // toneMappingExposure over the divisor the shader itself applies
+    const fit = (v) => (v * (v + 0.0245786) - 0.000090537) / (v * (0.983729 * v + 0.432951) + 0.238081);
+    const aces = (r, gc, b) => {
+      r *= e; gc *= e; b *= e;
+      // mat3(v0, v1, v2) in GLSL multiplies COLUMN-wise: result.x = v0.x*r + v1.x*g + v2.x*b.
+      // (A row-major reading passes any grey test and hue-shifts every colour — round 48 learned
+      // that by turning the Niagara sky magenta in a screenshot.)
+      let x = 0.59719 * r + 0.35458 * gc + 0.04823 * b;
+      let y = 0.07600 * r + 0.90834 * gc + 0.01566 * b;
+      let z = 0.02840 * r + 0.13383 * gc + 0.83777 * b;
+      x = fit(x); y = fit(y); z = fit(z);
+      r = 1.60475 * x - 0.53108 * y - 0.07367 * z;
+      gc = -0.10208 * x + 1.10813 * y - 0.00605 * z;
+      b = -0.00327 * x - 0.07276 * y + 1.07602 * z;
+      const enc = (u) => { u = u < 0 ? 0 : u > 1 ? 1 : u;
+        return u <= 0.0031308 ? u * 12.92 : 1.055 * (u ** (1 / 2.4)) - 0.055; };   // colorspace_fragment
+      return [enc(r), enc(gc), enc(b)];
+    };
+    const HEX = /^(#)([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+    const RGB = /^(rgba?\()\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(,[^)]*)?(\))$/;
+    const map = (style) => {
+      if (typeof style !== "string") return style;
+      const m = HEX.exec(style);
+      const rgb = m ? null : RGB.exec(style);
+      try {
+        if (m) {
+          let h = m[2];
+          if (h.length === 3 || h.length === 4) h = h.split("").map((ch) => ch + ch).join("");
+          const alpha = h.length === 8 ? h.slice(6) : "";
+          const r = parseInt(h.slice(0, 2), 16) / 255, gc = parseInt(h.slice(2, 4), 16) / 255,
+                b = parseInt(h.slice(4, 6), 16) / 255;
+          const o = (v) => Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, "0");
+          const t = aces(r, gc, b);
+          return `#${o(t[0])}${o(t[1])}${o(t[2])}${alpha}`;
+        }
+        if (rgb) {
+          const t = aces(+rgb[2] / 255, +rgb[3] / 255, +rgb[4] / 255);
+          const c8 = (v) => Math.round(Math.max(0, Math.min(1, v)) * 255);
+          return `rgb${rgb[5] ? "a" : ""}(${c8(t[0])},${c8(t[1])},${c8(t[2])}${rgb[5] || ""})`;
+        }
+      } catch (e2) { /* an unparsable colour is somebody else's problem, and unchanged */ }
+      return style;
+    };
+    // Shadow the prototype's accessors — and forward to them. An instance property that merely
+    // stores the mapped colour never reaches the rasteriser, which is how the first version of this
+    // mirror painted the fallback black: the canvas read its native fillStyle, still the default.
+    const proto = Object.getPrototypeOf(ctx);
+    for (const prop of ["fillStyle", "strokeStyle"]) {
+      const native = Object.getOwnPropertyDescriptor(proto, prop);
+      if (!native || !native.set) return ctx;
+      Object.defineProperty(ctx, prop, {
+        get() { return native.get.call(this); },
+        set(v) { native.set.call(this, map(v)); },
+        configurable: true,
+      });
+    }
+    return ctx;
+  };
+  toneMirror(g);
   const noRaster = layer.querySelector("[data-walk-fallback]");
   const statusEl = layer.querySelector("[data-walk-status]");
   const recordEl = layer.querySelector("[data-walk-record]");
@@ -666,8 +741,73 @@ function leaveOverlay(root, trigger) {
   const Z_FAR = attr("laneD", 1247), Z_BACK = -attr("laneBack", 240);
   const EYE = attr("eye", 168), PLAYER_RADIUS = 24, HEAD_CLEARANCE = 12;
   const HALF = Math.max(0, WALL - PLAYER_RADIUS);
+  /* Round 52, for want of a better word, "blocks": the lane's width is a per-segment fact like its
+     height — Clifton's plaza is not the promenade's walkway — authored as data-lane-ws
+     [[z0, z1, half]…] in the same scene centimetres the walls draw in. The body gets the radius
+     back off the half the same way the constant did. */
+  const WSEGS = (() => {
+    try { const a = JSON.parse(layer.getAttribute("data-lane-ws") || "[]");
+          return Array.isArray(a) ? a.filter((w) => Array.isArray(w) && w.length >= 3) : []; }
+    catch (_) { return []; }
+  })();
+  const halfAt = (z) => {
+    let h = HALF;
+    for (const w of WSEGS) if (z >= w[0] && z <= w[1]) h = Math.max(h, w[2] - PLAYER_RADIUS);
+    return h;
+  };
   const MIN_D = -30, REACH = 190, MAX_PITCH = 24;
   const MAX_HEIGHT = Math.max(0, CEIL - EYE - HEAD_CLEARANCE);
+  /* Round 52 borrows two idioms from the browser open worlds the owner pointed at: the lane is
+     allowed a *floor height* — the Falls Incline's upper deck stands 18 m over the Parkway and a
+     body riding it must stand on that, not hover — and crossing a district boundary speaks a
+     banner, which is what a visitor reads first in those games. `data-lane-floors` is
+     [[z0, z1, h], …] in cm; `data-lane-zones` is [[z, "Name", "one line"], …] at the boundary. */
+  const FLOORS = (() => {
+    try { const a = JSON.parse(layer.getAttribute("data-lane-floors") || "[]");
+          return Array.isArray(a) ? a.filter((f) => Array.isArray(f) && f.length >= 3) : []; }
+    catch (_) { return []; }
+  })();
+  const floorAt = (z, x) => {
+    let h = 0;
+    for (const f of FLOORS) {
+      if (z >= f[0] && z <= f[1] && (f.length < 4 || (x >= f[3] && x <= f[4]))) h = Math.max(h, f[2]);
+    }
+    return h;
+  };
+  const ZONES = (() => {
+    try { const a = JSON.parse(layer.getAttribute("data-lane-zones") || "[]");
+          return Array.isArray(a) ? a.filter((z) => Array.isArray(z) && z.length >= 2) : []; }
+    catch (_) { return []; }
+  })();
+  /* The funicular ride (round 52). GTA's F-key does one thing that matters: for a few seconds the
+     vehicle carries you and the world carries on around it. Here the world is the real Falls
+     Incline — 59.8 m of double track at 30 degrees, two 40-passenger cars counterbalanced so one
+     is always meeting you — and the crossing it makes in 62 seconds the model compresses to 3.1,
+     which the record line states while it is happening. */
+  const RIDE_T = 3.1;
+  const sm01 = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
+  let ride = null;
+  const bannerEl = layer.querySelector("[data-walk-banner]");
+  const stripEl = layer.querySelector("[data-walk-strip]");
+  let bannerTimer = 0;
+  const showBanner = (name, note) => {
+    if (!bannerEl || !name) return;
+    bannerEl.querySelector(".walk-banner-name").textContent = name;
+    const n = bannerEl.querySelector(".walk-banner-note");
+    if (n) n.textContent = note || "";
+    // restart the animation even when a ride crosses two seams at once
+    bannerEl.classList.remove("is-on");
+    void bannerEl.offsetWidth;
+    bannerEl.classList.add("is-on");
+    clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(() => bannerEl.classList.remove("is-on"), 3400);
+  };
+  let zoneHere = -2;   // -2 before the first reading, which announces where you started, as those games do at load
+  const zoneOf = (z) => {
+    let i = -1;
+    for (let j = 0; j < ZONES.length; j++) if (z >= ZONES[j][0]) i = j;
+    return i;
+  };
   // How far the walker may go. The default is the end wall minus a body; the far plane is a view,
   // not a hole out of the world. A place whose far end is genuinely open authors its own walk limit.
   const MAX_D = attr("laneMaxD", Z_FAR - 47);
@@ -676,7 +816,7 @@ function leaveOverlay(root, trigger) {
   const HIT = 44;
   // A slower, eased walk and a limited turn rate are deliberate comfort choices. Camera roll is
   // removed, and the remaining head bob is sub-centimetre so motion never fights the place being read.
-  const SPEED = 165, RUN = 1.25, ACCEL = 7.5, TURN_RATE = 75;
+  const SPEED = 165, RUN = 1.25, TURN_RATE = 75;   // release decay tau is 90 ms, in stepMotion
   const GRAV = 2400, JUMP = 420, GLIDE_SPEED = 165;
   let zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
   let vx = 0, vd = 0, phase = 0, bob = 0, raf = 0, last = 0, here = -1, reach = null;
@@ -691,7 +831,7 @@ function leaveOverlay(root, trigger) {
       const v = parseFloat(el.dataset[`view${key}`]);
       return Number.isFinite(v) ? v : null;
     };
-    return { yaw: view("Yaw"), pitch: view("Pitch") };
+    return { yaw: view("Yaw"), pitch: view("Pitch"), h: view("H") };
   });
 
   /* ---- authored surfaces and the projection bridge ----
@@ -741,6 +881,7 @@ function leaveOverlay(root, trigger) {
     t.width = 128; t.height = 128;
     const c = t.getContext("2d");
     if (!c) return null;
+    toneMirror(c);   // the tile is a lit surface in the 3D mode; it arrives tone-mapped the same once
     paint(c);
     const pattern = g.createPattern(t, "repeat");
     if (pattern && typeof pattern === "object") PATTERN_SOURCE.set(pattern, { canvas: t, id: `tile-${++patternSerial}` });
@@ -1714,6 +1855,11 @@ function leaveOverlay(root, trigger) {
     // buildings one after another, and without a per-prop moment they all came on together, which
     // is a switch and not a dusk.
     liton: parseFloat(el.dataset.liton) || 0,
+    // Round 52's open-world kit: the SkyWheel's rim and axle sit in the record, not in invented
+    // constants — and the funicular's period, deck height and phase belong to the page too.
+    dia: parseFloat(el.dataset.dia) || 0, axle: parseFloat(el.dataset.axle) || 0,
+    turn: parseFloat(el.dataset.turn) || 0, phase0: parseFloat(el.dataset.phase0) || 0,
+    deck: parseFloat(el.dataset.deck) || 0, period: parseFloat(el.dataset.period) || 0,
     ry: num(el, "data-ry") || parseFloat(el.dataset.ry || 0),
     w: parseFloat(el.dataset.w) || 100, h: parseFloat(el.dataset.h) || 140,
     d: parseFloat(el.dataset.d) || 12, x: num(el, "--x"), z: num(el, "--z"), y: num(el, "--y"),
@@ -1737,6 +1883,56 @@ function leaveOverlay(root, trigger) {
     return { x: m.x, z: m.z, w: m.w, d: m.d, c, s,
              minX: m.x - hx, maxX: m.x + hx, minD: m.z - hz, maxD: m.z + hz };
   });
+  /* Walls the lane draws are walls the body meets — the pointer-lock demo's rule (its `walls`
+     array is the painted geometry itself, not a parallel hand-marked one). A world quad that
+     stands on the walkable floor (base within a hand's width of it), rises past the knee-chest
+     line, and runs inside the box becomes a zero-thickness strip collider; its top-and-sky
+     siblings (canopies at y0 950, portals at y0 262, gorge faces below the deck) are excluded
+     by the base test alone. Without this, `wall-probe` measured 786 free standing points inside
+     the journey tunnel's own walls — a visitor walks through exactly what they see (round 45). */
+  {
+    const bdEl = layer.querySelector("[data-walk-backdrop]");
+    let world = null;
+    try { world = (JSON.parse(bdEl.textContent).world || {}); } catch (err) { world = null; }
+    for (const p of (world && world.prims) || []) {
+      if (p.t !== "f" && p.t !== "x") continue;
+      const pts = p.p || [];
+      if (pts.length < 3 || pts.some((q) => !Array.isArray(q) || q.length < 3)) continue;
+      const ys = pts.map((q) => q[1]);
+      const base = Math.min(...ys), span = Math.max(...ys) - base;
+      if (span < 130 || base < -20 || base > 120) continue;
+      for (let i = 0; i < pts.length; i++) {
+        // bottom edges only, clipped to the lane's own x span: a face's closing and top returns
+        // run over the doorway, and an outside wall crossing the lane diagonally (the gorge's revetment
+        // at the tunnel's mouth) must contribute only the stub the visitor can actually meet. The
+        // full-length diagonal of the first cut sealed the journey lane at both ends — V2 caught it.
+        const q0 = pts[i], q1 = pts[(i + 1) % pts.length];
+        if (Math.abs(q0[1] - base) > 30 || Math.abs(q1[1] - base) > 30) continue;
+        let a = [q0[0], q0[2]], b2 = [q1[0], q1[2]];
+        if (Math.max(a[1], b2[1]) < MIN_D - 4 || Math.min(a[1], b2[1]) > MAX_D + 4) continue;
+        if (a[0] < b2[0]) { const t = a; a = b2; b2 = t; }          // a is now the +x end
+        const x0 = -WALL - 4, x1 = WALL + 4;
+        if (a[0] > x1) { const t = (x1 - b2[0]) / (a[0] - b2[0] || 1); a = [x1, b2[1] + (a[1] - b2[1]) * t]; }
+        if (b2[0] < x0) { const t = (x0 - a[0]) / (b2[0] - a[0] || 1); b2 = [x0, a[1] + (b2[1] - a[1]) * t]; }
+        if (a[0] <= b2[0]) continue;                                 // the segment never enters the lane
+        const len = Math.hypot(b2[0] - a[0], b2[1] - a[1]);
+        if (len < 10 || len > WALL) continue;
+        //  len > WALL is the cross-section tell: a floor wall may lean into the lane, but nothing
+        //  real spans more than its half-width from inside the lane — the journey tunnel runs under
+        //  the gorge rim, whose deck-side retaining walls project diagonally ACROSS the tunnel frame
+        //  (10 m of "wall" over a 2.4 m lane); accepting them sealed the rail stops V2 just caught.
+        const ang = Math.atan2(b2[1] - a[1], b2[0] - a[0]);         // segment heading in lane space
+        const th = 6;                                                // 3 cm of relief each side of the face
+        colliders.push({ x: (a[0] + b2[0]) / 2, z: (a[1] + b2[1]) / 2, w: len, d: th,
+                         c: Math.cos(ang), s: Math.sin(ang) });
+      }
+    }
+    for (const b of colliders) {                                   // broad-phase boxes, as per props
+      const hx = (b.w * Math.abs(b.c) + b.d * Math.abs(b.s)) / 2 + PLAYER_RADIUS;
+      const hz = (b.w * Math.abs(b.s) + b.d * Math.abs(b.c)) / 2 + PLAYER_RADIUS;
+      b.minX = b.x - hx; b.maxX = b.x + hx; b.minD = b.z - hz; b.maxD = b.z + hz;
+    }
+  }
   // Use the distance from the body circle to the prop's rotated rectangle, rather than colliding
   // with its radius-expanded bounding *box*. The box clipped corners and made a visitor touching a
   // prop's front face unable to slide along it; a circle/OBB test preserves the real clearance.
@@ -1747,6 +1943,38 @@ function leaveOverlay(root, trigger) {
     const outD = Math.max(Math.abs(localD) - b.d / 2, 0);
     return outX * outX + outD * outD < PLAYER_RADIUS * PLAYER_RADIUS;
   });
+  /* The push a body needs to leave a solid's surface: for every collider, the shortest vector from
+     the body centre back out to the rectangle grown by the body radius, as the face normal and the
+     overlap. Two contacts resolve deepest-first. This is the projection step every engineless walk
+     sim in the field converges on (the three.js pointer-lock demo kills the velocity component into
+     the face; the Octree-based ones push the position along `normal * depth`) — ours was reject-only,
+     and `wall-probe` measured what that costs: a diagonal touch at a plinth's corner froze the body
+     with legal movement left on both sides (6 FREE/WEDGE stalls on the Moji hall alone). */
+  const pushAt = (px, pz) => {
+    let best = null;
+    const R = PLAYER_RADIUS;
+    for (const b of colliders) {
+      const dx = px - b.x, dz = pz - b.z;
+      const lx = dx * b.c + dz * b.s, ld = -dx * b.s + dz * b.c;
+      const qx = Math.max(-b.w / 2, Math.min(b.w / 2, lx));
+      const qd = Math.max(-b.d / 2, Math.min(b.d / 2, ld));
+      const ox = lx - qx, od = ld - qd;
+      const dist2 = ox * ox + od * od;
+      if (dist2 >= R * R) continue;
+      let lnx, lnd, pen;
+      if (dist2 > 1e-9) {
+        const dist = Math.sqrt(dist2);
+        lnx = ox / dist; lnd = od / dist; pen = R - dist;
+      } else {
+        const ex = b.w / 2 - Math.abs(lx), ed = b.d / 2 - Math.abs(ld);
+        if (ex < ed) { lnx = lx >= 0 ? 1 : -1; lnd = 0; pen = R + ex; }
+        else { lnx = 0; lnd = ld >= 0 ? 1 : -1; pen = R + ed; }
+      }
+      const wnx = lnx * b.c - lnd * b.s, wnz = lnx * b.s + lnd * b.c;
+      if (!best || pen > best.p) best = { nx: wnx, nz: wnz, p: pen };
+    }
+    return best;
+  };
   const wires = readIsland("[data-walk-wires]");
   const beams = readIsland("[data-walk-beams]");
   const vista = readOne("[data-walk-vista]");
@@ -1782,7 +2010,7 @@ function leaveOverlay(root, trigger) {
             { x: table.maxX + pad, depth: prop.z },
             { x: prop.x, depth: table.minD - pad },
             { x: prop.x, depth: table.maxD + pad },
-          ].map((p) => ({ x: clamp(p.x, -HALF, HALF),
+          ].map((p) => ({ x: clamp(p.x, -halfAt(depth), halfAt(depth)),
                           depth: clamp(p.depth, MIN_D, MAX_D) }))
             .filter((p) => !collidesAt(p.x, p.depth))
             .map((p) => {
@@ -1801,12 +2029,12 @@ function leaveOverlay(root, trigger) {
           const approach = approaches.find((p) => p.distance < REACH && p.clear)
             || approaches.sort((a, b) => a.distance - b.distance)[0];
           if (approach) { x = approach.x; depth = approach.depth; }
-          else { x = clamp(prop.x, -HALF, HALF); depth = clamp(table.minD - pad, MIN_D, MAX_D); }
-        } else if (Math.abs(prop.x) > HALF - 42) {
-          x = clamp(prop.x - Math.sign(prop.x) * 90, -HALF, HALF);
+          else { x = clamp(prop.x, -halfAt(depth), halfAt(depth)); depth = clamp(table.minD - pad, MIN_D, MAX_D); }
+        } else if (Math.abs(prop.x) > halfAt(prop.z) - 42) {
+          x = clamp(prop.x - Math.sign(prop.x) * 90, -halfAt(depth), halfAt(depth));
           depth = clamp(prop.z, MIN_D, MAX_D);
         } else {
-          x = clamp(prop.x, -HALF, HALF);
+          x = clamp(prop.x, -halfAt(depth), halfAt(depth));
           depth = clamp(prop.z - prop.d / 2 - PLAYER_RADIUS - 36, MIN_D, MAX_D);
         }
         yaw = Math.atan2(prop.x - x, prop.z - depth) * 180 / Math.PI;
@@ -1898,11 +2126,16 @@ function leaveOverlay(root, trigger) {
                   // Blue Wing Moji is painted blue, and that is the whole reason people photograph
                   // it: a blue bascule against red brick and a dark harbour.
                   drawbridge: "#3f6ea8", ship: "#5a6472",
+                  // Round 52: the Clifton strip. The wheel's steel is the ship's gray, the car's
+                  // body is the hull white and its glass the cab slate, and the midway food stall
+                  // shares the market stall's wood — no colour crosses from outside the palette.
+                  wheel: "#75858b", incline: "#dce2df", foodstall: "#6e4f38",
                   // The Moji buildings, each in the material the photographs and place sources show:
                   // cream station, red customhouse, orange OSK brick, striped Dalian brick, and the
-                  // Retro High Mart's gray concrete/glass grid.
+                  // Retro High Mart's light-grid-over-dark-glass facade (round 41: re-read against
+                  // the sourced photograph; the gray of the flat colour is the concrete, not the glass).
                   stationfront: "#c4b68e", customhouse: "#a5492f", osakashosen: "#c46d38", dalianhall: "#a24b36",
-                  retrohighmart: "#707775", massing: "#dedbd2" };
+                  retrohighmart: "#7d8583", massing: "#dedbd2" };
   /* Props are named `kind`, `kind-2`, `kind-left`, `kind-s1`… and the shape/tint tables were keyed
      by the *whole* id — so `front-a` was a flat plane while `front` was a painted recess, and whole
      families of props (banners, crates, snow banks, stall curtains) lost their bodies to a fallback.
@@ -1943,6 +2176,8 @@ function leaveOverlay(root, trigger) {
                   // Moji's kit: the drawbridge the district is known by, the ships it opens for, and
                   // the mapped Retro High Mart tower modeled separately at 1:25.
                   drawbridge: "drawbridge", ship: "ship", stationfront: "stationfront",
+                  // The round-52 shapes: a turning observation wheel and a working funicular.
+                  wheel: "wheel", incline: "incline",
                   customhouse: "customhouse", osakashosen: "osakashosen", dalianhall: "dalianhall",
                   retrohighmart: "retrohighmart",
                   // Round 36: the port table's context blocks, in the map's outlines.
@@ -2165,10 +2400,17 @@ function leaveOverlay(root, trigger) {
       });
     };
     // Things laid on a wall: a rectangle, a band across every bay, an opening, a disc.
+    // A rect stands 0.08 out from its face while the face itself sits at 0.05: round 41's transfer-band
+    // erasure showed what equality costs — the wall's surface and its flat decoration shared one plane,
+    // the `__flat` batch has no polygonOffset, and the depth test let the facade draw over its own band.
+    // Three centimetres of relief is invisible from any distance the kit paints at, and it makes every
+    // painter's string courses, spandrels and glass safe at once instead of one hand-nudged loop at a
+    // time. Windows and braces that survived before did so by batch order — luck; relief is the design.
     const rect = (f, t0, t1, y0, y1, col, l = 1) => {
       if (!seen(Math.min(Math.abs(t1 - t0), Math.abs(y1 - y0)), 0.6)) return null;
       f.at((t0 + t1) / 2);
-      return put([f.F(t0, y0), f.F(t1, y0), f.F(t1, y1), f.F(t0, y1)], mix(col, f.shade), lit * l);
+      return put([f.F(t0, y0, 0.08), f.F(t1, y0, 0.08), f.F(t1, y1, 0.08), f.F(t0, y1, 0.08)],
+                 mix(col, f.shade), lit * l);
     };
     const band = (f, y0, y1, col, l = 1) => {
       if (!seen(y1 - y0)) return;
@@ -2386,8 +2628,24 @@ function leaveOverlay(root, trigger) {
      Its cycle is fifteen minutes. Ours is four: a visitor to a web page does not stay fifteen
      minutes, and a cycle nobody sees is decoration rather than day. The walk opens in the late
      afternoon so the lamps come up while you are standing there instead of after you have gone. */
-  const DAYLEN = 240;                                  // seconds for one full day
-  const dayPhase = () => ((T + 78) / DAYLEN) % 1;      // 0 midnight · 0.25 dawn · 0.5 noon · 0.75 dusk
+  const DAYLEN = 240;                                  // seconds for one full day (kept for held
+                                                         // places' internal breath; the visitor's clock
+                                                         // no longer runs on it — see below)
+  /* The hour is the visitor's, not the browser's clock (round 49, at the owner's insistence: the
+     fifteen-minute hall had people walking into a blackout they never asked for). A lane opens in
+     full day and stays there until the sun/moon button says otherwise; the choice rides
+     localStorage across every lane. NIGHT is held at 0.92 — the hour the records themselves hold
+     their authored nights at (the LookOut's window), so lamps, lit windows and the falls' own
+     colours come up exactly as authored, and the murk stays the navy the painter folds by. A place
+     held at its own hour (`laneNight`) keeps it and gets no button: its clock is a fact. */
+  const HOUR_KEY = "huaxu.walk-hour.v1";
+  const HOUR_NIGHT = 0.92;
+  let hourPref = "day";
+  let hourPhaseSet = 0.5;
+  try { if (window.localStorage.getItem(HOUR_KEY) === "night") { hourPref = "night"; hourPhaseSet = HOUR_NIGHT; } }
+  catch (e) { /* private mode: the choice lives this visit only */ }
+  const dayPhase = () => hourPhaseSet;                  // the station clock reads the hour the visitor
+                                                         // chose, so the hands and the light agree
   const SUN = () => clamp(Math.sin((dayPhase() - 0.25) * Math.PI * 2) * 0.5 + 0.5, 0, 1);
   const NIGHT = () => 1 - sunNow();
   /* A lane whose place is a day.
@@ -2408,7 +2666,8 @@ function leaveOverlay(root, trigger) {
   // A place held at one hour of the night (`data-lane-night`, a phase): the LookOut's window shows a
   // night that does not move, so its lamps and air stop following the hall's clock (round 33).
   const HELD = attr("laneNight", 0);
-  const phaseNow = () => (HELD ? HELD : DAYPAGE ? ((T / DAY_LEN) + DAY_AT) % 1 : dayPhase());
+  if (HELD) hourPhaseSet = HELD;   // held places pin the clock — and (no button) the visitor's choice
+  const phaseNow = () => hourPhaseSet;
   const sunNow = () => clamp(Math.sin((phaseNow() - 0.25) * Math.PI * 2) * 0.5 + 0.5, 0, 1);
   /* How much sun is on the place, as a factor rather than a truth: 0 from dusk to dawn, 1 at noon.
      The floor is what decides whether a room reads as "lit by its own lamps" or "outdoors", and 0.45
@@ -3765,9 +4024,11 @@ function leaveOverlay(root, trigger) {
     for (let z = Z_BACK; z < Z_FAR; z += SEG) {
       const z1 = Math.min(z + SEG, Z_FAR);
       const zc = (z + z1) / 2;
+      // round 52: the lane's half is per-slice (the plaza widens the corridor where the place does)
+      const W = halfAt(zc);
       [-1, 1].forEach((side) => {
         if (surfaces.length && cladCovers(side, z, z1)) return;
-        const px = side * WALL;
+        const px = side * W;
         const q = add(C, [[px, 0, z], [px, 0, z1], [px, WALL_TOP, z1], [px, WALL_TOP, z]],
                       [z * DPM, 0, z1 * DPM, 0, z1 * DPM, -WALL_TOP * DPM, z * DPM, -WALL_TOP * DPM],
                       "pat", (WALLMAT && PATS[WALLMAT]) || tilePat);
@@ -3775,13 +4036,13 @@ function leaveOverlay(root, trigger) {
         if (q) { q.lit = lightAt(px, 210, zc); q.wall = side; q.za = z; q.zb = z1; if (UNDER) q.nolite = true; }
       });
       const hole = holes.find((h) => h.z0 < z1 && h.z1 > z);
-      if (!hole) floorPiece(-WALL, WALL, z, z1, zc);
+      if (!hole) floorPiece(-W, W, z, z1, zc);
       else {
         const ha = Math.max(z, hole.z0), hb = Math.min(z1, hole.z1);
-        floorPiece(-WALL, WALL, z, ha, zc);
-        floorPiece(-WALL, Math.max(-WALL, hole.x0), ha, hb, zc);
-        floorPiece(Math.min(WALL, hole.x1), WALL, ha, hb, zc);
-        floorPiece(-WALL, WALL, hb, z1, zc);
+        floorPiece(-W, W, z, ha, zc);
+        floorPiece(-W, Math.max(-W, hole.x0), ha, hb, zc);
+        floorPiece(Math.min(W, hole.x1), W, ha, hb, zc);
+        floorPiece(-W, W, hb, z1, zc);
       }
       if (VAULT && !OPEN) {
         for (let k = 0; k < VK; k++) {
@@ -3789,7 +4050,7 @@ function leaveOverlay(root, trigger) {
           lidQuad([[xa, ya, z], [xb, yb, z], [xb, yb, z1], [xa, ya, z1]], z, z1, zc, (ya + yb) / 2);
         }
       }
-      const cl = OPEN || VAULT ? null : lidQuad([[-WALL, CEIL, z], [WALL, CEIL, z], [WALL, CEIL, z1], [-WALL, CEIL, z1]], z, z1, zc, CEIL);
+      const cl = OPEN || VAULT ? null : lidQuad([[-W, CEIL, z], [W, CEIL, z], [W, CEIL, z1], [-W, CEIL, z1]], z, z1, zc, CEIL);
       if (cl && !LID) cl.lit = AMBIENT * 0.8;   // out of the bulbs' reach, and it should look that way
     }
     /* The wall the lane runs into is the largest single surface in the deepest frame, and it was the
@@ -3810,11 +4071,11 @@ function leaveOverlay(root, trigger) {
     } else if (vista) {
       // Four pieces around the opening, plus jambs and a sill: a hole in a wall has a reveal, and
       // without one the vista reads as a decal of a window rather than a route out of the room.
-      const vx0 = Math.max(-WALL, vista.x - vista.w / 2), vx1 = Math.min(WALL, vista.x + vista.w / 2);
-      wallPiece(-WALL, 0, WALL, vista.y0, lightAt(0, 40, Z_FAR));
-      wallPiece(-WALL, vista.y1, WALL, CEIL, lightAt(0, 380, Z_FAR));
-      wallPiece(-WALL, vista.y0, vx0, vista.y1, lightAt(-300, 210, Z_FAR));
-      wallPiece(vx1, vista.y0, WALL, vista.y1, lightAt(300, 210, Z_FAR));
+      const vx0 = Math.max(-W, vista.x - vista.w / 2), vx1 = Math.min(W, vista.x + vista.w / 2);
+      wallPiece(-W, 0, W, vista.y0, lightAt(0, 40, Z_FAR));
+      wallPiece(-W, vista.y1, W, CEIL, lightAt(0, 380, Z_FAR));
+      wallPiece(-W, vista.y0, vx0, vista.y1, lightAt(-300, 210, Z_FAR));
+      wallPiece(vx1, vista.y0, W, vista.y1, lightAt(300, 210, Z_FAR));
       const deep = 26;
       [vx0, vx1].forEach((ex) => {
         const q = add(C, [[ex, vista.y0, Z_FAR], [ex, vista.y0, Z_FAR - deep],
@@ -3845,7 +4106,7 @@ function leaveOverlay(root, trigger) {
         if (pane) { pane.air = 0; pane.day = false; pane.nolite = true; }
       }
     } else {
-      wallPiece(-WALL, 0, WALL, CEIL, lightAt(0, 210, Z_FAR));
+      wallPiece(-W, 0, W, CEIL, lightAt(0, 210, Z_FAR));
     }
     const drawSee = (C, sc, px) => {
       const from = Math.max(sc.z0, Z_BACK), to = Math.min(sc.z1, Z_FAR);
@@ -5288,6 +5549,30 @@ function leaveOverlay(root, trigger) {
                               [m.x + m.w * 0.2 + drift, m.y + 2, m.z - m.d * 0.1], [m.x - m.w * 0.1 + drift, m.y + 2, m.z - m.d * 0.1]],
                           ZERO8, "flat", "rgba(214,230,244,0.7)");
         if (sheen) { sheen.lit = 1.1; drawn.push(sheen); }
+        // A pressed basin answers: the stone rings expand once and are gone — the pool branch
+        // keeps no state of its own, so a demonstration that never ends would be an animation
+        // pretending to be a fact. 2.5 s, both banks, the wake's own pale colour.
+        {
+          const dAt = m.el && m.el.__demoAt;
+          if (dAt) {
+            const dt = (performance.now() - dAt) / 1000;
+            if (dt >= 0 && dt < 2.5) {
+              [[0.0, 0.5], [0.9, 0.32]].forEach(([lag, a]) => {
+                const k = (dt - lag) / 1.6;
+                if (k < 0 || k > 1) return;
+                const u = m.w * 0.46 * k;
+                [-1, 1].forEach((sd) => {
+                  const q = add(C, [[m.x + sd * u - 3, m.y + 2, m.z - m.d * 0.4],
+                                   [m.x + sd * u + 3, m.y + 2, m.z - m.d * 0.4],
+                                   [m.x + sd * u + 3, m.y + 2, m.z + m.d * 0.4],
+                                   [m.x + sd * u - 3, m.y + 2, m.z + m.d * 0.4]],
+                                 ZERO8, "flat", `rgba(221,239,246,${(a * (1 - k)).toFixed(3)})`);
+                  if (q) { q.lit = 1.2; q.nolite = true; drawn.push(q); }
+                });
+              });
+            }
+          }
+        }
       } else if (shape === "boat") {
         /* Toronto Islands ferry: a double-ended, waterline hull, open passenger deck, wheelhouse,
            windows, rails and a wake. The timetable eases away from each dock and waits while people
@@ -5428,6 +5713,19 @@ function leaveOverlay(root, trigger) {
         let lift = 0, win = -1, into = 0;
         OPENS.forEach((h0, i) => { const t = hour - h0; if (t >= 0 && t < WIN) { win = i; into = t; } });
         if (win >= 0) lift = into < RISE ? sm(into / RISE) : into > WIN - RISE ? sm((WIN - into) / RISE) : 1;
+        // The demonstration (pressed by hand, see act): 24 s of opening on demand, an envelope over
+        // whatever the clock is doing. The ship takes the opening too — a demo without a boat is a
+        // bridge being rude to it.
+        {
+          const dAt = m.el && m.el.__demoAt;
+          if (dAt) {
+            const dt = (performance.now() - dAt) / 1000;
+            if (dt >= 0 && dt < 24) {
+              const dLift = dt < 6 ? sm(dt / 6) : dt > 18 ? sm((24 - dt) / 6) : 1;
+              if (dLift > lift) { lift = dLift; if (win < 0) { win = 0; into = RISE + (dt / 24) * (WIN - 2 * RISE); } }
+            }
+          }
+        }
         const along = Math.abs(m.ry) > 45;
         const PT = (u, y, v) => (along ? [m.x + v, y, m.z + u] : [m.x + u, y, m.z + v]);
         if (shape === "ship") {
@@ -5529,6 +5827,136 @@ function leaveOverlay(root, trigger) {
             });
           }
         }
+      } else if (shape === "wheel") {
+        /* Niagara SkyWheel (round 52; the Clifton Hill tech sheet and Wikipedia): a Bussink R60
+           giant wheel — 53.3 m at the crown, a 50.5 m rim on a 27.5 m axle, 42 fully enclosed
+           Swiss gondolas hung from 21 spoke stations, driven either way at up to 1.5 rpm, open all
+           year, a ride of three slow turns in twelve to fifteen minutes. The model keeps the REAL
+           rate — forty seconds a revolution — because a park that visibly hurries is a lie about
+           the place; the wheel drifts, and that is what the place is. Pressed at the platform,
+           the rim lamps take their fast cycle for four seconds and the record says the ride itself
+           is not for sale here. */
+        const R = (m.dia || 5050) / 2;
+        const hubY = m.y + (m.axle || R * 1.089);
+        const th0 = ((T / (m.turn || 40)) * Math.PI * 2) + (m.phase0 || 0);
+        const WHEELC = ["#37c46b", "#e0435c", "#3f6ea8", "#b04de0", "#e0a13f"];
+        const dAt = m.el && m.el.__demoAt ? Math.max(0, (performance.now() - m.el.__demoAt) / 1000) : -1;
+        const beat = Math.floor(T / (dAt >= 0 && dAt < 4.2 ? 1.4 : 7)) % WHEELC.length;
+        const night = NIGHT();
+        const steel = mix("#75858b", "#22303f", night * 0.45);
+        const Pw = (i, r, dy) => [m.x + Math.sin(th0 + (i / 42) * Math.PI * 2) * r,
+                                  hubY + Math.cos(th0 + (i / 42) * Math.PI * 2) * r + (dy || 0), m.z];
+        // the A-frames, one pair to each side of the rim, splayed to the sourced 25 × 20.5 m base
+        [-1, 1].forEach((sideX) => {
+          [-1, 1].forEach((sideZ) => {
+            const q = add(C, [
+              [m.x + sideX * 1225 - 45, 20, m.z + sideZ * 1025 - 45],
+              [m.x + sideX * 1225 + 45, 20, m.z + sideZ * 1025 + 45],
+              [m.x + sideX * 90 + 45, hubY - 40, m.z + sideZ * 70],
+              [m.x + sideX * 90 - 45, hubY - 40, m.z + sideZ * 70 - 45]], ZERO8, "flat", steel);
+            if (q) { q.lit = lit; drawn.push(q); }
+          });
+        });
+        // the rim: 42 short bars between stations, and the lamps on every other one after dark
+        for (let i = 0; i < 42; i++) {
+          const a0 = Pw(i, R), a1 = Pw(i + 1, R);
+          const o0 = [a0[0] * 1.0 + (a0[0] - m.x) * 0.035, a0[1] + (a0[1] - hubY) * 0.035, a0[2]];
+          const o1 = [a1[0] + (a1[0] - m.x) * 0.035, a1[1] + (a1[1] - hubY) * 0.035, a1[2]];
+          const in0 = [a0[0] - (a0[0] - m.x) * 0.035, a0[1] - (a0[1] - hubY) * 0.035, a0[2]];
+          const in1 = [a1[0] - (a1[0] - m.x) * 0.035, a1[1] - (a1[1] - hubY) * 0.035, a1[2]];
+          const q = add(C, [in0, in1, o1, o0], ZERO8, "flat", steel);
+          if (q) { q.lit = lit * 0.95; drawn.push(q); }
+          if (night > 0.15) {
+            const lp = add(C, [[a1[0] - 55, a1[1] - 55, m.z - 55], [a1[0] + 55, a1[1] - 55, m.z - 55],
+                               [a1[0] + 55, a1[1] + 55, m.z + 55], [a1[0] - 55, a1[1] + 55, m.z + 55]],
+                           ZERO8, "flat", WHEELC[(i + beat) % WHEELC.length]);
+            if (lp) { lp.lit = 1.5; lp.nolite = true; drawn.push(lp); }
+          }
+        }
+        // spokes from hub to every other station; the cabins hang from all 42 and stay level
+        const hubFace = add(C, [[m.x - 240, hubY - 240, m.z - 60], [m.x + 240, hubY - 240, m.z - 60],
+                                [m.x + 240, hubY + 240, m.z - 60], [m.x - 240, hubY + 240, m.z - 60]],
+                            ZERO8, "flat", "#536273");
+        if (hubFace) { hubFace.lit = lit; drawn.push(hubFace); }
+        for (let i = 0; i < 42; i += 2) {
+          const p = Pw(i, R - 40);
+          const sp = add(C, [[p[0] - 26, p[1] - 26, m.z - 26], [p[0] + 26, p[1] - 26, m.z - 26],
+                              [m.x + 26, hubY + 26, m.z - 26], [m.x - 26, hubY + 26, m.z - 26]],
+                          ZERO8, "flat", steel);
+          if (sp) { sp.lit = lit * 0.9; drawn.push(sp); }
+        }
+        for (let i = 0; i < 42; i++) {
+          const p = Pw(i, R);
+          // an enclosed CWA gondola, gravity-level always: the box does not ride its circle's angle
+          const cab = add(C, [[p[0] - 90, p[1] - 170, m.z - 90], [p[0] + 90, p[1] - 170, m.z - 90],
+                              [p[0] + 90, p[1] + 10, m.z - 90], [p[0] - 90, p[1] + 10, m.z - 90]],
+                          ZERO8, "flat", "#dce2df");
+          if (cab) { cab.lit = lit * 1.02; drawn.push(cab); }
+          if (night > 0.15) {
+            const glow = add(C, [[p[0] - 66, p[1] - 130, m.z - 92], [p[0] + 66, p[1] - 130, m.z - 92],
+                                 [p[0] + 66, p[1] - 34, m.z - 92], [p[0] - 66, p[1] - 34, m.z - 92]],
+                             ZERO8, "flat", "rgba(255,217,160,0.8)");
+            if (glow) { glow.lit = 1.35; glow.nolite = true; drawn.push(glow); }
+          }
+        }
+        // the base shed the drives live in, on the plaza side
+        const shed = add(C, [[m.x - 700, 0, m.z - 1650], [m.x + 700, 0, m.z - 1650],
+                             [m.x + 700, 380, m.z - 1650], [m.x - 700, 380, m.z - 1650]],
+                         ZERO8, "flat", "#33414e");
+        if (shed) { shed.lit = lit * 0.9; drawn.push(shed); }
+      } else if (shape === "incline") {
+        /* The Falls Incline Railway (round 52; Wikipedia and the Parks' own page): the only one of
+           the eight inclines the two cities ever ran that still runs — 59.8 m of double track at
+           30 degrees under the bluff, two 40-passenger cars counterbalanced over the head pulley,
+           each going up as its twin goes down, 62 seconds a crossing, electric, and since 2013
+           enclosed. Opened 8 October 1966 by Von Roll. The cars here run the real clock forever,
+           so one is always meeting you; the car YOU board compresses the crossing to the walk
+           model's three seconds — which the record line says out loud, both numbers. */
+        const L = m.run || 5980, CA = Math.cos(30 * Math.PI / 180), SA = 0.5;
+        const per = m.period || 62;
+        const night = NIGHT();
+        const sNear = (((T / per) + (m.phase0 || 0)) % 1);
+        const deckY = m.deck || 2990;
+        /* A car on its slope: the body is drawn in the fall line's own basis — x grows with cos30
+           and y with sin30, so the floor follows the grade and the box stands 340 cm above it, the
+           way the enclosed cars do. The windows are the strip facing the lane; at night the car
+           carries its own lit saloon the way the street's boxes do. */
+        const carAt = (k, track) => {
+          const hw = (m.d || 260) / 2, len = (m.w || 700) / 2, hh = m.h || 340;
+          const px = (u) => m.x + (L * CA) * k + CA * u;
+          const py = (u, v) => m.y + deckY * k + SA * u + v;
+          const c = [[px(-len), py(-len, 40), m.z + track - hw], [px(len), py(len, 40), m.z + track - hw],
+                     [px(len), py(len, 40 + hh), m.z + track - hw], [px(-len), py(-len, 40 + hh), m.z + track - hw]];
+          const body = add(C, c, ZERO8, "flat", "#dce2df");
+          if (body) { body.lit = lit * 1.04; drawn.push(body); }
+          const roof = add(C, [c[3], c[2], [px(len), py(len, 40 + hh), m.z + track + hw],
+                               [px(-len), py(-len, 40 + hh), m.z + track + hw]], ZERO8, "flat", "#33414e");
+          if (roof) { roof.lit = lit; drawn.push(roof); }
+          const win = add(C, [[px(-len * 0.72), py(-len * 0.72, 40 + hh * 0.32), m.z + track - hw - 4],
+                               [px(len * 0.72), py(len * 0.72, 40 + hh * 0.32), m.z + track - hw - 4],
+                               [px(len * 0.72), py(len * 0.72, 40 + hh * 0.72), m.z + track - hw - 4],
+                               [px(-len * 0.72), py(-len * 0.72, 40 + hh * 0.72), m.z + track - hw - 4]],
+                          ZERO8, "flat", night > 0.15 ? "#ffd9a0" : "#263b4f");
+          if (win) { win.lit = night > 0.15 ? 1.5 : lit; if (night > 0.15) win.nolite = true; drawn.push(win); }
+        };
+        // the two running rails of the double track, and each car's cable beyond it
+        [-925, 925].forEach((track) => {
+          const rail = add(C, [[m.x - 30, m.y + 20, m.z + track - 26], [m.x + L * CA + 30, m.y + deckY + 20, m.z + track - 26],
+                               [m.x + L * CA + 30, m.y + deckY + 20, m.z + track + 26], [m.x - 30, m.y + 20, m.z + track + 26]],
+                           ZERO8, "flat", "#5c6a80");
+          if (rail) { rail.lit = lit * 0.85; drawn.push(rail); }
+        });
+        carAt(sNear, -925);
+        carAt(1 - sNear, 925);
+        // the head pulley shed on the bluff and the stone under it at the rail
+        [-1, 1].forEach((sd) => {
+          const st = add(C, [[m.x + (sd < 0 ? -140 : L * CA - 160), m.y + (sd < 0 ? 0 : deckY), m.z - 1750],
+                             [m.x + (sd < 0 ? 60 : L * CA + 160), m.y + (sd < 0 ? 0 : deckY), m.z - 1750],
+                             [m.x + (sd < 0 ? 60 : L * CA + 160), m.y + (sd < 0 ? 300 : deckY + 420), m.z - 1750],
+                             [m.x + (sd < 0 ? -140 : L * CA - 160), m.y + (sd < 0 ? 300 : deckY + 420), m.z - 1750]],
+                         ZERO8, "flat", "#4b5568");
+          if (st) { st.lit = lit * 0.9; drawn.push(st); }
+        });
       } else if (shape === "massing") {
         /* The port table's footprints (round 36/39). The historic buildings and the Retro High Mart
            have their own stands now; the table keeps all five mapped outlines the way a site plan does
@@ -5944,13 +6372,17 @@ function leaveOverlay(root, trigger) {
       } else if (shape === "retrohighmart") {
         /*
            Mojiko Retro High Mart, the six-node footprint from OSM way 292429354, shown separately
-           at 1:25. CVU/CTBUH lists 127 m including the rooftop helipad; Kitakyushu City and MLIT
-           describe the public observation view at 103 m. OSM's height=115 tag conflicts with that
-           total-height listing. A Nippon.com photograph (gu900211, image 1668287) documents the
-           gray small-window grid, dark X-braced façade band, open crown frame and curved cap; it is
-           visual evidence, not a measured elevation. The photo does not identify whether the band is a
-           structural transfer floor. The 31-floor rhythm, band position and roof framing are
-           deliberately approximate, not a guessed floor schedule or roof plan.
+           at 1:25. The 127 m nominal top (including the rooftop helipad) is CVU/CTBUH's listing,
+           corroborated by the building's own Japanese Wikipedia article (127 m, highest point) and
+           the AIJ landscape-history paper (127 m highest point; 126.95 m, measured 127.4 m, by the
+           tower's architectural record); Kitakyushu City and MLIT describe the public observation
+           view at 103 m. OSM's height=115 tag has no traceable origin and was not adopted — but no
+           source gives the roof-slab height either, so neither number is a surveyed elevation.
+           A Nippon.com photograph (gu900211, image 1668287) documents the light pier-and-spandrel
+           grid over dark teal glass, the dark X-braced transfer band, open crown frame and white
+           curved cap; it is visual evidence, not a measured elevation, and does not identify the
+           band as a structural transfer floor. The 31-floor rhythm, band position and roof framing
+           are deliberately approximate, not a guessed floor schedule or roof plan.
         */
         const poly = Array.isArray(m.footprint) && m.footprint.length >= 3
           ? m.footprint.map(([u, v]) => [Number(u), Number(v)])
@@ -5961,8 +6393,12 @@ function leaveOverlay(root, trigger) {
         const totalH = m.h / K.k, observationH = Math.min(totalH, m.observation || 103);
         const floors = Math.max(2, Math.round(m.floors || 31)), floorH = observationH / floors;
         const bodyH = floorH * (floors - 1);
-        const FACADE = "#747b79", BASE = "#535b5d", SPANDREL = "#929895", FRAME = "#424b4e";
-        const GLASS = "#648080", OBS_GLASS = "#719092", TRANSFER = "#3d464a", BRACE = "#596164";
+        // The grid re-read against the sourced photograph (round 41): light gray piers and spandrels
+        // stand out against dark teal window glass, and the transfer band's X-members are the same
+        // light structure as the piers, standing over a recessed dark inset — the round-40 frame read
+        // them the wrong way round, mid-gray on dark, which is why the band vanished at 2 m.
+        const FACADE = "#8f9795", BASE = "#535b5d", SPANDREL = "#a7adaa", FRAME = "#424b4e";
+        const GLASS = "#37564f", OBS_GLASS = "#48706b", TRANSFER = "#2f383c", BRACE = "#9aa2a2";
         const transferY = Math.round((floors - 1) * 0.43) * floorH, transferH = floorH * 1.45;
 
         // Thirty lower storeys lead to the glazed public room on floor 31. One window per broad bay
@@ -5981,13 +6417,21 @@ function leaveOverlay(root, trigger) {
                     { frame: FRAME, fw: 0.12, glass: GLASS, bars: "#aab2ae", cols: 2, rows: [0.55], lamp: 0.55 });
             }
           }
-          K.band(f, transferY, transferY + transferH, TRANSFER, 1.08);
+          // The band is put 8 cm proud of the wall face instead of riding `K.band`'s flush 5 cm:
+          // the Three.js path draws `__flat` batches without polygonOffset, so quads coplanar
+          // with their own wall are resolved by batch order and the band lost to the facade it
+          // sits on (the Canvas2D path, which sorts by the painter's own key, drew it fine — the
+          // shape of a bug only one of the two renderers shows). The X-members stay proud of the
+          // band, at 9 cm. One `seen` gate covers band and braces, as it once covered both.
           if (K.seen(transferH, 0.8)) {
             for (let b = 0; b < f.n; b++) {
               const lo = (f.len * b) / f.n, hi = (f.len * (b + 1)) / f.n;
+              f.at((lo + hi) / 2);
+              K.put([f.F(lo, transferY, 0.08), f.F(hi, transferY, 0.08),
+                     f.F(hi, transferY + transferH, 0.08), f.F(lo, transferY + transferH, 0.08)],
+                    K.mix(TRANSFER, f.shade), lit * 1.08);
               const pad = Math.min(0.28, (hi - lo) * 0.08), thick = Math.min(0.18, (hi - lo) * 0.045);
               const low = transferY + 0.22, high = transferY + transferH - 0.22;
-              f.at((lo + hi) / 2);
               K.put([f.F(lo + pad, low, 0.09), f.F(lo + pad + thick, low, 0.09),
                      f.F(hi - pad, high, 0.09), f.F(hi - pad - thick, high, 0.09)], K.mix(BRACE, f.shade), lit * 1.05);
               K.put([f.F(hi - pad - thick, low, 0.09), f.F(hi - pad, low, 0.09),
@@ -6833,7 +7277,10 @@ function leaveOverlay(root, trigger) {
   const liveEl = layer.querySelector("[data-walk-live]");
   const say = (status, record) => {
     if (status && statusEl) statusEl.textContent = status;
-    if (record !== undefined && recordEl) recordEl.textContent = record;
+    // A running demonstration owns the record line until its envelope dies (act's `data-demo`
+    // channel sets the hold): otherwise a standing place-announcement wipes the one sentence that
+    // explains why the bridge is moving, and the line is also the screen reader's live region.
+    if (record !== undefined && recordEl && !recordEl.dataset.demoHold) recordEl.textContent = record;
     // The card is where the sentence can be read, so it is kept in step with the announced one while
     // it is open: a line that goes stale behind a click is worse than no line at all.
     if (liveEl && card && !card.hidden) {
@@ -6857,6 +7304,25 @@ function leaveOverlay(root, trigger) {
       if (d < far) { far = d; best = i; }
     });
     here = best; hereFar = far;
+    /* The district seam (round 52): crossing a zone line speaks a banner the size of the crossing,
+       then lets go. It is its own channel on purpose — the record line carries what you *reach*,
+       this carries where you *are*, and neither waits for the other. */
+    {
+      const zi = zoneOf(depth);
+      if (zi !== zoneHere) {
+        const moved = zoneHere !== -2;
+        zoneHere = zi;
+        if (ZONES[zi]) showBanner(ZONES[zi][1], ZONES[zi][2] || "");
+        if (moved && navigator.vibrate) { try { navigator.vibrate(18); } catch (_) {} }
+      }
+      if (stripEl) {
+        const f = Math.max(0, Math.min(1, depth / MAX_D));
+        const dot = stripEl.querySelector(".walk-strip-you");
+        if (dot) dot.style.left = `${(f * 100).toFixed(2)}%`;
+        const fill = stripEl.querySelector(".walk-strip-fill");
+        if (fill) fill.style.width = `${(f * 100).toFixed(2)}%`;
+      }
+    }
     if (best === hereShown) return;
     hereShown = best;
     stops.forEach((el, i) => el.classList.toggle("is-here", i === here));
@@ -6898,19 +7364,151 @@ function leaveOverlay(root, trigger) {
   };
 
   const wrapYaw = (degrees) => ((degrees + 180) % 360 + 360) % 360 - 180;
-  const moveBody = (nextX, nextDepth) => {
+  let cornerAssist = 0;   // which side of a corner the creep last chose; see the wedge branch
+  let slideDir = 0;       // the direction of the last accepted slide; see the dead zone below
+  const moveBody = (nextX, nextDepth, dt = 0.0166) => {
+    // Sweep insurance: any candidate hop longer than 2.6 cm is walked in micro-steps through the
+    // same axis logic, so no frame of any speed — run, glide, a slow browser's long dt — can
+    // resolve a start-free/end-free pair that crosses a thin wall between them. The field calls
+    // this continuous collision; the engineless demos get it by clamping steps instead.
+    const hz0 = halfAt(nextDepth);
+    const gx = clamp(nextX, -hz0, hz0), gz = clamp(nextDepth, MIN_D, MAX_D);
+    const startX = x, startD = depth;
+    const hopX = gx - startX, hopD = gz - startD;
+    const hops = Math.max(1, Math.ceil(Math.max(Math.abs(hopX), Math.abs(hopD)) / 2.6));
+    if (hops > 1) {
+      // each micro-step advances from wherever the last one ended — a slide or a push-out made
+      // there is carried, not fought — in the pattern the character controllers call stepping.
+      let moved = 0;
+      for (let i = 1; i <= hops; i++) moved += moveStep(x + hopX / hops, depth + hopD / hops, dt / hops);
+      return moved;
+    }
+    return moveStep(gx, gz, dt);
+  };
+  const moveStep = (nextX, nextDepth, dt = 0.0166) => {
+    // A body resting inside a margin — after a respawn next to a plinth, a clipped glide target —
+    // leaves it on the next move rather than standing frozen inside the geometry (the push-out
+    // every collision solver needs after its reject test; the probe called this ESCAPE-FAIL risk).
+    const trapped = pushAt(x, depth);
+    if (trapped) {
+      x = clamp(x + trapped.nx * trapped.p, -halfAt(depth), halfAt(depth));
+      depth = clamp(depth + trapped.nz * trapped.p, MIN_D, MAX_D);
+    }
     const oldX = x, oldDepth = depth;
-    const cx = clamp(nextX, -HALF, HALF);
-    if (!collidesAt(cx, depth)) x = cx;
-    else if (Math.abs(cx - x) > 0.001) vx = 0;
+    const cx = clamp(nextX, -halfAt(nextDepth), halfAt(nextDepth));
     const cz = clamp(nextDepth, MIN_D, MAX_D);
-    if (!collidesAt(x, cz)) depth = cz;
-    else if (Math.abs(cz - depth) > 0.001) vd = 0;
-    if (x === -HALF || x === HALF) vx = 0;
+    let nx2 = oldX, nz2 = oldDepth, blockedX = false, blockedD = false;
+    if (!collidesAt(cx, oldDepth)) nx2 = cx; else blockedX = true;
+    if (!collidesAt(nx2, cz)) nz2 = cz; else blockedD = true;
+    let projected = false;
+    if (blockedX && blockedD && (cx !== oldX || cz !== oldDepth)) {
+      // Both axes refused: the corner wedge. Take the contact normal, slide the intended move along
+      // its tangent, and push that candidate clear — the same order of operations as the
+      // pointer-lock demo's slide, kept continuous so a diagonal touch against a plinth's face
+      // turns into walking past it instead of standing at it with the keys doing nothing.
+      const hit = pushAt(cx, cz) || pushAt(oldX, oldDepth);
+      if (hit) {
+        const tX = -hit.nz, tD = hit.nx;
+        let along = (cx - oldX) * tX + (cz - oldDepth) * tD;
+        // the wall clamp zeroes the into-wall velocity after every frame, so a braced body's
+        // per-frame candidate can be almost nothing — the wedge slide must read the WISH, not
+        // only what the blocked candidate happened to carry this frame; the two agree whenever
+        // the walk is free and this branch does not run.
+        const wishAlong = (vx * tX + vd * tD) * dt;
+        if (Math.abs(wishAlong) > Math.abs(along)) along = wishAlong;
+        if (Math.abs(along) < 1.9) {
+          // Straight into a corner: the bisector leaves neither face a tangent to ride, and W+A
+          // is exactly 45° to an axis-aligned box — the old solver's signature freeze. Assist it
+          // like the 2-D games do: pick the side whose next steps are clear and creep round it,
+          // remembering the choice so the two faces cannot alternate the body between them.
+          const creep = 115 * dt;
+          const clear = (sgn) => {
+            let px = oldX, pd = oldDepth;
+            for (let k = 0; k < 4; k++) {
+              px = clamp(px + tX * sgn * creep, -halfAt(pz), halfAt(pz));
+              pd = clamp(pd + tD * sgn * creep, MIN_D, MAX_D);
+              if (collidesAt(px, pd)) return 0;
+            }
+            return 1;
+          };
+          let sgn = cornerAssist
+            || (clear(1) === clear(-1)
+                 ? (-(Math.sign(oldX) || 1) * tX >= 0 ? 1 : -1)      // both clear: round the inner side
+                 : (clear(1) ? 1 : -1));
+          if (!clear(sgn)) sgn = -sgn;
+          cornerAssist = clear(sgn) ? sgn : 0;
+          if (cornerAssist) along = creep * cornerAssist;
+        }
+        let sx = clamp(oldX + tX * along, -halfAt(depth), halfAt(depth));
+        let sd = clamp(oldDepth + tD * along, MIN_D, MAX_D);
+        const h2 = pushAt(sx, sd);
+        if (h2) {
+          sx = clamp(sx + h2.nx * h2.p, -halfAt(depth), halfAt(depth));
+          sd = clamp(sd + h2.nz * h2.p, MIN_D, MAX_D);
+        }
+        // The dead zone is anti-flip-flop, not anti-slow: buzz means the normal alternating and
+        // the slide reversing — a reversal pays the 1.2 cm threshold, a monotone creep never does,
+        // and a first accepted slide has no history to contradict. (The old formulation also gated
+        // the FIRST acceptance on the threshold: a 0.69 cm/frame tangent — 41 cm/s, an ordinary
+        // angled press — was refused, could never set slideDir, and froze four fukuoka braced
+        // holds at 0.2 cm/s with a legal 45° exit.)
+        const hop2 = Math.hypot(sx - oldX, sd - oldDepth);
+        const dir = along > 0.01 ? 1 : along < -0.01 ? -1 : 0;
+        const buzz = dir !== 0 && slideDir !== 0 && dir !== slideDir;
+        if (!collidesAt(sx, sd) && hop2 > 0.01 && (!buzz || hop2 > 1.2)) {
+          nx2 = sx; nz2 = sd; blockedX = false; blockedD = false;
+          if (dir) slideDir = dir;
+        }
+        // kill only the component into the face — whether the slide ran or not, so the tangent
+        // keeps its momentum and the blunt zeroing never starves the ramp the dead zone waits for
+        const into = vx * hit.nx + vd * hit.nz;
+        if (into < 0) { vx -= hit.nx * into; vd -= hit.nz * into; }
+        projected = true;
+      }
+    }
+    if (!projected && blockedX && Math.abs(cx - oldX) > 0.001) vx = 0;
+    if (!projected && blockedD && Math.abs(cz - oldDepth) > 0.001) vd = 0;
+    if (!projected) { cornerAssist = 0; slideDir = 0; }   // a free axis: the creep stands down
+    x = nx2; depth = nz2;
+    if (Math.abs(Math.abs(x) - halfAt(depth)) < 0.5) vx = 0;
     if (depth === MIN_D || depth === MAX_D) vd = 0;
     return Math.hypot(x - oldX, depth - oldDepth);
   };
+  /* An auto-walk must not strand the visitor where a stand happens to cross its line (round 41:
+     `wall-probe` measured rail glides aborting 581 to 1849 cm short in the Journey lane). When the
+     straight line is blocked, aim around it: the nearest strip of free floor with body room ahead and
+     beside, on either side; once the stop's own x is clear again ahead, home back onto it. If no
+     width has a legal side — a full-width railing, a plinth in a 2.4 m tunnel — the glide still
+     gives up, because being walled off from a stop is truer than pretending through it. */
+  const detourAround = () => {
+    if (!gliding) return false;
+    for (let off = 20; off <= 220; off += 20) {
+      for (const sg of (x >= 0 ? [1, -1] : [-1, 1])) {
+        const gx = clamp(x + sg * off, -halfAt(depth), halfAt(depth));
+        if (Math.abs(gx - x) < 12) continue;              // the wall ate it: no strip there
+        if (collidesAt(gx, depth) || collidesAt(gx, Math.min(depth + 150, gliding.to))) continue;
+        if (gliding.origX === undefined) gliding.origX = gliding.x;
+        gliding.x = gx;
+        return true;
+      }
+    }
+    return false;
+  };
+  const homeGlide = () => {
+    if (!gliding || gliding.origX === undefined || gliding.origX === gliding.x) return;
+    if (collidesAt(gliding.origX, Math.min(depth + 150, gliding.to))) return;  // still box alongside
+    gliding.x = gliding.origX;
+    delete gliding.origX;
+  };
 
+  // One motion step, in the pipeline vocabulary adopted in round 46 (Mint spatial-contracts §2):
+  // inputs (held keys, a rail glide's target, a jump's nudge) are read as INTENT — desired motion,
+  // never positions; constraints (walls, height, reach, the comfort clamp on RUN) resolve that intent
+  // against the committed state; x/depth/yaw are committed once, at the bottom; and only then does
+  // anything present (draw, the plate, the guide strip, `__walk`). Presentation never moves the
+  // body, and no consumer — test, instrument, or guide — samples render geometry to learn where the
+  // body is: they read the committed state, which is why a claim about movement and a measurement of
+  // it can never diverge by construction.
   const stepMotion = (dt, glideOnly = false) => {
     if (gliding) {
       const dx = gliding.x - x, dd = gliding.to - depth;
@@ -6923,10 +7521,13 @@ function leaveOverlay(root, trigger) {
         const moved = moveBody(x + dx * stride / distance, depth + dd * stride / distance);
         const remaining = Math.hypot(gliding.x - x, gliding.to - depth);
         if (remaining < 1.2) gliding = null;
-        else if (moved < 0.001) gliding = null;  // a solid object, not an endless auto-walk
+        else if (moved < 0.001 && !detourAround())
+          gliding = null;     // a solid object with no room round it is still the truth —
+        else homeGlide();     // but an auto-walk must not abandon the visitor mid-lane
       }
     } else if (!glideOnly) {
-      const turn = (keys.has("arrowright") ? 1 : 0) - (keys.has("arrowleft") ? 1 : 0);
+      if (ride) return;   // the car carries you; the keys wait
+      const turn = (keys.has("arrowright") || keys.has("e") ? 1 : 0) - (keys.has("arrowleft") || keys.has("q") ? 1 : 0);
       if (turn) yaw = wrapYaw(yaw + turn * TURN_RATE * dt);
       let mx = stick ? stick.x : 0, md = stick ? -stick.y : 0;
       if (keys.has("w") || keys.has("arrowup")) md += 1;
@@ -6943,18 +7544,74 @@ function leaveOverlay(root, trigger) {
       const heading = a(), sy = Math.sin(heading), cy = Math.cos(heading);
       const wishX = ((mx * cy) + (md * sy)) / len * SPEED * r;
       const wishD = ((-mx * sy) + (md * cy)) / len * SPEED * r;
-      const k = 1 - Math.exp(-ACCEL * dt);
-      vx += (wishX - vx) * k;
-      vd += (wishD - vd) * k;
+      // the pointer-lock demo's model, measured against ours: input frames set the velocity —
+      // no ramp to feel like skating — and only a released body decays (tau 90 ms: gone inside
+      // a step and a half, no drift past the wall the old 400 ms exponential eased through).
+      if (mx || md) { vx = wishX; vd = wishD; }
+      else { const dmp = Math.exp(-dt / 0.09); vx *= dmp; vd *= dmp;
+             if (Math.hypot(vx, vd) < 1.2) { vx = 0; vd = 0; } }
       moveBody(x + vx * dt, depth + vd * dt);
     }
-    if (height > 0 || vy !== 0) {
+    if (ride) rideStep();
+    const gh = ride ? height : floorAt(depth, x);
+    if (!ride && gh > height) height = Math.min(gh, height + 1500 * dt);   // the stair rises to meet you
+    if (!ride && !glideOnly && height > gh + 0.5 && vy <= 0 && Math.hypot(vx, vd) > 1)
+      vy = Math.min(vy, -1500);   // and steps off it: leaving the deck walks down, not falls for ten seconds
+    if (height > gh || vy !== 0) {
       vy -= GRAV * dt;
       const nextHeight = height + vy * dt;
-      height = clamp(nextHeight, 0, MAX_HEIGHT);
-      if (height === MAX_HEIGHT && vy > 0) vy = 0;
-      if (height === 0) vy = 0;
+      // the ceiling cap is measured from the floor you stand on, so a jump off the overlook deck
+      // has the same air as a jump in a corridor even though the deck itself is 18 m up
+      height = clamp(nextHeight, gh, gh + MAX_HEIGHT);
+      if (height === gh + MAX_HEIGHT && vy > 0) vy = 0;
+      if (height === gh) vy = 0;
     }
+  };
+
+  /* One pumped frame of the ride: a smooth climb (or drop) between the two decks over RIDE_T
+     seconds, easing out at the far end. Movement keys are off while this runs (see stepMotion);
+     the record holds until the last step releases it. */
+  const rideStep = () => {
+    const t = (performance.now() - ride.t0) / RIDE_T / 1000;
+    const k = sm01(Math.min(1, t));
+    height = ride.h0 + (ride.h1 - ride.h0) * k;
+    x = ride.x0 + (ride.x1 - ride.x0) * k;
+    vy = 0;
+    if (t >= 1) {
+      const done = ride;
+      ride = null;
+      height = floorAt(depth, x);
+      if (recordEl) { delete recordEl.dataset.demoHold; recordEl.textContent = ""; }
+      if (done.say) say("", done.say);
+    }
+  };
+  const boardRide = (el) => {
+    if (ride) return true;   // already in a car; a second press is the ride, not a queue
+    const up = height < 900;
+    const xIn = Number(el.dataset.rideX || 300);
+    ride = {
+      t0: performance.now(), h0: height, x0: x,
+      h1: up ? Number(el.dataset.rideTop || 2990) : 0,
+      x1: xIn,
+      say: up ? "You step off at the top, onto the Fallsview deck, level with the bluff's lip."
+              : "You step off at the bottom, by the rail, with the falls a short walk east.",
+    };
+    if (recordEl) {
+      recordEl.dataset.demoHold = "1";
+      recordEl.textContent = "You ride the Falls Incline: 59.8 m of track at 30 degrees, two cars pulling "
+                           + "each other up and down. The real crossing takes 62 seconds; this model keeps "
+                           + "the climb to three.";
+    }
+    // the same redraw contract the hour button and the demonstrations use: the loop must be awake
+    // for the length of the ride, and the announcement must survive one frame of it
+    const pump = () => {
+      if (!ride) return;
+      tick(performance.now());
+      pulse = setTimeout(pump, 33);
+    };
+    if (pulse) clearTimeout(pulse);
+    pulse = setTimeout(pump, 33);
+    return true;
   };
 
   const tick = (t) => {
@@ -6978,6 +7635,7 @@ function leaveOverlay(root, trigger) {
     } else bob = 0;
     draw();
     checkReach();
+    tutorFrame();
     // Keep asking for frames while anything is still moving — including a turn in place or a jump.
     // Held input keeps the pump alive at a wall; the idle pulse is for a genuinely resting walker.
     const hasWalkInput = ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"]
@@ -7014,14 +7672,15 @@ function leaveOverlay(root, trigger) {
   }
 
   const jump = () => {
-    if (height > 0.5 || reduce() || MAX_HEIGHT <= 0) return;
+    // airborne, not merely high: standing on the overlook deck is a floor, not a fall
+    if (height - floorAt(depth, x) > 0.5 || reduce() || MAX_HEIGHT <= 0) return;
     vy = JUMP;
     loop();
   };
 
   const glideTo = (z, targetX) => {
     gliding = { to: clamp(z, MIN_D, MAX_D),
-                x: clamp(targetX === undefined ? x : targetX, -HALF, HALF) };
+                x: clamp(targetX === undefined ? x : targetX, -halfAt(z), halfAt(z)) };
     vx = 0; vd = 0;
     loop();
   };
@@ -7081,6 +7740,7 @@ function leaveOverlay(root, trigger) {
   };
   const showCard = (m) => {
     if (!card) return;
+    tutorCardOpened();          // the guide's third step completes on a card actually opening
     const where = card.querySelector("[data-walk-where]");
     const title = card.querySelector("[data-walk-title]");
     const hint = card.querySelector("[data-walk-hint]");
@@ -7096,6 +7756,53 @@ function leaveOverlay(root, trigger) {
     const btn = card.querySelector("[data-walk-card-close]");
     if (btn) btn.focus({ preventScroll: true });
   };
+  /* --- the guide: a first-visit strip that teaches the keys by having them used (round 46) ---
+     The rule is that nothing is written over the space, and the guide honours it: it lives in the
+     bottom chrome, takes no input away, grabs no focus, and never returns once learned. Each step
+     waits for the real thing — a turn that actually turned, a stride that actually moved the body,
+     a card that actually opened — so the hands learn the lane, not a dialog. The strip polls the
+     committed state through the same getters `__walk` publishes (spatial-contracts §4: consume the
+     solver, never re-implement it) — a guide measuring its own copy of the body could lie. */
+  const tutorEl = layer.querySelector("[data-walk-tutor]");
+  const tutorText = tutorEl && tutorEl.querySelector("[data-walk-tutor-text]");
+  const tutorCount = tutorEl && tutorEl.querySelector("[data-walk-tutor-count]");
+  const tutorSkip = tutorEl && tutorEl.querySelector("[data-walk-tutor-skip]");
+  const tutorDoneBtn = tutorEl && tutorEl.querySelector("[data-walk-tutor-done]");
+  const TUTOR_FLAG = "huaxu.walk-guide.v1";
+  const tutStore = {
+    done() { try { return window.localStorage.getItem(TUTOR_FLAG) === "1"; } catch (e) { return false; } },
+    set() { try { window.localStorage.setItem(TUTOR_FLAG, "1"); } catch (e) { /* private mode: this visit only */ } },
+  };
+  const TUT = [
+    "Turn first: the lane continues behind you. Arrow keys or Q / E, or drag the view.",
+    "Now walk in: hold W; Shift lets it run. The walls hold you — nothing here is a picture to walk through.",
+    "Stand in front of anything worth reading and press E, or tap it: every record lives behind a button, never painted on the scene.",
+    "Those ticks above are the rail. Press one and the lane carries you to where the view is worth stopping for; Esc walks you back out.",
+  ];
+  let tutStep = -1, tutYaw = 0, tutX = 0, tutD = 0;
+  const showTutor = (i) => {
+    if (!tutorEl) return;
+    tutStep = i;
+    if (i < 0) { tutorEl.hidden = true; return; }
+    tutorEl.hidden = false;
+    if (tutorText) tutorText.textContent = TUT[i];
+    if (tutorCount) tutorCount.textContent = (i + 1) + " / " + TUT.length;
+    if (tutorSkip) tutorSkip.hidden = i === TUT.length - 1;
+    if (tutorDoneBtn) tutorDoneBtn.hidden = i !== TUT.length - 1;
+    tutYaw = yaw; tutX = x; tutD = depth;
+  };
+  const endTutor = () => { tutStore.set(); showTutor(-1); };
+  if (tutorSkip) tutorSkip.addEventListener("click", endTutor);
+  if (tutorDoneBtn) tutorDoneBtn.addEventListener("click", endTutor);
+  const tutorReplay = layer.querySelector("[data-walk-tutor-replay]");
+  if (tutorReplay) tutorReplay.addEventListener("click", () => showTutor(0));
+  const tutorFrame = () => {
+    if (tutStep < 0) return;
+    if (tutStep === 0 && Math.abs((((yaw - tutYaw) % 360) + 540) % 360 - 180) > 25) showTutor(1);
+    else if (tutStep === 1 && Math.hypot(x - tutX, depth - tutD) > 180) showTutor(2);
+  };
+  const tutorCardOpened = () => { if (tutStep === 2) showTutor(3); };
+
   /* The space's own text — the legend, the disclaimer, the fallback sentence — is written into the
      page inside a card that is closed until you ask for it. Nothing in the head-up display is a
      sentence; the icons are the only chrome, and this is the one button that opens prose. */
@@ -7144,6 +7851,45 @@ function leaveOverlay(root, trigger) {
     // which is the worst kind of dead end — a control that describes an exit instead of being one.
     const leave = m.el.dataset.leave;
     if (leave) { window.location.assign(leave); return; }
+    // A stall with a game plays before it explains: the owner asked for toys you press in the
+    // environment itself, and a card that says "press to play" instead of playing is a dead end.
+    if (m.el.dataset.ride && boardRide(m.el)) return;
+    if (m.el.dataset.game && window.huaxuStalls && window.huaxuStalls.open(m.el.dataset.game, m.el)) return;
+    // Pressed models demonstrate: the bridge replays its opening, the basin its ripple. The real
+    // clock is never rewritten — the record's schedule (six openings, nothing after dark) keeps
+    // running underneath, and the demonstration rides on top as a 24-second envelope. This is the
+    // museum's own idiom: a demo button on a model does not move the thing it models.
+    if (m.el.dataset.demo !== undefined) {
+      m.el.__demoAt = performance.now();
+      if (recordEl) {
+        recordEl.dataset.demoHold = "1";
+        recordEl.textContent = m.el.dataset.demo === "ripple"
+          ? "A stone skipped across the model's basin: the rings widen and are gone."
+          : m.el.dataset.demo === "wheel"
+          ? "The wheel takes a courtesy turn: four seconds of the forty a real revolution needs, "
+            + "then the 1.5 rpm settle. The gondolas are on the hour, all year; this model sells no tickets."
+          : "The demonstration runs: the leaves rise, a boat takes the opening, the leaves fall.";
+      }
+      // the same redraw contract the hour button uses: the announcement gets one quiet moment
+      // before the first pumped frame (the lane's own say() rewrites the record every tick), and
+      // the pump keeps asking for frames until the envelope dies — a stopped clock draws nothing.
+      // the envelope matches what the shape branch animates: a skip dies in three seconds and must
+      // not hold the record line for the bridge's twenty-four
+      const ENVELOPE = m.el.dataset.demo === "ripple" ? 4.5 : 24.5;
+      const pump = () => {
+        const t = (performance.now() - m.el.__demoAt) / 1000;
+        if (t > ENVELOPE) {
+          delete m.el.__demoAt;
+          if (recordEl) { delete recordEl.dataset.demoHold; recordEl.textContent = ""; }
+          return;
+        }
+        tick(performance.now());
+        pulse = setTimeout(pump, 90);
+      };
+      if (pulse) clearTimeout(pulse);
+      pulse = setTimeout(pump, 90);
+      return;
+    }
     if (m.el.dataset.story && openStoryRail(m.el.dataset.story, m.el)) return;
     if (m.el.dataset.frame !== undefined && openDistrictRail(Number(m.el.dataset.frame), m.el)) return;
     if (m.el.dataset.obj === "vending" && openDistrictRail(0, m.el)) return;
@@ -7164,6 +7910,12 @@ function leaveOverlay(root, trigger) {
   stops.forEach((el, i) => el.addEventListener("click", () => {
     if (stopView[i].yaw !== null) yaw = wrapYaw(stopView[i].yaw);
     if (stopView[i].pitch !== null) pitch = clamp(stopView[i].pitch, -MAX_PITCH, MAX_PITCH);
+    // a stop authored on a deck you cannot walk onto arrives there outright (round 52: the
+    // Fallsview overlook; its h is the record's, its stair is the incline)
+    if (stopView[i].h !== null) {
+      depth = stopZ[i]; x = clamp(stopX[i], -halfAt(stopZ[i]), halfAt(stopZ[i]));
+      height = stopView[i].h; vy = 0; draw(); return;
+    }
     glideTo(stopZ[i], stopX[i]);
   }));
   Array.from(layer.querySelectorAll("[data-walk-to]")).forEach((btn) => btn.addEventListener("click", () => {
@@ -7326,7 +8078,15 @@ function leaveOverlay(root, trigger) {
       else showSpace();     // a prop's card is replaced by the lane's note, not buried under it
       return;
     }
-    if (k === "e") { event.preventDefault(); act(reach); return; }
+    if (k === "e") {
+      // While a move key is held, e is the turn key and must not use the object; still, a tap
+      // of e is the "use" key it has always been.
+      if (["w", "a", "s", "d", "shift", "e"].some((m) => keys.has(m))) {
+        event.preventDefault(); keys.add("e"); gliding = null; loop(); return;
+      }
+      event.preventDefault(); act(reach); return;
+    }
+    if (k === "q") { event.preventDefault(); keys.add("q"); gliding = null; loop(); return; }
     if (k === " ") { event.preventDefault(); jump(); return; }
     if (k === "enter" && document.activeElement === view && reach) { event.preventDefault(); act(reach); return; }
     if (["w", "a", "s", "d", "shift", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) {
@@ -7349,6 +8109,19 @@ function leaveOverlay(root, trigger) {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") releaseInput();
   });
+  // Desktop bonus, never a requirement: double-clicking the view locks the pointer the way the
+  // three.js demo does; Esc releases it (the browser reserves that key while locked, so the
+  // unwinding below never sees it). Phones keep dragging — the control they always had.
+  view.addEventListener("dblclick", () => {
+    if (document.pointerLockElement || typeof view.requestPointerLock !== "function") return;
+    try { view.requestPointerLock(); } catch (err) { /* an embedded frame may refuse the lock; drag remains */ }
+  });
+  document.addEventListener("mousemove", (event) => {
+    if (document.pointerLockElement !== view) return;
+    yaw = wrapYaw(yaw + (event.movementX || 0) * 0.14);
+    pitch = clamp(pitch - (event.movementY || 0) * 0.10, -MAX_PITCH, MAX_PITCH);
+    loop();
+  });
   window.addEventListener("resize", () => { size(); draw(); });
   // Read-only, for the harness: a jsdom that can only assert "the picture changed" cannot tell a
   // camera that walks from one that jitters, and the numbers that matter are already in scope here.
@@ -7359,6 +8132,13 @@ function leaveOverlay(root, trigger) {
                    get halfWidth() { return HALF; },
                    get minDepth() { return MIN_D; }, get maxDepth() { return MAX_D; },
                    get maxHeight() { return MAX_HEIGHT; }, get bob() { return bob; },
+                   // the harness reads the real answer, not a re-implementation of it: the wall-gap
+                   // gate calls this on positions a visitor could reach and requires no wall quad frees
+                   get blockedAt() { return collidesAt; },
+                   // the model's own velocity magnitude, cm/s — walk-feel reads this instead of
+                   // dividing position deltas by wall-clock, which renderer clamps (0.12 s/frame)
+                   // and swiftshader cadence (0.3-1.2 s/frame) distort in opposite directions
+                   get velocity() { return Math.hypot(vx, vd); },
                    get maxSpeed() { return SPEED * RUN; }, get turnRate() { return TURN_RATE; },
                    get renderer() { return threeRenderer ? "three" : "canvas2d"; },
                    get backdrop() { return bd; }, get day() { return DAY(); }, get dayPage() { return DAYPAGE; },
@@ -7367,6 +8147,37 @@ function leaveOverlay(root, trigger) {
                      threeRenderer = engine; draw();
                      return threeRenderer === engine;
                    } };
+  if (tutorEl && !tutStore.done()) showTutor(0);   // a first visit is taught in place, once
+  /* The hour button: one icon in the chrome's tools row, sun by day and moon by night. The label
+     states the choice it will make, the announcement goes to the live region the reader already
+     listens to, and nothing about the toggle writes itself over the scene. */
+  const hourBtn = layer.querySelector("[data-walk-hour]");
+  if (hourBtn && !HELD) {
+    const hourLabel = () => hourBtn.setAttribute("aria-label", hourPref === "night"
+      ? "Night now. Switch this lane back to day." : "Daylight now. Bring on the night.");
+    const setHour = () => {
+      layer.dataset.walkClock = hourPref;
+      hourBtn.classList.toggle("is-night", hourPref === "night");
+      hourBtn.setAttribute("aria-pressed", hourPref === "night" ? "true" : "false");
+      hourLabel();
+      // the card's own nudge, for the same reason: a repaint that goes through the tick keeps a
+      // gliding body gliding; a bare draw would strand it between frames.
+      pulse = setTimeout(() => { pulse = 0; tick(performance.now()); }, 90);
+    };
+    hourBtn.addEventListener("click", () => {
+      hourPref = hourPref === "day" ? "night" : "day";
+      hourPhaseSet = hourPref === "night" ? HOUR_NIGHT : 0.5;
+      try { window.localStorage.setItem(HOUR_KEY, hourPref); } catch (e) { /* this visit only */ }
+      setHour();
+      if (recordEl) recordEl.textContent = hourPref === "night"
+        ? "Night comes: the lamps, the lit windows, and the falls' own colours."
+        : "Daylight returns over the lane.";
+    });
+    layer.dataset.walkClock = hourPref;
+    hourBtn.classList.toggle("is-night", hourPref === "night");
+    hourBtn.setAttribute("aria-pressed", hourPref === "night" ? "true" : "false");
+    hourLabel();
+  }
   if (listPanel) listPanel.classList.add("is-closed");   // scripting present: fold it, then obey
   if (listBtn) listBtn.setAttribute("aria-expanded", "false");
   draw();

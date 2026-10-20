@@ -3348,6 +3348,26 @@ DISTRICTS = [
             {"id": "drain-s", "kind": "drain", "x": 60, "z": 620, "y": 0, "ry": 0,
              "title": "A drain in the asphalt",
              "hint": "The street's one piece of water kit, at the crossing point."},
+            # Round 50 (sources in TODO §R50): the owner asked to "make some fun Japanese stall games
+            # you can play right in that environment". Two stalls stand in the west wall where the
+            # drawn shopfronts have their gaps — a goldfish basin and a mask line, the pair a real
+            # Nakamise evening leans on. They are toys, not records: pressing one opens js/games.js's
+            # panel over the lane, and nothing about either claims a measured shop address.
+            {"id": "stall-kingyo", "kind": "stall", "x": -346, "z": 340, "y": 0, "ry": 90,
+             "w": 150, "h": 200, "d": 100, "awn": "#2f6d8a", "liton": 0.74,
+             "glow": [{"r": 110, "k": 0.55, "dy": 210}], "game": "kingyo",
+             "title": "The goldfish basin",
+             "hint": "A scooping stall in the wall: paper nets, a murky basin, four fish before the "
+                     "lantern time runs out. Press it and the lane's own panel plays it. The basin is "
+                     "the street's night navy and the fish its lamp colours; no stall here stands at a "
+                     "surveyed address."},
+            {"id": "stall-menya", "kind": "stall", "x": -346, "z": 470, "y": 0, "ry": 90,
+             "w": 150, "h": 200, "d": 100, "awn": "#7a2f33", "liton": 0.78,
+             "glow": [{"r": 110, "k": 0.55, "dy": 210}], "game": "menya",
+             "title": "The mask row",
+             "hint": "Blank masks on a beaded line, twelve pellets, a breathing aim. The row stands "
+                     "beside the goldfish basin for the same reason it does on the real street: one "
+                     "stall is an exhibit, two are a lane."},
             # `liton` is the phase at which a front's own light comes up, and on this street it is
             # authored per front rather than once for the row: eight fronts that all rise at the same
             # instant are a switch, and the same field already staggers Moji's skyline (`0.74`–`0.88`
@@ -3464,6 +3484,10 @@ DISTRICTS = [
             {"x": 0, "y": 502, "z": 470, "r": 44, "k": 0.58},
             {"x": 0, "y": 500, "z": 780, "r": 46, "k": 0.6},
             {"x": 0, "y": 503, "z": 980, "r": 44, "k": 0.58},
+            # the two stalls' own lanterns (round 50): the wall lights the games stand under, low
+            # enough that the awnings catch them — 0.55, between the row's 0.58s and the amber floor
+            {"x": -250, "y": 430, "z": 340, "r": 90, "k": 0.55},
+            {"x": -250, "y": 430, "z": 470, "r": 90, "k": 0.55},
             # A cool, soft point of ambient light in the opening: it gives the last stretch a
             # distant destination without pretending the street belongs to a named city. No bulb —
             # it is open-air fill, not another fitting on the street.
@@ -3828,7 +3852,10 @@ DISTRICTS = [
                   "kept, and the count of shops is what shrinks. The shutters keep only the ground "
                   "colours of the Asakusa Emaki, whose scenes show people; no fascia, lantern or sign "
                   "carries lettering. The plates on the shutters are drawn. Nothing here says the "
-                  "owner was in this place.",
+                  "owner was in this place. The stalls are in the wall too: a goldfish basin and a "
+                  "mask line, added because the owner asked for games to play in the street — the "
+                  "markup and the note cards both say they are toys, and neither stands at a real "
+                  "address.",
     },
     {
         # Moji Port in a model hall (round 32: laid out from the map; round 36: the models taken
@@ -3849,7 +3876,11 @@ DISTRICTS = [
         # A model hall, as the brief asked ("a table, like Toronto's, like Little Canada"): dark walls,
         # the table lit, and the far wall open onto the strait at the table's own scale. 8.8 m wide so
         # a walker can still go round the true-scale table by the right-hand aisle.
-        "lane": {"w": 880, "d": 900, "ceil": 620, "back": 300},
+        # Round 51: the hall had stopped a stride past its last stand, with the strait and the
+        # Blue Wing hanging at the far wall unvisit-able. The lane runs on to the table's quay —
+        # 100 m of Moji waterfront in a hall that is 110 deep — so the walk arrives at the water
+        # the drawings put there, and the drawbridge's door can open onto the walk itself.
+        "lane": {"w": 880, "d": 1100, "ceil": 620, "back": 300},
         "purpose": "Moji Port in a model hall: the station, the customhouse, their neighbours and the "
                    "Retro High Mart on stands of their own, with the port laid out from the map and "
                    "the Blue Wing and ships on the Kanmon Strait beyond, from dusk into night",
@@ -3915,6 +3946,41 @@ DISTRICTS = [
              "title": "A harbour boat",
              "hint": "A boat of the basin's own size, using the openings: out under the raised "
                      "leaves on one, back in on the next. The big ships keep to the strait."},
+            # Round 51: the bridge gets a door of its own to show its opening — the walk ends at a
+            # service door on the quay and pressing it plays the whole lift, leaves up and down on
+            # the timetable's own 20-minute crossing, narrated (site.js's demo protocol; the model
+            # keeps the table's motion, not a real-traffic claim). The stand's two lamps follow it
+            # down to the quay, and the High Mart's base gets the twin blocks a model's plinth is.
+            {"id": "door-demo-mj", "kind": "door", "x": -600, "z": round(2640 / Z_SCALE, 2),
+             "y": 0, "ry": 180, "leaf": "#68655f", "w": 640, "h": 250,
+             "demo": "open|ripple",
+             "title": "The drawbridge's own door",
+             "hint": "A service door at the basin's mouth, on the wall the table stands against. "
+                     "Press it and the room watches the Blue Wing open: the south leaf up on its "
+                     "wire, the north leaf on its ram, both near sixty degrees, the crossing held to "
+                     "about the real twenty minutes at model speed — then down, then the water "
+                     "ripples out from where the ship passed."},
+            {"id": "slot-wing", "kind": "board", "x": -340, "z": round(2870 / Z_SCALE, 2),
+             "y": 0, "ry": 90, "w": 170, "h": 156, "d": 240, "top": "#5a6572", "leaf": "#4a4238",
+             "title": "The basin's edge",
+             "hint": "The quay the table's strait keeps along the water: the Blue Wing's pylons stand "
+                     "on it, and the ripple the demo leaves runs out from here."},
+            {"id": "slot-wing-post", "kind": "board", "x": -340, "z": round(2950 / Z_SCALE, 2),
+             "y": 0, "ry": 90, "w": 20, "h": 352, "d": 60, "top": "#4c6d7e", "leaf": "#3c4a58",
+             "title": "The south pylon",
+             "hint": "The pylon the lift wire runs over: 35.2 m of painted steel at the bridge's "
+                     "south end, kept at the table's scale here on the quay's edge."},
+            {"id": "mart-base", "kind": "board", "x": 330, "z": round(3030 / Z_SCALE, 2),
+             "y": 0, "ry": 0, "w": 660, "h": 360, "d": 520, "top": "#7f7a72", "leaf": "#6a655e",
+             "title": "The High Mart's base",
+             "hint": "The podium the tower stands on — retail floors, a lobby, the grey plinth every "
+                     "Kurokawa photograph crops out at the bottom."},
+            {"id": "mart-crown", "kind": "board", "x": 330, "z": round(3040 / Z_SCALE, 2),
+             "y": round(360 / Z_SCALE, 2), "ry": 0, "w": 660, "h": 120, "d": 360,
+             "top": "#8b857c", "leaf": "#746f68",
+             "title": "The open crown",
+             "hint": "The tower's steel crown frame and curved cap at the top of the 1:25 model — "
+                     "the part the observation deck photographs show from below."},
             # Round 36/39: the owner asked for the models to come apart ("門司港那邊模型要拆開") --
             # on the one table every building was a block a few centimetres high. The four historic
             # buildings have stands of their own down the hall at 1:25; the Retro High Mart joins them
@@ -4032,7 +4098,10 @@ DISTRICTS = [
              for x, z, of in ((-290, 830, "plinth-station"), (325, 1180, "plinth-customhouse"),
                               (-325, 1480, "plinth-osakashosen"), (330, 1780, "plinth-dalianhall"))] + [
             {"x": -300, "y": 590, "z": round(2050 / Z_SCALE, 2), "r": 350, "k": 0.34, "bulb": False,
-             "tint": "rgba(255,226,186,0.18)", "of": "plinth-retrohighmart"}],
+             "tint": "rgba(255,226,186,0.18)", "of": "plinth-retrohighmart"},
+            # the quay the walk now ends at keeps two of the hall's downlights, one each side
+            {"x": 620, "y": 420, "z": round(2870 / Z_SCALE, 2), "r": 110, "k": 0.62},
+            {"x": -620, "y": 420, "z": round(2870 / Z_SCALE, 2), "r": 110, "k": 0.6}],
         "beams": [90, 240, 340],
         # A model hall's walls: the gallery base and plaster the Toronto hall wears, dark.
         "surfaces": [
@@ -4114,6 +4183,12 @@ DISTRICTS = [
             {"z": round(1660 / Z_SCALE, 2), "x": 200, "yaw": -52, "pitch": -9,
              "label": "the Retro High Mart, on its stand to your left"},
             {"z": round(2100 / Z_SCALE, 2), "x": 0, "label": "at the port table, over the basin toward the strait"},
+            {"z": round(2450 / Z_SCALE, 2), "x": -350, "yaw": -32,
+             "label": "the Blue Wing on its berth"},
+            {"z": round(2660 / Z_SCALE, 2), "x": 0, "label": "the canal's stone"},
+            {"z": round(2800 / Z_SCALE, 2), "x": 140, "label": "the harbour mouth"},
+            {"z": round(2950 / Z_SCALE, 2), "x": 0, "label": "ship lights across the strait"},
+            {"z": round(3080 / Z_SCALE, 2), "x": 0, "label": "the High Mart's doors"},
         ],
         "exit": {"id": "curtain-back", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
                  "title": "The curtain at your back", "hint": "It parts onto the street."},
@@ -4136,7 +4211,11 @@ DISTRICTS = [
                   "the same scale. The Mitsui Club, the hotel and Kaikyo Plaza are not modelled because "
                   "reliable shape and height data remain insufficient. The Blue Wing keeps its real "
                   "timetable, so it is shut after dark. No sign carries lettering and the yatai sells "
-                  "nothing named. Nothing here says the owner was in any of these places.",
+                  "nothing named. The walk's new half — the quay, the door, the bridge's demo — "
+                  "is exhibit framing like the stands themselves: the door shows the lift the "
+                  "timetable records, not a ship that came in, and the demo's twenty minutes are the "
+                  "crossing the sources give at model speed. Nothing here says the owner was in any "
+                  "of these places.",
     },
     {
         # Toronto, small. The owner's brief was Little Canada — the Toronto attraction where the
@@ -4472,6 +4551,32 @@ DISTRICTS = [
              "hint": "Inside Table Rock Centre: an elevator drops 38 m through the rock to the 1944 "
                      "tunnel, its two portals behind the sheet and the deck at the foot of the falls.",
              "leave": ROOM_BY_ID["journey"]["page"]},
+            # Round 51: the Journey ticket booth's neighbour got a shed of its own — under it the
+            # raft game keeps its bells (js/games.js, third machine). Planks and a noren, nothing
+            # more; the mist's own shed, not a surveyed building.
+            {"id": "shed-deck", "kind": "board", "x": 400, "z": 469, "y": 0, "ry": -90,
+             "w": 150, "h": 6, "d": 240, "leaf": "#6f6250",
+             "title": "The shed's planks",
+             "hint": "A board deck off the trail's last stretch, where the queue for the tunnels "
+                     "outlasts the rain. It stands for every awning the Recreation Trail never "
+                     "documented."},
+            {"id": "shed-back", "kind": "board", "x": 478, "z": 469, "y": 0, "ry": 0,
+             "w": 8, "h": 230, "d": 240, "leaf": "#5b4a38",
+             "title": "The shed's back", "hint": "Three walls of plank, the fourth left to the mist."},
+            {"id": "shed-flank", "kind": "board", "x": 400, "z": 349, "y": 0, "ry": 90,
+             "w": 8, "h": 230, "d": 116, "leaf": "#54432f",
+             "title": "The shed's flank", "hint": "Windward. The gorge throws its spray up the stair and the plank takes it."},
+            {"id": "shed-noren", "kind": "noren", "x": 400, "z": 590, "y": 0, "ry": -90,
+             "w": 96, "h": 42, "leaf": "#31506e",
+             "title": "The shed's curtain",
+             "hint": "One panel of indigo cotton over the game's door: the same cloth grammar as the "
+                     "journey door's, hung for weather, not for a shop that is not here."},
+            {"id": "shed-rapids", "kind": "stall", "x": 400, "z": 469, "y": 6, "ry": -90,
+             "w": 150, "h": 230, "d": 130, "game": "rapids",
+             "title": "The rapids bell",
+             "hint": "Under the shed hangs the stair's own game: a raft, the current, and a bell to "
+                     "ring three times before the mist closes the hour. Press it and the lane's panel "
+                     "plays it — a toy the deck keeps, in the drawer of the real place's own noise."},
             # The trail is lit (OSM: lit=yes). Two posts stand for its lamps; their spacing is
             # drawn, not surveyed.
             {"id": "lamp-ng1", "kind": "lamp", "x": 640, "z": 120, "y": 0, "ry": 0, "w": 14, "h": 420, "d": 14,
@@ -4542,7 +4647,9 @@ DISTRICTS = [
                   "(under two pixels tall from the rail). No crowds, no boats on the water, no "
                   "lettering, and no claim that the owner stood at the rail. The Parks line "
                   "downstream -- White Water Walk, the Aero Car, the Floral Clock, the Glen -- stays "
-                  "in the drawer.",
+                  "in the drawer. Under the shed at the journey door's hand the lane keeps a game: "
+                  "a raft and a bell, the mist's own noise answered in a toy — the shed is drawn, the "
+                  "bell is not surveyed.",
     },
     {
         # Journey Behind the Falls (round 33; sources in TODO §0o). Not the bedrock strata and the
@@ -5002,7 +5109,9 @@ def walk_object(o):
     extra_attr = "".join(
         f' data-{k}="{escape(v if isinstance(v, str) else json.dumps(v, separators=(",", ":")))}"'
         for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run", "lift", "blocks",
-                                         "footprint", "floors", "observation") if k in o))
+                                         "footprint", "floors", "observation", "game", "demo",
+                                         "ride", "rideX", "rideTop", "dia", "axle", "turn",
+                                         "phase0", "deck", "period") if k in o))
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
@@ -5107,6 +5216,14 @@ def walk_html(d, drawer):
     max_d_attr += ' data-lane-under="1"' if lane.get("under") else ""
     max_d_attr += f' data-lane-wallmat="{escape(lane["wallmat"])}"' if lane.get("wallmat") else ""
     # A place may own its ground: the pod walks on dark steel, not the street's concrete.
+    # A space with `"exit": None` is left the way it was entered — through a door that names
+    # where it goes — so the lane gets no exit button of its own (round 51).
+    if d.get("exit"):
+        exit_html = (f'<a class="walk-icon walk-exit" href="{escape(d.get("back_to", "activities.html"))}"'
+                     f' data-walk-exit aria-label="Leave the lane">{ICON_EXIT}</a>')
+    else:
+        exit_html = ('<span class="walk-icon walk-exit is-entrance" aria-hidden="true"'
+                     ' title="This lane is left through its own doors">{ICON_EXIT}</span>')
     floor_attr = f' data-floor="{d["floor"]}"' if d.get("floor") else ""
     # A place whose subject is the day: `"day": True` on the record, or a dict to author the cycle,
     # where it opens in that cycle, and how strong the sun is (`{"cycle": 900, "start": 0.45,
@@ -5139,10 +5256,20 @@ def walk_html(d, drawer):
       {walk_islands(d, placed)}
     </div>
   </div>
+  <div class="walk-game" data-walk-game hidden>
+    <div class="walk-game-head">
+      <b class="walk-game-title" data-game-title></b>
+      <button type="button" class="walk-game-close" data-game-close>close</button>
+    </div>
+    <canvas class="walk-game-canvas" width="640" height="400"></canvas>
+    <p class="walk-game-status" data-game-status role="status"></p>
+    <p class="walk-game-note">A stall game, played over the lane: a toy, not a record. Nothing here
+    claims Nakamise hosted a stall at a measured address.</p>
+  </div>
   <div class="walk-hud">
     <div class="walk-top">
       <div class="walk-pick">
-        <a class="walk-icon walk-exit" href="{d.get("back_to", "activities.html")}" data-walk-exit aria-label="Leave the lane">{ICON_EXIT}</a>
+        {exit_html}
         <div class="walk-stops" role="group" aria-label="Stops in this lane">{"".join(chips)}</div>
       </div>
       <div class="walk-read">
