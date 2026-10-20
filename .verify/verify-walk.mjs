@@ -1157,9 +1157,9 @@ const fail = out.filter((l) => l.startsWith("FAIL")).length;
   {
     const scjs = fs.readFileSync("js/scene3d.js", "utf8");
     ok("the lit path folds the same navy the painter calls murk, as the sun goes",
-       /nightAmbient\.intensity = [\d.]+ \* litK/.test(scjs)
+       /nightAmbient\.intensity = [\d.]+ \* hourK/.test(scjs)
        && /AmbientLight\(0x16223c, 0\)/.test(scjs) && /const nightK = /.test(scjs)
-       && /const litK = Math\.max\(nightK, hallK\)/.test(scjs));
+       && /const hourK = state\.dayPage \? nightK : 0;/.test(scjs));
     ok("and the night fold keeps a readable floor under it, never full murk",
        /clamp\(\(Number\(state\.night\) \|\| 0\) \* 0\.40, 0, 0\.58\)/.test(scjs)
        && /laneDark=min\(0\.62,/.test(scjs)
@@ -1167,12 +1167,20 @@ const fail = out.filter((l) => l.startsWith("FAIL")).length;
     ok("and the surveyed world's own materials carry the night wash as a self-lit emissive",
        (scjs.match(/material\.userData\.nightGlow = true/g) || []).length >= 2
        && /emissive: new THREE\.Color\(0x16223c\), emissiveIntensity: 0/.test(scjs)
-       && /m\.emissiveIntensity = [\d.]+ \* litK/.test(scjs));
+       && /m\.emissiveIntensity = [\d.]+ \* hourK/.test(scjs));
     // measured round 51: the fukuoka hall's lit path collapsed to 4.2 luma on a stop where the
     // painter held 123.6, because a hall has no sky and its tiles kept no floor. The fix is
     // structural — interiors keep their light whatever the hour — and it must not be undone.
+    // measured round 53, the other half of the same fact: held at the FULL navy fold the hall read
+    // 30,53,103 mean RGB — the owner's 紫色 — where the painter paints 111,121,138. The constant
+    // is therefore the record's own lamp wash (#ffe4ba, the lane shader's colour) with the murk
+    // kept only as a quarter-share of air; an interior's fixed night is its lamps, not the sky.
     ok("and an interior hall keeps that floor as a constant, its dusk never depending on a sun it has no window for",
-       /const hallK = state\.dayPage \? 0 : 1;/.test(scjs));
+       /const hallK = state\.dayPage \? 0 : 1;/.test(scjs)
+       && /hallAmbient\.intensity = [\d.]+ \* hallK/.test(scjs)
+       && /AmbientLight\(0xffffff, 0\)/.test(scjs));
+    ok("and the navy is zero inside a hall: the moving hour's murk never reaches a room with no sky",
+       /nightAmbient\.intensity = [\d.]+ \* hourK;/.test(scjs));
   }
 }
 

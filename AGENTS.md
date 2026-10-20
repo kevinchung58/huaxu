@@ -16,7 +16,14 @@ no package manifest, CDN, or additional runtime dependency is implied.
   the emitted HTML and the engine files survived, and the next round spent itself re-authoring two
   shipped rounds' mounts from memory (the recovery is `f11558a`'s message). Gates passing on an
   uncommitted tree protect nobody — commit the generator and its pages in the same round, and merge the
-  original chain (`-s ours`) if the remote history no longer matches the rebuilt one.
+  original chain (`-s ours`) if the remote history no longer matches the rebuilt one. And when a
+  rollback forces a rebuild, `git fetch origin` first and restore each file byte-for-byte from the
+  remote's last good commit (`git show <tip>:<path> > <path>`) — the objects outlive the pointer.
+  Re-authoring a rolled-back file from session memory silently rewrites it to whatever you remember,
+  and what is lost is exactly what you forgot to remember: the round-53 rebuild cost 190 authored
+  lines (crest mist, lantern stalls, the record's real frontages) that the blob had kept whole.
+  A wiped sandbox also takes `node_modules` with it — run `bin/restore-env`, and remember headless
+  Chromium needs `LD_LIBRARY_PATH=/tmp/al2023/lib` after a manual unpack.
 - **A patch script for `_gen_html.py` anchors on one structural line, never on remembered prose or a
   line number.** Grep the exact anchor before writing it; assert every replacement fires exactly once;
   do all inserts in a single pass bottom-up, because line numbers shift under your own hands; and after
@@ -41,6 +48,16 @@ no package manifest, CDN, or additional runtime dependency is implied.
   banner hold is gone before a fixed sleep returns. Wait for the engine's own published values
   (`__walk.depth`, `__walk.height`, the record line) and sweep animation envelopes for the loudest
   frame; asserting against a timer turns a working feature into a flaky gate.
+- **Luma alone hides hue bugs; measure the channels against the other path's own frame.** A navy
+  flood and a lamp-lit hall can share a luma — round 51's black-hall fix passed every luma floor
+  while tinting every hall blue-violet (mean RGB 30,53,103 against the painter's 111,121,138), and
+  the owner saw 紫色 for a round before anyone measured for it. A lighting gate therefore reports
+  mean R/G/B and a cold/purple pixel fraction, with the Canvas2D-painted frame as the reference
+  target, not a remembered constant. Two traps in taking that reference: `?v=<digest>` assets are
+  cache-immortal, so aborting a module without `setCacheEnabled(false)` measures the tested path a
+  second time and calls it the fallback; and the renderer flag must be read in the same evaluation
+  as the screenshot — read early, and `attachThree` races the read, so the frame is 3D while the
+  label says canvas2d.
 - The cache-buster is **derived, not hand-bumped**: `VER` in `_gen_html.py` is the sha1 of
   `css/site.css`, `js/site.js`, `js/scene3d.js`, `js/games.js`, and the two pinned Three.js runtime
   files, truncated;

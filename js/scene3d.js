@@ -1324,6 +1324,13 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   // the sun goes — the authored night colour, never a made-up lamp.
   const nightAmbient = new THREE.AmbientLight(0x16223c, 0);
   scene.add(nightAmbient);
+  // The hall's own constant, when the record has no sky to borrow. White is not a made-up lamp:
+  // it is the identity — show the authored colours as authored. The record's light lives inside
+  // the tiles (the painter's washes) and inside the lane shader's per-quad warm/murk mix, so a
+  // tinted ambient here would fold twice. This only lifts the shells off the unlit black that
+  // round 51 measured (4.2 luma where the painter paints its tiles at full).
+  const hallAmbient = new THREE.AmbientLight(0xffffff, 0);
+  scene.add(hallAmbient);
   scene.fog = new THREE.FogExp2(FALLBACK_COLOR, 0.000005);
   const camera = new THREE.PerspectiveCamera(45, 1, 20, 600000);
   const staged = buildWorldGeometry(THREE, backdrop.world || {});
@@ -1510,13 +1517,20 @@ function buildRenderer(THREE, canvas, backdrop, api) {
     {
       const nightK = Math.max(0, Math.min(1, ((Number(state.night) || 0) - 0.45) / 0.5));
       // A hall has no sky to borrow: its record's dusk is lamp-lit and constant, and in the painter
-      // the tiles carry that constant themselves (lit wash over authored colours). The lit path
-      // mirrors the floor — without it a whole hall collapses to black that the Canvas2D path
-      // renders bright (measured round 51, same port-table stop: 4.2 luma against 123.6).
+      // the tiles carry that constant themselves (lit wash over authored colours) and the shell
+      // takes neither the sun's lift nor the night's murk (site.js: "own lamps whatever the hour").
+      // Round 51 mirrored only half of that — it held the hall at the full navy fold forever, and
+      // round 53 is the bill: a hall at 30,53,103 mean RGB (blue 3.4 times red, the owner's 紫色)
+      // where the painter paints 111,121,138. So the navy of the night now rides the MOVING hour
+      // (hourK) — an interior's authored fixed night is its lamps, not the sky's colour — and the
+      // hall's constant is the lamp wash plus a quarter of the murk as air, both from the record.
+      // Without any floor at all a hall still collapses to the round-51 black (4.2 luma), so the
+      // floor stays structural: it just arrives warm now.
       const hallK = state.dayPage ? 0 : 1;
-      const litK = Math.max(nightK, hallK);
-      nightAmbient.intensity = 0.62 * litK;
-      for (const m of materials) if (m.userData && m.userData.nightGlow) m.emissiveIntensity = 4.5 * litK;
+      const hourK = state.dayPage ? nightK : 0;
+      nightAmbient.intensity = 0.62 * hourK;
+      hallAmbient.intensity = 1.6 * hallK;
+      for (const m of materials) if (m.userData && m.userData.nightGlow) m.emissiveIntensity = 4.5 * hourK;
     }
     const w = Math.max(1, Math.round(state.width)), h = Math.max(1, Math.round(state.height));
     if (w !== width || h !== height) { renderer.setSize(w, h, false); width = w; height = h; }

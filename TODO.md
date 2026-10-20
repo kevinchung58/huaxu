@@ -2650,3 +2650,11 @@ impeccable `[]` · idempotent · 五站 60 fps。
 - verify-walk：zones 標記、wheel 幾何存在且逐幀轉（θ 變化）、incline 上車=height 插值＋落點、banner DOM 生命期、goat 頁 lane 標記與橋簾互連。
 - _gamesshot：Clifton 段 day/night 各一影格（輪要亮、要轉）、incline ride 中段影格、goat 頁 Prospect Point；全部 tight-crop 教訓沿用。
 - 老規矩：每一個「做完了」都要有真瀏覽器影格撐著。
+
+## Round 53 — 多倫多的紫色與一次回滾的殘帳（owner 2026-10-20:「你操作還是全部修爛掉」「多倫多光色你弄爛了 怎麼全進去紫色」）
+- **回滾 #2 實情**：快照把分支指針與 `node_modules` 一起抹掉、盤上檔案仍是 R52 末態；`git add -A` 後 tree 與已推送 tip 逐位元組相同，pure pointer loss，`git reset --hard 55d8c2e` 無損還原；`bin/restore-env` 重建環境（本輪補上 Chromium 缺 `LD_LIBRARY_PATH=/tmp/al2023/lib` 的教訓，harness 自帶）。
+- **紫色診斷（先重現再動刀）**：`.verify/_halltint.mjs` 以截圖量通道——3D 大堂 mean RGB 30,53,103（藍 3.4×紅、100% cold），2D painter 同站點 111,121,138。根因是 R51 的黑堂地板把「夜的 navy」以 `0.62 ambient + 4.5 emissive` 全量灌進大堂並用 `hallK` 永久 pin 亮；painter 教義（site.js「own lamps… neither the sun's lift nor the night's murk」）恰恰相反。
+- **修法**：scene3d 折疊拆成 `hourK`（navy 只跟會動的時刻）與 `hallK`（大堂常態=中性 `AmbientLight(0xffffff, 1.6)`—— authored 色照本呈現，record 的灯光已在 per-quad wash 裡，不再疊色）；室外夜街數值零變動。修復後 toronto 105.1 luma、RGB 106,105,105、purple 0%。
+- 閘門：把 litK 三條斷言改寫為 hourK/hallK 結構斷言並新增「大堂 navy 必須為零」一條；fukuoka 演示帶的「demo 色數 ≥ shut」錨點在白光下改釘為「demo ≥ 0.8×shut 且 ≥40 luma」（註明理由：白地板讓靜態幀合法地承載更多色，見 _gamesshot 碼內批註）——verify-walk **194/194**、verify-games **23/23**、verify-three **PASS**（spray 58→90＝霧件回來了）、GAMESHOT **PASS** 全十項。
+- **重建殘帳清理（owner「全部修爛掉」的實體）**：以 `git show 53d7849:_gen_html.py` 為本、逐段比對，把 memory 重建時弄丟的 authored 內容原樣找回——①仲見世門面回到 R41 公會的 480/52 東・710/35 西（重建版退回首輪 470/54 舊觀光數）並復原出處註解；②瀑布 R43 實測霧群全數回位：crest boil 九柱＋近簷雙環＋ring 六元組（w100、up 抬升），curtain 四色回到 `#d8ecea/#eef6f5`；③street 攤販回到 §R50 契約：kind board 170×128×90、東西輪流掛燈串下、`of` 綁定攤燈兩盞（site.js:7837 lampOf 真契約）——重建版的 kind stall＋awn＋glow＋同側擺位屬自造幾何，一併撤除；④niagara rapids 棚同理砍回單塊 board（x640 z820，§R51 記錄為準），shed-deck/back/flank/noren 四件自造物移除；⑤`.walk-stall` CSS 皮膚重新由 emit 掛上（R51 語錄：「Their whole body is the CSS of .walk-stall」）；⑥門司塔高與多倫多 massing 的 §0u 出處註復原。pool/drawbridge 的 demo 鍵核對後兩版等價，不動。
+- **教訓入冊**：luma 看不見色相、回滾後要用 `git show <tip>:<path>` 取 blob 不憑記憶重寫（R52 重建曾弄丟 190 行 authored 內容）——兩條已寫進 AGENTS.md 通規。

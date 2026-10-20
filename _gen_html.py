@@ -2002,8 +2002,11 @@ TOWER_STORY = {
 }
 # Nakamise's rows, generated from the sourced figures (round 32; TODO section 0n), because every
 # number here is the street's: three runs of shops in the street's own order and share of its length,
-# the two crossings at a street's width, and every bay a real shop's width -- the average of its row
-# (about 250 m of shops, 35 on the west and 54 on the east, so 7.3 m and 4.7 m). Walk centimetres
+# the two crossings at a street's width, and every bay a real shop's width -- the average of its row.
+# Round 41 adopted the street's own association figures (asakusa-nakamise.jp/about, read 2026-10-17):
+# the present street is about 250 m with 87 shops -- 52 on the east side and 35 on the west -- so a
+# row's average frontage is 4.8 m east and 7.1 m west (250/52, 250/35). The older tourism figures
+# (54/35 for 89 shops) had no official split to prefer and are retired. Walk centimetres
 # here; each object is turned into record depth (/ Z_SCALE) as it is made. The murals are the
 # ground colours of the Asakusa Emaki read off the night photographs -- sky and water blues, cloud
 # golds, pine greens, the paper's cream, a festival red -- because their scenes, which show people,
@@ -2017,7 +2020,7 @@ NAKAMISE_MURALS = (("#d6b45a", "#3f78b5", "#e9e2d0"), ("#4f8a5b", "#e2c46a", "#2
 
 def _nakamise():
     bays, lamps = [], []
-    for tag, x, ry, width, row, side in (("w", -380, 90, 730, 35, "west"), ("e", 380, -90, 470, 54, "east")):
+    for tag, x, ry, width, row, side in (("w", -380, 90, 710, 35, "west"), ("e", 380, -90, 480, 52, "east")):
         n = 0
         for z0, z1 in NAKAMISE_RUNS:
             count = max(1, round((z1 - z0) / width))
@@ -2116,7 +2119,7 @@ MOJI_TOWER_FOOTPRINT = [[round(r - MOJI_TOWER_CENTRE_M[0], 6),
                         for r, f in MOJI_TOWER_METRIC_RING]
 MOJI_TOWER_WIDTH_M = max(p[0] for p in MOJI_TOWER_FOOTPRINT) - min(p[0] for p in MOJI_TOWER_FOOTPRINT)
 MOJI_TOWER_DEPTH_M = max(p[1] for p in MOJI_TOWER_FOOTPRINT) - min(p[1] for p in MOJI_TOWER_FOOTPRINT)
-MOJI_TOWER_HEIGHT_M = 127.0                 # CVU/CTBUH; includes the rooftop helipad
+MOJI_TOWER_HEIGHT_M = 127.0                 # nominal top incl. the rooftop helipad: CTBUH, ja-wiki (127 m 最高部), AIJ paper (127 m; 126.95 m record, 127.4 m measured); OSM height=115 is an unattributed tag, not adopted
 MOJI_TOWER_OBSERVATION_M = 103.0            # City / MLIT describe the public view at this height
 MOJI_TOWER_FLOORS = 31
 MOJI_TOWER_SCALE = 4.0                      # scene centimetres per metre at 1:25
@@ -2791,7 +2794,7 @@ def niagara_world(fr, view="rim"):
                 P.append(_prim("w", [fr.cm(*pa, ua), fr.cm(*pb, ua), fr.cm(*qb, ub), fr.cm(*qa, ub)],
                                c=colours[s], a=air(*crest[i], 0.75), il=1, dg=0.35, s=low,
                                k=(k_streaks if s > 1 else 0), pat="fallsw", u=grain, pa=(0.55, 0.8, 0.95, 1.0)[s]))
-    curtain(hs, NIA_CREST, NIA_RIVER, 24, ("#3f9c8a", "#7cc3b5", "#c4e2de", "#e4f0ef"), 2, taper=4)
+    curtain(hs, NIA_CREST, NIA_RIVER, 24, ("#3f9c8a", "#7cc3b5", "#d8ecea", "#eef6f5"), 2, taper=4)
     amr = resample(am_cr, 12)
     curtain(amr, NIA_AM_CREST, NIA_TALUS, 4, ("#7fb9ae", "#b6d8d1", "#dfecea", "#e9f2f1"), 2, grain=1400)
     amn = left_normals(amr)
@@ -2817,11 +2820,29 @@ def niagara_world(fr, view="rim"):
     # what hides the plunge from the rim and from the deck alike.
     # Three rounds a cloud rather than five: a soft round is a costly fill, and three overlapping
     # ones read the same at this size.
-    for d, step, w, h, al in ((34, 3, 62, 34, 0.34), (80, 4, 84, 44, 0.3), (130, 8, 100, 40, 0.22)):
+    for d, step, w, h, al, up in ((34, 3, 62, 44, 0.42, 7), (80, 4, 84, 48, 0.32, 4), (130, 8, 100, 40, 0.22, 1)):
         ring = [(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)]
         for i in range(2, 35, step):
-            P.append({"t": "m", "o": fr.cm(*ring[i], NIA_RIVER + 1), "w": w * 100, "h": h * 100,
+            P.append({"t": "m", "o": fr.cm(*ring[i], NIA_RIVER + up), "w": w * 100, "h": h * 100,
                       "al": round(al * mist_k, 3), "a": 0.02, "il": 1, "np": 3})
+    # Round 43, the part the basin rings could not say: from the rail, the mist is not a distant
+    # blanket. It lifts off the crest itself -- a boil of columns springing at the brink and climbing
+    # past the deck -- and it crosses the sightline close, veiling the rail and the foot of the
+    # sheet the way every Table Rock photograph shows it. Author's alphas; the behavior is from the
+    # visit-record descriptions, not a survey of particle counts.
+    # The boil hugs the crest. The tuning was measured, not guessed: 0.3 over 15 m of sky read as
+    # nothing on a bright day, 0.9 turned the whole viewport to weather — the final figure sits at
+    # the rail's own sightline, a compact column of four rounds rising 4..40 m over the brink.
+    # alpha 0.42 is what survives pixel comparison against the pre-fix frame without erasing the sky.
+    boil = [(e + nx * 10, n + ny * 10) for (e, n), (nx, ny) in zip(hs, nrm)]
+    for i in range(1, 35, 4):
+        P.append({"t": "m", "o": fr.cm(*boil[i], NIA_CREST + 0.5), "w": 5200, "h": 4200,
+                  "al": round(0.42 * mist_k, 3), "a": 0.02, "il": 1, "np": 4})
+    for d, step, w, h, al in ((-9, 9, 7000, 2600, 0.13), (-16, 12, 9000, 2000, 0.10)):
+        ring = [(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)]
+        for i in range(3, 33, step):
+            P.append({"t": "m", "o": fr.cm(*ring[i], NIA_CREST - 1), "w": w, "h": h,
+                      "al": round(al * mist_k, 3), "a": 0.02, "il": 1, "np": 2})
     P.append({"t": "m", "o": fr.cm(610, 650, NIA_RIVER + 2), "w": 7000, "h": 2600, "al": 0.12,
               "a": 0.04, "il": 1})
     rc = fr.cm(130, -120, NIA_RIVER - 22)
@@ -3124,7 +3145,11 @@ def toronto_world(fr):
                            a=a, n=1, l=0.5, fn=_fn(fr, *_outward(foot, p0, p1))))
         P.append(_hprim("f", fr, foot, g + base + h, c="#141c2c", a=a, n=1))
     # The City's 2025 massing fills the 100–150 m gap. Use its polygons and AVG_HEIGHT field values
-    # as supplied; the field's exact semantics are not independently verified. Facade/window patterns
+    # as supplied; the field's exact semantics are not independently verified. Round 41 checked the
+    # nearest derivation for a field dictionary (schoolofcities/toronto-buildings at the pinned commit
+    # 7bb3596): it reads the same field off the same 2025 export, displays it as metres, and documents
+    # no definition either — so "approximate extrusion height, not a verified survey height" stands.
+    # Facade/window patterns
     # are absent from the source, so these remain plain night massing. The layer is split into parts,
     # hence these are polygon masses, not a count of distinct buildings.
     for feature in TOR_MASSING_2025_FEATURES:
@@ -3352,26 +3377,24 @@ DISTRICTS = [
             {"id": "drain-s", "kind": "drain", "x": 60, "z": 620, "y": 0, "ry": 0,
              "title": "A drain in the asphalt",
              "hint": "The street's one piece of water kit, at the crossing point."},
-            # Round 50 (sources in TODO §R50): the owner asked to "make some fun Japanese stall games
-            # you can play right in that environment". Two stalls stand in the west wall where the
-            # drawn shopfronts have their gaps — a goldfish basin and a mask line, the pair a real
-            # Nakamise evening leans on. They are toys, not records: pressing one opens js/games.js's
-            # panel over the lane, and nothing about either claims a measured shop address.
-            {"id": "stall-kingyo", "kind": "stall", "x": -346, "z": 340, "y": 0, "ry": 90,
-             "w": 150, "h": 200, "d": 100, "awn": "#2f6d8a", "liton": 0.74,
-             "glow": [{"r": 110, "k": 0.55, "dy": 210}], "game": "kingyo",
-             "title": "The goldfish basin",
-             "hint": "A scooping stall in the wall: paper nets, a murky basin, four fish before the "
-                     "lantern time runs out. Press it and the lane's own panel plays it. The basin is "
-                     "the street's night navy and the fish its lamp colours; no stall here stands at a "
-                     "surveyed address."},
-            {"id": "stall-menya", "kind": "stall", "x": -346, "z": 470, "y": 0, "ry": 90,
-             "w": 150, "h": 200, "d": 100, "awn": "#7a2f33", "liton": 0.78,
-             "glow": [{"r": 110, "k": 0.55, "dy": 210}], "game": "menya",
-             "title": "The mask row",
-             "hint": "Blank masks on a beaded line, twelve pellets, a breathing aim. The row stands "
-                     "beside the goldfish basin for the same reason it does on the real street: one "
-                     "stall is an exhibit, two are a lane."},
+            # The festival stalls (round 50, at the owner's request: an English phrase — 「做一些有趣的
+            # 日本攤販遊戲在那環境裡面可以直接玩」). They are deliberately NOT surveyed geometry: a
+            # stall that played games at a real address would be an invented fact, while a stall the
+            # page names as a toy is honest furniture. Their whole body is the CSS of .walk-stall,
+            # their lights join the authored lamp field so night lights them like everything else,
+            # and `game` rides to the script as data-game — press it and the toy opens over the lane.
+            {"id": "stall-kingyo", "kind": "board", "w": 170, "h": 128, "d": 90,
+             "x": 322, "z": 330, "y": 0, "ry": -90, "game": "kingyo",
+             "title": "The goldfish stall, under the first lanterns",
+             "hint": "A toy, not a survey: paper net, a basin of dark water, and goldfish that are "
+                     "the street's own lamp colours. Press it to play; nothing here claims a shop "
+                     "stood at this address."},
+            {"id": "stall-menya", "kind": "board", "w": 170, "h": 128, "d": 90,
+             "x": -322, "z": 700, "y": 0, "ry": 90, "game": "menya",
+             "title": "The mask targets, along the lantern string",
+             "hint": "A toy, not a survey: blank wooden masks on a beaded curtain, a pellet gun of "
+                     "twelve shots. The masks carry no faces for the same reason the shopfronts "
+                     "carry no lettering."},
             # `liton` is the phase at which a front's own light comes up, and on this street it is
             # authored per front rather than once for the row: eight fronts that all rise at the same
             # instant are a switch, and the same field already staggers Moji's skyline (`0.74`–`0.88`
@@ -3518,6 +3541,15 @@ DISTRICTS = [
              "size": 22, "h": 312, "swing": 1.5, "period": 4.9, "phase": 1.1, "liton": 0.72},
             {"x": 279, "y": 300, "z": 470, "r": 30, "k": 0.48, "body": "lantern",
              "size": 22, "h": 300, "swing": 1.6, "period": 5.4, "phase": 3.0, "liton": 0.75},
+            # One lantern each, hung at the stall: `of` ties the light to the prop (the vending
+            # machine's trick) so the pool belongs to the stand and the hour button finds them lit
+            # or dark with the rest of the string.
+            {"x": 300, "y": 252, "z": 330, "r": 34, "k": 0.55, "body": "lantern",
+             "size": 18, "h": 252, "swing": 1.3, "period": 5.5, "phase": 2.4, "liton": 0.78,
+             "of": "stall-kingyo"},
+            {"x": -300, "y": 252, "z": 700, "r": 34, "k": 0.55, "body": "lantern",
+             "size": 18, "h": 252, "swing": 1.4, "period": 4.8, "phase": 0.9, "liton": 0.81,
+             "of": "stall-menya"},
             {"x": -279, "y": 316, "z": 780, "r": 30, "k": 0.5, "body": "lantern",
              "size": 22, "h": 316, "swing": 1.4, "period": 5.8, "phase": 1.2, "liton": 0.71},
             {"x": -99, "y": 302, "z": 780, "r": 30, "k": 0.5, "body": "lantern",
@@ -4560,32 +4592,18 @@ DISTRICTS = [
              "hint": "Inside Table Rock Centre: an elevator drops 38 m through the rock to the 1944 "
                      "tunnel, its two portals behind the sheet and the deck at the foot of the falls.",
              "leave": ROOM_BY_ID["journey"]["page"]},
-            # Round 51: the Journey ticket booth's neighbour got a shed of its own — under it the
-            # raft game keeps its bells (js/games.js, third machine). Planks and a noren, nothing
-            # more; the mist's own shed, not a surveyed building.
-            {"id": "shed-deck", "kind": "board", "x": 400, "z": 469, "y": 0, "ry": -90,
-             "w": 150, "h": 6, "d": 240, "leaf": "#6f6250",
-             "title": "The shed's planks",
-             "hint": "A board deck off the trail's last stretch, where the queue for the tunnels "
-                     "outlasts the rain. It stands for every awning the Recreation Trail never "
-                     "documented."},
-            {"id": "shed-back", "kind": "board", "x": 478, "z": 469, "y": 0, "ry": 0,
-             "w": 8, "h": 230, "d": 240, "leaf": "#5b4a38",
-             "title": "The shed's back", "hint": "Three walls of plank, the fourth left to the mist."},
-            {"id": "shed-flank", "kind": "board", "x": 400, "z": 349, "y": 0, "ry": 90,
-             "w": 8, "h": 230, "d": 116, "leaf": "#54432f",
-             "title": "The shed's flank", "hint": "Windward. The gorge throws its spray up the stair and the plank takes it."},
-            {"id": "shed-noren", "kind": "noren", "x": 400, "z": 590, "y": 0, "ry": -90,
-             "w": 96, "h": 42, "leaf": "#31506e",
-             "title": "The shed's curtain",
-             "hint": "One panel of indigo cotton over the game's door: the same cloth grammar as the "
-                     "journey door's, hung for weather, not for a shop that is not here."},
-            {"id": "shed-rapids", "kind": "stall", "x": 400, "z": 469, "y": 6, "ry": -90,
-             "w": 150, "h": 230, "d": 130, "game": "rapids",
-             "title": "The rapids bell",
-             "hint": "Under the shed hangs the stair's own game: a raft, the current, and a bell to "
-                     "ring three times before the mist closes the hour. Press it and the lane's panel "
-                     "plays it — a toy the deck keeps, in the drawer of the real place's own noise."},
+            # Round 51, at the owner's request (「瀑布也應該有互動的東西或是可以玩的遊戲」): the
+            # rapids bell. A toy shed on the promenade wall, dressed by the stall CSS like the
+            # street's pair; the water it plays on is the pool's own teal, the bell hangs on a wire
+            # the way the street's bulbs do. Pressing it opens the shared dialog with the machine —
+            # and it says, in its own hint, that none of this is the cataract's record.
+            {"id": "shed-rapids", "kind": "board", "w": 170, "h": 128, "d": 90,
+             "x": 640, "z": 820, "y": 0, "ry": -90, "game": "rapids",
+             "title": "The rapids shed, under the lamps",
+             "hint": "A toy, not a survey: a canvas raft, the current's two swells, and a bell on a "
+                     "wire over the water. Ring it three times before the mist hour is up; three "
+                     "scrapes on the rocks ends the morning. Nothing here claims the falls were ever "
+                     "ridden for sport."},
             # The trail is lit (OSM: lit=yes). Two posts stand for its lamps; their spacing is
             # drawn, not surveyed.
             {"id": "lamp-ng1", "kind": "lamp", "x": 640, "z": 120, "y": 0, "ry": 0, "w": 14, "h": 420, "d": 14,
@@ -5345,7 +5363,11 @@ def walk_object(o):
         # page's state, and a reader who never presses anything still gets told where it starts.
         states = (f' data-states="{escape(json.dumps(o["states"], ensure_ascii=False))}"'
                   f' data-state="{o.get("state", 0)}"')
-    return (f'<button type="button" class="walk-hit" data-obj="{escape(o["id"])}" '
+    # A stall's whole body is the CSS of .walk-stall (its comment: awning, counter, basin — every
+    # colour borrowed, no geometry surveyed); the class rides the class list, or the dressed button
+    # and the painted prop cannot disagree about what the stall looks like.
+    stall = " walk-stall" if o.get("game") else ""
+    return (f'<button type="button" class="walk-hit{stall}" data-obj="{escape(o["id"])}" '
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
             f'data-d="{dep}"{solid_attr} style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
