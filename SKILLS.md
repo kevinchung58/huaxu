@@ -10,7 +10,9 @@ says what must be true of the repository, this file says how to get a district r
 **Renderer decision (owner approval, 2026-10-16; full walkable migration):** all seven walkable
 pages use the pinned, MIT-licensed Three.js 0.186.1 runtime as their primary environment/object
 renderer. Authored `backdrop.world.prims` are added when present; all scene geometry stays grounded
-in the existing records. Canvas2D remains the complete no-WebGL fallback. The Activities album
+in the existing records. There is no no-WebGL fallback picture: the Canvas2D painter was deleted in
+round 54, and a browser that refuses WebGL gets the lane's own statement in the viewport plus the
+compiled state (rail, list, keys) — pinned by `.verify/verify-nowebgl.mjs` since round 55. The album
 remains CSS 3D and outside this renderer decision.
 
 The loadable halves live in tracked `skills/` files. Route a real-place build through
@@ -165,6 +167,7 @@ node .verify/verify-geometry.mjs
 node .verify/verify-clash.mjs
 node .verify/verify-walk.mjs
 node .verify/verify-collision.cjs        # the walker must not catch on walls (round 42)
+node .verify/verify-nowebgl.mjs          # no-WebGL: the lane names it and keeps its list (round 55)
 node .verify/verify-objects.mjs          # needs LD_LIBRARY_PATH=/tmp/al2023/lib
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 md5sum *.html; python3 _gen_html.py; md5sum *.html   # idempotent

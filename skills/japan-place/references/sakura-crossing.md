@@ -7,7 +7,8 @@ modules, one shipped music track, no image assets.
 It is a **reference, not a dependency** — the same rule as every other pack in `AGENTS.md`. At the
 2026-07 study date, this site shipped no scene library. On 2026-10-16 the owner later approved pinned,
 MIT Three.js 0.186.1 as the primary renderer for all walkable environments and objects, with sourced
-world records consumed when present and Canvas2D retained as fallback. That separate exception does
+world records consumed when present; the Canvas2D painter this note was written beside was deleted in
+round 54, and no fallback picture exists. That separate exception does
 not make this project a dependency or import its Vite tooling, source, or invented signage. Fetch it to read:
 
 ```bash
@@ -80,8 +81,8 @@ eye level, the noren's proportions — and never the words. See `japan-place` §
 triangles at 1.2 M submitted per frame, a half-float render target at 1.5–2×, FXAA, a depth-texture
 ink pass, an inverted-hull outline pass. At the time this note was written, our lane was a Canvas2D
 raster and `AGENTS.md` rejected WebGL. The later owner approval changed the walkable renderer to
-pinned Three.js 0.186.1 for lane and object geometry across all walkable pages, while retaining the
-Canvas2D fallback and no npm build. Nothing in this pack justifies adopting its Vite stack, render
+pinned Three.js 0.186.1 for lane and object geometry across all walkable pages — the Canvas2D
+painter was later deleted whole (round 54) — with no npm build. Nothing in this pack justifies adopting its Vite stack, render
 pipeline, signage or geometry.
 
 **3. The planet.** Its whole world is authored flat and bent onto a 160 m sphere by one projection

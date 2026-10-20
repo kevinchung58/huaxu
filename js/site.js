@@ -693,6 +693,27 @@ function leaveOverlay(root, trigger) {
 
   const statusEl = layer.querySelector("[data-walk-status]");
   const recordEl = layer.querySelector("[data-walk-record]");
+  /* Round 55: a lane with no renderer has no picture, and until now the only trace of that was one
+     sentence inside the info card — a visitor whose browser refuses WebGL saw an empty navy grid and
+     nothing that said why. The panel takes the viewport's place, and it prints the one thing the
+     picture was carrying that a reader still needs: where they are standing. That line is the status
+     region's own text, mirrored — the lane's published state, never a re-derivation of it. */
+  const offlineEl = layer.querySelector("[data-walk-offline]");
+  const offlineWhere = layer.querySelector("[data-walk-offline-where]");
+  const mirrorWhere = () => {
+    if (!offlineEl || offlineEl.hidden || !offlineWhere || !statusEl) return;
+    if (offlineWhere.textContent !== statusEl.textContent) offlineWhere.textContent = statusEl.textContent;
+  };
+  const noteOffline = () => {
+    if (!offlineEl) return;
+    offlineEl.hidden = false;
+    // The prop buttons are a projection of quads onto a picture. With no picture they are cards
+    // floating in an empty field — round 55's first no-WebGL frame showed two of them sitting on top
+    // of the sentence explaining why nothing was drawn. The reach itself stays: facing something and
+    // pressing E still opens its record, because that is geometry, not paint.
+    layer.classList.add("is-offline");
+    mirrorWhere();
+  };
   const card = layer.querySelector("[data-walk-card]");
   const listPanel = layer.querySelector("[data-walk-listpanel]");
   const listBtn = layer.querySelector("[data-walk-list]");
@@ -6427,8 +6448,10 @@ function leaveOverlay(root, trigger) {
         if (window.console && typeof console.warn === "function") console.warn("Three.js frame failed; the lane stops rendering:", err);
         const note = layer.querySelector("[data-walk-fallback]");
         if (note) note.hidden = false;
+        noteOffline();
       }
     }
+    mirrorWhere();
   };
 
   const liveEl = layer.querySelector("[data-walk-live]");
@@ -6443,6 +6466,7 @@ function leaveOverlay(root, trigger) {
     if (liveEl && card && !card.hidden) {
       liveEl.textContent = [status, record].filter(Boolean).join(" ") || "Nothing is in front of you.";
     }
+    mirrorWhere();
   };
   const metres = (v) => `${(Math.abs(v) / 100).toFixed(1)} m`;
 
@@ -7292,6 +7316,9 @@ function leaveOverlay(root, trigger) {
                    get velocity() { return Math.hypot(vx, vd); },
                    get maxSpeed() { return SPEED * RUN; }, get turnRate() { return TURN_RATE; },
                    get renderer() { return threeRenderer ? "three" : "off"; },
+                   // The no-WebGL path is the lane's own state, not the mounted module's: the mount
+                   // reports the refusal here so one place decides what a renderer-less lane shows.
+                   noteOffline,
                    get backdrop() { return bd; }, get day() { return DAY(); }, get dayPage() { return DAYPAGE; },
                    attachThree(engine) {
                      if (!engine || typeof engine.render !== "function") return false;

@@ -67,9 +67,9 @@ them — the two rooms already built have committed to them.
 
 ## 3. Materials: the renderer paints tiles, it does not sample photographs
 
-`js/site.js` authors each lane material as a procedural 128 px tile. The Canvas2D fallback maps
-that tile across the 60 cm wall panel and uses `FLATOF` for the grazing-angle flat colour; Three.js
-uses the same lane tile canvas as a texture on the 3D surface. Sourced-world tiles are also
+`js/site.js` authors each lane material as a procedural 128 px tile (the painter that consumed it in
+2D was deleted in round 54, and the tile canvas survives only as a `CanvasTexture` source). Three.js
+uses that same lane tile canvas as a texture on the 3D surface. Sourced-world tiles are also
 procedural `CanvasTexture`s in `js/scene3d.js`. None of these material patterns are photographs.
 What exists today: `shutter, dado, brick, corrugated, hoarding, plaster, tactile, kerb, grate,
 lantern, concrete, galv, wood, cobble, glass, track, water, terrain, cityg, skyline`.
@@ -123,8 +123,8 @@ This is where the reference pack is most dangerous, and why it is a reference an
 - **No lettering, at all.** sakura-crossing paints every 看板, 幟, 暖簾, price strip and 駅名標
   with Canvas2D, and its Japanese strings are invented on purpose (青空商店, さくら坂商店街, …).
   That is legitimate art direction for a fictional town. It is forbidden here — the lane renderer
-  never calls `fillText`, and a board that could have held a name ships blank with the reason in its
-  card. So take the *cadence* of Japanese signage and leave the words: a fascia band at a constant
+  never calls `fillText` (and since round 54 there is no second painter that could), and a board
+  that could have held a name ships blank with the reason in its card. So take the *cadence* of Japanese signage and leave the words: a fascia band at a constant
   height along the whole row, a vertical strip sign, a small plate at eye level, a noren's
   proportions with its curtain pattern and no characters. The row reads as a shopping street
   because the bands line up, not because anyone can read them.
@@ -166,12 +166,12 @@ and only after the public facts are already laid out on the table.
 them before anything else:
 
 - `node .verify/verify-shapes.mjs` — a prop whose `kind` is not registered renders as a flat
-  plane with no error, and the check reads the **id prefix**, not `data-kind`. Name the object
-  `drawbridge-mj`, `stationfront-mj`, `dalianhall-mj`, not `moji-drawbridge`.
+  plane with no error. Since round 54 the emitter stamps `data-kind` and the shape register, the
+  renderer and this gate all read that one channel; the id prefix is only the labelled fallback.
 - `node .verify/verify-walk.mjs` — asserts that every frame's title is a sub-area slot of its own
   room, and that the album's Field notes wall is the built places with one door each.
-- `node .verify/lane-shot.mjs .preview/lane/<place>` — the pixel gate. It asks whether the lane is
-  painted where you stand, whether the deepest stop is the frame that empties out, and whether the
-  wall behind the entrance is a room. A stop that stands *inside* the thing it names (the first Moji
+- the browser frame gate (`.verify/browser-shot.mjs`, `PAGE=<place>`) — the pixel gate. It asks
+  whether the lane is drawn where you stand, whether the deepest stop is the frame that empties out,
+  and whether the wall behind the entrance is a room. A stop that stands *inside* the thing it names (the first Moji
   layout had three of five stops standing in the port) passes every structural assertion and shows
   the visitor air.

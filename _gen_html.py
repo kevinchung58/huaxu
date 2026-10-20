@@ -5540,6 +5540,23 @@ def walk_html(d, drawer):
     <p class="walk-game-status" data-game-status role="status"></p>
     <p class="walk-game-note">A toy, not a survey: the stalls of a festival lane stand at no surveyed address, and no button here claims one.</p>
   </div>"""
+    # Nothing to draw with. Round 54 deleted the second picture on the owner's ruling, so a visitor
+    # whose browser has no WebGL used to get an empty navy grid and one sentence three interactions
+    # away inside the info card. The lane now says it in the viewport it cannot fill — and only the
+    # sentence is words: the rails, the list and the compiled state keep answering, which is what
+    # the panel promises. Round 55 rendered the no-WebGL path for the first time and wrote this.
+    offline_html = f"""
+  <div class="walk-offline" data-walk-offline hidden>
+    <div class="walk-offline-inner">
+      <p class="eyebrow">{escape(label)}</p>
+      <p class="walk-offline-lead">This browser cannot draw the lane.</p>
+      <p class="walk-offline-note">The walk itself needs WebGL, and it is switched off or
+        unavailable here. Nothing is hidden that the lane owns: the numbered stops above still
+        carry you along it, the keys still turn and walk, and the list writes out this lane's
+        frames, its slots and what it may claim. Where you are standing is printed below.</p>
+      <p class="walk-offline-where" data-walk-offline-where aria-hidden="true"></p>
+    </div>
+  </div>"""
     if d.get("night"):
         hour_html = ""
     else:
@@ -5576,7 +5593,7 @@ def walk_html(d, drawer):
       {walk_islands(d, placed)}
     </div>
   </div>
-  {game_html}
+{offline_html}{game_html}
   <div class="walk-tutor" data-walk-tutor hidden aria-hidden="false">
     <p class="walk-tutor-step" data-walk-tutor-text></p>
     <span class="walk-tutor-n" data-walk-tutor-count></span>

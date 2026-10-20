@@ -12,7 +12,7 @@ This skill owns the rendered-image review after scene authoring. It complements,
 - the relevant domain skill for records, props, landmarks, streets, or Japanese places;
 - `pua` for evidence-led diagnosis, root-cause repair, and honest verification.
 
-The renderer is pinned Three.js 0.186.1 for walkable scenes, with the Canvas2D path retained as the no-WebGL fallback. This workflow does not authorize another dependency, asset service, CDN, renderer migration, or a change to the Activities album's CSS 3D.
+The renderer is pinned Three.js 0.186.1 for walkable scenes and there is no fallback painter: the Canvas2D lane painter was deleted in round 54, and the no-WebGL state is a written panel plus the compiled state (round 55). This workflow does not authorize another dependency, asset service, CDN, renderer migration, or a change to the Activities album's CSS 3D.
 
 ## 1. Freeze the authoring pass and identify the claim
 
@@ -27,7 +27,7 @@ Do not create a second coordinate system or an unsupported visual requirement. U
 
 ## 2. Capture a complete, settled view set
 
-Use the repository's current `.verify/browser-shot.mjs` for actual browser movement and `.verify/lane-shot.mjs` for its renderer-independent route/fallback raster checks. Preserve their arrival checks. A frame is not evidence for a stop until the runtime has reached its authored depth, lateral position, and view. Fixed sleeps, a partially completed glide, or an early timeout are not proof of a movement defect.
+Use the repository's current `.verify/browser-shot.mjs` for actual browser movement and its route checks (the renderer-independent raster harness, `lane-shot.mjs`, was retired with the Canvas2D painter in round 54). Preserve its arrival checks. A frame is not evidence for a stop until the runtime has reached its authored depth, lateral position, and view. Fixed sleeps, a partially completed glide, or an early timeout are not proof of a movement defect.
 
 For the changed page, capture:
 
@@ -37,7 +37,7 @@ For the changed page, capture:
 4. special authored views (for example a glass-floor look-down or an upper/lower waterfall deck);
 5. the route's far end and its entrance/exit behavior.
 
-If the change affects renderer selection, geometry conversion, materials, or fallback handling, verify both paths: confirm the browser's actual renderer rather than inferring it from a loaded script; run `node bin/verify-three.mjs` for the Three.js geometry contract and the relevant Canvas2D/browser gates for fallback. For motion, observe the actual authored behavior over a meaningful part of its cycle; a sample aligned to its period can falsely look static. Capture mobile only for a changed mobile path or an explicit mobile acceptance claim, and label any untested viewport honestly.
+If the change affects renderer selection, geometry conversion, materials, or failure handling, verify both paths: confirm the browser's actual renderer rather than inferring it from a loaded script; run `node bin/verify-three.mjs` for the Three.js geometry contract and `.verify/verify-nowebgl.mjs` for the lane with WebGL refused (its whole close-out is "the lane says so, and the list still reads"). For motion, observe the actual authored behavior over a meaningful part of its cycle; a sample aligned to its period can falsely look static. Capture mobile only for a changed mobile path or an explicit mobile acceptance claim, and label any untested viewport honestly.
 
 ## 3. Read the images, not just the measurements
 

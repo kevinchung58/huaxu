@@ -36,6 +36,10 @@ assert.match(sceneSource, /function createSceneEffects\(/,
   "dynamic lamps, pools, shadows and wires must have a Three.js scene-effects pass");
 assert.match(sceneSource, /3D lamp halo[\s\S]*3D ground pool[\s\S]*3D wire or lamp cord[\s\S]*3D authored wall shadow/,
   "lighting, reflections, wall shadows and overhead lines must stay in world space");
+assert.match(siteSource, /noteOffline,/,
+  "the lane must publish the renderer-less channel the mount reports through");
+assert.match(sceneSource, /api\.noteOffline\(\)/,
+  "a refused mount must raise the lane's own no-WebGL statement, not only the card's note");
 assert.match(siteSource, /effects: \{ lamps, wires, marks, surfaces, wall: WALL/,
   "site.js must submit the authored light records to the Three.js frame");
 // round 54, at the owner's ruling ("全站該是 3d js"): the Canvas2D lane painter is deleted, and
@@ -65,6 +69,11 @@ for (const file of pageFiles) {
     `${file} must not carry a fallback canvas — the lane is Three.js only`);
   assert.match(html, /<script type="module" src="js\/scene3d\.js\?v=[0-9a-z]+"><\/script>/,
     `${file} needs the cache-busted Three.js bridge`);
+  // Round 55: there is no fallback picture, so the renderer-less lane must ship the panel that says
+  // so — and it must ship it closed, because a lane that always wears that panel is a broken page.
+  assert.match(html, /<div class="walk-offline" data-walk-offline hidden>/,
+    `${file} needs the no-WebGL panel, shipped closed`);
+  assert.match(html, /data-walk-offline-where/, `${file} needs the panel's standing-position line`);
   const match = html.match(/<script type="application\/json" data-walk-backdrop>([\s\S]*?)<\/script>/);
   if (!match) continue;
   const backdrop = JSON.parse(match[1]);

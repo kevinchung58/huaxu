@@ -55,7 +55,7 @@ Two lines from it are new to us and belong in the landmark skill:
 ## 3. Owl-Listener/designer-skills — the critique vocabulary
 
 The design pack AGENTS.md already leans on. For a 3D space the two skills that apply to a
-*rendered frame* (our lane-shot sheet is exactly "a rendered screen") are:
+*rendered frame* (our browser-shot contact sheet is exactly "a rendered screen") are:
 
 - **critique-composition** — balance, whitespace, rhythm, gestalt (proximity, similarity,
   figure/ground, continuity). Its failure patterns translate directly: "orphaned elements that
@@ -67,7 +67,7 @@ The design pack AGENTS.md already leans on. For a 3D space the two skills that a
   tint, never a literal in a painter.
 
 The method to take: **Observation → Problem → Fix, rated pass/minor/major, per dimension.** The
-landmark skill's beauty gate is this loop run over the lane-shot sheet, dimensions renamed for a
+landmark skill's beauty gate is this loop run over the captured frame set, dimensions renamed for a
 space rather than a screen: *silhouette, light hierarchy, depth (air), rhythm, palette coherence*.
 What it replaces is nothing — it sits beside the luma gates, because a frame can pass every number
 and still tip top-heavy; the numbers catch collapse, the critique catches ugliness.
@@ -84,7 +84,7 @@ a *graph of viewpoints* needs, and every item has a twin in this repo:
 | `sceneFadeDuration` | the plate's view transition; a room change is a walk, not a fade (`AGENTS.md`) |
 | `preview` image before load | the album plate is the preview of a room — the round-18 link contract makes that literal |
 | `autoRotate` after inactivity | we refuse it: nothing moves on a clock of its own except authored motion; idle shows the *idle pump*, not a camera spin |
-| CSS-3D `fallbackPath` when WebGL is absent | Canvas2D remains the complete walkable-scene fallback; the list/drawer is the no-script content fallback |
+| CSS-3D `fallbackPath` when WebGL is absent | we refuse a second picture as well: the lane states that WebGL is missing in the viewport and its compiled state answers (round 55); the list/drawer is the no-script content fallback |
 
 The one pannellum idea with no twin here, and the one the link contract takes: **the hotspot that
 is a door carries the pose you arrive in** (`targetYaw`/`targetPitch`/`sameAzimuth`). Our `#at-`

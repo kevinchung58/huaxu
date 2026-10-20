@@ -204,8 +204,10 @@ late, which has now happened four times.
 
 The walkable scene is **one Three.js render**, not a 3D backdrop behind a 2D room. The pinned
 Three.js camera renders lane surfaces, props, sourced worlds and dynamic scene effects together.
-If WebGL is unavailable the renderer disposes, `walkRenderer` reports `"off"`, and the page's
-`[data-walk-fallback]` note says the same to a reader; DOM buttons remain the accessible hit layer. What remains 3D in CSS is the Activities album wall and plate, where
+If WebGL is unavailable the renderer disposes, `walkRenderer` reports `"off"`, and the lane says so
+in the viewport it cannot fill (`[data-walk-offline]`) as well as in its card's
+`[data-walk-fallback]` note; the projected prop buttons stand down with the picture while the
+stops, keys and written list keep answering (round 55, `.verify/verify-nowebgl.mjs`). What remains 3D in CSS is the Activities album wall and plate, where
 WebKit still bites: non-visible `overflow` on a `preserve-3d` element flattens it; `filter` or
 `backdrop-filter` on the `perspective` wrapper flattens its subtree; and a universal `preserve-3d`
 rule can make the scene vanish. So `preserve-3d` goes on `.ig-grid` only, the `perspective` one level
@@ -257,9 +259,9 @@ blank with the reason in its card, and a photograph of somebody's real front is 
 in this project.
 
 No iOS Safari exists in this sandbox, so mobile behaviour is **unmeasured** and must never be
-reported as proven. What needs no device is the fallback: the captioned list is always readable. The
-per-frame draw cost is measurable here and is asserted — `ctx.fills`, and that no textured quad covers
-more than its own uv extent; what it looks like on a phone is not.
+reported as proven. What needs no device is the no-renderer path: the lane names it and the written
+list stays readable. What the scene costs is measurable here (`.verify/cost-probe.mjs`); what it looks
+like on a phone is not.
 
 ## 7. The display wears no words
 

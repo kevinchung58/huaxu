@@ -1,6 +1,38 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-18 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-20 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0ac. 第五十五輪（2026-10-20）：第一幀「沒有 WebGL 的 lane」——空畫面與走失的說明，收回 viewport 裡；順手讓教義檔追上第五十四輪的刪除
+
+### 站主指令
+「先檢查一下理解這個專案，請用 skills 並且遵循該有的 AGENTS/SKILLS 做該做的事情並進行任務。」處理方式：先按 `skills/karpathy-guidelines`、`pua`、`scene-system`、`real-place-builder`、`grounded-scene`、`scene-quality-loop`、`pr-handoff` 走一遍現況稽核（不憑記憶），再依 §8「有證據的欠項就是本輪待辦」把找到的缺陷做完。
+
+### 稽核找到的兩個缺陷（都先量後改）
+1. **沒有 WebGL 的 lane 是一片空畫面。** 第五十四輪刪掉塗裝器時，`noteNoWebGL()` 只把 `[data-walk-fallback]` 的一句話放進「資訊卡」裡——而資訊卡要按 I 才開。實測（`.verify/_nowebgl.cjs` 擋掉 `getContext("webgl*")` 後截圖）：整頁只有深藍底、兩張孤零零的 prop 卡（投影在「不存在的畫面」上）、可點但不知所云的圖示列；唯一的解釋要三次互動才看得到。這正是 SKILLS §5「畫面說了謊」的同一類——不是畫錯，是**沒說**。
+2. **教義檔沒跟上第五十四輪的刪除。** `AGENTS.md`×4、`SKILLS.md`、`DESIGN.md`×6、`skills/{grounded-scene,japan-place,scene-system,landmark-space,lane-prop,place-intake,real-place-builder,scene-quality-loop,district-author,street-commons}` 與兩份 reference 仍在寫「Canvas2D 是完整 fallback」，多處還把已刪的 `.verify/lane-shot.mjs`、`_shadowdrawn.mjs` 當成現役閘門在教。下一個 session 照著做會去找不存在的檔案——這正是 AGENTS「skill 沒人指路的檔案不是 skill」的反面。
+
+### 這一輪做了什麼
+- **`_gen_html.py`**：`walk_html()` 新增 `[data-walk-offline]` 面板（只出現在 walk 頁、預設 `hidden`），文案三分：① 這台瀏覽器畫不出 lane（誠實說原因）② 不是騙人的「什麼都沒有」——站點、按鍵、清單仍可走可讀 ③ `[data-walk-offline-where]` 站立位置（`aria-hidden`，由 JS 從 status 行鏡射，不另立座標源）。
+- **`js/site.js`**：`noteOffline()` / `mirrorWhere()`——面板由 lane 自己發佈的狀態驅動；`draw()` 尾端與 `say()` 都鏡射位置；`layer.__walk.noteOffline` 公開給掛載端。renderer-less 時 `layer.is-offline` 讓 `.walk-hits` 退場（**投影到沒有的畫面上就是漂浮的卡片**），但 reach 本身保留：面向物件按 E 仍開它的紀錄。
+- **`js/scene3d.js`**：`noteNoWebGL()` 除了卡片那句，同時呼叫 `api.noteOffline()`——兩個入口（mount 拒絕、frame 失敗）都走同一條發佈通道。
+- **`css/site.css`**：`.walk-offline` 面板（z-index 2，在 HUD 之下、不動 pointer-events）、`.walk.is-offline .walk-hits{display:none}`。面板不畫幾何、不宣稱視野。
+- **新閘門 `.verify/verify-nowebgl.mjs`**（真 Chromium，需 `bin/preview`）：三頁 × 兩方向。無 WebGL → renderer `off`、面板可見且文案含 canvas/list/stops、位置行 = status 行、prop 卡退場、卡片 fallback 句仍在、canvas 隱藏、無 page error，且**站點晶片仍帶得動 walker**（depth 變化 > 200 cm）、清單仍讀得到；有 WebGL → 對照組：面板不出現、renderer `three`。
+- **`bin/verify-three.mjs`**（防復活閘）補三條：每頁必須有 shipped-closed 的面板、`site.js` 必須發佈 `noteOffline`、`scene3d.js` 必須呼叫 `api.noteOffline()`。
+- **教義檔**：所有「Canvas2D 完整 fallback」改寫為「沒有第二張圖；無 WebGL 即在 viewport 說明並退到編譯態」；所有 `lane-shot.mjs`／`_shadowdrawn.mjs` 的教學引用改指向現役 `browser-shot.mjs` / `verify-three.mjs` / `_halltint`。`SKILLS.md` §4 閘門清單加入 `verify-nowebgl.mjs`。
+
+### 驗證（實測）
+- **閘門咬合證明**：把 `noteOffline()` 臨時改成 no-op（等同第五十四輪後的行為）→ `PAGES=street.html verify-nowebgl.mjs` **4 FAIL**（面板不可見、位置行為空、prop 卡未退場、位置行不跟隨）；還原 → 35/35 PASS。咬合後以 `cp` 還原（不是 `git checkout`，工作區有未提交改動）。
+- **無 WebGL 影格眼審**：`.preview/r55-nowebgl/street.png`、`street-stops.png`、`fukuoka-mobile.png`（390×780）、`rooms-niagara` —— 面板在 1024×640 與手機直立皆完整可讀，未與 HUD、guide strip 打架；第一版面板曾在文字上壓著兩張 prop 卡，改正後消失（同一輪修、同一輪重拍）。
+- **全庫閘門（一輪全綠，實測）**：shapes 131/131、geometry OK、clash 0、walk 189/189、games 23/23、three PASS（12,682+864 三角、432 sheets、90 spray 不動）、chain 0 failure、rooms-e2e 0 failure、story 27/27、objects exit 0、**collision 28/28**（七頁 ×4 性質；street 4/4、fukuoka 14 站、niagara 8 站、journey 4 站、cntower 5 站），regen 冪等、`git diff --check` 乾淨、served 頁面帶面板且 `?v=c1e2433a` 與磁碟派生值一致。
+- **一般路徑影格**：`.preview/day/r55-normal.png`（street，WebGL 正常）——面板不出現、街道照常渲染，與改動前無視覺差異。
+- **impeccable：上一輪「[]」的記載是錯的，本輪量到 19 條 advisory。** `detect --json` 在 HEAD（第五十四輪 tip）同樣回 19 條，全部是同一條 `repeating-stripes-gradient`，來源是 `.walk-stall` 的條紋遮陽篷（棚布本來就是條紋，是被畫的物件而非裝飾）。處置＝按 `.impeccable/config.json` 自己的政策**具名豁免**（連同 DESIGN.md 的 waiver 清單與理由），不是刪掉遮陽篷、也不是放寬其他規則；豁免後 `detect` 為 0 findings。教訓：閘門要**當輪實跑**，上一輪寫下的「全綠」不能當本輪的證據。
+
+### 下一輪完整待辦（優先序）
+1. **合併 PR #16（blocked-on-owner）**：OPEN、MERGEABLE、base master；需要站主一句授權 → `gh pr merge 16 --merge`。
+2. **站主輸入佇列（blocked-on-owner）**：英文 CV PDF、ORCID iD（見下方 Backlog）。
+3. **本分支的 PR 交接**：本輪改動在 `arena/9a4f7733-huaxu`，尚未開 PR；若站主要合併，依 `pr-handoff` 先更新本節再開。
+4. **`verify-collision` 在這台沙箱上很慢（本輪實測）**：七頁全量約需 60 分鐘（單頁 street 約 4 分鐘；`GATE_PAGE=street.html` 的參數要給不含 `.html` 的頁名，給錯會 `ENOENT street.html.html`）。本輪曾因機器被佔滿而讓 `ps`/`sleep` 一併卡住——工具 timeout 量到的是機器，不是站點。下一輪若要縮短，先量 V1/V2 的幀預算再決定，不要為了跑得快而降低取樣。
+5. **無 WebGL 狀態的實機（手機）眼審**：沙箱無 iOS Safari，目前只有 Chromium 模擬（`verify-nowebgl` + 390×780 影格）。驗收＝站主在真手機開任一 walk 頁並回報；已知未量測，不可宣稱已驗。
 
 ## 0ab. 第五十四輪（2026-10-20）：站主令「2D fallback 全拆、全面3D JS」——塗裝器連垃圾一起清光,順手修掉這一拆照出的三個既有缺陷
 

@@ -175,7 +175,8 @@ Then **look at it from the stop that names it** — a real browser, the page the
 and after the change, and count something (pixels of the prop, warm share, luminance). "It is
 there" is not a measurement; "it was not there and now it is, and here is the count" is. `SKILLS.md`
 §4 has the discipline and the three ways measurement has gone wrong here; `bin/preview` serves the
-tree at 8080 and `.verify/lane-shot.mjs .preview/lane/<place>` is the pixel gate for a room.
+tree at 8080 and `.verify/browser-shot.mjs` (`PAGE=<page>`) is the frame gate for a room — it takes
+settled frames from the real Three.js renderer, which is the only one there is.
 
 If the change touched the stylesheet or the script, the cache-buster is derived — `VER` is the sha1
 of `css/site.css` + `js/site.js` — so there is nothing to bump, but there *is* something to check:

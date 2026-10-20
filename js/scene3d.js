@@ -1612,10 +1612,14 @@ function buildRenderer(THREE, canvas, backdrop, api) {
 }
 
 // The lane has one renderer now, so a failure names itself instead of degrading into a second
-// picture: the authored sentence in the info card is raised, and the list still reads.
+// picture: the authored sentence in the info card is raised, the lane reports it through its own
+// published channel (`noteOffline`, which stands the words in the viewport that cannot be drawn),
+// and the list still reads.
 function noteNoWebGL(layer, why) {
   const note = layer.querySelector("[data-walk-fallback]");
   if (note) note.hidden = false;
+  const api = layer.__walk;
+  if (api && typeof api.noteOffline === "function") api.noteOffline();
   if (window.console && typeof console.warn === "function") console.warn(why);
 }
 

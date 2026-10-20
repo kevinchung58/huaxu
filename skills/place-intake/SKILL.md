@@ -119,9 +119,9 @@ a measurement table with a source behind every bearing before any geometry is wr
   wires the retired chain.
 - `node .verify/verify-rooms-e2e.cjs` — the walk itself, driven by keys: from the street into each
   room and out again, Esc included.
-- `node .verify/lane-shot.mjs .preview/lane/<place>` — the pixel gate, shot against that room's page:
-  the lane is painted where you stand, the deepest stop is not the frame that empties out, and the wall
-  behind the entrance is a room.
+- `.verify/browser-shot.mjs` (`PAGE=<page>`) — the frame gate, shot against that room's page: the lane
+  is drawn where you stand, the deepest stop is not the frame that empties out, and the wall behind the
+  entrance is a room.
 - `node .verify/cost-probe.mjs` — one depth pass, and the fills still below the ceiling.
 - The detector (`impeccable detect`) clean, and the generator idempotent.
 
