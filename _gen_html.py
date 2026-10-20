@@ -3969,12 +3969,12 @@ DISTRICTS = [
              "hint": "The pylon the lift wire runs over: 35.2 m of painted steel at the bridge's "
                      "south end, kept at the table's scale here on the quay's edge."},
             {"id": "mart-base", "kind": "board", "x": 330, "z": round(3030 / Z_SCALE, 2),
-             "y": 0, "ry": 0, "w": 660, "h": 360, "d": 520, "top": "#7f7a72", "leaf": "#6a655e",
+             "y": 0, "ry": 0, "w": 200, "h": 360, "d": 420, "top": "#7f7a72", "leaf": "#6a655e",
              "title": "The High Mart's base",
              "hint": "The podium the tower stands on — retail floors, a lobby, the grey plinth every "
                      "Kurokawa photograph crops out at the bottom."},
             {"id": "mart-crown", "kind": "board", "x": 330, "z": round(3040 / Z_SCALE, 2),
-             "y": round(360 / Z_SCALE, 2), "ry": 0, "w": 660, "h": 120, "d": 360,
+             "y": 360, "ry": 0, "w": 200, "h": 120, "d": 300,
              "top": "#8b857c", "leaf": "#746f68",
              "title": "The open crown",
              "hint": "The tower's steel crown frame and curved cap at the top of the 1:25 model — "
@@ -4522,8 +4522,9 @@ DISTRICTS = [
                            [1483, "The Niagara Parkway", "between the Centre and the fun strip"],
                            [2200, "Clifton Hill", "the Street of Fun — 175 feet of lights at the far end"],
                            [3350, "The Rainbow Approach", "440 m of steel to the state line"]],
+                 # half 15 m scene = the strip's plaza width, unscaled like every x in this lane
                  "ws": [[1460, 3660, 1500]],
-                 "floors": [[1500, 2090, 552, 705, 910]]},
+                 "floors": [[1500, 2200, 553, 340, 660]]},
         "floor": "pavers",
         "day": {"cycle": 900, "start": 0.5, "gain": 1},
         "purpose": "Table Rock at Niagara Falls: the trail's last stretch to the brink, the gorge, both falls and the islands where they stand",
@@ -4602,30 +4603,30 @@ DISTRICTS = [
                      "round to Goat Island; the water drops 57 m into the basin. Table Rock itself, "
                      "the ledge the place is named for, fell into the gorge in 1850."},
             # ---- Round 52, the open strip east of the Centre (sources and measures in TODO §R52).
-            {"id": "bluff-face", "kind": "board", "x": 840, "z": 1795, "y": 0, "ry": 0,
-             "w": 260, "h": 546, "d": 620, "leaf": "#5d6068",
+            {"id": "bluff-face", "kind": "board", "x": 520, "z": 1795, "y": 0, "ry": 0,
+             "w": 320, "h": 546, "d": 620, "leaf": "#5d6068",
              "title": "The bluff under the deck",
              "hint": "The rock the incline is cut into, and the falls' mist ends here. Thirty metres "
-                     "of gorge edge, kept to a stride of lane, the way every other distance between "
-                     "the Centre and Clifton is kept."},
-            {"id": "fallsview-deck", "kind": "board", "x": 840, "z": 1795, "y": 546, "ry": 0,
-             "w": 260, "h": 7, "d": 620, "leaf": "#797570",
+                     "of gorge lip stand five and a half up in this lane, the way every other distance "
+                     "between the Centre and Clifton is kept."},
+            {"id": "fallsview-deck", "kind": "board", "x": 500, "z": 1795, "y": 546, "ry": 0,
+             "w": 320, "h": 7, "d": 620, "leaf": "#797570",
              "title": "The Fallsview deck",
              "hint": "The upper station's apron, level with the bluff's lip: the parking lot and the "
                      "hotels' street begin past it. You reach it the way visitors do since 1966 — "
                      "in the car, not up the rock."},
             {"id": "falls-incline", "kind": "incline", "x": -66, "z": 1690, "y": 0, "ry": 0,
              "w": 241, "h": 117, "d": 90,
-             "run": 2772, "deck": 1600, "period": 62, "phase0": 0.5,
-             "ride": "1", "rideX": 2340, "rideTop": 1600,
+             "run": 1106, "deck": 553, "period": 62, "phase0": 0.5,
+             "ride": "1", "rideX": 500, "rideTop": 553,
              "title": "The Falls Incline Railway",
              "hint": "59.8 m of double track at 30 degrees, two 40-passenger cars counterbalanced "
                      "over the head pulley, electric since 8 October 1966; the enclosed cars are "
                      "2013. Of the eight inclines the two cities ran, this is the only one still "
                      "running. A crossing is 62 real seconds — the cars here keep that clock, and "
                      "the one you board makes it three on the model's account."},
-            {"id": "incline-upper-door", "kind": "door", "x": 807, "z": 1620, "y": 553, "ry": -90,
-             "leaf": "#33414e", "ride": "1", "rideX": 2340, "rideTop": 1600,
+            {"id": "incline-upper-door", "kind": "door", "x": 620, "z": 1620, "y": 553, "ry": -90,
+             "leaf": "#33414e", "ride": "1", "rideX": 500, "rideTop": 553,
              "title": "The upper station's door",
              "hint": "It keeps the weather off the car. Press it and the incline brings you back "
                      "down to the rail, the way it does every minute of the day."},
@@ -4708,7 +4709,7 @@ DISTRICTS = [
             {"z": 980, "x": -520, "label": "the parapet over the gorge"},
             {"z": 1440, "x": -520, "yaw": -15, "pitch": 10, "label": "the Table Rock rail"},
             {"z": 1660, "x": -140, "yaw": -18, "label": "the incline's lower station"},
-            {"z": 2130, "x": 807, "h": 1600, "yaw": 38, "pitch": 14, "label": "on the Fallsview deck"},
+            {"z": 2130, "x": 500, "h": 553, "yaw": 38, "pitch": 14, "label": "on the Fallsview deck"},
             {"z": 2900, "x": -600, "yaw": -18, "label": "under the SkyWheel"},
             {"z": 3480, "x": 0, "label": "the bridge approach"},
         ],
@@ -4742,7 +4743,7 @@ DISTRICTS = [
                   "bell is not surveyed. Round 52 added the east end: the Parkway, Clifton's fun row, "
                   "the SkyWheel at its far end, and the Falls Incline. The wheel's measures are the "
                   "manufacturer's sheet; the strip's 500 m of street are the lane's 155, the bluff's "
-                  "30 m a stride, and the incline's 62-second crossing three when you ride it — each "
+                  "30 m are kept as 5.5, and the incline's 62-second crossing three when you ride it — each "
                   "compression stated by the thing compressed. The arcade fronts carry no shop: a "
                   "drawing may keep an arcade's glow, not its lease.",
     },
@@ -5328,7 +5329,9 @@ def walk_object(o):
     # and posts, a skyline's named towers, a bascule's split, a harbour boat's run. They travel in the
     # document like an awning colour, or the renderer never sees them (lane-prop section 7).
     extra_attr = "".join(
-        f' data-{k}="{escape(v if isinstance(v, str) else json.dumps(v, separators=(",", ":")))}"'
+        # an uppercase letter in an authored key becomes a dash on the page: HTML lowercases
+        # attributes, and `dataset.rideX` is only ever fed by `data-ride-x`
+        f' data-{"".join("-" + c.lower() if c.isupper() else c for c in k)}="{escape(v if isinstance(v, str) else json.dumps(v, separators=(",", ":")))}"'
         for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run", "lift", "blocks",
                                          "footprint", "floors", "observation", "game", "demo",
                                          "ride", "rideX", "rideTop", "dia", "axle", "turn",
@@ -5428,11 +5431,11 @@ def walk_html(d, drawer):
     # zone bounds and floors are authored in the record's old units and shipped in the scene's —
     # the same 2.9 every object z crosses on its way into the page
     zones = [[round(z * Z_SCALE), n, *rest] for z, n, *rest in lane["zones"]] if lane.get("zones") else []
-    floors = [[round(a * Z_SCALE), round(b * Z_SCALE), round(h * Z_SCALE),
-               round(x0 * Z_SCALE), round(x1 * Z_SCALE)] for a, b, h, x0, x1 in lane["floors"]] \
+    # z is depth (record units, ×2.9); the standing height and the x-band of a floor are the
+    # lane's own scene centimetres, the same axes `w` rides — they cross the page unscaled
+    floors = [[round(a * Z_SCALE), round(b * Z_SCALE), h, x0, x1] for a, b, h, x0, x1 in lane["floors"]] \
         if lane.get("floors") else []
-    widths = [[round(a * Z_SCALE), round(b * Z_SCALE), round(c * Z_SCALE)] for a, b, c in lane["ws"]] \
-        if lane.get("ws") else []
+    widths = [[round(a * Z_SCALE), round(b * Z_SCALE), c] for a, b, c in lane["ws"]] if lane.get("ws") else []
     zones_attr = f' data-lane-zones=\'{json.dumps(zones, separators=(",", ":"))}\'' if zones else ""
     floors_attr = f' data-lane-floors=\'{json.dumps(floors, separators=(",", ":"))}\'' if floors else ""
     ws_attr = f' data-lane-ws=\'{json.dumps(widths, separators=(",", ":"))}\'' if widths else ""

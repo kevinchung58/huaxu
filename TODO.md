@@ -2632,6 +2632,15 @@ impeccable `[]` · idempotent · 五站 60 fps。
 - **《臺北狂飆》(Taipei Rush, AICodeWith)**：vibe-coded 瀏覽器 GTA _clone_，三天 120 萬人同場。可學的是結構：連續大地圖＋地標模組＋F 上下車＋**圓形雷達小地圖＋動態區域名 banner**（同生態的 `warw00154-beep/taipei-101-gta-3d` repo 把它拆成 gtaHud.js / landmarks.js / collisionSystem.js / config.js 四件——撞擊與 config 我們早已有，缺的是 HUD 兩件與載具）。圖形不是它的壁壘；**「世界在你移動時繼續活著」**才是。
 - **真實的尼加拉「旁邊」**（都有來源）：Table Rock 順 Niagara Parkway 東行約 500 m 就是 **Clifton Hill——「The Street of Fun」**，街尾矗著加拿大最大的觀覽摩天輪 **Niagara SkyWheel**（2006-06-17 啟用的 R60 Giant Wheel：高 53.3 m、輪徑 50.5 m、42 個瑞士 CWA 密閉吊艙、21 輻條、1.5 rpm 最高、車程 12–15 分鐘約三圈、全年營運、双向可轉）；**Falls Incline Railway**（1966-10-08，Von Roll：59.8 m 轨道、30 度、雙車互平衡、每車 40 人、單程 62 秒、1 m/s）把崖底的 Table Rock 與崖上的 Fallsview Hotel 區連起來——**這是世界上少數「真實存在的 GTA 式載具」**；峽谷兩岸史上最多八條 incline（加方五美方三）、現存的只有這條。美岸：**Rainbow Bridge**（1941，全長 440 m、主跨 290 m、淨高 62 m，行人可过）通 **Goat Island**（兩橋連陸、行人橋通 Luna Island——美國瀑布 21–30 m 落在岩堆上、Bridal Veil 分在其後；Terrapin Point 看馬蹄全開）。
 - 本區不做、且寫明為什麼：wanted 系統、虛構過山車、任何「任務」——查無此物；寧可少。§5 紅線照舊（不引任何地圖/asset 庫；OSM 數據在 build-time 烘進 authored prims，與 toronto_massing 同一管线）。
+
+### 交付（本輪結算）
+- **連續車道**：niagara lane 由 1483 深延長到 3600（記錄單位）——Table Rock → Parkway → Clifton Hill → Rainbow 引道一段不斷；`zones`/`ws`/`floors` 三張新表進 DISTRICTS，模板把 z 軸 ×2.9、x/h 軸原樣（與物件同規）蓋進 `data-lane-*`。
+- **GTA 文法兩件**：進區 domain banner（越 seam 亮起 3.4 秒自我淡出）與條狀雷達（區界刻度 + 你這一刻的位置）；`js/site.css` `.walk-banner/.walk-strip`。
+- **可上車的纜車**：Falls Incline `ride`/`rideX`/`rideTop` 契約——`boardRide` 3.1 秒把人從崖底送到崖頂（真 62 秒的壓縮在 record 行裡自己說明）；Fallsview deck 站點走 `data-view-h` 全身瞬移（h、x、depth 一起落位，重力由 floors 帶接住，站得住在 5.5 m 高的平台上）。
+- **摩天輪活著**：SkyWheel `turn: 40` 秒一圈（1.5 rpm 的真實時鐘）、`demo: "wheel"` 按下去禮貌地轉四分之一的圈再還原；晝夜燈循環在 drawFar 分支自帶。
+- **對岸開頁**：`rooms-goat.html`——純物件頁、無模型桌、無縮小物：American Falls（w10000/h1034）與馬蹄（w19000/h1966）以記錄尺寸立在兩條水簾前，Luna 島、Terrapin Point、下河道全在 walk 的尺度 grammar 裡；niagara 的 Rainbow 水簾 `leave` 過去、goat 的水簾 `leave` 回來，hub 圖閉合（street 不長多餘的門）。
+- **本輪還吃过一次跨輪次歷史重建**（R50/R51 的生成器改動未進快照、工作檔被回滾）：攤位掛裝、rapids 棚屋、門司港 demo、tutor/hour chrome、cache-buster 全數按記憶契約重建並重新過閘——教訓寫進本節：生成器改動當輪必須 commit。
+- 閘門：verify-walk **193/193**、verify-games **23/23**、verify-three **PASS**（12682 世界三角形不變——Clifton 是平面件）、GAMESHOT **PASS**（incline 乘車 h 0→553、deck 全身落地讀位、晝夜 Clifton、goat Terrapin 62/133、車輪逐幀差分）。
 ### 設計：GTA 文法 → 本站語彙
 1. **連續世界**：rooms-niagara 的單條 lane 從 180 m 延到 **360 m**：Table Rock（現有 0–1483）→ Niagara Parkway（路與停車場，1483–2100）→ **Clifton Fun Strip**（2100–3300：SkyWheel、霓虹遊戲機廳街列、midway 食攤）→ Rainbow 橋影（3300–3600）。跨頁=跨岸：橋頭簾幕 data-leave 通新頁 **rooms-goat.html**（美岸：Prospect Point、美國瀑布、Luna Island 橋、Terrapin Point）——「page=loading seam」是本站現有的誠實串流。
 2. **載具**：按下 incline 車廂＝上車（GTA 的 F）；3.1 秒壓縮乘車（紀錄自我宣告真車程 62 秒）＋對向車 perpetual 互平衡下行；到站落在崖頂 Fallsview 觀景帶（height 系統已存在，鏡頭浮起、城市下沉視差——世界第一次有垂直地形）。
