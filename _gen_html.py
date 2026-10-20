@@ -24,7 +24,7 @@ def _asset_ver() -> str:
     page pin is the same browser-cache bug as a stale Canvas fallback.
     """
     h = hashlib.sha1()
-    for f in ("css/site.css", "js/site.js", "js/scene3d.js",
+    for f in ("css/site.css", "js/site.js", "js/scene3d.js", "js/games.js",
               "js/vendor/three-0.186.1/three.core.js", "js/vendor/three-0.186.1/three.module.js"):
         h.update((ROOT / f).read_bytes())
     return h.hexdigest()[:10]
@@ -345,6 +345,7 @@ def shell_page(title: str, body: str, path: str, cover: str = "IMG/1.jpg",
 <body class="shell">
 {body}
 <script src="js/site.js?v={VER}"></script>
+<script src="js/games.js?v={VER}" defer></script>
 <script type="module" src="js/scene3d.js?v={VER}"></script>
 </body>
 </html>
@@ -3926,24 +3927,27 @@ DISTRICTS = [
             # The No. 1 basin between the hotel quay and the customhouse, from its head to the Blue
             # Wing; and the strait, which the table's far edge hands to the backdrop.
             {"id": "pool-moji", "kind": "pool", "x": 115, "z": round(2378 / Z_SCALE, 2), "y": 80, "ry": 0,
-             "w": 93, "h": 2, "d": 276,
+             "w": 93, "h": 2, "d": 276, "demo": "ripple",
              "title": "The No. 1 basin",
              "hint": "The boat basin the Blue Wing crosses, about 60 m wide, opening north-west onto "
-                     "the strait. Nothing is claimed about the tide."},
+                     "the strait. Nothing is claimed about the tide. Press the water and a toy stone "
+                     "skips a ring across the model — the strait's water is the same invitation."},
             {"id": "pool-strait", "kind": "pool", "x": 0, "z": round(2560 / Z_SCALE, 2), "y": 80, "ry": 0,
-             "w": 720, "h": 2, "d": 90,
+             "w": 720, "h": 2, "d": 90, "demo": "ripple",
              "title": "The Kanmon Strait",
              "hint": "A little over 700 m wide at its narrowest and carrying some 500 ships a day; "
                      "here it starts at the table's edge and runs on past the far wall."},
             {"id": "drawbridge-mj", "kind": "drawbridge", "x": 120, "z": round(2498 / Z_SCALE, 2), "y": 80,
-             "ry": 0, "w": 157, "h": 6, "d": 7, "leaves": 0.47,
+             "ry": 0, "w": 157, "h": 6, "d": 7, "leaves": 0.47, "demo": "open",
              "glow": [{"r": 90, "k": 0.3, "dy": 14}],
              "title": "The Blue Wing",
              "hint": "Blue Wing Moji: 108.1 m of pedestrian drawbridge across the basin's mouth, "
                      "completed 1993. Its 24.1 m south leaf is lifted by a wire rope over its pylon, "
                      "its 14 m north leaf by a hydraulic ram, both to about 60 degrees, six times a "
                      "day from 10:00 to 16:00, about twenty minutes each time. Lit after dark; it "
-                     "does not open then."},
+                     "does not open then. Press the model and it plays the opening back as a "
+                     "demonstration — a pressed model demonstrating itself, the way the hall's "
+                     "buttons do; the real bridge keeps its own timetable through all of it."},
             {"id": "ship-mj", "kind": "ship", "x": 114, "z": round(2500 / Z_SCALE, 2), "y": 81, "ry": 90,
              "w": 30, "h": 6, "d": 7.5, "run": 140,
              "title": "A harbour boat",
@@ -3954,15 +3958,6 @@ DISTRICTS = [
             # the timetable's own 20-minute crossing, narrated (site.js's demo protocol; the model
             # keeps the table's motion, not a real-traffic claim). The stand's two lamps follow it
             # down to the quay, and the High Mart's base gets the twin blocks a model's plinth is.
-            {"id": "door-demo-mj", "kind": "door", "x": -600, "z": round(2640 / Z_SCALE, 2),
-             "y": 0, "ry": 180, "leaf": "#68655f", "w": 640, "h": 250,
-             "demo": "open|ripple",
-             "title": "The drawbridge's own door",
-             "hint": "A service door at the basin's mouth, on the wall the table stands against. "
-                     "Press it and the room watches the Blue Wing open: the south leaf up on its "
-                     "wire, the north leaf on its ram, both near sixty degrees, the crossing held to "
-                     "about the real twenty minutes at model speed — then down, then the water "
-                     "ripples out from where the ship passed."},
             {"id": "slot-wing", "kind": "board", "x": -340, "z": round(2870 / Z_SCALE, 2),
              "y": 0, "ry": 90, "w": 170, "h": 156, "d": 240, "top": "#5a6572", "leaf": "#4a4238",
              "title": "The basin's edge",
@@ -5487,6 +5482,38 @@ def walk_html(d, drawer):
     # there, for a room whose window shows a night that does not move.
     if d.get("night"):
         day_attr = f' data-lane-night="{d["night"]}"'
+    # The hour is the visitor's (round 49): one button trades the authored day for night, the
+    # choice carries across lanes, and a place held at its own fixed night gets no button at all.
+    # The stall dialog (round 50): one panel per lane, generated only where the wall actually has
+    # a stall, and worded so it says out loud what it is — a toy, not a survey.
+    game_html = ""
+    if any(o.get("game") for o in d["objects"]):
+        game_html = """
+  <div class="walk-game" data-walk-game role="dialog" aria-modal="true" hidden>
+    <div class="walk-game-head">
+      <b class="walk-game-title" data-game-title></b>
+      <button type="button" class="walk-game-close" data-game-close aria-label="Close the stall game">close</button>
+    </div>
+    <canvas class="walk-game-canvas" width="640" height="400"></canvas>
+    <p class="walk-game-status" data-game-status role="status"></p>
+    <p class="walk-game-note">A toy, not a survey: the stalls of a festival lane stand at no surveyed address, and no button here claims one.</p>
+  </div>"""
+    if d.get("night"):
+        hour_html = ""
+    else:
+        hour_html = (
+            '<button type="button" class="walk-icon walk-hour" data-walk-hour'
+            ' aria-label="Daylight now. Bring on the night.">'
+            '<svg class="walk-hour-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"'
+            ' stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round"'
+            ' stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364'
+            'l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636'
+            'M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>'
+            '<svg class="walk-hour-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"'
+            ' stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round"'
+            ' stroke-linejoin="round" d="M21.752 15.002A9.719 9.719 0 0118 15.75c-5.385 0-9.75-4.365'
+            '-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21'
+            'a9.753 9.753 0 009.002-5.998z" /></svg></button>')
     if day:
         opts = day if isinstance(day, dict) else {}
         day_attr = (f' data-lane-day="1" data-lane-day-cycle="{opts.get("cycle", 900)}"'
@@ -5507,15 +5534,12 @@ def walk_html(d, drawer):
       {walk_islands(d, placed)}
     </div>
   </div>
-  <div class="walk-game" data-walk-game hidden>
-    <div class="walk-game-head">
-      <b class="walk-game-title" data-game-title></b>
-      <button type="button" class="walk-game-close" data-game-close>close</button>
-    </div>
-    <canvas class="walk-game-canvas" width="640" height="400"></canvas>
-    <p class="walk-game-status" data-game-status role="status"></p>
-    <p class="walk-game-note">A stall game, played over the lane: a toy, not a record. Nothing here
-    claims Nakamise hosted a stall at a measured address.</p>
+  {game_html}
+  <div class="walk-tutor" data-walk-tutor hidden aria-hidden="false">
+    <p class="walk-tutor-step" data-walk-tutor-text></p>
+    <span class="walk-tutor-n" data-walk-tutor-count></span>
+    <button type="button" class="walk-tutor-act" data-walk-tutor-skip aria-label="Skip the guide">skip</button>
+    <button type="button" class="walk-tutor-act" data-walk-tutor-done aria-label="Got it, leave me to the lane">done</button>
   </div>
   <div class="walk-hud">
     <div class="walk-top">
@@ -5535,6 +5559,9 @@ def walk_html(d, drawer):
         ><button type="button" class="walk-icon" data-walk-fov="1"
           aria-label="Narrower view">{ICON_FOV_IN}</button></span>
         <button type="button" class="walk-icon walk-jump" data-walk-jump aria-label="Jump">{ICON_UP}</button>
+        <button type="button" class="walk-icon walk-tutor-replay" data-walk-tutor-replay
+          aria-label="Walk me through the keys again">{ICON_BULB}</button>
+        {hour_html}
         <button type="button" class="walk-icon walk-info" data-walk-info aria-expanded="false"
           aria-controls="walk-card-{did}" aria-label="What this lane is, and how to move in it">{ICON_CHAT}</button>
         <button type="button" class="walk-icon" data-walk-list aria-expanded="false"

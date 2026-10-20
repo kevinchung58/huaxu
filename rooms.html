@@ -26,7 +26,7 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","@id":"https://kevinchung58.github.io/huaxu/rooms.html","url":"https://kevinchung58.github.io/huaxu/rooms.html","isPartOf":{"@type":"WebSite","name":"Hua-Xu Zhong","url":"https://kevinchung58.github.io/huaxu/index.html"}}</script>
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
   <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
-  <link rel="stylesheet" href="css/site.css?v=c8a4b3555e" />
+  <link rel="stylesheet" href="css/site.css?v=03ab8fa76e" />
 </head>
 <body class="shell">
 <div class="walk" id="walk-tokyo" data-walk="Tokyo" data-walk-id="tokyo"
@@ -61,15 +61,12 @@
       <script type="application/json" data-walk-backdrop>{"sky": [{"y0": -260, "y1": 1600, "c": "#3a4868", "glow": 0.9}, {"y0": 1600, "y1": 7000, "c": "#26314c"}, {"y0": 7000, "y1": 200000, "c": "#161e32"}], "plaza": {"y": 0, "z0": 3016, "z1": 7600, "half": 2600, "lit": 0.8}, "temple": {"x": 0, "z": 6000, "gate": {"w": 2100, "h": 2270}, "pagoda": {"x": -5600, "z": 7900, "h": 5332}}}</script>
     </div>
   </div>
-  <div class="walk-game" data-walk-game hidden>
-    <div class="walk-game-head">
-      <b class="walk-game-title" data-game-title></b>
-      <button type="button" class="walk-game-close" data-game-close>close</button>
-    </div>
-    <canvas class="walk-game-canvas" width="640" height="400"></canvas>
-    <p class="walk-game-status" data-game-status role="status"></p>
-    <p class="walk-game-note">A stall game, played over the lane: a toy, not a record. Nothing here
-    claims Nakamise hosted a stall at a measured address.</p>
+  
+  <div class="walk-tutor" data-walk-tutor hidden aria-hidden="false">
+    <p class="walk-tutor-step" data-walk-tutor-text></p>
+    <span class="walk-tutor-n" data-walk-tutor-count></span>
+    <button type="button" class="walk-tutor-act" data-walk-tutor-skip aria-label="Skip the guide">skip</button>
+    <button type="button" class="walk-tutor-act" data-walk-tutor-done aria-label="Got it, leave me to the lane">done</button>
   </div>
   <div class="walk-hud">
     <div class="walk-top">
@@ -89,6 +86,9 @@
         ><button type="button" class="walk-icon" data-walk-fov="1"
           aria-label="Narrower view"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3.75 9.75 9 4.5m6 10.5l5.25-5.25L15 4.5" /></svg></button></span>
         <button type="button" class="walk-icon walk-jump" data-walk-jump aria-label="Jump"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg></button>
+        <button type="button" class="walk-icon walk-tutor-replay" data-walk-tutor-replay
+          aria-label="Walk me through the keys again"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" /></svg></button>
+        <button type="button" class="walk-icon walk-hour" data-walk-hour aria-label="Daylight now. Bring on the night."><svg class="walk-hour-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg><svg class="walk-hour-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.719 9.719 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg></button>
         <button type="button" class="walk-icon walk-info" data-walk-info aria-expanded="false"
           aria-controls="walk-card-tokyo" aria-label="What this lane is, and how to move in it"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" /></svg></button>
         <button type="button" class="walk-icon" data-walk-list aria-expanded="false"
@@ -182,7 +182,8 @@
   </div>
 </div>
 
-<script src="js/site.js?v=c8a4b3555e"></script>
-<script type="module" src="js/scene3d.js?v=c8a4b3555e"></script>
+<script src="js/site.js?v=03ab8fa76e"></script>
+<script src="js/games.js?v=03ab8fa76e" defer></script>
+<script type="module" src="js/scene3d.js?v=03ab8fa76e"></script>
 </body>
 </html>
