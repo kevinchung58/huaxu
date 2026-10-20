@@ -10,8 +10,40 @@ no package manifest, CDN, or additional runtime dependency is implied.
 
 ## Critical: source of truth
 
+- **A change is not delivered until it is committed on the session branch (owner ruling, 2026-10-20).**
+  The workspace snapshot can rebuild branch history between turns: a round that left its `_gen_html.py`
+  and `js/` edits verified-but-uncommitted came back with the generator rolled to the merge base while
+  the emitted HTML and the engine files survived, and the next round spent itself re-authoring two
+  shipped rounds' mounts from memory (the recovery is `f11558a`'s message). Gates passing on an
+  uncommitted tree protect nobody — commit the generator and its pages in the same round, and merge the
+  original chain (`-s ours`) if the remote history no longer matches the rebuilt one.
+- **A patch script for `_gen_html.py` anchors on one structural line, never on remembered prose or a
+  line number.** Grep the exact anchor before writing it; assert every replacement fires exactly once;
+  do all inserts in a single pass bottom-up, because line numbers shift under your own hands; and after
+  `python3 _gen_html.py`, grep the *emitted HTML* for the new attributes — a script that dies on an
+  assert writes nothing, and the pages already on disk make a silently-skipped patch look healthy
+  (same failure class as the bullet above about generator exits).
+- **The unit rule, all of it:** only the depth axis converts — record `z` and `d` cross into walk
+  space ×2.9 (`Z_SCALE`), while `x`, `y`, `w`, `h`, stop `--x` and every dataset passthrough field
+  (ride/deck/dia/axle/period, stop view `h`) are scene centimetres as authored, unscaled, the same
+  axes `data-lane-w` rides. Backdrop depths and `max_d` are also walk space as written
+  (`street-system` §6). And an authored camelCase key must be emitted kebab-case: HTML lowercases
+  attributes, so `rideX:` written out as `data-rideX` arrives as `dataset.ridex` — silently undefined
+  at the reader. A mixed unit places the object inside the wall and no pixel gate will say why.
+- **Before writing to the record line, ask who overwrites it next frame.** The lane's `say(..., "")`
+  cycle clears `[data-walk-record]` every tick, so an announcement made at act()-level dies on the
+  first pumped frame; anything meant to outlive an animation owns the `demoHold` protocol (set the
+  flag, pump the whole envelope, clear both). And when a small object's change must be *seen*, measure
+  the geometry the renderer stamps (`__walk.drawQuads`) or crop the object's own projected box — a
+  full-frame average cannot see a 24 m leaf on a 980 px canvas, and a loose crop measures the room.
+- **Pixel gates measure by state, not by stopwatch.** The sandbox renders WebGL at a fraction of real
+  frame rate — a glide that is 20 seconds on a laptop crawls for two minutes here, and a three-second
+  banner hold is gone before a fixed sleep returns. Wait for the engine's own published values
+  (`__walk.depth`, `__walk.height`, the record line) and sweep animation envelopes for the loudest
+  frame; asserting against a timer turns a working feature into a flaky gate.
 - The cache-buster is **derived, not hand-bumped**: `VER` in `_gen_html.py` is the sha1 of
-  `css/site.css`, `js/site.js`, `js/scene3d.js`, and the two pinned Three.js runtime files, truncated;
+  `css/site.css`, `js/site.js`, `js/scene3d.js`, `js/games.js`, and the two pinned Three.js runtime
+  files, truncated;
   the stylesheet, classic script and module script read that one value. It used to be a literal that a human had to remember, and it went stale the
   first time the renderer changed in a commit that forgot: new rooms, old `?v=`, and the only person
   who would ever see the bug is a returning visitor whose browser drew them with the last renderer.
