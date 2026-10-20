@@ -69,10 +69,17 @@ function boot(markup, url) {
      /A toy, not a survey/.test(street) && /stand at no surveyed address/.test(street));
   ok("the street carries the shared dialog, hidden until pressed",
      /class="walk-game" data-walk-game role="dialog" aria-modal="true" hidden/.test(street));
+  const fuk = fs.readFileSync("rooms-fukuoka.html", "utf8");
   ok("a lane without stalls ships no dialog and the script no-ops on it",
-     !/walk-game/.test(nia));
+     !/walk-game/.test(fuk));
   ok("games.js rides the page as a classic defer script, versioned like its siblings",
      /<script src="js\/games\.js\?v=[0-9a-f]{10}" defer><\/script>/.test(street));
+  ok("the falls carry the rapids shed, and its dialog was generated the same way",
+     /data-obj="shed-rapids"[^>]*data-game="rapids"/.test(nia)
+     && /class="walk-game" data-walk-game/.test(nia) && /A toy, not a survey/.test(nia));
+  ok("the basins and the Blue Wing answer a press — demonstrations, not the record's schedule",
+     (fuk.match(/data-demo="ripple"/g) || []).length === 2 && /data-demo="open"/.test(fuk)
+     && /the real bridge keeps its/.test(fuk));
 }
 
 /* ---- 2. the press: the stall opens its own toy over the lane --------------------------------- */
@@ -122,6 +129,16 @@ function boot(markup, url) {
   for (let i = 0; i < 20 && !m.over(); i++) m.step(0.05, { x: 60 + i * 29, y: 120 + (i % 4) * 58, shoot: true });
   ok("twelve pellets and the line is done, hit or miss — no endless clip", m.over());
   ok("a scored morning says so; an empty one does not lie", /masks|off the wire|quick today/.test(m.msg()));
+  const rp = w.huaxuStalls.machine("rapids");
+  ok("the falls' machine exists and speaks the same contract",
+     !!rp && typeof rp.step === "function" && typeof rp.over === "function");
+  if (rp) {
+    for (let i = 0; i < 30 && !rp.over(); i++) rp.step(0.05, { x: 320 + Math.sin(i / 3) * 260, y: 300 });
+    ok("steered through thirty seconds the raft neither crashes the clock nor stands still",
+       Number.isFinite(rp.score()) && rp.score() >= 0);
+    for (let i = 0; i < 1100 && !rp.over(); i++) rp.step(0.05, { x: 320, y: 300 });
+    ok("the mist hour closes the run whatever the river brought", rp.over() && /mist hour|rings|scrapes/.test(rp.msg()));
+  }
   let drew = true;
   try { m.draw({ fillRect() {}, fillText() {}, beginPath() {}, arc() {}, fill() {}, stroke() {},
     save() {}, restore() {}, translate() {}, rotate() {}, moveTo() {}, lineTo() {}, closePath() {},

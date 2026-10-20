@@ -2603,3 +2603,26 @@ impeccable `[]` · idempotent · 五站 60 fps。
 - 新閘門 `.verify/verify-games.mjs` **18/18**：markup 宣告/免打擾頁零面板/按下開盤/focus/Esc/亂 id 禮貌拒絕；狀態機契約——深浸急拉必定破網、45 秒鐘必定收攤、12 發必定結算、miss 斷連擊（本輪順手修的真 bug：空槍不重置 streak＋一段死碼）。
 - 外观閘門 `.verify/_gamesshot.cjs` **GAMESHOT-PASS**（真 Chromium、滑鼠實際玩 50 幀）：kingyo luma 42.1/286 色、menya 42.6/423 色（**真打下一張面具進框**）、夜市街景含攤位 61.7/634。影格 `.preview/round50-stalls/`。
 - verify-walk 188/188（recorder 補 fillText；cache-buster 鏡面收 games\.js）、verify-three PASS。hourprobe 未重跑：本輪零光照改動，新增皆疊加 DOM，風險方向為更亮。
+
+## Round 51 — 瀑布的遊戲＋門司港的「按得動」（owner:「瀑布也應該有互動的東西或是可以玩的遊戲。門司港則是互動」）
+### 瀑布：《水簾鐘》（rapids）
+- niagara 右牆 `shed-rapids`（x640 z820，kind board 170×128×90）——與街道攤販同一 toy 通道：`data-game="rapids"` → games.js 共用對話框。規則：45 秒 mist hour，順流閃礁、撞燈鐘三下取勝；刮礁三下收工。水色=NIA_RIVER teal、鐘=燈 amber、礁=路緣暗色——零新色；hint 自報「A toy, not a survey…Nothing here claims the falls were ever ridden for sport」。
+- GAMES 註冊、pointer 輸入模型（raft 不用 hold，點擊=重開一局）、machine() 照樣暴露給閘門。
+### 門司港：展品按得動了（互動，不是遊戲）
+- **藍翼橋 demo**：`drawbridge-mj` 加 `data-demo="open"`。按下=24 秒演示包絡（6s 起、12s 全開、6s 落），**疊在 authored 時鐘之上取 max**——六個開橋時段、入夜不開的紀錄一字不動；船在演示期間也照樣穿洞（lift/win/into 共用計算是既有結構，演示只餵同一變量）。act() 分支在 story 前 `return`：說明卡不再蓋住正在動的橋。
+- **兩片水面 ripple**：`pool-moji`/`pool-strait` 加 `data-demo="ripple"`——按下擲一記玩具石：2.5 秒雙_ring_（wake 同款淡色 quad），到時自動消失（「演示不會假裝成事實」的時效性）。
+- hint 文案同步：橋的 hint 尾聲「The model answers a press with a demonstration… the real bridge keeps its six hours and its dark of a night.」。
+- 生成器 extra_attr 白名單 += "demo"（game 白名單是上輪開的，這條是同一管道）。
+### 本輪踩到並修好的坑
+- **announce 被 say 週期吃掉**：lane 每幀 `say(...,"")` 清空 record——act 分支同步 tick 的第一幀就把演示播報抹掉。修法與時辰按鈕相同：pump 全延遲（首幀 90ms 後），播報得一瞬間安靜。教訓：**寫 record 前要問『下一幀誰會覆寫它』**。
+- **verify-walk 的匯總計數器是殭屍**（`let fail` 由老區塊手動 ++，新加區塊的 ok() 不計）→ 上輪 186/186+FAIL 併存的怪象根源。改成從 out 行重算 `${n-failsN}/${n} pass, ${failsN} FAIL` + `process.exit(failsN?1:0)`——從今以後 FAIL 藏不住。
+### 驗收橋演示時挖出的真缺陷（比演示本身重要）
+- **3D 廳是純黑空屋**：同一 port-table 站位，2D painter 測得 luma 123.6/834 色，lit（WebGL）路徑只有 **4.2/170**——不是演示壞，是**廳內一切**（檯座、模型、光域以外的部分）在 3D 被壓到近黑。根因：世界瓷磚的光全靠 `nightK`（時鐘夜折疊）縮放，而廳（非 DAYPAGE）沒有天光可借——白天 nightK=0 → 暗 albedo×0 光=黑。修法把語義補正：**室內大廳保持常數地板**（`hallK = state.dayPage ? 0 : 1; litK = max(nightK, hallK)`），且 emissive 地板必須掛在 **lane 材質**上（廳瓷磚走 quads→lane，不是 staged batch——只標 world batch 沒有效果）。修復後 3D 廳 fukuoka 4.7→**48.6**、toronto 4.9→**48.3**；這同時回答 owner 長期的「進去看都是黑」——廳的 3D 從來就黑，只是以前沒有閘門進到真瀏覽器這層。**廳的夜與晝同亮是刻意的**：室內展廳的燈本來就不隨窗外时辰開關，與 hint「a hall of models at dusk」一致。
+- **record 線在真瀏覽器活不過一帧**：90ms 延遲只躲得過 click 同幀的覆寫；hover 進磁鐵時 `sayPlace` 仍会把播報抹掉。結構修法：demo 期間 `recordEl.dataset.demoHold = "1"`，say() 見 hold 不寫 record，包絡結束（橋 24.5s、水波 4.5s——各自對應 shape 分支的動畫時效，波紋不該霸占紀錄 24 秒）才交還通道。
+- **影格量錯地方**：第一版 gamesshot 用全幅帶狀 crop 判演示，得「shut 22 色 → demo 20 色」幾乎無變——950px 的平均值看不見 65px 的橋。改用磁鐵 own box＋上方天空的 tight crop（132×194）後，幾何變化立刻可測；並用 `__walk.drawQuads` 的 y 極值/筆數先證明**幾何時序在 3D Lane 裡本來就是活的**（drawFar 無條件跑、quads 有 world 角點、updateLane 每幀重建）——教訓：**先量幾何再量像素，像素閘門的 crop 必須蓋在聲明的物件上**。
+### 驗證（一次建置、一次驗證）
+- verify-games **23/23**（rapids 機器三斷言：定時終局、計數契約、steer 30 秒不動若無鐘也不炸）。
+- verify-walk **193/193**（新 fukuoka demo 4 條＋把 R49 兩條字面 regex 斷言更新到 litK 語義、新增一條鎖死「廳地板常數」防退化）。
+- verify-three PASS（12682 世界三角形、7 頁、fallback 仍在線）。
+- _gamesshot **GAMESHOT-PASS**（真 Chromium＋WebGL）：kingyo 42.1/319、menya 42.6/417、rapids 50.5/423、街夜市 93.9/595、fukuoka 演示 tight crop shut 8 色→demo 10 色＋record held；影格 `.preview/round51-river/`，肉眼對照確認橋桁中央開口、兩葉上翹。
+- _bridgecheck.cjs 留作單項重跑閘門（演示區塊獨立可查）。

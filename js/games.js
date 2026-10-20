@@ -193,8 +193,106 @@
              score: function () { return hits; }, msg: function () { return msg; } };
   }
 
+  /* ---- the rapids bell (Niagara, round 51) ------------------------------------------------------
+     A toy ride, not a survey: the boat is the street's own canvas raft, the water is NIA_RIVER's
+     teal, the rocks are the kerb's dark. The bell hangs on a wire the way the street's bulbs do —
+     ring it three times within the lantern time and the current lets you go; take it apart on the
+     rocks three times and the morning is over. The rules are deterministic on a fixed seed. */
+  function rapids(reduced) {
+    var r = rng(9182733), slow = reduced ? 0.55 : 1;
+    var t = 0, left = 45, bells = 0, bumps = 0, over = false, msg = "";
+    var boat = { x: W / 2, y: H - 92 }, vy = 0, tilt = 0, inv = 0;
+    var cur = 0, things = [], spawn = 0;
+    function step(dt, input) {
+      if (over) return;
+      t += dt; left = Math.max(0, left - dt); inv = Math.max(0, inv - dt);
+      cur = Math.sin(t * 0.6) * 46 + Math.sin(t * 0.19) * 26;      // the current, two swells deep
+      var push = (input.x || boat.x) - boat.x;
+      boat.x = clamp(boat.x + clamp(push, -1, 1) * 190 * dt * slow + cur * dt, 26, W - 26);
+      if (input.y) boat.y = clamp(boat.y + (input.y - boat.y) * 2.4 * dt, H - 170, H - 46);
+      tilt += ((clamp(push, -1, 1) * 0.22 + cur * 0.0016) - tilt) * dt * 5;
+      spawn -= dt;
+      if (spawn <= 0) {
+        spawn = 0.62 / slow;
+        var kind = r() < 0.34 ? "bell" : "rock";
+        things.push({ kind: kind, x: 50 + r() * (W - 100), y: -30, sp: (108 + r() * 70) * slow,
+                      spin: r() * 6, gone: false });
+      }
+      for (var i = things.length - 1; i >= 0; i--) {
+        var o = things[i];
+        o.y += o.sp * dt; o.spin += dt * 2.2;
+        if (o.y > H + 30) { things.splice(i, 1); continue; }
+        var d = Math.hypot(o.x - boat.x, o.y - boat.y);
+        if (o.kind === "bell" && d < 30) {
+          o.gone = true; things.splice(i, 1); bells++;
+          msg = bells >= 3 ? "the bell speaks for you: three rings, the run is yours"
+              : "a ring on the wire — " + bells + " of 3";
+          if (bells >= 3) over = true;
+        } else if (o.kind === "rock" && d < 22 && inv <= 0) {
+          o.gone = true; things.splice(i, 1); bumps++; inv = 1.6;
+          if (bumps >= 3) { over = true; msg = "the raft hangs on the rocks — three scrapes, a swimmer's morning"; }
+          else msg = "off the rock, " + (3 - bumps) + " scrape" + (3 - bumps === 1 ? "" : "s") + " left";
+        }
+      }
+      if (left <= 0 && !over) { over = true; msg = "the mist closes the hour — " + bells + " rings, " + bumps + " scrapes"; }
+    }
+    function draw(g) {
+      g.fillStyle = "#12202e"; g.fillRect(0, 0, W, H);
+      // the river, scrolling: the teal the falls' own pool is authored in, streaked with the night navy
+      g.fillStyle = "#1b3247"; g.fillRect(0, 60, W, H - 60);
+      g.fillStyle = "rgba(61,112,108,0.55)";
+      for (var i = 0; i < 9; i++) {
+        var wy = 60 + ((t * 90 + i * 44) % (H - 60));
+        g.fillRect(0, wy, W, 8);
+      }
+      g.fillStyle = "rgba(221,239,246,0.16)";
+      for (i = 0; i < 5; i++) {
+        var fy = 60 + ((t * 130 + i * 71) % (H - 60));
+        g.fillRect((Math.sin(i * 2.3) * 0.5 + 0.5) * W - 40, fy, 90, 3);
+      }
+      // the wire and its bells
+      g.strokeStyle = "rgba(205,214,238,0.25)"; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(0, 74); g.quadraticCurveTo(W / 2, 96, W, 74); g.stroke();
+      for (i = 0; i < things.length; i++) {
+        var o = things[i];
+        if (o.kind === "bell") {
+          g.fillStyle = AMBER;
+          g.beginPath(); g.moveTo(o.x - 9, o.y); g.quadraticCurveTo(o.x, o.y - 16, o.x + 9, o.y);
+          g.lineTo(o.x + 11, o.y + 6); g.lineTo(o.x - 11, o.y + 6); g.closePath(); g.fill();
+          g.strokeStyle = "rgba(255,217,160,0.5)"; g.beginPath(); g.arc(o.x, o.y + 3, 15 + Math.sin(o.spin) * 2, 0, 7); g.stroke();
+        } else {
+          g.save(); g.translate(o.x, o.y); g.rotate(Math.sin(o.spin) * 0.2);
+          g.fillStyle = "#241b12";
+          g.beginPath(); g.moveTo(-13, 8); g.lineTo(-6, -8); g.lineTo(6, -10); g.lineTo(14, 6); g.closePath(); g.fill();
+          g.fillStyle = "rgba(221,239,246,0.20)"; g.fillRect(-14, 6, 28, 4);   // foam shouldered past it
+          g.restore();
+        }
+      }
+      // the raft: a square boat with a bow wake, tilted by the current, pale while it recovers
+      g.save(); g.translate(boat.x, boat.y); g.rotate(tilt);
+      g.globalAlpha = inv > 0 ? 0.45 : 1;
+      g.fillStyle = "#6b4b2c"; g.beginPath();
+      g.moveTo(-16, 20); g.lineTo(-16, -14); g.lineTo(0, -24); g.lineTo(16, -14); g.lineTo(16, 20); g.closePath(); g.fill();
+      g.fillStyle = "#3f5170"; g.fillRect(-11, -8, 22, 22);
+      g.strokeStyle = PAPER; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(-4, -18); g.lineTo(4, 12); g.stroke();            // one paddle, mid-stroke
+      g.restore(); g.globalAlpha = 1;
+      // the counter
+      g.fillStyle = "#241b12"; g.fillRect(12, 8, W - 24, 46);
+      g.fillStyle = PAPER; g.font = "16px Georgia, serif";
+      g.fillText("bell rings " + bells + " / 3", 30, 38);
+      g.fillStyle = VERMIL; g.fillText("scrapes " + bumps + " / 3", 220, 38);
+      g.fillStyle = AMBER; g.fillText("mist hour " + Math.ceil(left) + " s", 392, 38);
+      if (msg) { g.fillStyle = GLOW; g.fillText(msg, 30, H - 14); }
+    }
+    return { step: step, draw: draw, over: function () { return over; },
+             score: function () { return bells; }, msg: function () { return msg; } };
+  }
+
   var GAMES = { kingyo: { make: kingyo, name: "The goldfish basin",
               help: "Move the net with the pointer or the arrows; hold to dip. Deep and quick parts the paper. Four goldfish before the lantern time is up." },
+                rapids: { make: rapids, name: "The rapids bell",
+              help: "Steer the raft with the pointer or the arrows against the current. Ring the hanging bell three times before the mist hour is up; three scrapes on the rocks ends the ride." },
                 menya: { make: menya, name: "The mask targets",
               help: "Move the aim with the pointer or the arrows; press or Space fires a pellet. Twelve pellets; six masks off the wire is a fair morning." } };
 
@@ -267,7 +365,9 @@
   canvas.addEventListener("pointerdown", function (event) {
     inputPos(event);
     if (!cur) return;
-    if (playing === "menya") cur.pointer.shoot = true; else cur.pointer.hold = true;
+    if (playing === "menya") cur.pointer.shoot = true;
+    else if (playing === "rapids") { if (cur.over && cur.over()) begin(playing); }
+    else cur.pointer.hold = true;
     if (cur.over && cur.over()) begin(playing); else canvas.setPointerCapture && canvas.setPointerCapture(event.pointerId);
   });
   canvas.addEventListener("pointerup", function () { if (cur) { cur.pointer.hold = false; } });

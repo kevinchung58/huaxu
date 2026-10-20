@@ -1099,6 +1099,30 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
 
 const fail = out.filter((l) => l.startsWith("FAIL")).length;
 
+/* ---- pressed models demonstrate (round 51) -------------------------------------------------------
+   The owner split the ask: games where the water runs, interaction where the models stand. A press
+   on the Blue Wing plays the opening back as a 24-second demonstration over the clock's own
+   schedule, and a press on a basin skips a toy stone. The record's hours are never rewritten — the
+   demo is an envelope, and it says so. */
+{
+  const fuk = boot(fs.readFileSync("rooms-fukuoka.html", "utf8"), "https://huaxu.test/rooms-fukuoka.html");
+  await sleep(260);
+  const bridge = fuk.document.querySelector('[data-obj="drawbridge-mj"]');
+  const basin = fuk.document.querySelector('[data-obj="pool-moji"]');
+  ok("the drawbridge and both basins carry their demo contract in the markup",
+     bridge.dataset.demo === "open" && basin.dataset.demo === "ripple");
+  bridge.dispatchEvent(new fuk.MouseEvent("click", { bubbles: true, cancelable: true }));
+  ok("pressing the bridge starts the demonstration and speaks it to the reader, without a card",
+     bridge.__demoAt > 0 && /demonstration runs/.test(fuk.document.querySelector("[data-walk-record]").textContent),
+     `at=${!!bridge.__demoAt}`);
+  basin.dispatchEvent(new fuk.MouseEvent("click", { bubbles: true, cancelable: true }));
+  ok("a pressed basin answers about its stone rings",
+     /stone skipped/.test(fuk.document.querySelector("[data-walk-record]").textContent));
+  ok("the bridge's hint still reads as the record first, demonstration second",
+     /six times a day/.test(bridge.dataset.hint) && /real bridge keeps its/.test(bridge.dataset.hint));
+  fuk.close();
+}
+
 /* ---- the hour is the visitor's (round 49) --------------------------------------------------------
    The owner's ruling: no browser clock may darken a lane behind the visitor's back. The page opens
    in day, one button trades it for night, the choice carries across lanes, and a place held at its
@@ -1133,20 +1157,30 @@ const fail = out.filter((l) => l.startsWith("FAIL")).length;
   {
     const scjs = fs.readFileSync("js/scene3d.js", "utf8");
     ok("the lit path folds the same navy the painter calls murk, as the sun goes",
-       /nightAmbient\.intensity = [\d.]+ \* nightK/.test(scjs)
-       && /AmbientLight\(0x16223c, 0\)/.test(scjs) && /const nightK = /.test(scjs));
+       /nightAmbient\.intensity = [\d.]+ \* litK/.test(scjs)
+       && /AmbientLight\(0x16223c, 0\)/.test(scjs) && /const nightK = /.test(scjs)
+       && /const litK = Math\.max\(nightK, hallK\)/.test(scjs));
     ok("and the night fold keeps a readable floor under it, never full murk",
        /clamp\(\(Number\(state\.night\) \|\| 0\) \* 0\.40, 0, 0\.58\)/.test(scjs)
        && /laneDark=min\(0\.62,/.test(scjs)
        && /diffuseColor\.rgb\+=uLaneNight\*min\(0\.62,vLaneDarkness\)\*3\.2/.test(scjs));
     ok("and the surveyed world's own materials carry the night wash as a self-lit emissive",
-       /material\.userData\.nightGlow = true/.test(scjs)
+       (scjs.match(/material\.userData\.nightGlow = true/g) || []).length >= 2
        && /emissive: new THREE\.Color\(0x16223c\), emissiveIntensity: 0/.test(scjs)
-       && /m\.emissiveIntensity = [\d.]+ \* nightK/.test(scjs));
+       && /m\.emissiveIntensity = [\d.]+ \* litK/.test(scjs));
+    // measured round 51: the fukuoka hall's lit path collapsed to 4.2 luma on a stop where the
+    // painter held 123.6, because a hall has no sky and its tiles kept no floor. The fix is
+    // structural — interiors keep their light whatever the hour — and it must not be undone.
+    ok("and an interior hall keeps that floor as a constant, its dusk never depending on a sun it has no window for",
+       /const hallK = state\.dayPage \? 0 : 1;/.test(scjs));
   }
 }
 
 console.log(out.join("\n"));
 
-console.log(`\n${out.length - fail}/${out.length} pass`);
-process.exit(fail ? 1 : 0);
+// the counter used to be threaded through the hand-written blocks, and every gate added since has
+// quietly not been part of it — the count is recomputed from the lines themselves, so a FAIL can
+// never again ride out of here with exit code 0.
+const failsN = out.filter((l) => /^FAIL  /.test(l)).length;
+console.log(`\n${out.length - failsN}/${out.length} pass${failsN ? `, ${failsN} FAIL` : ""}`);
+process.exit(failsN ? 1 : 0);

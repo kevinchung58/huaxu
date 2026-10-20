@@ -3958,17 +3958,20 @@ DISTRICTS = [
                  "Where the Retro High Mart stands"))],
             # The No. 1 basin between the hotel quay and the customhouse, from its head to the Blue
             # Wing; and the strait, which the table's far edge hands to the backdrop.
-            {"id": "pool-moji", "kind": "pool", "x": 115, "z": round(2378 / Z_SCALE, 2), "y": 80, "ry": 0,
+            {"id": "pool-moji", "kind": "pool", "demo": "ripple",
+             "x": 115, "z": round(2378 / Z_SCALE, 2), "y": 80, "ry": 0,
              "w": 93, "h": 2, "d": 276,
              "title": "The No. 1 basin",
              "hint": "The boat basin the Blue Wing crosses, about 60 m wide, opening north-west onto "
-                     "the strait. Nothing is claimed about the tide."},
-            {"id": "pool-strait", "kind": "pool", "x": 0, "z": round(2560 / Z_SCALE, 2), "y": 80, "ry": 0,
+                     "the strait. Nothing is claimed about the tide. Press it and the toy stone skips: "
+                     "the rings widen and are gone."},
+            {"id": "pool-strait", "kind": "pool", "demo": "ripple",
+             "x": 0, "z": round(2560 / Z_SCALE, 2), "y": 80, "ry": 0,
              "w": 720, "h": 2, "d": 90,
              "title": "The Kanmon Strait",
              "hint": "A little over 700 m wide at its narrowest and carrying some 500 ships a day; "
                      "here it starts at the table's edge and runs on past the far wall."},
-            {"id": "drawbridge-mj", "kind": "drawbridge", "x": 120, "z": round(2498 / Z_SCALE, 2), "y": 80,
+            {"id": "drawbridge-mj", "kind": "drawbridge", "demo": "open", "x": 120, "z": round(2498 / Z_SCALE, 2), "y": 80,
              "ry": 0, "w": 157, "h": 6, "d": 7, "leaves": 0.47,
              "glow": [{"r": 90, "k": 0.3, "dy": 14}],
              "title": "The Blue Wing",
@@ -3976,7 +3979,9 @@ DISTRICTS = [
                      "completed 1993. Its 24.1 m south leaf is lifted by a wire rope over its pylon, "
                      "its 14 m north leaf by a hydraulic ram, both to about 60 degrees, six times a "
                      "day from 10:00 to 16:00, about twenty minutes each time. Lit after dark; it "
-                     "does not open then."},
+                     "does not open then. The model answers a press with a demonstration of the "
+                     "opening: leaves up, a boat through, leaves down — the real bridge keeps its "
+                     "six hours and its dark of a night."},
             {"id": "ship-mj", "kind": "ship", "x": 114, "z": round(2500 / Z_SCALE, 2), "y": 81, "ry": 90,
              "w": 30, "h": 6, "d": 7.5, "run": 140,
              "title": "A harbour boat",
@@ -4557,6 +4562,18 @@ DISTRICTS = [
                                              "place here is drawn, not surveyed."},
             # The parapet's last stone post, at the brink corner: the closest the trail comes to
             # the water, the press that answers what the falls are.
+            # Round 51, at the owner's request (「瀑布也應該有互動的東西或是可以玩的遊戲」): the
+            # rapids bell. A toy shed on the promenade wall, dressed by the stall CSS like the
+            # street's pair; the water it plays on is the pool's own teal, the bell hangs on a wire
+            # the way the street's bulbs do. Pressing it opens the shared dialog with the machine —
+            # and it says, in its own hint, that none of this is the cataract's record.
+            {"id": "shed-rapids", "kind": "board", "w": 170, "h": 128, "d": 90,
+             "x": 640, "z": 820, "y": 0, "ry": -90, "game": "rapids",
+             "title": "The rapids shed, under the lamps",
+             "hint": "A toy, not a survey: a canvas raft, the current's two swells, and a bell on a "
+                     "wire over the water. Ring it three times before the mist hour is up; three "
+                     "scrapes on the rocks ends the morning. Nothing here claims the falls were ever "
+                     "ridden for sport."},
             {"id": "parapet-ng", "kind": "parapet", "x": -670, "z": 1462, "y": 0, "ry": 0,
              "w": 50, "h": 96, "d": 50,
              "title": "The Table Rock rail",
@@ -5090,7 +5107,7 @@ def walk_object(o):
     extra_attr = "".join(
         f' data-{k}="{escape(v if isinstance(v, str) else json.dumps(v, separators=(",", ":")))}"'
         for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run", "lift", "blocks",
-                                         "footprint", "floors", "observation", "game") if k in o))
+                                         "footprint", "floors", "observation", "game", "demo") if k in o))
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.

@@ -500,7 +500,11 @@ function laneShaderMaterial(THREE, map, transparent) {
     map: map || null, vertexColors: true, side: THREE.DoubleSide, transparent,
     depthWrite: !transparent, depthTest: true, fog: false, flatShading: true,
     roughness: 0.92, metalness: 0, envMapIntensity: 0.45,
+    // the same self-lit murk floor the surveyed batches carry — halls paint their tiles through
+    // lane quads, and an interior's light must not depend on the sky outside a sky it never has
+    emissive: new THREE.Color(0x16223c), emissiveIntensity: 0,
   });
+  material.userData.nightGlow = true;
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uLaneWarm = { value: new THREE.Color("#ffe4ba") };
     shader.uniforms.uLaneNight = { value: new THREE.Color("#16223c") };
@@ -1505,8 +1509,14 @@ function buildRenderer(THREE, canvas, backdrop, api) {
     // opens as the sun drops below the painter's own dusk line, and nothing else changes
     {
       const nightK = Math.max(0, Math.min(1, ((Number(state.night) || 0) - 0.45) / 0.5));
-      nightAmbient.intensity = 0.62 * nightK;
-      for (const m of materials) if (m.userData && m.userData.nightGlow) m.emissiveIntensity = 4.5 * nightK;
+      // A hall has no sky to borrow: its record's dusk is lamp-lit and constant, and in the painter
+      // the tiles carry that constant themselves (lit wash over authored colours). The lit path
+      // mirrors the floor — without it a whole hall collapses to black that the Canvas2D path
+      // renders bright (measured round 51, same port-table stop: 4.2 luma against 123.6).
+      const hallK = state.dayPage ? 0 : 1;
+      const litK = Math.max(nightK, hallK);
+      nightAmbient.intensity = 0.62 * litK;
+      for (const m of materials) if (m.userData && m.userData.nightGlow) m.emissiveIntensity = 4.5 * litK;
     }
     const w = Math.max(1, Math.round(state.width)), h = Math.max(1, Math.round(state.height));
     if (w !== width || h !== height) { renderer.setSize(w, h, false); width = w; height = h; }

@@ -27,17 +27,17 @@ const stats = async (png, clip) => {
 };
 
 (async () => {
-  fs.mkdirSync(".preview/round50-stalls", { recursive: true });
+  fs.mkdirSync(".preview/round51-river", { recursive: true });
   const browser = await puppeteer.launch({ executablePath: await chromium.executablePath(),
     args: [...chromium.args, "--no-sandbox"], headless: true, defaultViewport: { width: 980, height: 620 } });
   let fails = 0;
-  for (const game of ["kingyo", "menya"]) {
+  for (const [href, game] of [["street.html", "kingyo"], ["street.html", "menya"], ["rooms-niagara.html", "rapids"]]) {
     const page = await browser.newPage();
     page.on("pageerror", (e) => console.log("PAGEERROR", e.message.slice(0, 120)));
-    await page.goto("http://127.0.0.1:8080/street.html", { waitUntil: "networkidle0", timeout: 60000 });
+    await page.goto("http://127.0.0.1:8080/" + href, { waitUntil: "networkidle0", timeout: 60000 });
     await page.waitForFunction("document.querySelector('[data-walk]')?.__walk", { timeout: 30000 });
     await page.evaluate((id) => {
-      const b = document.querySelector(`[data-obj="stall-${id}"]`);
+      const b = document.querySelector(`[data-game="${id}"]`);
       b.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     }, game);
     await sleep(600);
@@ -57,11 +57,47 @@ const stats = async (png, clip) => {
     }
     if (isDown) await page.mouse.up();
     await sleep(250);
-    const shot = await page.screenshot({ path: `.preview/round50-stalls/game-${game}.png`, type: "png" });
+    const shot = await page.screenshot({ path: `.preview/round51-river/game-${game}.png`, type: "png" });
     const r = await stats(shot, [box.x / 980, box.y / 620, (box.x + box.w) / 980, (box.y + box.h) / 620]);
     const okk = r.luma >= 26 && r.colours >= 15;
     if (!okk) fails++;
-    console.log(`${okk ? "OK  " : "LOW "}game ${game}: luma ${r.luma} colours ${r.colours} (floor 26/15)`);
+    console.log(`${okk ? "OK  " : "LOW "}game ${game} (${href}): luma ${r.luma} colours ${r.colours} (floor 26/15)`);
+    await page.close();
+  }
+  // the Blue Wing's pressed demonstration: the opened frame must differ from the shut one —
+  // the raised leaves throw pale faces at the camera that a shut deck cannot invent
+  {
+    const page = await browser.newPage();
+    page.on("pageerror", (e) => console.log("PAGEERROR", e.message.slice(0, 120)));
+    await page.goto("http://127.0.0.1:8080/rooms-fukuoka.html", { waitUntil: "networkidle0", timeout: 60000 });
+    await page.waitForFunction("document.querySelector('[data-walk]')?.__walk", { timeout: 30000 });
+    // stand where the record says the table reads best: the stop over the basin toward the strait
+    await page.evaluate(() => {
+      const stop = Array.from(document.querySelectorAll("[data-walk-stop]"))
+        .find((b) => /port table/.test(b.getAttribute("aria-label") || ""));
+      if (stop) stop.click();
+    });
+    await sleep(9000);
+    // Crop the magnet's own box plus the air above it. A full-frame average is the wrong ruler
+    // here (measured round 51): the lift is a 24 m leaf on a 108 m model seen from 21 m away, and
+    // across 950 px the luma moved 0.2 while the colour count went *down* — the band measured the
+    // dark hall, not the bridge. The tight box is where the claim actually lives.
+    const c = await page.evaluate(() => {
+      const r = document.querySelector('[data-obj="drawbridge-mj"]').getBoundingClientRect();
+      return [Math.max(0, r.x - 30), Math.max(0, r.y - 110), r.width + 60, r.height + 150];
+    });
+    const clip = { x: Math.round(c[0]), y: Math.round(c[1]), width: Math.round(Math.min(c[2], 980 - c[0])), height: Math.round(Math.min(c[3], 620 - c[1])) };
+    const before = await page.screenshot({ path: ".preview/round51-river/fukuoka-bridge-shut.png", type: "png", clip });
+    await page.evaluate(() => document.querySelector('[data-obj="drawbridge-mj"]').dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true })));
+    await sleep(9500);   // mid-envelope: leaves up, the boat taking the gap
+    const after = await page.screenshot({ path: ".preview/round51-river/fukuoka-bridge-demo.png", type: "png", clip });
+    const bs = await stats(before, [0, 0, 1, 1]), as = await stats(after, [0, 0, 1, 1]);
+    const rec = await page.evaluate(() => (document.querySelector("[data-walk-record]") || {}).textContent || "");
+    const same = Buffer.compare(before, after) === 0;
+    const okk = !same && as.colours >= bs.colours + 2 && /demonstration runs/.test(rec);
+    if (!okk) fails++;
+    console.log(`${okk ? "OK  " : "LOW "}fukuoka demonstration: crop ${clip.width}x${clip.height} shut ${bs.luma}/${bs.colours} -> demo ${as.luma}/${as.colours}, record ${/demonstration runs/.test(rec) ? "held" : "LOST"}`);
     await page.close();
   }
   {
@@ -73,7 +109,7 @@ const stats = async (png, clip) => {
     await page.waitForFunction("document.querySelector('[data-walk]')?.__walk", { timeout: 30000 });
     await page.evaluate(() => document.querySelectorAll("[data-walk-stop]")[3].click());   // under the lanterns
     await sleep(9000);
-    const shot = await page.screenshot({ path: ".preview/round50-stalls/street-night-stall.png", type: "png" });
+    const shot = await page.screenshot({ path: ".preview/round51-river/street-night-stall.png", type: "png" });
     const r = await stats(shot, [0.0, 0.25, 1.0, 0.85]);
     const okk = r.luma >= 26 && r.colours >= 15;
     if (!okk) fails++;

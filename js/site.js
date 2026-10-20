@@ -5471,6 +5471,30 @@ function leaveOverlay(root, trigger) {
                               [m.x + m.w * 0.2 + drift, m.y + 2, m.z - m.d * 0.1], [m.x - m.w * 0.1 + drift, m.y + 2, m.z - m.d * 0.1]],
                           ZERO8, "flat", "rgba(214,230,244,0.7)");
         if (sheen) { sheen.lit = 1.1; drawn.push(sheen); }
+        // A pressed basin answers: the stone rings expand once and are gone — the pool branch
+        // keeps no state of its own, so a demonstration that never ends would be an animation
+        // pretending to be a fact. 2.5 s, both banks, the wake's own pale colour.
+        {
+          const dAt = m.el && m.el.__demoAt;
+          if (dAt) {
+            const dt = (performance.now() - dAt) / 1000;
+            if (dt >= 0 && dt < 2.5) {
+              [[0.0, 0.5], [0.9, 0.32]].forEach(([lag, a]) => {
+                const k = (dt - lag) / 1.6;
+                if (k < 0 || k > 1) return;
+                const u = m.w * 0.46 * k;
+                [-1, 1].forEach((sd) => {
+                  const q = add(C, [[m.x + sd * u - 3, m.y + 2, m.z - m.d * 0.4],
+                                   [m.x + sd * u + 3, m.y + 2, m.z - m.d * 0.4],
+                                   [m.x + sd * u + 3, m.y + 2, m.z + m.d * 0.4],
+                                   [m.x + sd * u - 3, m.y + 2, m.z + m.d * 0.4]],
+                                 ZERO8, "flat", `rgba(221,239,246,${(a * (1 - k)).toFixed(3)})`);
+                  if (q) { q.lit = 1.2; q.nolite = true; drawn.push(q); }
+                });
+              });
+            }
+          }
+        }
       } else if (shape === "boat") {
         /* Toronto Islands ferry: a double-ended, waterline hull, open passenger deck, wheelhouse,
            windows, rails and a wake. The timetable eases away from each dock and waits while people
@@ -5611,6 +5635,19 @@ function leaveOverlay(root, trigger) {
         let lift = 0, win = -1, into = 0;
         OPENS.forEach((h0, i) => { const t = hour - h0; if (t >= 0 && t < WIN) { win = i; into = t; } });
         if (win >= 0) lift = into < RISE ? sm(into / RISE) : into > WIN - RISE ? sm((WIN - into) / RISE) : 1;
+        // The demonstration (pressed by hand, see act): 24 s of opening on demand, an envelope over
+        // whatever the clock is doing. The ship takes the opening too — a demo without a boat is a
+        // bridge being rude to it.
+        {
+          const dAt = m.el && m.el.__demoAt;
+          if (dAt) {
+            const dt = (performance.now() - dAt) / 1000;
+            if (dt >= 0 && dt < 24) {
+              const dLift = dt < 6 ? sm(dt / 6) : dt > 18 ? sm((24 - dt) / 6) : 1;
+              if (dLift > lift) { lift = dLift; if (win < 0) { win = 0; into = RISE + (dt / 24) * (WIN - 2 * RISE); } }
+            }
+          }
+        }
         const along = Math.abs(m.ry) > 45;
         const PT = (u, y, v) => (along ? [m.x + v, y, m.z + u] : [m.x + u, y, m.z + v]);
         if (shape === "ship") {
@@ -7032,7 +7069,10 @@ function leaveOverlay(root, trigger) {
   const liveEl = layer.querySelector("[data-walk-live]");
   const say = (status, record) => {
     if (status && statusEl) statusEl.textContent = status;
-    if (record !== undefined && recordEl) recordEl.textContent = record;
+    // A running demonstration owns the record line until its envelope dies (act's `data-demo`
+    // channel sets the hold): otherwise a standing place-announcement wipes the one sentence that
+    // explains why the bridge is moving, and the line is also the screen reader's live region.
+    if (record !== undefined && recordEl && !recordEl.dataset.demoHold) recordEl.textContent = record;
     // The card is where the sentence can be read, so it is kept in step with the announced one while
     // it is open: a line that goes stale behind a click is worse than no line at all.
     if (liveEl && card && !card.hidden) {
@@ -7531,6 +7571,38 @@ function leaveOverlay(root, trigger) {
     // A stall with a game plays before it explains: the owner asked for toys you press in the
     // environment itself, and a card that says "press to play" instead of playing is a dead end.
     if (m.el.dataset.game && window.huaxuStalls && window.huaxuStalls.open(m.el.dataset.game, m.el)) return;
+    // Pressed models demonstrate: the bridge replays its opening, the basin its ripple. The real
+    // clock is never rewritten — the record's schedule (six openings, nothing after dark) keeps
+    // running underneath, and the demonstration rides on top as a 24-second envelope. This is the
+    // museum's own idiom: a demo button on a model does not move the thing it models.
+    if (m.el.dataset.demo !== undefined) {
+      m.el.__demoAt = performance.now();
+      if (recordEl) {
+        recordEl.dataset.demoHold = "1";
+        recordEl.textContent = m.el.dataset.demo === "ripple"
+          ? "A stone skipped across the model's basin: the rings widen and are gone."
+          : "The demonstration runs: the leaves rise, a boat takes the opening, the leaves fall.";
+      }
+      // the same redraw contract the hour button uses: the announcement gets one quiet moment
+      // before the first pumped frame (the lane's own say() rewrites the record every tick), and
+      // the pump keeps asking for frames until the envelope dies — a stopped clock draws nothing.
+      // the envelope matches what the shape branch animates: a skip dies in three seconds and must
+      // not hold the record line for the bridge's twenty-four
+      const ENVELOPE = m.el.dataset.demo === "ripple" ? 4.5 : 24.5;
+      const pump = () => {
+        const t = (performance.now() - m.el.__demoAt) / 1000;
+        if (t > ENVELOPE) {
+          delete m.el.__demoAt;
+          if (recordEl) { delete recordEl.dataset.demoHold; recordEl.textContent = ""; }
+          return;
+        }
+        tick(performance.now());
+        pulse = setTimeout(pump, 90);
+      };
+      if (pulse) clearTimeout(pulse);
+      pulse = setTimeout(pump, 90);
+      return;
+    }
     if (m.el.dataset.story && openStoryRail(m.el.dataset.story, m.el)) return;
     if (m.el.dataset.frame !== undefined && openDistrictRail(Number(m.el.dataset.frame), m.el)) return;
     if (m.el.dataset.obj === "vending" && openDistrictRail(0, m.el)) return;
