@@ -11,7 +11,8 @@
 >
 > Scope note, 2026-10-16/17: the owner separately approved pinned Three.js/WebGL for **all
 > walkable environments and objects**; the seven walkable pages now use Three.js 0.186.1 as their
-> primary renderer with a complete Canvas2D fallback. This spec remains only about the Activities
+> primary renderer; the Canvas2D fallback that ride then existed was deleted whole in round 54
+> (2026-10-20, owner ruling) and no lane painter may return. This spec remains only about the Activities
 > album and story plate. Older engine comparisons and renderer descriptions below are proposal/history,
 > not current walkable-renderer documentation; this approval does not change the album's CSS-3D
 > proposal or authorize a WebGL album migration.

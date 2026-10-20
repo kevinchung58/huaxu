@@ -5962,7 +5962,7 @@ function leaveOverlay(root, trigger) {
           // The band is put 8 cm proud of the wall face instead of riding `K.band`'s flush 5 cm:
           // the Three.js path draws `__flat` batches without polygonOffset, so quads coplanar
           // with their own wall are resolved by batch order and the band lost to the facade it
-          // sits on (the Canvas2D path, which sorts by the painter's own key, drew it fine — the
+          // sits on (the deleted Canvas2D path, which sorted by the painter's own key, drew it fine — the
           // shape of a bug only one of the two renderers shows). The X-members stay proud of the
           // band, at 9 cm. One `seen` gate covers band and braces, as it once covered both.
           if (K.seen(transferH, 0.8)) {

@@ -3,9 +3,10 @@
  *
  * The lane, authored props, compact far backdrops and sourced `backdrop.world.prims` are all submitted
  * as world-space meshes to one camera and depth buffer. site.js remains the authoring/interaction layer:
- * it supplies each frame's polygons, camera, light values and hit targets. Its transparent Canvas2D
- * surface is transparent while this renderer is active and remains the complete Canvas2D fallback
- * when WebGL is absent or a context fails; lamps, pools, shadows and wires are Three.js geometry too.
+ * it supplies each frame's polygons, camera, light values and hit targets, and this file is the only
+ * picture there is — the Canvas2D lane painter that used to ride alongside was deleted in round 54
+ * (owner ruling), and where WebGL is absent the engine reports "off" and the lane says so in words
+ * rather than degrading into a second renderer. Lamps, pools, shadows and wires are Three.js geometry too.
  *
  * Spatial basis, declared once (round 46, from the Mint spatial-contracts §1 review — an
  * experiment showed that a basis left undeclared gets re-invented, wrongly, by every consumer):

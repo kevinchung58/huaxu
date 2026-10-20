@@ -251,8 +251,9 @@ dark — halo, body, pool on the pavement — shopfronts spill their window ligh
 and every front and lantern carries a staggered `liton`, so the evening arrives as a wave
 (`street-commons` §3, "the night rhythm"). The same round found the one lie in the shadow system's
 history — the wall's floor shadow had been `add()`ed after the emit pass and was never painted; the
-light pass draws it now, and `.verify/_shadowdrawn.mjs` proves a shadow is on the screen rather than
-in the comments.
+light pass draws it now. The probe that used to prove it (`_shadowdrawn.mjs`) measured the painter's
+pass order and was retired with it in round 54; the claim is now held by the scene's own geometry,
+which receives every quad `add()` returns without a second pass to fall out of.
 
 Unrelated to the above and still open:
 
