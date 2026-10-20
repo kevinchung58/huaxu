@@ -55,8 +55,9 @@ assume; change one and re-run the whole battery.
   `perspective`; keep non-visible `overflow` off the former and `filter`/`backdrop-filter` off the
   latter. Walkable-scene geometry does not use CSS transforms. Its approved renderer exception
   (2026-10-16; full walkable migration) is pinned, vendored Three.js 0.186.1 for all walkable lane
-  and object geometry; sourced `backdrop.world.prims` are consumed when present. Canvas2D is the
-  complete no-WebGL fallback. No framework, npm build, package manifest, or Activities album WebGL
+  and object geometry; sourced `backdrop.world.prims` are consumed when present. It is the only
+  renderer: the Canvas2D painter was deleted in round 54, and a browser without WebGL is told so in
+  the lane's own sentence. No framework, npm build, package manifest, or Activities album WebGL
   migration is authorized by that exception.
 
 ## 2b. The inventory — completeness as a table
@@ -149,7 +150,7 @@ Recipes that survived the critique pass, with their numbers. Reach for these bef
 
 ## 4. The critique pass
 
-The capture and visual-signoff procedure is `skills/scene-quality-loop/SKILL.md`; follow it after authoring, using PUA to diagnose and verify repairs. Capture settled browser-route frames with `.verify/browser-shot.mjs`, plus `.verify/lane-shot.mjs` for the applicable fallback/route checks, and inspect the actual output files. A contact sheet supports route coverage but does not replace full-size inspection of changed or suspect objects. The harness proves mechanics and paint; only comparison with the source-backed claim proves the rendered place. The table below is a diagnostic catalogue, not a scorecard. Known failure shapes:
+The capture and visual-signoff procedure is `skills/scene-quality-loop/SKILL.md`; follow it after authoring, using PUA to diagnose and verify repairs. Capture settled browser-route frames with `.verify/browser-shot.mjs` (with `.verify/cost-probe.mjs` reading the submitted geometry, and `.verify/_nogl.mjs` for the no-WebGL sentence), and inspect the actual output files. A contact sheet supports route coverage but does not replace full-size inspection of changed or suspect objects. The harness proves mechanics and paint; only comparison with the source-backed claim proves the rendered place. The table below is a diagnostic catalogue, not a scorecard. Known failure shapes:
 
 | Symptom in the frame | Cause | Lever |
 |---|---|---|
@@ -222,7 +223,7 @@ What each harness proves, so a green run can be named:
 - `verify-three` (`node bin/verify-three.mjs`) — the pinned runtime, Three.js geometry conversion, supported world verbs, and finite emitted attributes; structural proof, not visual sign-off.
 - `verify-rooms-e2e` — the rooms end-to-end in a served browser.
 - `verify-story` — the link contract pressed end-to-end, both directions, every space.
-- `browser-shot` — the actual browser route, settled authored stops, active renderer, and saved frames; `lane-shot` — rasterized Canvas2D/fallback frames and its route gates. A human read under `scene-quality-loop` is a separate requirement. `impeccable` — the stylesheet and pages at zero findings.
+- `browser-shot` — the actual browser route, settled authored stops, active renderer, and saved frames; `cost-probe` — the quads and geometry a frame submits, and its frame interval in this software rasteriser; `_nogl` — the sentence a browser without WebGL is actually shown. A human read under `scene-quality-loop` is a separate requirement. `impeccable` — the stylesheet and pages at zero findings.
 
 Run cheap statics after each edit; run the whole battery before a commit that touched a
 scene. Verification is the artefact the browser asks for: regenerate, curl the served page,

@@ -1,6 +1,125 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-18 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-20（第五十五輪）· 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0ac. 第五十五輪（2026-10-20）：拆掉 2D 之後,「沒有 WebGL」的訪客其實什麼都看不到——修好它,並讓全庫檔案說同一件事
+
+### 站主指令
+「請先讀根的 AGENTS.MD SKILLS 做該做的事情，再進到這個資料夾與 agents.md 進行任務。」本輪照辦：
+先讀 `AGENTS.md`、`SKILLS.md`，再依其規定讀 `karpathy-guidelines`、`pua`、`scene-system`、
+`real-place-builder`、`scene-quality-loop`、`pr-handoff`、`district-author`/`grounded-scene`/
+`landmark-space`/`lane-prop`/`place-intake`/`japan-place`/`street-commons` 的相關段，然後才開工。
+`sh bin/restore-env` 已跑（沙箱是空的：`node_modules`、`.claude/` 都不在；libs 解到 `/tmp/al2023`）。
+
+### 本輪發現的三個既有缺陷（全部就地修）
+1. **沒有 WebGL 的訪客看不到任何字（本輪最重要）**。第五十四輪的裁決把 Canvas2D 畫家刪了，改成
+   「lane 用自己的句子說明」，但句子寫在 `<div class="walk-card">` 裡——那個卡片出廠是 `hidden`
+   ——而且穿著 `.walk-note`（CSS 在 `(hover: hover) and (pointer: fine)` 之外是 `display:none`）。
+   兩層都把它藏起來：手機與觸控裝置一定看不到，桌機要先把 info 卡打開才看得到，而卡片本身出廠
+   關著。實測證據（`.verify/_nogl.mjs`，把每個 `getContext("webgl*")` 回 `null`）：修前
+   `renderer="off"`、canvas `hidden`、句子的 `rect` 是 `0×0`、`display:"none"`、`inCard:true`、
+   `cardHidden:true`；截圖是一整片空 navy。
+   **修法**：句子搬出資訊卡，成為 lane 的直接子節點 `<p class="walk-fallback" role="status">`，
+   用新的 `.walk-fallback` 規則（紙面底、navy 字、`z-index:3` 與 hit layer 同層在 canvas 之上、
+   不依賴 hover）。`_gen_html.py` 產生、全站 regen（八頁 walkable 各一，非 walkable 頁零）。
+2. **`verify-walk` 的填充上限是一段沒有牙的歷史**：`ctx.fills` 的「天花板」檢查在拆除時已經
+   只剩註解（`const before = ctx.fills;` 是孤兒），而那段長註解還在描述「~6300 fills、第二趟
+   深度會讀到 12700」的畫家時代預算。留下的是一段會被下一個 reader 當成現況的謠言。
+   **修法**：刪掉孤兒；把註解改寫成現況——2D context 現在只量到共用的 tile raster（每個材質
+   boot 一次）、遊戲與相簿，唯一可信的失敗是「沒跑」與「畫出自己 tile 之外」，兩者已被相鄰斷言
+   釘住；lane 的每幀預算搬到 Three 的幾何（`__walk.quads` 由本閘、三角形由
+   `bin/verify-three.mjs`）。
+3. **`cost-probe.mjs` 是「前提已死」的量具（同一輪該清的垃圾）**：整支在數 2D fills（第五十四
+   輪之後只會量到 tile raster），加上首段之後還貼著 265 行 `verify-walk` 的舊副本，`process.exit(0)`
+   之後永遠不會執行。
+   **修法**：重寫成量「真正送進渲染器的東西」：每頁 `renderer`、`__walk.quads`（靜止與行走中）、
+   `threeStats`（laneQuads/laneTriangles/laneMeshes/worldTriangles/waterTriangles/waterSheets/
+   mistLayers/batches）與幀間隔，並在檔頭寫明兩個限制（軟體光柵的幀時是環境不是裝置；quads 是
+   「交給引擎的工作」不是 GPU 最後剔除的結果）。
+
+### 順手修掉的文件級矛盾（第五十四輪只清了一半）
+- `.impeccable/config.json`：`repeating-stripes-gradient` 的豁免在第五十四輪被當作「過時的謠言」
+  移除，但 `.walk-stall`（第 50 輪的攤位本體：條紋雨棚＋暗色檯面＋水盆）還在用它。結果 **HEAD
+  幹淨 worktree 上 `detect` 也不是 `[]`**（19 頁全中），與 TODO §0ab／AGENTS 宣稱的 0 findings
+  矛盾。本輪以「作者化的單一 prop，不是裝飾」為由按名恢復豁免，並把理由寫進 config 的 `$comment`
+  （新出現的條紋表面仍會被拿這條註記對讀）。
+- 我自己新加的 `.walk-fallback` 第一版帶 `box-shadow: var(--shadow-lg)`＋1px 邊框，detector 立刻
+  回 `gpt-thin-border-wide-shadow`。依「客觀缺陷改碼、不改設定」的規矩拿掉陰影（左側 3px amber
+  邊即為 commit 的邊）。
+- `AGENTS.md`：開頭與 Conventions 的「Canvas2D remains the complete fallback」、luma 條目的
+  「以 Canvas2D 影格為對照」與 `verify-three` 的反復活閘互相矛盾；luma 條目改為現況（沒有第二張
+  圖可對照，只讀 `_halltint` 的 mean RGB／cold／purple，並保留「flag 必須與截圖同一次 evaluation
+  讀」的陷阱）。
+- `SKILLS.md`：renderer 段改為「sole renderer since 2026-10-20，八頁」（原本寫 `seven`）；§4 閘門
+  清單補 `node bin/verify-three.mjs` 與 `node .verify/_nogl.mjs`。
+- `DESIGN.md`：`camPt()` 現在對齊的是 DOM hit layer（不是已刪的 2D 投影）；`seven walkable pages`
+  → `eight`；「A transparent Canvas2D canvas remains stacked…」改為現況；「No black rectangle on a
+  WebGL failure」段落改寫成「退回句子＋抽屜仍可讀」。
+- `skills/`（本輪改 12 個檔）：`scene-system`／`scene-quality-loop`／`grounded-scene`／
+  `landmark-space`／`japan-place`／`lane-prop`／`place-intake`／`real-place-builder`／
+  `street-commons`／`district-author`／兩份 reference，把 `lane-shot.mjs`（第五十四輪已刪）、
+  `_shadowdrawn.mjs`（已刪）與「Canvas2D 完整 fallback」全部改成現況：pixel 證據改指
+  `browser-shot` 的到站影格、`cost-probe` 的新讀數、`_nogl` 的句子；`japan-place` 另外修正
+  「verify-shapes 讀 id prefix」的過時說法（第五十四輪起讀 `data-kind`）；`district-author` §6
+  的 `ctx.fills` 段落與 `.verify/` 檔案守則同步改寫。
+
+### 新閘門 `.verify/_nogl.mjs`（有牙,並附咬合證明）
+把每個 `getContext("webgl*")` 回 `null`，等 engine 自己說 `walkRenderer="off"`，再報告句子的
+`hidden`／`display`／`rect`／`inCard`／祖先鏈與截圖。判準：句子必須 **painted**（不在卡片裡、
+`display` 非 none、面積 > 0）。反向模式 `GL=1` 走健康路徑，斷言同一句「unavailable」不得出現。
+`TOUCH=1` 用 390×844 + touch 量手機情境（這個 puppeteer 版不能 emulate `hover`/`pointer`，
+所以報告裡直接印瀏覽器自己回的 `(pointer: coarse)=true`／`(hover: hover) and (pointer: fine)=false`）。
+**咬合證明**：把 `rooms.html` 臨時改回第五十四輪的寫法（句子在卡片裡、穿 `.walk-note`）→
+`exit=1`，訊息 `the sentence is not painted over the empty lane … rect 0×0 display:none inCard:true`；
+改回 → `exit=0`。
+
+### 驗證（本輪一輪 batch,全部 fresh）
+- `sh bin/restore-env`（起）、`python3 -m py_compile _gen_html.py`、`node --check` site/scene3d/
+  兩支 harness、`git diff --check`：通過。`python3 _gen_html.py` 兩次，19 頁＋sitemap md5 相同
+  （IDEMPOTENT-OK）；`curl` served 頁確認 `data-walk-fallback` 在 lane 內、`?v=50c747f3ab` 與磁碟
+  五檔 sha1 派生值一致。
+- 機械閘：verify-shapes **131 props 全 resolve**；geometry OK；clash 0；verify-walk
+  **190/190**（+4：fallback 兩條新斷言、加上原有的 painter 復活斷言；`before` 孤兒已移除）；
+  verify-games 23/23；verify-tables exit 0（7/9 framed）；verify-objects exit 0；verify-look
+  exit 0；verify-story 27/27；verify-three PASS（8 walkable pages、12,682 world + 864 water
+  triangles、432 sheets、90 spray、無 Canvas2D）；verify-chain **0 failures**；
+  verify-collision **28/28**（harness 跑完不自行收尾 → timeout 124 是收尸,不是 FAIL；本輪沿用
+  §0ab 的既有結論）。
+- `impeccable detect --json css/site.css $(ls *.html)` = **`[]`**（並附 HEAD worktree 對照：修前
+  19 頁全中 `repeating-stripes-gradient`，證明這是既有缺陷而非本輪引入）。
+- `_nogl`：桌機 8/8 頁 PASS（`renderer=off`、句子 512×121、`inCard=false`）；`TOUCH=1` 2/2 頁
+  PASS（句子 350×143，`(pointer: coarse)=true` 且 `noteQuery=false`）；`GL=1` 2/2 頁 PASS
+  （`renderer=three`、句子 `hidden`）。截圖在 `.preview/nogl/`（不進 git）。
+- `cost-probe` 全 8 頁（真 Chromium，`renderer=three`）：street 689 quads／1420 lane tris／14
+  meshes；rooms 518／1022／11；toronto 871／1908／15；cntower 159（＋8,755 world tris／3 batches）；
+  niagara 698（＋1,901 world／432 water／216 sheets／45 mist／14 batches）；journey 737（＋2,026／
+  432／216／45／17）；goat 1,088／2,219／9；fukuoka 1,254／2,851／13。幀間隔 p50 17–33 ms、
+  p95 17–533 ms——**軟體光柵的環境特徵,不是裝置效能結論**。
+
+### 限制與未解
+- 沒有真 GPU、沒有 iOS Safari：手機只到「Chromium 模擬 touch viewport」這一層，真機行為仍未量。
+- `verify-collision` 跑完不退（124），需要外層 timeout 收尸；這是既有 harness 行為，本輪未改。
+- `cost-probe` 的 quads 是「交給引擎的工作量」，不是 GPU 剔除後的成本；真正 FPS 仍無裝置可量。
+- 站主窗口仍掛著：PR #16 合併授權、City of Toronto 授權釐清、英文 CV PDF、ORCID id。
+
+### 下一輪完整待辦（優先序；除標記者外 agent 可做）
+1. **PR 狀態整理（blocked-on-owner）**：#16（head `arena/2cc029e8-huaxu`，tip `8558ef6`）仍 OPEN。
+   本輪的 commit 直接長在 `8558ef6` 之上、在 `arena/225f83d4-huaxu`，所以新 PR 會整包包含 #16。
+   站主二選一：(a) 授權合併新 PR 並關掉 #16；(b) 先合 #16，再合本輪。合併後照 §0w 的部署查核法
+   核 Pages（`gh api` 看 pages build run）。
+2. **碰撞閘門收尾（低）**：`verify-collision.cjs` 在印出 `28/28` 後不 `process.exit`，每次都要
+   靠 timeout；修成正常退出，並在 `SKILLS.md` §4 註記。驗收＝`node .verify/verify-collision.cjs`
+   `exit 0`。
+3. **`_nogl` 進 CI 化的可行性（低）**：目前要 `LD_LIBRARY_PATH`／Chromium；若站主在意,可把它
+   併進 `bin/preview` 的收尾清單印一行摘要（仍不強制 fail 建置）。
+4. **§0ab／§0w 的場景 thread 續查全部保持**（Moji 立面圖、Niagara 欄杆／燈柱／parkway、Journey
+   平面圖＋2027 watch、Tokyo 逐戶立面、Toronto 授權＝站主窗口）——原文見 §0w,未完成項未變。
+5. 站主輸入 persistent 佇列：英文 CV PDF、ORCID id。
+6. 任何場景改動後照例全庫：regen 冪等＋七頁機械閘＋`bin/verify-three`＋改動頁 browser-shot
+   （`renderer:"three"` 到站）＋`_nogl`＋人眼讀格＋PR 前更新本檔。
+
+### 站主裁頂事項
+本輪無新裁頂需求。唯一需要站主決定的只有待辦 1 的 PR 整理方式（兩個 PR 的合併順序）。
 
 ## 0ab. 第五十四輪（2026-10-20）：站主令「2D fallback 全拆、全面3D JS」——塗裝器連垃圾一起清光,順手修掉這一拆照出的三個既有缺陷
 

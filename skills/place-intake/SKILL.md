@@ -119,10 +119,11 @@ a measurement table with a source behind every bearing before any geometry is wr
   wires the retired chain.
 - `node .verify/verify-rooms-e2e.cjs` — the walk itself, driven by keys: from the street into each
   room and out again, Esc included.
-- `node .verify/lane-shot.mjs .preview/lane/<place>` — the pixel gate, shot against that room's page:
-  the lane is painted where you stand, the deepest stop is not the frame that empties out, and the wall
-  behind the entrance is a room.
-- `node .verify/cost-probe.mjs` — one depth pass, and the fills still below the ceiling.
+- the settled stop frames from `.verify/browser-shot.mjs` — the pixel evidence now that the Canvas2D
+  pixel gate (`lane-shot.mjs`) retired with the painter in round 54: the lane is dressed where you
+  stand, the deepest stop is not the frame that empties out, and the wall behind the entrance is a room.
+- `node .verify/cost-probe.mjs` — what one frame submits (compiled quads, lane and world triangles,
+  water sheets, batches) and the frame interval in this software rasteriser; a report, not a gate.
 - The detector (`impeccable detect`) clean, and the generator idempotent.
 
 ## 5. Refusals

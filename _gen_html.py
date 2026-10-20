@@ -5576,6 +5576,9 @@ def walk_html(d, drawer):
       {walk_islands(d, placed)}
     </div>
   </div>
+  <p class="walk-fallback" data-walk-fallback role="status" hidden>Rendering the lane is
+    unavailable in this browser. {label} still reads in the list: every frame, its caption and its
+    kind are written there, and the strip's ticks stand for those frames' depths.</p>
   {game_html}
   <div class="walk-tutor" data-walk-tutor hidden aria-hidden="false">
     <p class="walk-tutor-step" data-walk-tutor-text></p>
@@ -5624,9 +5627,6 @@ def walk_html(d, drawer):
       <p class="walk-note">With a finger: drag to turn, tap the wall in front of you to open it, tap
         again to put it down. Three ways out — the arrow in the corner, the curtain at the mouth of the
         lane, and a second <kbd>Esc</kbd> once nothing is open any more.</p>
-      <p class="walk-note" data-walk-fallback hidden>Rendering the lane is unavailable in this
-        browser. {label} still reads in the list: every frame, its caption and its kind are written
-        there, and the ticks above stand for those frames' depths.</p>
       <p class="walk-note">{label} is drawn, not surveyed: the distances are the artist's, and a
         frame is a depiction of a place rather than a record of standing in it.</p>
     </div>

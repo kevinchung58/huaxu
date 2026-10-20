@@ -2118,6 +2118,30 @@ body.shell {
   inset: 0;
   z-index: 3;
 }
+/* One renderer, one fallback: when the pinned Three.js scene cannot start, the lane retires and
+   says so in this sentence. It cannot live inside the info card — that card ships hidden, so a
+   visitor without WebGL would face an empty viewport with the explanation behind a button — and it
+   cannot wear `.walk-note`, which is `display: none` on touch. The sentence is the fallback, so it
+   is visible on every device, above the canvas and below the chrome. */
+.walk-fallback {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(32rem, calc(100% - 2.5rem));
+  margin: 0;
+  padding: 0.95rem 1.1rem;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--accent);
+  font-family: var(--sans);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  pointer-events: none;
+}
+.walk-fallback[hidden] { display: none; }
 /* The lane is drawn rather than photographed, so it is allowed one visible grain: the film on a
    night scene that keeps flat wall panels from banding under the fog. */
 /* No overlay on the canvas: a screen-fixed stripe over a scene that moves reads as a

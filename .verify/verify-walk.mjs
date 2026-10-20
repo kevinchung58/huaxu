@@ -286,7 +286,6 @@ ok("and so is the dressing, because the room is the thing being described",
 
 /* ---- 2. the raster, as recorded --------------------------------------------------------------- */
 ok("the raster ran at all", ctx.fills > 0, `${ctx.fills} fills after boot`);
-const before = ctx.fills;
 q("[data-walk-view]").dispatchEvent(new w.Event("pointerdown", { bubbles: true }));
 await sleep(30);
 ok("no non-finite number ever reaches the context", ctx.bad === 0, `${ctx.bad}`);
@@ -296,40 +295,16 @@ ok("every save is matched by a restore", ctx.saves === ctx.restores, `${ctx.save
 ok("the far plane stays a plane: nothing is projected off the ends of the earth",
    ctx.ptsMax > 0 && ctx.ptsMax < 60000, `widest coordinate ${Math.round(ctx.ptsMax)}`);
 ok("a texture covers its own quad and no more", ctx.huge === 0, `${ctx.huge} oversized fills`);
-/* The ceiling is a pass detector, not a freeze on detail — and it was calibrated on a build where
-   the compound beyond the lane's window was not being drawn at all (the vista and backdrop islands
-   were read with a list operation and came back `null`, so `if (vista)` was false). With the
-   compound actually in the frame the same boot costs ~600 more fills: the plaza is sliced into panels
-   for the same reason the walls are, and the crossing, eight city blocks, the tower, the mountain and
-   three sky bands are ~48 quads that were previously invisible. The number to watch is a *second
-   depth pass*, which doubles the room and lands near 6 000; if this ever reads that, the day's change
-   put the scene through twice.
-
-   It moved again for the same reason: seven props whose ids `kindOf()` could not resolve were being
-   drawn as one flat card each, and now draw what their own records say they are -- a stack of crates,
-   a planted trough, three A-boards, a sash window, a bicycle. Four of them live in `rooms.html` and
-   an A/B of that one page reads 4604 before and 4758 after, so the ceiling goes to 4900: still far
-   short of the ~6 000 a second pass would cost.
-
-   It moved once more when the city stop was walked in from z=230 to z=460: the hero table had been
-   a 289x295 px postage stamp and standing closer is what fixed it, but it also puts more of the
-   table's quads on screen. rooms-toronto reads 4758 before and 5194 after -- and the frame clock
-   was measured at every one of the five stops after the move and holds 60 fps (median 16.7 ms,
-   p95 under 21 ms), so this is a dressed room costing fills, not a room being redrawn. Ceiling
-   5600: still far short of the ~10 000 a second pass would now cost.
-
-   It moved again for the day-night cycle, and this one is worth reading before the next person
-   trusts the number. Darkness is painted on with `air`, and by day only distant quads are hazy
-   enough to earn that fill -- so at noon the room costs 5573 fills and after dark, when every quad
-   needs darkening, it costs 6164. The ceiling now has to cover the expensive hour, not the cheap
-   one, and it goes to 6300. A reading taken at a different time of day will differ by about 600
-   fills; that is the cycle working, not a regression. Still far short of a second pass.
-
-   It moved once more, and the A/B is exact this time: the falls' promenade registered two
-   material tiles (hedge, mistview) that every boot draws once, the way every other tile is
-   drawn — HEAD reads 6298, the promenade build reads 6380, and 82 is precisely the two
-   painters' fillRects. The ceiling goes to 6600; a second depth pass would now read near
-   12 700, so the detector still has a whole pass of daylight. */
+/* Round 55: there is no ceiling any more, and the reason is the round-54 ruling rather than a
+   relaxation. This recorder used to count a lane repaint -- one fill per visible quad, ~6 300 at
+   night -- so a *second depth pass* read near 12 700 and a ceiling could see it. The painter is
+   deleted; what still reaches a 2D context here is the shared tile raster in `mkTile` (each
+   material painted once at boot), the games, and the album plates -- quantities whose only
+   plausible failure is "did not run" or "wrote outside its own tile", and both of those are
+   asserted above. The lane's per-frame budget moved to the compiled geometry Three consumes:
+   `__walk.quads` is pinned by this gate's compiled-state section and the triangles by
+   `bin/verify-three.mjs`. A number here would measure the tiles and be mistaken for the lane,
+   which is exactly the kind of rumour the round-54 sweep was meant to end. */
 /* Round 32 recalibration, by the same honest A/B: this page is Nakamise now -- 30 m of street instead
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
@@ -801,7 +776,16 @@ ok("the second district stays shut and says it is not open", /Not open yet/.test
 ok("printing prints the list, not a dark rectangle", /@media print \{[\s\S]*\.walk-view,[\s\S]*display: none/.test(css));
 ok("the canvas wears no overlay it cannot paint", !/walk-canvas::after/.test(css));
 const fb = q("[data-walk-fallback]");
-ok("the fallback names itself instead of hiding", fb && /unavailable|list below/i.test(fb.textContent + js));
+/* Round 55: the sentence IS the fallback now, so it must be in the lane rather than in the info
+   card (which ships hidden) and must not wear `.walk-note` (display:none on touch). A visitor with
+   no WebGL otherwise faces an empty viewport with the explanation behind a button. */
+ok("the fallback names itself instead of hiding",
+   fb && !fb.closest("[data-walk-card]") && !/\bwalk-note\b/.test(fb.className)
+     && fb.getAttribute("role") === "status" && /unavailable|list below/i.test(fb.textContent + js),
+   fb ? `${fb.className} inCard=${!!fb.closest("[data-walk-card]")}` : "missing");
+ok("the fallback is styled to be readable without hover",
+   /\.walk-fallback \{[\s\S]*?z-index: 3/.test(css)
+     && /\.walk-fallback\[hidden\] \{ display: none; \}/.test(css));
 /* Round 54, at the owner's ruling: 全站該是 3d js. The Canvas2D lane painter is deleted outright —
    this gate exists so it stays deleted: no second canvas in the markup, no raster pass in the
    engine, no "canvas2d" anywhere a browser could still be told it fell back. The tile raster keeps
