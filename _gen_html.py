@@ -97,6 +97,9 @@ ROOMS = [
     # Falls descends from the terrace through the bedrock. The door stands at the Table Rock
     # end of the promenade; the space unwinds to the promenade, not the street.
     ("journey", "Behind the falls", "rooms-journey.html", [], "open"),
+    # Round 52: the other bank, reached the way visitors cross — on foot over the Rainbow. The
+    # island gets a row like the tunnel's page: no album plate, its only doors are the falls'.
+    ("goat", "Goat Island", "rooms-goat.html", [], "open"),
     ("tokyo", "Tokyo", "rooms.html", ["tokyo-"], "open"),
     ("fukuoka", "Fukuoka", "rooms-fukuoka.html", ["fukuoka-"], "open"),
 ]
@@ -4514,8 +4517,18 @@ DISTRICTS = [
         "id": "niagara", "label": "The falls",
         "page": ROOM_BY_ID["niagara"]["page"],
         "plates": ROOM_BY_ID["niagara"]["plates"],
-        "lane": {"w": 1400, "d": 1483, "ceil": 400, "back": 200, "max_d": 4250, "open": True,
-                 "open_back": True, "open_end": True},
+        # Round 52: the lane runs on past the Centre to the fun strip the place really has next
+        # door — the Parkway, Clifton Hill, the SkyWheel — and every compression this measure makes
+        # (500 m of street to 155 of lane, thirty of bluff to sixteen) is said in the pieces' own
+        # hints. zones/floors feed the district banner and the overlook's standing height.
+        "lane": {"w": 1400, "d": 3600, "ceil": 400, "back": 200, "max_d": 10350, "open": True,
+                 "open_back": True, "open_end": True,
+                 "zones": [[-10, "Table Rock", "the rail, the mist, the doors of the Centre"],
+                           [1483, "The Niagara Parkway", "between the Centre and the fun strip"],
+                           [2200, "Clifton Hill", "the Street of Fun — 175 feet of lights at the far end"],
+                           [3350, "The Rainbow Approach", "440 m of steel to the state line"]],
+                 "ws": [[1460, 3660, 1500]],
+                 "floors": [[1500, 2090, 552, 705, 910]]},
         "floor": "pavers",
         "day": {"cycle": 900, "start": 0.5, "gain": 1},
         "purpose": "Table Rock at Niagara Falls: the trail's last stretch to the brink, the gorge, both falls and the islands where they stand",
@@ -4593,6 +4606,79 @@ DISTRICTS = [
              "hint": "The Horseshoe's brink starts a few metres past this post and runs about 670 m "
                      "round to Goat Island; the water drops 57 m into the basin. Table Rock itself, "
                      "the ledge the place is named for, fell into the gorge in 1850."},
+            # ---- Round 52, the open strip east of the Centre (sources and measures in TODO §R52).
+            {"id": "bluff-face", "kind": "board", "x": 840, "z": 1795, "y": 0, "ry": 0,
+             "w": 260, "h": 546, "d": 620, "leaf": "#5d6068",
+             "title": "The bluff under the deck",
+             "hint": "The rock the incline is cut into, and the falls' mist ends here. Thirty metres "
+                     "of gorge edge, kept to a stride of lane, the way every other distance between "
+                     "the Centre and Clifton is kept."},
+            {"id": "fallsview-deck", "kind": "board", "x": 840, "z": 1795, "y": 546, "ry": 0,
+             "w": 260, "h": 7, "d": 620, "leaf": "#797570",
+             "title": "The Fallsview deck",
+             "hint": "The upper station's apron, level with the bluff's lip: the parking lot and the "
+                     "hotels' street begin past it. You reach it the way visitors do since 1966 — "
+                     "in the car, not up the rock."},
+            {"id": "falls-incline", "kind": "incline", "x": -66, "z": 1690, "y": 0, "ry": 0,
+             "w": 241, "h": 117, "d": 90,
+             "run": 2772, "deck": 1600, "period": 62, "phase0": 0.5,
+             "ride": "1", "rideX": 2340, "rideTop": 1600,
+             "title": "The Falls Incline Railway",
+             "hint": "59.8 m of double track at 30 degrees, two 40-passenger cars counterbalanced "
+                     "over the head pulley, electric since 8 October 1966; the enclosed cars are "
+                     "2013. Of the eight inclines the two cities ran, this is the only one still "
+                     "running. A crossing is 62 real seconds — the cars here keep that clock, and "
+                     "the one you board makes it three on the model's account."},
+            {"id": "incline-upper-door", "kind": "door", "x": 807, "z": 1620, "y": 553, "ry": -90,
+             "leaf": "#33414e", "ride": "1", "rideX": 2340, "rideTop": 1600,
+             "title": "The upper station's door",
+             "hint": "It keeps the weather off the car. Press it and the incline brings you back "
+                     "down to the rail, the way it does every minute of the day."},
+            {"id": "skywheel", "kind": "wheel", "x": 3300, "z": 3050, "y": 0, "ry": 0,
+             "w": 25, "h": 1845, "d": 96, "dia": 5050, "axle": 2750, "turn": 40,
+             "demo": "wheel",
+             "title": "The Niagara SkyWheel",
+             "hint": "The largest observation wheel in Canada, up since 17 June 2006: a Bussink R60 "
+                     "— 53.3 m to the crown, a 50.5 m rim, 42 enclosed Swiss gondolas on 21 spoke "
+                     "stations, driven either way at up to 1.5 rpm, open all year, three slow turns "
+                     "a ride. The model keeps the real rate: forty seconds a revolution, drifting, "
+                     "never hurried. Press the platform and the rim lamps answer — the ride is not "
+                     "for sale in a drawing."},
+            {"id": "wheel-booth", "kind": "board", "x": 2900, "z": 2950, "y": 0, "ry": -90,
+             "w": 42, "h": 33, "d": 28, "leaf": "#8b9ab0",
+             "title": "The ticket box",
+             "hint": "A booth at the wheel's loading apron. In the drawing it sells nothing; in "
+                     "Clifton it sells the queue."},
+            {"id": "arcade-a", "kind": "front", "x": 1480, "z": 2320, "y": 0, "ry": -90,
+             "w": 340, "h": 250, "d": 26, "liton": 0.62,
+             "glow": [{"r": 90, "k": 0.6, "dy": 210, "tint": "rgba(255,180,110,0.5)"}],
+             "title": "An arcade, mid-block",
+             "hint": "Clifton Hill is a street of games, wax, and water parks, and a drawing may "
+                     "keep an arcade's glow but not its lease: the fronts here are unnamed on "
+                     "purpose, so none of them claims a business that need not stand here."},
+            {"id": "arcade-b", "kind": "front", "x": 1480, "z": 2560, "y": 0, "ry": -90,
+             "w": 300, "h": 260, "d": 26, "liton": 0.66,
+             "glow": [{"r": 90, "k": 0.55, "dy": 218, "tint": "rgba(255,180,110,0.5)"}],
+             "title": "Another front, another marquee",
+             "hint": "Two storeys of funhouse and a wall of lamps: the strip's measure again, not "
+                     "the survey's."},
+            {"id": "arcade-c", "kind": "front", "x": 1480, "z": 2800, "y": 0, "ry": -90,
+             "w": 320, "h": 240, "d": 26, "liton": 0.7,
+             "glow": [{"r": 90, "k": 0.6, "dy": 200, "tint": "rgba(255,180,110,0.5)"}],
+             "title": "The arcade nearest the wheel",
+             "hint": "From its door the SkyWheel fills the end of the street — the one view the "
+                     "strip's own postcards use, and the reason the wheel stands exactly behind it."},
+            {"id": "midway-stall", "kind": "foodstall", "x": -1480, "z": 2440, "y": 0, "ry": 90,
+             "w": 110, "h": 58, "d": 70, "awn": "#8a3f3a", "leaf": "#6e4f38",
+             "title": "A midway stall under an awning",
+             "hint": "The strip keeps one food stall because a strip without one is not a strip. "
+                     "Nothing here claims its menu."},
+            {"id": "curtain-rainbow", "kind": "noren", "x": 0, "z": 3560, "y": 172, "ry": 0,
+             "leave": "rooms-goat.html",
+             "title": "The way across the Rainbow",
+             "hint": "Beyond the curtain: the bridge — 440 m of steel over the gorge, its arch 290 "
+                     "m, open since 1 November 1941, and the walkway onto Goat Island and the state "
+                     "line. The American bank is drawn in its own page; step through to arrive."},
         ],
         # The gorge side: an iron railing on a stone curb between stone posts, open air above
         # (the Getty photographs at the wall, May 2026); the terrace side is open to the centre.
@@ -4601,6 +4687,11 @@ DISTRICTS = [
         "lamps": [
             {"x": 640, "y": 410, "z": 120, "r": 90, "k": 0.45},
             {"x": 640, "y": 410, "z": 1150, "r": 90, "k": 0.45},
+            # the strip burns brighter than the promenade, and its row starts at the Parkway
+            {"x": 640, "y": 430, "z": 2320, "r": 120, "k": 0.55},
+            {"x": 640, "y": 430, "z": 2700, "r": 120, "k": 0.55},
+            {"x": 640, "y": 430, "z": 3080, "r": 120, "k": 0.5},
+            {"x": 640, "y": 430, "z": 3420, "r": 110, "k": 0.45},
         ],
         "backdrop": {
             "skyAround": NIAGARA_SKY,
@@ -4621,6 +4712,10 @@ DISTRICTS = [
             {"z": 469, "x": 470, "label": "the centre's doors"},
             {"z": 980, "x": -520, "label": "the parapet over the gorge"},
             {"z": 1440, "x": -520, "yaw": -15, "pitch": 10, "label": "the Table Rock rail"},
+            {"z": 1660, "x": -140, "yaw": -18, "label": "the incline's lower station"},
+            {"z": 2130, "x": 807, "h": 1600, "yaw": 38, "pitch": 14, "label": "on the Fallsview deck"},
+            {"z": 2900, "x": -600, "yaw": -18, "label": "under the SkyWheel"},
+            {"z": 3480, "x": 0, "label": "the bridge approach"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 678, "z": 340, "y": 0, "ry": -90, "leaf": "#33414e",
                  "title": "Back through the centre", "hint": "It opens onto the hall, at the falls' "
@@ -4649,7 +4744,12 @@ DISTRICTS = [
                   "downstream -- White Water Walk, the Aero Car, the Floral Clock, the Glen -- stays "
                   "in the drawer. Under the shed at the journey door's hand the lane keeps a game: "
                   "a raft and a bell, the mist's own noise answered in a toy — the shed is drawn, the "
-                  "bell is not surveyed.",
+                  "bell is not surveyed. Round 52 added the east end: the Parkway, Clifton's fun row, "
+                  "the SkyWheel at its far end, and the Falls Incline. The wheel's measures are the "
+                  "manufacturer's sheet; the strip's 500 m of street are the lane's 155, the bluff's "
+                  "30 m a stride, and the incline's 62-second crossing three when you ride it — each "
+                  "compression stated by the thing compressed. The arcade fronts carry no shop: a "
+                  "drawing may keep an arcade's glow, not its lease.",
     },
     {
         # Journey Behind the Falls (round 33; sources in TODO §0o). Not the bedrock strata and the
@@ -4898,6 +4998,132 @@ DISTRICTS = [
                  "and the answer is printed on the card above it.",
         "objects": [], "slots": [], "exit": None,
     },
+    {
+        # Round 52 (open Niagara, sources and the frame in TODO §R52): the American bank, seen
+        # from its own island. The Canadian page opens its far curtain onto the Rainbow walkway;
+        # this is what that walkway arrives at — no model table, no miniatures: the falls drawn
+        # at their record size, standing across a lane that keeps their distances in the strip's
+        # own measure, and saying so.
+        "id": "goat", "label": "Goat Island",
+        "page": ROOM_BY_ID["goat"]["page"],
+        "plates": ROOM_BY_ID["goat"]["plates"],
+        "purpose": "The American bank at its own measure: the Goat Island walk, Luna's bridge, the "
+                   "boulder field the river got back in 1972, and Terrapin Point where the Horseshoe "
+                   "is a wall of noise on the right",
+        "status": "open",
+        "kind": "personal",
+        "blurb": "New York State, at the strip's measure: the foot of the Rainbow's walkway, the "
+                 "timber deck out to Luna Island, the American Falls at its full 290 m of crest, and "
+                 "Terrapin Point where the Canadian side of the same water stands closest.",
+        "clad_note": (" The walk is a reservation, not a promenade: weathered timber decking and "
+                      "dolostone coping where the rock comes out, low rails at the banks, the woods "
+                      "closing over the path between points. Nothing on it carries a word."),
+        "sight_note": (" Both drawings stand in one water: to the right the Horseshoe's curve and "
+                       "the Canadian hotels behind it, straight ahead the American Falls over its "
+                       "boulders with the Bridal Veil past Luna, and down-river the gorge the two "
+                       "banks share. The Canadian page stands at these falls from the other side; "
+                       "this page is where that page's far curtain opens."),
+        "lane": {"w": 1500, "d": 5600, "ceil": 420, "back": 220, "max_d": 15900, "open": True,
+                 "open_back": True, "open_end": True,
+                 "zones": [[-10, "The Goat Island walk", "timber, then the roar"],
+                           [2400, "Luna and the American Falls", "290 m over a ledge onto boulders"]]},
+        "floor": "pavers",
+        "day": {"cycle": 900, "start": 0.5, "gain": 1},
+        "objects": [
+            {"id": "falls-american", "kind": "falls", "x": -1300, "z": 2350, "y": 0, "ry": 0,
+             "w": 10000, "h": 1034, "d": 500,
+             "title": "The American Falls",
+             "hint": "290 metres of crest, a 21-to-30-metre drop onto the boulders below it — the "
+                     "ledge they left there on purpose in 1969, when the river was dammed above "
+                     "and the face cleaned for the first time in living memory. Three years of "
+                     "silence, then the water came back over."},
+            {"id": "falls-horseshoe", "kind": "falls", "x": 6200, "z": 4300, "y": 0, "ry": -58,
+             "w": 19000, "h": 1966, "d": 620,
+             "title": "The Horseshoe, from the American side",
+             "hint": "57 metres over a curve that runs 670 round, the Canadian bank's own water. "
+                     "From Terrapin Point it is not a fall in front of you; it is a wall of noise "
+                     "to the right, nearer than the buildings behind it. Drawn from the record of "
+                     "the place, at the record's size."},
+            {"id": "luna-island", "kind": "island", "x": -2000, "z": 2900, "y": 0, "ry": 0,
+             "w": 330, "h": 40, "d": 140,
+             "title": "Luna Island",
+             "hint": "350 feet of dolostone between the American Falls and the Bridal Veil, named "
+                     "for the moonbows the full moon used to throw into its mist — until the "
+                     "banks started lighting the falls every night and no moon could compete. "
+                     "Closed to visitors 1954-1972 while the rock beneath it was made safe."},
+            {"id": "luna-bridge", "kind": "board", "x": -1900, "z": 2450, "y": 0, "ry": 90,
+             "w": 170, "h": 60, "d": 40, "leaf": "#33414e",
+             "title": "The footbridge to Luna",
+             "hint": "The pedestrian span Goat Island throws to its little sister. Walkable here; "
+                     "in person it is a short crossing with water on both sides of it."},
+            {"id": "boulders-e1", "kind": "board", "x": -1600, "z": 2620, "y": 0, "ry": 14,
+             "w": 210, "h": 130, "d": 150, "leaf": "#5d6068",
+             "title": "The rock pile below the ledge",
+             "hint": "Boulders the falls tore off its own lip, and the ones the engineers left "
+                     "when they cleared the face in 1969. A falls into a rock pile is a shallower "
+                     "fall; this one measures its drop to the boulders, not to the river."},
+            {"id": "boulders-e2", "kind": "board", "x": -1150, "z": 2700, "y": 0, "ry": -9,
+             "w": 260, "h": 110, "d": 170, "leaf": "#4c5560",
+             "title": "More of the pile",
+             "hint": "The talus runs the length of the pool below the American side."},
+            {"id": "terrapin", "kind": "board", "x": 2100, "z": 3900, "y": 0, "ry": 0,
+             "w": 900, "h": 62, "d": 700, "leaf": "#5f5c55",
+             "title": "Terrapin Point",
+             "hint": "The stone shelf at Goat Island's north end — the closest the United States "
+                     "comes to the Horseshoe. The point has been rebuilt twice after rockfalls and "
+                     "one ice storm; what you stand on is as much engineering as geology."},
+            {"id": "rail-tp1", "kind": "parapet", "x": 2750, "z": 4150, "y": 0, "ry": -58,
+             "w": 40, "h": 96, "d": 40,
+             "title": "The rail at Terrapin",
+             "hint": "Iron on stone, the same kit the Canadian parapet uses; the two banks "
+                     "standardised on keeping people back from the brink long ago."},
+            {"id": "woodline-c1", "kind": "island", "x": 8600, "z": 2800, "y": 0, "ry": 0,
+             "w": 420, "h": 34, "d": 200,
+             "title": "The Canadian bank's trees, across the river",
+             "hint": "The Table Rock promenade hides behind its own woodline from here; the "
+                     "buildings rise above it and belong to the other drawing."},
+            {"id": "pool-lower", "kind": "pool", "x": -600, "z": 6900, "y": 0, "ry": 0,
+             "w": 24000, "h": 20, "d": 9000,
+             "title": "The lower river, above the whirlpool",
+             "hint": "Everything that goes over either falls ends here, running north-east toward "
+                     "the whirlpool and the gorge. The water's colour is the gorge's own: a hard "
+                     "green from the rock flour two falls grind out of the shelf."},
+        ],
+        "surfaces": [],
+        "lamps": [
+            {"x": -420, "y": 360, "z": 700, "r": 80, "k": 0.4},
+            {"x": 420, "y": 360, "z": 2100, "r": 80, "k": 0.4},
+            {"x": 2450, "y": 360, "z": 3700, "r": 85, "k": 0.42},
+        ],
+        "backdrop": {"skyAround": NIAGARA_SKY},
+        "slots_title": "Places on the island",
+        "slots": [
+            {"label": "The American Falls at full height",
+             "note": "The face 1969 drained, cleaned, and refilled; the boulders that stayed.",
+             "state": "Held by the falls themselves; no plate takes the ledge's place."},
+            {"label": "Terrapin Point",
+             "note": "Where the United States meets the Horseshoe's noise.",
+             "state": "Held by the point and its rail."},
+        ],
+        "stations": [
+            {"z": 40, "x": 0, "label": "the foot of the Goat Island walk"},
+            {"z": 2380, "x": -1250, "yaw": -14, "label": "the Luna bridge"},
+            {"z": 4000, "x": 1750, "yaw": -26, "pitch": 4, "label": "Terrapin Point"},
+            {"z": 5300, "x": 0, "label": "the rail above the lower river"},
+        ],
+        "exit": {"id": "curtain-home", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
+                 "title": "The way back across the Rainbow",
+                 "hint": "440 metres of steel opened 1 November 1941, and twenty minutes of "
+                         "walkway back to Clifton Hill and the Canadian drawing of the same water."},
+        "back_to": "rooms-niagara.html",
+        "caveat": "The American bank seen from its own island, at the strip's measure: the "
+                  "American Falls' 290 m crest and 21-30 m drop onto the 1969 boulders, Luna "
+                  "Island's 350 ft of dolostone and its 1954-72 closure, the Horseshoe's 57 m and "
+                  "670 m read from the Canadian record, the Rainbow's dates — sources. The "
+                  "island's walk line, the banks' woodlines, every height not named, and the "
+                  "gap-bridges between 290-metre faces and a 160-metre lane: drawn, and said so. "
+                  "The falls here are not miniatures: they are the same two curtains the Canadian "
+                  "page stands at, seen from the other bank's side of the water.",    },
 ]
 
 def wall_frames(d):
@@ -5166,7 +5392,7 @@ def walk_html(d, drawer):
     for n, st in enumerate(d["stations"]):
         # A tick, not a caption: where the words go is the card, and the accessible name is what a
         # screen reader gets without anything being painted over the space.
-        view = "".join(f' data-view-{key}="{st[key]}"' for key in ("yaw", "pitch") if key in st)
+        view = "".join(f' data-view-{key}="{st[key]}"' for key in ("yaw", "pitch", "h") if key in st)
         chips.append(
             f'<button type="button" class="walk-stop" data-walk-stop="{n}"{view} '
             f'style="--z:{round(st["z"] * Z_SCALE)}px;--p:{st["z"] * Z_SCALE / walk_d:.3f}'
@@ -5204,6 +5430,30 @@ def walk_html(d, drawer):
     sight = d.get("sight_note", sight)
     # An open-world far end: the record authors how far the walker may keep going (walk units), and
     # the renderer lets the world continue past the last wall. Absent, the clamp is the wall itself.
+    # zone bounds and floors are authored in the record's old units and shipped in the scene's —
+    # the same 2.9 every object z crosses on its way into the page
+    zones = [[round(z * Z_SCALE), n, *rest] for z, n, *rest in lane["zones"]] if lane.get("zones") else []
+    floors = [[round(a * Z_SCALE), round(b * Z_SCALE), round(h * Z_SCALE),
+               round(x0 * Z_SCALE), round(x1 * Z_SCALE)] for a, b, h, x0, x1 in lane["floors"]] \
+        if lane.get("floors") else []
+    widths = [[round(a * Z_SCALE), round(b * Z_SCALE), round(c * Z_SCALE)] for a, b, c in lane["ws"]] \
+        if lane.get("ws") else []
+    zones_attr = f' data-lane-zones=\'{json.dumps(zones, separators=(",", ":"))}\'' if zones else ""
+    floors_attr = f' data-lane-floors=\'{json.dumps(floors, separators=(",", ":"))}\'' if floors else ""
+    ws_attr = f' data-lane-ws=\'{json.dumps(widths, separators=(",", ":"))}\'' if widths else ""
+    banner_html = """
+    <div class="walk-banner" data-walk-banner aria-hidden="true">
+      <b class="walk-banner-name"></b><span class="walk-banner-note"></span>
+    </div>""" if lane.get("zones") else ""
+    strip_html = ""
+    if lane.get("zones"):
+        ticks = "".join(
+            f'<span class="walk-strip-tick" style="left:{round(z / lane["d"] * 100, 2)}%"'
+            f' title="{escape(name)}"></span>' for z, name, *_ in lane["zones"] if z >= 0)
+        strip_html = f"""
+      <div class="walk-strip" data-walk-strip aria-hidden="true">
+        <span class="walk-strip-fill"></span>{ticks}<span class="walk-strip-you"></span>
+      </div>"""
     max_d_attr = f' data-lane-max-d="{lane["max_d"]}"' if lane.get("max_d") else ""
     # A street with nothing over it (Nakamise) says so, and the renderer draws no lid.
     max_d_attr += ' data-lane-open="1"' if lane.get("open") else ""
@@ -5244,7 +5494,8 @@ def walk_html(d, drawer):
                     f' data-lane-day-gain="{opts.get("gain", 1)}"')
     return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}"
        data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
-       data-lane-back="{lane["back"]}"{max_d_attr}{day_attr}{floor_attr} data-eye="{EYE}">
+       data-lane-back="{lane["back"]}"{max_d_attr}{day_attr}{floor_attr}{zones_attr}{floors_attr}{ws_attr}
+       data-eye="{EYE}">{banner_html}
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
        Space to jump, E to open what you are standing in front of, L for the list, I for this note.
@@ -5312,6 +5563,7 @@ def walk_html(d, drawer):
     </div>
     <button type="button" class="modal-close" data-walk-card-close aria-label="Close">{ICON_X}</button>
   </div>
+  {strip_html}
   <aside class="walk-list" id="walk-list-{did}" data-walk-listpanel aria-label="{label}, written out">
     <button type="button" class="walk-drawer-close" data-walk-list-close aria-label="Close the list">
       {ICON_X}</button>
