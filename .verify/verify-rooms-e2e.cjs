@@ -400,9 +400,13 @@ async function main() {
   const plinthHalf = Number(plinth.dataset.w) / 2;
   const aisleClearance = wallHalf - plinthHalf - 2 * env.walk().radius;
   ok("the Moji display plinth is authored as a solid walk obstacle", plinth?.dataset.solid === "true");
-  ok("the Moji hall leaves a full-body side aisle around the solid display",
-     aisleClearance > 0 && env.walk().halfWidth > plinthHalf + env.walk().radius,
-     `${aisleClearance.toFixed(0)} cm spare beyond a 48 cm body`);
+  /* Round 57: this used to assert `aisleClearance > 0` and call it "a full-body side aisle". It was
+     22 cm — measured — and a visitor steering with keys cannot thread 22 cm, so the room ended dead
+     at the table's near face and the gate blessed it. A side aisle is a passage a body can actually
+     walk down, so the assertion asks for one: a metre of clear width beyond the body. */
+  ok("the Moji hall leaves a walkable side aisle around the solid display",
+     aisleClearance >= 100 && env.walk().halfWidth > plinthHalf + env.walk().radius,
+     `${aisleClearance.toFixed(0)} cm of aisle beyond a 48 cm body`);
   env.key("w"); await env.pump(900); env.keyUp("w"); await env.pump(8);   // the table stands 22 m in now
   const atPlinth = env.walk().depth;
   env.key("w"); await env.pump(40); env.keyUp("w"); await env.pump(8);

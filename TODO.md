@@ -2,6 +2,45 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-21 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0ae. 第五十七輪（2026-10-21）：站主「你自己進去 e2e 從頭測到尾，很多物件卡在我身上，移動也有問題」——先把「卡」量成幾何，再改規則
+
+### 站主指令
+「你自己進去e2e操作從頭都測到尾。你會發現 很多問題 似乎有物件卡在我身上。然後移動也有點問題 不確定是不是因為卡了。」並且指定使用 `anthropics/skills` 的 **`webapp-testing`** skill。
+
+### 用 skill 的方式（Playwright，真 Chromium）
+裝 `playwright`（`pip install --user playwright`，Python 3.11 是 PEP 668 外部管理環境）＋ 直接指向沙箱已有的 `/tmp/chromium`（`@sparticuz/chromium`），不另抓瀏覽器。寫了三個可重用的探針放在 `/tmp`（不入庫）：`drive.py`（面對方位→按鍵走到座標）、`endtoend.py`（每頁按住 W 從頭走到尾，記錄卡住與「站在物件體內」的畫面）、`intrude/narrow`（用 walker 自己的碰撞數字重跑可行走集合）。**先量後改**。
+
+### 量到的三個真缺陷（都有數字）
+1. **「卡在身上」＝走進一個畫在身上的盒子裡。** `_gen_html.py` 的 solid 規則原本是 `kind in WALK_SOLID_KINDS and y <= 0 < y + h`——只有「從地面長出來」的物件才擋人。於是**所有起點高於地板的物件都是可以穿過去的佈景**：街上的 A 字板（y 150..236，腳沒畫，板子懸在胸口）、金魚攤與面具攤（kind `board`）、門司港的 High Mart 底座與水槽緣、Niagara 的崖壁與纜車、Goat Island 的馬蹄瀑——實測「身體可以站在裡面」的格點：`mart-base` 576 格、`bluff-face` 1922 格、`falls-american` 7250 格。站進去不是擦身而過，是**相機進到盒子裡**，整個畫面變成它的內壁（`.preview/r57/goat-before.png`）。這正是站主說的「卡在我身上」。
+2. **東京廳的走道只有 22 cm。** 記錄寫 8.8 m 寬「so a walker can still go round the table by the right-hand aisle」，桌子 7.4 m ⇒ 440−370−24 = 46 cm 中心、**22 cm 淨寬**（48 cm 身體）。實測：走到桌子正面就停死（z 2206），要沿牆刮過去。而 `verify-rooms-e2e` 當時的斷言是 `aisleClearance > 0` —— 它把 22 cm 叫作「full-body side aisle」。**閘門替 bug 背書**。
+3. **Goat Island 的瀑布直接蓋在步道上。** 美國瀑布寬 100 m、中心在步道西側 13 m，而步道只有 ±7.26 m ⇒ 整條路徑穿過瀑布本體（實測 x ±720 全寬、5 m 深都可站）。
+
+### 這一輪做了什麼
+- **`_gen_html.py` 換掉 solid 規則**：從「種類白名單＋貼地」改成**身體佔據**判定 `blocks_body()`——身體是 25..180 cm 的圓柱、半徑 24；物件只要佔到這個高度帶（≥25 cm 厚）、寬度足以容納身體（`hx*hz > 24²`，圓盤近似）、且與步道的**淨距**小於可站半徑，就擋人。地板物件（排水溝、玻璃地板、畫線、水面）、入口的 press box（`portal`，新欄位 `passable`）不受影響。記錄自身的 `solid:` 仍然最高優先。
+- **東京廳 8.8 m → 11.8 m**（牆上三張畫一起外移到新牆），右側走道 22 → **172 cm**；這是記錄自己的站點清單（x 405「the right aisle」）本來就假設的寬度。
+- **Goat Island 的美國瀑布 x −1300 → −5800**：近面離可走邊界 8 m，仍是從步道看瀑布的角度，但不再穿過它。
+- **`verify-rooms-e2e` 的走道斷言**：`> 0` → **≥ 100 cm**，並改掉「full-body side aisle」的說法。
+- **新閘門 `.verify/verify-body.mjs`（16/16）**：每頁用 walker 自己的數字（lane-w、wseg、每個 solid 的擴張盒）BFS 出可行走集合，然後問三件事——① 有沒有任何畫在身體高度帶的物件**含有**可站格點（逐格列座標）② 每個深度是否都留得下 **≥60 cm** 可轉向的通道 ③ 路線是否還能走到記錄授權的最深處。它是**幾何**閘門，不需要瀏覽器，比 `verify-collision` 快三個數量級（1.8 s vs 一小時）。
+
+### 咬合證明（§8）
+- 把 solid 規則改回舊式 → **7 FAIL**（東京廳 3、街道 2、Niagara 2、Goat 2…），與實測一致。
+- 把東京廳寬度改回 8.8 m → **1 FAIL**：「narrowest free run 22 cm at z 2220 (a 48 cm body)」——就是站主撞到的那面牆。
+- 還原 → 16/16。
+
+### 三頁影片式 e2e（真 Chromium，從頭走到尾）
+`street 4150/4150、rooms 4500/4500、toronto 2099/2099、fukuoka 3116/3143、niagara 10346/10350、journey 6193/6200、cntower 1809/1809、goat 15900/15900`；全程 **「站在物件體內」= 0 次**、page error 0。fukuoka 的 5 次「停住」是撞到桌子正面後改走右側走道（e2e 腳本自己側移繞開），不是卡死。
+移動本身也逐項量過（`street.html`，2 s）：W 133–171、A 154、D 161、S 171、W+A 168、W+Shift 209 cm/s；對牆 60° 斜走會沿牆滑、走到盡頭速度歸零不抖動。
+
+### 驗證（最終檔）
+`verify-body 16/16`、`verify-walk 189/189`（連跑 10 次皆 189，先前一次 188 未能重現）、`verify-rooms-e2e 0 failure`、`verify-collision 28/28`、`verify-feel 10/10`、`verify-nowebgl 35/35`、`verify-story 27/27`、`verify-chain 0`、shapes 131/131、geometry OK、clash 0、games 23/23、three PASS、impeccable `[]`、regen 冪等。
+影格：`.preview/r57/`（`goat-before.png` 站進瀑布內壁、`goat-beside-falls.png` 修後、`street-board-reach.png` A 字板在 190 cm 可達、`fukuoka-end.png` 走道走到水邊、`toronto-table.png` 桌子不再是死路）。
+
+### 仍然存在、需要站主決定的事
+1. **`shopbay-*` 七間店面的說明卡按不到**（第五十六輪記錄）：每間鐵門上都掛著一張畫，reach 以中心距離排序，5.5 m 寬的艙中心永遠比畫遠（99 cm vs 31 cm）。選項：(a) 畫移離艙中線 (b) reach 改面距 (c) 拿掉艙的說明。
+2. **貼牆的畫（Tokyo 六張、Niagara 兩張）與牆面差 10 cm**：站在它們前面時相機只剩 20 cm 視距，畫面是一整片內壁。這是「貼圖太近」不是「穿模」；要不要把畫再往外移 12 cm（會離牆）或改畫框厚度，屬視覺決定。
+3. **Niagara / Goat 的瀑布近看是一片平光**：站到崖邊 7 m 內，瀑布的布幕沒有霧、沒有水線，只剩條紋。碰撞已修，**美術未修**，需要站主的眼。
+4. 真機手感複核、PR #16、CV PDF、ORCID 仍在站主手上。
+
 ## 0ad. 第五十六輪（2026-10-21）：站主令「操作還是有明顯的問題並非流暢操作，你可以全面重構嗎？」——走速被幀率綁架、畫面被填充率綁架，兩處都先量後改
 
 ### 站主指令

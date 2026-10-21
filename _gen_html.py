@@ -3914,13 +3914,19 @@ DISTRICTS = [
         "page": ROOM_BY_ID["fukuoka"]["page"],
         "plates": ROOM_BY_ID["fukuoka"]["plates"],
         # A model hall, as the brief asked ("a table, like Toronto's, like Little Canada"): dark walls,
-        # the table lit, and the far wall open onto the strait at the table's own scale. 8.8 m wide so
-        # a walker can still go round the true-scale table by the right-hand aisle.
+        # the table lit, and the far wall open onto the strait at the table's own scale.
+        # Round 57: the hall was 8.8 m wide "so a walker can still go round the true-scale table by
+        # the right-hand aisle". The table is 7.4 m wide, so that aisle was 440 - 370 - 24 = 46 cm of
+        # free centre — 22 cm of clearance for a 48 cm body. Measured with the walker: the room stops
+        # dead at the table's near face (z 2206), and the only way on is to scrape a 22 cm sliver
+        # along the wall. The aisle the record's own station list describes ("the right aisle, beside
+        # the table's flank", x 405) needed the hall it was written for, so the hall is 11.8 m and the
+        # three wall frames moved out to the new walls with it.
         # Round 51: the hall had stopped a stride past its last stand, with the strait and the
         # Blue Wing hanging at the far wall unvisit-able. The lane runs on to the table's quay —
         # 100 m of Moji waterfront in a hall that is 110 deep — so the walk arrives at the water
         # the drawings put there, and the drawbridge's door can open onto the walk itself.
-        "lane": {"w": 880, "d": 1100, "ceil": 620, "back": 300},
+        "lane": {"w": 1180, "d": 1100, "ceil": 620, "back": 300},
         "purpose": "Moji Port in a model hall: the station, the customhouse, their neighbours and the "
                    "Retro High Mart on stands of their own, with the port laid out from the map and "
                    "the Blue Wing and ships on the Kanmon Strait beyond, from dusk into night",
@@ -4159,7 +4165,7 @@ DISTRICTS = [
         "frames": [
             # The port's sub-places: the building it is named for, the bridge it is known for, and
             # the water it stands on, hung on the hall's walls as drawn plates.
-            {"id": "station", "src": "IMG/fukuoka-1.jpg", "x": -436, "z": round(830 / Z_SCALE, 2), "y": 185, "ry": 90,
+            {"id": "station", "src": "IMG/fukuoka-1.jpg", "x": -586, "z": round(830 / Z_SCALE, 2), "y": 185, "ry": 90,
              "title": "Moji Port Station",
              "alt": "Illustration of a long symmetric station at dusk: a cream two-storey centre "
                     "between two pavilions with green copper friezes and slate caps, a clock over the "
@@ -4167,14 +4173,14 @@ DISTRICTS = [
              "caption": "The building the district is named after, drawn: a cream front banded in "
                         "brick red, the gate's two pavilions in copper and slate, the clock over the "
                         "doors."},
-            {"id": "bridge", "src": "IMG/fukuoka-2.jpg", "x": 436, "z": round(1480 / Z_SCALE, 2), "y": 150, "ry": -90,
+            {"id": "bridge", "src": "IMG/fukuoka-2.jpg", "x": 586, "z": round(1480 / Z_SCALE, 2), "y": 150, "ry": -90,
              "title": "The Blue Wing, open",
              "alt": "Illustration of a blue pedestrian drawbridge over a harbour basin at dusk, "
                     "with its longer southern parent leaf raised beside the shorter northern child leaf.",
              "caption": "The bridge, drawn at an opening: its 24.1 m southern parent leaf and "
                         "14 m northern child leaf are both raised. Its last opening is at four; "
                         "after dark it is lit, and shut."},
-            {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 436, "z": round(2090 / Z_SCALE, 2), "y": 130, "ry": -90,
+            {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 586, "z": round(2090 / Z_SCALE, 2), "y": 130, "ry": -90,
              "title": "The strait at dusk",
              "alt": "Illustration of a wide strait at dusk seen from a quay, two low cargo ships "
                     "crossing it and lights along the far shore.",
@@ -5057,7 +5063,13 @@ DISTRICTS = [
         "floor": "pavers",
         "day": {"cycle": 900, "start": 0.5, "gain": 1},
         "objects": [
-            {"id": "falls-american", "kind": "falls", "x": -1300, "z": 2350, "y": 0, "ry": 0,
+            # Round 57: the sheet was centred 13 m west of a walkway that is 15 m wide, so half of a
+            # 100 m-wide waterfall lay across the path and the walker walked into it: measured, a body
+            # could stand anywhere in x ±720 for the whole 5 m of its depth, and the frame filled with
+            # its inner face. A 100 m crest can only stand *beside* a 15 m walk if its centre is at
+            # least half its width plus the walk's half away; this places its near face 8 m off the
+            # reachable edge, which is how the American Falls is seen from the Goat Island walk.
+            {"id": "falls-american", "kind": "falls", "x": -5800, "z": 2350, "y": 0, "ry": 0,
              "w": 10000, "h": 1034, "d": 500,
              "title": "The American Falls",
              "hint": "290 metres of crest, a 21-to-30-metre drop onto the boulders below it — the "
@@ -5316,7 +5328,60 @@ def walk_islands(d, placed):
         for name, data in islands if data)
 
 
-def walk_object(o):
+# The body a visitor brings into a lane: a cylinder from 25 cm (the ankles, above the floor kit)
+# to 180 cm (a head on a 168 cm eye), radius 24 cm where it meets a prop. A prop blocks the walk
+# when it *occupies that cylinder* — not, as the first implementation had it, when it happens to
+# start on the floor.
+#
+# That "starts on the floor" test (`y <= 0 < y + h`) was a proxy for "is a thing you can walk into",
+# and it was wrong in both directions: it made nothing of a sandwich board authored at y 150 (its
+# legs are not modelled, so the board floats at your chest and you walk straight through it), and it
+# made nothing of the Moji Port High Mart's base, the basin's edge, Niagara's bluff and the funicular
+# car — all `kind: board`, none of them in WALK_SOLID_KINDS. Round 57 walked every room and the
+# symptom was reported before it was diagnosed: "好像有物件卡在我身上". Standing inside a box is not a
+# near miss; the camera ends up inside the box and the frame fills with its inner face.
+BODY_LO, BODY_HI, BODY_MIN = 25, 180, 25
+PLAYER_RADIUS = 24
+
+
+def blocks_body(o, lane_half):
+    """Does this prop stand in the walkable band across the height a body occupies?
+
+    Three things are deliberately not blockers: a record's own `solid` (it wins, either way), a
+    prop marked `passable` (a portal is an opening's press box — skills/lane-prop), and anything
+    whose overlap with the body is thinner than BODY_MIN, which is every drain, painted line and
+    glass floor. The band test uses the *reachable* half-width, so a poster hung flush to the wall
+    (its face a few centimetres inside the wall line) never becomes an obstacle.
+    """
+    if o.get("passable"):
+        return False
+    y = o.get("y", 0)
+    h = o.get("h", OBJ_SIZE.get(o["kind"], (120, 160, 12))[1])
+    if min(y + h, BODY_HI) - max(y, BODY_LO) < BODY_MIN:
+        return False
+    # A prop smaller than the body can never contain the body, however close it stands: a 14 cm tree
+    # on a tabletop, a 25 cm wheel mast, a 40 cm rail post. The test is a *containment* test, so a
+    # prop narrower than the body's diameter is out — as a disc, which is what a body is against a
+    # round trunk (measured: three street trees on the Toronto table were being called obstacles).
+    w = o.get("w", OBJ_SIZE.get(o["kind"], (120, 160, 12))[0])
+    dep = o.get("d", OBJ_SIZE.get(o["kind"], (120, 160, 12))[2])
+    ry = math.radians(o.get("ry", 0))
+    hx = (w * abs(math.cos(ry)) + dep * abs(math.sin(ry))) / 2
+    hz = (w * abs(math.sin(ry)) + dep * abs(math.cos(ry))) / 2
+    if hx * hz <= PLAYER_RADIUS ** 2:
+        return False
+    # A prop clears the walk when the body's *circle* can pass it, so the test is a distance: the
+    # straightest body-to-box gap, not "is its centre outside the lane". The latter called a
+    # thumbnail on a table 70 cm in from the wall a walk obstacle — it is not in the path at all.
+    return gap_to_box(o.get("x", 0), o.get("z", 0), hx, hz) < lane_half - PLAYER_RADIUS
+
+
+def gap_to_box(bx, bz, hx, hz):
+    """The shortest distance from the centre line of the walk to a prop's ground rectangle."""
+    return max(0.0, abs(bx) - hx)
+
+
+def walk_object(o, lane_half=10 ** 6):
     """One wall thing, expressed as a rectangle in centimetres plus whatever is painted on it.
 
     The renderer needs geometry, the keyboard needs a stop, and the screen reader needs a name — the
@@ -5335,7 +5400,7 @@ def walk_object(o):
     # but the miniature buildings it carries are not separate room-scale obstacles; steps and floor
     # marks remain walkable. The explicit record field wins when a particular object needs an override.
     y = o.get("y", 0)
-    solid = o.get("solid", o["kind"] in WALK_SOLID_KINDS and y <= 0 < y + h)
+    solid = o.get("solid", o["kind"] in WALK_SOLID_KINDS and y <= 0 < y + h or blocks_body(o, lane_half))
     solid_attr = ' data-solid="true"' if solid else ""
     frame = f' data-frame="{o["frame"]}"' if "frame" in o else ""
     # A landmark prop owns a space: the story it opens first, and the district beside the story.
@@ -5424,7 +5489,7 @@ def walk_html(d, drawer):
         o = dict(o)
         o["z"] = round(o["z"] * Z_SCALE)
         placed.append(o)
-        parts.append(walk_object(o))
+        parts.append(walk_object(o, lane["w"] / 2))
     chips = []
     for n, st in enumerate(d["stations"]):
         # A tick, not a caption: where the words go is the card, and the accessible name is what a

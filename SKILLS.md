@@ -169,6 +169,7 @@ node .verify/verify-walk.mjs
 node .verify/verify-collision.cjs        # the walker must not catch on walls (round 42)
 node .verify/verify-nowebgl.mjs          # no-WebGL: the lane names it and keeps its list (round 55)
 node .verify/verify-feel.mjs             # a walk's speed must not depend on the frame rate (round 56)
+node .verify/verify-body.mjs             # no body may stand inside a drawn prop; every depth keeps a 60 cm passage (round 57)
 node .verify/verify-objects.mjs          # needs LD_LIBRARY_PATH=/tmp/al2023/lib
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 md5sum *.html; python3 _gen_html.py; md5sum *.html   # idempotent
