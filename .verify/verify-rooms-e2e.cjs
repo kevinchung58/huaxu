@@ -526,24 +526,40 @@ async function main() {
     e1.close();
   }
 
-  /* ---- 7. Tokyo inside: the plate still opens, Esc folds it before leaving ---- */
-  out.push("\n-- Tokyo, inside Kaminarimon: E acts on the first shop, the gate leaves --");
+  /* ---- 7. Tokyo inside: a press answers, Esc folds it before leaving -- */
+  out.push("\n-- Tokyo, inside Kaminarimon: E answers at the west row, the gate leaves --");
   env = await boot("rooms.html");
   // Nakamise is 9.1 m wide, so nothing stands within arm's reach of the gate's centre line: take a
-  // step in and sidle to the west row, then face the shop before testing its reach.
+  // step in and sidle to the west row. Round 56: the walk used to overshoot this stop by about two
+  // metres, because the first frame after the rest replayed its whole gap; which is why this test
+  // used to arrive beside a shutter where the shop bay happened to be nearest, by accident. The stop
+  // is now derived from the row itself.
+  const bayW1 = env.doc.querySelector('[data-obj="shopbay-w1"]');
+  const bayZ = parseFloat(bayW1.style.getPropertyValue("--z"));
   await turnToYaw(env, 0);
-  await walkToDepth(env, 150);
-  const mouth = await sidleToReach(env, "shopbay-w1", -1) ? env.reach() : null;
-  ok("tokyo: a step inside the gate, the first shop on the west row is in reach", !!mouth, mouth?.dataset.obj || "none");
-  const card = env.doc.querySelector("[data-walk-card]");
+  await walkToDepth(env, bayZ - 60);
+  await sidleToReach(env, "shopbay-w1", -1);
+  const rowReach = env.reach();
+  // What is nearest at this row is the print hung on the shutter, not the 5.5 m-wide bay behind it:
+  // the bay's centre is a metre and a half away while the print is an arm's length (measured at this
+  // stop: print 31 cm, bay 99 cm). The test asserts exactly that, so a change of reach ranking cannot
+  // silently start opening something else.
+  ok("tokyo: a step inside the gate, the print on the westernmost shutter is in reach",
+     rowReach?.dataset.obj === "frame-sensoji", rowReach?.dataset.obj || "none");
   env.key("e");
-  await env.pump(10);
-  ok("tokyo: E at the mouth opens its plate (nothing silently fails)", card && !card.hidden,
-     card && !card.hidden ? `“${env.doc.querySelector("[data-walk-title]").textContent}”` : "no card");
-  if (card && !card.hidden) {
-    env.key("escape");
-    await env.pump(6);
-    ok("tokyo: Esc folds the plate first", card.hidden);
+  await env.pump(10); await sleep(120);
+  const plateEl = env.doc.getElementById("room-plate");
+  ok("tokyo: E on the print opens its own rail (a press never goes unanswered)",
+     !!plateEl && plateEl.classList.contains("is-rail") && plateEl.classList.contains("is-open"),
+     plateEl ? plateEl.className : "no rail");
+  // The rail's own Esc sits on the plate, so that leaving a frame is not leaving the lane. Dispatch
+  // it where a browser would have put it: on the plate the press just opened.
+  if (plateEl && plateEl.classList.contains("is-open")) {
+    plateEl.dispatchEvent(new env.w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await env.pump(6); await sleep(60);
+    ok("tokyo: Esc folds the frame before it touches the lane",
+       !plateEl.classList.contains("is-open") && env.navs.length === 0,
+       `${plateEl.className} / navs ${env.navs.length}`);
   }
   env.navs.length = 0;
   env.key("escape");                                 // nothing open now: Esc is the door

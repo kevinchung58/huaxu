@@ -866,6 +866,17 @@ function leaveOverlay(root, trigger) {
   const SEG = 60, NEAR = 24, DPM = 2;   // panel, near plane, pattern scale: the renderer's own
   let W = 0, H = 0, focal = 620, tilePat = null, floorPat = null, floorTiers = null, winPat = null,
       concretePat = null, galvPat = null;
+  /* Two sizes, and they are not the same number (round 56).
+     `W`/`H` are the DISPLAY size: every projection here — the hit boxes measured in CSS pixels, the
+     HUD's stop rail, `camPt` — is written against them, so they stay what the layout says.
+     `RW`/`RH` are the RENDER size: the WebGL backing store, which the stylesheet then stretches to
+     the viewport. Until this round the two were the same, so a browser that rasterises in software
+     (the owner's preview runs on SwiftShader) paid a full-viewport fragment bill per frame: measured
+     4 fps at 1024×640 and 18 fps at 320×200 on the same street, with only 8 ms of JavaScript in the
+     frame. The frame budget governor below trades resolution for motion, which is the trade a felt
+     control scheme needs — the alternative it replaces was a picture that was sharp and unsteerable. */
+  let RW = 0, RH = 0, renderScale = 1, frameMs = 0, frameBudgetAt = 0, frameSamples = 0;
+  let pumping = false;   // was the last frame driven by held input or motion? see tick()
   // One lookup for every cladding the walls and the ground can be wearing; a kind with no entry falls
   // back to the wall's own tiles, which is the honest default for a surface nobody specified.
   /* Tiles a page asks for by name. Most are painted at boot; round 33's place materials are lazy
@@ -1718,11 +1729,26 @@ function leaveOverlay(root, trigger) {
     for (let r = 0; r <= 8; r++) { c.beginPath(); c.moveTo(0, r * 16); c.lineTo(128, r * 16); c.stroke(); }
   };
   loadPics();
+  /* The render size follows the display size and the governor's scale, and nothing else reads it
+     except the renderer call at the bottom of draw(). Everything the visitor can point at stays in
+     display pixels, so trading resolution for frame rate can never move a hit box. */
+  /* A governor with no floor of its own will happily draw a 112×70 lane and let the browser stretch
+     it across the window — measured at 320×200 in round 56, and the upscale is mush. Past roughly
+     360 physical pixels across, the fill rate saved is worth less than the legibility lost, so the
+     floor rides the display rather than being one constant: a wide window keeps the 0.35 a software
+     rasteriser needs, a small one is not allowed to go soft to save pixels nobody was paying for. */
+  const minRenderScale = () => Math.max(0.35, Math.min(1, 360 / Math.max(1, W)));
+  const applyRenderScale = () => {
+    renderScale = clamp(renderScale, minRenderScale(), 1);
+    RW = Math.max(1, Math.round(W * renderScale));
+    RH = Math.max(1, Math.round(H * renderScale));
+  };
   const size = () => {
     const cw = view.clientWidth || innerWidth, ch = view.clientHeight || innerHeight;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     W = Math.round(Math.min(1180, Math.max(320, cw * dpr)));
     H = Math.max(1, Math.round(W * (ch / Math.max(1, cw))));
+    applyRenderScale();
     tilePat = mkTile(paintWall);
     floorPat = mkTile(({ pod: paintPodFloor, paving: paintPaving, carpet: paintCarpet,
                          pavers: paintPavers, tunnel: paintBoards })[layer.dataset.floor] || paintFloor);
@@ -6433,7 +6459,9 @@ function leaveOverlay(root, trigger) {
     quads.sort((p, q) => (q.sz ?? q.z) - (p.sz ?? p.z));
     if (threeRenderer) {
       try {
-        threeRenderer.render({ camera: C, width: W, height: H, focal, time: T, quads,
+        // The backing store is the RENDER size; the projection is identical because the focal
+        // length travels with it (NDC depends on focal/width, and both carry renderScale).
+        threeRenderer.render({ camera: C, width: RW, height: RH, focal: focal * (RW / Math.max(1, W)), time: T, quads,
                               day: DAY(), dayPage: DAYPAGE, night: NIGHT(), sunAz: sunAz(),
                               fogMax: FOG_MAX, dayGain: DAY_GAIN,
                               effects: { lamps, wires, marks, surfaces, wall: WALL, ceil: CEIL,
@@ -6800,12 +6828,52 @@ function leaveOverlay(root, trigger) {
 
   const tick = (t) => {
     raf = 0;
-    // Keep elapsed time instead of silently throwing away every frame after 50 ms. A render can
-    // miss its budget on a busy laptop; smaller physics steps keep the same walk speed and keep a
-    // long frame from jumping across a lane boundary. The 120 ms ceiling only discards a real
-    // suspension (for example, returning from a background tab), not ordinary low frame rates.
-    const elapsed = last ? Math.min(0.12, Math.max(0, (t - last) / 1000)) : 0.016;
+    /* Round 56, and this one was the difference between "slow" and "broken": the simulation used
+       to throw away every part of a frame longer than 120 ms. A frame longer than 120 ms is exactly
+       what a software rasteriser produces (measured here: 250 ms at 1024×640), so the body moved at
+       a fraction of its authored speed and turned at a fraction of its authored rate — the walk got
+       slower the weaker the machine, which reads as a laggy control scheme and is really a clock
+       that disagrees with the wall. Time is now kept up to a quarter of a second, the physics
+       subsamples at 25 ms (so a long frame is ten small steps, not one leap and no wall
+       tunnelling), and the governor below attacks the frame length itself. The ceiling still
+       discards a real suspension — a background tab, a sleeping laptop — rather than teleporting
+       the visitor down the lane. */
+    let rawGap = last ? Math.max(0, (t - last) / 1000) : 0.016;
+    /* A gap only counts if the previous frame was actually being pumped. The lane rests on a timer
+       rather than a frame loop, so the interval between two resting ticks is real time that nobody
+       spent moving — and replaying it is a lurch: round 56 measured the first frame after a 680 ms
+       rest travelling 82 cm, which reads as the camera being kicked. Resuming therefore restarts the
+       clock; a frame that interrupts *held* input still gets its whole gap, because that gap is
+       motion the visitor was asking for while the machine took its time. */
+    if (!pumping) rawGap = Math.min(rawGap, 0.05);
+    // Half a second is the ceiling otherwise: two long frames of a software rasteriser, or one frame
+    // of a browser that throttled us while a texture decoded. Beyond that it is a suspension, and a
+    // suspension must not be replayed as travel down the lane.
+    const elapsed = Math.min(0.5, rawGap);
     last = t;
+    /* The frame budget governor. Samples the frame's own length and moves the render scale toward
+       a playable cadence: below ~22 fps it gives up resolution, above ~45 fps it takes it back.
+       It never touches the display geometry, and it never runs on a page whose renderer refused
+       (there is no picture to budget). One step per ~0.6 s, ±10–12% at a time, clamped between
+       the display's own floor and 1: it is a governor, not a finder — a scale that swings per
+       frame is its own judder. */
+    if (threeRenderer && rawGap > 0) {
+      // the sample is the real gap: measuring the capped value would let a 600 ms frame pass for a
+      // 500 ms one and the governor would settle a step above what the machine can actually draw
+      frameMs = frameMs ? frameMs * 0.8 + Math.min(1.5, rawGap) * 1000 * 0.2 : Math.min(1.5, rawGap) * 1000;
+      frameSamples++;
+      if (!frameBudgetAt) frameBudgetAt = t;
+      if (t - frameBudgetAt > 600 && frameSamples > 4) {
+        frameBudgetAt = t; frameSamples = 0;
+        const before = renderScale;
+        // 24 fps is the floor this is trying to hold (a walk is steerable there; below it the
+        // picture stops answering the keys), 45 fps the ceiling it gives resolution back to.
+        const floor = minRenderScale();
+        if (frameMs > 42 && renderScale > floor) renderScale = Math.max(floor, renderScale - 0.12);
+        else if (frameMs < 22 && renderScale < 1) renderScale = Math.min(1, renderScale + 0.1);
+        if (renderScale !== before) { applyRenderScale(); layer.dataset.walkScale = renderScale.toFixed(2); }
+      }
+    }
     const steps = Math.max(1, Math.ceil(elapsed / 0.025));
     const step = elapsed / steps;
     const glideOnly = !!gliding;
@@ -6824,7 +6892,8 @@ function leaveOverlay(root, trigger) {
     // Held input keeps the pump alive at a wall; the idle pulse is for a genuinely resting walker.
     const hasWalkInput = ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"]
       .some((k) => keys.has(k)) || !!(stick && Math.hypot(stick.x, stick.y) > 0.04);
-    if (speed > 4 || gliding || height > 0 || vy !== 0 || hasWalkInput) loop();
+    pumping = speed > 4 || !!gliding || height > 0 || vy !== 0 || hasWalkInput;
+    if (pumping) loop();
     else startPulse();
   };
   // Asking for a real frame hands the pumping over to rAF, so the idle pulse is cancelled here rather
@@ -6846,7 +6915,11 @@ function leaveOverlay(root, trigger) {
     // another nudge if it is not. A bare repaint would look the same while standing still but would
     // strand a glide halfway down the lane, and a walker frozen between two frames is worse than a
     // lane that did not breathe.
-    pulse = setTimeout(() => { pulse = 0; tick(performance.now()); }, 90);
+    // A machine that needs a quarter of a second for one frame must not be asked for a full
+    // repaint every 90 ms: the pulse would then own the whole budget and every press would queue
+    // behind it. The idle breathe keeps its authored cadence when the frame is cheap and stands
+    // down to twice the measured frame on a slow one — still breathing, never starving input.
+    pulse = setTimeout(() => { pulse = 0; tick(performance.now()); }, Math.max(90, frameMs * 2));
   };
   if ("IntersectionObserver" in window) {
     new IntersectionObserver((es) => {
@@ -7145,8 +7218,12 @@ function leaveOverlay(root, trigger) {
     yaw = wrapYaw(down.yaw + dx * 0.09);                // turn through the room without Pointer Lock
     pitch = clamp(down.pitch - dy * 0.065, -MAX_PITCH, MAX_PITCH);
     gliding = null;
-    draw();
-    checkReach();
+    /* A pointer reports at 60–240 Hz; this renderer draws one frame at a time and, on a software
+       rasteriser, one frame is a quarter of a second. Drawing inside the event meant every one of
+       those reports queued a full scene rebuild behind the GPU, so a drag arrived in the picture in
+       bursts and the whole page stalled under it. The camera is set here and the frame is asked for
+       once; the reach is checked in the tick, which is the frame that will show the new heading. */
+    loop();
   });
   /* Releasing a grab has to hand the pumping back, or the lane dies the first time somebody looks
      around. `pointermove` paints directly and never asks for a frame, and the tick only schedules
@@ -7316,6 +7393,10 @@ function leaveOverlay(root, trigger) {
                    get velocity() { return Math.hypot(vx, vd); },
                    get maxSpeed() { return SPEED * RUN; }, get turnRate() { return TURN_RATE; },
                    get renderer() { return threeRenderer ? "three" : "off"; },
+                   // the governor's own numbers, so a gate can assert motion and a report can say
+                   // what the machine was actually asked to draw
+                   get renderScale() { return renderScale; }, get frameMs() { return frameMs; },
+                   get renderSize() { return [RW, RH]; }, get displaySize() { return [W, H]; },
                    // The no-WebGL path is the lane's own state, not the mounted module's: the mount
                    // reports the refusal here so one place decides what a renderer-less lane shows.
                    noteOffline,
