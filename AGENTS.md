@@ -10,8 +10,74 @@ no package manifest, CDN, or additional runtime dependency is implied.
 
 ## Critical: source of truth
 
+- **A change is not delivered until it is committed on the session branch (owner ruling, 2026-10-20).**
+  The workspace snapshot can rebuild branch history between turns: a round that left its `_gen_html.py`
+  and `js/` edits verified-but-uncommitted came back with the generator rolled to the merge base while
+  the emitted HTML and the engine files survived, and the next round spent itself re-authoring two
+  shipped rounds' mounts from memory (the recovery is `f11558a`'s message). Gates passing on an
+  uncommitted tree protect nobody — commit the generator and its pages in the same round, and merge the
+  original chain (`-s ours`) if the remote history no longer matches the rebuilt one. And when a
+  rollback forces a rebuild, `git fetch origin` first and restore each file byte-for-byte from the
+  remote's last good commit (`git show <tip>:<path> > <path>`) — the objects outlive the pointer.
+  Re-authoring a rolled-back file from session memory silently rewrites it to whatever you remember,
+  and what is lost is exactly what you forgot to remember: the round-53 rebuild cost 190 authored
+  lines (crest mist, lantern stalls, the record's real frontages) that the blob had kept whole.
+  A wiped sandbox also takes `node_modules` with it — run `bin/restore-env`, and remember headless
+  Chromium needs `LD_LIBRARY_PATH=/tmp/al2023/lib` after a manual unpack.
+- **A patch script for `_gen_html.py` anchors on one structural line, never on remembered prose or a
+  line number.** Grep the exact anchor before writing it; assert every replacement fires exactly once;
+  do all inserts in a single pass bottom-up, because line numbers shift under your own hands; and after
+  `python3 _gen_html.py`, grep the *emitted HTML* for the new attributes — a script that dies on an
+  assert writes nothing, and the pages already on disk make a silently-skipped patch look healthy
+  (same failure class as the bullet above about generator exits).
+- **Deleting a span of code deletes every neighbour the span happened to contain, and a pattern-kill
+  deletes the shell that ran it.** Two mechanics cost a full round each, so both are rules now. When a
+  patch removes a block by start/end markers (round 54's painter excision: `emit` through `drawFar`),
+  the survivors inside the span's line range — a shared helper, a trailing `};`, the `const` the next
+  section needs — must be re-grepped for consumers and booted in the harness before the removal is
+  called done; delete by function, not by geometry. And `pkill -f <name>` matches the killing shell's
+  own command line, which contains `<name>`: kill by port (`fuser -k 8080/tcp`) or by pid file, or
+  exclude with a character class — and remember the class does not protect you from the *other*
+  occurrences of the literal string in the same command line.
+- **A harness timeout measures the harness.** The story gate's 15 s `waitForRoute` on click-navigations
+  began failing on a machine that renders WebGL in software: the page navigated fine, the poller lost
+  the race, and the round spent its budget diagnosing a site that was healthy. Before treating a
+  timing-out headless gate as a defect, reproduce the exact flow with a probe that prints the page's
+  own state at timeout; if the site answered and the harness blinked, fix the budget (or the lifecycle
+  event waited on: `domcontentloaded` plus a state wait, not `load` over abandoned subresources) and
+  say so in the gate's comment.
+
+- **The unit rule, all of it:** only the depth axis converts — record `z` and `d` cross into walk
+  space ×2.9 (`Z_SCALE`), while `x`, `y`, `w`, `h`, stop `--x` and every dataset passthrough field
+  (ride/deck/dia/axle/period, stop view `h`) are scene centimetres as authored, unscaled, the same
+  axes `data-lane-w` rides. Backdrop depths and `max_d` are also walk space as written
+  (`street-system` §6). And an authored camelCase key must be emitted kebab-case: HTML lowercases
+  attributes, so `rideX:` written out as `data-rideX` arrives as `dataset.ridex` — silently undefined
+  at the reader. A mixed unit places the object inside the wall and no pixel gate will say why.
+- **Before writing to the record line, ask who overwrites it next frame.** The lane's `say(..., "")`
+  cycle clears `[data-walk-record]` every tick, so an announcement made at act()-level dies on the
+  first pumped frame; anything meant to outlive an animation owns the `demoHold` protocol (set the
+  flag, pump the whole envelope, clear both). And when a small object's change must be *seen*, measure
+  the geometry the renderer stamps (`__walk.drawQuads`) or crop the object's own projected box — a
+  full-frame average cannot see a 24 m leaf on a 980 px canvas, and a loose crop measures the room.
+- **Pixel gates measure by state, not by stopwatch.** The sandbox renders WebGL at a fraction of real
+  frame rate — a glide that is 20 seconds on a laptop crawls for two minutes here, and a three-second
+  banner hold is gone before a fixed sleep returns. Wait for the engine's own published values
+  (`__walk.depth`, `__walk.height`, the record line) and sweep animation envelopes for the loudest
+  frame; asserting against a timer turns a working feature into a flaky gate.
+- **Luma alone hides hue bugs; measure the channels against the other path's own frame.** A navy
+  flood and a lamp-lit hall can share a luma — round 51's black-hall fix passed every luma floor
+  while tinting every hall blue-violet (mean RGB 30,53,103 against the painter's 111,121,138), and
+  the owner saw 紫色 for a round before anyone measured for it. A lighting gate therefore reports
+  mean R/G/B and a cold/purple pixel fraction, with the Canvas2D-painted frame as the reference
+  target, not a remembered constant. Two traps in taking that reference: `?v=<digest>` assets are
+  cache-immortal, so aborting a module without `setCacheEnabled(false)` measures the tested path a
+  second time and calls it the fallback; and the renderer flag must be read in the same evaluation
+  as the screenshot — read early, and `attachThree` races the read, so the frame is 3D while the
+  label says canvas2d.
 - The cache-buster is **derived, not hand-bumped**: `VER` in `_gen_html.py` is the sha1 of
-  `css/site.css`, `js/site.js`, `js/scene3d.js`, and the two pinned Three.js runtime files, truncated;
+  `css/site.css`, `js/site.js`, `js/scene3d.js`, `js/games.js`, and the two pinned Three.js runtime
+  files, truncated;
   the stylesheet, classic script and module script read that one value. It used to be a literal that a human had to remember, and it went stale the
   first time the renderer changed in a commit that forgot: new rooms, old `?v=`, and the only person
   who would ever see the bug is a returning visitor whose browser drew them with the last renderer.
@@ -185,8 +251,9 @@ dark — halo, body, pool on the pavement — shopfronts spill their window ligh
 and every front and lantern carries a staggered `liton`, so the evening arrives as a wave
 (`street-commons` §3, "the night rhythm"). The same round found the one lie in the shadow system's
 history — the wall's floor shadow had been `add()`ed after the emit pass and was never painted; the
-light pass draws it now, and `.verify/_shadowdrawn.mjs` proves a shadow is on the screen rather than
-in the comments.
+light pass draws it now. The probe that used to prove it (`_shadowdrawn.mjs`) measured the painter's
+pass order and was retired with it in round 54; the claim is now held by the scene's own geometry,
+which receives every quad `add()` returns without a second pass to fall out of.
 
 Unrelated to the above and still open:
 
@@ -479,6 +546,15 @@ proposal until they have read it, and the loop is not finished until they have.
     is folded by JS. Adding a section, a `reveal` class or a navy drawer surface is a defect: it can
     hide content without scripting or drop borrowed components to 2:1 contrast. The lane, props and
     sourced outdoor world are rendered in the pinned Three.js scene with the authored box
-    (`data-lane-w/-d/-ceil`, `data-eye`). Canvas2D is the complete no-WebGL fallback, not an overlay
-    behind the WebGL world. Do not put scene geometry into CSS transforms or invent a second set of
-    dimensions in `js/site.js` or `js/scene3d.js`.
+    (`data-lane-w/-d/-ceil`, `data-eye`). There is no second picture: the Canvas2D lane painter was
+    deleted in round 54 on the owner's ruling, and where WebGL is absent the lane says so in its own
+    words and retires — the compiled state (rail, list, reading, keys) keeps answering without it.
+    No Canvas2D lane painting may return to `js/site.js`. Do not put scene geometry into CSS
+    transforms or invent a second set of dimensions in `js/site.js` or `js/scene3d.js`.
+
+- **A gate that re-derives what the site derives, measures its own approximation.** Where the site
+    inferred a prop's shape kind from its id (`kind: el.dataset.obj` plus a prefix heuristic), the
+    audit gate copied the inference — and when new names arrived that did not fit the convention,
+    both the site and the gate went wrong together and the mismatch between them looked like noise.
+    Name the channel once (the emitted field), have the renderer, the generator and every gate read
+    that channel, and let convention only ever be a fallback clearly labelled as one.

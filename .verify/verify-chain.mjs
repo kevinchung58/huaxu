@@ -88,11 +88,15 @@ const ROOMS = [
   { file: "rooms-cntower.html",  id: "cntower", backObj: "door-back", home: "rooms-toronto.html",
     returnHash: "at-tower-cn" },
   { file: "rooms-niagara.html",  id: "niagara", backObj: "door-back", home: "rooms-toronto.html",
-    returnHash: "at-falls-n", sub: ["rooms-journey.html"] },
+    returnHash: "at-falls-n", sub: ["rooms-journey.html", "rooms-goat.html"] },
   // The space the real Table Rock owns: entered by the door at the rail end of the promenade,
   // unwinding to that same door in the promenade, not the street.
   { file: "rooms-journey.html",  id: "journey", backObj: "door-back", home: "rooms-niagara.html",
     returnHash: "at-door-journey" },
+  // Goat Island hangs off the promenade's own noren — the Rainbow crossing — so it unwinds to
+  // that curtain, exactly as the tunnel does; round 54 names the edge the data already walked.
+  { file: "rooms-goat.html",    id: "goat",    backObj: "curtain-home", home: "rooms-niagara.html",
+    returnHash: "at-curtain-rainbow" },
 ];
 const STREET_DOORS = [
   { obj: "door-toronto", expect: "rooms-toronto.html" },
@@ -239,12 +243,14 @@ async function main() {
       story: true, returnHash: "at-falls-n" },
     { parent: "rooms-niagara.html", prop: "door-journey", child: "rooms-journey.html",
       story: false, returnHash: "at-door-journey" },
+    { parent: "rooms-niagara.html", prop: "curtain-rainbow", child: "rooms-goat.html",
+      story: false, back: "curtain-home", returnHash: "at-curtain-rainbow" },
   ];
   for (const edge of OWNED) {
     const parentHtml = fs.readFileSync(edge.parent, "utf8");
     const prop = parentHtml.match(new RegExp(`<button[^>]*data-obj="${edge.prop}"[^>]*>`));
     const childHtml = fs.readFileSync(edge.child, "utf8");
-    const backProp = childHtml.match(/<button[^>]*data-obj="door-back"[^>]*>/);
+    const backProp = childHtml.match(new RegExp(`<button[^>]*data-obj="${edge.back || "door-back"}"[^>]*>`));
     if (edge.story) {
       const storiesTag = parentHtml.match(/<script type="application\/json" data-walk-stories>([\s\S]*?)<\/script>/);
       const stories = storiesTag ? JSON.parse(storiesTag[1]) : {};

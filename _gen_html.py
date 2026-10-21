@@ -24,7 +24,7 @@ def _asset_ver() -> str:
     page pin is the same browser-cache bug as a stale Canvas fallback.
     """
     h = hashlib.sha1()
-    for f in ("css/site.css", "js/site.js", "js/scene3d.js",
+    for f in ("css/site.css", "js/site.js", "js/scene3d.js", "js/games.js",
               "js/vendor/three-0.186.1/three.core.js", "js/vendor/three-0.186.1/three.module.js"):
         h.update((ROOT / f).read_bytes())
     return h.hexdigest()[:10]
@@ -97,6 +97,9 @@ ROOMS = [
     # Falls descends from the terrace through the bedrock. The door stands at the Table Rock
     # end of the promenade; the space unwinds to the promenade, not the street.
     ("journey", "Behind the falls", "rooms-journey.html", [], "open"),
+    # Round 52: the other bank, reached the way visitors cross — on foot over the Rainbow. The
+    # island gets a row like the tunnel's page: no album plate, its only doors are the falls'.
+    ("goat", "Goat Island", "rooms-goat.html", [], "open"),
     ("tokyo", "Tokyo", "rooms.html", ["tokyo-"], "open"),
     ("fukuoka", "Fukuoka", "rooms-fukuoka.html", ["fukuoka-"], "open"),
 ]
@@ -342,6 +345,7 @@ def shell_page(title: str, body: str, path: str, cover: str = "IMG/1.jpg",
 <body class="shell">
 {body}
 <script src="js/site.js?v={VER}"></script>
+<script src="js/games.js?v={VER}" defer></script>
 <script type="module" src="js/scene3d.js?v={VER}"></script>
 </body>
 </html>
@@ -1704,8 +1708,12 @@ def _place_card(r):
 # you are inside, how you get back, and that the street's far end is open. It sits above the places,
 # because the moment after "walk in" is exactly where a first-time visitor is lost.
 HOW_TO_WALK = ("These three doors step into Toronto, Tokyo, or Fukuoka: W A S D to walk, "
-               "arrow keys or a gentle drag to turn, E to use what is in front of you, or the "
-               "on-screen pad on a phone. A landmark's own object may lead to another real space; "
+               "arrow keys or Q/E (or a gentle drag) to turn, E while standing still to use what "
+               "is in front of you, double-click to let the mouse look, or the on-screen pad on a "
+               "phone. On the first visit a short guide teaches those keys in place, once, and the "
+               "info card replays it. The sun-or-moon button in the chrome holds the lane in day or "
+               "brings on night, and the choice carries to every lane; a room whose window shows one "
+               "fixed night keeps its own hour. A landmark's own object may lead to another real space; "
                "Esc returns to its owner, then to the street, and finally to this wall.")
 
 
@@ -1998,8 +2006,11 @@ TOWER_STORY = {
 }
 # Nakamise's rows, generated from the sourced figures (round 32; TODO section 0n), because every
 # number here is the street's: three runs of shops in the street's own order and share of its length,
-# the two crossings at a street's width, and every bay a real shop's width -- the average of its row
-# (about 250 m of shops, 35 on the west and 54 on the east, so 7.3 m and 4.7 m). Walk centimetres
+# the two crossings at a street's width, and every bay a real shop's width -- the average of its row.
+# Round 41 adopted the street's own association figures (asakusa-nakamise.jp/about, read 2026-10-17):
+# the present street is about 250 m with 87 shops -- 52 on the east side and 35 on the west -- so a
+# row's average frontage is 4.8 m east and 7.1 m west (250/52, 250/35). The older tourism figures
+# (54/35 for 89 shops) had no official split to prefer and are retired. Walk centimetres
 # here; each object is turned into record depth (/ Z_SCALE) as it is made. The murals are the
 # ground colours of the Asakusa Emaki read off the night photographs -- sky and water blues, cloud
 # golds, pine greens, the paper's cream, a festival red -- because their scenes, which show people,
@@ -2013,7 +2024,7 @@ NAKAMISE_MURALS = (("#d6b45a", "#3f78b5", "#e9e2d0"), ("#4f8a5b", "#e2c46a", "#2
 
 def _nakamise():
     bays, lamps = [], []
-    for tag, x, ry, width, row, side in (("w", -380, 90, 730, 35, "west"), ("e", 380, -90, 470, 54, "east")):
+    for tag, x, ry, width, row, side in (("w", -380, 90, 710, 35, "west"), ("e", 380, -90, 480, 52, "east")):
         n = 0
         for z0, z1 in NAKAMISE_RUNS:
             count = max(1, round((z1 - z0) / width))
@@ -2112,7 +2123,7 @@ MOJI_TOWER_FOOTPRINT = [[round(r - MOJI_TOWER_CENTRE_M[0], 6),
                         for r, f in MOJI_TOWER_METRIC_RING]
 MOJI_TOWER_WIDTH_M = max(p[0] for p in MOJI_TOWER_FOOTPRINT) - min(p[0] for p in MOJI_TOWER_FOOTPRINT)
 MOJI_TOWER_DEPTH_M = max(p[1] for p in MOJI_TOWER_FOOTPRINT) - min(p[1] for p in MOJI_TOWER_FOOTPRINT)
-MOJI_TOWER_HEIGHT_M = 127.0                 # CVU/CTBUH; includes the rooftop helipad
+MOJI_TOWER_HEIGHT_M = 127.0                 # nominal top incl. the rooftop helipad: CTBUH, ja-wiki (127 m 最高部), AIJ paper (127 m; 126.95 m record, 127.4 m measured); OSM height=115 is an unattributed tag, not adopted
 MOJI_TOWER_OBSERVATION_M = 103.0            # City / MLIT describe the public view at this height
 MOJI_TOWER_FLOORS = 31
 MOJI_TOWER_SCALE = 4.0                      # scene centimetres per metre at 1:25
@@ -2787,7 +2798,7 @@ def niagara_world(fr, view="rim"):
                 P.append(_prim("w", [fr.cm(*pa, ua), fr.cm(*pb, ua), fr.cm(*qb, ub), fr.cm(*qa, ub)],
                                c=colours[s], a=air(*crest[i], 0.75), il=1, dg=0.35, s=low,
                                k=(k_streaks if s > 1 else 0), pat="fallsw", u=grain, pa=(0.55, 0.8, 0.95, 1.0)[s]))
-    curtain(hs, NIA_CREST, NIA_RIVER, 24, ("#3f9c8a", "#7cc3b5", "#c4e2de", "#e4f0ef"), 2, taper=4)
+    curtain(hs, NIA_CREST, NIA_RIVER, 24, ("#3f9c8a", "#7cc3b5", "#d8ecea", "#eef6f5"), 2, taper=4)
     amr = resample(am_cr, 12)
     curtain(amr, NIA_AM_CREST, NIA_TALUS, 4, ("#7fb9ae", "#b6d8d1", "#dfecea", "#e9f2f1"), 2, grain=1400)
     amn = left_normals(amr)
@@ -2813,11 +2824,29 @@ def niagara_world(fr, view="rim"):
     # what hides the plunge from the rim and from the deck alike.
     # Three rounds a cloud rather than five: a soft round is a costly fill, and three overlapping
     # ones read the same at this size.
-    for d, step, w, h, al in ((34, 3, 62, 34, 0.34), (80, 4, 84, 44, 0.3), (130, 8, 100, 40, 0.22)):
+    for d, step, w, h, al, up in ((34, 3, 62, 44, 0.42, 7), (80, 4, 84, 48, 0.32, 4), (130, 8, 100, 40, 0.22, 1)):
         ring = [(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)]
         for i in range(2, 35, step):
-            P.append({"t": "m", "o": fr.cm(*ring[i], NIA_RIVER + 1), "w": w * 100, "h": h * 100,
+            P.append({"t": "m", "o": fr.cm(*ring[i], NIA_RIVER + up), "w": w * 100, "h": h * 100,
                       "al": round(al * mist_k, 3), "a": 0.02, "il": 1, "np": 3})
+    # Round 43, the part the basin rings could not say: from the rail, the mist is not a distant
+    # blanket. It lifts off the crest itself -- a boil of columns springing at the brink and climbing
+    # past the deck -- and it crosses the sightline close, veiling the rail and the foot of the
+    # sheet the way every Table Rock photograph shows it. Author's alphas; the behavior is from the
+    # visit-record descriptions, not a survey of particle counts.
+    # The boil hugs the crest. The tuning was measured, not guessed: 0.3 over 15 m of sky read as
+    # nothing on a bright day, 0.9 turned the whole viewport to weather — the final figure sits at
+    # the rail's own sightline, a compact column of four rounds rising 4..40 m over the brink.
+    # alpha 0.42 is what survives pixel comparison against the pre-fix frame without erasing the sky.
+    boil = [(e + nx * 10, n + ny * 10) for (e, n), (nx, ny) in zip(hs, nrm)]
+    for i in range(1, 35, 4):
+        P.append({"t": "m", "o": fr.cm(*boil[i], NIA_CREST + 0.5), "w": 5200, "h": 4200,
+                  "al": round(0.42 * mist_k, 3), "a": 0.02, "il": 1, "np": 4})
+    for d, step, w, h, al in ((-9, 9, 7000, 2600, 0.13), (-16, 12, 9000, 2000, 0.10)):
+        ring = [(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)]
+        for i in range(3, 33, step):
+            P.append({"t": "m", "o": fr.cm(*ring[i], NIA_CREST - 1), "w": w, "h": h,
+                      "al": round(al * mist_k, 3), "a": 0.02, "il": 1, "np": 2})
     P.append({"t": "m", "o": fr.cm(610, 650, NIA_RIVER + 2), "w": 7000, "h": 2600, "al": 0.12,
               "a": 0.04, "il": 1})
     rc = fr.cm(130, -120, NIA_RIVER - 22)
@@ -3120,7 +3149,11 @@ def toronto_world(fr):
                            a=a, n=1, l=0.5, fn=_fn(fr, *_outward(foot, p0, p1))))
         P.append(_hprim("f", fr, foot, g + base + h, c="#141c2c", a=a, n=1))
     # The City's 2025 massing fills the 100–150 m gap. Use its polygons and AVG_HEIGHT field values
-    # as supplied; the field's exact semantics are not independently verified. Facade/window patterns
+    # as supplied; the field's exact semantics are not independently verified. Round 41 checked the
+    # nearest derivation for a field dictionary (schoolofcities/toronto-buildings at the pinned commit
+    # 7bb3596): it reads the same field off the same 2025 export, displays it as metres, and documents
+    # no definition either — so "approximate extrusion height, not a verified survey height" stands.
+    # Facade/window patterns
     # are absent from the source, so these remain plain night massing. The layer is split into parts,
     # hence these are polygon masses, not a count of distinct buildings.
     for feature in TOR_MASSING_2025_FEATURES:
@@ -3348,6 +3381,24 @@ DISTRICTS = [
             {"id": "drain-s", "kind": "drain", "x": 60, "z": 620, "y": 0, "ry": 0,
              "title": "A drain in the asphalt",
              "hint": "The street's one piece of water kit, at the crossing point."},
+            # The festival stalls (round 50, at the owner's request: an English phrase — 「做一些有趣的
+            # 日本攤販遊戲在那環境裡面可以直接玩」). They are deliberately NOT surveyed geometry: a
+            # stall that played games at a real address would be an invented fact, while a stall the
+            # page names as a toy is honest furniture. Their whole body is the CSS of .walk-stall,
+            # their lights join the authored lamp field so night lights them like everything else,
+            # and `game` rides to the script as data-game — press it and the toy opens over the lane.
+            {"id": "stall-kingyo", "kind": "board", "w": 170, "h": 128, "d": 90,
+             "x": 322, "z": 330, "y": 0, "ry": -90, "game": "kingyo",
+             "title": "The goldfish stall, under the first lanterns",
+             "hint": "A toy, not a survey: paper net, a basin of dark water, and goldfish that are "
+                     "the street's own lamp colours. Press it to play; nothing here claims a shop "
+                     "stood at this address."},
+            {"id": "stall-menya", "kind": "board", "w": 170, "h": 128, "d": 90,
+             "x": -322, "z": 700, "y": 0, "ry": 90, "game": "menya",
+             "title": "The mask targets, along the lantern string",
+             "hint": "A toy, not a survey: blank wooden masks on a beaded curtain, a pellet gun of "
+                     "twelve shots. The masks carry no faces for the same reason the shopfronts "
+                     "carry no lettering."},
             # `liton` is the phase at which a front's own light comes up, and on this street it is
             # authored per front rather than once for the row: eight fronts that all rise at the same
             # instant are a switch, and the same field already staggers Moji's skyline (`0.74`–`0.88`
@@ -3464,6 +3515,10 @@ DISTRICTS = [
             {"x": 0, "y": 502, "z": 470, "r": 44, "k": 0.58},
             {"x": 0, "y": 500, "z": 780, "r": 46, "k": 0.6},
             {"x": 0, "y": 503, "z": 980, "r": 44, "k": 0.58},
+            # the two stalls' own lanterns (round 50): the wall lights the games stand under, low
+            # enough that the awnings catch them — 0.55, between the row's 0.58s and the amber floor
+            {"x": -250, "y": 430, "z": 340, "r": 90, "k": 0.55},
+            {"x": -250, "y": 430, "z": 470, "r": 90, "k": 0.55},
             # A cool, soft point of ambient light in the opening: it gives the last stretch a
             # distant destination without pretending the street belongs to a named city. No bulb —
             # it is open-air fill, not another fitting on the street.
@@ -3490,6 +3545,15 @@ DISTRICTS = [
              "size": 22, "h": 312, "swing": 1.5, "period": 4.9, "phase": 1.1, "liton": 0.72},
             {"x": 279, "y": 300, "z": 470, "r": 30, "k": 0.48, "body": "lantern",
              "size": 22, "h": 300, "swing": 1.6, "period": 5.4, "phase": 3.0, "liton": 0.75},
+            # One lantern each, hung at the stall: `of` ties the light to the prop (the vending
+            # machine's trick) so the pool belongs to the stand and the hour button finds them lit
+            # or dark with the rest of the string.
+            {"x": 300, "y": 252, "z": 330, "r": 34, "k": 0.55, "body": "lantern",
+             "size": 18, "h": 252, "swing": 1.3, "period": 5.5, "phase": 2.4, "liton": 0.78,
+             "of": "stall-kingyo"},
+            {"x": -300, "y": 252, "z": 700, "r": 34, "k": 0.55, "body": "lantern",
+             "size": 18, "h": 252, "swing": 1.4, "period": 4.8, "phase": 0.9, "liton": 0.81,
+             "of": "stall-menya"},
             {"x": -279, "y": 316, "z": 780, "r": 30, "k": 0.5, "body": "lantern",
              "size": 22, "h": 316, "swing": 1.4, "period": 5.8, "phase": 1.2, "liton": 0.71},
             {"x": -99, "y": 302, "z": 780, "r": 30, "k": 0.5, "body": "lantern",
@@ -3828,7 +3892,10 @@ DISTRICTS = [
                   "kept, and the count of shops is what shrinks. The shutters keep only the ground "
                   "colours of the Asakusa Emaki, whose scenes show people; no fascia, lantern or sign "
                   "carries lettering. The plates on the shutters are drawn. Nothing here says the "
-                  "owner was in this place.",
+                  "owner was in this place. The stalls are in the wall too: a goldfish basin and a "
+                  "mask line, added because the owner asked for games to play in the street — the "
+                  "markup and the note cards both say they are toys, and neither stands at a real "
+                  "address.",
     },
     {
         # Moji Port in a model hall (round 32: laid out from the map; round 36: the models taken
@@ -3849,7 +3916,11 @@ DISTRICTS = [
         # A model hall, as the brief asked ("a table, like Toronto's, like Little Canada"): dark walls,
         # the table lit, and the far wall open onto the strait at the table's own scale. 8.8 m wide so
         # a walker can still go round the true-scale table by the right-hand aisle.
-        "lane": {"w": 880, "d": 900, "ceil": 620, "back": 300},
+        # Round 51: the hall had stopped a stride past its last stand, with the strait and the
+        # Blue Wing hanging at the far wall unvisit-able. The lane runs on to the table's quay —
+        # 100 m of Moji waterfront in a hall that is 110 deep — so the walk arrives at the water
+        # the drawings put there, and the drawbridge's door can open onto the walk itself.
+        "lane": {"w": 880, "d": 1100, "ceil": 620, "back": 300},
         "purpose": "Moji Port in a model hall: the station, the customhouse, their neighbours and the "
                    "Retro High Mart on stands of their own, with the port laid out from the map and "
                    "the Blue Wing and ships on the Kanmon Strait beyond, from dusk into night",
@@ -3892,29 +3963,58 @@ DISTRICTS = [
             # The No. 1 basin between the hotel quay and the customhouse, from its head to the Blue
             # Wing; and the strait, which the table's far edge hands to the backdrop.
             {"id": "pool-moji", "kind": "pool", "x": 115, "z": round(2378 / Z_SCALE, 2), "y": 80, "ry": 0,
-             "w": 93, "h": 2, "d": 276,
+             "w": 93, "h": 2, "d": 276, "demo": "ripple",
              "title": "The No. 1 basin",
              "hint": "The boat basin the Blue Wing crosses, about 60 m wide, opening north-west onto "
-                     "the strait. Nothing is claimed about the tide."},
+                     "the strait. Nothing is claimed about the tide. Press the water and a toy stone "
+                     "skips a ring across the model — the strait's water is the same invitation."},
             {"id": "pool-strait", "kind": "pool", "x": 0, "z": round(2560 / Z_SCALE, 2), "y": 80, "ry": 0,
-             "w": 720, "h": 2, "d": 90,
+             "w": 720, "h": 2, "d": 90, "demo": "ripple",
              "title": "The Kanmon Strait",
              "hint": "A little over 700 m wide at its narrowest and carrying some 500 ships a day; "
                      "here it starts at the table's edge and runs on past the far wall."},
             {"id": "drawbridge-mj", "kind": "drawbridge", "x": 120, "z": round(2498 / Z_SCALE, 2), "y": 80,
-             "ry": 0, "w": 157, "h": 6, "d": 7, "leaves": 0.47,
+             "ry": 0, "w": 157, "h": 6, "d": 7, "leaves": 0.47, "demo": "open",
              "glow": [{"r": 90, "k": 0.3, "dy": 14}],
              "title": "The Blue Wing",
              "hint": "Blue Wing Moji: 108.1 m of pedestrian drawbridge across the basin's mouth, "
                      "completed 1993. Its 24.1 m south leaf is lifted by a wire rope over its pylon, "
                      "its 14 m north leaf by a hydraulic ram, both to about 60 degrees, six times a "
                      "day from 10:00 to 16:00, about twenty minutes each time. Lit after dark; it "
-                     "does not open then."},
+                     "does not open then. Press the model and it plays the opening back as a "
+                     "demonstration — a pressed model demonstrating itself, the way the hall's "
+                     "buttons do; the real bridge keeps its own timetable through all of it."},
             {"id": "ship-mj", "kind": "ship", "x": 114, "z": round(2500 / Z_SCALE, 2), "y": 81, "ry": 90,
              "w": 30, "h": 6, "d": 7.5, "run": 140,
              "title": "A harbour boat",
              "hint": "A boat of the basin's own size, using the openings: out under the raised "
                      "leaves on one, back in on the next. The big ships keep to the strait."},
+            # Round 51: the bridge gets a door of its own to show its opening — the walk ends at a
+            # service door on the quay and pressing it plays the whole lift, leaves up and down on
+            # the timetable's own 20-minute crossing, narrated (site.js's demo protocol; the model
+            # keeps the table's motion, not a real-traffic claim). The stand's two lamps follow it
+            # down to the quay, and the High Mart's base gets the twin blocks a model's plinth is.
+            {"id": "slot-wing", "kind": "board", "x": -340, "z": round(2870 / Z_SCALE, 2),
+             "y": 0, "ry": 90, "w": 170, "h": 156, "d": 240, "top": "#5a6572", "leaf": "#4a4238",
+             "title": "The basin's edge",
+             "hint": "The quay the table's strait keeps along the water: the Blue Wing's pylons stand "
+                     "on it, and the ripple the demo leaves runs out from here."},
+            {"id": "slot-wing-post", "kind": "board", "x": -340, "z": round(2950 / Z_SCALE, 2),
+             "y": 0, "ry": 90, "w": 20, "h": 352, "d": 60, "top": "#4c6d7e", "leaf": "#3c4a58",
+             "title": "The south pylon",
+             "hint": "The pylon the lift wire runs over: 35.2 m of painted steel at the bridge's "
+                     "south end, kept at the table's scale here on the quay's edge."},
+            {"id": "mart-base", "kind": "board", "x": 330, "z": round(3030 / Z_SCALE, 2),
+             "y": 0, "ry": 0, "w": 200, "h": 360, "d": 420, "top": "#7f7a72", "leaf": "#6a655e",
+             "title": "The High Mart's base",
+             "hint": "The podium the tower stands on — retail floors, a lobby, the grey plinth every "
+                     "Kurokawa photograph crops out at the bottom."},
+            {"id": "mart-crown", "kind": "board", "x": 330, "z": round(3040 / Z_SCALE, 2),
+             "y": 360, "ry": 0, "w": 200, "h": 120, "d": 300,
+             "top": "#8b857c", "leaf": "#746f68",
+             "title": "The open crown",
+             "hint": "The tower's steel crown frame and curved cap at the top of the 1:25 model — "
+                     "the part the observation deck photographs show from below."},
             # Round 36/39: the owner asked for the models to come apart ("門司港那邊模型要拆開") --
             # on the one table every building was a block a few centimetres high. The four historic
             # buildings have stands of their own down the hall at 1:25; the Retro High Mart joins them
@@ -4032,7 +4132,10 @@ DISTRICTS = [
              for x, z, of in ((-290, 830, "plinth-station"), (325, 1180, "plinth-customhouse"),
                               (-325, 1480, "plinth-osakashosen"), (330, 1780, "plinth-dalianhall"))] + [
             {"x": -300, "y": 590, "z": round(2050 / Z_SCALE, 2), "r": 350, "k": 0.34, "bulb": False,
-             "tint": "rgba(255,226,186,0.18)", "of": "plinth-retrohighmart"}],
+             "tint": "rgba(255,226,186,0.18)", "of": "plinth-retrohighmart"},
+            # the quay the walk now ends at keeps two of the hall's downlights, one each side
+            {"x": 620, "y": 420, "z": round(2870 / Z_SCALE, 2), "r": 110, "k": 0.62},
+            {"x": -620, "y": 420, "z": round(2870 / Z_SCALE, 2), "r": 110, "k": 0.6}],
         "beams": [90, 240, 340],
         # A model hall's walls: the gallery base and plaster the Toronto hall wears, dark.
         "surfaces": [
@@ -4105,6 +4208,13 @@ DISTRICTS = [
         # The walk passes the four historic stands in turn, then views the much taller Retro High
         # Mart from across the lane, pitched up to keep both its low stand and crown in frame. It then
         # comes up to the port table at the head of the basin, where one stop takes in both far landmarks.
+        # Round 54 review: the quay stops the rebuild authored down the left of the table could never
+        # be arrived at — its flank is at ±370 and a body needs 394 to pass, so x=−350 sat INSIDE the
+        # plinth's collision box, and every straight glide the rail makes crossed it. The record's own
+        # aisle (R52: "a walker can still go round the true-scale table by the right-hand aisle", the
+        # 22 cm the e2e gate measures) is what the rail now rides: out to the aisle mouth before the
+        # table's near face, up past the flank at 405, round the far corner, and in onto the quay
+        # behind the table, where every hop is a straight line no stand crosses.
         "stations": [
             {"z": 60, "x": 0, "label": "the door of the hall"},
             {"z": round(640 / Z_SCALE, 2), "x": -100, "label": "the station, on your left"},
@@ -4114,6 +4224,14 @@ DISTRICTS = [
             {"z": round(1660 / Z_SCALE, 2), "x": 200, "yaw": -52, "pitch": -9,
              "label": "the Retro High Mart, on its stand to your left"},
             {"z": round(2100 / Z_SCALE, 2), "x": 0, "label": "at the port table, over the basin toward the strait"},
+            {"z": round(2200 / Z_SCALE, 2), "x": 405, "label": "the right aisle, beside the table's flank"},
+            {"z": round(2450 / Z_SCALE, 2), "x": 405,
+             "label": "the Blue Wing on its berth"},
+            {"z": round(2700 / Z_SCALE, 2), "x": 405, "label": "the quay's turn, past the table's corner"},
+            {"z": round(2660 / Z_SCALE, 2), "x": 0, "label": "the canal's stone"},
+            {"z": round(2800 / Z_SCALE, 2), "x": 140, "label": "the harbour mouth"},
+            {"z": round(2950 / Z_SCALE, 2), "x": 0, "label": "ship lights across the strait"},
+            {"z": round(3080 / Z_SCALE, 2), "x": 0, "label": "the High Mart's doors"},
         ],
         "exit": {"id": "curtain-back", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
                  "title": "The curtain at your back", "hint": "It parts onto the street."},
@@ -4136,7 +4254,11 @@ DISTRICTS = [
                   "the same scale. The Mitsui Club, the hotel and Kaikyo Plaza are not modelled because "
                   "reliable shape and height data remain insufficient. The Blue Wing keeps its real "
                   "timetable, so it is shut after dark. No sign carries lettering and the yatai sells "
-                  "nothing named. Nothing here says the owner was in any of these places.",
+                  "nothing named. The walk's new half — the quay, the door, the bridge's demo — "
+                  "is exhibit framing like the stands themselves: the door shows the lift the "
+                  "timetable records, not a ship that came in, and the demo's twenty minutes are the "
+                  "crossing the sources give at model speed. Nothing here says the owner was in any "
+                  "of these places.",
     },
     {
         # Toronto, small. The owner's brief was Little Canada — the Toronto attraction where the
@@ -4435,8 +4557,19 @@ DISTRICTS = [
         "id": "niagara", "label": "The falls",
         "page": ROOM_BY_ID["niagara"]["page"],
         "plates": ROOM_BY_ID["niagara"]["plates"],
-        "lane": {"w": 1400, "d": 1483, "ceil": 400, "back": 200, "max_d": 4250, "open": True,
-                 "open_back": True, "open_end": True},
+        # Round 52: the lane runs on past the Centre to the fun strip the place really has next
+        # door — the Parkway, Clifton Hill, the SkyWheel — and every compression this measure makes
+        # (500 m of street to 155 of lane, thirty of bluff to sixteen) is said in the pieces' own
+        # hints. zones/floors feed the district banner and the overlook's standing height.
+        "lane": {"w": 1400, "d": 3600, "ceil": 400, "back": 200, "max_d": 10350, "open": True,
+                 "open_back": True, "open_end": True,
+                 "zones": [[-10, "Table Rock", "the rail, the mist, the doors of the Centre"],
+                           [1483, "The Niagara Parkway", "between the Centre and the fun strip"],
+                           [2200, "Clifton Hill", "the Street of Fun — 175 feet of lights at the far end"],
+                           [3350, "The Rainbow Approach", "440 m of steel to the state line"]],
+                 # half 15 m scene = the strip's plaza width, unscaled like every x in this lane
+                 "ws": [[1460, 3660, 1500]],
+                 "floors": [[1500, 2200, 553, 340, 660]]},
         "floor": "pavers",
         "day": {"cycle": 900, "start": 0.5, "gain": 1},
         "purpose": "Table Rock at Niagara Falls: the trail's last stretch to the brink, the gorge, both falls and the islands where they stand",
@@ -4472,6 +4605,18 @@ DISTRICTS = [
              "hint": "Inside Table Rock Centre: an elevator drops 38 m through the rock to the 1944 "
                      "tunnel, its two portals behind the sheet and the deck at the foot of the falls.",
              "leave": ROOM_BY_ID["journey"]["page"]},
+            # Round 51, at the owner's request (「瀑布也應該有互動的東西或是可以玩的遊戲」): the
+            # rapids bell. A toy shed on the promenade wall, dressed by the stall CSS like the
+            # street's pair; the water it plays on is the pool's own teal, the bell hangs on a wire
+            # the way the street's bulbs do. Pressing it opens the shared dialog with the machine —
+            # and it says, in its own hint, that none of this is the cataract's record.
+            {"id": "shed-rapids", "kind": "board", "w": 170, "h": 128, "d": 90,
+             "x": 640, "z": 820, "y": 0, "ry": -90, "game": "rapids",
+             "title": "The rapids shed, under the lamps",
+             "hint": "A toy, not a survey: a canvas raft, the current's two swells, and a bell on a "
+                     "wire over the water. Ring it three times before the mist hour is up; three "
+                     "scrapes on the rocks ends the morning. Nothing here claims the falls were ever "
+                     "ridden for sport."},
             # The trail is lit (OSM: lit=yes). Two posts stand for its lamps; their spacing is
             # drawn, not surveyed.
             {"id": "lamp-ng1", "kind": "lamp", "x": 640, "z": 120, "y": 0, "ry": 0, "w": 14, "h": 420, "d": 14,
@@ -4488,6 +4633,79 @@ DISTRICTS = [
              "hint": "The Horseshoe's brink starts a few metres past this post and runs about 670 m "
                      "round to Goat Island; the water drops 57 m into the basin. Table Rock itself, "
                      "the ledge the place is named for, fell into the gorge in 1850."},
+            # ---- Round 52, the open strip east of the Centre (sources and measures in TODO §R52).
+            {"id": "bluff-face", "kind": "board", "x": 520, "z": 1795, "y": 0, "ry": 0,
+             "w": 320, "h": 546, "d": 620, "leaf": "#5d6068",
+             "title": "The bluff under the deck",
+             "hint": "The rock the incline is cut into, and the falls' mist ends here. Thirty metres "
+                     "of gorge lip stand five and a half up in this lane, the way every other distance "
+                     "between the Centre and Clifton is kept."},
+            {"id": "fallsview-deck", "kind": "board", "x": 520, "z": 1795, "y": 546, "ry": 0,
+             "w": 320, "h": 7, "d": 620, "leaf": "#797570",
+             "title": "The Fallsview deck",
+             "hint": "The upper station's apron, level with the bluff's lip: the parking lot and the "
+                     "hotels' street begin past it. You reach it the way visitors do since 1966 — "
+                     "in the car, not up the rock."},
+            {"id": "falls-incline", "kind": "incline", "x": -66, "z": 1690, "y": 0, "ry": 0,
+             "w": 241, "h": 117, "d": 90,
+             "run": 1106, "deck": 553, "period": 62, "phase0": 0.5,
+             "ride": "1", "rideX": 500, "rideTop": 553,
+             "title": "The Falls Incline Railway",
+             "hint": "59.8 m of double track at 30 degrees, two 40-passenger cars counterbalanced "
+                     "over the head pulley, electric since 8 October 1966; the enclosed cars are "
+                     "2013. Of the eight inclines the two cities ran, this is the only one still "
+                     "running. A crossing is 62 real seconds — the cars here keep that clock, and "
+                     "the one you board makes it three on the model's account."},
+            {"id": "incline-upper-door", "kind": "door", "x": 620, "z": 1620, "y": 553, "ry": -90,
+             "leaf": "#33414e", "ride": "1", "rideX": 500, "rideTop": 553,
+             "title": "The upper station's door",
+             "hint": "It keeps the weather off the car. Press it and the incline brings you back "
+                     "down to the rail, the way it does every minute of the day."},
+            {"id": "skywheel", "kind": "wheel", "x": 3300, "z": 3050, "y": 0, "ry": 0,
+             "w": 25, "h": 1845, "d": 96, "dia": 5050, "axle": 2750, "turn": 40,
+             "demo": "wheel",
+             "title": "The Niagara SkyWheel",
+             "hint": "The largest observation wheel in Canada, up since 17 June 2006: a Bussink R60 "
+                     "— 53.3 m to the crown, a 50.5 m rim, 42 enclosed Swiss gondolas on 21 spoke "
+                     "stations, driven either way at up to 1.5 rpm, open all year, three slow turns "
+                     "a ride. The model keeps the real rate: forty seconds a revolution, drifting, "
+                     "never hurried. Press the platform and the rim lamps answer — the ride is not "
+                     "for sale in a drawing."},
+            {"id": "wheel-booth", "kind": "board", "x": 2900, "z": 2950, "y": 0, "ry": -90,
+             "w": 42, "h": 33, "d": 28, "leaf": "#8b9ab0",
+             "title": "The ticket box",
+             "hint": "A booth at the wheel's loading apron. In the drawing it sells nothing; in "
+                     "Clifton it sells the queue."},
+            {"id": "arcade-a", "kind": "front", "x": 1480, "z": 2320, "y": 0, "ry": -90,
+             "w": 340, "h": 250, "d": 26, "liton": 0.62,
+             "glow": [{"r": 90, "k": 0.6, "dy": 210, "tint": "rgba(255,180,110,0.5)"}],
+             "title": "An arcade, mid-block",
+             "hint": "Clifton Hill is a street of games, wax, and water parks, and a drawing may "
+                     "keep an arcade's glow but not its lease: the fronts here are unnamed on "
+                     "purpose, so none of them claims a business that need not stand here."},
+            {"id": "arcade-b", "kind": "front", "x": 1480, "z": 2560, "y": 0, "ry": -90,
+             "w": 300, "h": 260, "d": 26, "liton": 0.66,
+             "glow": [{"r": 90, "k": 0.55, "dy": 218, "tint": "rgba(255,180,110,0.5)"}],
+             "title": "Another front, another marquee",
+             "hint": "Two storeys of funhouse and a wall of lamps: the strip's measure again, not "
+                     "the survey's."},
+            {"id": "arcade-c", "kind": "front", "x": 1480, "z": 2800, "y": 0, "ry": -90,
+             "w": 320, "h": 240, "d": 26, "liton": 0.7,
+             "glow": [{"r": 90, "k": 0.6, "dy": 200, "tint": "rgba(255,180,110,0.5)"}],
+             "title": "The arcade nearest the wheel",
+             "hint": "From its door the SkyWheel fills the end of the street — the one view the "
+                     "strip's own postcards use, and the reason the wheel stands exactly behind it."},
+            {"id": "midway-stall", "kind": "foodstall", "x": -1480, "z": 2440, "y": 0, "ry": 90,
+             "w": 110, "h": 58, "d": 70, "awn": "#8a3f3a", "leaf": "#6e4f38",
+             "title": "A midway stall under an awning",
+             "hint": "The strip keeps one food stall because a strip without one is not a strip. "
+                     "Nothing here claims its menu."},
+            {"id": "curtain-rainbow", "kind": "noren", "x": 0, "z": 3560, "y": 172, "ry": 0,
+             "leave": "rooms-goat.html",
+             "title": "The way across the Rainbow",
+             "hint": "Beyond the curtain: the bridge — 440 m of steel over the gorge, its arch 290 "
+                     "m, open since 1 November 1941, and the walkway onto Goat Island and the state "
+                     "line. The American bank is drawn in its own page; step through to arrive."},
         ],
         # The gorge side: an iron railing on a stone curb between stone posts, open air above
         # (the Getty photographs at the wall, May 2026); the terrace side is open to the centre.
@@ -4496,6 +4714,11 @@ DISTRICTS = [
         "lamps": [
             {"x": 640, "y": 410, "z": 120, "r": 90, "k": 0.45},
             {"x": 640, "y": 410, "z": 1150, "r": 90, "k": 0.45},
+            # the strip burns brighter than the promenade, and its row starts at the Parkway
+            {"x": 640, "y": 430, "z": 2320, "r": 120, "k": 0.55},
+            {"x": 640, "y": 430, "z": 2700, "r": 120, "k": 0.55},
+            {"x": 640, "y": 430, "z": 3080, "r": 120, "k": 0.5},
+            {"x": 640, "y": 430, "z": 3420, "r": 110, "k": 0.45},
         ],
         "backdrop": {
             "skyAround": NIAGARA_SKY,
@@ -4516,6 +4739,10 @@ DISTRICTS = [
             {"z": 469, "x": 470, "label": "the centre's doors"},
             {"z": 980, "x": -520, "label": "the parapet over the gorge"},
             {"z": 1440, "x": -520, "yaw": -15, "pitch": 10, "label": "the Table Rock rail"},
+            {"z": 1660, "x": -140, "yaw": -18, "label": "the incline's lower station"},
+            {"z": 2130, "x": 500, "h": 553, "yaw": 38, "pitch": 14, "label": "on the Fallsview deck"},
+            {"z": 2900, "x": -600, "yaw": -18, "label": "under the SkyWheel"},
+            {"z": 3480, "x": 0, "label": "the bridge approach"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 678, "z": 340, "y": 0, "ry": -90, "leaf": "#33414e",
                  "title": "Back through the centre", "hint": "It opens onto the hall, at the falls' "
@@ -4542,7 +4769,14 @@ DISTRICTS = [
                   "(under two pixels tall from the rail). No crowds, no boats on the water, no "
                   "lettering, and no claim that the owner stood at the rail. The Parks line "
                   "downstream -- White Water Walk, the Aero Car, the Floral Clock, the Glen -- stays "
-                  "in the drawer.",
+                  "in the drawer. Under the shed at the journey door's hand the lane keeps a game: "
+                  "a raft and a bell, the mist's own noise answered in a toy — the shed is drawn, the "
+                  "bell is not surveyed. Round 52 added the east end: the Parkway, Clifton's fun row, "
+                  "the SkyWheel at its far end, and the Falls Incline. The wheel's measures are the "
+                  "manufacturer's sheet; the strip's 500 m of street are the lane's 155, the bluff's "
+                  "30 m are kept as 5.5, and the incline's 62-second crossing three when you ride it — each "
+                  "compression stated by the thing compressed. The arcade fronts carry no shop: a "
+                  "drawing may keep an arcade's glow, not its lease.",
     },
     {
         # Journey Behind the Falls (round 33; sources in TODO §0o). Not the bedrock strata and the
@@ -4791,6 +5025,132 @@ DISTRICTS = [
                  "and the answer is printed on the card above it.",
         "objects": [], "slots": [], "exit": None,
     },
+    {
+        # Round 52 (open Niagara, sources and the frame in TODO §R52): the American bank, seen
+        # from its own island. The Canadian page opens its far curtain onto the Rainbow walkway;
+        # this is what that walkway arrives at — no model table, no miniatures: the falls drawn
+        # at their record size, standing across a lane that keeps their distances in the strip's
+        # own measure, and saying so.
+        "id": "goat", "label": "Goat Island",
+        "page": ROOM_BY_ID["goat"]["page"],
+        "plates": ROOM_BY_ID["goat"]["plates"],
+        "purpose": "The American bank at its own measure: the Goat Island walk, Luna's bridge, the "
+                   "boulder field the river got back in 1972, and Terrapin Point where the Horseshoe "
+                   "is a wall of noise on the right",
+        "status": "open",
+        "kind": "personal",
+        "blurb": "New York State, at the strip's measure: the foot of the Rainbow's walkway, the "
+                 "timber deck out to Luna Island, the American Falls at its full 290 m of crest, and "
+                 "Terrapin Point where the Canadian side of the same water stands closest.",
+        "clad_note": (" The walk is a reservation, not a promenade: weathered timber decking and "
+                      "dolostone coping where the rock comes out, low rails at the banks, the woods "
+                      "closing over the path between points. Nothing on it carries a word."),
+        "sight_note": (" Both drawings stand in one water: to the right the Horseshoe's curve and "
+                       "the Canadian hotels behind it, straight ahead the American Falls over its "
+                       "boulders with the Bridal Veil past Luna, and down-river the gorge the two "
+                       "banks share. The Canadian page stands at these falls from the other side; "
+                       "this page is where that page's far curtain opens."),
+        "lane": {"w": 1500, "d": 5600, "ceil": 420, "back": 220, "max_d": 15900, "open": True,
+                 "open_back": True, "open_end": True,
+                 "zones": [[-10, "The Goat Island walk", "timber, then the roar"],
+                           [2400, "Luna and the American Falls", "290 m over a ledge onto boulders"]]},
+        "floor": "pavers",
+        "day": {"cycle": 900, "start": 0.5, "gain": 1},
+        "objects": [
+            {"id": "falls-american", "kind": "falls", "x": -1300, "z": 2350, "y": 0, "ry": 0,
+             "w": 10000, "h": 1034, "d": 500,
+             "title": "The American Falls",
+             "hint": "290 metres of crest, a 21-to-30-metre drop onto the boulders below it — the "
+                     "ledge they left there on purpose in 1969, when the river was dammed above "
+                     "and the face cleaned for the first time in living memory. Three years of "
+                     "silence, then the water came back over."},
+            {"id": "falls-horseshoe", "kind": "falls", "x": 6200, "z": 4300, "y": 0, "ry": -58,
+             "w": 19000, "h": 1966, "d": 620,
+             "title": "The Horseshoe, from the American side",
+             "hint": "57 metres over a curve that runs 670 round, the Canadian bank's own water. "
+                     "From Terrapin Point it is not a fall in front of you; it is a wall of noise "
+                     "to the right, nearer than the buildings behind it. Drawn from the record of "
+                     "the place, at the record's size."},
+            {"id": "luna-island", "kind": "island", "x": -2000, "z": 2900, "y": 0, "ry": 0,
+             "w": 330, "h": 40, "d": 140,
+             "title": "Luna Island",
+             "hint": "350 feet of dolostone between the American Falls and the Bridal Veil, named "
+                     "for the moonbows the full moon used to throw into its mist — until the "
+                     "banks started lighting the falls every night and no moon could compete. "
+                     "Closed to visitors 1954-1972 while the rock beneath it was made safe."},
+            {"id": "luna-bridge", "kind": "board", "x": -1900, "z": 2450, "y": 0, "ry": 90,
+             "w": 170, "h": 60, "d": 40, "leaf": "#33414e",
+             "title": "The footbridge to Luna",
+             "hint": "The pedestrian span Goat Island throws to its little sister. Walkable here; "
+                     "in person it is a short crossing with water on both sides of it."},
+            {"id": "boulders-e1", "kind": "board", "x": -1600, "z": 2620, "y": 0, "ry": 14,
+             "w": 210, "h": 130, "d": 150, "leaf": "#5d6068",
+             "title": "The rock pile below the ledge",
+             "hint": "Boulders the falls tore off its own lip, and the ones the engineers left "
+                     "when they cleared the face in 1969. A falls into a rock pile is a shallower "
+                     "fall; this one measures its drop to the boulders, not to the river."},
+            {"id": "boulders-e2", "kind": "board", "x": -1150, "z": 2700, "y": 0, "ry": -9,
+             "w": 260, "h": 110, "d": 170, "leaf": "#4c5560",
+             "title": "More of the pile",
+             "hint": "The talus runs the length of the pool below the American side."},
+            {"id": "terrapin", "kind": "board", "x": 2100, "z": 3900, "y": 0, "ry": 0,
+             "w": 900, "h": 62, "d": 700, "leaf": "#5f5c55",
+             "title": "Terrapin Point",
+             "hint": "The stone shelf at Goat Island's north end — the closest the United States "
+                     "comes to the Horseshoe. The point has been rebuilt twice after rockfalls and "
+                     "one ice storm; what you stand on is as much engineering as geology."},
+            {"id": "rail-tp1", "kind": "parapet", "x": 2750, "z": 4150, "y": 0, "ry": -58,
+             "w": 40, "h": 96, "d": 40,
+             "title": "The rail at Terrapin",
+             "hint": "Iron on stone, the same kit the Canadian parapet uses; the two banks "
+                     "standardised on keeping people back from the brink long ago."},
+            {"id": "woodline-c1", "kind": "island", "x": 8600, "z": 2800, "y": 0, "ry": 0,
+             "w": 420, "h": 34, "d": 200,
+             "title": "The Canadian bank's trees, across the river",
+             "hint": "The Table Rock promenade hides behind its own woodline from here; the "
+                     "buildings rise above it and belong to the other drawing."},
+            {"id": "pool-lower", "kind": "pool", "x": -600, "z": 6900, "y": 0, "ry": 0,
+             "w": 24000, "h": 20, "d": 9000,
+             "title": "The lower river, above the whirlpool",
+             "hint": "Everything that goes over either falls ends here, running north-east toward "
+                     "the whirlpool and the gorge. The water's colour is the gorge's own: a hard "
+                     "green from the rock flour two falls grind out of the shelf."},
+        ],
+        "surfaces": [],
+        "lamps": [
+            {"x": -420, "y": 360, "z": 700, "r": 80, "k": 0.4},
+            {"x": 420, "y": 360, "z": 2100, "r": 80, "k": 0.4},
+            {"x": 2450, "y": 360, "z": 3700, "r": 85, "k": 0.42},
+        ],
+        "backdrop": {"skyAround": NIAGARA_SKY},
+        "slots_title": "Places on the island",
+        "slots": [
+            {"label": "The American Falls at full height",
+             "note": "The face 1969 drained, cleaned, and refilled; the boulders that stayed.",
+             "state": "Held by the falls themselves; no plate takes the ledge's place."},
+            {"label": "Terrapin Point",
+             "note": "Where the United States meets the Horseshoe's noise.",
+             "state": "Held by the point and its rail."},
+        ],
+        "stations": [
+            {"z": 40, "x": 0, "label": "the foot of the Goat Island walk"},
+            {"z": 2380, "x": -1250, "yaw": -14, "label": "the Luna bridge"},
+            {"z": 4000, "x": 1750, "yaw": -26, "pitch": 4, "label": "Terrapin Point"},
+            {"z": 5300, "x": 0, "label": "the rail above the lower river"},
+        ],
+        "exit": {"id": "curtain-home", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
+                 "title": "The way back across the Rainbow",
+                 "hint": "440 metres of steel opened 1 November 1941, and twenty minutes of "
+                         "walkway back to Clifton Hill and the Canadian drawing of the same water."},
+        "back_to": "rooms-niagara.html#at-curtain-rainbow",
+        "caveat": "The American bank seen from its own island, at the strip's measure: the "
+                  "American Falls' 290 m crest and 21-30 m drop onto the 1969 boulders, Luna "
+                  "Island's 350 ft of dolostone and its 1954-72 closure, the Horseshoe's 57 m and "
+                  "670 m read from the Canadian record, the Rainbow's dates — sources. The "
+                  "island's walk line, the banks' woodlines, every height not named, and the "
+                  "gap-bridges between 290-metre faces and a 160-metre lane: drawn, and said so. "
+                  "The falls here are not miniatures: they are the same two curtains the Canadian "
+                  "page stands at, seen from the other bank's side of the water.",    },
 ]
 
 def wall_frames(d):
@@ -5000,9 +5360,13 @@ def walk_object(o):
     # and posts, a skyline's named towers, a bascule's split, a harbour boat's run. They travel in the
     # document like an awning colour, or the renderer never sees them (lane-prop section 7).
     extra_attr = "".join(
-        f' data-{k}="{escape(v if isinstance(v, str) else json.dumps(v, separators=(",", ":")))}"'
+        # an uppercase letter in an authored key becomes a dash on the page: HTML lowercases
+        # attributes, and `dataset.rideX` is only ever fed by `data-ride-x`
+        f' data-{"".join("-" + c.lower() if c.isupper() else c for c in k)}="{escape(v if isinstance(v, str) else json.dumps(v, separators=(",", ":")))}"'
         for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run", "lift", "blocks",
-                                         "footprint", "floors", "observation") if k in o))
+                                         "footprint", "floors", "observation", "game", "demo",
+                                         "ride", "rideX", "rideTop", "dia", "axle", "turn",
+                                         "phase0", "deck", "period") if k in o))
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
@@ -5012,10 +5376,18 @@ def walk_object(o):
         # page's state, and a reader who never presses anything still gets told where it starts.
         states = (f' data-states="{escape(json.dumps(o["states"], ensure_ascii=False))}"'
                   f' data-state="{o.get("state", 0)}"')
-    return (f'<button type="button" class="walk-hit" data-obj="{escape(o["id"])}" '
+    # A stall's whole body is the CSS of .walk-stall (its comment: awning, counter, basin — every
+    # colour borrowed, no geometry surveyed); the class rides the class list, or the dressed button
+    # and the painted prop cannot disagree about what the stall looks like.
+    stall = " walk-stall" if o.get("game") else ""
+    # Round 54: the record's kind rides the button so the site stops deriving it from the id.
+    # An id like `luna-island` was an island only if the prefix heuristic happened to agree; the
+    # authored field is the truth, and the shape table reads it directly now.
+    kind_attr = f' data-kind="{escape(o["kind"])}"' if o.get("kind") else ""
+    return (f'<button type="button" class="walk-hit{stall}" data-obj="{escape(o["id"])}" '
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
-            f'data-d="{dep}"{solid_attr} style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
+            f'data-d="{dep}"{solid_attr}{kind_attr} style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
             f'{states}{leave}{awn_attr}{noren_attr}{fascia_attr}{story_attr}{extra_attr}></button>')
 
 
@@ -5057,7 +5429,7 @@ def walk_html(d, drawer):
     for n, st in enumerate(d["stations"]):
         # A tick, not a caption: where the words go is the card, and the accessible name is what a
         # screen reader gets without anything being painted over the space.
-        view = "".join(f' data-view-{key}="{st[key]}"' for key in ("yaw", "pitch") if key in st)
+        view = "".join(f' data-view-{key}="{st[key]}"' for key in ("yaw", "pitch", "h") if key in st)
         chips.append(
             f'<button type="button" class="walk-stop" data-walk-stop="{n}"{view} '
             f'style="--z:{round(st["z"] * Z_SCALE)}px;--p:{st["z"] * Z_SCALE / walk_d:.3f}'
@@ -5095,6 +5467,30 @@ def walk_html(d, drawer):
     sight = d.get("sight_note", sight)
     # An open-world far end: the record authors how far the walker may keep going (walk units), and
     # the renderer lets the world continue past the last wall. Absent, the clamp is the wall itself.
+    # zone bounds and floors are authored in the record's old units and shipped in the scene's —
+    # the same 2.9 every object z crosses on its way into the page
+    zones = [[round(z * Z_SCALE), n, *rest] for z, n, *rest in lane["zones"]] if lane.get("zones") else []
+    # z is depth (record units, ×2.9); the standing height and the x-band of a floor are the
+    # lane's own scene centimetres, the same axes `w` rides — they cross the page unscaled
+    floors = [[round(a * Z_SCALE), round(b * Z_SCALE), h, x0, x1] for a, b, h, x0, x1 in lane["floors"]] \
+        if lane.get("floors") else []
+    widths = [[round(a * Z_SCALE), round(b * Z_SCALE), c] for a, b, c in lane["ws"]] if lane.get("ws") else []
+    zones_attr = f' data-lane-zones=\'{json.dumps(zones, separators=(",", ":"))}\'' if zones else ""
+    floors_attr = f' data-lane-floors=\'{json.dumps(floors, separators=(",", ":"))}\'' if floors else ""
+    ws_attr = f' data-lane-ws=\'{json.dumps(widths, separators=(",", ":"))}\'' if widths else ""
+    banner_html = """
+    <div class="walk-banner" data-walk-banner aria-hidden="true">
+      <b class="walk-banner-name"></b><span class="walk-banner-note"></span>
+    </div>""" if lane.get("zones") else ""
+    strip_html = ""
+    if lane.get("zones"):
+        ticks = "".join(
+            f'<span class="walk-strip-tick" style="left:{round(z / lane["d"] * 100, 2)}%"'
+            f' title="{escape(name)}"></span>' for z, name, *_ in lane["zones"] if z >= 0)
+        strip_html = f"""
+      <div class="walk-strip" data-walk-strip aria-hidden="true">
+        <span class="walk-strip-fill"></span>{ticks}<span class="walk-strip-you"></span>
+      </div>"""
     max_d_attr = f' data-lane-max-d="{lane["max_d"]}"' if lane.get("max_d") else ""
     # A street with nothing over it (Nakamise) says so, and the renderer draws no lid.
     max_d_attr += ' data-lane-open="1"' if lane.get("open") else ""
@@ -5107,6 +5503,14 @@ def walk_html(d, drawer):
     max_d_attr += ' data-lane-under="1"' if lane.get("under") else ""
     max_d_attr += f' data-lane-wallmat="{escape(lane["wallmat"])}"' if lane.get("wallmat") else ""
     # A place may own its ground: the pod walks on dark steel, not the street's concrete.
+    # A space with `"exit": None` is left the way it was entered — through a door that names
+    # where it goes — so the lane gets no exit button of its own (round 51).
+    if d.get("exit"):
+        exit_html = (f'<a class="walk-icon walk-exit" href="{escape(d.get("back_to", "activities.html"))}"'
+                     f' data-walk-exit aria-label="Leave the lane">{ICON_EXIT}</a>')
+    else:
+        exit_html = ('<span class="walk-icon walk-exit is-entrance" aria-hidden="true"'
+                     ' title="This lane is left through its own doors">{ICON_EXIT}</span>')
     floor_attr = f' data-floor="{d["floor"]}"' if d.get("floor") else ""
     # A place whose subject is the day: `"day": True` on the record, or a dict to author the cycle,
     # where it opens in that cycle, and how strong the sun is (`{"cycle": 900, "start": 0.45,
@@ -5120,6 +5524,38 @@ def walk_html(d, drawer):
     # there, for a room whose window shows a night that does not move.
     if d.get("night"):
         day_attr = f' data-lane-night="{d["night"]}"'
+    # The hour is the visitor's (round 49): one button trades the authored day for night, the
+    # choice carries across lanes, and a place held at its own fixed night gets no button at all.
+    # The stall dialog (round 50): one panel per lane, generated only where the wall actually has
+    # a stall, and worded so it says out loud what it is — a toy, not a survey.
+    game_html = ""
+    if any(o.get("game") for o in d["objects"]):
+        game_html = """
+  <div class="walk-game" data-walk-game role="dialog" aria-modal="true" hidden>
+    <div class="walk-game-head">
+      <b class="walk-game-title" data-game-title></b>
+      <button type="button" class="walk-game-close" data-game-close aria-label="Close the stall game">close</button>
+    </div>
+    <canvas class="walk-game-canvas" width="640" height="400"></canvas>
+    <p class="walk-game-status" data-game-status role="status"></p>
+    <p class="walk-game-note">A toy, not a survey: the stalls of a festival lane stand at no surveyed address, and no button here claims one.</p>
+  </div>"""
+    if d.get("night"):
+        hour_html = ""
+    else:
+        hour_html = (
+            '<button type="button" class="walk-icon walk-hour" data-walk-hour'
+            ' aria-label="Daylight now. Bring on the night.">'
+            '<svg class="walk-hour-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"'
+            ' stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round"'
+            ' stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364'
+            'l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636'
+            'M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>'
+            '<svg class="walk-hour-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"'
+            ' stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round"'
+            ' stroke-linejoin="round" d="M21.752 15.002A9.719 9.719 0 0118 15.75c-5.385 0-9.75-4.365'
+            '-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21'
+            'a9.753 9.753 0 009.002-5.998z" /></svg></button>')
     if day:
         opts = day if isinstance(day, dict) else {}
         day_attr = (f' data-lane-day="1" data-lane-day-cycle="{opts.get("cycle", 900)}"'
@@ -5127,22 +5563,30 @@ def walk_html(d, drawer):
                     f' data-lane-day-gain="{opts.get("gain", 1)}"')
     return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}"
        data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
-       data-lane-back="{lane["back"]}"{max_d_attr}{day_attr}{floor_attr} data-eye="{EYE}">
+       data-lane-back="{lane["back"]}"{max_d_attr}{day_attr}{floor_attr}{zones_attr}{floors_attr}{ws_attr}
+       data-eye="{EYE}">{banner_html}
   <div class="walk-view" tabindex="0" data-walk-view role="application"
-       aria-label="{label}, a lane you walk in person.{clad}{sight} Drag to turn, W A S D to walk, Shift to run,
-       Space to jump, E to open what you are standing in front of, L for the list, I for this note.
+       aria-label="{label}, a lane you walk in person.{clad}{sight} Drag, arrow keys or Q/E to turn,
+       W A S D to walk, Shift to run, Space to jump, E while standing still to open what you are
+       facing, double-click to let the mouse look, L for the list, I for this note. The first visit is walked through once by a guide strip at the bottom of the screen; it is replayable from this note.
        Nothing is written over the space: every sentence is behind a button.">
     <canvas class="walk-three-canvas" data-walk-three width="16" height="9" aria-hidden="true"></canvas>
-    <canvas class="walk-canvas" data-walk-canvas width="16" height="9" aria-hidden="true"></canvas>
     <div class="walk-hits" data-walk-hits>
       {INDENT.join(parts)}
       {walk_islands(d, placed)}
     </div>
   </div>
+  {game_html}
+  <div class="walk-tutor" data-walk-tutor hidden aria-hidden="false">
+    <p class="walk-tutor-step" data-walk-tutor-text></p>
+    <span class="walk-tutor-n" data-walk-tutor-count></span>
+    <button type="button" class="walk-tutor-act" data-walk-tutor-skip aria-label="Skip the guide">skip</button>
+    <button type="button" class="walk-tutor-act" data-walk-tutor-done aria-label="Got it, leave me to the lane">done</button>
+  </div>
   <div class="walk-hud">
     <div class="walk-top">
       <div class="walk-pick">
-        <a class="walk-icon walk-exit" href="{d.get("back_to", "activities.html")}" data-walk-exit aria-label="Leave the lane">{ICON_EXIT}</a>
+        {exit_html}
         <div class="walk-stops" role="group" aria-label="Stops in this lane">{"".join(chips)}</div>
       </div>
       <div class="walk-read">
@@ -5157,6 +5601,9 @@ def walk_html(d, drawer):
         ><button type="button" class="walk-icon" data-walk-fov="1"
           aria-label="Narrower view">{ICON_FOV_IN}</button></span>
         <button type="button" class="walk-icon walk-jump" data-walk-jump aria-label="Jump">{ICON_UP}</button>
+        <button type="button" class="walk-icon walk-tutor-replay" data-walk-tutor-replay
+          aria-label="Walk me through the keys again">{ICON_BULB}</button>
+        {hour_html}
         <button type="button" class="walk-icon walk-info" data-walk-info aria-expanded="false"
           aria-controls="walk-card-{did}" aria-label="What this lane is, and how to move in it">{ICON_CHAT}</button>
         <button type="button" class="walk-icon" data-walk-list aria-expanded="false"
@@ -5185,6 +5632,7 @@ def walk_html(d, drawer):
     </div>
     <button type="button" class="modal-close" data-walk-card-close aria-label="Close">{ICON_X}</button>
   </div>
+  {strip_html}
   <aside class="walk-list" id="walk-list-{did}" data-walk-listpanel aria-label="{label}, written out">
     <button type="button" class="walk-drawer-close" data-walk-list-close aria-label="Close the list">
       {ICON_X}</button>

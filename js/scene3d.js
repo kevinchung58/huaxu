@@ -3,9 +3,19 @@
  *
  * The lane, authored props, compact far backdrops and sourced `backdrop.world.prims` are all submitted
  * as world-space meshes to one camera and depth buffer. site.js remains the authoring/interaction layer:
- * it supplies each frame's polygons, camera, light values and hit targets. Its transparent Canvas2D
- * surface is transparent while this renderer is active and remains the complete Canvas2D fallback
- * when WebGL is absent or a context fails; lamps, pools, shadows and wires are Three.js geometry too.
+ * it supplies each frame's polygons, camera, light values and hit targets, and this file is the only
+ * picture there is — the Canvas2D lane painter that used to ride alongside was deleted in round 54
+ * (owner ruling), and where WebGL is absent the engine reports "off" and the lane says so in words
+ * rather than degrading into a second renderer. Lamps, pools, shadows and wires are Three.js geometry too.
+ *
+ * Spatial basis, declared once (round 46, from the Mint spatial-contracts §1 review — an
+ * experiment showed that a basis left undeclared gets re-invented, wrongly, by every consumer):
+ * world units are centimetres with +y up; the lane plane is (x across, depth along); the walker's
+ * facing is a yaw in DEGREES whose zero looks down +depth, forward being (sin yaw, cos yaw), and
+ * the eye sits at the authored height plus the body's own height and bob. Every mesh reaching this
+ * renderer is already in those world centimetres — site.js normalizes once, before submission, and
+ * no object re-derives the basis per piece. Screen space is derived, never authored: one projection
+ * (projectLanePoint) maps world to canvas for the 2D fallback, camera matrices do it for WebGL.
  *
  * No location, dimensions, labels or scene detail are authored here. This file only turns scene records
  * and per-frame polygons into meshes. Pattern maps are procedural material samples, never invented
@@ -212,8 +222,8 @@ function patternCanvas(name) {
     c.clearRect(0, 0, 128, 128);
     let seed = 35071;
     const flow = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 52; i++) {
-      const x = flow() * 128, w = 0.8 + flow() * 3.6, a = 0.1 + flow() * 0.34;
+    for (let i = 0; i < 64; i++) {
+      const x = flow() * 128, w = 0.8 + flow() * 4.2, a = 0.12 + flow() * 0.42;
       const dark = i % 4 === 0, periods = 1 + Math.floor(flow() * 2), phase = flow() * Math.PI * 2;
       const gradient = c.createLinearGradient(0, 0, 0, 128);
       for (let k = 0; k <= 8; k++) {
@@ -383,7 +393,11 @@ export function buildLaneGeometry(THREE, quads, state = {}) {
   const groups = new Map();
   let triangles = 0, quadCount = 0;
   const day = clamp(Number(state.day) || 0, 0, 1);
-  const night = clamp((Number(state.night) || 0) * 0.5, 0, 0.72);
+  // The floor the night fold may darken a surface down to, as a fraction toward the murk navy.
+  // Round 49 raised the floor (0.5/0.72 -> 0.40/0.58) under the owner's ruling that a night the
+  // visitor asked for must read as a picture, measured on the composited frame — the painter's own
+  // 2D night keeps its full lift; the lit path now matches its legibility, not an invented brightness.
+  const night = clamp((Number(state.night) || 0) * 0.40, 0, 0.58);
   const dayPage = Boolean(state.dayPage);
   const fogMax = clamp(state.fogMax === undefined ? 0.6 : Number(state.fogMax), 0, 0.6);
   const dayGain = Number.isFinite(Number(state.dayGain)) ? Number(state.dayGain) : 1;
@@ -483,10 +497,15 @@ export function buildLaneGeometry(THREE, quads, state = {}) {
 }
 
 function laneShaderMaterial(THREE, map, transparent) {
-  const material = new THREE.MeshBasicMaterial({
+  const material = new THREE.MeshStandardMaterial({
     map: map || null, vertexColors: true, side: THREE.DoubleSide, transparent,
-    depthWrite: !transparent, depthTest: true, fog: false,
+    depthWrite: !transparent, depthTest: true, fog: false, flatShading: true,
+    roughness: 0.92, metalness: 0, envMapIntensity: 0.45,
+    // the same self-lit murk floor the surveyed batches carry — halls paint their tiles through
+    // lane quads, and an interior's light must not depend on the sky outside a sky it never has
+    emissive: new THREE.Color(0x16223c), emissiveIntensity: 0,
   });
+  material.userData.nightGlow = true;
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uLaneWarm = { value: new THREE.Color("#ffe4ba") };
     shader.uniforms.uLaneNight = { value: new THREE.Color("#16223c") };
@@ -507,10 +526,11 @@ function laneShaderMaterial(THREE, map, transparent) {
         varying float vLaneDarkness; varying float vLaneDaylight;`)
       .replace("#include <color_fragment>", `#include <color_fragment>
         float laneWarm=clamp(vLaneLit-0.55,0.0,1.15)*0.24;
-        float laneDark=min(0.72,1.0-(1.0-clamp(vLaneAir,0.0,0.6))*(1.0-clamp(vLaneDarkness,0.0,0.72)));
+        float laneDark=min(0.62,1.0-(1.0-clamp(vLaneAir,0.0,0.6))*(1.0-clamp(vLaneDarkness,0.0,0.58)));
         diffuseColor.rgb=mix(diffuseColor.rgb,uLaneWarm,laneWarm);
         diffuseColor.rgb=mix(diffuseColor.rgb,uLaneNight,laneDark);
         diffuseColor.rgb+=uLaneSun*max(0.0,vLaneDaylight)*0.62;
+        diffuseColor.rgb+=uLaneNight*min(0.62,vLaneDarkness)*3.2;
         diffuseColor.a*=clamp(vLaneOpacity,0.0,1.0);`);
   };
   material.customProgramCacheKey = () => "huaxu-walk-lane-v1";
@@ -689,7 +709,12 @@ function makeClouds(THREE, scene, prims) {
       void main(){ vUv=uv; vColor=aColor; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
     fragmentShader: `uniform sampler2D uCloud; varying vec2 vUv; varying vec4 vColor;
       void main(){ vec4 tex=texture2D(uCloud,vUv); gl_FragColor=vec4(vColor.rgb, tex.a*vColor.a); }`,
-    transparent: true, depthWrite: false, depthTest: true, side: THREE.DoubleSide,
+    // depthTest off, deliberately: spray is overlay-grade. The sheet it rises from and the deck it
+    // crosses are opaque writers that render first, so a depth-tested billboard anchored behind them
+    // is clipped to nothing — measured in round 43 (a full record set, 0.3/255 of visible change).
+    // The veil over the rail is the whole effect, and renderOrder 2 still puts it after the water and
+    // before the rainbow.
+    transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide,
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = "surveyed spray billboards";
@@ -808,6 +833,36 @@ function backdropSkyStops(backdrop, dayPage, day) {
     e: Math.atan2(((Number(band.y0) + Number(band.y1)) * 0.5) - 168, 120000) * 180 / Math.PI,
     c: dayColor(band.c || FALLBACK_COLOR, 0.8 + 0.12 * (Number(band.glow) || 0)),
   }));
+}
+
+function makeSkyEnvironment(THREE, renderer, backdrop, dayPage, day) {
+  if (typeof document === "undefined" || !renderer || !THREE.PMREMGenerator) return null;
+  const stops = backdropSkyStops(backdrop || {}, dayPage, day);
+  if (!stops.length) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = 64; canvas.height = 128;   // azimuth is uniform; only the elevation axis carries data
+  const c = canvas.getContext("2d");
+  if (!c) return null;
+  for (let y = 0; y < canvas.height; y++) {
+    const elevation = 90 - (180 * y) / (canvas.height - 1);
+    c.fillStyle = skyColorAt(stops, elevation, dayPage, day);
+    c.fillRect(0, y, canvas.width, 1);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.mapping = THREE.EquirectangularReflectionMapping;
+  texture.colorSpace = THREE.NoColorSpace;   // the site's own convention (see buildRenderer): display
+                                             // values are the working space; a decode here would dim the
+                                             // reflections against the very sky they were sampled from
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const env = pmrem.fromEquirectangular(texture).texture;
+    pmrem.dispose();
+    texture.dispose();
+    return env;
+  } catch (e) {
+    texture.dispose();
+    return null;   // no environment is a worse-looking but complete scene; a throw is not
+  }
 }
 
 function makeSkyTexture(THREE, backdrop, dayPage, day) {
@@ -1235,12 +1290,48 @@ export function createSceneEffects(THREE, scene, source, materials = [], texture
 function buildRenderer(THREE, canvas, backdrop, api) {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: true, powerPreference: "low-power" });
   renderer.setPixelRatio(1);
+  // Round 48, the lighting base the owner signed off on. The palette of this site is authored as
+  // display values and the renderer's SRGB output (an encode every surface used to get, which the
+  // tuned colours already compensate for) is KEPT — the filmic curve rides on top of it, so the
+  // one-line diff against the old look is literally `enc(aces(in))` versus `enc(in)`: highlights
+  // roll off, the deepest darks firm up, midtones barely move. Exposure 0.75 (against three's
+  // internal /0.6) is the calibrated amount that keeps the authored sky inside a stop of before.
+  // The 2D mirror in site.js reproduces the same composite transform, matrix for matrix.
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.75;
+  // Glow sprites stay outside the curve on purpose — a lantern is allowed to blow out, a wall is not.
+
   renderer.setClearColor(0x141e36, 1);
   backdrop = backdrop || {};
   const scene = new THREE.Scene();
   scene.background = makeSkyTexture(THREE, backdrop, api.dayPage, api.day);
+  // The environment is the same authored sky the backdrop is painted from — one elevation table,
+  // sampled once, turned into a prefiltered radiance map by PMREM. Reflections and the visible sky
+  // cannot disagree, because they read the same record (the one-world-query rule, pointed at light).
+  const environment = makeSkyEnvironment(THREE, renderer, backdrop, api.dayPage, api.day);
+  if (environment) scene.environment = environment;
+  // A hemisphere light, coloured from the same elevation table as the sky and the environment:
+  // it is the floor under which a scene may never go black — PMREM can fail on a weak software
+  // renderer, and a lit-painted world must degrade to "gentle sky bounce", not to "unlit black".
+  {
+    const hs = backdropSkyStops(backdrop, api.dayPage, api.day);
+    const skyC = hs.length ? skyColorAt(hs, 45, api.dayPage, api.day) : FALLBACK_COLOR;
+    const gndC = hs.length ? skyColorAt(hs, -45, api.dayPage, api.day) : FALLBACK_COLOR;
+    scene.add(new THREE.HemisphereLight(skyC, gndC, 0.5));
+  }
+  // Night the visitor chose must still be a picture, not a blackout: the painter folds its murk
+  // as navy rather than black on purpose, and the lit path folds the same navy, continuously, as
+  // the sun goes — the authored night colour, never a made-up lamp.
+  const nightAmbient = new THREE.AmbientLight(0x16223c, 0);
+  scene.add(nightAmbient);
+  // The hall's own constant, when the record has no sky to borrow. White is not a made-up lamp:
+  // it is the identity — show the authored colours as authored. The record's light lives inside
+  // the tiles (the painter's washes) and inside the lane shader's per-quad warm/murk mix, so a
+  // tinted ambient here would fold twice. This only lifts the shells off the unlit black that
+  // round 51 measured (4.2 luma where the painter paints its tiles at full).
+  const hallAmbient = new THREE.AmbientLight(0xffffff, 0);
+  scene.add(hallAmbient);
   scene.fog = new THREE.FogExp2(FALLBACK_COLOR, 0.000005);
   const camera = new THREE.PerspectiveCamera(45, 1, 20, 600000);
   const staged = buildWorldGeometry(THREE, backdrop.world || {});
@@ -1261,9 +1352,20 @@ function buildRenderer(THREE, canvas, backdrop, api) {
     const map = batch.key === "__flat" ? null : (textures.get(batch.key) || makeTexture(THREE, batch.key, renderer));
     if (map && !textures.has(batch.key)) textures.set(batch.key, map);
     const transparent = batch.opacity < 0.999 || batch.key === "ironscroll";
-    const material = new THREE.MeshBasicMaterial({ map, vertexColors: true, side: THREE.DoubleSide,
-      opacity: batch.opacity, transparent, depthWrite: !transparent, fog: true,
+    // Lit but not shiny: the world is painted, and PBR here is about the sky's ambient wrapping
+    // the volumes, not about pretending to be varnished. flatShading is load-bearing — the batches
+    // carry no normal attribute, and the derivative path needs none.
+    const material = new THREE.MeshStandardMaterial({ map, vertexColors: true, side: THREE.DoubleSide,
+      opacity: batch.opacity, transparent, depthWrite: !transparent, fog: true, flatShading: true,
+      roughness: 0.95, metalness: 0, envMapIntensity: 0.55,
+      // The 2D painter gets its night legibility from washes layered ADDITIVELY over the tile
+      // colours — which are authored dark. A lighting model multiplies those dark albedos by dark
+      // light and the lane blacks out (measured, round 49: ground band luma 27, no lighting change
+      // could lift it). The emissive is the 3D counterpart of that additive wash: same authored
+      // murk navy, scaled by night, never a new colour.
+      emissive: new THREE.Color(0x16223c), emissiveIntensity: 0,
       polygonOffset: batch.key !== "__flat", polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    material.userData.nightGlow = true;
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = `surveyed world: ${batch.key}`;
     mesh.frustumCulled = true;
@@ -1315,10 +1417,10 @@ function buildRenderer(THREE, canvas, backdrop, api) {
           // band color visible; the old per-quad sine repeated a high-frequency "window" moire.
           vec4 grain=texture2D(uStreaks,vec2(vUv.x,vUv.y+uTime*0.38*uMotion));
           float lightStreak=smoothstep(0.18,0.78,grain.r);
-          vec3 bright=mix(base,min(vec3(1.0),base*1.14+vec3(0.035)),0.75);
-          vec3 dark=base*vec3(0.62,0.82,0.86);
+          vec3 bright=min(vec3(1.0),base*1.32+vec3(0.06));
+          vec3 dark=base*vec3(0.52,0.71,0.77);
           vec3 strand=mix(dark,bright,lightStreak);
-          float coverage=vFall<0.0?0.0:clamp(grain.a*vOpacity,0.0,0.58);
+          float coverage=vFall<0.0?0.0:clamp(grain.a*vOpacity,0.0,0.75);
           vec3 color=mix(base,strand,coverage);
           gl_FragColor=vec4(color,1.0);
           #include <tonemapping_fragment>
@@ -1411,6 +1513,26 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   };
 
   function render(state) {
+    // the hour rides in every frame's state (site.js builds it from the chosen phase): night K
+    // opens as the sun drops below the painter's own dusk line, and nothing else changes
+    {
+      const nightK = Math.max(0, Math.min(1, ((Number(state.night) || 0) - 0.45) / 0.5));
+      // A hall has no sky to borrow: its record's dusk is lamp-lit and constant, and in the painter
+      // the tiles carry that constant themselves (lit wash over authored colours) and the shell
+      // takes neither the sun's lift nor the night's murk (site.js: "own lamps whatever the hour").
+      // Round 51 mirrored only half of that — it held the hall at the full navy fold forever, and
+      // round 53 is the bill: a hall at 30,53,103 mean RGB (blue 3.4 times red, the owner's 紫色)
+      // where the painter paints 111,121,138. So the navy of the night now rides the MOVING hour
+      // (hourK) — an interior's authored fixed night is its lamps, not the sky's colour — and the
+      // hall's constant is the lamp wash plus a quarter of the murk as air, both from the record.
+      // Without any floor at all a hall still collapses to the round-51 black (4.2 luma), so the
+      // floor stays structural: it just arrives warm now.
+      const hallK = state.dayPage ? 0 : 1;
+      const hourK = state.dayPage ? nightK : 0;
+      nightAmbient.intensity = 0.62 * hourK;
+      hallAmbient.intensity = 1.6 * hallK;
+      for (const m of materials) if (m.userData && m.userData.nightGlow) m.emissiveIntensity = 4.5 * hourK;
+    }
     const w = Math.max(1, Math.round(state.width)), h = Math.max(1, Math.round(state.height));
     if (w !== width || h !== height) { renderer.setSize(w, h, false); width = w; height = h; }
     const focal = Math.max(1, Number(state.focal) || 1), near = 20;
@@ -1473,6 +1595,7 @@ function buildRenderer(THREE, canvas, backdrop, api) {
     version: THREE_VERSION,
     render,
     dispose() {
+      if (environment) environment.dispose();
       canvas.hidden = true;
       for (const entry of laneMeshes.values()) entry.mesh.geometry.dispose();
       for (const material of laneMaterials.values()) material.dispose();
@@ -1488,6 +1611,14 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   };
 }
 
+// The lane has one renderer now, so a failure names itself instead of degrading into a second
+// picture: the authored sentence in the info card is raised, and the list still reads.
+function noteNoWebGL(layer, why) {
+  const note = layer.querySelector("[data-walk-fallback]");
+  if (note) note.hidden = false;
+  if (window.console && typeof console.warn === "function") console.warn(why);
+}
+
 async function mount() {
   const layer = document.querySelector(".walk[data-walk]");
   const canvas = layer && layer.querySelector("[data-walk-three]");
@@ -1498,14 +1629,16 @@ async function mount() {
     const THREE = await import(`./vendor/three-${THREE_VERSION}/three.module.js`);
     const engine = buildRenderer(THREE, canvas, backdrop, api);
     if (!api.attachThree(engine)) {
-      engine.dispose(); canvas.hidden = true; layer.dataset.walkRenderer = "canvas2d"; return;
+      engine.dispose(); canvas.hidden = true; layer.dataset.walkRenderer = "off";
+      noteNoWebGL(layer, "Three.js refused the scene:"); return;
     }
     layer.dataset.walkRenderer = "three";
     layer.__walk.threeStats = engine.stats;
   } catch (error) {
     canvas.hidden = true;
-    layer.dataset.walkRenderer = "canvas2d";
-    if (window.console && typeof console.warn === "function") console.warn("Three.js world fallback:", error);
+    layer.dataset.walkRenderer = "off";
+    noteNoWebGL(layer, "Three.js world failed:");
+    if (window.console && typeof console.warn === "function") console.warn("Three.js world could not mount:", error);
   }
 }
 

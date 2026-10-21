@@ -1,7 +1,7 @@
 /* verify-walk.mjs — the lane, its furniture, the compound beyond the window, and the album.
 
-   jsdom has no WebGL or backing canvas, so the Canvas2D fallback context is replaced by a recorder:
-   this gate checks fallback painting, movement, reach and interaction logic. Three.js geometry and
+   jsdom has no WebGL, so the tile raster's canvas is replaced by a recorder: this gate checks the
+   compiled scene numbers, movement, reach and interaction logic. Three.js geometry and
    generated-page wiring are covered by `bin/verify-three.mjs`; neither gate is a claim about browser
    appearance. Run from the repo root:
    `node .verify/verify-walk.mjs`. */
@@ -47,6 +47,7 @@ function recorder() {
       if (/^rgba\(255,228,186,/.test(c)) ctx.warm++;
     },
     stroke() { ctx.strokes++; },
+    fillText() { ctx.text++; }, strokeText() { ctx.text++; },
     drawImage(...a) { ctx.imgs++; fin(a.slice(1)); },
     setTransform(...a) { fin(a); ctx.frames++; ctx.frame = []; },
     transform(...a) { fin(a); },
@@ -60,7 +61,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const out = [];
 const ok = (n, c, e = "") => out.push(`${c ? "PASS" : "FAIL"}  ${n}${e ? "  — " + e : ""}`);
 
-function boot(markup, url) {
+function boot(markup, url, seedHour) {
   const { JSDOM, VirtualConsole } = globalThis.__JSDOM;
   // jsdom refuses to navigate, which is the one thing a walk-through of the exit needs to be heard
   // about: an attempted navigation lands here instead of on a console the owner has to read.
@@ -92,6 +93,7 @@ function boot(markup, url) {
     get src() { return this._s; }
     get complete() { return !!this._s; }
   };
+  if (seedHour !== undefined) w.localStorage.setItem("huaxu.walk-hour.v1", seedHour);
   w.eval(js);
   return w;
 }
@@ -243,8 +245,12 @@ ok("and so is the dressing, because the room is the thing being described",
   // wrapper is not what is painted over the space.
   const ownText = (el) => Array.from(el.childNodes).filter((n) => n.nodeType === 3)
     .map((n) => n.textContent.trim()).join(" ").trim();
-  const words = [...hud.querySelectorAll("*")].filter((el) => !spoken(el) && ownText(el));
-  ok("nothing painted over the space is a sentence, a label, or even a glyph",
+  // The one licensed exception is the first-visit guide (round 46, at the owner's request): prose
+  // may ride the bottom chrome only inside [data-walk-tutor], only until it is learned, and the
+  // tests below prove both halves. Everything else on the display still stays wordless.
+  const words = [...hud.querySelectorAll("*")].filter((el) => !spoken(el) && ownText(el)
+                                                                  && !el.closest("[data-walk-tutor]"));
+  ok("nothing painted over the space is a sentence, a label, or even a glyph — the guide strip excepted, once",
      words.length === 0, words.map((e) => `${e.tagName}.${e.className}:${e.textContent.trim()}`).join(" "));
   ok("the live regions are still there to be heard, and only to be heard",
      q("[data-walk-status]").classList.contains("sr-only")
@@ -256,9 +262,11 @@ ok("and so is the dressing, because the room is the thing being described",
        && /--p:[\d.]+/.test(b.getAttribute("style") || "")));
   ok("and the profile is data, not a look: each tick's height comes from its own depth",
      /height: calc\(0\.42rem \+ var\(--p, 0\)/.test(css));
+  const hudBtns = qa(".walk-hud button, .walk-hud a").filter((el) => !el.closest("[data-walk-tutor]"));
   ok("every control on the display is an icon button with an accessible name",
-     qa(".walk-hud button, .walk-hud a").every((el) => (el.getAttribute("aria-label") || "").length > 3
-       && !el.textContent.trim()));
+     hudBtns.every((el) => (el.getAttribute("aria-label") || "").length > 3 && !el.textContent.trim()));
+  ok("the guide's two word-buttons carry accessible names too",
+     qa("[data-walk-tutor] button").every((el) => (el.getAttribute("aria-label") || "").length > 3));
   ok("the prose that used to sit there is emitted inside the card it now hides in",
      /data-walk-aside/.test(html) && /drag to turn/.test(q("[data-walk-aside]").textContent)
        && q("[data-walk-card]").hidden === true);
@@ -288,7 +296,6 @@ ok("every save is matched by a restore", ctx.saves === ctx.restores, `${ctx.save
 ok("the far plane stays a plane: nothing is projected off the ends of the earth",
    ctx.ptsMax > 0 && ctx.ptsMax < 60000, `widest coordinate ${Math.round(ctx.ptsMax)}`);
 ok("a texture covers its own quad and no more", ctx.huge === 0, `${ctx.huge} oversized fills`);
-ok("the backdrop adds its own fills to the room, not a second pass over it", ctx.fills > before);
 /* The ceiling is a pass detector, not a freeze on detail — and it was calibrated on a build where
    the compound beyond the lane's window was not being drawn at all (the vista and backdrop islands
    were read with a list operation and came back `null`, so `if (vista)` was false). With the
@@ -324,11 +331,6 @@ ok("the backdrop adds its own fills to the room, not a second pass over it", ctx
    painters' fillRects. The ceiling goes to 6600; a second depth pass would now read near
    12 700, so the detector still has a whole pass of daylight. */
 /* Round 32 recalibration, by the same honest A/B: this page is Nakamise now -- 30 m of street instead
-   of 12.5 m of lane, so 2.2 times the wall slices, seven shop bays and a temple backdrop. HEAD (the old
-   lane) reads 6380; Nakamise reads 8153 on the same boot. The ceiling goes to 8600; a second depth pass
-   would read near 16 300, so the detector keeps its whole pass of daylight. */
-ok("one depth pass, dressed: the room costs fills, not passes",
-   ctx.fills > before && ctx.fills < 8600, `${ctx.fills} fills, one pass`);
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
 ok("the cladding is tiled into the wall's own panels, so an affine map stays exact",
@@ -344,37 +346,40 @@ ok("the room's atmosphere is drawn, not photographed: no material image is loade
    !/IMG\/[a-z0-9-]*(shutter|brick|tile|plaster|corrugated|wood|asphalt)/.test(js + html));
 /* A wet patch is only authored where a light stands over it to be held (the old lane had one; the
    paved street after closing has none), so the rule is checked over whatever the data holds. */
-ok("a wet patch earns its place: it holds the light above it, and nothing else",
-   /marks\.forEach\(\(mk\) => \{\s*\n\s*if \(mk\.kind !== "wet"\) return;/.test(js)
-     && ground.filter((m) => m.kind === "wet").every((m) => lights.some((L) => L.bulb === false
-         && L.x >= m.x0 && L.x <= m.x1 && L.z >= m.z0 && L.z <= m.z1)));
+// round 54: the wet patch's reflection was a canvas pass; what survives is the authored contract —
+// a patch must have a source above it, and the scene's own reflection sprites carry it in Three.
+ok("a wet patch earns its place: every patch has a light standing above it",
+   ground.filter((m) => m.kind === "wet").every((m) => lights.some((L) => L.bulb === false
+     && L.x >= m.x0 && L.x <= m.x1 && L.z >= m.z0 && L.z <= m.z1)));
 ok("a shopfront is a recess in whichever wall it hangs on, built through the wall's own axes",
    /const P = \(u, v, y\) =>/.test(js) && !/face\(inset\/2/.test(js));
 ok("glass lets the far side through, and says so in code", /rgba\(186,214,240,0\.2\d?\)/.test(js));
-ok("a hanging lamp is tied to the wire: the cord is drawn for a body, at the authored height",
-   /L\.body === "lantern"\) strand\(\[L\.x, CEIL, L\.z\], \[L\.x \+ dx, L\.h/.test(js));
-ok("and the swing moves the lamp, its cord, its pool and its light together",
-   (js.match(/swayOf\(L\)/g) || []).length >= 4 && /const swayOf = \(L\) =>/.test(js)
-     && /reduce\(\) \? 0 :/.test(js));
+ok("a hanging lamp is tied to the wire and the swing moves the body with it",
+   /const swayOf = \(L\) =>/.test(js) && /reduce\(\) \? 0 :/.test(js)
+   && /3D wire or lamp cord/.test(fs.readFileSync("js/scene3d.js", "utf8")));
 ok("a lantern's period and amplitude are authored, not random",
    lanterns.every((L) => L.swing > 0 && L.period > 1 && L.phase !== undefined));
-ok("textures are mapped, not stretched photographs", ctx.imgs >= 6, `${ctx.imgs} drawImage`);
+ok("textures are mapped, not stretched photographs",
+   /textureKind = soft \? "soft" : textureSource \? "pattern" : image \? "image" : "flat"/.test(fs.readFileSync("js/scene3d.js", "utf8")));
 /* The air and the night used to share one ceiling of 0.6, which is why the far half of a room
    could never get dark: haze alone spends 0.393 of the 0.6 at z 2030, leaving the night 0.207.
    They are separate things and now have separate ceilings, so the air's legibility floor is
    asserted on its own instead of being whatever the night happened to leave. */
-ok("the air never exceeds a murk of 0.6, so the compound stays readable",
-   /const AIR_MAX = 0\.6, NIGHT_MAX = 0\.72;/.test(js)
-   && /const air = Math\.min\(AIR_MAX, q\.air/.test(js), `AIR_MAX ${(js.match(/AIR_MAX = ([\d.]+)/) || [])[1]}`);
-ok("the night composes with the air rather than sharing its budget, and stops at 0.72",
-   /const dark = Math\.min\(NIGHT_MAX, 1 - \(1 - air\) \* \(1 - night\)\)/.test(js)
-   && ctx.darkMax <= 0.72 + 1e-6, `max ${ctx.darkMax}`);
-ok("the amber pool is drawn where a source reaches", ctx.warm > 0, `${ctx.warm} warm fills`);
+// round 54: the air/night fold that used to run per quad on the canvas now runs in the scene's one
+// renderer — the same ceilings, stated where the surviving picture is actually composed.
+{
+  const s3 = fs.readFileSync("js/scene3d.js", "utf8");
+  ok("the air never exceeds a murk of 0.6, so the compound stays readable",
+     /clamp\(Number\(q\.air\) \|\| 0, 0, 0\.6\)/.test(s3),
+     `aAir clamp ${(s3.match(/0, 0, ([\d.]+)\)/) || [])[1]}`);
+  ok("the night keeps its own ceiling apart from the air's",
+     /laneDark=min\(0\.62/.test(s3) && /clamp\(vLaneDarkness,0\.0,0\.58\)/.test(s3));
+}
 ok("the city's windows use a pattern like every other surface",
    /paintWindows/.test(js) && /winPat = mkTile\(paintWindows\)/.test(js));
 ok("the aperture is four wall pieces, not a mask",
    (js.match(/wallPiece\(/g) || []).length === 5, "4 pieces + the closed fallback");
-ok("a district with no vista still gets a closed wall", /else \{\s*\n\s*wallPiece\(-WALL, 0, WALL, CEIL/.test(js));
+ok("a district with no vista still gets a closed wall", /else \{\s*\n\s*wallPiece\(-W, 0, W, CEIL/.test(js));   // W: round 52, the half is per-slice
 
 /* ---- 3. walking, reaching, opening ------------------------------------------------------------- */
 const stops = qa("[data-walk-stop]");
@@ -797,6 +802,12 @@ ok("printing prints the list, not a dark rectangle", /@media print \{[\s\S]*\.wa
 ok("the canvas wears no overlay it cannot paint", !/walk-canvas::after/.test(css));
 const fb = q("[data-walk-fallback]");
 ok("the fallback names itself instead of hiding", fb && /unavailable|list below/i.test(fb.textContent + js));
+/* Round 54, at the owner's ruling: 全站該是 3d js. The Canvas2D lane painter is deleted outright —
+   this gate exists so it stays deleted: no second canvas in the markup, no raster pass in the
+   engine, no "canvas2d" anywhere a browser could still be told it fell back. The tile raster keeps
+   its own hidden canvas, and the games keep their panel: both are the site's, not a second picture. */
+ok("the 2D lane painter is deleted, not dormant", !/data-walk-canvas|canvas2d/.test(html + gen + js + css)
+   && !/quads\.forEach\(emit\)/.test(js));
 
 /* ---- 5. the album on the reading surface ------------------------------------------------------ */
 {
@@ -840,7 +851,7 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
 {
   const { createHash } = await import("node:crypto");
   const hash = createHash("sha1");
-  ["css/site.css", "js/site.js", "js/scene3d.js",
+  ["css/site.css", "js/site.js", "js/scene3d.js", "js/games.js",
    "js/vendor/three-0.186.1/three.core.js", "js/vendor/three-0.186.1/three.module.js"]
     .forEach((asset) => hash.update(fs.readFileSync(asset)));
   const digest = hash.digest("hex").slice(0, 10);
@@ -849,7 +860,7 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
   const wrong = [];
   pages.forEach((f) => {
     const html = fs.readFileSync(f, "utf8");
-    const tags = [...html.matchAll(/(?:site\.css|site\.js|scene3d\.js)\?v=([0-9a-z]+)/g)].map((m) => m[1]);
+    const tags = [...html.matchAll(/(?:site\.css|site\.js|scene3d\.js|games\.js)\?v=([0-9a-z]+)/g)].map((m) => m[1]);
     tags.forEach((t) => tokens.add(t));
     // Every page must ask for the bytes on disk, and ask for both with one token: two tokens is how a
     // build ships a new renderer under an old key, which no other gate here can see because it only
@@ -1029,7 +1040,173 @@ ok("the fallback names itself instead of hiding", fb && /unavailable|list below/
      !/id="ig-field-notes-/.test(act));
 }
 
-console.log(out.join("\n"));
+
+
+/* ---- the guide teaches once, in place, and never comes back --------------------------------------
+   Round 46: the owner asked for a first-visit walkthrough. The contract is that every step waits
+   for the real thing — a turn, a stride, an opened card — and that a visitor who has learned is
+   never taught again. A fresh environment with empty storage runs the flow end to end; the rail's
+   own glide deliberately comes after the walking step, so a carried body can never impersonate
+   strides. */
+{
+  const g = boot(rooms, "https://huaxu.test/rooms-guide.html");
+  const gdoc = g.document;
+  const gq = (s) => gdoc.querySelector(s);
+  const gkey = (k, type = "keydown") => (gdoc.activeElement || gdoc.documentElement)
+    .dispatchEvent(new g.KeyboardEvent(type, { key: k, bubbles: true }));
+  const gclick = (el) => el.dispatchEvent(new g.MouseEvent("click", { bubbles: true, cancelable: true }));
+  const ghold = async (k, ms) => { gkey(k); await sleep(ms); gkey(k, "keyup"); };
+  const gholdT = async (ks, ms) => { ks.forEach((k) => gkey(k)); await sleep(ms); ks.forEach((k) => gkey(k, "keyup")); };
+  const gbody = () => gq("[data-walk]").__walk;
+  const gsettle = async (want) => {
+    for (let i = 0; i < 240; i++) { await sleep(40); if (Math.abs(gbody().depth - want) < 2) return; }
+  };
+  const gt = () => gq("[data-walk-tutor-text]").textContent;
+  const status0 = () => gq("[data-walk-status]").textContent.trim();
+  const gc = () => gq("[data-walk-tutor-count]").textContent;
+  ok("a first visit opens on the turn step before anything is touched",
+     gq("[data-walk-tutor]").hidden === false && gc() === "1 / 4" && /Turn first/.test(gt()), gt());
+  ok("the guide is chrome, not a paint-over: it rides the bottom strip and the plate stays closed",
+     gq("[data-walk-card]").hidden === true && /\.walk-tutor \{/.test(css));
+  await ghold("ArrowRight", 400); await sleep(300);
+  ok("a turn that actually turned hands over the walking step",
+     gc() === "2 / 4" && /Now walk in/.test(gt()), `${gc()} ${gt()}`);
+  await gholdT(["w", "shift"], 1800); await sleep(300);
+  ok("real strides of two metres — not the rail's carrying — open the reading step",
+     gc() === "3 / 4" && /press E/.test(gt()), `${gc()} d-moved ok`);
+  const gstops = [...gdoc.querySelectorAll("[data-walk-stop]")];
+  const gstop = (z) => gstops.reduce((best, el) =>
+    Math.abs(parseFloat(el.style.getPropertyValue("--z")) - z) <
+    Math.abs(parseFloat(best.style.getPropertyValue("--z")) - z) ? el : best, gstops[0]);
+  const gz = parseFloat(gstop(1392).style.getPropertyValue("--z"));
+  gclick(gstop(1392)); await gsettle(gz);
+  await gholdT(["d", "shift"], 4200); await ghold("ArrowRight", 250); await ghold("w", 950);
+  await sleep(120);
+  gkey("e"); await sleep(80);
+  ok("opening a card finishes the teaching: last step, a way out where Skip was",
+     !gq("[data-walk-card]").hidden && gc() === "4 / 4" && /rail/.test(gt())
+       && gq("[data-walk-tutor-done]").hidden === false && gq("[data-walk-tutor-skip]").hidden === true,
+     `${gc()} card=${!gq("[data-walk-card]").hidden} ${status0()} ${gt()}`);
+  gclick(gq("[data-walk-tutor-done]"));
+  ok("Got it closes the guide and marks it learned for this browser",
+     gq("[data-walk-tutor]").hidden === true && g.localStorage.getItem("huaxu.walk-guide.v1") === "1");
+  gclick(gq("[data-walk-tutor-replay]"));
+  ok("the info card's replay line brings it back on purpose",
+     gq("[data-walk-tutor]").hidden === false && gc() === "1 / 4");
+  gclick(gq("[data-walk-tutor-skip]"));
+  ok("Skip ends it on the same terms", gq("[data-walk-tutor]").hidden === true);
+  ok("and a boot after that start never auto-opens it: the flag is what gates the strip",
+     /if \(tutorEl && !tutStore\.done\(\)\) showTutor\(0\);/.test(js));
+  g.close();
+}
+
 const fail = out.filter((l) => l.startsWith("FAIL")).length;
-console.log(`\n${out.length - fail}/${out.length} pass`);
-process.exit(fail ? 1 : 0);
+
+/* ---- pressed models demonstrate (round 51) -------------------------------------------------------
+   The owner split the ask: games where the water runs, interaction where the models stand. A press
+   on the Blue Wing plays the opening back as a 24-second demonstration over the clock's own
+   schedule, and a press on a basin skips a toy stone. The record's hours are never rewritten — the
+   demo is an envelope, and it says so. */
+{
+  const fuk = boot(fs.readFileSync("rooms-fukuoka.html", "utf8"), "https://huaxu.test/rooms-fukuoka.html");
+  await sleep(260);
+  const bridge = fuk.document.querySelector('[data-obj="drawbridge-mj"]');
+  const basin = fuk.document.querySelector('[data-obj="pool-moji"]');
+  ok("the drawbridge and both basins carry their demo contract in the markup",
+     bridge.dataset.demo === "open" && basin.dataset.demo === "ripple");
+  bridge.dispatchEvent(new fuk.MouseEvent("click", { bubbles: true, cancelable: true }));
+  ok("pressing the bridge starts the demonstration and speaks it to the reader, without a card",
+     bridge.__demoAt > 0 && /demonstration runs/.test(fuk.document.querySelector("[data-walk-record]").textContent),
+     `at=${!!bridge.__demoAt}`);
+  basin.dispatchEvent(new fuk.MouseEvent("click", { bubbles: true, cancelable: true }));
+  ok("a pressed basin answers about its stone rings",
+     /stone skipped/.test(fuk.document.querySelector("[data-walk-record]").textContent));
+  ok("the bridge's hint still reads as the record first, demonstration second",
+     /six times a day/.test(bridge.dataset.hint) && /real bridge keeps its/.test(bridge.dataset.hint));
+  fuk.close();
+}
+
+/* ---- the hour is the visitor's (round 49) --------------------------------------------------------
+   The owner's ruling: no browser clock may darken a lane behind the visitor's back. The page opens
+   in day, one button trades it for night, the choice carries across lanes, and a place held at its
+   own authored night (the LookOut) gets no button at all. */
+{
+  const h = boot(rooms, "https://huaxu.test/rooms-hour.html");
+  const hl = h.document.querySelector("[data-walk]");
+  const hb = h.document.querySelector("[data-walk-hour]");
+  ok("a lane opens in day, held there — the chrome carries the hour", hl.dataset.walkClock === "day" && !!hb, hl.dataset.walkHour);
+  ok("the button is an icon with a label that says what it will do",
+     !hb.textContent.trim() && /Daylight now\. Bring on the night\./.test(hb.getAttribute("aria-label") || ""));
+  ok("the sun shows by day, the moon is waiting", /walk-hour-sun/.test(hb.innerHTML) && /walk-hour-moon/.test(hb.innerHTML)
+     && !hb.classList.contains("is-night"));
+  hb.dispatchEvent(new h.MouseEvent("click", { bubbles: true, cancelable: true }));
+  ok("one press brings night: state, pressed, the moon, the label, the announcement",
+     hl.dataset.walkClock === "night" && hb.classList.contains("is-night") && hb.getAttribute("aria-pressed") === "true"
+     && /Night now\. Switch/.test(hb.getAttribute("aria-label")) && /Night comes/.test(h.document.querySelector("[data-walk-record]").textContent),
+     `${hl.dataset.walkClock} ${hb.getAttribute("aria-label")}`);
+  ok("and the choice is remembered for the site", h.localStorage.getItem("huaxu.walk-hour.v1") === "night");
+  const h2 = boot(rooms, "https://huaxu.test/rooms-hour2.html", "night");
+  ok("a lane entered with the choice set opens already in night",
+     h2.document.querySelector("[data-walk]").dataset.walkClock === "night"
+       && h2.document.querySelector("[data-walk-hour]").classList.contains("is-night"));
+  h2.document.querySelector("[data-walk-hour]").dispatchEvent(new h2.MouseEvent("click", { bubbles: true, cancelable: true }));
+  ok("back to day crosses the lane the same way", h2.localStorage.getItem("huaxu.walk-hour.v1") === "day");
+  const held = fs.readFileSync("rooms-cntower.html", "utf8");
+  ok("a room whose window shows one fixed night carries no hour button at all",
+     !/data-walk-hour/.test(held) && /data-lane-night/.test(held));
+  const heldBoot = boot(held, "https://huaxu.test/rooms-cntower.html", "day");
+  ok("…and the visitor's choice cannot overwrite the authored hour there",
+     heldBoot.localStorage.getItem("huaxu.walk-hour.v1") === "day" && !heldBoot.document.querySelector("[data-walk-hour]"));
+  {
+    const scjs = fs.readFileSync("js/scene3d.js", "utf8");
+    ok("the lit path folds the same navy the painter calls murk, as the sun goes",
+       /nightAmbient\.intensity = [\d.]+ \* hourK/.test(scjs)
+       && /AmbientLight\(0x16223c, 0\)/.test(scjs) && /const nightK = /.test(scjs)
+       && /const hourK = state\.dayPage \? nightK : 0;/.test(scjs));
+    ok("and the night fold keeps a readable floor under it, never full murk",
+       /clamp\(\(Number\(state\.night\) \|\| 0\) \* 0\.40, 0, 0\.58\)/.test(scjs)
+       && /laneDark=min\(0\.62,/.test(scjs)
+       && /diffuseColor\.rgb\+=uLaneNight\*min\(0\.62,vLaneDarkness\)\*3\.2/.test(scjs));
+    ok("and the surveyed world's own materials carry the night wash as a self-lit emissive",
+       (scjs.match(/material\.userData\.nightGlow = true/g) || []).length >= 2
+       && /emissive: new THREE\.Color\(0x16223c\), emissiveIntensity: 0/.test(scjs)
+       && /m\.emissiveIntensity = [\d.]+ \* hourK/.test(scjs));
+    // measured round 51: the fukuoka hall's lit path collapsed to 4.2 luma on a stop where the
+    // painter held 123.6, because a hall has no sky and its tiles kept no floor. The fix is
+    // structural — interiors keep their light whatever the hour — and it must not be undone.
+    // measured round 53, the other half of the same fact: held at the FULL navy fold the hall read
+    // 30,53,103 mean RGB — the owner's 紫色 — where the painter paints 111,121,138. The constant
+    // is therefore the record's own lamp wash (#ffe4ba, the lane shader's colour) with the murk
+    // kept only as a quarter-share of air; an interior's fixed night is its lamps, not the sky.
+    ok("and an interior hall keeps that floor as a constant, its dusk never depending on a sun it has no window for",
+       /const hallK = state\.dayPage \? 0 : 1;/.test(scjs)
+       && /hallAmbient\.intensity = [\d.]+ \* hallK/.test(scjs)
+       && /AmbientLight\(0xffffff, 0\)/.test(scjs));
+    ok("and the navy is zero inside a hall: the moving hour's murk never reaches a room with no sky",
+       /nightAmbient\.intensity = [\d.]+ \* hourK;/.test(scjs));
+  }
+  /* Round 54 review, at the owner's demand that nothing else be quietly dropped: the rebuild had
+     shortened the two places that teach the controls — the wall's HOW_TO_WALK and the lane's own
+     aria-label — and the sentences it took out described keys and buttons that still work (Q/E at
+     site.js, the double-click pointer lock, the first-visit guide, the sun-or-moon hour). A gate can
+     no longer pass on "the page contains a paragraph": the phrases are pinned here, because every
+     one of them is a promise the engine keeps. */
+  ok("the wall teaches the whole keyboard it ships: Q/E, double-click, the guide, the hour button",
+     /arrow keys or Q\/E \(or a gentle drag\)/.test(gen) && /double-click to let the mouse look, or the/.test(gen)
+     && /first visit a short guide teaches those keys in place, once, and the/.test(gen)
+     && /sun-or-moon button in the chrome holds the lane in day or/.test(gen)
+     && /fixed night keeps its own hour/.test(gen));
+  ok("and the walk-view's own aria-label says the same to a screen reader",
+     /Drag, arrow keys or Q\/E to turn,/.test(gen)
+     && /facing, double-click to let the mouse look, L for the list, I for this note\./.test(gen)
+     && /guide strip at the bottom of the screen; it is replayable from this note/.test(gen));
+}
+
+console.log(out.join("\n"));
+
+// the counter used to be threaded through the hand-written blocks, and every gate added since has
+// quietly not been part of it — the count is recomputed from the lines themselves, so a FAIL can
+// never again ride out of here with exit code 0.
+const failsN = out.filter((l) => /^FAIL  /.test(l)).length;
+console.log(`\n${out.length - failsN}/${out.length} pass${failsN ? `, ${failsN} FAIL` : ""}`);
+process.exit(failsN ? 1 : 0);

@@ -113,9 +113,10 @@ place fails the gate; so does a place with nothing holding it.
   width shared across unlike rooms. The generator writes `data-lane-w/-d/-ceil/-back` and `data-eye`,
   and the renderer reads them. Do not restate scene dimensions in CSS or a second authored table.
 - All walkable environment and object geometry is rendered by the pinned, vendored Three.js 0.186.1
-  scene. The lane painter stages existing world corners, UVs, materials and lighting data into dynamic
-  triangle buffers; sourced `backdrop.world.prims` become 3D world meshes when present. The transparent
-  Canvas2D canvas is only the complete no-WebGL fallback, not a second layer over the WebGL scene.
+  scene. The projection bridge stages existing world corners, UVs, materials and lighting data into
+  dynamic triangle buffers; sourced `backdrop.world.prims` become 3D world meshes when present.
+  There is no second picture: where WebGL is absent the lane says so in its own words and retires,
+  and the compiled state (rail, list, reading, keys) keeps answering (owner ruling, round 54).
   Rendering is a conversion of authored records, not permission to invent geometry, and does not affect
   the Activities album's CSS 3D.
 - Lighting is part of the model, not a coat of paint: one `AMBIENT`, one `FOG_MAX`, and every wall,
@@ -191,7 +192,8 @@ An image may not reach a page before it reaches `IMG_RULES`. No student or bysta
 faces presented as content. No new vendored library or npm tooling without the owner's explicit
 approval in `AGENTS.md`. The owner approved one exception on 2026-10-16: pinned, MIT-licensed Three.js
 0.186.1 for all walkable environment and object rendering, with no package manifest or build tooling;
-Canvas2D remains the complete fallback. That exception is not permission to migrate the Activities
+the Canvas2D lane painter that predated it was deleted in round 54 and must not return. That exception
+is not permission to migrate the Activities
 album or add another dependency. When a hoist or splice of this single-file generator is involved,
 check ordering: a slice with `i > j` produces a duplicated region that still parses, passes
 `ast.parse`, and fails only at runtime. And patch a file by applying, writing, then re-grepping the
@@ -202,8 +204,8 @@ late, which has now happened four times.
 
 The walkable scene is **one Three.js render**, not a 3D backdrop behind a 2D room. The pinned
 Three.js camera renders lane surfaces, props, sourced worlds and dynamic scene effects together.
-A transparent Canvas2D canvas becomes the complete fallback if WebGL is unavailable; DOM buttons
-remain the accessible hit layer. What remains 3D in CSS is the Activities album wall and plate, where
+If WebGL is unavailable the renderer disposes, `walkRenderer` reports `"off"`, and the page's
+`[data-walk-fallback]` note says the same to a reader; DOM buttons remain the accessible hit layer. What remains 3D in CSS is the Activities album wall and plate, where
 WebKit still bites: non-visible `overflow` on a `preserve-3d` element flattens it; `filter` or
 `backdrop-filter` on the `perspective` wrapper flattens its subtree; and a universal `preserve-3d`
 rule can make the scene vanish. So `preserve-3d` goes on `.ig-grid` only, the `perspective` one level
@@ -228,8 +230,7 @@ derives exactly one glow from a prop's own position, because that light has to c
 The same holds for what lies *beyond* the lane (round 33): a gorge, a city seen from 346 m, the falls
 from a deck are the backdrop's `world` — prims the generator builds from map data (`LaneFrame` turns
 latitude and longitude into lane centimetres; `niagara_world`, `toronto_world`, `journey_world` are the
-worked builders). `js/site.js` paints them in the Canvas2D fallback; `js/scene3d.js` triangulates the
-same record for WebGL. Neither renderer authors a location or substitutes a full-size prop for it. The lane's shell says how much of that world shows (`lid`, `vault`, `open`, `open_back`,
+worked builders). `js/site.js` builds the records; `js/scene3d.js` triangulates them for WebGL. Neither renderer authors a location or substitutes a full-size prop for it. The lane's shell says how much of that world shows (`lid`, `vault`, `open`, `open_back`,
 `open_end`, `under`, `wallmat`; cladding of kind `open`, `glazing`, `railing`), and the walk's
 collision still comes from the lane alone: a world is something you look at, not something you walk on.
 Adding a lamp in `js/site.js` to "fix" a dark wall is the failure mode this prevents: it produces a
