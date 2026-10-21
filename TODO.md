@@ -72,10 +72,22 @@
 三箱一梯都在停點視野內。仍然「看得見但不該再改」的：機器的玻璃在夜裡偏灰（已用 `nolite` 拉亮，
 但白櫃體與深玻璃的對比仍受軟體光柵的 gamma 影響）。
 
+### 合併結果（2026-10-21，站主授權）
+- **#16 已在站主端合併**：master `8687683 Merge pull request #16 from kevinchung58/arena/2cc029e8-huaxu`
+  （parents `2aa44b6` + `8558ef6`）。所以原先的「兩個 PR 疊在一起、要先後順序」問題在合併前就已消失。
+- **#17 由本輪以 merge commit 合併**：master `9385426 Merge pull request #17 from
+  kevinchung58/arena/225f83d4-huaxu`；帶進 `638e7a6`（第五十五輪）、`16efbb5`（第五十六輪）、
+  `506ae12`（長椅改細腿）。對 `8687683` 的實際 diff＝**48 檔、+1,378/−620**、3 commits
+  （PR 頁面在合併前顯示的「82 檔 / +6,980」是 #16 被算進去的舊數字，以 compare API 為準）。
+- **Pages 查核**：`gh api repos/kevinchung58/huaxu/pages/builds` 顯示合併後 2 秒開始建置
+  `9385426`，20 秒內 `status: built`、`error` 為空——線上已換成含第五十五、五十六輪的版本。
+  （本沙箱只連得到 github.com／api.github.com，無法再 curl 線上頁面；以 build status 為證。）
+- 分支 `arena/225f83d4-huaxu` 沒有被刪，下輪照舊從這裡長；本節的 commit 是分支上第一個
+  「master 已包含其餘內容」的 commit。
+
 ### 下一輪
-1. **PR 狀態（blocked-on-owner）**：本輪 commit 疊在 `638e7a6`（= #17 的 head）之上，仍在
-   `arena/225f83d4-huaxu`；#17 的 diff 因此包含 #16。站主二選一：(a) 合 #17 並關 #16；
-   (b) 先 #16 再 #17。合併後照 §0w 查 Pages。
+1. **PR 狀態（已解除）**：#16、#17 皆已合併，master `9385426`。若 Pages 建置失敗，照 §0w 的查核法
+   重跑設定或重觸發；不要為此新開 PR。
 2. 日本場景的下一批（未做，需站主排序）：東京的「每一戶立面差異」（§0w 未完項）、門司港的
    夜間 `liton` 節奏再細分、以及兩房共用的「窗內」素材（目前只有 `pane` 一種）。
 3. 其他 §0w 場景 thread 不動：Moji 立面圖、Niagara 欄杆／燈柱、Journey 平面圖＋2027 watch、
