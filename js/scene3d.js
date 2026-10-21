@@ -122,7 +122,16 @@ function sourceColor(p, state) {
   const day = clamp(Number(state.day) || 0, 0, 1);
   const dayPage = Boolean(state.dayPage);
   const dark = dayPage ? day < 0.25 : true;
-  if (p.il && dark) return NIGHT_LAMPS[Math.floor((Number(state.time) || 0) / 7) % NIGHT_LAMPS.length];
+  if (p.il && dark) {
+    const lamp = NIGHT_LAMPS[Math.floor((Number(state.time) || 0) / 7) % NIGHT_LAMPS.length];
+    /* The illumination plays on water; it does not repaint it. A lit sheet returned the lamp
+       colour whole, which turned the Horseshoe into a flat amber plane after dark (round 58:
+       measured at the rail, the four bands collapsed to one). Water keeps most of its own colour
+       and takes the light as a wash, so the bands, the lip and the strands the shader draws all
+       survive the night. */
+    if (p.t === "w") return blendHex(p.c || FALLBACK_COLOR, lamp, 0.46);
+    return lamp;
+  }
   if (p.cn && dayPage) return blendHex(p.cn, p.c || FALLBACK_COLOR, day);
   return p.c || FALLBACK_COLOR;
 }
@@ -194,7 +203,9 @@ function seeded(name) {
 function patternCanvas(name) {
   if (typeof document === "undefined") return null;
   const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = 128;
+  // The falling-water tile is drawn at twice the others' size: it is the one material a visitor
+  // stands a metre from, and at 128 a single strand was nineteen centimetres of screen.
+  canvas.width = canvas.height = name === "fallsw" ? 256 : 128;
   const c = canvas.getContext("2d");
   if (!c) return null;
   const rnd = seeded(name);
@@ -216,25 +227,46 @@ function patternCanvas(name) {
   };
 
   if (name === "fallsw") {
-    // The authored material is a transparent overlay: 52 full-height white/dark-green streams,
-    // softened along the drop on whole periods so the repeated tile has no horizontal seam. A grey
-    // opaque background here turned the Niagara water into a striped wall in WebGL.
-    c.clearRect(0, 0, 128, 128);
+    /* The authored material is a transparent overlay: full-height white/dark-green strands that a
+       shader scrolls down the sheet. A grey opaque background here turned the Niagara water into a
+       striped wall in WebGL.
+
+       Round 58: near the rail this tile is metre-scale, and one width of strand read as paint. A
+       curtain of water is at least three widths at once — the broad ropes the body of it hangs in,
+       the streams strung between them, and a grain that only exists at arm's length — so the tile
+       carries all three, each drawn twice (once shifted half a tile) so the repeat has no seam.
+       Every strand fades along whole periods of its own length: that is what makes the loop read
+       as water moving rather than as stripes standing still. */
+    const S = canvas.width;
+    c.clearRect(0, 0, S, S);
     let seed = 35071;
     const flow = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 64; i++) {
-      const x = flow() * 128, w = 0.8 + flow() * 4.2, a = 0.12 + flow() * 0.42;
-      const dark = i % 4 === 0, periods = 1 + Math.floor(flow() * 2), phase = flow() * Math.PI * 2;
-      const gradient = c.createLinearGradient(0, 0, 0, 128);
-      for (let k = 0; k <= 8; k++) {
-        const fade = 0.55 + 0.45 * Math.sin(phase + (k / 8) * periods * Math.PI * 2);
-        const alpha = (a * fade).toFixed(3);
-        gradient.addColorStop(k / 8, dark ? `rgba(34,82,92,${(a * 0.55 * fade).toFixed(3)})`
-          : `rgba(255,255,255,${alpha})`);
+    const strand = (count, wMin, wMax, aMin, aMax, periods, dark) => {
+      for (let i = 0; i < count; i++) {
+        const x = flow() * S, w = wMin + flow() * (wMax - wMin);
+        const a = aMin + flow() * (aMax - aMin);
+        const waves = 1 + Math.floor(flow() * periods), phase = flow() * Math.PI * 2;
+        const gradient = c.createLinearGradient(0, 0, 0, S);
+        for (let k = 0; k <= 10; k++) {
+          const fade = 0.52 + 0.48 * Math.sin(phase + (k / 10) * waves * Math.PI * 2);
+          gradient.addColorStop(k / 10, dark
+            ? `rgba(30,80,92,${(a * 0.6 * fade).toFixed(3)})`
+            : `rgba(255,255,255,${(a * fade).toFixed(3)})`);
+        }
+        c.fillStyle = gradient;
+        c.fillRect(x, 0, w, S);
+        if (x + w > S) c.fillRect(x - S, 0, w, S);
       }
-      c.fillStyle = gradient; c.fillRect(x, 0, w, 128);
-      if (x + w > 128) c.fillRect(x - 128, 0, w, 128);
-    }
+    };
+    /* Widths in the tile's own 256 px, and the tile is metres of sheet on the page (the lane maps
+       128 units to `DPM` 2 — 64 cm of wall — so a `tileCm` of 900 is a tile every 4.6 m of water).
+       The first cut drew thirty ropes a few pixels wide: at twenty metres from the rail that is a
+       sub-pixel comb, and a comb averages to a flat wash — which is exactly how the sheet read.
+       Water at this distance hangs in ropes a metre across with strands between them. */
+    strand(9, 18, 44, 0.10, 0.34, 1, false);          // the ropes the body hangs in
+    strand(26, 5, 16, 0.10, 0.40, 2, false);          // the streams between them
+    strand(7, 10, 30, 0.10, 0.26, 1, true);           // the green water showing through
+    strand(70, 1.2, 3.4, 0.06, 0.22, 2, false);       // the grain at arm's length
   } else if (name === "canopy") {
     c.fillStyle = "#777777"; c.fillRect(0, 0, 128, 128);
     for (let i = 0; i < 115; i++) {
@@ -457,11 +489,17 @@ export function buildLaneGeometry(THREE, quads, state = {}) {
       const iw = Math.max(1, Number(image.naturalWidth) || 1), ih = Math.max(1, Number(image.naturalHeight) || 1);
       uvForPoint = (i) => [texcoords[i][0] / iw, -texcoords[i][1] / ih];
     } else if (textureKind === "soft") {
-      const radius = Math.max(1, Number(soft.r) || 1), aspect = Math.max(0.01, Number(soft.k) || 1);
+      /* Round 58: a soft quad is a puff, and a puff's radial falloff belongs to the puff.
+         This used to project each corner to the screen and divide by a radius in *pixels*, so a
+         spray plume 25 m across the gorge was measured against a radius of 1 and sampled the same
+         texel everywhere — a flat pale wash over the whole frame, which is what the falls looked
+         like from Terrapin Point. The corners of the quad are its own edges now: 0.5 in the middle,
+         nothing at the rim, whatever size the mist is. */
+      const n = points.length;
       uvForPoint = (i) => {
-        const [sx, sy] = projectLanePoint(points[i], state);
-        return [0.5 + (sx - Number(soft.x || 0)) / (2 * radius),
-                0.5 + (sy - Number(soft.y || 0)) / (2 * radius * aspect)];
+        if (n === 4) return [[0, 1], [1, 1], [1, 0], [0, 0]][i] || [0.5, 0.5];
+        const a = (i / Math.max(1, n)) * Math.PI * 2;
+        return [0.5 + 0.5 * Math.cos(a), 0.5 + 0.5 * Math.sin(a)];
       };
     } else uvForPoint = () => [0, 0];
 
@@ -531,7 +569,8 @@ function laneShaderMaterial(THREE, map, transparent) {
         diffuseColor.rgb=mix(diffuseColor.rgb,uLaneNight,laneDark);
         diffuseColor.rgb+=uLaneSun*max(0.0,vLaneDaylight)*0.62;
         diffuseColor.rgb+=uLaneNight*min(0.62,vLaneDarkness)*3.2;
-        diffuseColor.a*=clamp(vLaneOpacity,0.0,1.0);`);
+        diffuseColor.a*=clamp(vLaneOpacity,0.0,1.0);
+`);
   };
   material.customProgramCacheKey = () => "huaxu-walk-lane-v1";
   material.userData.huaxuWalkLane = true;
@@ -1415,13 +1454,25 @@ function buildRenderer(THREE, canvas, backdrop, api) {
           vec3 base=fallColor(vFall);
           // A centimetre-mapped, transparent grain tile travels down the sheet. Clear gaps leave the
           // band color visible; the old per-quad sine repeated a high-frequency "window" moire.
-          vec4 grain=texture2D(uStreaks,vec2(vUv.x,vUv.y+uTime*0.38*uMotion));
+          // Round 58: two octaves, the second at three times the frequency and twice the speed. One
+          // octave is a stripe at arm's length; water is a sheet of strands moving past each other.
+          vec4 grain=texture2D(uStreaks,vec2(vUv.x,vUv.y+uTime*0.30*uMotion));
+          vec4 fine=texture2D(uStreaks,vec2(vUv.x*3.3+0.17,vUv.y*1.7+uTime*0.66*uMotion));
           float lightStreak=smoothstep(0.18,0.78,grain.r);
+          float hair=smoothstep(0.30,0.86,fine.r);
           vec3 bright=min(vec3(1.0),base*1.32+vec3(0.06));
           vec3 dark=base*vec3(0.52,0.71,0.77);
-          vec3 strand=mix(dark,bright,lightStreak);
-          float coverage=vFall<0.0?0.0:clamp(grain.a*vOpacity,0.0,0.75);
+          vec3 strand=mix(dark,bright,clamp(lightStreak*0.78+hair*0.30,0.0,1.0));
+          float coverage=vFall<0.0?0.0:clamp((grain.a*0.70+fine.a*0.50)*vOpacity,0.0,0.82);
           vec3 color=mix(base,strand,coverage);
+          // The lip. Every falls has one unbroken white line where the water breaks over the brink,
+          // and without it the sheet's top is a cut edge — a wall, which is what it was called.
+          float lip=smoothstep(0.040,0.0,max(vFall,0.0));
+          color=mix(color,vec3(0.968,0.988,0.986),lip*0.74);
+          // The foot. Over the last fifth the sheet stops being a sheet: it loses its strands and
+          // pales into its own spray, which is the band of white a plunge pool shows from above it.
+          float foot=smoothstep(0.64,1.0,max(vFall,0.0));
+          color=mix(color,mix(base,vec3(0.94,0.97,0.965),0.62),foot*0.66);
           gl_FragColor=vec4(color,1.0);
           #include <tonemapping_fragment>
           #include <colorspace_fragment>

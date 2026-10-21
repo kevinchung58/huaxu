@@ -1076,20 +1076,59 @@ function leaveOverlay(root, trigger) {
      illumination's colour after dark. Seeded, like every scatter here: a curtain 600 m off aliases to
      grain, not to a lattice. */
   const paintFallsWater = (c) => {
+    /* Falling water, drawn as the thing itself rather than as a veil over somebody else's stripes.
+
+       Round 58 measured what this tile has to do: the sheet hangs 15-20 m from the rail, a visitor's
+       frame is 1024 px over about 45 degrees, so one centimetre of water is under half a pixel. The
+       old tile was 52 strands of one to three pixels with 10-40% alpha — at that distance it mips
+       down to its own mean, which is exactly what a flat wash is. Water seen at fifteen metres is
+       not fine grain: it is ropes twenty to ninety centimetres across, dark green between them and
+       white where they break. So the tile carries a few wide ropes, the dark water that shows
+       between them, and a little spray crossing all of it. */
     let seed = 35071;                                  // a fresh tile is clear: nothing to clear
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 52; i++) {
-      const x = rnd() * 128, w = 0.8 + rnd() * 3.6, a = 0.1 + rnd() * 0.34;
-      const dark = i % 4 === 0, per = 1 + Math.floor(rnd() * 2), ph = rnd() * Math.PI * 2;
-      const gr = c.createLinearGradient(0, 0, 0, 128);
-      for (let k = 0; k <= 8; k++) {
-        const f = 0.55 + 0.45 * Math.sin(ph + (k / 8) * per * Math.PI * 2);
-        gr.addColorStop(k / 8, dark ? `rgba(34,82,92,${(a * 0.55 * f).toFixed(3)})`
-                                    : `rgba(255,255,255,${(a * f).toFixed(3)})`);
-      }
+    const band = (x, w, stops) => {
+      const gr = c.createLinearGradient(x, 0, x + w, 0);
+      stops.forEach(([t, col]) => gr.addColorStop(t, col));
       c.fillStyle = gr;
       c.fillRect(x, 0, w, 128);
       if (x + w > 128) c.fillRect(x - 128, 0, w, 128);
+    };
+    // The water between the ropes: green, and darker at the edges of every rope.
+    c.fillStyle = "rgba(38,96,104,0.42)";
+    c.fillRect(0, 0, 128, 128);
+    // The ropes. Each is soft-edged (a gradient across its width) and fades in and out down its
+    // length on whole periods of its own, so a scrolling tile never shows a seam.
+    for (let i = 0; i < 9; i++) {
+      const w = 10 + rnd() * 24, x = rnd() * 128, a = 0.30 + rnd() * 0.40;
+      const per = 1 + Math.floor(rnd() * 2), ph = rnd() * Math.PI * 2;
+      const gv = c.createLinearGradient(0, 0, 0, 128);
+      for (let k = 0; k <= 10; k++) {
+        const f = 0.45 + 0.55 * Math.sin(ph + (k / 10) * per * Math.PI * 2);
+        gv.addColorStop(k / 10, `rgba(255,255,255,${(a * f).toFixed(3)})`);
+      }
+      c.save();
+      c.beginPath(); c.rect(x - 1, 0, w + 2, 128); c.clip();
+      c.fillStyle = gv; c.fillRect(x, 0, w, 128);
+      c.restore();
+      // the soft edge: the rope is densest down its middle
+      band(x + w * 0.25, w * 0.5, [[0, "rgba(255,255,255,0)"], [0.5, `rgba(255,255,255,${(a * 0.55).toFixed(3)})`],
+                                   [1, "rgba(255,255,255,0)"]]);
+      if (x + w > 128) { c.fillStyle = gv; c.fillRect(x - 128, 0, w, 128); }
+    }
+    // The dark troughs: the water that stands between two ropes, which is what gives the curtain
+    // its vertical grain instead of its blur.
+    for (let i = 0; i < 7; i++) {
+      const w = 3 + rnd() * 9, x = rnd() * 128, a = 0.12 + rnd() * 0.24;
+      band(x, w, [[0, "rgba(22,62,74,0)"], [0.5, `rgba(22,62,74,${a.toFixed(3)})`], [1, "rgba(22,62,74,0)"]]);
+    }
+    // The spray crossing the whole curtain: short white dashes, the one part of a falls that has no
+    // direction.
+    for (let i = 0; i < 34; i++) {
+      const x = rnd() * 128, y = rnd() * 128, w = 2 + rnd() * 7, h = 5 + rnd() * 18;
+      c.fillStyle = `rgba(255,255,255,${(0.10 + rnd() * 0.22).toFixed(3)})`;
+      c.fillRect(x, y, w, h);
+      if (y + h > 128) c.fillRect(x, y - 128, w, h);
     }
   };
   /* The gorge wall (round 35): the rock at Table Rock stands in horizontal beds, pale grey-buff, as
@@ -1908,6 +1947,9 @@ function leaveOverlay(root, trigger) {
     dia: parseFloat(el.dataset.dia) || 0, axle: parseFloat(el.dataset.axle) || 0,
     turn: parseFloat(el.dataset.turn) || 0, phase0: parseFloat(el.dataset.phase0) || 0,
     deck: parseFloat(el.dataset.deck) || 0, period: parseFloat(el.dataset.period) || 0,
+    // Round 58: a falls authored as a brink rather than as a standing sheet, and a material tile a
+    // slab can wear (a bluff face is rock, and rock at a card's flatness is a grey wall).
+    drop: el.dataset.drop === "true", tile: el.dataset.tile || null,
     ry: num(el, "data-ry") || parseFloat(el.dataset.ry || 0),
     w: parseFloat(el.dataset.w) || 100, h: parseFloat(el.dataset.h) || 140,
     d: parseFloat(el.dataset.d) || 12, x: num(el, "--x"), z: num(el, "--z"), y: num(el, "--y"),
@@ -2228,6 +2270,8 @@ function leaveOverlay(root, trigger) {
                   drawbridge: "drawbridge", ship: "ship", stationfront: "stationfront",
                   // The round-52 shapes: a turning observation wheel and a working funicular.
                   wheel: "wheel", incline: "incline",
+                  // Round 58: the strip's second ride — the carousel, turning on the frame clock.
+                  carousel: "carousel",
                   // Round 54 audit: two kinds the authored records had been using while the table
                   // never named them — every `board` was reaching the plane branch by accident,
                   // not by decision, and the midway stall fell through although a stall branch
@@ -2249,6 +2293,9 @@ function leaveOverlay(root, trigger) {
                   parapet: "box", deckwall: "box", portal: "portal" };
   // A few props are named for what they are, not for the kind that draws them; these are the aliases.
   Object.assign(SHAPE, { pole: "box", barrel: "box", stool: "box", lamp: "box",
+                         // Round 58: a plain box and a post, named for what they are — the bridge
+                         // gate's two uprights and its lintel are exactly that and nothing more.
+                         box: "box", post: "box",
                          curtain: "cloth", stall: "stall", ledge: "plane",
                          // A shop is a front the record gave an awning: the id says shop, the
                          // painter is the retail one.
@@ -4938,6 +4985,257 @@ function leaveOverlay(root, trigger) {
         panel(-bz, -bz * 0.5, 0, Math.PI * op, 0.012 * op, "#8d989f");
         panel(0, bz * 0.5, bz * 0.5 * op, 0, 0.024 * op, "#848f98");
         panel(-bz * 0.5, 0, bz * op, 0, 0.036 * op, "#808b94");
+      } else if (shape === "falls" && m.drop) {
+        /* Round 58: everything this branch draws is water, and water opts out of the lane's
+           daylight wash. The shader adds a warm sun term to every quad that does not say
+           `day: false`, and on a teal curtain that term is the grey wall the owner called 一片平光 —
+           it was the *lighting*, not the colour. Captured by index so every quad the branch pushes
+           (sheet, ropes, seams, lip, foot, mist) is covered without a list to keep in sync. */
+        const fromHere = drawn.length;
+        /* Round 58: the falls as a brink, not as a wall.
+
+           The table model further down is right for a diorama you can walk round. In a lane it was
+           wrong in one decisive way: it stood a sheet of water on the ground, so a visitor eight
+           metres from the American Falls looked at a hundred metres of water standing upright and
+           the frame filled with stripes. A falls seen from a bank is not a wall in front of you —
+           it is water at your feet, a white lip, and then the river going away underneath. So a
+           `drop` falls is built the other way up: the crest lies at the prop's own height, the
+           sheet hangs *below* it into the gorge, the brink is a strip of water between the lane and
+           the crest, and the spray comes back up over the lip.
+
+           What the visitor sees from the edge, in order: the brink and its ripple, the lip line,
+           the descending sheet with its strands running down it (a texture scrolled by the frame
+           clock, so the motion is the walker's, as everything moving here is), the headlands either
+           side, and the mist climbing back past the crest. */
+        const along = Math.abs(m.ry) > 45;                 // the crest runs down the lane
+        const away = along ? (m.x < 0 ? -1 : 1) : (m.z < 0 ? -1 : 1);   // downstream, off the lane
+        const hw = m.w / 2, drop = m.h, crestY = m.y;
+        /* The strands' scale. A UV count of 1 is one tile, so this is centimetres of sheet per
+           tile: at 250 the ropes are half a metre to a metre and a half across, which is what a
+           curtain of water hangs in when you are standing twenty metres back from it. (The
+           pattern tiles themselves are 128 units wide and `DPM` 2 makes a brick 64 cm — that is
+           why the paving uses its own scale; the water's UVs are divided out here directly.) */
+        const tileCm = 320;
+        const Pt = (a, y, t) => along ? [m.x + away * t, y, m.z + a]
+                                      : [m.x + a, y, m.z + away * t];
+        /* The sheet moves without the visitor moving. The strands travel down a tile every 1.7 s
+           on the frame clock — the same clock that lights the lamps and turns the wheel, so a
+           frame rate this machine cannot hold never changes how fast the water falls. */
+        const uvAt = (a, y, drift) => [a / tileCm, (-y + (ease ? T * 420 : 0)) / tileCm + drift];
+        const Q = (a0, a1, y0, y1, t0, t1, col, l, air) => {
+          const q = add(C, [Pt(a0, y0, t0), Pt(a1, y0, t1), Pt(a1, y1, t1), Pt(a0, y1, t0)],
+                        ZERO8, "flat", col);
+          if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); return q; }
+          return null;
+        };
+        // A strip of water lying flat (the brink and the pool): four corner offsets across the
+        // crest and out from it, at one height. `Q` folds two of those corners onto each other.
+        const H = (a0, a1, t0, t1, y, col, l, air) => {
+          const q = add(C, [Pt(a0, y, t0), Pt(a1, y, t0), Pt(a1, y, t1), Pt(a0, y, t1)],
+                        ZERO8, "flat", col);
+          if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); return q; }
+          return null;
+        };
+        /* The brink: the river coming at you over the flat before it goes. Two steps of colour and
+           a ripple that travels, because still water at a brink is the one thing a falls never is. */
+        /* The river coming at the brink. It runs from the walk's own edge to the lip, so the
+           visitor stands with the water at their feet — the one view every photograph taken on this
+           bank has, and the reason a falls is not a picture of a wall. */
+        /* Round 58: the water between the visitor and the lip.
+           It was three 30 cm strips — bands a step apart, with the ground showing through between
+           them, which reads as paint rather than as a river. It is one continuous surface now, cut
+           into bands only so the ripples can travel at slightly different speeds: the current comes
+           at you at three speeds, which is what a brink looks like just before it goes. */
+        /* The water's near edge is the lane's own edge, not a fixed 40 cm: at 40 the river ran
+           under the paving and the visitor stood on its lid. `HALF` is the free half-width the body
+           may occupy, so the brink starts a hand's width beyond it. */
+        const edge = HALF + 8;
+        /* Round 58: the upper river lies on the *far* side of the lip. It used to run from the
+           crest all the way back to the visitor, and that is a contradiction the frame could not
+           survive: a plane of water at the crest's own height, between the eye and the sheet,
+           covers the entire drop — it was the flat teal wash in every screenshot. What is between
+           the visitor and the falls is the channel, below the crest, and it is its own prop. So
+           the brink is authored outward only: fourteen metres of river above the lip, enough to
+           read as water arriving rather than as an edge of the drawing. */
+        const reach = 1400;
+        const NBR = 10;
+        for (let i = 0; i < NBR; i++) {
+          const t0 = (i / NBR) * reach, t1 = ((i + 1) / NBR) * reach;
+          const q = add(C, [Pt(-hw, crestY + 1, -t0), Pt(hw, crestY + 1, -t0),
+                            Pt(hw, crestY + 1, -t1), Pt(-hw, crestY + 1, -t1)],
+                        [0, 0, hw * 2 / 260, 0, hw * 2 / 260, (t1 - t0) / 260, 0, (t1 - t0) / 260],
+                        "pat", PATS.rapids);
+          if (q) { q.lit = 0.88 + 0.10 * (i / NBR); q.air = 0.04; drawn.push(q); }
+        }
+        for (let i = 0; i < 7; i++) {
+          const a = -hw * 0.86 + (i + 0.5) * (hw * 1.72 / 7);
+          const ph = ease ? Math.sin(T * 1.1 + i * 1.7) : 0;
+          const b0 = Pt(a - 34, crestY + 2, -64 + ph * 6), b1 = Pt(a + 34, crestY + 2, -64 + ph * 6);
+          const b2 = Pt(a + 26, crestY + 2, -30 + ph * 4), b3 = Pt(a - 26, crestY + 2, -30 + ph * 4);
+          const q = add(C, [b0, b1, b2, b3], ZERO8, "flat", `rgba(238,250,250,${(0.16 + (i % 3) * 0.05).toFixed(2)})`);
+          if (q) { q.lit = 1.1; drawn.push(q); }
+        }
+        /* The lip: the unbroken white line every falls has where the water breaks over. Without it
+           the sheet's top edge is a cut, which is what "a striped wall" looked like. */
+        Q(-hw, hw, crestY - 6, crestY + 3, 0, 0, "#f2fbfa", 1.35, 0.02);
+        H(-hw, hw, -22, 0, crestY + 2, "rgba(240,250,250,0.5)", 1.2, 0.02);
+        /* The white water at the lip: a real falls spends its first several metres as foam, not as
+           its own deep teal. One band, in front of the sheet by 3 cm so the sorter cannot put the
+           sheet over it, and it fades down into the first break instead of stopping at a seam. */
+        Q(-hw, hw, crestY - drop * 0.030, crestY - 1, 0, 0, "#f4fbfa", 1.3, 0.02);
+        Q(-hw, hw, crestY - drop * 0.070, crestY - drop * 0.028, -3, -3, "rgba(224,244,243,0.55)", 1.15, 0.02);
+        /* The sheet, in the source's four bands, with its strands sliding down it. Each band is a
+           tone; over each tone a translucent strand quad travels at the frame clock's rate. That is
+           the whole near-field difference: colour that holds still and water that does not. */
+        /* The curtain's four bands, authored from the foot up: the water is deepest at the lip and
+           breaks into white as it falls, so the *pale* end of the sheet is at the bottom, where it
+           lands, not at the top. Round 58 had these the other way round (pale at the crest), which
+           is why a twenty-metre fall read as a sheet of fog hung from the sky. */
+        const BANDS = [[0.0, 0.06, "#6cb4ac"], [0.06, 0.26, "#438b88"],
+                       [0.26, 0.62, "#5aa49d"], [0.62, 1.0, "#93c6c0"]];
+        const NA = 12;
+        const bow = (a) => drop * 0.012 * Math.max(0, 1 - (a / (hw * 0.88)) ** 2);
+        const throwAt = (p) => drop * 0.035 * Math.sqrt(p);
+        for (const [fa, fb, col] of BANDS) {
+          for (let k = 0; k < NA; k++) {
+            const a0 = -hw + (k / NA) * hw * 2, a1 = -hw + ((k + 1) / NA) * hw * 2;
+            const y0 = crestY - drop * fa, y1 = crestY - drop * fb;
+            const t0 = throwAt(fa) + bow(a0), t1 = throwAt(fb) + bow(a0);
+            const t2 = throwAt(fb) + bow(a1), t3 = throwAt(fa) + bow(a1);
+            /* Round 58: one column of tone per slice, so the curtain has breadth. Twelve slices of
+               the same four authored tones is a wall of paint; a curtain is never one tone across
+               its whole width — the volume of water at each point differs, and that is what the
+               eye reads as depth rather than as a decal. */
+            const tone = 0.10 * Math.sin(k * 2.3 + fa * 17.0);
+            const band = add(C, [Pt(a0, y0, t0), Pt(a1, y0, t3), Pt(a1, y1, t2), Pt(a0, y1, t1)],
+                             ZERO8, "flat", mix(col, tone));
+            if (band) { band.lit = 0.72 + (fa >= 0.15 ? 0.12 : 0.02); band.air = 0.07; drawn.push(band); }
+          }
+        }
+        /* The ropes.
+
+           Round 58's decisive finding: a texture cannot draw this. The sheet is fifteen metres from
+           the rail and forty degrees of frame covers it, so one centimetre of water is well under a
+           pixel — a strand tile mips down to its own mean and the curtain becomes the flat wash
+           the owner called 一片平光. What survives at that distance is *shape*, not grain: the
+           curtain hangs in ropes a metre or two wide, and the dark water between two ropes shows
+           through. So the ropes are drawn as geometry, each column a tone in its own right, and
+           each rope carries a slow travelling brightness down its length — the water moving, drawn
+           where it can actually be seen.
+
+           Forty-eight columns over the crest: at the American Falls' 290 m of real crest measured
+           at this page's scale that is a rope every couple of metres, which is what the photographs
+           of the fall from Terrapin Point show. */
+        const NCOL = 48;
+        for (let k = 0; k < NCOL; k++) {
+          const a0 = -hw + (k / NCOL) * hw * 2, a1 = -hw + ((k + 1) / NCOL) * hw * 2, ac = (a0 + a1) / 2;
+          // Which column this is decides its water: a slow standing pattern across the crest,
+          // seeded so it is the same every frame — the fall does not reshuffle when you look away.
+          const sway = 0.74 + 0.26 * Math.sin(k * 1.7) * Math.cos(k * 0.61 + 0.4);
+          const rope = sway > 0.86;                     // the bright ropes
+          const bright = sway > 0.965;                  // the white ones
+          const ph = (k * 0.37) % 1;
+          for (const [fa, fb, col] of BANDS) {
+            const y0 = crestY - drop * fa, y1 = crestY - drop * fb;
+            const t0 = throwAt(fa) + bow(a0), t1 = throwAt(fb) + bow(a0);
+            const t2 = throwAt(fb) + bow(a1), t3 = throwAt(fa) + bow(a1);
+            /* A rope's brightness travels down it: `droplet` is where the white is, and it drops a
+               fall's own height every four seconds. Without it the curtain is a still photograph of
+               water; with it, the eye reads motion even standing still. */
+            const fall = ease ? ((T * 0.24 + ph) % 1) : 0.5;
+            const near = Math.max(0, 1 - Math.abs((fa + fb) / 2 - fall) * 3.2);
+            /* `mix` takes a *fraction* toward warm white (positive) or the void (negative) — not a
+               multiplier. Round 58 doubled the curtain out to cream by passing 1.10 here: a
+               fraction of 1.1 overshoots white on every channel and clamps, so a "10 % brighter
+               rope" became a solid cream wall. These stay inside ±0.25. */
+            const tone = (rope ? 0.10 : -0.07) + 0.14 * near + 0.04 * Math.sin(k * 2.3 + fa * 11);
+            /* One rope in five carries white water: the fall is not a tinted glass sheet, it is a
+               curtain with bright ropes in it, and that contrast is what the eye reads as motion
+               even in a still frame. */
+            const q = add(C, [Pt(a0, y0, t0), Pt(a1, y0, t3), Pt(a1, y1, t2), Pt(a0, y1, t1)],
+                          ZERO8, "flat", bright ? mix(mix(col, 0.55), tone) : mix(col, tone));
+            /* Round 58: `lit` is a wash *toward the day's light*, not a brightness multiplier, so
+               anything above 1.0 drives the colour to white — which is how a teal curtain became a
+               grey wall. The sheet is water, not a lit surface: it sits at the low end. */
+            /* Round 58: `air` is the aerial haze, and it is *computed from the quad's distance*
+               when it is not given — 55 % of the frame's fog at this range, which is exactly the
+               flat wash the owner reported. A falls fifteen metres away is not in the haze; it is
+               the haze. Pinned low, with a little left so the far end of the crest still recedes. */
+            if (q) { q.lit = 0.72 + (fa >= 0.15 ? 0.10 : 0.02); q.air = 0.07; drawn.push(q); }
+          }
+          /* The seam between two ropes: the dark water standing in the gap, which is what gives a
+             curtain its vertical grain. One narrow column, painted in front of the columns beside
+             it so it always separates them. It widens as it falls — water pulls apart into ropes
+             on the way down and a gap at the lip is a crevasse at the foot. */
+          const gap = rope ? 0.15 : 0.09;
+          for (const [fa, fb, gk] of [[0.0, 0.26, 0.6], [0.26, 0.62, 1.0], [0.62, 1.0, 1.5]]) {
+            const y0 = crestY - drop * fa, y1 = crestY - drop * fb;
+            const g0 = ac - (a1 - a0) * gap * gk, g1 = ac + (a1 - a0) * gap * gk;
+            const q = add(C, [Pt(g0, y0, throwAt(fa) - 3), Pt(g1, y0, throwAt(fa) - 3),
+                              Pt(g1, y1, throwAt(fb) - 3), Pt(g0, y1, throwAt(fb) - 3)],
+                          ZERO8, "flat", "rgba(38,92,102,0.55)");
+            if (q) { q.lit = 0.78; q.air = 0.05; drawn.push(q); }
+          }
+        }
+        /* The foot: the water arriving. Every falls ends in a white line — the plunge, where the
+           falling sheet turns into spray instead of water — and that line is the thing that says
+           how far the water has come. Two bands, the second thrown forward. */
+        Q(-hw, hw, crestY - drop * 0.985, crestY - drop * 0.90, 26, 20, "#f2fbfa", 1.35, 0.0);
+        Q(-hw, hw, crestY - drop * 0.93, crestY - drop * 0.80, 34, 24, "rgba(232,248,247,0.62)", 1.1, 0.02);
+        /* The billows standing at the foot: the water has landed and is coming back up. Four slabs
+           across the crest, drifting on the frame clock, each one highest where the water is. */
+        for (let i = 0; i < 9; i++) {
+          const a = -hw * 0.9 + (i / 8) * hw * 1.8;
+          const rise = 0.10 + 0.07 * Math.sin(i * 1.9);
+          const drift = ease ? Math.sin(T * 0.4 + i * 1.3) * 60 : 0;
+          const top = crestY - drop * (1 - rise);
+          const q = add(C, [Pt(a - 260 + drift, crestY - drop * 0.99, 40), Pt(a + 260 + drift, crestY - drop * 0.99, 40),
+                            Pt(a + 200 + drift, top, 30), Pt(a - 200 + drift, top, 30)],
+                        ZERO8, "soft", "#ffffff", PATS.foam);
+          if (q) { q.lit = 1.2; q.air = 0.30; drawn.push(q); }
+        }
+        for (let i = fromHere; i < drawn.length; i++) drawn[i].day = false;
+        /* The headlands: the rock the water goes between, standing the drop's own height on the
+           bank so the sheet has an edge to disappear behind at either end. */
+        [-1, 1].forEach((sd) => {
+          const a = sd * (hw + 90);
+          const c0 = Pt(a - 90, crestY + 120, 120), c1 = Pt(a + 90, crestY + 120, 120);
+          const c2 = Pt(a + 70, crestY - drop, 260), c3 = Pt(a - 70, crestY - drop, 260);
+          const q = add(C, [c0, c1, c2, c3], ZERO8, "flat", sd < 0 ? "#2f3b46" : "#33404a");
+          if (q) { q.lit = 0.55; q.air = 0.28; drawn.push(q); }
+        });
+        /* The spray. It leaves the foot, comes back over the crest and hangs there at eye level,
+           drifting with the frame clock — the reason a falls is felt before it is read. Three
+           nested slabs per column, wide and faint outside, narrow and denser in: a gradient made of
+           quads, because that is what this painter has. */
+        for (let i = 0; i < 7; i++) {
+          const a = -hw * 0.86 + (i + 0.5) * (hw * 1.72 / 7);
+          const drift = ease ? Math.sin(T * 0.5 + i * 1.9) * 20 : 0;
+          const rise = 130 + (i % 4) * 55;
+          for (let k = 0; k < 3; k++) {
+            const w = 120 + k * 95, top = crestY + rise * (1 - k * 0.16);
+            /* Soft, not a slab. The lane's painter has one soft-edged quad (`soft`, a radial falloff
+               the renderer makes once): spray is the reason it exists, and a hard-edged pale
+               rectangle is exactly what mist must not look like up close. */
+            const q = add(C, [Pt(a - w + drift, crestY - 30, -40), Pt(a + w + drift, crestY - 30, -40),
+                              Pt(a + w * 0.8 + drift, top, -22), Pt(a - w * 0.8 + drift, top, -22)],
+                          ZERO8, "flat", "#eef8f8");
+            if (q) {
+              q.lit = 1.02; q.air = 0.03;
+              q.soft = { rgb: "238,248,250", a: 0.16 - k * 0.035 };
+              drawn.push(q);
+            }
+          }
+        }
+        // The churn over the lip itself: the whole crest disappears into its own spray, which is
+        // what the brink actually looks like from three paces back.
+        {
+          const veil = H(-hw, hw, -300, 20, crestY + 16, "#f2fbfb", 1.05, 0.02);
+          if (veil) veil.soft = { rgb: "242,251,251", a: 0.13 };
+        }
+        // The pool the sheet lands in: a pale churn below the crest, and the rock shelf it lands on.
+        H(-hw, hw, 40, 900, crestY - drop, "#dfeceb", 1.05, 0.12);
+        H(-hw, hw, 900, 2400, crestY - drop - 1, "#4f8f8b", 0.95, 0.16);
       } else if (shape === "falls") {
         /* The falls at table scale: a pale sheet over a ledge into mist, held between two dark
            headlands. The sheet's stripes shimmer with the frame clock — they move because the
@@ -5493,6 +5791,80 @@ function leaveOverlay(root, trigger) {
                              [m.x + 700, 380, m.z - 1650], [m.x - 700, 380, m.z - 1650]],
                          ZERO8, "flat", "#33414e");
         if (shed) { shed.lit = lit * 0.9; drawn.push(shed); }
+      } else if (shape === "carousel") {
+        /* A merry-go-round, drawn as the thing itself: a round deck, a mast, a striped canopy that
+           turns, and a ring of horses going up and down as it turns. Clifton Hill's strip has had a
+           carousel on it since the fun row was built, and a district with one ride in it is a
+           funfair ticket booth, not a district. The record authors the diameter, the canopy's
+           height and the turn in seconds; nothing here is named after a business.
+
+           Everything is drawn in the plane of the street (`ry` faces the lane), so the ring reads
+           as an ellipse on the ground with the canopy over it — the same trick the wheel uses. */
+        const R = (m.dia || 900) / 2;                     // cm to the deck's edge
+        const canopyY = m.y + (m.h || 420) - 40;          // the canopy's rim
+        const mastY = m.y + (m.h || 420) + 120;
+        const th = ((T / (m.turn || 26)) * Math.PI * 2) + (m.phase0 || 0);
+        const night = NIGHT();
+        const STRIPES = ["#c8463f", "#f0e6d2"];
+        const side = m.ry && Math.abs(Math.abs(m.ry) - 90) < 45 ? 0 : 1;   // 0: ring in z, 1: ring in x
+        /* A point on the ring, in the ground plane, at angle `a` and radius `r`. */
+        const P = (a, r, y) => side
+          ? [m.x + Math.cos(a) * r, y, m.z + Math.sin(a) * r * 0.42]
+          : [m.x + Math.cos(a) * r * 0.42, y, m.z + Math.sin(a) * r];
+        // the deck: 24 sectors, so the ring is round rather than a square with corners cut off
+        for (let i = 0; i < 24; i++) {
+          const a0 = th * 0.35 + (i / 24) * Math.PI * 2, a1 = th * 0.35 + ((i + 1) / 24) * Math.PI * 2;
+          const q = add(C, [P(a0, R, m.y + 14), P(a1, R, m.y + 14),
+                            P(a1, R * 0.18, m.y + 18), P(a0, R * 0.18, m.y + 18)],
+                        ZERO8, "flat", i % 2 ? "#7d6a55" : "#8a7660");
+          if (q) { q.lit = lit * 0.92; drawn.push(q); }
+        }
+        // the canopy: alternating stripes, its rim lower than its crown, turning with the deck
+        for (let i = 0; i < 16; i++) {
+          const a0 = th + (i / 16) * Math.PI * 2, a1 = th + ((i + 1) / 16) * Math.PI * 2;
+          const q = add(C, [P(a0, R * 1.02, canopyY), P(a1, R * 1.02, canopyY),
+                            P(a1, R * 0.10, canopyY + 120), P(a0, R * 0.10, canopyY + 120)],
+                        ZERO8, "flat", STRIPES[i % 2]);
+          if (q) { q.lit = lit * 1.05; drawn.push(q); }
+        }
+        // the scalloped valance, the one part of a carousel everybody remembers
+        for (let i = 0; i < 32; i++) {
+          const a0 = th + (i / 32) * Math.PI * 2, a1 = th + ((i + 1) / 32) * Math.PI * 2;
+          const q = add(C, [P(a0, R * 1.02, canopyY - 26), P(a1, R * 1.02, canopyY - 26),
+                            P(a1, R * 1.02, canopyY), P(a0, R * 1.02, canopyY)],
+                        ZERO8, "flat", i % 2 ? "#e8d9b4" : "#b8403c");
+          if (q) { q.lit = lit * 1.02; drawn.push(q); }
+        }
+        // the mast, and the finial over it
+        const mast = add(C, [[m.x - 16, m.y, m.z - 16], [m.x + 16, m.y, m.z - 16],
+                             [m.x + 16, mastY, m.z - 16], [m.x - 16, mastY, m.z - 16]],
+                        ZERO8, "flat", "#9a8f7c");
+        if (mast) { mast.lit = lit; drawn.push(mast); }
+        // twelve horses, each on its own brass pole, rising and falling as the ride turns
+        for (let i = 0; i < 12; i++) {
+          const a = th + (i / 12) * Math.PI * 2;
+          const bob = Math.sin(th * 2 + i * 1.3) * 26;
+          const p = P(a, R * 0.72, 0);
+          const pole = add(C, [[p[0] - 5, m.y + 18, p[2] - 5], [p[0] + 5, m.y + 18, p[2] - 5],
+                               [p[0] + 5, canopyY, p[2] - 5], [p[0] - 5, canopyY, p[2] - 5]],
+                          ZERO8, "flat", "#c9a94e");
+          if (pole) { pole.lit = lit * 1.1; drawn.push(pole); }
+          const h = add(C, [[p[0] - 34, m.y + 74 + bob, p[2] - 12], [p[0] + 34, m.y + 74 + bob, p[2] - 12],
+                            [p[0] + 30, m.y + 148 + bob, p[2] - 12], [p[0] - 30, m.y + 148 + bob, p[2] - 12]],
+                        ZERO8, "flat", i % 2 ? "#efe6d0" : "#c9b48c");
+          if (h) { h.lit = lit * 1.04; drawn.push(h); }
+        }
+        // after dark the canopy's rim runs a ring of bulbs; the ride is the strip's light source
+        if (night > 0.15) {
+          for (let i = 0; i < 24; i++) {
+            const a = th + (i / 24) * Math.PI * 2;
+            const p = P(a, R * 1.02, canopyY + 6);
+            const b = add(C, [[p[0] - 22, p[1] - 22, p[2] - 22], [p[0] + 22, p[1] - 22, p[2] - 22],
+                              [p[0] + 22, p[1] + 22, p[2] + 22], [p[0] - 22, p[1] + 22, p[2] + 22]],
+                          ZERO8, "flat", i % 3 ? "#ffe6b0" : "#ffd07a");
+            if (b) { b.lit = 1.5; b.nolite = true; drawn.push(b); }
+          }
+        }
       } else if (shape === "incline") {
         /* The Falls Incline Railway (round 52; Wikipedia and the Parks' own page): the only one of
            the eight inclines the two cities ever ran that still runs — 59.8 m of double track at
@@ -6404,7 +6776,14 @@ function leaveOverlay(root, trigger) {
           if (q) { q.lit = 1.4; drawn.push(q); }
         });
       } else {
-        const q = add(C, corners, uv.flat(), face, base, m.pic);
+        /* A card can wear a tile. The bluff under the Fallsview deck is rock: as a flat card it was
+           a featureless grey slab across half a frame, and the tile is the whole difference between
+           a wall and a cliff. Mapped in world centimetres, like every other built surface here. */
+        const tiled = m.tile && PATS[m.tile];
+        const q = tiled
+          ? add(C, corners, corners.flatMap((c) => [
+              (Math.abs(m.ry) > 45 ? c[2] : c[0]) * DPM, -c[1] * DPM]), "pat", PATS[m.tile])
+          : add(C, corners, uv.flat(), face, base, m.pic);
         if (q) {
           q.lit = m.kind === "vending" ? 1.7 : lit;
           // A hung frame is the one thing in an alley that is lit on purpose: it keeps its own
