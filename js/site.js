@@ -4087,11 +4087,20 @@ function leaveOverlay(root, trigger) {
         const Q = (pts, col, l) => { const q = add(C, pts, ZERO8, "flat", col);
           if (q) { q.lit = l; drawn.push(q); } };
         const seatY = m.y + m.h * 0.44, backY = m.y + m.h, dIn = m.d;
-        [-1, 1].forEach((sg) => {                       // the two end frames
-          const u0 = sg * (m.w / 2) - 9 * sg, u1 = sg * (m.w / 2);
+        /* Two legs an end and a rail between them, not a solid panel: a 40 cm-wide end frame in a
+           dark tint reads as a black box standing beside the bench, which is what the first draft
+           of this painter did. The air under the seat is the same argument the rack makes. */
+        [-1, 1].forEach((sg) => {
+          const u0 = sg * (m.w / 2 - 9), u1 = sg * (m.w / 2);
           const a = Math.min(u0, u1), b = Math.max(u0, u1);
-          Q([P(a, m.y, 8), P(b, m.y, 8), P(b, seatY, 8), P(a, seatY, 8)], mix(base, -0.26), lit * 0.74);
-          Q([P(a, m.y, 8), P(a, m.y, dIn), P(a, seatY, dIn), P(a, seatY, 8)], mix(base, -0.34), lit * 0.62);
+          [6, dIn - 8].forEach((v) => {                // a front leg and a back one
+            Q([P(a, m.y, v), P(b, m.y, v), P(b, seatY - 2, v), P(a, seatY - 2, v)],
+              mix(base, -0.26), lit * 0.8);
+            Q([P(b, m.y, v), P(b, m.y, v + 6), P(b, seatY - 2, v + 6), P(a - 0, seatY - 2, v + 6)],
+              mix(base, -0.34), lit * 0.68);
+          });
+          Q([P(a, seatY - 8, 6), P(b, seatY - 8, 6), P(b, seatY - 2, dIn - 8), P(a, seatY - 2, dIn - 8)],
+            mix(base, -0.14), lit * 0.94);             // the rail the seat sits on
         });
         Q([P(-m.w / 2, seatY, 8), P(m.w / 2, seatY, 8), P(m.w / 2, seatY, dIn), P(-m.w / 2, seatY, dIn)],
           mix(base, 0.16), lit * 1.14);                 // the seat
