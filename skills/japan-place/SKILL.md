@@ -67,9 +67,9 @@ them — the two rooms already built have committed to them.
 
 ## 3. Materials: the renderer paints tiles, it does not sample photographs
 
-`js/site.js` authors each lane material as a procedural 128 px tile. The Canvas2D fallback maps
-that tile across the 60 cm wall panel and uses `FLATOF` for the grazing-angle flat colour; Three.js
-uses the same lane tile canvas as a texture on the 3D surface. Sourced-world tiles are also
+`js/site.js` authors each lane material as a procedural 128 px tile. Three.js uses that tile
+canvas as a texture on the 60 cm wall panel, and `FLATOF` supplies the grazing-angle flat colour;
+no 2D path maps it any more (round 54). Sourced-world tiles are also
 procedural `CanvasTexture`s in `js/scene3d.js`. None of these material patterns are photographs.
 What exists today: `shutter, dado, brick, corrugated, hoarding, plaster, tactile, kerb, grate,
 lantern, concrete, galv, wood, cobble, glass, track, water, terrain, cityg, skyline`.
@@ -166,12 +166,15 @@ and only after the public facts are already laid out on the table.
 them before anything else:
 
 - `node .verify/verify-shapes.mjs` — a prop whose `kind` is not registered renders as a flat
-  plane with no error, and the check reads the **id prefix**, not `data-kind`. Name the object
-  `drawbridge-mj`, `stationfront-mj`, `dalianhall-mj`, not `moji-drawbridge`.
+  plane with no error. Since round 54 the check reads the **emitted `data-kind`**, not the id
+  prefix; the id is only a fallback for records that declare no kind. Still name plainly —
+  `drawbridge-mj`, `stationfront-mj`, `dalianhall-mj` — because a human reads the id long before
+  a harness does.
 - `node .verify/verify-walk.mjs` — asserts that every frame's title is a sub-area slot of its own
   room, and that the album's Field notes wall is the built places with one door each.
-- `node .verify/lane-shot.mjs .preview/lane/<place>` — the pixel gate. It asks whether the lane is
-  painted where you stand, whether the deepest stop is the frame that empties out, and whether the
-  wall behind the entrance is a room. A stop that stands *inside* the thing it names (the first Moji
+- the settled stop frames from `.verify/browser-shot.mjs` (the old Canvas2D pixel gate, `lane-shot`,
+  retired with the painter in round 54) — read for whether the lane is dressed where you stand,
+  whether the deepest stop is the frame that empties out, and whether the wall behind the entrance is
+  a room. A stop that stands *inside* the thing it names (the first Moji
   layout had three of five stops standing in the port) passes every structural assertion and shows
   the visitor air.

@@ -46,5 +46,18 @@ for (const f of PAGES) {
   console.log(`${f}: ${ids.length} props, ${miss.length} unresolved`);
   if (miss.length) { bad += miss.length; console.log("   draws as a plain plane: " + miss.join("  ")); }
 }
+/* A shape the table names and the painter never branches on is the round-21 defect again: the id
+   resolves, the audit above is satisfied, and the prop is drawn by the default branch as a card.
+   `plane` is the one value that *is* the default, so it is the one value allowed to have no branch.
+   This is the check that would have caught a `bench: "bench"` written before the bench was painted,
+   and it is what makes "the shape is named" mean "the shape is drawn" from now on. */
+const shapes = [...new Set(Object.values(SHAPE))].sort();
+const unpainted = shapes.filter((v) => v !== "plane" && !new RegExp(`shape === "${v}"`).test(js));
+if (unpainted.length) {
+  bad += unpainted.length;
+  console.log(`\n   named in SHAPE but never branched on in site.js (drawn as a card): ${unpainted.join(" ")}`);
+} else {
+  console.log(`every one of the ${shapes.length} named shapes has its own painter`);
+}
 console.log(bad ? `\n${bad}/${total} prop(s) fall through to "plane"` : `\nall ${total} props resolve to a shape`);
 process.exit(bad ? 1 : 0);

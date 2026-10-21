@@ -257,9 +257,13 @@ blank with the reason in its card, and a photograph of somebody's real front is 
 in this project.
 
 No iOS Safari exists in this sandbox, so mobile behaviour is **unmeasured** and must never be
-reported as proven. What needs no device is the fallback: the captioned list is always readable. The
-per-frame draw cost is measurable here and is asserted — `ctx.fills`, and that no textured quad covers
-more than its own uv extent; what it looks like on a phone is not.
+reported as proven. What needs no device is the fallback: the captioned list is always readable, and
+the lane's own sentence is what a browser without WebGL is shown (`.verify/_nogl.mjs` reads it with
+every WebGL context refused). The per-frame cost is now the geometry the frame submits —
+`__walk.quads` pinned by `verify-walk`, triangles by `bin/verify-three.mjs`, the whole submission by
+`.verify/cost-probe.mjs` — not a 2D fill count, which since round 54 would only measure the shared
+tile raster. That no textured quad covers more than its own uv extent is still asserted, because
+the tiles survived the painter. What any of it looks like on a phone is not.
 
 ## 7. The display wears no words
 
@@ -378,6 +382,10 @@ and refuse `auxclick` for the middle button alone: tiles are links and a blocked
 them. This is not politeness — it is what the owner called 手感. On a phone, prefer the edge of the screen
 to a floating disc: `opacity: 0` until hover or focus, `width: 34%`, and no `border-radius`.
 
-`.verify/` keeps only the three files that are run again — `verify-walk.mjs`, `cost-probe.mjs`,
-`browser-check.py`. One-shot patch scripts get deleted as soon as their anchors are consumed: a script
-that can only fail twice is a trap for whoever reads the folder next.
+`.verify/` holds the gates that get run again — the walk, shape, geometry, clash, chain, story,
+collision and e2e harnesses, plus the probes that answer a question the brief asks repeatedly
+(`cost-probe`, `_halltint`, `_nogl`, `browser-shot`). It is not a scratch folder: a one-shot patch
+script is deleted as soon as its anchors are consumed, because a script that can only fail twice is
+a trap for whoever reads the folder next. A probe whose premise died is deleted with a note in
+`TODO.md` (round 54 retired `motion-magnitude`; round 55 rebuilt `cost-probe` on the surviving
+renderer).

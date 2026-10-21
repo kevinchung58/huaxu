@@ -12,7 +12,7 @@ This skill owns the rendered-image review after scene authoring. It complements,
 - the relevant domain skill for records, props, landmarks, streets, or Japanese places;
 - `pua` for evidence-led diagnosis, root-cause repair, and honest verification.
 
-The renderer is pinned Three.js 0.186.1 for walkable scenes, with the Canvas2D path retained as the no-WebGL fallback. This workflow does not authorize another dependency, asset service, CDN, renderer migration, or a change to the Activities album's CSS 3D.
+The renderer is pinned Three.js 0.186.1 for walkable scenes, and it is the only one: the Canvas2D lane painter was deleted in round 54, so the no-WebGL state is a sentence, not a second picture to review. This workflow does not authorize another dependency, asset service, CDN, renderer migration, or a change to the Activities album's CSS 3D.
 
 ## 1. Freeze the authoring pass and identify the claim
 
@@ -27,7 +27,7 @@ Do not create a second coordinate system or an unsupported visual requirement. U
 
 ## 2. Capture a complete, settled view set
 
-Use the repository's current `.verify/browser-shot.mjs` for actual browser movement and `.verify/lane-shot.mjs` for its renderer-independent route/fallback raster checks. Preserve their arrival checks. A frame is not evidence for a stop until the runtime has reached its authored depth, lateral position, and view. Fixed sleeps, a partially completed glide, or an early timeout are not proof of a movement defect.
+Use the repository's current `.verify/browser-shot.mjs` for actual browser movement, `.verify/cost-probe.mjs` to read what a frame submits, and `.verify/_nogl.mjs` when the no-WebGL state is the claim under review. Preserve their arrival checks. A frame is not evidence for a stop until the runtime has reached its authored depth, lateral position, and view. Fixed sleeps, a partially completed glide, or an early timeout are not proof of a movement defect.
 
 For the changed page, capture:
 
@@ -37,7 +37,7 @@ For the changed page, capture:
 4. special authored views (for example a glass-floor look-down or an upper/lower waterfall deck);
 5. the route's far end and its entrance/exit behavior.
 
-If the change affects renderer selection, geometry conversion, materials, or fallback handling, verify both paths: confirm the browser's actual renderer rather than inferring it from a loaded script; run `node bin/verify-three.mjs` for the Three.js geometry contract and the relevant Canvas2D/browser gates for fallback. For motion, observe the actual authored behavior over a meaningful part of its cycle; a sample aligned to its period can falsely look static. Capture mobile only for a changed mobile path or an explicit mobile acceptance claim, and label any untested viewport honestly.
+If the change affects renderer selection, geometry conversion, materials, or the no-WebGL state, confirm the browser's actual renderer rather than inferring it from a loaded script; run `node bin/verify-three.mjs` for the Three.js geometry contract, and `.verify/_nogl.mjs` (which returns no WebGL context) when the failure sentence is the claim. For motion, observe the actual authored behavior over a meaningful part of its cycle; a sample aligned to its period can falsely look static. Capture mobile only for a changed mobile path or an explicit mobile acceptance claim, and label any untested viewport honestly.
 
 ## 3. Read the images, not just the measurements
 
@@ -68,7 +68,7 @@ Regenerate and re-capture the affected view plus the sibling angles and stops th
 
 ## 6. Close out honestly
 
-The visual gate closes only when every required captured stop has been inspected, the scene is recognizable from the views promised by its source-backed contract, the relevant mechanics/fallback gates pass, and no known critical or major in-scope defect is left unexplained. Record exact commands, results, image paths, renderer/backend, approximations, exclusions, and any unverified view in `TODO.md`.
+The visual gate closes only when every required captured stop has been inspected, the scene is recognizable from the views promised by its source-backed contract, the relevant mechanics gates and the no-WebGL sentence pass, and no known critical or major in-scope defect is left unexplained. Record exact commands, results, image paths, renderer/backend, approximations, exclusions, and any unverified view in `TODO.md`.
 
 If a view could not be captured or inspected, say so and leave the claim unverified. Keep screenshots and contact sheets under the existing ignored `.preview/` workflow; do not commit generated review images.
 

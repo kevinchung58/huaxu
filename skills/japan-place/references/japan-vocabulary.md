@@ -13,6 +13,13 @@ Every number is in **centimetres**, because that is what a district record is au
 `OBJ_SIZE` in `_gen_html.py` holds the ones the renderer already draws; anything not in it falls
 back to a plausible box `(120, 160, 12)`, which is honest for dressing and wrong for a subject.
 
+**A size is only half of it (round 56).** A kind can be the right size and still be drawn by the
+wrong branch: a bench, a rack, a bin and a vending machine all reached `box` until this round, so
+four objects the table describes by their *silhouette* were 150 x 84 x 48 and 96 x 150 x 52 crates.
+The `SHAPE` table names the painter, and `verify-shapes` now fails if a named shape has no
+`shape === "<name>"` branch in `js/site.js` — a size in this table is a claim about a body, and a
+body needs a painter or the claim is only a footprint.
+
 ---
 
 ## 1. The objects a Japanese lane is made of
