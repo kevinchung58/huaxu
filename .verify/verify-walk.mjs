@@ -168,9 +168,15 @@ const lights = island("lights"), wires = island("wires"), beams = island("beams"
       vista = island("vista"), bd = island("backdrop");
 const strips = lights.filter((L) => L.bulb === false);
 const lanterns = lights.filter((L) => L.body === "lantern");
+/* Round 56: a strip is the *bay's* strip. The street gained one more unlit source -- the vending
+   machine's own glow, which is authored on the prop and inherits its position from it -- so the
+   count that has to equal the bays is the count of strips that name a bay, and every other source
+   is asked, below, to name a prop that stands exactly where it does. */
+const bayStrips = strips.filter((L) => (L.of || "").startsWith("shopbay-"));
 ok("lights are data: a strip light under every bay's eave, and the globes on the fascias",
-   strips.length === bays.length && strips.every((L) => bays.some((b) => b.id === L.of && b.x === L.x && b.z === L.z))
-     && lights.filter((L) => L.bulb !== false).length >= 4, `${strips.length} strips / ${lights.length} lights`);
+   bayStrips.length === bays.length && bayStrips.every((L) => bays.some((b) => b.id === L.of && b.x === L.x && b.z === L.z))
+     && lights.filter((L) => L.bulb !== false).length >= 4,
+   `${bayStrips.length} bay strips / ${strips.length - bayStrips.length} prop glows / ${lights.length} lights`);
 ok("nothing hangs on a wire the street does not have",
    (wires || []).length === 0 && !lights.some((L) => L.body === "lantern") && (beams || []).length === 0);
 ok("the far end is Hozomon at its sourced size, with the pagoda 56 m west and 19 m north of it",
@@ -209,17 +215,42 @@ ok("and it runs the length of the lane on both sides, gate to plaza",
    }));
 ok("where a street crosses, the wall is that street's dark: its own band, and no shop light in it",
    [-1, 1].every((sd) => GAPS.every(([g0, g1]) => surf.some((b) => b.side === sd && b.z0 === g0 && b.z1 === g1)))
-     && strips.every((L) => GAPS.every(([g0, g1]) => L.z <= g0 || L.z >= g1)));     // islands are walk cm
+     && bayStrips.every((L) => GAPS.every(([g0, g1]) => L.z <= g0 || L.z >= g1)));  // islands are walk cm
 ok("the wall beneath a covered panel is painted zero times",
    /cladCovers/.test(js) && /if \(surfaces\.length && cladCovers\(side, z, z1\)\) return/.test(js));
-ok("the gutters run along the raised walks, flat on the floor and inside the walls",
-   !!ground && ground.length >= 2 && ground.every((m) => m.kind === "grate" && Math.abs(m.x0) <= 455
-     && Math.abs(m.x1) <= 455 && m.z0 >= -BACK && m.z1 <= WALK_D && m.x1 > m.x0 && m.z1 > m.z0));
+ok("the gutters run along the raised walks and across the mouths of the two side streets",
+   !!ground && ground.length >= 4
+     && ground.every((m) => (m.kind === "grate" || m.kind === "manhole")
+                    && Math.abs(m.x0) <= 455 && Math.abs(m.x1) <= 455 && m.z0 >= -BACK && m.z1 <= WALK_D
+                    && m.x1 > m.x0 && m.z1 > m.z0)
+     && ground.filter((m) => m.kind === "grate" && m.x1 - m.x0 > 600).length === 2
+     && ground.filter((m) => m.kind === "manhole").length === 1,
+   `${ground.length} marks`);
 const props = qa(".walk-hit").map((b) => ({ obj: b.dataset.obj,
   x: parseFloat(b.style.getPropertyValue("--x")), z: parseFloat(b.style.getPropertyValue("--z")) }));
+/* The furniture the street keeps out after closing is sized by the object table in
+   `skills/japan-place/references/japan-vocabulary.md` -- its ⚑ committed figures and its †
+   measured ones -- and not by eye, so that the three Japanese rooms cannot drift apart about how
+   wide a crate is. A prop whose numbers stop matching the table fails here, not in a photograph. */
+const OBJ = {};
+for (const t of hits) OBJ[attrOf(t, "data-obj")] = { w: Number(attrOf(t, "data-w")),
+  h: Number(attrOf(t, "data-h")), d: Number(attrOf(t, "data-d")), kind: attrOf(t, "data-kind") };
+const VOCAB = { vending: [96, 150, 52], crate: [62, 46, 52], bin: [68, 86, 68], bikes: [150, 102, 55],
+                planter: [104, 50, 46], bench: [150, 84, 48], signA: [70, 86, 52], mailbox: [52, 74, 36],
+                mirror: [78, 78, 24], ladder: [36, 268, 48], hydrant: [32, 94, 30], ac: [86, 30, 36],
+                pipe: [16, 300, 16], rack: [140, 76, 90] };
+const DRESS = ids.filter((id) => VOCAB[OBJ[id] && OBJ[id].kind] !== undefined);
+ok("the street's furniture is sized by the object table, not by eye",
+   DRESS.length >= 18 && DRESS.every((id) => {
+     const want = VOCAB[OBJ[id].kind];
+     return [OBJ[id].w, OBJ[id].h, OBJ[id].d].every((v, i) => v === want[i]);
+   }), `${DRESS.length} props at the table's sizes`);
 ok("every glow belongs to a named thing, so touching that thing is what changes the light",
    lights.filter((L) => L.bulb === false && L.body !== "lantern").every((L) => ids.includes(L.of))
      && /of: L\.of \|\| null/.test(js) && /setState/.test(js));
+ok("the only thing in this street that lights itself is the machine that never shuts",
+   strips.every((L) => (L.of || "").startsWith("shopbay-") || L.of === "vending-nakamise"),
+   strips.filter((L) => L.of === "vending-nakamise").length + " machine glow");
 ok("a state's light multiplier is a number, and every stop has one or none, never a guess",
    [...html.matchAll(/data-states="([^"]+)"/g)].every((raw) =>
      JSON.parse(raw[1].split(Q).join(DQ)).every((st) =>
@@ -235,7 +266,8 @@ ok("nothing writes prose into the scene", qa(".walk-hit").every((b) => !b.textCo
 ok("the sightline is in the accessible description, not only in pixels",
    /Hozomon, its great lantern lit, with the five-storey pagoda over the west row/.test(html));
 ok("and so is the dressing, because the room is the thing being described",
-   /two shallow rows of vermilion shopfronts nine metres apart, every shutter down and painted/.test(html));
+   /two shallow rows of vermilion shopfronts nine metres apart, every shutter down and painted/.test(html)
+     && /a lit white vending machine under the arcade's mouth/.test(html));
 
 /* ---- 1b. the display, which may not wear a word ----------------------------------------------- */
 {

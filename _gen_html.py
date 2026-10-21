@@ -2065,6 +2065,120 @@ def _nakamise():
 
 NAKAMISE_BAYS, NAKAMISE_LAMPS, NAKAMISE_SURFACES = _nakamise()
 
+# Round 56: the street's own small furniture. After the shops shut, what is still on Nakamise is
+# not merchandise but the things a working street leaves out -- and every size here is a number the
+# object table already carries (skills/japan-place/references/japan-vocabulary.md: the † measured
+# figures and the ⚑ ones the site has committed), so the three Japanese rooms cannot drift apart
+# about how wide a crate is. The list is authored in scene centimetres like the runs above and put
+# through / Z_SCALE as record depth, the same road every other object here takes.
+# Nothing in it is lettered, nobody is in it, and the one thing that lights itself is the machine.
+def _nakamise_dressing():
+    dressing = []
+
+    def put(oid, kind, x, z, ry, w, h, d, title, hint, y=0, glow=None):
+        o = {"id": oid, "kind": kind, "x": x, "z": round(z / Z_SCALE, 2), "y": y, "ry": ry,
+             "w": w, "h": h, "d": d, "title": title, "hint": hint}
+        if glow:
+            o["glow"] = glow
+        dressing.append(o)
+
+    # The Shin-Nakamise mouth, west pier: the machine that stays on, and the evening's delivery
+    # still stacked beside it. 96 x 150 x 52 is the record's machine (⚑ Tokyo); the crate is the
+    # table's 62 x 46 x 52 (⚑). A dark arcade mouth with one lit cabinet is the whole picture.
+    put("vending-nakamise", "vending", -429, 640, 90, 96, 150, 52,
+        "The vending machine, still on",
+        "The one thing on this street that does not close: a white cabinet under the arcade's "
+        "mouth, its shelves backlit and the cans drawn as studs. No brand and no price -- the "
+        "panel over the glass is blank, because what is printed on a real machine is not this "
+        "site's to print. It is why the arcade reads at all at this hour.",
+        glow=[{"r": 130, "k": 0.62, "dy": 148, "tint": "rgba(196,226,255,0.46)"}])
+    for n, (zz, yy) in enumerate(((722, 0), (722, 46), (792, 0))):
+        put(f"crate-nakamise-{n + 1}", "crate", -429, zz, 90, 62, 46, 52,
+            ("A delivery crate at the pier", "The crate stacked on it", "A crate beside them")[n],
+            "A beer crate's size, 62 x 46 x 52, squared against the arcade pier where the "
+            "delivery stopped rather than scattered about. Slats and a corner joint; nothing "
+            "stencilled on it, because a crate's stencil is its owner's.")
+    # The mouth's east pier: the bin, and the bicycles nobody has taken in.
+    put("bin-nakamise", "bin", 421, 620, -90, 68, 86, 68,
+        "The street's bin",
+        "A litter bin beside the arcade's other pier: 68 cm square and 86 high, lid flat and "
+        "empty. Its opening is drawn; the words that would sit beside it on a real one are not "
+        "here to be read.")
+    put("bikes-nakamise", "bikes", 400, 790, -90, 150, 102, 55,
+        "Bicycles left against the pier",
+        "Two bicycles at a standstill, the way a working street holds them: frames to the pier, "
+        "front wheels turned in. 150 long and 102 to the bars, with no badge on either and no "
+        "rack to lock them to -- they say the street is used, and nothing about who used it.")
+    # Along the rows: the shutters' own furniture. A planter at a corner, a bench under a shutter,
+    # a folding board put away face to the shutter, a ladder that was not taken back inside.
+    put("planter-nakamise-1", "planter", 278, 1010, 0, 104, 50, 46,
+        "A planter at the east corner",
+        "A tub at the row's corner where the arcade crosses, 104 x 50 x 46, with a single "
+        "shrub in it. The one living thing on the pavement after closing, and it does not need "
+        "anybody to be here.")
+    put("planter-nakamise-2", "planter", -278, 1838, 0, 104, 50, 46,
+        "A planter at the west corner",
+        "The same tub at Denboin-dori's corner, on the other side of the street. Two planters "
+        "marking two crossings, at the size the table gives a planter.")
+    put("bench-nakamise-w", "bench", -292, 1300, 90, 150, 84, 48,
+        "A bench against the west shutters",
+        "A shop's bench, 150 long and 84 high, standing 13 cm off the shutter with the seat "
+        "facing the lane. After closing there is nobody to sit on it; it is here because a "
+        "street that holds only paving reads as a diagram of a street.")
+    put("signa-nakamise", "signA", -262, 1520, 90, 70, 86, 52,
+        "A folding board, put away",
+        "A shop's A-frame, folded and stood face to the shutter. Both faces are blank: the "
+        "lettering on a real board belongs to the shop that owns it, and there is no shop here "
+        "to own it.")
+    put("ladder-nakamise", "ladder", -300, 1740, 90, 36, 268, 48,
+        "A ladder, left leaning",
+        "Two stiles, five rungs and 268 cm of it, leaning at the shutter where the shutter's "
+        "own maintenance left it. Leaning, not standing: a ladder that stands free in a lane is "
+        "the first thing a gust of wind puts down.")
+    # Denboin-dori, the second crossing: the wall's fittings and the corner's furniture.
+    put("pipe-nakamise-w", "pipe", -447, 1865, 0, 16, 300, 16,
+        "A downpipe at the crossing",
+        "Sixteen centimetres of cast downpipe against the wall where Denboin-dori opens, "
+        "running 300 up from the paving. The street's rainwater has to go somewhere and it goes "
+        "here.")
+    put("pipe-nakamise-e", "pipe", 447, 1875, 0, 16, 300, 16,
+        "The other downpipe",
+        "Its pair on the east side of the same crossing, the same 16 x 300 x 16. The two are "
+        "what makes the cross street read as a street rather than a gap in the row.")
+    put("ac-nakamise", "ac", -437, 2100, 90, 86, 30, 36,
+        "An air-conditioning unit",
+        "A wall unit at 240 up: 86 wide, 30 high, 36 deep, its fan grille turned to the lane "
+        "and its pipes running down. The table keeps these low and wide on purpose -- that is "
+        "the wall-mounted read, not a floor cabinet.", y=240)
+    put("rack-nakamise", "rack", -409, 2200, 90, 140, 76, 90,
+        "A rack under the wall",
+        "A shop's rack, 140 wide and 76 high, standing empty in the recess beside the crossing. "
+        "Whatever it holds in the day was taken in with the shutters.")
+    put("mirror-nakamise", "mirror", 443, 2345, 90, 78, 78, 24,
+        "A convex mirror at Denboin-dori",
+        "The most Tokyo object a lane can hold: a 78 cm convex disc on its bracket at 250 up, "
+        "turned to the crossing. The glass is drawn blank with one highlight -- a mirror that "
+        "invented a reflection would be the renderer making somebody up.", y=250)
+    put("mailbox-nakamise", "mailbox", 429, 2290, -90, 52, 74, 36,
+        "The postbox at the corner",
+        "A red box 52 wide and 74 high at the crossing's corner, its slot on the lane side and "
+        "its plate left blank. A postbox is the one street object whose whole face is writing, "
+        "and so the one that is most completely empty here.")
+    # The last run, before the plaza: the hydrant at the kerb, and a bench at the final shops.
+    put("hydrant-nakamise", "hydrant", 280, 2560, 0, 32, 94, 30,
+        "The standpipe at the last shops",
+        "Thirty-two centimetres of red standpipe at the shutter line, 94 high with its two "
+        "caps. Nothing is claimed about water or about anybody's fire; it is a silhouette the "
+        "street is known by and it was missing.")
+    put("bench-nakamise-e", "bench", 292, 2820, -90, 150, 84, 48,
+        "A bench at the last shops",
+        "The east row's bench, at the same 150 x 84 x 48 as its pair two crossings back, so the "
+        "two ends of the street answer each other.")
+    return dressing
+
+
+NAKAMISE_DRESSING = _nakamise_dressing()
+
 # Moji Port's layout (round 32; TODO section 0n). OpenStreetMap coordinates, turned into metres from
 # Mojiko Station and then into the table's frame: the table is read from the head of the No. 1 basin
 # looking north-west, so its right is north-east, at 1.5 cm to the metre for every model and for the
@@ -3753,11 +3867,18 @@ DISTRICTS = [
         "clad_note": (" The lane is Nakamise-dori after closing: two shallow rows of vermilion "
                       "shopfronts nine metres apart, every shutter down and painted, a lit eave over a "
                       "raised walk, a square vermilion post at each bay, granite paving laid square, "
-                      "and two cross streets breaking the rows. Nothing on any fascia carries a word."),
+                      "and two cross streets breaking the rows. Nothing on any fascia carries a word. "
+                      "What a working street still has out at this hour is drawn beside them, at the "
+                      "sizes the object table gives: a lit white vending machine under the arcade's "
+                      "mouth with delivery crates stacked next to it, a bin and two bicycles at the "
+                      "other pier, a bench, a blank folding board, a ladder and two planters along the "
+                      "shutters, and at Denboin-dori a postbox, a convex mirror on its bracket, a "
+                      "downpipe on each side, an air-conditioning unit and an empty rack, with the last "
+                      "shops ending at a red standpipe and a second bench."),
         "sight_note": (" At its far end the street opens onto the plaza under Hozomon, its great lantern "
                        "lit, with the five-storey pagoda over the west row; behind you is Kaminarimon "
                        "and its lantern."),
-        "objects": NAKAMISE_BAYS,
+        "objects": NAKAMISE_BAYS + NAKAMISE_DRESSING,
         # Light: a strip light under every bay's eave, and the white globes that stand on the fascias
         # (the night photographs), at the ends of each run. Depths are record centimetres.
         "lamps": NAKAMISE_LAMPS,
@@ -3770,6 +3891,12 @@ DISTRICTS = [
         "marks": [
             {"kind": "grate", "x0": -306, "x1": -297, "z0": -103.45, "z1": 1040},
             {"kind": "grate", "x0": 297, "x1": 306, "z0": -103.45, "z1": 1040},
+            # Round 56: the channel turns across the mouth of each side street instead of
+            # running past it, and one cast manhole sits in the paving where the arcade crosses.
+            # Both are paint under the props, at the record's depths like every other mark.
+            {"kind": "grate", "x0": -455, "x1": 455, "z0": 189.66, "z1": 203.45},
+            {"kind": "grate", "x0": -455, "x1": 455, "z0": 637.93, "z1": 651.72},
+            {"kind": "manhole", "x0": -34, "x1": 34, "z0": 258.97, "z1": 282.41},
         ],
         "lanterns": [],
         "wires": [],
@@ -3895,7 +4022,10 @@ DISTRICTS = [
                   "owner was in this place. The stalls are in the wall too: a goldfish basin and a "
                   "mask line, added because the owner asked for games to play in the street — the "
                   "markup and the note cards both say they are toys, and neither stands at a real "
-                  "address.",
+                  "address. The street's furniture — the machine, the crates, the postbox, the mirror, "
+                  "the benches and the rest — is dressing drawn at the sizes the object table "
+                  "commits: it says what a Tokyo shopping street is made of, and nothing about a "
+                  "particular shop, a maker or a price.",
     },
     {
         # Moji Port in a model hall (round 32: laid out from the map; round 36: the models taken
@@ -3943,7 +4073,12 @@ DISTRICTS = [
                       "rooftop helipad in its total height. The historic models are at 1:25; the tower "
                       "keeps that scale on a lower stand. The table lays the port "
                       "out from the map: the basin with the Blue Wing across its mouth, and all five "
-                      "building footprints. Nothing on any of it carries a word."),
+                      "building footprints. Nothing on any of it carries a word. The hall itself "
+                      "is dressed the way such a hall is used: two planters and a blank folding board "
+                      "at the door, a bin and a coat rack beside it, a bench under the pictures on each "
+                      "wall, the crates the models were unpacked from and the ladder for the lamps by "
+                      "the High Mart's stand, and two cones where the floor by the station had just "
+                      "been done."),
         "sight_note": (" Past the table the far wall opens onto the Kanmon Strait at the same scale: "
                        "ships crossing, the Shimonoseki shore with the Kaikyo Yume Tower to the left, "
                        "and the Kanmon Bridge to the right."),
@@ -4120,6 +4255,79 @@ DISTRICTS = [
              "title": "One yatai, on the quay",
              "hint": "Kept because the owner asked for one, at the table's scale: about three metres "
                      "of stall. Nothing is claimed about what it sells."},
+            # Round 56: the hall's own furniture. A model hall is a room people walk through, and
+            # every surface here had a stand on it and nothing else -- so the entrance, the walls
+            # between the stands and the corners by the High Mart get what such a hall actually
+            # has: two planters and a blank A-frame at the door, a bin and a coat rack beside it,
+            # a bench under the two pictures big enough to sit at, the crates the models were
+            # unpacked from, a ladder for the lamps, and a pair of wet-floor cones at the station's
+            # stand. Every size is the object table's (japan-vocabulary §1: the ⚑ figures the site
+            # has committed), and nothing carries a word. Scene centimetres, divided into record
+            # depth like every other object in this record.
+            {"id": "planter-moji-w", "kind": "planter", "x": -404, "z": round(300 / Z_SCALE, 2), "y": 0,
+             "ry": 0, "w": 104, "h": 50, "d": 46,
+             "title": "A planter inside the door",
+             "hint": "A 104 x 50 x 46 tub just inside the hall's door, west side: one of the first "
+                     "things a visitor passes, and the only living shape in a room of models."},
+            {"id": "planter-moji-e", "kind": "planter", "x": 404, "z": round(300 / Z_SCALE, 2), "y": 0,
+             "ry": 0, "w": 104, "h": 50, "d": 46,
+             "title": "The other planter",
+             "hint": "Its pair on the east side of the door, at the same size, so the entrance "
+                     "reads as an entrance and not as one more wall."},
+            {"id": "signa-moji", "kind": "signA", "x": -250, "z": round(420 / Z_SCALE, 2), "y": 0,
+             "ry": 0, "w": 70, "h": 86, "d": 52,
+             "title": "A folding board by the door",
+             "hint": "An A-frame a model hall always has somewhere near its entrance, 70 x 86 x 52 "
+                     "and blank on both faces. What such a board says in life -- an exhibition, a "
+                     "closing time -- is not something this site can put on it."},
+            {"id": "bin-moji", "kind": "bin", "x": 398, "z": round(520 / Z_SCALE, 2), "y": 0,
+             "ry": -90, "w": 68, "h": 86, "d": 68,
+             "title": "The hall's bin",
+             "hint": "A 68 cm bin beside the door, screwed down the way a hall's is. Empty, and "
+                     "with no notice above it: the words a real one carries are not here to read."},
+            {"id": "rack-moji", "kind": "rack", "x": 394, "z": round(640 / Z_SCALE, 2), "y": 0,
+             "ry": -90, "w": 140, "h": 76, "d": 90,
+             "title": "A coat rack by the entrance",
+             "hint": "What a hall with two doors and a cold harbour outside keeps by them: 140 "
+                     "wide, 76 high, 90 deep, and empty because the visitors are not drawn."},
+            {"id": "bench-moji-w", "kind": "bench", "x": -400, "z": round(1150 / Z_SCALE, 2), "y": 0,
+             "ry": 90, "w": 150, "h": 84, "d": 48,
+             "title": "A bench between the stands",
+             "hint": "A bench on the west wall between the station's stand and the Osaka Shosen "
+                     "building's, 150 x 84 x 48: a seat facing the models on the other side of the "
+                     "hall. The two benches are placed for that and for nothing else."},
+            {"id": "bench-moji-e", "kind": "bench", "x": 400, "z": round(1600 / Z_SCALE, 2), "y": 0,
+             "ry": -90, "w": 150, "h": 84, "d": 48,
+             "title": "A bench opposite the tower picture",
+             "hint": "Its pair on the east wall, between the Dalian hall's stand and the bridge "
+                     "picture: the same 150 x 84 x 48, so the two walls hold the room the same way."},
+            {"id": "crate-moji-1", "kind": "crate", "x": -410, "z": round(2240 / Z_SCALE, 2), "y": 0,
+             "ry": 90, "w": 62, "h": 46, "d": 52,
+             "title": "A crate the models came in",
+             "hint": "A packing crate by the High Mart's low stand: 62 x 46 x 52, slatted, "
+                     "squared against the wall. A hall that receives models has boxes, and this "
+                     "is where one would stand."},
+            {"id": "crate-moji-2", "kind": "crate", "x": -410, "z": round(2240 / Z_SCALE, 2), "y": 46,
+             "ry": 90, "w": 62, "h": 46, "d": 52,
+             "title": "The crate stacked on it",
+             "hint": "The second of the pair, resting square on the first. Two is a stack; three "
+                     "is furniture, and this room already has furniture."},
+            {"id": "crate-moji-3", "kind": "crate", "x": -410, "z": round(2320 / Z_SCALE, 2), "y": 0,
+             "ry": 90, "w": 62, "h": 46, "d": 52,
+             "title": "A third crate, open",
+             "hint": "Set down beside the stack at the same size, its lid left off. Nothing in "
+                     "it, and nothing written on it."},
+            {"id": "ladder-moji", "kind": "ladder", "x": -410, "z": round(2400 / Z_SCALE, 2), "y": 0,
+             "ry": 0, "w": 36, "h": 268, "d": 48,
+             "title": "The ladder for the lamps",
+             "hint": "A hall whose light comes from 5.6 m up has a ladder: 36 wide, 268 tall, "
+                     "48 deep at the feet, leaning on the wall rather than standing free."},
+            {"id": "cones-moji", "kind": "cones", "x": -240, "z": round(1010 / Z_SCALE, 2), "y": 0,
+             "ry": 0, "w": 74, "h": 70, "d": 34,
+             "title": "Two cones at the station's stand",
+             "hint": "A pair of cones and the bar through them, 74 x 70 x 34: where the floor by "
+                     "the station's stand had just been done. Dressing, not a queue -- nobody is "
+                     "standing behind them."},
         ],
         # The hall's light: a warm spot over each stand and over the table, and a dim one over the walk.
         "lamps": [
@@ -4135,14 +4343,23 @@ DISTRICTS = [
              "tint": "rgba(255,226,186,0.18)", "of": "plinth-retrohighmart"},
             # the quay the walk now ends at keeps two of the hall's downlights, one each side
             {"x": 620, "y": 420, "z": round(2870 / Z_SCALE, 2), "r": 110, "k": 0.62},
-            {"x": -620, "y": 420, "z": round(2870 / Z_SCALE, 2), "r": 110, "k": 0.6}],
+            {"x": -620, "y": 420, "z": round(2870 / Z_SCALE, 2), "r": 110, "k": 0.6},
+            # Round 56: the two benches sit under a downlight each. The hall's furniture is lit by
+            # the hall's own data -- a bench glowing for no reason would be a source nobody chose.
+            {"x": -400, "y": 560, "z": round(1150 / Z_SCALE, 2), "r": 210, "k": 0.26, "bulb": False,
+             "tint": "rgba(232,224,206,0.16)", "of": "bench-moji-w"},
+            {"x": 400, "y": 560, "z": round(1600 / Z_SCALE, 2), "r": 210, "k": 0.26, "bulb": False,
+             "tint": "rgba(232,224,206,0.16)", "of": "bench-moji-e"}],
         "beams": [90, 240, 340],
         # A model hall's walls: the gallery base and plaster the Toronto hall wears, dark.
+        # Round 56: the bands ran out at 900 (26 m) while the hall walks on to its quay at 1100
+        # (31.9 m) -- so the last six metres of both walls were the shell's bare tile. They now run
+        # the hall's whole depth, to the same seams the lane declares.
         "surfaces": [
-            {"side": -1, "z0": -103.45, "z1": 900, "y0": 0, "y1": 110, "kind": "hallbase", "tone": 0.8},
-            {"side": -1, "z0": -103.45, "z1": 900, "y0": 110, "y1": 620, "kind": "hallplaster", "tone": 0.62},
-            {"side": 1, "z0": -103.45, "z1": 900, "y0": 0, "y1": 110, "kind": "hallbase", "tone": 0.8},
-            {"side": 1, "z0": -103.45, "z1": 900, "y0": 110, "y1": 620, "kind": "hallplaster", "tone": 0.62},
+            {"side": -1, "z0": -103.45, "z1": 1100, "y0": 0, "y1": 110, "kind": "hallbase", "tone": 0.8},
+            {"side": -1, "z0": -103.45, "z1": 1100, "y0": 110, "y1": 620, "kind": "hallplaster", "tone": 0.62},
+            {"side": 1, "z0": -103.45, "z1": 1100, "y0": 0, "y1": 110, "kind": "hallbase", "tone": 0.8},
+            {"side": 1, "z0": -103.45, "z1": 1100, "y0": 110, "y1": 620, "kind": "hallplaster", "tone": 0.62},
         ],
         "marks": [],
         # The far wall opens as a diorama's backdrop does: a band at the table's own horizon -- the
@@ -4257,8 +4474,10 @@ DISTRICTS = [
                   "nothing named. The walk's new half — the quay, the door, the bridge's demo — "
                   "is exhibit framing like the stands themselves: the door shows the lift the "
                   "timetable records, not a ship that came in, and the demo's twenty minutes are the "
-                  "crossing the sources give at model speed. Nothing here says the owner was in any "
-                  "of these places.",
+                  "crossing the sources give at model speed. The hall's furniture -- the benches, "
+                  "the crates, the ladder, the cones, the planters -- is drawn dressing at the sizes "
+                  "the object table commits, not a survey of what this or any hall actually owns. "
+                  "Nothing here says the owner was in any of these places.",
     },
     {
         # Toronto, small. The owner's brief was Little Canada — the Toronto attraction where the

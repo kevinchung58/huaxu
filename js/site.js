@@ -2108,7 +2108,11 @@ function leaveOverlay(root, trigger) {
     const m22 = ((y2 - y0) * (a1 - a0) - (y1 - y0) * (a2 - a0)) / det;
     return [m11, m21, m12, m22, x0 - m11 * a0 - m12 * b0, y0 - m21 * a0 - m22 * b0];
   };
-  const PROP_TINT = { vending: "#f2a43c", noren: "#3d5c9a", shrine: "#8c4238",
+  /* Round 56: the table in `skills/japan-place/references/japan-vocabulary.md` reads a vending
+     machine by "the lit shelf of cans behind glass, and the **white** body". The tint had been the
+     street's orange since round 2, which is a can-vending machine of no make in particular; the
+     white is the object the sources describe, so the machine changed colour when its body did. */
+  const PROP_TINT = { vending: "#e9eef4", noren: "#3d5c9a", shrine: "#8c4238",
                       utility: "#4c5a76", poster: "#33435f", frame: "#2c3a56",
                       ac: "#6d7a90", crate: "#7a6248", bin: "#3f5a4a", bollard: "#8a8676",
                       steps: "#565f74", pipe: "#5c6a80", awning: "#8a3f3a", sign: "#2b3a56",
@@ -2155,10 +2159,10 @@ function leaveOverlay(root, trigger) {
   };
   // How far a kind is a solid. A picture on a wall is a plane and must not be given a thickness it
   // cannot have; everything else in a lane has three visible faces or it is a decal, not an object.
-  const SHAPE = { vending: "box", shrine: "box", utility: "box", ac: "box", crate: "box",
+  const SHAPE = { vending: "vending", shrine: "box", utility: "box", ac: "box", crate: "box",
                   booth: "glass", bikes: "bikes", planter: "planter", cones: "cones",
                   mailbox: "flap", signA: "aboard", banner: "cloth", front: "front", pane: "pane",
-                  bin: "box", bollard: "box", steps: "box", pipe: "box", awning: "box",
+                  bin: "bin", bollard: "box", steps: "box", pipe: "box", awning: "box",
                   sign: "box", drain: "plate", noren: "cloth", poster: "plane", frame: "plane",
                   track: "track", tram: "tram", tree: "tree",
                   mirror: "mirror", ladder: "ladder", hydrant: "hydrant", recycle: "flap",
@@ -2167,7 +2171,7 @@ function leaveOverlay(root, trigger) {
                   // fanlight. It still needs its door-height `data-h` from the record — a plate is
                   // flat on the floor and fails the press-box floor.
                   door: "door",
-                  bank: "bank", bench: "box", rack: "box",
+                  bank: "bank", bench: "bench", rack: "rack",
                   // The little city's kit: a diorama table and the silhouettes a model city is
                   // known by. Each is its own branch below; without one the prop falls back to a
                   // plane, so a new shape that never shipped would show as a card, not a crash.
@@ -2187,6 +2191,11 @@ function leaveOverlay(root, trigger) {
                   // exists.  The boards keep the same render, now it is at least stated; the stall
                   // finally draws as the stall its record describes.
                   board: "plane", foodstall: "stall",
+                  // Round 56: the street's own furniture, each given the painter its silhouette
+                  // needs. `vending`, `bench`, `rack` and `bin` had been resolving to "box" since
+                  // the shapes table was written -- the sizes were the object table's and the
+                  // bodies were crates. verify-shapes now fails on a named shape with no branch,
+                  // so a line here without a painter underneath it cannot ship.
                   customhouse: "customhouse", osakashosen: "osakashosen", dalianhall: "dalianhall",
                   retrohighmart: "retrohighmart",
                   // Round 36: the port table's context blocks, in the map's outlines.
@@ -3952,6 +3961,188 @@ function leaveOverlay(root, trigger) {
           part(-19, 9, 40, base, false);                                   // the cap
           part(-10, 12, 14, base, false);                                  // the finial
         }
+      } else if (shape === "vending") {
+        /* A machine that is still working when the street is not (round 56). The object table's
+           whole read is the lit shelf of cans behind glass over a *white* cabinet, and its delivery
+           port is an **opening**: the reference released a can inside a solid 0.72 m body, where it
+           fell for the whole 1.9 s, so the mouth here is a recess and never a printed panel. No
+           brand, no price, no character -- the shelves are rows of pale studs and the header above
+           them carries nothing, because what is written on a real machine is not ours to write.
+
+           The face is the prop's local +z turned by `ry`, so a machine against the west wall and
+           one against the east face each other without the record needing a second shape; the
+           width is its local +x. The glass and the header are authored as always-lit: the one
+           thing on a night street whose light does not come from a lamp in the record. */
+        const th = ((m.ry || 0) * Math.PI) / 180;
+        const nx = Math.sin(th), nz = Math.cos(th), ux = Math.cos(th), uz = -Math.sin(th);
+        const hw = m.w / 2, hd = m.d / 2;
+        // `v` is how far inside the cabinet a point sits, measured in from the glass face
+        const P = (u, y, v) => [m.x + ux * u + nx * (hd - v), y, m.z + uz * u + nz * (hd - v)];
+        facesOf(m).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          const q = add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.2));
+          if (q) { q.lit = lit; drawn.push(q); }
+        });
+        const Q = (pts, col, l, keep) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (!q) return;
+          q.lit = l;
+          if (keep) { q.nolite = true; q.day = false; }
+          drawn.push(q);
+        };
+        // the plinth it stands on and the mouth it drops the can through
+        Q([P(-hw + 2, m.y, -1), P(hw - 2, m.y, -1), P(hw - 2, m.y + m.h * 0.09, -1),
+           P(-hw + 2, m.y + m.h * 0.09, -1)], "#1b2430", lit * 0.6);
+        const gu = hw - 5;
+        Q([P(-hw * 0.44, m.y + m.h * 0.11, -1), P(hw * 0.44, m.y + m.h * 0.11, -1),
+           P(hw * 0.44, m.y + m.h * 0.33, -1), P(-hw * 0.44, m.y + m.h * 0.33, -1)],
+          "#0a1220", 0.14);
+        // the cabinet's own frame, so the front is joinery and not a white slab. The colours here
+        // are authored rather than derived from the white body: a machine's whole read is contrast
+        // -- pale cabinet, dark glass, bright cans -- and `mix(white, -0.2)` is still white.
+        const gy0 = m.y + m.h * 0.40, gy1 = m.y + m.h * 0.92;
+        [[-gu - 7, -gu, gy0 - 8, gy1 + 8], [gu, gu + 7, gy0 - 8, gy1 + 8]].forEach(([ua, ub, ya, yb]) => {
+          Q([P(ua, ya, -1.2), P(ub, ya, -1.2), P(ub, yb, -1.2), P(ua, yb, -1.2)],
+            "#aeb9c6", lit * 0.9);
+        });
+        Q([P(-hw + 3, gy1 + 8, -1.2), P(hw - 3, gy1 + 8, -1.2),
+           P(hw - 3, gy1 + 15, -1.2), P(-hw + 3, gy1 + 15, -1.2)], "#9aa6b4", lit * 0.9);
+        // the glass: a dark interior that is lit from inside, which is a different thing from a pale
+        // panel. `nolite` because no lamp in the record stands here -- a working machine is the one
+        // surface on this street whose light is its own, and the record says so by naming the machine
+        Q([P(-gu, gy0, -1.5), P(gu, gy0, -1.5), P(gu, gy1, -1.5), P(-gu, gy1, -1.5)],
+          "#1d2b3a", 1.1, true);
+        Q([P(-gu, gy0, -2.4), P(gu, gy0, -2.4), P(gu, gy1, -2.4), P(-gu, gy1, -2.4)],
+          "#33506c", 1.28, true);
+        // three shelves, three cans a row with a band round each, and not one of them labelled
+        for (let r = 0; r < 3; r++) {
+          const y = gy0 + (gy1 - gy0) * (0.18 + r * 0.27);
+          Q([P(-gu, y - 3, -2.2), P(gu, y - 3, -2.2), P(gu, y - 1, -2.2), P(-gu, y - 1, -2.2)],
+            "#8fa8c4", 1.4);
+          for (let i = 0; i < 3; i++) {
+            const u = -gu + 14 + i * ((2 * gu - 28) / 2);
+            Q([P(u - 8, y + 2, -2.8), P(u + 8, y + 2, -2.8), P(u + 8, y + 24, -2.8),
+               P(u - 8, y + 24, -2.8)], i % 2 ? "#f2f8ff" : "#cfe2f5", 1.55, true);
+            Q([P(u - 8, y + 5, -3.0), P(u + 8, y + 5, -3.0), P(u + 8, y + 13, -3.0),
+               P(u - 8, y + 13, -3.0)], i % 2 ? "#7fa8cf" : "#c4472f", 1.5, true);   // the can's band
+          }
+        }
+        // the coin panel and the change slot, lit the way the glass is, and both wordless
+        Q([P(hw * 0.34, gy0 + 8, -1.6), P(hw * 0.78, gy0 + 8, -1.6),
+           P(hw * 0.78, gy0 + 42, -1.6), P(hw * 0.34, gy0 + 42, -1.6)], "#22303f", 0.55);
+        Q([P(hw * 0.38, gy0 + 12, -1.8), P(hw * 0.74, gy0 + 12, -1.8),
+           P(hw * 0.74, gy0 + 20, -1.8), P(hw * 0.38, gy0 + 20, -1.8)], "#8fd0b0", 1.2, true);
+        Q([P(hw * 0.38, gy0 + 26, -1.8), P(hw * 0.74, gy0 + 26, -1.8),
+           P(hw * 0.74, gy0 + 34, -1.8), P(hw * 0.38, gy0 + 34, -1.8)], "#e7eef7", 1.1, true);
+        // the flap over the port, and the header panel, blank the way a machine's own is
+        Q([P(-hw * 0.5, m.y + m.h * 0.345, -1.5), P(hw * 0.5, m.y + m.h * 0.345, -1.5),
+           P(hw * 0.5, m.y + m.h * 0.385, -1.5), P(-hw * 0.5, m.y + m.h * 0.385, -1.5)],
+          mix(base, -0.26), lit * 0.9);
+        Q([P(-gu, m.y + m.h * 0.945, -1.5), P(gu, m.y + m.h * 0.945, -1.5),
+           P(gu, m.y + m.h * 0.985, -1.5), P(-gu, m.y + m.h * 0.985, -1.5)],
+          "#dfe9f5", 1.35, true);
+      } else if (shape === "bin") {
+        /* A litter bin (round 56), the way a street's is made: a tapered body, a lid with a slot,
+           a kick plate at the foot so it does not look painted on the paving. Until now a bin was
+           the `box` branch -- a 68 cm cube -- and a cube on a street reads as a crate. */
+        const along = Math.abs(m.ry) > 45;
+        const dir = along ? (m.x < 0 ? 1 : -1) : (m.z > 0 ? -1 : 1);
+        const P = (u, y, v) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
+        const Q = (pts, col, l) => { const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; drawn.push(q); } };
+        /* The body is a box of its own width and depth and *all* its faces are painted -- the box
+           branch's rule, which keeps a bin a solid from every heading. The lid is drawn as a slightly
+           proud cap over it and the slot is cut into the lid's front, so the silhouette is a bin's
+           and not a crate's. */
+        facesOf({ ...m, h: m.h * 0.84 }).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          Q(f.p, mix(base, f.k + (lit - 0.7) * 0.2), lit);
+        });
+        const lidY = m.y + m.h * 0.84, hw = m.w / 2;
+        facesOf({ ...m, y: lidY, h: m.h * 0.16, w: m.w + 3, d: m.d + 3 }).forEach((f) => {
+          const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                       + f.n[2] * (C.z - f.p[0][2]);
+          if (toward <= 0) return;
+          Q(f.p, mix(base, f.k + 0.1), lit * 1.1);
+        });
+        // the mouth on the lane side, and the kick plate that says the body is not painted on
+        Q([P(-hw * 0.52, lidY + m.h * 0.05, -1.5), P(hw * 0.52, lidY + m.h * 0.05, -1.5),
+           P(hw * 0.52, lidY + m.h * 0.115, -1.5), P(-hw * 0.52, lidY + m.h * 0.115, -1.5)],
+          "#10161f", 0.18);
+        Q([P(-hw + 3, m.y, -1.2), P(hw - 3, m.y, -1.2), P(hw - 3, m.y + m.h * 0.1, -1.2),
+           P(-hw + 3, m.y + m.h * 0.1, -1.2)], mix(base, -0.34), lit * 0.76);
+      } else if (shape === "bench") {
+        /* A bench, not a slab (round 56). Until now a bench was drawn by the `box` branch -- the
+           plainest piece of street furniture there is, and the one a visitor is asked to read by
+           silhouette alone, was a 150 x 84 x 48 crate. A bench is a seat on two end frames with a
+           back against the wall and slats running its length; those three facts are its whole
+           picture, so they are what is drawn. `v` runs away from the wall the bench leans on. */
+        const along = Math.abs(m.ry) > 45;
+        const dir = along ? (m.x < 0 ? 1 : -1) : (m.z > 0 ? -1 : 1);
+        const P = (u, y, v) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
+        const Q = (pts, col, l) => { const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; drawn.push(q); } };
+        const seatY = m.y + m.h * 0.44, backY = m.y + m.h, dIn = m.d;
+        [-1, 1].forEach((sg) => {                       // the two end frames
+          const u0 = sg * (m.w / 2) - 9 * sg, u1 = sg * (m.w / 2);
+          const a = Math.min(u0, u1), b = Math.max(u0, u1);
+          Q([P(a, m.y, 8), P(b, m.y, 8), P(b, seatY, 8), P(a, seatY, 8)], mix(base, -0.26), lit * 0.74);
+          Q([P(a, m.y, 8), P(a, m.y, dIn), P(a, seatY, dIn), P(a, seatY, 8)], mix(base, -0.34), lit * 0.62);
+        });
+        Q([P(-m.w / 2, seatY, 8), P(m.w / 2, seatY, 8), P(m.w / 2, seatY, dIn), P(-m.w / 2, seatY, dIn)],
+          mix(base, 0.16), lit * 1.14);                 // the seat
+        Q([P(-m.w / 2, seatY - 7, dIn), P(m.w / 2, seatY - 7, dIn),
+           P(m.w / 2, seatY, dIn), P(-m.w / 2, seatY, dIn)], mix(base, 0.02), lit * 0.96);   // its lip
+        [-0.26, 0, 0.26].forEach((t) => {               // three gaps, so it reads as slats
+          const u0 = t * m.w - 3, u1 = t * m.w + 3;
+          Q([P(u0, seatY + 1, 10), P(u1, seatY + 1, 10), P(u1, seatY + 1, dIn - 3), P(u0, seatY + 1, dIn - 3)],
+            mix(base, -0.32), lit * 0.8);
+        });
+        /* The back is three slats, not one board: a single panel at this size reads as a hoarding,
+           and the gaps are what let a dark bench sit against a dark shutter and still be a bench. */
+        [0, 1, 2].forEach((i) => {
+          const y0 = seatY + 6 + i * (backY - seatY - 6) * 0.335, y1 = y0 + (backY - seatY - 6) * 0.24;
+          const v0 = 11 - (i * 1.4), v1 = 7 - (i * 1.4);
+          Q([P(-m.w / 2, y0, v0), P(m.w / 2, y0, v0), P(m.w / 2, y1, v1), P(-m.w / 2, y1, v1)],
+            mix(base, 0.08 + i * 0.03), lit * (1.02 + i * 0.03));
+        });
+        [-1, 1].forEach((sg) => {                       // the two stiles that hold them
+          const u0 = sg * (m.w / 2 - 14), u1 = sg * (m.w / 2 - 5);
+          const a = Math.min(u0, u1), b = Math.max(u0, u1);
+          Q([P(a, seatY, 12), P(b, seatY, 12), P(b, backY, 6), P(a, backY, 6)], mix(base, -0.2), lit * 0.9);
+        });
+      } else if (shape === "rack") {
+        /* A rack (round 56): two end frames, a top rail and three bars. The object table's figure
+           is 140 x 76 x 90 -- a laundry rack's proportions -- and what says "rack" rather than
+           "cabinet" is the air you can see through it, so it stays a frame and never a body. */
+        const along = Math.abs(m.ry) > 45;
+        const dir = along ? (m.x < 0 ? 1 : -1) : (m.z > 0 ? -1 : 1);
+        const P = (u, y, v) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
+        const Q = (pts, col, l) => { const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; drawn.push(q); } };
+        const t = Math.max(4, m.w * 0.045);
+        [-1, 1].forEach((sg) => {                       // an end frame, drawn as its two posts
+          [-1, 1].forEach((sv) => {
+            const u0 = sg * (m.w / 2) - (sg > 0 ? t : 0), u1 = u0 + t;
+            const v0 = m.d * 0.5 + sv * m.d * 0.42 - 3, v1 = v0 + 6;
+            Q([P(u0, m.y, v0), P(u1, m.y, v0), P(u1, m.y + m.h, v0), P(u0, m.y + m.h, v0)],
+              mix(base, -0.24), lit * 0.78);
+            Q([P(u1, m.y, v0), P(u1, m.y, v1), P(u1, m.y + m.h, v1), P(u1, m.y + m.h, v0)],
+              mix(base, -0.32), lit * 0.68);
+          });
+        });
+        [0.98, 0.62, 0.24].forEach((f, i) => {          // the top rail, then the bars under it
+          const y = m.y + m.h * f, v = m.d * 0.5;
+          const hgt = i === 0 ? 7 : 5;
+          Q([P(-m.w / 2, y, v - 4), P(m.w / 2, y, v - 4), P(m.w / 2, y, v + 4), P(-m.w / 2, y, v + 4)],
+            mix(base, 0.18 - i * 0.03), lit * 1.16);
+          Q([P(-m.w / 2, y - hgt, v + 4), P(m.w / 2, y - hgt, v + 4),
+             P(m.w / 2, y, v + 4), P(-m.w / 2, y, v + 4)], mix(base, -0.1), lit * 0.94);
+        });
       } else if (shape === "door") {
         /* A door is joinery, not a rectangle: a dark reveal behind it, a leaf with two inset panels
            and a handle, a threshold under it, and a lit fanlight over its head — that fanlight is
@@ -4369,27 +4560,54 @@ function leaveOverlay(root, trigger) {
         Q([P(cu, ins - 4, y0 + m.h * 0.16), P(cu + m.w * 0.3, ins - 4, y0 + m.h * 0.16),
            P(cu + m.w * 0.3, ins - 4, y1), P(cu, ins - 4, y1)], "#8d5a52", lit * 0.85);
       } else if (shape === "bikes") {
+        /* Round 56: a bicycle is two wheels and a diamond, and until now the diamond was a filled
+           card 120 wide and 46 tall -- wider than the wheels it was supposed to sit between, so two
+           bicycles leaning on a shutter read as two grey panels with black blobs. The frame is now
+           the diamond a diamond frame is: seat tube, down tube, top tube, and the fork and chainstay
+           as single strokes. The wheels keep their dark tyre and gain a rim, because the one thing
+           that says "wheel" at twenty metres is a ring, not a disc. */
         const along = Math.abs(m.ry) > 45;
+        const P = (xc, zc, u, y) => (along ? [xc, y, zc + u] : [xc + u, y, zc]);
         for (let b = 0; b < 2; b++) {
           const off = b ? m.w * 0.28 : -m.w * 0.22;
           const zc = along ? m.z + off : m.z;
           const xc = along ? m.x : m.x + off;
           const r = 33;
-          for (const [sx, label] of [[-42, "w"], [42, "w"]]) {
-            const pts = [];
-            for (let i = 0; i < 8; i++) {
-              const a0 = (i / 8) * 6.2832;
-              pts.push(along ? [xc, m.y + r + Math.sin(a0) * r, zc + sx + Math.cos(a0) * r * 0.35]
-                             : [xc + sx + Math.cos(a0) * r * 0.35, m.y + r + Math.sin(a0) * r, zc]);
-            }
-            const q = add(C, pts, ZERO8.slice(0, 16), "flat", "#141d2e");
-            if (q) { q.lit = lit * 0.8; drawn.push(q); }
+          for (const sx of [-42, 42]) {
+            [[1, "#1b2436", 0.9], [0.74, "#0b111c", 0.55]].forEach(([k, col, l]) => {
+              const pts = [];
+              for (let i = 0; i < 10; i++) {
+                const a0 = (i / 10) * 6.2832;
+                pts.push(along ? [xc, m.y + r + Math.sin(a0) * r * k, zc + sx + Math.cos(a0) * r * 0.34 * k]
+                               : [xc + sx + Math.cos(a0) * r * 0.34 * k, m.y + r + Math.sin(a0) * r * k, zc]);
+              }
+              const q = add(C, pts, ZERO8.slice(0, 20), "flat", col);
+              if (q) { q.lit = lit * l; drawn.push(q); }
+            });
           }
-          const frame = add(C, along
-              ? [[xc, m.y + 26, zc - 30], [xc, m.y + 26, zc + 30], [xc, m.y + 72, zc + 24], [xc, m.y + 72, zc - 24]]
-              : [[xc - 30, m.y + 26, zc], [xc + 30, m.y + 26, zc], [xc + 24, m.y + 72, zc], [xc - 24, m.y + 72, zc]],
-              ZERO8, "flat", mix(base, 0.22));
-          if (frame) { frame.lit = lit; drawn.push(frame); }
+          /* A diamond is four strokes, not four filled wedges: each tube is a narrow quad along
+             its own line, so the triangles between them stay open and the bicycle keeps the air
+             that makes it read as a bicycle. */
+          const steel = mix(base, 0.24);
+          const tube = (a, bb, wid, col, l) => {
+            const du = bb[0] - a[0], dy = bb[1] - a[1], len = Math.hypot(du, dy) || 1;
+            const nu = (-dy / len) * wid / 2, ny = (du / len) * wid / 2;
+            const q = add(C, [P(xc, zc, a[0] + nu, a[1] + ny), P(xc, zc, bb[0] + nu, bb[1] + ny),
+                              P(xc, zc, bb[0] - nu, bb[1] - ny), P(xc, zc, a[0] - nu, a[1] - ny)],
+                          ZERO8, "flat", col);
+            if (q) { q.lit = lit * l; drawn.push(q); }
+          };
+          const BB0 = [4, 26], SEAT = [-14, 74], HEAD = [34, 72];
+          tube([-42, r], BB0, 3.4, steel, 0.98);                 // chainstay to the bracket
+          tube(BB0, SEAT, 3.4, steel, 1.02);                     // seat tube
+          tube(SEAT, HEAD, 3.4, steel, 1.08);                    // top tube
+          tube(BB0, HEAD, 4.0, steel, 1.04);                     // down tube
+          tube(HEAD, [42, r], 3.2, mix(base, 0.12), 1.0);        // fork
+          tube(SEAT, [-42, r], 3.0, mix(base, 0.06), 0.94);      // seat stay
+          tube(SEAT, [-14, 88], 3.0, mix(base, 0.2), 1.05);      // seat post
+          tube([-14, 88], [4, 88], 4.0, mix(base, 0.3), 1.1);    // saddle
+          tube(HEAD, [30, 90], 3.0, mix(base, 0.2), 1.06);       // steerer
+          tube([22, 90], [40, 88], 3.6, mix(base, 0.32), 1.12);  // the bars
         }
       } else if (shape === "planter") {
         facesOf(m).forEach((f) => {
