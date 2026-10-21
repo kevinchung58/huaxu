@@ -20,11 +20,21 @@
 
 ### 閘門（本輪）
 `bin/verify-three.mjs` **PASS**（Three 0.186.1、8 頁、12682 世界＋864 水三角形、432 水簾、90 霧層、無 Canvas2D 塗裝器）；`verify-body` **16/16**；`verify-shapes` **175/175 全部解析到形狀**（新增 `carousel` 在內）。其餘 `.verify/*` 本輪因 `node_modules` 未安裝（零依賴政策）只能記錄為「未跑」，不得當成通過。影格：`.preview/r58/goat-falls-brink.png`、`goat-falls-crest.png`。
+### 第二輪（同日，站主「繼續都做好」）
+- **水繩不再等寬等距**：界線用播種雜湊抖動（同一次拜訪永遠同一個瀑布），每條縫自己一個寬度，欄身再疊一條慢正弦（`sin(fa×5.3 + k×2.1)`），所以縫從唇口到腳會偏——垂直縫就是條碼。
+- **霧在布幕前面**：七片 `soft` 徑向軟片貼著水面向上升，越高越淡，跑影格鐘；拍底的浪與唇線同時保留。
+- **入夜打燈**：`NIGHT()>0.12` 時水簾覆一層暖白（`rgba(255,236,200,0.30×night)`，`nolite` ＋ `day:false`），也就是尼加拉夜間照明打在美國瀑布上的樣子。
+- **上站不再是一扇浮空的門**：新增 `incline-station`（石造站房）、屋頂板、落車平台，門終於有牆可靠。
+- **街道補滿**：四支燈柱、兩個花箱、長椅、垃圾桶、河岸護欄與河岸長椅（沿街 20 m 一個節奏），街心不再是停車場。
+- 閘門：`verify-three` **PASS**、`verify-body` **16/16**、`verify-shapes` **178/178**。影格：`.preview/r58/goat-falls-ropes.png`、`niagara-strip-approach.png`、`niagara-st5-station.png`。
+
 ### 尚未做完（下一輪接手直接從這裡開）
-- 水簾的暗縫仍偏規則（每欄等寬、等距），近看像珠簾而非水；需要每欄不同的縫寬與蜿蜒。
-- 水沫貼圖 `foam` 在白日幾乎看不見；拍底的浪要再壓低、加寬。
-- Niagara st5 的浮空門、st6 河岸空曠的白牆（`bluff-face` 大塊無貼圖立面）本輪未動。
-- 夜間水色、Niagara 作品牆 2 cm → 10 cm、商店街可達性、README/授權與 PR #16 仍為站主持有項。
+- **Niagara st5 那塊仍浮空的灰色斜片**：影格 `niagara-st5-station.png` 中右側、草皮上方約 2 m 的灰色平行四邊形，本輪判斷不是 `incline-upper-door`（站房已補、位置不符）；需要一輪專門的物件身分查詢（`drawQuads` 投影＋`data-obj` 對照）再決定是刪、是補底座。
+- **st6 河岸的白牆**：`_gen_html.py` 的 `niagara_world` 有一塊近距離無貼圖立面（影格裡佔右半），要在 world prim 那層處理，不是在 props 層。
+- 水沫貼圖 `foam` 在白日仍偏淡；拍底的浪要再壓低加寬。
+- 夜間水色只做了瀑布本體，河道與潭面尚未跟著。
+- Niagara 作品牆 2 cm → 10 cm：本輪查過 `rooms-niagara.html` 已無 d≤6 的掛畫（最小是 `noren` d 6、`sign` d 10），此項可能已在前輪完成，需站主目視確認後才可劃掉。
+- 商店街 `shopbay-*` 可達性、README/授權、PR #16、CV PDF、ORCID 仍在站主手上。
 
 ## 0ae. 第五十七輪（2026-10-21）：站主「你自己進去 e2e 從頭測到尾，很多物件卡在我身上，移動也有問題」——先把「卡」量成幾何，再改規則
 

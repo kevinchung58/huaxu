@@ -5127,8 +5127,15 @@ function leaveOverlay(root, trigger) {
            at this page's scale that is a rope every couple of metres, which is what the photographs
            of the fall from Terrapin Point show. */
         const NCOL = 48;
+        /* Round 58, second pass: the ropes were all the same width at even spacing, and forty-eight
+           equal stripes read as a bead curtain, not as water. The boundaries are jittered by a seeded
+           hash (so the fall is the same every frame and every visit), and each rope's seam is its own
+           width. Water does not divide evenly. */
+        const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+        const B = (i) => -hw + hw * 2 * ((i + 0.55 * (hash(i) - 0.5)) / NCOL);
+        const nightK = NIGHT();
         for (let k = 0; k < NCOL; k++) {
-          const a0 = -hw + (k / NCOL) * hw * 2, a1 = -hw + ((k + 1) / NCOL) * hw * 2, ac = (a0 + a1) / 2;
+          const a0 = B(k), a1 = B(k + 1), ac = (a0 + a1) / 2, aw = a1 - a0;
           // Which column this is decides its water: a slow standing pattern across the crest,
           // seeded so it is the same every frame — the fall does not reshuffle when you look away.
           const sway = 0.74 + 0.26 * Math.sin(k * 1.7) * Math.cos(k * 0.61 + 0.4);
@@ -5152,7 +5159,12 @@ function leaveOverlay(root, trigger) {
             /* One rope in five carries white water: the fall is not a tinted glass sheet, it is a
                curtain with bright ropes in it, and that contrast is what the eye reads as motion
                even in a still frame. */
-            const q = add(C, [Pt(a0, y0, t0), Pt(a1, y0, t3), Pt(a1, y1, t2), Pt(a0, y1, t1)],
+            /* And the rope leans: a slow sine of its own phase, so a seam leaves the lip in one place
+               and reaches the foot in another. A perfectly vertical seam is a barcode. */
+            const wA = Math.sin(fa * 5.3 + k * 2.1) * aw * 0.12;
+            const wB = Math.sin(fb * 5.3 + k * 2.1) * aw * 0.12;
+            const q = add(C, [Pt(a0 + wA, y0, t0), Pt(a1 + wA, y0, t3),
+                              Pt(a1 + wB, y1, t2), Pt(a0 + wB, y1, t1)],
                           ZERO8, "flat", bright ? mix(mix(col, 0.55), tone) : mix(col, tone));
             /* Round 58: `lit` is a wash *toward the day's light*, not a brightness multiplier, so
                anything above 1.0 drives the colour to white — which is how a teal curtain became a
@@ -5167,15 +5179,31 @@ function leaveOverlay(root, trigger) {
              curtain its vertical grain. One narrow column, painted in front of the columns beside
              it so it always separates them. It widens as it falls — water pulls apart into ropes
              on the way down and a gap at the lip is a crevasse at the foot. */
-          const gap = rope ? 0.15 : 0.09;
+          const gap = (rope ? 0.15 : 0.09) * (0.62 + 0.74 * hash(k + 41));
           for (const [fa, fb, gk] of [[0.0, 0.26, 0.6], [0.26, 0.62, 1.0], [0.62, 1.0, 1.5]]) {
             const y0 = crestY - drop * fa, y1 = crestY - drop * fb;
-            const g0 = ac - (a1 - a0) * gap * gk, g1 = ac + (a1 - a0) * gap * gk;
+            const lean0 = Math.sin(fa * 5.3 + k * 2.1) * aw * 0.12;
+            const lean1 = Math.sin(fb * 5.3 + k * 2.1) * aw * 0.12;
+            const g0 = ac - aw * gap * gk + lean0, g1 = ac + aw * gap * gk + lean0;
             const q = add(C, [Pt(g0, y0, throwAt(fa) - 3), Pt(g1, y0, throwAt(fa) - 3),
-                              Pt(g1, y1, throwAt(fb) - 3), Pt(g0, y1, throwAt(fb) - 3)],
+                              Pt(g1 + (lean1 - lean0), y1, throwAt(fb) - 3), Pt(g0 + (lean1 - lean0), y1, throwAt(fb) - 3)],
                           ZERO8, "flat", "rgba(38,92,102,0.55)");
             if (q) { q.lit = 0.78; q.air = 0.05; drawn.push(q); }
           }
+        }
+        /* The mist, in front of the sheet rather than behind it. Round 57's columns of spray stood
+           *over* the crest and read as fog on the horizon; what a visitor at the brink sees is mist
+           coming back up the face, thinnest at the lip and thickest where the water has just landed.
+           Seven soft quads, drifting on the frame clock, each denser at its foot. */
+        for (let i = 0; i < 7; i++) {
+          const a = -hw * 0.92 + (i / 6) * hw * 1.84;
+          const drift = ease ? Math.sin(T * 0.33 + i * 1.7) * 90 : 0;
+          const reach2 = 0.42 + 0.16 * Math.sin(i * 2.1);        // how far up the face it climbs
+          const yTop = crestY - drop * (1 - reach2), yBot = crestY - drop * 0.99;
+          const q = add(C, [Pt(a - 420 + drift, yBot, 46), Pt(a + 420 + drift, yBot, 46),
+                            Pt(a + 300 + drift, yTop, 40), Pt(a - 300 + drift, yTop, 40)],
+                        ZERO8, "soft", "rgba(244,251,250,0.30)");
+          if (q) { q.lit = 1.15; q.day = false; q.air = 0.0; drawn.push(q); }
         }
         /* The foot: the water arriving. Every falls ends in a white line — the plunge, where the
            falling sheet turns into spray instead of water — and that line is the thing that says
@@ -5195,6 +5223,19 @@ function leaveOverlay(root, trigger) {
           if (q) { q.lit = 1.2; q.air = 0.30; drawn.push(q); }
         }
         for (let i = fromHere; i < drawn.length; i++) drawn[i].day = false;
+        /* After dark the falls is the brightest thing in the gorge: the illumination board puts
+           lamps on the American side and the curtain goes warm white and then, on some nights,
+           green. One wash over the sheet, warm and low, is enough — the drawing does not have to
+           name the colour the lights were set to. */
+        if (nightK > 0.12) {
+          for (let i = 0; i < 5; i++) {
+            const a0 = -hw + (i / 5) * hw * 2, a1 = -hw + ((i + 1) / 5) * hw * 2;
+            const q = add(C, [Pt(a0, crestY - drop * 0.05, 52), Pt(a1, crestY - drop * 0.05, 52),
+                              Pt(a1, crestY - drop * 0.92, 44), Pt(a0, crestY - drop * 0.92, 44)],
+                          ZERO8, "flat", "rgba(255,236,200," + (0.30 * nightK).toFixed(3) + ")");
+            if (q) { q.lit = 1.5; q.day = false; q.nolite = true; q.air = 0; drawn.push(q); }
+          }
+        }
         /* The headlands: the rock the water goes between, standing the drop's own height on the
            bank so the sheet has an edge to disappear behind at either end. */
         [-1, 1].forEach((sd) => {

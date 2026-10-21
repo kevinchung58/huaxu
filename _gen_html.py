@@ -4671,6 +4671,21 @@ DISTRICTS = [
                      "2013. Of the eight inclines the two cities ran, this is the only one still "
                      "running. A crossing is 62 real seconds — the cars here keep that clock, and "
                      "the one you board makes it three on the model's account."},
+            # Round 58: the upper station's door stood on nothing — a grey leaf in mid-air over the
+            # grass, which is what a door hung on no wall looks like from the deck. The station is a
+            # block, so the block is drawn: stone behind the door, a slab under it, a roof over it.
+            {"id": "incline-station", "kind": "board", "x": 760, "z": 1620, "y": 553, "ry": -90,
+             "w": 460, "h": 330, "d": 120, "leaf": "#5b6472", "tile": "concrete", "solid": True,
+             "title": "The upper station's block",
+             "hint": "The head house the cars pull into: a stone block at the top of the bluff, its "
+                     "door on the deck's side. The door needs a wall before it can be a door."},
+            {"id": "incline-station-roof", "kind": "box", "x": 760, "z": 1620, "y": 883, "ry": -90,
+             "w": 500, "h": 26, "d": 190, "leaf": "#3c4652",
+             "title": "Its roof", "hint": "A slab over the head house, one course proud of its walls."},
+            {"id": "incline-station-slab", "kind": "board", "x": 560, "z": 1620, "y": 553, "ry": -90,
+             "w": 480, "h": 22, "d": 220, "leaf": "#6c7076", "tile": "concrete", "solid": False,
+             "title": "The landing slab", "hint": "The apron the cars come down to, 22 cm off the "
+                     "deck — the same slab the wheel's gondolas step onto, at the other ride."},
             {"id": "incline-upper-door", "kind": "door", "x": 620, "z": 1620, "y": 553, "ry": -90,
              "leaf": "#33414e", "ride": "1", "rideX": 500, "rideTop": 553,
              "title": "The upper station's door",
@@ -4894,6 +4909,46 @@ DISTRICTS = [
             {"id": "fountain-rim", "kind": "board", "x": 2100, "z": 3300, "y": 0, "ry": 0,
              "w": 380, "h": 46, "d": 380, "leaf": "#8c8578", "tile": "concrete", "solid": False,
              "title": "The fountain's rim", "hint": "A stone lip, knee high, and the water inside it."},
+            # Round 58: the strip's paving ran thirty metres wide with four benches in it, which is a
+            # car park, not a street. A fun row is furniture all the way down — a lamp, a tub, a
+            # seat, a bin, again and again — and it is that repetition, not the fronts, that makes a
+            # street feel walked. These are placed at the strip's own rhythm, 20 m apart.
+            {"id": "strip-lamp-1", "kind": "lamp", "x": 690, "z": 2260, "y": 0, "ry": 0,
+             "w": 14, "h": 470, "d": 14,
+             "title": "A lamp at the strip's mouth", "hint": "The row starts where the gate does."},
+            {"id": "strip-lamp-2", "kind": "lamp", "x": -690, "z": 2460, "y": 0, "ry": 0,
+             "w": 14, "h": 470, "d": 14,
+             "title": "A lamp on the west kerb", "hint": "The row alternates sides; a street lit from "
+                     "one kerb only has a dark side."},
+            {"id": "strip-lamp-3", "kind": "lamp", "x": 690, "z": 2660, "y": 0, "ry": 0,
+             "w": 14, "h": 470, "d": 14,
+             "title": "A lamp by the midway", "hint": "Lit in the drawing whether or not it is dark."},
+            {"id": "strip-lamp-4", "kind": "lamp", "x": -690, "z": 2860, "y": 0, "ry": 0,
+             "w": 14, "h": 470, "d": 14,
+             "title": "A lamp at the plaza's edge", "hint": "The last of the row before the apron."},
+            {"id": "strip-plant-1", "kind": "planter", "x": 720, "z": 2380, "y": 0, "ry": 0,
+             "w": 92, "h": 80, "d": 92,
+             "title": "A tub on the east kerb", "hint": "Grass in a square tub, between the lamps."},
+            {"id": "strip-plant-2", "kind": "planter", "x": -720, "z": 2720, "y": 0, "ry": 0,
+             "w": 92, "h": 80, "d": 92,
+             "title": "Its pair", "hint": "The strip's planting is all in tubs: nothing grows in "
+                     "paving that is swept every night."},
+            {"id": "strip-bench-3", "kind": "bench", "x": -760, "z": 2580, "y": 0, "ry": 90,
+             "w": 176, "h": 44, "d": 46,
+             "title": "A bench under the lights", "hint": "Facing the street: the queue sits, the "
+                     "queue watches."},
+            {"id": "strip-bin-2", "kind": "bin", "x": 760, "z": 2520, "y": 0, "ry": 0,
+             "w": 44, "h": 92, "d": 44,
+             "title": "A bin by the booth", "hint": "Drawn, and empty."},
+            {"id": "river-rail", "kind": "parapet", "x": -3180, "z": 3060, "y": 0, "ry": 0,
+             "w": 1200, "h": 96, "d": 12,
+             "title": "The rail along the river edge", "hint": "The strip ends at the bluff. Iron on "
+                     "stone, the same kit the promenade uses — beyond it the ground drops to the "
+                     "gorge and the water is the river's own."},
+            {"id": "river-edge-bench", "kind": "bench", "x": -3000, "z": 3180, "y": 0, "ry": 0,
+             "w": 176, "h": 44, "d": 46,
+             "title": "A bench at the river edge", "hint": "The strip's quiet end: the lights behind "
+                     "you, the gorge in front."},
             {"id": "plaza-rail", "kind": "parapet", "x": 3000, "z": 3320, "y": 0, "ry": 0,
              "w": 700, "h": 96, "d": 12,
              "title": "The rail at the plaza's edge", "hint": "Beyond it the ground falls away to "
