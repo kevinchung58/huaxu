@@ -1967,6 +1967,8 @@ function leaveOverlay(root, trigger) {
     // Round 58: a falls authored as a brink rather than as a standing sheet, and a material tile a
     // slab can wear (a bluff face is rock, and rock at a card's flatness is a grey wall).
     drop: el.dataset.drop === "true", tile: el.dataset.tile || null,
+    // Round 63: how many storeys of windows a block wears, and how many to a row
+    win: parseFloat(el.dataset.win) || 0, wincol: parseFloat(el.dataset.wincol) || 0,
     ry: num(el, "data-ry") || parseFloat(el.dataset.ry || 0),
     w: parseFloat(el.dataset.w) || 100, h: parseFloat(el.dataset.h) || 140,
     d: parseFloat(el.dataset.d) || 12, x: num(el, "--x"), z: num(el, "--z"), y: num(el, "--y"),

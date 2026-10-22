@@ -5935,7 +5935,8 @@ def walk_object(o, lane_half=10 ** 6):
                                          "ride", "rideX", "rideTop", "dia", "axle", "turn",
                                          "phase0", "deck", "period",
                                          # Round 58: a brink-built falls, and the tile a slab wears
-                                         "drop", "tile") if k in o))
+                                         # Round 63: a block's storeys
+                                         "drop", "tile", "win", "wincol") if k in o))
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
