@@ -4928,16 +4928,39 @@ DISTRICTS = [
              "w": 1630, "h": 30, "d": 34, "leaf": "#43362b", "solid": False,
              "title": "The beam over the street", "hint": "At 3.56 m: above a hat, below the signs. "
                      "The strip's own arch, in timber."},
+            # Round 63: a festoon wire hangs from something. These three spans were authored
+            # 15–24 m wide with nothing at either end, so from the plaza they read as coloured bars
+            # floating across the sky. Each span now has its own pole at the kerb line, at the wire's
+            # own height, and stops at it.
+            {"id": "lights-post-a1", "kind": "post", "x": -860, "z": 2420, "y": 0, "ry": 0,
+             "w": 16, "h": 470, "d": 16, "leaf": "#2f3a44", "solid": True,
+             "title": "The pole that carries the first span",
+             "hint": "Iron, at the kerb, with the wire's eye at its head."},
+            {"id": "lights-post-a2", "kind": "post", "x": 860, "z": 2420, "y": 0, "ry": 0,
+             "w": 16, "h": 470, "d": 16, "leaf": "#2f3a44", "solid": True,
+             "title": "Its pair across the street", "hint": "The two hold the first span true."},
+            {"id": "lights-post-b1", "kind": "post", "x": -860, "z": 2760, "y": 0, "ry": 0,
+             "w": 16, "h": 470, "d": 16, "leaf": "#2f3a44", "solid": True,
+             "title": "The second span's pole", "hint": "Same iron, same eye."},
+            {"id": "lights-post-b2", "kind": "post", "x": 860, "z": 2760, "y": 0, "ry": 0,
+             "w": 16, "h": 470, "d": 16, "leaf": "#2f3a44", "solid": True,
+             "title": "Its pair", "hint": "Lit from below after dark."},
+            {"id": "lights-post-c1", "kind": "post", "x": -860, "z": 3120, "y": 0, "ry": 0,
+             "w": 16, "h": 470, "d": 16, "leaf": "#2f3a44", "solid": True,
+             "title": "The span over the square's mouth", "hint": "The last wire before the wheel."},
+            {"id": "lights-post-c2", "kind": "post", "x": 860, "z": 3120, "y": 0, "ry": 0,
+             "w": 16, "h": 470, "d": 16, "leaf": "#2f3a44", "solid": True,
+             "title": "Its pair", "hint": "The street is framed twice over."},
             {"id": "lights-a", "kind": "noren", "x": 0, "z": 2420, "y": 470, "ry": 0,
-             "w": 1500, "h": 26, "solid": False,
+             "w": 1720, "h": 26, "solid": False,
              "title": "Lights strung across the street", "hint": "A cable of bulbs, post to post, "
                      "the way a fun row is lit after dark. The strip is the one place in this "
                      "drawing that stays bright late."},
             {"id": "lights-b", "kind": "noren", "x": 0, "z": 2760, "y": 470, "ry": 0,
-             "w": 1500, "h": 26, "solid": False,
+             "w": 1720, "h": 26, "solid": False,
              "title": "The second span", "hint": "Four spans reach the plaza; this is the second."},
             {"id": "lights-c", "kind": "noren", "x": 0, "z": 3120, "y": 470, "ry": 0,
-             "w": 2400, "h": 26, "solid": False,
+             "w": 1720, "h": 26, "solid": False,
              "title": "The span over the plaza", "hint": "Wider than the others: the street has "
                      "opened out by the time the cable reaches it."},
             {"id": "plaza-bench-1", "kind": "bench", "x": 864, "z": 3120, "y": 0, "ry": 0,
@@ -4956,11 +4979,11 @@ DISTRICTS = [
             {"id": "plaza-planter-2", "kind": "planter", "x": -864, "z": 3280, "y": 0, "ry": 0,
              "w": 92, "h": 80, "d": 92,
              "title": "Its pair", "hint": "Two tubs mark the edge of the paving."},
-            {"id": "plaza-lamp-1", "kind": "lamp", "x": 850, "z": 3020, "y": 0, "ry": 0,
+            {"id": "plaza-lamp-1", "kind": "lamp", "x": 1500, "z": 3020, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "solid": True, "title": "A lamp on the plaza", "hint": "The strip's lamps are taller and later than "
                      "the promenade's: this is the street that stays on."},
-            {"id": "plaza-lamp-2", "kind": "lamp", "x": -850, "z": 3020, "y": 0, "ry": 0,
+            {"id": "plaza-lamp-2", "kind": "lamp", "x": -1500, "z": 3020, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "solid": True, "title": "The lamp opposite", "hint": "A pair, one to each side of the apron."},
             {"id": "fountain", "kind": "pool", "x": 1512, "z": 3300, "y": 0, "ry": 0,
@@ -4975,17 +4998,17 @@ DISTRICTS = [
             # car park, not a street. A fun row is furniture all the way down — a lamp, a tub, a
             # seat, a bin, again and again — and it is that repetition, not the fronts, that makes a
             # street feel walked. These are placed at the strip's own rhythm, 20 m apart.
-            {"id": "strip-lamp-1", "kind": "lamp", "x": 497, "z": 2260, "y": 0, "ry": 0,
+            {"id": "strip-lamp-1", "kind": "lamp", "x": 860, "z": 2260, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "solid": True, "title": "A lamp at the strip's mouth", "hint": "The row starts where the gate does."},
-            {"id": "strip-lamp-2", "kind": "lamp", "x": -497, "z": 2460, "y": 0, "ry": 0,
+            {"id": "strip-lamp-2", "kind": "lamp", "x": -860, "z": 2460, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "solid": True, "title": "A lamp on the west kerb", "hint": "The row alternates sides; a street lit from "
                      "one kerb only has a dark side."},
-            {"id": "strip-lamp-3", "kind": "lamp", "x": 497, "z": 2660, "y": 0, "ry": 0,
+            {"id": "strip-lamp-3", "kind": "lamp", "x": 860, "z": 2660, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "solid": True, "title": "A lamp by the midway", "hint": "Lit in the drawing whether or not it is dark."},
-            {"id": "strip-lamp-4", "kind": "lamp", "x": -497, "z": 2860, "y": 0, "ry": 0,
+            {"id": "strip-lamp-4", "kind": "lamp", "x": -860, "z": 2860, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "solid": True, "title": "A lamp at the plaza's edge", "hint": "The last of the row before the apron."},
             {"id": "strip-plant-1", "kind": "planter", "x": 518, "z": 2380, "y": 0, "ry": 0,
@@ -5016,26 +5039,26 @@ DISTRICTS = [
             # a course higher, so the strip reads as a row of buildings rather than a row of faces.
             {"id": "block-a", "kind": "box", "x": 1280, "z": 2320, "y": 0, "ry": -90,
              "w": 360, "h": 380, "d": 500, "leaf": "#7b7266", "tile": "brick", "solid": True,
-             "title": "The building behind the first front", "hint": "A fun row's fronts are one room "
+             "win": 2, "wincol": 4, "title": "The building behind the first front", "hint": "A fun row's fronts are one room "
                      "deep and one room tall; what stands behind them is a block, and the block is "
                      "what you see over the awning."},
             {"id": "block-b", "kind": "box", "x": 1280, "z": 2560, "y": 0, "ry": -90,
              "w": 300, "h": 400, "d": 500, "leaf": "#6f6a62", "tile": "brick", "solid": True,
-             "title": "The second block", "hint": "Slightly taller than its neighbour: a street of "
+             "win": 3, "wincol": 3, "title": "The second block", "hint": "Slightly taller than its neighbour: a street of "
                      "identical heights is a barracks."},
             {"id": "block-c", "kind": "box", "x": 1280, "z": 2800, "y": 0, "ry": -90,
              "w": 320, "h": 360, "d": 500, "leaf": "#7f7466", "tile": "brick", "solid": True,
-             "title": "The block by the wheel", "hint": "The last of the row before the square."},
+             "win": 2, "wincol": 4, "title": "The block by the wheel", "hint": "The last of the row before the square."},
             {"id": "block-d", "kind": "box", "x": -1280, "z": 2320, "y": 0, "ry": 90,
              "w": 330, "h": 420, "d": 500, "leaf": "#746c62", "tile": "brick", "solid": True,
-             "title": "The west block behind the funhouse", "hint": "The funhouse's own building: "
+             "win": 3, "wincol": 3, "title": "The west block behind the funhouse", "hint": "The funhouse's own building: "
                      "the face is three storeys, so the block is three storeys."},
             {"id": "block-e", "kind": "box", "x": -1280, "z": 2600, "y": 0, "ry": 90,
              "w": 340, "h": 320, "d": 500, "leaf": "#7b7266", "tile": "brick", "solid": True,
-             "title": "Its neighbour", "hint": "Lower, and set a step back from the funhouse's face."},
+             "win": 2, "wincol": 3, "title": "Its neighbour", "hint": "Lower, and set a step back from the funhouse's face."},
             {"id": "block-f", "kind": "box", "x": -1900, "z": 2880, "y": 0, "ry": 90,
              "w": 320, "h": 340, "d": 500, "leaf": "#6f6a62", "tile": "brick", "solid": True,
-             "title": "The last block on the west side", "hint": "The row turns the corner at the "
+             "win": 3, "wincol": 4, "title": "The last block on the west side", "hint": "The row turns the corner at the "
                      "carousel and carries on round the square."},
             {"id": "plaza-front-w1", "kind": "front", "x": -1642, "z": 2900, "y": 0, "ry": 90,
              "w": 300, "h": 300, "d": 26, "awn": "#7a4a3a", "awnout": 160,
@@ -5178,7 +5201,7 @@ DISTRICTS = [
             {"z": 1510, "x": -1290, "yaw": -82, "pitch": 2, "label": "the Table Rock rail"},
             {"z": 1660, "x": -140, "yaw": -18, "label": "the incline's lower station"},
             {"z": 2130, "x": 500, "h": 553, "yaw": 38, "pitch": 14, "label": "on the Fallsview deck"},
-            {"z": 2900, "x": -600, "yaw": -18, "label": "under the SkyWheel"},
+            {"z": 2960, "x": -880, "yaw": -18, "label": "under the SkyWheel"},
             {"z": 3480, "x": 0, "label": "the bridge approach"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 678, "z": 340, "y": 0, "ry": -90, "leaf": "#33414e",

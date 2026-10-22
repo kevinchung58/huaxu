@@ -4089,6 +4089,49 @@ function leaveOverlay(root, trigger) {
               : add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.24));
           if (q) { q.lit = tile ? lit * (1 + f.k * 0.35) : lit; drawn.push(q); }
         });
+        /* Round 63: a block is a building, so it has storeys.
+           Six of these stand behind the strip's fronts and every one of them came out as a plain
+           crate: a 4 m face of brick with nothing on it, seen over the awnings from the whole
+           length of the street. A record that says `win` gets its windows — laid out by the face's
+           own corners, so a block turned to the lane is windowed on the side the lane sees — a
+           stone sill under each, and a cornice along the top. Nothing here is lettered. */
+        if (m.win) {
+          const rows = Math.max(1, m.win | 0), cols = Math.max(1, m.wincol || 3);
+          const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+          facesOf(m).forEach((f) => {
+            if (f.n[1] !== 0) return;                       // walls, not the lid
+            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                         + f.n[2] * (C.z - f.p[0][2]);
+            if (toward <= 0) return;
+            const bx0 = f.p[0], bx1 = f.p[1], tx1 = f.p[2], tx0 = f.p[3];   // bottom left/right, top right/left
+            const proud = 2;                                // stand the joinery off its own wall
+            const at = (u, v) => { const b = lerp(bx0, bx1, u), t = lerp(tx0, tx1, u), p = lerp(b, t, v);
+              return [p[0] + proud * f.n[0], p[1], p[2] + proud * f.n[2]]; };
+            // a cornice: a course proud of the wall along the whole top, one course deep
+            const cq = add(C, [at(0, 0.965).map((v, i) => i === 1 ? v - 2 : v),
+                               at(1, 0.965).map((v, i) => i === 1 ? v - 2 : v),
+                               at(1, 1), at(0, 1)], ZERO8, "flat", mix(base, -0.26));
+            if (cq) { cq.lit = lit * 0.92; drawn.push(cq); }
+            for (let r = 0; r < rows; r++) {
+              for (let c = 0; c < cols; c++) {
+                const u0 = 0.12 + (c + 0.14) * (0.76 / cols), u1 = u0 + (0.76 / cols) * 0.64;
+                /* The top storey only: the front's own box and awning cover the bottom two and a
+                   half metres of these walls from the street, so windows there would be joinery
+                   nailed up behind a shopfront. */
+                const v0 = 0.46 + r * (0.46 / rows), v1 = v0 + (0.32 / rows);
+                const w = add(C, [at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)], ZERO8, "flat",
+                              blendHex("#22303f", "#93a6b8", DAY() * 0.55));
+                if (w) { w.lit = 0.9; drawn.push(w); }
+                // the sill: one line of stone under the opening, which is what makes a dark
+                // rectangle read as a window and not as a hole in the wall
+                const sl = add(C, [at(u0 - 0.01, v0 - 0.035), at(u1 + 0.01, v0 - 0.035),
+                                   at(u1 + 0.01, v0 - 0.005), at(u0 - 0.01, v0 - 0.005)],
+                               ZERO8, "flat", blendHex(base, "#d8d2c4", 0.55));
+                if (sl) { sl.lit = lit * 1.05; drawn.push(sl); }
+              }
+            }
+          });
+        }
         /* Round 35: a trail lamp is the park's black lantern on its post (the photographs at the
            brink), not a bare pole -- a glazed head on a collar, a cap and a finial over it, its glass
            grey by day and lit from within after dark. */

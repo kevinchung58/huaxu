@@ -600,7 +600,14 @@ function laneShaderMaterial(THREE, map, transparent) {
         float laneDark=min(0.62,1.0-(1.0-clamp(vLaneAir,0.0,0.6))*(1.0-clamp(vLaneDarkness,0.0,0.58)));
         diffuseColor.rgb=mix(diffuseColor.rgb,uLaneWarm,laneWarm);
         diffuseColor.rgb=mix(diffuseColor.rgb,uLaneNight,laneDark);
-        diffuseColor.rgb+=uLaneSun*max(0.0,vLaneDaylight)*0.62;
+        /* Round 63: the sun multiplies, it does not add.
+           This was an add of uLaneSun * daylight * 0.62 — a constant on every lane surface, which
+           is why a grey paver (0.44 albedo) came out at 0.81: the lift was bigger than the surface's
+           own value, so the plaza, the shopfronts and the falls' mist all drifted to the same pale
+           cream and the whole district read as one washed field. Sunlight on a surface is its own
+           colour times the light, never plus a colour; multiplying keeps the paving dark and the
+           cream walls cream, and it is the same fix the round-58 mist needed. */
+        diffuseColor.rgb*=1.0+max(0.0,vLaneDaylight)*0.62;
         diffuseColor.rgb+=uLaneNight*min(0.62,vLaneDarkness)*3.2;
         diffuseColor.a*=clamp(vLaneOpacity,0.0,1.0);
 `);
