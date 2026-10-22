@@ -4958,11 +4958,11 @@ DISTRICTS = [
              "title": "Its pair", "hint": "Two tubs mark the edge of the paving."},
             {"id": "plaza-lamp-1", "kind": "lamp", "x": 850, "z": 3020, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
-             "title": "A lamp on the plaza", "hint": "The strip's lamps are taller and later than "
+             "solid": True, "title": "A lamp on the plaza", "hint": "The strip's lamps are taller and later than "
                      "the promenade's: this is the street that stays on."},
             {"id": "plaza-lamp-2", "kind": "lamp", "x": -850, "z": 3020, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
-             "title": "The lamp opposite", "hint": "A pair, one to each side of the apron."},
+             "solid": True, "title": "The lamp opposite", "hint": "A pair, one to each side of the apron."},
             {"id": "fountain", "kind": "pool", "x": 1512, "z": 3300, "y": 0, "ry": 0,
              "w": 340, "h": 16, "d": 340, "solid": False,
              "title": "The fountain in the plaza",
@@ -4977,17 +4977,17 @@ DISTRICTS = [
             # street feel walked. These are placed at the strip's own rhythm, 20 m apart.
             {"id": "strip-lamp-1", "kind": "lamp", "x": 497, "z": 2260, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
-             "title": "A lamp at the strip's mouth", "hint": "The row starts where the gate does."},
+             "solid": True, "title": "A lamp at the strip's mouth", "hint": "The row starts where the gate does."},
             {"id": "strip-lamp-2", "kind": "lamp", "x": -497, "z": 2460, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
-             "title": "A lamp on the west kerb", "hint": "The row alternates sides; a street lit from "
+             "solid": True, "title": "A lamp on the west kerb", "hint": "The row alternates sides; a street lit from "
                      "one kerb only has a dark side."},
             {"id": "strip-lamp-3", "kind": "lamp", "x": 497, "z": 2660, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
-             "title": "A lamp by the midway", "hint": "Lit in the drawing whether or not it is dark."},
+             "solid": True, "title": "A lamp by the midway", "hint": "Lit in the drawing whether or not it is dark."},
             {"id": "strip-lamp-4", "kind": "lamp", "x": -497, "z": 2860, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
-             "title": "A lamp at the plaza's edge", "hint": "The last of the row before the apron."},
+             "solid": True, "title": "A lamp at the plaza's edge", "hint": "The last of the row before the apron."},
             {"id": "strip-plant-1", "kind": "planter", "x": 518, "z": 2380, "y": 0, "ry": 0,
              "w": 92, "h": 80, "d": 92,
              "title": "A tub on the east kerb", "hint": "Grass in a square tub, between the lamps."},
