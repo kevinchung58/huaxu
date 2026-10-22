@@ -22,4 +22,4 @@ Research question: how current agent `SKILL.md` projects turn game/3D briefs int
 
 ## Resulting Huaxu workflow
 
-`scene-system` routes scope and evidence → `real-place-builder` plus `grounded-scene` and the matching domain skill author the place → `scene-quality-loop` captures and reads the actual route/object frames → PUA diagnoses and verifies each repair → `pr-handoff` updates the complete next-round `TODO.md` plan before any PR is opened or updated. The existing Three.js 0.186.1 pin (sole lane renderer since round 54), no-CDN/no-new-runtime-dependency rule, and Activities-album boundary remain unchanged.
+`scene-system` routes scope and evidence → `real-place-builder` plus `grounded-scene` and the matching domain skill author the place → `scene-quality-loop` captures and reads the actual route/object frames → PUA diagnoses and verifies each repair → `pr-handoff` updates the complete next-round `TODO.md` plan before any PR is opened or updated. The existing Three.js 0.186.1 pin, no-CDN/no-new-runtime-dependency rule, and Activities-album boundary remain unchanged; the Canvas2D fallback this survey was written beside was deleted in round 54.

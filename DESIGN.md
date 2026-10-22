@@ -71,6 +71,10 @@ they describe this committed world, so they are waived repo-wide in
 - `buried-raster` — About mascot layers are `opacity:0` until hover/focus, inside
   `aria-hidden`.
 - `flat-type-hierarchy` — the 404 page is intentionally a minimal error plate.
+- `repeating-stripes-gradient` — the festival stall's awning (`.walk-stall`, round 50) is a
+  striped cloth; the stripes are the object, not decoration. Round 55 measured this rule
+  firing 19 times (once per page, from that one declaration) while the round-54 notes still
+  claimed a clean baseline, and waived it by name rather than deleting the awning.
 
 **Never silence an objective defect here** — fix contrast, heading order, sub-11px
 functional text, and broken/placeholder images in code. The 1×1 transparent placeholder
@@ -98,9 +102,10 @@ aperture). Canada's four spill entries were authored as fixtures once, which hun
 a walkway with one lamp post in it.
 
 Camera rule of the world: the Three.js `PerspectiveCamera` follows the walker's world-space position
-at eye height; yaw and pitch aim it without rotating the scene itself. The DOM hit layer is placed
-from the same camera basis in `camPt()`, so a prop's press area and its 3D body agree. The older fixed-eye
-screen-axis rule made W walk away from the direction the visitor had turned to look; it is retired.
+at eye height; yaw and pitch aim it without rotating the scene itself. The same camera basis decides
+the reach of the projected prop buttons, so what a visitor can open and what they see agree. The
+older fixed-eye screen-axis rule made W walk away from the direction the visitor had turned to look;
+it is retired.
 
 Looking can turn freely around the room, but pitch is bounded at ±24° to keep the camera from
 whipping above or below the scene. Keyboard turns are rate-limited to 75°/s; drag sensitivity is
@@ -152,13 +157,15 @@ Consequences that are now structural, not stylistic:
   `#frame-tokyo-*` still marks the row it names. A visit is not a fact worth linking.
 
 The walkable view now uses one Three.js renderer, not a WebGL backdrop behind a 2D room. Every one
-of the eight walkable pages mounts the pinned, vendored Three.js 0.186.1 runtime. It triangulates the
+of the seven walkable pages mounts the pinned, vendored Three.js 0.186.1 runtime. It triangulates the
 lane and object quads into dynamic world-space buffer geometry, builds sourced `backdrop.world.prims`
 as static 3D geometry, and renders the sky, patterns, water, spray, clouds, and scene lights in the
 same camera. No scene facts are invented by the conversion: procedural material maps are surface
-patterns, not photographs. There is no second canvas: the DOM buttons remain the hit layer, are
-projected from the same world records, and are all that answers when WebGL is absent.
-The Activities album remains CSS 3D and outside this walkable-scene migration.
+patterns, not photographs. Accessible DOM buttons remain the hit layer and are projected from the
+same world records. There is no fallback picture: a browser that refuses WebGL gets the lane's own
+statement in the viewport it cannot fill, and the compiled state keeps answering (see "No black
+rectangle on a WebGL failure" below). The Activities album remains CSS 3D and outside this
+walkable-scene migration.
 
 Cross-backend rendering invariants:
 
@@ -169,7 +176,8 @@ Cross-backend rendering invariants:
   you are inside of was dropped at once and the frame collapsed to its base plate under a fog
   gradient). `add()` projects first and compares the box; anything whose box misses the viewport by
   more than 80 px is dropped, which is a superset of what the corner test kept. Visible quads retain
-  their world corners and UVs for Three.js triangulation; the fallback emits those same quads to 2D.
+  their world corners and UVs for Three.js triangulation — there is one rasteriser now, so a quad
+  that survives the cull is a quad the scene draws.
 - **Nothing is drawn that the data did not ask for, and everything the data asks for is drawn.** The
   window, the opening in the end wall and the compound beyond it (plaza, crossing, eight city blocks,
   the tower, the mountain, the sky bands) live in the `data-walk-vista` / `data-walk-backdrop` islands
@@ -206,10 +214,16 @@ Cross-backend rendering invariants:
   (ambient 0.6, murk 0.4) from the operating system's own switch rather than a widget in the corner —
   a dim laptop is the visitor's to correct, not mine to guess at. The HUD answer is a scrim that fades
   the viewport's edges to navy, not a heavier typeface.
-- **No black rectangle on a WebGL failure.** The scene disposes, the lane retires to its own
-  sentence — the same sentence on every device, outside the info card and not wearing the
-  hover-only note style — and the drawer stays readable. With scripting disabled, the drawer ships
-  open and still contains the full written district.
+- **No black rectangle on a WebGL failure, and no empty grid either.** The second picture was
+  deleted in round 54; round 55 rendered the state that left and found an empty navy viewport with
+  the explanation three interactions away. The lane now stands a panel in the viewport it cannot
+  fill — one sentence saying the walk needs WebGL, one saying what still answers (the stops, the
+  keys, the written list), and the lane's own published standing position, mirrored from the status
+  line rather than re-derived. The projected prop buttons retire with the picture (a projection onto
+  nothing is a card floating in a void) while the reach itself survives: facing something and
+  pressing E still opens its record. The info card keeps its authored sentence, and the drawer keeps
+  the whole written district. `.verify/verify-nowebgl.mjs` asserts both directions, including the
+  control that a WebGL visitor never sees the panel.
 - Motion is declined where the numbers live: no bob, no sway, no flicker under
   `prefers-reduced-motion: reduce`, which is decided inside the integrator rather than cancelled in
   CSS after it has been paid for.
@@ -262,9 +276,9 @@ return contract and does not get a top-level card.
 #### CSS 3D remains only in the Activities album
 
 The walkable environments no longer use CSS perspective as their scene renderer: pinned Three.js
-0.186.1 renders the lane, objects and sourced world, and it is the only lane renderer. This CSS
-note applies only to the Activities album's small `.ig-grid` tilt, which remains intentionally
-outside that migration.
+0.186.1 renders the lane, objects and sourced world, and a browser without WebGL is told so rather
+than falling back to a second painter. This CSS note applies only to the Activities album's small
+`.ig-grid` tilt, which remains intentionally outside that migration.
 
 Two WebKit behaviours still matter there:
 
@@ -275,7 +289,7 @@ Two WebKit behaviours still matter there:
 Checked against the current stylesheet: `.ig-grid` is the only selector declaring
 `transform-style: preserve-3d`; `.ig-wall` owns its `perspective`. Neither currently mixes in
 `overflow` or `filter`. Keep those boundaries, and do not add a universal `preserve-3d` rule. The
-walkable fallback is the lane's own sentence plus the always-readable drawer, which is also the
+walkable no-WebGL path is the lane's own written refusal, and the always-readable drawer remains the
 no-script path.
 
 There is no iOS Safari in this sandbox, so album behaviour on that browser is unmeasured rather

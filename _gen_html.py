@@ -2809,7 +2809,7 @@ def niagara_world(fr, view="rim"):
         list(reversed(NIA_CA_UPPER))
     # Round 35: the near cells wear the rapids (`rapids`, turned to the current, which runs
     # north-north-east into the Canadian end of the bowl); past 400 m the flat colour, the tile's mean.
-    P += grid_hprims(fr, upper, NIA_CREST, focus, c="#4b8b8d", cn="#18303a", a=0.1, s=9.0, dg=0.5,
+    P += grid_hprims(fr, upper, NIA_CREST, focus, c="#1d3f42", cn="#101f26", a=0.04, s=9.0, dg=0.5,
                      tex=dict(pat="rapids", u=1200, rot=round((20 - fr.heading) % 360, 1), reach=400))
     for (e0, n0, e1, n1) in ((40, -330, 330, -360), (80, -420, 420, -470), (140, -560, 560, -610),
                              (330, -300, 520, -200), (380, -120, 600, -60)):
@@ -2837,18 +2837,29 @@ def niagara_world(fr, view="rim"):
     am_toe = [(e + nx * 36, n + ny * 36) for (e, n), (nx, ny) in zip(am_cr, amn0)]
     lower = NIA_CA_WATER + [(560, 1250), (760, 1500), (1000, 1300), (NIA_US_RIM_N[0] - 12, NIA_US_RIM_N[1])] + \
         list(reversed(us_foot)) + list(reversed(am_toe)) + list(reversed(goat_w)) + list(reversed(foot))
-    P += grid_hprims(fr, lower, NIA_RIVER, focus, c="#3d706c", cn="#0f1d26", a=0.12, s=9.6, dg=0.55)
+    # Round 60: the river's colour is authored *for the light it lands in*. A teal of #3d706c under
+    # this sky's hemisphere, environment and sun came out (146,163,172) on the composited frame — a
+    # pale grey plane filling the whole lower half of the view from the rail, which is the flat wash
+    # the owner kept naming. Down the gorge the water is nearly black-green; the authored value is
+    # set so the *lit* value is that, not so the swatch is.
+    P += grid_hprims(fr, lower, NIA_RIVER, focus, c="#1b4341", cn="#0e1a1e", a=0.03, s=9.6, dg=0.92)
     # The foam where the sheet lands: white and nearly solid at the foot, thinning to streaks 75 m
     # out (round 35: one even 55% band read as a grey shelf, not as water churned white).
     # The churned water itself (`foam`, opaque) to 44 m out, then three translucent bands, each
     # thinner than the last, so the white has no edge of its own.
-    rings = [foot] + [[(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)] for d in (44, 70, 100, 130)]
-    for b, al in enumerate((None, 0.45, 0.22, 0.1)):
+    # Round 60: the churn used to be four bands of *constant* alpha (44/70/100/130 m) and every
+    # boundary between them was a step across the pool — at the rail's grazing angle the plunge read
+    # as four stacked plates, not as water losing its white. Seven rings now, each fainter than the
+    # last and each a third as deep, so the falloff is a falloff: the foam's own texture carries the
+    # edge, which is the one place a hard line belongs.
+    RING_D = (26, 38, 52, 70, 92, 118, 148)
+    rings = [foot] + [[(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)] for d in RING_D]
+    for b, al in enumerate((None, 0.40, 0.30, 0.22, 0.15, 0.10, 0.06)):
         for i in range(0, 36, 3):
             j = min(i + 3, 36)
             quad = [rings[b][i], rings[b][j], rings[b + 1][j], rings[b + 1][i]]
             if al is None:
-                P.append(_hprim("x", fr, quad, NIA_RIVER + 0.35, pat="foam", u=1800, rot=0, c="#c5cfcc",
+                P.append(_hprim("x", fr, quad, NIA_RIVER + 0.35, pat="foam", u=1800, rot=0, c="#e2ebe8",
                                cn="#5f6c74", a=air(*hs[i], 0.8), s=9.5, dg=0.4))
             else:
                 P.append(_hprim("f", fr, quad, NIA_RIVER + 0.35 - 0.02 * b, c="rgba(232,242,240,%s)" % al,
@@ -2925,44 +2936,73 @@ def niagara_world(fr, view="rim"):
     bvr = resample(NIA_BV_CREST, 3)
     curtain(bvr, NIA_AM_CREST, NIA_TALUS, 3, ("#7fb9ae", "#b6d8d1", "#dfecea", "#e9f2f1"), 1, grain=1400)
 
-    # The spray: a plume over the Horseshoe's basin, a lower one at the American Falls.
+    # The spray. Round 60, and the last of the 一片平光: measured from the rail, the mist alone
+    # painted the *whole* frame a flat pale blue (161 billboards, the largest 52 m across, each
+    # 0.165 alpha, all overlapping), and every drop of the sheet that no mist covered was already
+    # near-white — so the Horseshoe had neither a face nor a veil, only a wash. What a plunge pool
+    # actually shows from the rim above it is *columns*: a line of small opaque-hearted puffs
+    # springing off the crest, climbing 30 m into the sky, each one a metre or two of cloud and not
+    # a plate. What is drawn is smaller than what it stands for; the whole is the sum of the puffs.
     mist_k = 1.0
-    # Columns, not blankets: the spray rises where the most water lands, near the apex. Round 35:
-    # each round is soft-edged now (`emit`'s `soft`), so the plume can be as dense as the photographs
-    # show without its rounds reading as plates; and the foot of the sheet is lost in a low cloud
-    # all along the bowl, as it is from every viewpoint on both banks.
-    for (e, n, w, h, al) in ((165, -170, 84, 105, 0.3), (235, -200, 70, 90, 0.27), (95, -110, 60, 70, 0.24)):
-        P.append({"t": "m", "o": fr.cm(e, n, NIA_RIVER + 4), "w": w * 100, "h": h * 100,
-                  "al": round(al * mist_k, 3), "a": 0.02, "il": 1})
-    # The bowl: a cloud low over the water at the foot of the sheet, and another further out --
-    # what hides the plunge from the rim and from the deck alike.
-    # Three rounds a cloud rather than five: a soft round is a costly fill, and three overlapping
-    # ones read the same at this size.
-    for d, step, w, h, al, up in ((34, 3, 62, 44, 0.42, 7), (80, 4, 84, 48, 0.32, 4), (130, 8, 100, 40, 0.22, 1)):
+    def puff(e, n, u, w, h, al, np, j=0.0):
+        """One round of spray. `j` scatters it: the first cut of the round-60 mist put every puff on
+        the same lattice of crest points and heights, and at 1024 px the plume read as a *grid* of
+        soft bubbles -- the eye finds a regular array instantly, and a regular array is the one thing
+        cloud is not. The scatter is derived from the position, so it is the same every frame and
+        every visit, and the size and the alpha move with it."""
+        h1 = math.sin(e * 12.9898 + n * 78.233 + u * 37.719) * 43758.5453
+        h1 -= math.floor(h1)
+        h2 = math.sin(n * 39.346 + e * 11.135 + u * 83.155) * 24634.6345
+        h2 -= math.floor(h2)
+        j = min(1.0, max(0.0, j))
+        de = (h1 - 0.5) * 2 * j * (w / 100.0) * 0.55
+        dn = (h2 - 0.5) * 2 * j * (w / 100.0) * 0.55
+        du = (h1 - 0.5) * 2 * j * (h / 100.0) * 0.55
+        sw = 1 + (h1 - 0.5) * j * 0.7
+        P.append({"t": "m", "o": fr.cm(e + de, n + dn, u + du), "w": int(w * sw), "h": int(h * (2 - sw)),
+                  "al": round(al * mist_k * (1 + (h2 - 0.5) * j * 0.5), 3), "a": 0.02, "il": 1, "np": np})
+    # Round 60, the geometry of it — and the reason two rounds of mist tuning painted nothing: the
+    # curtain's top edge stands *on* the crest line and leans downstream to its foot, so every puff
+    # placed in the bowl is behind an opaque sheet from the rail, and the plume that everyone can see
+    # from the rim is the part that leans back over the brink toward the visitor. The mist is
+    # therefore authored on the *upstream* side of the crest (negative distance), where the sightline
+    # is: the boil at the lip, the column over the apex, and the low drift that crosses the rail.
+    # Where it hangs over the water it is seen against the dark river and reads white, which is what
+    # the photographs show and what no amount of density on the far side could ever draw.
+    for i in range(1, 35):
+        e, n = hs[i]
+        nx, ny = nrm[i]
+        for k, (du, u, al) in enumerate(((-4, 5, 0.34), (-9, 15, 0.36), (-15, 27, 0.28), (-22, 42, 0.18))):
+            puff(e + nx * du, n + ny * du, NIA_CREST + u, 3400 + 520 * k, 2600 + 460 * k, al, 4, 1.0)
+    # A second row, offset half a step, so the line of puffs has no beat in it.
+    for i in range(1, 34, 2):
+        e, n = hs[i]
+        nx, ny = nrm[i]
+        for k, (du, u, al) in enumerate(((-6, 9, 0.26), (-12, 21, 0.24), (-19, 34, 0.18))):
+            puff(e + nx * du + 3, n + ny * du - 3, NIA_CREST + u, 2600 + 400 * k, 2200 + 380 * k, al, 3, 0.8)
+    # The column over the apex, standing clear of the crest against the sky: the one thing at the
+    # Horseshoe that is taller than the fall itself.
+    # A plume is not a puff: the column over the bowl is a hundred metres across and sixty high at
+    # the apex, and it is soft — which is why it is authored as a few large, thin rounds *behind*
+    # the fine boil at the lip rather than as more of the same. The sharp edge is the crest; the
+    # cloud above it has none.
+    for e, n, w, h, al in ((150, -150, 11000, 9000, 0.13), (205, -175, 9000, 8000, 0.11),
+                           (250, -205, 7000, 6000, 0.09)):
+        for k in range(3):
+            puff(e + 10 * k, n - 9 * k, NIA_CREST + 16 + 20 * k, w, h, al, 7, 0.55)
+    # What the deck below the brink sees: the bowl's own cloud, low over the churned water, behind
+    # the sheet for the rail and in front of it once the visitor is inside the gorge.
+    for d, step, w, h, al, up in ((26, 4, 2600, 1400, 0.26, 4), (52, 6, 3400, 1600, 0.18, 3)):
         ring = [(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)]
         for i in range(2, 35, step):
-            P.append({"t": "m", "o": fr.cm(*ring[i], NIA_RIVER + up), "w": w * 100, "h": h * 100,
-                      "al": round(al * mist_k, 3), "a": 0.02, "il": 1, "np": 3})
-    # Round 43, the part the basin rings could not say: from the rail, the mist is not a distant
-    # blanket. It lifts off the crest itself -- a boil of columns springing at the brink and climbing
-    # past the deck -- and it crosses the sightline close, veiling the rail and the foot of the
-    # sheet the way every Table Rock photograph shows it. Author's alphas; the behavior is from the
-    # visit-record descriptions, not a survey of particle counts.
-    # The boil hugs the crest. The tuning was measured, not guessed: 0.3 over 15 m of sky read as
-    # nothing on a bright day, 0.9 turned the whole viewport to weather — the final figure sits at
-    # the rail's own sightline, a compact column of four rounds rising 4..40 m over the brink.
-    # alpha 0.42 is what survives pixel comparison against the pre-fix frame without erasing the sky.
-    boil = [(e + nx * 10, n + ny * 10) for (e, n), (nx, ny) in zip(hs, nrm)]
-    for i in range(1, 35, 4):
-        P.append({"t": "m", "o": fr.cm(*boil[i], NIA_CREST + 0.5), "w": 5200, "h": 4200,
-                  "al": round(0.42 * mist_k, 3), "a": 0.02, "il": 1, "np": 4})
-    for d, step, w, h, al in ((-9, 9, 7000, 2600, 0.13), (-16, 12, 9000, 2000, 0.10)):
-        ring = [(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)]
-        for i in range(3, 33, step):
-            P.append({"t": "m", "o": fr.cm(*ring[i], NIA_CREST - 1), "w": w, "h": h,
-                      "al": round(al * mist_k, 3), "a": 0.02, "il": 1, "np": 2})
-    P.append({"t": "m", "o": fr.cm(610, 650, NIA_RIVER + 2), "w": 7000, "h": 2600, "al": 0.12,
-              "a": 0.04, "il": 1})
+            puff(ring[i][0], ring[i][1], NIA_RIVER + up, w, h, al, 4, 0.9)
+    # A low bank far down the gorge, so the gorge's own floor is not a clean line at the horizon.
+    puff(610, 650, NIA_RIVER + 2, 7000, 2600, 0.10, 4)
+    # The American Falls: a foot cloud under Luna Island's sheet, small, and one at its own plunge.
+    for i in range(0, len(amr) - 1, 3):
+        e, n = amr[i]
+        nx, ny = amn[i]
+        puff(e + nx * 20, n + ny * 20, NIA_RIVER + 2, 2200, 1400, 0.16, 4)
     rc = fr.cm(130, -120, NIA_RIVER - 22)
     vx, vz = -rc[0], -rc[2]
     L = math.hypot(vx, vz) or 1
@@ -3918,39 +3958,39 @@ DISTRICTS = [
         # the posts they were always farther than the shop itself, and nearest-first reach could never
         # offer them. Each is a drawn plate, captioned as one, and none stands in a cross street.
         "frames": [
-            {"id": "sensoji", "src": "IMG/tokyo-sensoji.jpg", "x": -299, "z": 103, "y": 96, "ry": 90,
+            {"id": "sensoji", "src": "IMG/tokyo-sensoji.jpg", "x": -295, "z": 103, "y": 96, "ry": 90,
              "title": "The gate at Asakusa",
              "alt": "Illustration of a temple gate at night with a great red paper lantern hanging "
                     "in its passage.",
              "caption": "The gate the street begins at, drawn: the lantern in its passage, the red "
                         "of the posts. It stands by the west row, a few steps from the real one."},
-            {"id": "scramble", "src": "IMG/tokyo-scramble.jpg", "x": -299, "z": 495, "y": 96, "ry": 90,
+            {"id": "scramble", "src": "IMG/tokyo-scramble.jpg", "x": -295, "z": 495, "y": 96, "ry": 90,
              "title": "The scramble at Shibuya",
              "alt": "Illustration of a wide pedestrian scramble crossing at night, its stripes "
                     "running every way under tall lit buildings.",
              "caption": "Shibuya's crossing, drawn: another Tokyo, hung as a plate. It is not on "
                         "this street and the street does not pretend it is."},
-            {"id": "tower", "src": "IMG/tokyo-tower.jpg", "x": -299, "z": 897, "y": 96, "ry": 90,
+            {"id": "tower", "src": "IMG/tokyo-tower.jpg", "x": -295, "z": 897, "y": 96, "ry": 90,
              "title": "The tower at dusk",
              "alt": "Illustration of a red and white lattice tower against a dusk sky over low "
                     "rooftops.",
              "caption": "The tower at dusk, drawn. It stands in Shiba, kilometres south of here, "
                         "and no window on this street looks at it."},
-            {"id": "poster-lantern", "src": "IMG/tokyo-poster-lantern.jpg", "x": 299, "z": 145, "y": 96,
+            {"id": "poster-lantern", "src": "IMG/tokyo-poster-lantern.jpg", "x": 295, "z": 145, "y": 96,
              "ry": -90,
              "title": "The paper lantern",
              "alt": "Illustration of a single round paper lantern glowing warm against the dark "
                     "grain of a closed shopfront.",
              "caption": "One lantern, close up, drawn. The street's own lanterns are the two great "
                         "ones in its gates."},
-            {"id": "poster-wires", "src": "IMG/tokyo-poster-wires.jpg", "x": 299, "z": 862, "y": 104,
+            {"id": "poster-wires", "src": "IMG/tokyo-poster-wires.jpg", "x": 295, "z": 862, "y": 104,
              "ry": -90,
              "title": "The wires over the lane",
              "alt": "Illustration of a tangle of overhead wires crossing a dark sky, cut into "
                     "short segments by the rooftops.",
              "caption": "Tokyo's overhead wires, drawn. Nakamise itself is strung with none; the "
                         "plate hangs here as a picture of the city around it."},
-            {"id": "poster-ticket", "src": "IMG/tokyo-poster-ticket.jpg", "x": 299, "z": 985, "y": 108,
+            {"id": "poster-ticket", "src": "IMG/tokyo-poster-ticket.jpg", "x": 295, "z": 985, "y": 108,
              "ry": -90,
              "title": "The ticket machine",
              "alt": "Illustration of a small ticket machine glowing on a sidewalk at night, its "
@@ -4044,13 +4084,19 @@ DISTRICTS = [
         "page": ROOM_BY_ID["fukuoka"]["page"],
         "plates": ROOM_BY_ID["fukuoka"]["plates"],
         # A model hall, as the brief asked ("a table, like Toronto's, like Little Canada"): dark walls,
-        # the table lit, and the far wall open onto the strait at the table's own scale. 8.8 m wide so
-        # a walker can still go round the true-scale table by the right-hand aisle.
+        # the table lit, and the far wall open onto the strait at the table's own scale.
+        # Round 57: the hall was 8.8 m wide "so a walker can still go round the true-scale table by
+        # the right-hand aisle". The table is 7.4 m wide, so that aisle was 440 - 370 - 24 = 46 cm of
+        # free centre — 22 cm of clearance for a 48 cm body. Measured with the walker: the room stops
+        # dead at the table's near face (z 2206), and the only way on is to scrape a 22 cm sliver
+        # along the wall. The aisle the record's own station list describes ("the right aisle, beside
+        # the table's flank", x 405) needed the hall it was written for, so the hall is 11.8 m and the
+        # three wall frames moved out to the new walls with it.
         # Round 51: the hall had stopped a stride past its last stand, with the strait and the
         # Blue Wing hanging at the far wall unvisit-able. The lane runs on to the table's quay —
         # 100 m of Moji waterfront in a hall that is 110 deep — so the walk arrives at the water
         # the drawings put there, and the drawbridge's door can open onto the walk itself.
-        "lane": {"w": 880, "d": 1100, "ceil": 620, "back": 300},
+        "lane": {"w": 1180, "d": 1100, "ceil": 620, "back": 300},
         "purpose": "Moji Port in a model hall: the station, the customhouse, their neighbours and the "
                    "Retro High Mart on stands of their own, with the port laid out from the map and "
                    "the Blue Wing and ships on the Kanmon Strait beyond, from dusk into night",
@@ -4376,7 +4422,7 @@ DISTRICTS = [
         "frames": [
             # The port's sub-places: the building it is named for, the bridge it is known for, and
             # the water it stands on, hung on the hall's walls as drawn plates.
-            {"id": "station", "src": "IMG/fukuoka-1.jpg", "x": -436, "z": round(830 / Z_SCALE, 2), "y": 185, "ry": 90,
+            {"id": "station", "src": "IMG/fukuoka-1.jpg", "x": -586, "z": round(830 / Z_SCALE, 2), "y": 185, "ry": 90,
              "title": "Moji Port Station",
              "alt": "Illustration of a long symmetric station at dusk: a cream two-storey centre "
                     "between two pavilions with green copper friezes and slate caps, a clock over the "
@@ -4384,14 +4430,14 @@ DISTRICTS = [
              "caption": "The building the district is named after, drawn: a cream front banded in "
                         "brick red, the gate's two pavilions in copper and slate, the clock over the "
                         "doors."},
-            {"id": "bridge", "src": "IMG/fukuoka-2.jpg", "x": 436, "z": round(1480 / Z_SCALE, 2), "y": 150, "ry": -90,
+            {"id": "bridge", "src": "IMG/fukuoka-2.jpg", "x": 586, "z": round(1480 / Z_SCALE, 2), "y": 150, "ry": -90,
              "title": "The Blue Wing, open",
              "alt": "Illustration of a blue pedestrian drawbridge over a harbour basin at dusk, "
                     "with its longer southern parent leaf raised beside the shorter northern child leaf.",
              "caption": "The bridge, drawn at an opening: its 24.1 m southern parent leaf and "
                         "14 m northern child leaf are both raised. Its last opening is at four; "
                         "after dark it is lit, and shut."},
-            {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 436, "z": round(2090 / Z_SCALE, 2), "y": 130, "ry": -90,
+            {"id": "water", "src": "IMG/fukuoka-3.jpg", "x": 586, "z": round(2090 / Z_SCALE, 2), "y": 130, "ry": -90,
              "title": "The strait at dusk",
              "alt": "Illustration of a wide strait at dusk seen from a quay, two low cargo ships "
                     "crossing it and lights along the far shore.",
@@ -4787,7 +4833,28 @@ DISTRICTS = [
                            [2200, "Clifton Hill", "the Street of Fun — 175 feet of lights at the far end"],
                            [3350, "The Rainbow Approach", "440 m of steel to the state line"]],
                  # half 15 m scene = the strip's plaza width, unscaled like every x in this lane
-                 "ws": [[1460, 3660, 1500]],
+                 # Round 58: the SkyWheel's plaza. The strip proper is 15 m half wide; in front of
+                 # the wheel it opens to 32 m so a visitor can walk to the ride's own apron. The
+                 # rim crosses the strip at 27.5 m (a 50.5 m rim on a 27.5 m axle), which is the
+                 # view Clifton Hill's postcards are made of; the rim's own foot at 2.25 m stands
+                 # past the walk's edge, where the queue is.
+                 # Round 58: the plaza opened to 32 m half-width so the wheel's apron could be
+                 # reached, and the result was a 64 m field of concrete with a ride in the middle of
+                 # it — a car park, not a funfair. 24 m keeps the apron reachable and lets the front
+                 # rows stand at the square's edge instead of floating in it.
+                 # Round 62: the strip's walk answers to its own shopfronts. The fronts are
+                 # authored at 10 m (arcade-a…c, the funhouse, the midway line); the walk was left
+                 # at 15 m from round 52, so a visitor could walk *behind* the shops and the strip
+                 # read as a plaza with crates standing in it. 10.2 m puts the walk where the glass
+                 # is, and the square still opens to 17.5 m in front of the wheel.
+                 "ws": [[1460, 2860, 1020], [2860, 3240, 1750], [3240, 3660, 1020]],
+                 # Round 61: what is *paved*, as against where a body may walk. The square's own
+                 # front row stands at 16.4 m (the fronts), 16.8 (the rails) and 19.3 (the wheel's
+                 # apron); a 17.5 m walk left all of it past the last paver, over the void. The
+                 # paving runs out to 33 m across the square only — the strip's own 15 m is the
+                 # tight corridor it always was, and 33 m of it is still 19 m less than the 64 m
+                 # field round 58 pulled back from.
+                 "wsp": [[2600, 3300, 3300]],
                  "floors": [[1500, 2200, 553, 340, 660]]},
         "floor": "pavers",
         "day": {"cycle": 900, "start": 0.5, "gain": 1},
@@ -4853,14 +4920,18 @@ DISTRICTS = [
                      "round to Goat Island; the water drops 57 m into the basin. Table Rock itself, "
                      "the ledge the place is named for, fell into the gorge in 1850."},
             # ---- Round 52, the open strip east of the Centre (sources and measures in TODO §R52).
-            {"id": "bluff-face", "kind": "board", "x": 520, "z": 1795, "y": 0, "ry": 0,
-             "w": 320, "h": 546, "d": 620, "leaf": "#5d6068",
+            # Round 58: this stood as a 3.2 x 5.5 m flat card at x 520 — inside the walk — and from
+            # the strip's own station it filled half the frame with featureless grey. A bluff is a
+            # face along the street, not a billboard across it: it now runs down the plaza's eastern
+            # edge wearing the gorge's strata tile, the way the gorge walls in the world do.
+            {"id": "bluff-face", "kind": "board", "x": 1490, "z": 1795, "y": 0, "ry": 90,
+             "w": 900, "h": 546, "d": 40, "leaf": "#5d6068", "tile": "strata",
              "title": "The bluff under the deck",
              "hint": "The rock the incline is cut into, and the falls' mist ends here. Thirty metres "
                      "of gorge lip stand five and a half up in this lane, the way every other distance "
                      "between the Centre and Clifton is kept."},
-            {"id": "fallsview-deck", "kind": "board", "x": 520, "z": 1795, "y": 546, "ry": 0,
-             "w": 320, "h": 7, "d": 620, "leaf": "#797570",
+            {"id": "fallsview-deck", "kind": "board", "x": 1450, "z": 1795, "y": 546, "ry": 90,
+             "w": 900, "h": 7, "d": 120, "leaf": "#797570", "tile": "pavers",
              "title": "The Fallsview deck",
              "hint": "The upper station's apron, level with the bluff's lip: the parking lot and the "
                      "hotels' street begin past it. You reach it the way visitors do since 1966 — "
@@ -4875,12 +4946,32 @@ DISTRICTS = [
                      "2013. Of the eight inclines the two cities ran, this is the only one still "
                      "running. A crossing is 62 real seconds — the cars here keep that clock, and "
                      "the one you board makes it three on the model's account."},
-            {"id": "incline-upper-door", "kind": "door", "x": 620, "z": 1620, "y": 553, "ry": -90,
+            # Round 58: the upper station's door stood on nothing — a grey leaf in mid-air over the
+            # grass, which is what a door hung on no wall looks like from the deck. The station is a
+            # block, so the block is drawn: stone behind the door, a slab under it, a roof over it.
+            {"id": "incline-station", "kind": "box", "x": 760, "z": 1620, "y": 553, "ry": -90,
+             "w": 460, "h": 330, "d": 120, "leaf": "#5b6472", "tile": "concrete", "solid": True,
+             "title": "The upper station's block",
+             "hint": "The head house the cars pull into: a stone block at the top of the bluff, its "
+                     "door on the deck's side. The door needs a wall before it can be a door."},
+            {"id": "incline-station-roof", "kind": "box", "x": 760, "z": 1620, "y": 883, "ry": -90,
+             "w": 500, "h": 26, "d": 190, "leaf": "#3c4652",
+             "title": "Its roof", "hint": "A slab over the head house, one course proud of its walls."},
+            {"id": "incline-station-slab", "kind": "box", "x": 460, "z": 1620, "y": 553, "ry": -90,
+             "w": 300, "h": 22, "d": 220, "leaf": "#6c7076", "tile": "concrete", "solid": False,
+             "title": "The landing slab", "hint": "The apron the cars come down to, 22 cm off the "
+                     "deck — the same slab the wheel's gondolas step onto, at the other ride."},
+            # Round 58: the door had no w/h/d in the record, so its leaf drew at zero height and all
+            # that survived was the reveal's shadow — a dark smear on the deck. Found by querying the
+            # drawn quads inside the station's own box: four quads there, two of them the station's
+            # face, two the door's threshold, and no leaf at all.
+            {"id": "incline-upper-door", "kind": "door", "x": 528, "z": 1620, "y": 553, "ry": -90,
+             "w": 128, "h": 236, "d": 26,
              "leaf": "#33414e", "ride": "1", "rideX": 500, "rideTop": 553,
              "title": "The upper station's door",
              "hint": "It keeps the weather off the car. Press it and the incline brings you back "
                      "down to the rail, the way it does every minute of the day."},
-            {"id": "skywheel", "kind": "wheel", "x": 3300, "z": 3050, "y": 0, "ry": 0,
+            {"id": "skywheel", "kind": "wheel", "x": 2376, "z": 3050, "y": 0, "ry": 0, "solid": False,
              "w": 25, "h": 1845, "d": 96, "dia": 5050, "axle": 2750, "turn": 40,
              "demo": "wheel",
              "title": "The Niagara SkyWheel",
@@ -4890,36 +4981,382 @@ DISTRICTS = [
                      "a ride. The model keeps the real rate: forty seconds a revolution, drifting, "
                      "never hurried. Press the platform and the rim lamps answer — the ride is not "
                      "for sale in a drawing."},
-            {"id": "wheel-booth", "kind": "board", "x": 2900, "z": 2950, "y": 0, "ry": -90,
+            {"id": "wheel-booth", "kind": "board", "x": 2088, "z": 2950, "y": 0, "ry": -90, "tile": "galv", "solid": False,
              "w": 42, "h": 33, "d": 28, "leaf": "#8b9ab0",
              "title": "The ticket box",
              "hint": "A booth at the wheel's loading apron. In the drawing it sells nothing; in "
                      "Clifton it sells the queue."},
-            {"id": "arcade-a", "kind": "front", "x": 1480, "z": 2320, "y": 0, "ry": -90,
-             "w": 340, "h": 250, "d": 26, "liton": 0.62,
+            {"id": "arcade-a", "kind": "front", "x": 1001, "z": 2320, "y": 0, "ry": -90,
+             "w": 340, "h": 250, "d": 26, "awn": "#3f4d7a", "awnout": 150,
+             "fascia": "#b9ac8e", "liton": 0.62,
              "glow": [{"r": 90, "k": 0.6, "dy": 210, "tint": "rgba(255,180,110,0.5)"}],
+             "states": [{"say": "Open. The glass is lit and the shutter stands up.", "k": 0.9, "shut": 0.92}],
              "title": "An arcade, mid-block",
              "hint": "Clifton Hill is a street of games, wax, and water parks, and a drawing may "
                      "keep an arcade's glow but not its lease: the fronts here are unnamed on "
                      "purpose, so none of them claims a business that need not stand here."},
-            {"id": "arcade-b", "kind": "front", "x": 1480, "z": 2560, "y": 0, "ry": -90,
-             "w": 300, "h": 260, "d": 26, "liton": 0.66,
+            {"id": "arcade-b", "kind": "front", "x": 1001, "z": 2560, "y": 0, "ry": -90,
+             "w": 300, "h": 260, "d": 26, "awn": "#7a3f3a", "awnout": 150,
+             "fascia": "#b9ac8e", "liton": 0.66,
              "glow": [{"r": 90, "k": 0.55, "dy": 218, "tint": "rgba(255,180,110,0.5)"}],
+             "states": [{"say": "Open. A wall of lamps over a glass front.", "k": 0.9, "shut": 0.94}],
              "title": "Another front, another marquee",
              "hint": "Two storeys of funhouse and a wall of lamps: the strip's measure again, not "
                      "the survey's."},
-            {"id": "arcade-c", "kind": "front", "x": 1480, "z": 2800, "y": 0, "ry": -90,
-             "w": 320, "h": 240, "d": 26, "liton": 0.7,
+            {"id": "arcade-c", "kind": "front", "x": 1001, "z": 2800, "y": 0, "ry": -90,
+             "w": 320, "h": 240, "d": 26, "awn": "#3f6a4a", "awnout": 150,
+             "fascia": "#b9ac8e", "liton": 0.7,
              "glow": [{"r": 90, "k": 0.6, "dy": 200, "tint": "rgba(255,180,110,0.5)"}],
+             "states": [{"say": "Open. The wheel fills the end of the street from this door.", "k": 0.9, "shut": 0.96}],
              "title": "The arcade nearest the wheel",
              "hint": "From its door the SkyWheel fills the end of the street — the one view the "
                      "strip's own postcards use, and the reason the wheel stands exactly behind it."},
-            {"id": "midway-stall", "kind": "foodstall", "x": -1480, "z": 2440, "y": 0, "ry": 90,
+            {"id": "midway-stall", "kind": "foodstall", "x": -1001, "z": 2440, "y": 0, "ry": 90,
              "w": 110, "h": 58, "d": 70, "awn": "#8a3f3a", "leaf": "#6e4f38",
              "title": "A midway stall under an awning",
              "hint": "The strip keeps one food stall because a strip without one is not a strip. "
                      "Nothing here claims its menu."},
-            {"id": "curtain-rainbow", "kind": "noren", "x": 0, "z": 3560, "y": 172, "ry": 0,
+            # ---- Round 58, the district's own kit. A fun strip is not three fronts: it is the
+            # clutter between them — benches, bins, planters, bollards, the queue, and the lamps that
+            # are on after everything else has shut. Every piece stands within a visitor's reach of
+            # the plaza's floor, which is the rule the whole lane is held to.
+            {"id": "sign-a", "kind": "sign", "x": 999, "z": 2320, "y": 268, "ry": -90,
+             "w": 300, "h": 54, "d": 10, "leaf": "#b98a4a", "liton": 0.55,
+             "glow": [{"r": 120, "k": 0.5, "dy": 60, "tint": "rgba(255,196,120,0.45)"}],
+             "title": "The first marquee, blank",
+             "hint": "A lit board over a front. It carries no word: the lettering would belong to a "
+                     "business that need not stand on this street, and a drawn street does not "
+                     "pretend to have one."},
+            {"id": "sign-b", "kind": "sign", "x": 999, "z": 2800, "y": 262, "ry": -90,
+             "w": 312, "h": 50, "d": 10, "leaf": "#8b5a4a", "liton": 0.68,
+             "glow": [{"r": 120, "k": 0.5, "dy": 60, "tint": "rgba(255,180,120,0.45)"}],
+             "title": "The marquee by the wheel",
+             "hint": "Blank, like its pair. What a marquee says is a lease; what it does is throw "
+                     "light on the pavement, and that is the part a drawing can keep."},
+            {"id": "stall-games", "kind": "foodstall", "x": 1001, "z": 3120, "y": 0, "ry": -90,
+             "w": 104, "h": 56, "d": 66, "awn": "#3f5a7a", "leaf": "#5c4632",
+             "title": "A game booth by the wheel",
+             "hint": "A counter under a canvas, the way the strip's booths stand: a lit box, a prize "
+                     "shelf, and nothing to win here. Drawn, not surveyed."},
+            {"id": "bench-strip-1", "kind": "bench", "x": 958, "z": 2260, "y": 0, "ry": -90,
+             "w": 176, "h": 44, "d": 46,
+             "title": "A bench facing the strip",
+             "hint": "Where the queue waits and the people who are not walking sit. Slats, a back, "
+                     "two iron ends — the same bench the quays have."},
+            {"id": "bench-strip-2", "kind": "bench", "x": -958, "z": 2620, "y": 0, "ry": 90,
+             "w": 176, "h": 44, "d": 46,
+             "title": "A bench on the other side",
+             "hint": "A strip seats both sides. This one looks back down the hill at the falls' mist."},
+            {"id": "bin-strip", "kind": "bin", "x": 972, "z": 2870, "y": 0, "ry": -90,
+             "w": 44, "h": 92, "d": 44,
+             "title": "A bin at the edge of the plaza",
+             "hint": "Every strip has one every few doors. Drawn, and empty."},
+            {"id": "planter-strip-1", "kind": "planter", "x": -972, "z": 2800, "y": 0, "ry": 90,
+             "w": 92, "h": 80, "d": 92,
+             "title": "A planter by the far fronts",
+             "hint": "A square tub of grass at the plaza's edge: the strip's only green, apart from "
+                     "the gorge."},
+            {"id": "planter-strip-2", "kind": "planter", "x": 972, "z": 2420, "y": 0, "ry": -90,
+             "w": 92, "h": 80, "d": 92,
+             "title": "Its pair across the way",
+             "hint": "Two tubs, one at each end of the lit stretch."},
+            {"id": "lamp-strip-1", "kind": "lamp", "x": -1008, "z": 2280, "y": 0, "ry": 0,
+             "w": 14, "h": 470, "d": 14,
+             "title": "A lamp on the strip",
+             "hint": "A post with a head on it, brighter and later than the promenade's lamps: this "
+                     "is the street that stays on."},
+            {"id": "lamp-strip-2", "kind": "lamp", "x": 1008, "z": 2640, "y": 0, "ry": 0,
+             "w": 14, "h": 470, "d": 14,
+             "title": "Its pair down the stretch",
+             "hint": "The strip is lit end to end; two posts stand for the row."},
+            {"id": "queue-rail-a", "kind": "parapet", "x": 1627, "z": 2860, "y": 0, "ry": 0,
+             "w": 900, "h": 96, "d": 12,
+             "title": "The queue rail at the wheel",
+             "hint": "The line that holds the ride's visitors: a steel tube on two feet, 900 cm of "
+                     "it. It keeps the platform's edge honest, the way the parapet keeps the gorge's."},
+            {"id": "queue-rail-b", "kind": "parapet", "x": 1627, "z": 3240, "y": 0, "ry": 0,
+             "w": 900, "h": 96, "d": 12,
+             "title": "The rail's other side",
+             "hint": "Two rails make a queue; the apron between them is the ride's own floor."},
+            # ---- Round 58, the rest of the district. Round 52 built Clifton Hill's faces and its
+            # wheel and called the strip done; a fun row with one ride, three fronts and a stall is a
+            # postcard of a fun row. What stands here now is the district a visitor can actually
+            # walk: the second ride turning at the far end, the towers behind it, the midway's
+            # booths down both sides, the gate that says you have arrived, the lights strung over
+            # the street, and the furniture that makes forty metres of paving a street rather than a
+            # corridor. Every piece is unnamed: a drawn street does not invent leases.
+            {"id": "carousel", "kind": "carousel", "x": -1080, "z": 3060, "y": 0, "ry": 90,
+             # Round 58: the deck is a solid — a visitor walks up to the carousel, never through it.
+             "w": 900, "h": 460, "d": 900, "dia": 900, "turn": 26, "solid": True,
+             "demo": "carousel",
+             "title": "The carousel at the end of the strip",
+             "hint": "A merry-go-round is the oldest ride on a fun row and the one that still runs: a "
+                     "round deck, twenty-four sectors of painted floor, sixteen canopy stripes, and "
+                     "twelve horses rising on their own poles as it turns. Twenty-six seconds a "
+                     "revolution here — a carousel is a slow ride, and the drawing keeps it slow."},
+            {"id": "tower-mast", "kind": "post", "x": -1094, "z": 2480, "y": 0, "ry": 0,
+             "w": 90, "h": 1960, "d": 90, "leaf": "#8b93a2", "solid": True,
+             "title": "The drop tower's mast",
+             "hint": "The strip's tall ride: a steel mast with a ring of seats that climbs it and "
+                     "lets go. Drawn at the strip's measure, twenty metres — a tower you can see "
+                     "over the fronts from the Parkway."},
+            {"id": "tower-ring", "kind": "board", "x": -1094, "z": 2480, "y": 1420, "ry": 0,
+             "w": 320, "h": 96, "d": 320, "leaf": "#c0533f", "solid": False,
+             "title": "The ring of seats",
+             "hint": "Twelve seats round a collar. It sits at its top station in the drawing: a ride "
+                     "caught mid-fall in a still frame would be a lie about the ride."},
+            {"id": "funhouse", "kind": "front", "x": -1001, "z": 2320, "y": 0, "ry": 90,
+             "w": 330, "h": 330, "d": 26, "awn": "#6a4a86", "awnout": 170,
+             "fascia": "#c9b98e", "liton": 0.6,
+             "glow": [{"r": 100, "k": 0.55, "dy": 300, "tint": "rgba(196,150,255,0.42)"}],
+             "states": [{"say": "Open. The mirrors inside are nobody's business here.", "k": 0.9, "shut": 0.95}],
+             "title": "The funhouse front",
+             "hint": "Three storeys of painted front, an awning, and a lit board over the door with "
+                     "nothing written on it. A funhouse is the one building on the strip whose whole "
+                     "job is its face."},
+            {"id": "midway-a", "kind": "foodstall", "x": -1001, "z": 2560, "y": 0, "ry": 90,
+             "w": 108, "h": 56, "d": 68, "awn": "#3f6a8a", "leaf": "#6a5138",
+             "title": "A midway booth", "hint": "A canvas roof, a counter, a shelf of prizes. The "
+                     "strip's booths stand shoulder to shoulder; this is the first of the row."},
+            {"id": "midway-b", "kind": "foodstall", "x": -1001, "z": 2660, "y": 0, "ry": 90,
+             "w": 108, "h": 56, "d": 68, "awn": "#8a5a3f", "leaf": "#5c4632",
+             "title": "The booth next door", "hint": "Same counter, different canvas. Nothing here "
+                     "says what is for sale, because nothing here is for sale."},
+            {"id": "midway-c", "kind": "foodstall", "x": 1001, "z": 2340, "y": 0, "ry": -90,
+             "w": 108, "h": 56, "d": 68, "awn": "#3f8a6a", "leaf": "#584636",
+             "title": "A booth on the east side", "hint": "The row runs both sides of the street: a "
+                     "visitor walking up sees canvas on the left and canvas on the right."},
+            {"id": "midway-d", "kind": "foodstall", "x": 1001, "z": 2660, "y": 0, "ry": -90,
+             "w": 108, "h": 56, "d": 68, "awn": "#8a3f5a", "leaf": "#6a5138",
+             "title": "The last booth before the plaza", "hint": "Past it the street opens to the "
+                     "wheel's apron, which is where the strip stops being a corridor."},
+            {"id": "sweets-kiosk", "kind": "foodstall", "x": -1001, "z": 2870, "y": 0, "ry": 90,
+             "w": 92, "h": 60, "d": 60, "awn": "#c05a86", "leaf": "#7a5a40",
+             "title": "A sweet kiosk by the plaza", "hint": "A small counter with a striped awning, "
+                     "the way every fun row has one: the smell is the only part of it a drawing "
+                     "cannot carry."},
+            {"id": "strip-gate-l", "kind": "post", "x": -576, "z": 2200, "y": 0, "ry": 0,
+             "w": 30, "h": 360, "d": 30, "leaf": "#3a2f28", "solid": True,
+             "title": "The gate post at the strip's mouth", "hint": "Two posts and a beam mark where "
+                     "the Parkway ends and the fun row starts. They carry no word, and they do not "
+                     "stop anybody."},
+            {"id": "strip-gate-r", "kind": "post", "x": 576, "z": 2200, "y": 0, "ry": 0,
+             "w": 30, "h": 360, "d": 30, "leaf": "#3a2f28", "solid": True,
+             "title": "Its pair across the street", "hint": "The gate is a frame, not a barrier."},
+            {"id": "strip-gate-beam", "kind": "box", "x": 0, "z": 2200, "y": 356, "ry": 0,
+             "w": 1630, "h": 30, "d": 34, "leaf": "#43362b", "solid": False,
+             "title": "The beam over the street", "hint": "At 3.56 m: above a hat, below the signs. "
+                     "The strip's own arch, in timber."},
+            # Round 63: a festoon wire hangs from something. These three spans were authored
+            # 15–24 m wide with nothing at either end, so from the plaza they read as coloured bars
+            # floating across the sky. Each span now has its own pole at the kerb line, at the wire's
+            # own height, and stops at it.
+            {"id": "lights-post-a1", "kind": "post", "x": -860, "z": 2420, "y": 0, "ry": 0,
+             "w": 16, "h": 470, "d": 16, "leaf": "#2f3a44", "solid": True,
+             "title": "The pole that carries the first span",
+             "hint": "Iron, at the kerb, with the wire's eye at its head."},
+            {"id": "lights-post-a2", "kind": "post", "x": 860, "z": 2420, "y": 0, "ry": 0,
+             "w": 16, "h": 470, "d": 16, "leaf": "#2f3a44", "solid": True,
+             "title": "Its pair across the street", "hint": "The two hold the first span true."},
+            {"id": "lights-post-b1", "kind": "post", "x": -860, "z": 2760, "y": 0, "ry": 0,
+             "w": 16, "h": 470, "d": 16, "leaf": "#2f3a44", "solid": True,
+             "title": "The second span's pole", "hint": "Same iron, same eye."},
+            {"id": "lights-post-b2", "kind": "post", "x": 860, "z": 2760, "y": 0, "ry": 0,
+             "w": 16, "h": 470, "d": 16, "leaf": "#2f3a44", "solid": True,
+             "title": "Its pair", "hint": "Lit from below after dark."},
+            {"id": "lights-post-c1", "kind": "post", "x": -860, "z": 3120, "y": 0, "ry": 0,
+             "w": 16, "h": 470, "d": 16, "leaf": "#2f3a44", "solid": True,
+             "title": "The span over the square's mouth", "hint": "The last wire before the wheel."},
+            {"id": "lights-post-c2", "kind": "post", "x": 860, "z": 3120, "y": 0, "ry": 0,
+             "w": 16, "h": 470, "d": 16, "leaf": "#2f3a44", "solid": True,
+             "title": "Its pair", "hint": "The street is framed twice over."},
+            {"id": "lights-a", "kind": "noren", "x": 0, "z": 2420, "y": 470, "ry": 0,
+             "w": 1720, "h": 26, "solid": False,
+             "title": "Lights strung across the street", "hint": "A cable of bulbs, post to post, "
+                     "the way a fun row is lit after dark. The strip is the one place in this "
+                     "drawing that stays bright late."},
+            {"id": "lights-b", "kind": "noren", "x": 0, "z": 2760, "y": 470, "ry": 0,
+             "w": 1720, "h": 26, "solid": False,
+             "title": "The second span", "hint": "Four spans reach the plaza; this is the second."},
+            {"id": "lights-c", "kind": "noren", "x": 0, "z": 3120, "y": 470, "ry": 0,
+             "w": 1720, "h": 26, "solid": False,
+             "title": "The span over the plaza", "hint": "Wider than the others: the street has "
+                     "opened out by the time the cable reaches it."},
+            {"id": "plaza-bench-1", "kind": "bench", "x": 864, "z": 3120, "y": 0, "ry": 0,
+             "w": 176, "h": 44, "d": 46,
+             "title": "A bench on the plaza", "hint": "Facing the wheel. The apron's only seat."},
+            {"id": "plaza-bench-2", "kind": "bench", "x": 864, "z": 3320, "y": 0, "ry": 0,
+             "w": 176, "h": 44, "d": 46,
+             "title": "Its pair, a step down the plaza", "hint": "Two benches is what a plaza needs; "
+                     "the rest is standing room."},
+            {"id": "plaza-bin", "kind": "bin", "x": 648, "z": 3180, "y": 0, "ry": 0,
+             "w": 44, "h": 92, "d": 44,
+             "title": "A bin by the bench", "hint": "Drawn, and empty."},
+            {"id": "plaza-planter-1", "kind": "planter", "x": -864, "z": 3140, "y": 0, "ry": 0,
+             "w": 92, "h": 80, "d": 92,
+             "title": "A planter at the plaza's edge", "hint": "The strip's green, in a square tub."},
+            {"id": "plaza-planter-2", "kind": "planter", "x": -864, "z": 3280, "y": 0, "ry": 0,
+             "w": 92, "h": 80, "d": 92,
+             "title": "Its pair", "hint": "Two tubs mark the edge of the paving."},
+            {"id": "plaza-lamp-1", "kind": "lamp", "x": 1500, "z": 3020, "y": 0, "ry": 0,
+             "w": 14, "h": 470, "d": 14,
+             "solid": True, "title": "A lamp on the plaza", "hint": "The strip's lamps are taller and later than "
+                     "the promenade's: this is the street that stays on."},
+            {"id": "plaza-lamp-2", "kind": "lamp", "x": -1500, "z": 3020, "y": 0, "ry": 0,
+             "w": 14, "h": 470, "d": 14,
+             "solid": True, "title": "The lamp opposite", "hint": "A pair, one to each side of the apron."},
+            {"id": "fountain", "kind": "pool", "x": 1512, "z": 3300, "y": 0, "ry": 0,
+             "w": 340, "h": 16, "d": 340, "solid": False,
+             "title": "The fountain in the plaza",
+             "hint": "A shallow round basin: water in a fun district is the one thing nobody has to "
+                     "queue for. Drawn at the strip's measure, three and a half metres across."},
+            {"id": "fountain-rim", "kind": "board", "x": 1512, "z": 3300, "y": 0, "ry": 0,
+             "w": 380, "h": 46, "d": 380, "leaf": "#8c8578", "tile": "concrete", "solid": False,
+             "title": "The fountain's rim", "hint": "A stone lip, knee high, and the water inside it."},
+            # Round 58: the strip's paving ran thirty metres wide with four benches in it, which is a
+            # car park, not a street. A fun row is furniture all the way down — a lamp, a tub, a
+            # seat, a bin, again and again — and it is that repetition, not the fronts, that makes a
+            # street feel walked. These are placed at the strip's own rhythm, 20 m apart.
+            {"id": "strip-lamp-1", "kind": "lamp", "x": 860, "z": 2260, "y": 0, "ry": 0,
+             "w": 14, "h": 470, "d": 14,
+             "solid": True, "title": "A lamp at the strip's mouth", "hint": "The row starts where the gate does."},
+            {"id": "strip-lamp-2", "kind": "lamp", "x": -860, "z": 2460, "y": 0, "ry": 0,
+             "w": 14, "h": 470, "d": 14,
+             "solid": True, "title": "A lamp on the west kerb", "hint": "The row alternates sides; a street lit from "
+                     "one kerb only has a dark side."},
+            {"id": "strip-lamp-3", "kind": "lamp", "x": 860, "z": 2660, "y": 0, "ry": 0,
+             "w": 14, "h": 470, "d": 14,
+             "solid": True, "title": "A lamp by the midway", "hint": "Lit in the drawing whether or not it is dark."},
+            {"id": "strip-lamp-4", "kind": "lamp", "x": -860, "z": 2860, "y": 0, "ry": 0,
+             "w": 14, "h": 470, "d": 14,
+             "solid": True, "title": "A lamp at the plaza's edge", "hint": "The last of the row before the apron."},
+            {"id": "strip-plant-1", "kind": "planter", "x": 518, "z": 2380, "y": 0, "ry": 0,
+             "w": 92, "h": 80, "d": 92,
+             "title": "A tub on the east kerb", "hint": "Grass in a square tub, between the lamps."},
+            {"id": "strip-plant-2", "kind": "planter", "x": -518, "z": 2720, "y": 0, "ry": 0,
+             "w": 92, "h": 80, "d": 92,
+             "title": "Its pair", "hint": "The strip's planting is all in tubs: nothing grows in "
+                     "paving that is swept every night."},
+            {"id": "strip-bench-3", "kind": "bench", "x": -547, "z": 2580, "y": 0, "ry": 90,
+             "w": 176, "h": 44, "d": 46,
+             "title": "A bench under the lights", "hint": "Facing the street: the queue sits, the "
+                     "queue watches."},
+            {"id": "strip-bin-2", "kind": "bin", "x": 547, "z": 2520, "y": 0, "ry": 0,
+             "w": 44, "h": 92, "d": 44,
+             "title": "A bin by the booth", "hint": "Drawn, and empty."},
+            # ---- The square's edge. A plaza with rides in it and nothing at its rim is a field:
+            # these are the fronts that close the two sides the wheel does not, so a visitor standing
+            # under the SkyWheel has a street around them and not a plain.
+            # ---- The buildings the fronts are the faces of. Round 62: they stand *behind* their
+            # fronts. They were authored at 11.8 m — inside a 15 m walk — so from the street the row
+            # read as six packing crates with the shopfronts hidden behind them. Each block now sits
+            # one room back from the glass it backs (12.8 m on the strip, 19 m where the square's
+            # fronts are at 16.4), and the strip's walk was narrowed to 10.2 m to meet its own
+            # shopfronts instead of running 5 m past them. Opening the strip's side walls (see the
+            # surfaces below) let the street see round its own facades, and a facade with nothing
+            # behind it is a card. These are the blocks: one behind each front, one storey deeper and
+            # a course higher, so the strip reads as a row of buildings rather than a row of faces.
+            {"id": "block-a", "kind": "box", "x": 1280, "z": 2320, "y": 0, "ry": -90,
+             "w": 360, "h": 380, "d": 500, "leaf": "#7b7266", "tile": "brick", "solid": True,
+             "win": 2, "wincol": 4, "title": "The building behind the first front", "hint": "A fun row's fronts are one room "
+                     "deep and one room tall; what stands behind them is a block, and the block is "
+                     "what you see over the awning."},
+            {"id": "block-b", "kind": "box", "x": 1280, "z": 2560, "y": 0, "ry": -90,
+             "w": 300, "h": 400, "d": 500, "leaf": "#6f6a62", "tile": "brick", "solid": True,
+             "win": 3, "wincol": 3, "title": "The second block", "hint": "Slightly taller than its neighbour: a street of "
+                     "identical heights is a barracks."},
+            {"id": "block-c", "kind": "box", "x": 1280, "z": 2800, "y": 0, "ry": -90,
+             "w": 320, "h": 360, "d": 500, "leaf": "#7f7466", "tile": "brick", "solid": True,
+             "win": 2, "wincol": 4, "title": "The block by the wheel", "hint": "The last of the row before the square."},
+            {"id": "block-d", "kind": "box", "x": -1280, "z": 2320, "y": 0, "ry": 90,
+             "w": 330, "h": 420, "d": 500, "leaf": "#746c62", "tile": "brick", "solid": True,
+             "win": 3, "wincol": 3, "title": "The west block behind the funhouse", "hint": "The funhouse's own building: "
+                     "the face is three storeys, so the block is three storeys."},
+            {"id": "block-e", "kind": "box", "x": -1280, "z": 2600, "y": 0, "ry": 90,
+             "w": 340, "h": 320, "d": 500, "leaf": "#7b7266", "tile": "brick", "solid": True,
+             "win": 2, "wincol": 3, "title": "Its neighbour", "hint": "Lower, and set a step back from the funhouse's face."},
+            {"id": "block-f", "kind": "box", "x": -1900, "z": 2880, "y": 0, "ry": 90,
+             "w": 320, "h": 340, "d": 500, "leaf": "#6f6a62", "tile": "brick", "solid": True,
+             "win": 3, "wincol": 4, "title": "The last block on the west side", "hint": "The row turns the corner at the "
+                     "carousel and carries on round the square."},
+            {"id": "plaza-front-w1", "kind": "front", "x": -1642, "z": 2900, "y": 0, "ry": 90,
+             "w": 300, "h": 300, "d": 26, "awn": "#7a4a3a", "awnout": 160,
+             "fascia": "#c2b494", "liton": 0.62,
+             "glow": [{"r": 100, "k": 0.5, "dy": 250, "tint": "rgba(255,196,130,0.42)"}],
+             "states": [{"say": "Open. The glass is lit and the shutter stands up.", "k": 0.9, "shut": 0.94}],
+             "title": "A front on the square's west side",
+             "hint": "The strip turns the corner here: the fronts stop running down the street and "
+                     "start running round the square, the way a fun row does when it meets its ride."},
+            {"id": "plaza-front-w2", "kind": "front", "x": -1642, "z": 3180, "y": 0, "ry": 90,
+             "w": 300, "h": 320, "d": 26, "awn": "#3f5a6a", "awnout": 160,
+             "fascia": "#b9ac8e", "liton": 0.68,
+             "glow": [{"r": 100, "k": 0.52, "dy": 260, "tint": "rgba(255,186,120,0.42)"}],
+             "states": [{"say": "Open. A wall of lamps over a glass front.", "k": 0.9, "shut": 0.94}],
+             "title": "Its neighbour, round the corner",
+             "hint": "Two fronts and a rail are enough to make an edge; the rest of the square is "
+                     "paving, a fountain and the wheel."},
+            {"id": "plaza-front-n1", "kind": "front", "x": 1649, "z": 3060, "y": 0, "ry": -90,
+             "w": 280, "h": 270, "d": 26, "awn": "#6a4a3a", "awnout": 150,
+             "fascia": "#c2b494", "liton": 0.6,
+             "glow": [{"r": 90, "k": 0.5, "dy": 230, "tint": "rgba(255,196,130,0.4)"}],
+             "states": [{"say": "Open. The queue for the wheel stands outside it.", "k": 0.9, "shut": 0.94}],
+             "title": "The front facing the wheel",
+             "hint": "A ticket hall and a counter: the business the ride lives on, drawn as a face "
+                     "with a blank marquee above it."},
+            {"id": "plaza-flag-1", "kind": "post", "x": -936, "z": 3320, "y": 0, "ry": 0,
+             "w": 18, "h": 620, "d": 18, "leaf": "#9aa2ae", "solid": True,
+             "title": "A flag mast at the square's mouth", "hint": "Bare, in the drawing: the strip "
+                     "is a place where something is always being advertised, and a mast with nothing "
+                     "on it says that without inventing a word."},
+            {"id": "plaza-flag-2", "kind": "post", "x": 936, "z": 3320, "y": 0, "ry": 0,
+             "w": 18, "h": 620, "d": 18, "leaf": "#9aa2ae", "solid": True,
+             "title": "Its pair", "hint": "Two masts frame the way into the square."},
+            {"id": "river-rail", "kind": "parapet", "x": -1678, "z": 3060, "y": 0, "ry": 0,
+             "w": 1200, "h": 96, "d": 12,
+             "title": "The rail along the river edge", "hint": "The strip ends at the bluff. Iron on "
+                     "stone, the same kit the promenade uses — beyond it the ground drops to the "
+                     "gorge and the water is the river's own."},
+            {"id": "river-edge-bench", "kind": "bench", "x": -1584, "z": 3180, "y": 0, "ry": 0,
+             "w": 176, "h": 44, "d": 46,
+             "title": "A bench at the river edge", "hint": "The strip's quiet end: the lights behind "
+                     "you, the gorge in front."},
+            # Round 58: opening the west edge to the gorge means the walker can now step off the
+            # point where the strip's paving ends. The rail is what makes an edge an edge.
+            {"id": "point-rail-w", "kind": "parapet", "x": -1627, "z": 2600, "y": 0, "ry": 0,
+             "w": 900, "h": 96, "d": 12,
+             "title": "The rail at the point's west edge", "hint": "Iron on stone, a hand's height "
+                     "above the paving: past it the bluff falls to the gorge and there is no way down."},
+            {"id": "point-rail-s", "kind": "parapet", "x": 0, "z": 3420, "y": 0, "ry": 90,
+             "w": 600, "h": 96, "d": 12,
+             "title": "The rail at the square's south edge", "hint": "The square ends where the "
+                     "point does; the bridge approach runs past beyond it."},
+            {"id": "plaza-rail", "kind": "parapet", "x": 1692, "z": 3320, "y": 0, "ry": 0,
+             "w": 700, "h": 96, "d": 12,
+             "title": "The rail at the plaza's edge", "hint": "Beyond it the ground falls away to "
+                     "the gorge: the strip stands on the same bluff as the falls."},
+            {"id": "wheel-platform", "kind": "board", "x": 1930, "z": 3050, "y": 0, "ry": 0,
+             "w": 300, "h": 24, "d": 460, "leaf": "#6c7076", "tile": "concrete", "solid": False,
+             "title": "The wheel's loading apron",
+             "hint": "The platform the gondolas come down to: a slab 24 cm off the paving, so the "
+                     "ride's floor and the street's are not the same floor. The ride is not for "
+                     "sale in a drawing — press the wheel and its lamps answer."},
+            # Round 58: the noren hung in mid-air at 1.72 m across the middle of the lane, and from
+            # the Fallsview deck it read as a striped cloth floating in the sky. A noren leaves from a
+            # frame: two posts and a lintel, which is also what makes the way across the bridge look
+            # like a way rather than a laundry line. Nothing on the frame is lettered.
+            {"id": "gate-post-l", "kind": "post", "x": -170, "z": 3560, "y": 0, "ry": 0,
+             "w": 22, "h": 286, "d": 22, "leaf": "#3a2f28", "solid": True,
+             "title": "The gate's west post",
+             "hint": "A timber post, drawn: the frame the bridge's curtain hangs in."},
+            {"id": "gate-post-r", "kind": "post", "x": 170, "z": 3560, "y": 0, "ry": 0,
+             "w": 22, "h": 286, "d": 22, "leaf": "#3a2f28", "solid": True,
+             "title": "The gate's east post",
+             "hint": "Its pair, astride the walk. The lintel keeps the two true."},
+            {"id": "gate-lintel", "kind": "box", "x": 0, "z": 3560, "y": 286, "ry": 0,
+             "w": 362, "h": 24, "d": 26, "leaf": "#40342b",
+             "title": "The lintel",
+             "hint": "The beam the curtain is strung from, at 2.86 m: head height plus a hat."},
+            {"id": "curtain-rainbow", "kind": "noren", "x": 0, "z": 3560, "y": 238, "ry": 0,
              "leave": "rooms-goat.html",
              "title": "The way across the Rainbow",
              "hint": "Beyond the curtain: the bridge — 440 m of steel over the gorge, its arch 290 "
@@ -4928,8 +5365,27 @@ DISTRICTS = [
         ],
         # The gorge side: an iron railing on a stone curb between stone posts, open air above
         # (the Getty photographs at the wall, May 2026); the terrace side is open to the centre.
-        "surfaces": niagara_parapet_bands() + [
-            {"side": 1, "z0": -69, "z1": 1483, "y0": 0, "y1": 400, "kind": "open"}],
+        # Round 58: past the Centre the lane had no surfaces of its own, so it fell back to the
+        # default corridor wall — a blank banded face at ±1500 that stood *in front of* Clifton's
+        # fronts and turned the fun strip into a beige tunnel. The strip is an open street: its edge
+        # is the fronts and the rails, not a wall, so the wall is opened from the Parkway to the
+        # bridge and the streetscape does the enclosing.
+        # Round 59: the parapet runs to the Parkway (z 1483, the figure `niagara_parapet_bands`
+        # takes in record units) and the rail station is at 1440 — so the last band pair stopped a
+        # metre short of the station and the whole run from 1483 was opened as the strip's edge. The
+        # Table Rock rail is the one place the visitor stands over the gorge; it is behind a full
+        # parapet here, not standing free at the brink.
+        "surfaces": niagara_parapet_bands(z_end=1540) + [
+            # the Centre's terrace, then the strip's own open edges
+            {"side": 1, "z0": -69, "z1": 10350, "y0": 0, "y1": 400, "kind": "open"},
+            # Round 59: the units, again. `niagara_parapet_bands` returns record/Z_SCALE and the
+            # emitter multiplies a band by Z_SCALE, so a literal here is *pre-scale*: writing 1483
+            # opened the gorge side from 4301 onwards and left 1483-4301 — the Parkway and the whole
+            # fun strip, including the Table Rock rail and the Falls Incline station — with no
+            # surfaces at all. A lane with no surfaces paints its default plaster wall, and that
+            # blank cream face is what stood between the rail and the gorge in every frame from the
+            # brink: the same failure as round 58's beige tunnel, one unit mistake further on.
+            {"side": -1, "z0": round(1483 / Z_SCALE, 1), "z1": 10350, "y0": 0, "y1": 400, "kind": "open"}],
         "lamps": [
             {"x": 640, "y": 410, "z": 120, "r": 90, "k": 0.45},
             {"x": 640, "y": 410, "z": 1150, "r": 90, "k": 0.45},
@@ -4957,10 +5413,14 @@ DISTRICTS = [
             {"z": 21, "x": 0, "label": "the trail at Table Rock Centre"},
             {"z": 469, "x": 470, "label": "the centre's doors"},
             {"z": 980, "x": -520, "label": "the parapet over the gorge"},
-            {"z": 1440, "x": -520, "yaw": -15, "pitch": 10, "label": "the Table Rock rail"},
+            # Round 59: the station's own view, measured. `yaw -15` faces up the walk with the rail
+            # on the left and the gorge's edge behind it; -90 is straight over the parapet at the
+            # water, which is what a visitor who has stopped at the rail is looking at. Pitch 10 is
+            # the authored down-angle (the walk already looks down from the bluff).
+            {"z": 1510, "x": -1290, "yaw": -82, "pitch": 2, "label": "the Table Rock rail"},
             {"z": 1660, "x": -140, "yaw": -18, "label": "the incline's lower station"},
             {"z": 2130, "x": 500, "h": 553, "yaw": 38, "pitch": 14, "label": "on the Fallsview deck"},
-            {"z": 2900, "x": -600, "yaw": -18, "label": "under the SkyWheel"},
+            {"z": 2960, "x": -880, "yaw": -18, "label": "under the SkyWheel"},
             {"z": 3480, "x": 0, "label": "the bridge approach"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 678, "z": 340, "y": 0, "ry": -90, "leaf": "#33414e",
@@ -5275,59 +5735,110 @@ DISTRICTS = [
                            [2400, "Luna and the American Falls", "290 m over a ledge onto boulders"]]},
         "floor": "pavers",
         "day": {"cycle": 900, "start": 0.5, "gain": 1},
+        # Round 58: the island had no world at all -- the lane and its props hung over the void, so
+        # beyond the walk there was fog where 670 metres of falling water should be. The falls this
+        # page is named for are the *same* surveyed curtains the Canadian page stands at (one
+        # `niagara_world`, one geography, two viewpoints), so this page borrows that world instead
+        # of drawing a second, differently-wrong one out of props. What the props can never do --
+        # a crest line, water running at the brink, mist over the basin, the gorge's own walls --
+        # that world already does.
+        # Round 58: the island's walk is open air on both banks, and until now it was drawn as a
+        # walled corridor — walls at ±750 stood between the visitor and the falls the page is named
+        # for, which is why the brink was never in the frame. `open` strips the cladding: the west
+        # side looks over the American bank, the east over the gorge.
+        "surfaces": [
+            {"side": -1, "z0": 2150, "z1": 3700, "y0": 0, "y1": 420, "kind": "open"},
+            {"side": 1, "z0": 3900, "z1": 4750, "y0": 0, "y1": 420, "kind": "open"},
+        ],
         "objects": [
-            {"id": "falls-american", "kind": "falls", "x": -1300, "z": 2350, "y": 0, "ry": 0,
-             "w": 10000, "h": 1034, "d": 500,
+            # Round 57 put the sheet beside the lane; round 58 found that a sheet standing on the
+            # ground is still a wall, however far off it stands — from the brink a falls is water at
+            # your feet and then the drop. So this is a `drop` falls: its crest lies on the lane's
+            # western edge at the walk's own height, the curtain hangs *below* it into the gorge, and
+            # the walk looks over the lip. The crest's 5.6 km of scale-length is the American bank's
+            # 290 m kept at the strip's measure; the drop is the sourced 21-30 m, kept at 10.34.
+            {"id": "falls-american", "kind": "falls", "x": -3000, "z": 2450, "y": 40, "ry": 90,
+             "w": 10000, "h": 1966, "d": 500, "solid": False, "drop": True,
              "title": "The American Falls",
              "hint": "290 metres of crest, a 21-to-30-metre drop onto the boulders below it — the "
                      "ledge they left there on purpose in 1969, when the river was dammed above "
                      "and the face cleaned for the first time in living memory. Three years of "
                      "silence, then the water came back over."},
-            {"id": "falls-horseshoe", "kind": "falls", "x": 6200, "z": 4300, "y": 0, "ry": -58,
-             "w": 19000, "h": 1966, "d": 620,
+            {"id": "falls-horseshoe", "kind": "falls", "x": 3200, "z": 4300, "y": -1200, "ry": 90,
+             "w": 12000, "h": 1966, "d": 620, "solid": False, "drop": True,
              "title": "The Horseshoe, from the American side",
              "hint": "57 metres over a curve that runs 670 round, the Canadian bank's own water. "
                      "From Terrapin Point it is not a fall in front of you; it is a wall of noise "
                      "to the right, nearer than the buildings behind it. Drawn from the record of "
                      "the place, at the record's size."},
-            {"id": "luna-island", "kind": "island", "x": -2000, "z": 2900, "y": 0, "ry": 0,
-             "w": 330, "h": 40, "d": 140,
+            {"id": "luna-island", "kind": "island", "x": -690, "z": 1400, "y": 0, "ry": 0,
+             "w": 300, "h": 46, "d": 200, "solid": False,
              "title": "Luna Island",
              "hint": "350 feet of dolostone between the American Falls and the Bridal Veil, named "
                      "for the moonbows the full moon used to throw into its mist — until the "
                      "banks started lighting the falls every night and no moon could compete. "
                      "Closed to visitors 1954-1972 while the rock beneath it was made safe."},
-            {"id": "luna-bridge", "kind": "board", "x": -1900, "z": 2450, "y": 0, "ry": 90,
-             "w": 170, "h": 60, "d": 40, "leaf": "#33414e",
+            {"id": "luna-bridge", "kind": "board", "x": -700, "z": 1760, "y": 0, "ry": 0,
+             "w": 240, "h": 56, "d": 60, "leaf": "#33414e", "tile": "wood", "solid": True,
              "title": "The footbridge to Luna",
              "hint": "The pedestrian span Goat Island throws to its little sister. Walkable here; "
                      "in person it is a short crossing with water on both sides of it."},
-            {"id": "boulders-e1", "kind": "board", "x": -1600, "z": 2620, "y": 0, "ry": 14,
-             "w": 210, "h": 130, "d": 150, "leaf": "#5d6068",
+            # Round 58: the talus stood at the walk's own height, 20 m above where the water lands,
+            # so two grey cards hung in front of the sheet at the bottom of every frame. Rock under a
+            # fall is at the foot of the fall.
+            {"id": "boulders-e1", "kind": "box", "x": -4200, "z": 2120, "y": -1926, "ry": 90,
+             "w": 900, "h": 320, "d": 700, "leaf": "#5d6068", "tile": "strata", "solid": False,
              "title": "The rock pile below the ledge",
              "hint": "Boulders the falls tore off its own lip, and the ones the engineers left "
                      "when they cleared the face in 1969. A falls into a rock pile is a shallower "
                      "fall; this one measures its drop to the boulders, not to the river."},
-            {"id": "boulders-e2", "kind": "board", "x": -1150, "z": 2700, "y": 0, "ry": -9,
-             "w": 260, "h": 110, "d": 170, "leaf": "#4c5560",
+            {"id": "boulders-e2", "kind": "box", "x": -4300, "z": 2560, "y": -1926, "ry": 90,
+             "w": 1100, "h": 260, "d": 800, "leaf": "#4c5560", "tile": "strata", "solid": False,
              "title": "More of the pile",
              "hint": "The talus runs the length of the pool below the American side."},
-            {"id": "terrapin", "kind": "board", "x": 2100, "z": 3900, "y": 0, "ry": 0,
-             "w": 900, "h": 62, "d": 700, "leaf": "#5f5c55",
+            {"id": "terrapin", "kind": "board", "x": 620, "z": 4200, "y": 0, "ry": 0,
+             "w": 300, "h": 42, "d": 260, "leaf": "#5f5c55", "tile": "pavers", "solid": False,
              "title": "Terrapin Point",
              "hint": "The stone shelf at Goat Island's north end — the closest the United States "
                      "comes to the Horseshoe. The point has been rebuilt twice after rockfalls and "
                      "one ice storm; what you stand on is as much engineering as geology."},
-            {"id": "rail-tp1", "kind": "parapet", "x": 2750, "z": 4150, "y": 0, "ry": -58,
+            {"id": "rail-tp1", "kind": "parapet", "x": 660, "z": 4330, "y": 0, "ry": 90,
              "w": 40, "h": 96, "d": 40,
              "title": "The rail at Terrapin",
              "hint": "Iron on stone, the same kit the Canadian parapet uses; the two banks "
                      "standardised on keeping people back from the brink long ago."},
-            {"id": "woodline-c1", "kind": "island", "x": 8600, "z": 2800, "y": 0, "ry": 0,
+            {"id": "woodline-c1", "kind": "island", "x": 1500, "z": 2400, "y": -40, "ry": 0,
              "w": 420, "h": 34, "d": 200,
              "title": "The Canadian bank's trees, across the river",
              "hint": "The Table Rock promenade hides behind its own woodline from here; the "
                      "buildings rise above it and belong to the other drawing."},
+            # Round 58: the water between the walk and the falls. Without it the drop hung over
+            # nothing and the brink read as the edge of the drawing.
+            # The far side of the water: on the American bank the falls face the Canadian gorge, and
+            # without a far wall the brink hung over sky. Drawn at the strip's measure, like the rest.
+            # Round 58: with the falls built as a brink, the water's own horizon is the sky — a
+            # standing far-bank wall at the rail's own height filled the frame with a beige slab,
+            # which is what it was: a 13 m wall 47 m away. What stands on the far side is the gorge
+            # wall, and the gorge wall is *below* the crest.
+            {"id": "channel-w", "kind": "pool", "x": -1500, "z": 2400, "y": -1900, "ry": 90,
+             "w": 2700, "h": 14, "d": 10000, "solid": False,
+             "title": "The channel between the island and the American bank",
+             "hint": "The water the island splits: it runs past the walk before it goes over. Drawn "
+                     "at the strip's measure, like every other distance on this page."},
+            # Round 58: the plunge pool, west of the sheet and far below the crest — the water the
+            # American Falls lands in. Without it the drop hung into nothing and the white at the
+            # foot had no surface to sit on.
+            {"id": "plunge-w", "kind": "pool", "x": -4000, "z": 2400, "y": -1900, "ry": 90,
+             "w": 1800, "h": 14, "d": 10000, "solid": False,
+             "title": "The pool under the American Falls",
+             "hint": "The water lands in a basin of its own boulders rather than in the river, which "
+                     "is why the American side is read as a fall onto rock and the Horseshoe as a "
+                     "fall into water."},
+            {"id": "channel-e", "kind": "pool", "x": 3400, "z": 4600, "y": -1900, "ry": 90,
+             "w": 2400, "h": 14, "d": 8000, "solid": False,
+             "title": "The gorge on the eastern side",
+             "hint": "The same river after the drop, running north-east to the whirlpool. The "
+                     "Canadian bank stands across it."},
             {"id": "pool-lower", "kind": "pool", "x": -600, "z": 6900, "y": 0, "ry": 0,
              "w": 24000, "h": 20, "d": 9000,
              "title": "The lower river, above the whirlpool",
@@ -5335,7 +5846,6 @@ DISTRICTS = [
                      "the whirlpool and the gorge. The water's colour is the gorge's own: a hard "
                      "green from the rock flour two falls grind out of the shelf."},
         ],
-        "surfaces": [],
         "lamps": [
             {"x": -420, "y": 360, "z": 700, "r": 80, "k": 0.4},
             {"x": 420, "y": 360, "z": 2100, "r": 80, "k": 0.4},
@@ -5353,9 +5863,13 @@ DISTRICTS = [
         ],
         "stations": [
             {"z": 40, "x": 0, "label": "the foot of the Goat Island walk"},
-            {"z": 2380, "x": -1250, "yaw": -14, "label": "the Luna bridge"},
-            {"z": 4000, "x": 1750, "yaw": -26, "pitch": 4, "label": "Terrapin Point"},
-            {"z": 5300, "x": 0, "label": "the rail above the lower river"},
+            # Round 58: the stop's own pitch stays at 9 — it already looked *down* at the brink and
+            # the flat frame the owner saw came from the painter, not from where the camera pointed.
+            # (The drag in the harness aims by the opposite sign, which is how a round was spent
+            # turning this stop the wrong way before the frames were compared.)
+            {"z": 2450, "x": -520, "yaw": 270, "pitch": 9, "label": "the rail at the American Falls"},
+            {"z": 4200, "x": 600, "yaw": 75, "pitch": -4, "label": "Terrapin Point"},
+            {"z": 5300, "x": 0, "yaw": 0, "label": "the rail above the lower river"},
         ],
         "exit": {"id": "curtain-home", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
                  "title": "The way back across the Rainbow",
@@ -5535,7 +6049,60 @@ def walk_islands(d, placed):
         for name, data in islands if data)
 
 
-def walk_object(o):
+# The body a visitor brings into a lane: a cylinder from 25 cm (the ankles, above the floor kit)
+# to 180 cm (a head on a 168 cm eye), radius 24 cm where it meets a prop. A prop blocks the walk
+# when it *occupies that cylinder* — not, as the first implementation had it, when it happens to
+# start on the floor.
+#
+# That "starts on the floor" test (`y <= 0 < y + h`) was a proxy for "is a thing you can walk into",
+# and it was wrong in both directions: it made nothing of a sandwich board authored at y 150 (its
+# legs are not modelled, so the board floats at your chest and you walk straight through it), and it
+# made nothing of the Moji Port High Mart's base, the basin's edge, Niagara's bluff and the funicular
+# car — all `kind: board`, none of them in WALK_SOLID_KINDS. Round 57 walked every room and the
+# symptom was reported before it was diagnosed: "好像有物件卡在我身上". Standing inside a box is not a
+# near miss; the camera ends up inside the box and the frame fills with its inner face.
+BODY_LO, BODY_HI, BODY_MIN = 25, 180, 25
+PLAYER_RADIUS = 24
+
+
+def blocks_body(o, lane_half):
+    """Does this prop stand in the walkable band across the height a body occupies?
+
+    Three things are deliberately not blockers: a record's own `solid` (it wins, either way), a
+    prop marked `passable` (a portal is an opening's press box — skills/lane-prop), and anything
+    whose overlap with the body is thinner than BODY_MIN, which is every drain, painted line and
+    glass floor. The band test uses the *reachable* half-width, so a poster hung flush to the wall
+    (its face a few centimetres inside the wall line) never becomes an obstacle.
+    """
+    if o.get("passable"):
+        return False
+    y = o.get("y", 0)
+    h = o.get("h", OBJ_SIZE.get(o["kind"], (120, 160, 12))[1])
+    if min(y + h, BODY_HI) - max(y, BODY_LO) < BODY_MIN:
+        return False
+    # A prop smaller than the body can never contain the body, however close it stands: a 14 cm tree
+    # on a tabletop, a 25 cm wheel mast, a 40 cm rail post. The test is a *containment* test, so a
+    # prop narrower than the body's diameter is out — as a disc, which is what a body is against a
+    # round trunk (measured: three street trees on the Toronto table were being called obstacles).
+    w = o.get("w", OBJ_SIZE.get(o["kind"], (120, 160, 12))[0])
+    dep = o.get("d", OBJ_SIZE.get(o["kind"], (120, 160, 12))[2])
+    ry = math.radians(o.get("ry", 0))
+    hx = (w * abs(math.cos(ry)) + dep * abs(math.sin(ry))) / 2
+    hz = (w * abs(math.sin(ry)) + dep * abs(math.cos(ry))) / 2
+    if hx * hz <= PLAYER_RADIUS ** 2:
+        return False
+    # A prop clears the walk when the body's *circle* can pass it, so the test is a distance: the
+    # straightest body-to-box gap, not "is its centre outside the lane". The latter called a
+    # thumbnail on a table 70 cm in from the wall a walk obstacle — it is not in the path at all.
+    return gap_to_box(o.get("x", 0), o.get("z", 0), hx, hz) < lane_half - PLAYER_RADIUS
+
+
+def gap_to_box(bx, bz, hx, hz):
+    """The shortest distance from the centre line of the walk to a prop's ground rectangle."""
+    return max(0.0, abs(bx) - hx)
+
+
+def walk_object(o, lane_half=10 ** 6):
     """One wall thing, expressed as a rectangle in centimetres plus whatever is painted on it.
 
     The renderer needs geometry, the keyboard needs a stop, and the screen reader needs a name — the
@@ -5554,7 +6121,7 @@ def walk_object(o):
     # but the miniature buildings it carries are not separate room-scale obstacles; steps and floor
     # marks remain walkable. The explicit record field wins when a particular object needs an override.
     y = o.get("y", 0)
-    solid = o.get("solid", o["kind"] in WALK_SOLID_KINDS and y <= 0 < y + h)
+    solid = o.get("solid", o["kind"] in WALK_SOLID_KINDS and y <= 0 < y + h or blocks_body(o, lane_half))
     solid_attr = ' data-solid="true"' if solid else ""
     frame = f' data-frame="{o["frame"]}"' if "frame" in o else ""
     # A landmark prop owns a space: the story it opens first, and the district beside the story.
@@ -5585,7 +6152,10 @@ def walk_object(o):
         for k, v in ((k, o[k]) for k in ("mural", "posts", "towers", "leaves", "run", "lift", "blocks",
                                          "footprint", "floors", "observation", "game", "demo",
                                          "ride", "rideX", "rideTop", "dia", "axle", "turn",
-                                         "phase0", "deck", "period") if k in o))
+                                         "phase0", "deck", "period",
+                                         # Round 58: a brink-built falls, and the tile a slab wears
+                                         # Round 63: a block's storeys
+                                         "drop", "tile", "win", "wincol") if k in o))
     # `data-states` is the whole interaction contract, in the document rather than in the script: a
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
@@ -5643,7 +6213,7 @@ def walk_html(d, drawer):
         o = dict(o)
         o["z"] = round(o["z"] * Z_SCALE)
         placed.append(o)
-        parts.append(walk_object(o))
+        parts.append(walk_object(o, lane["w"] / 2))
     chips = []
     for n, st in enumerate(d["stations"]):
         # A tick, not a caption: where the words go is the card, and the accessible name is what a
@@ -5697,6 +6267,10 @@ def walk_html(d, drawer):
     zones_attr = f' data-lane-zones=\'{json.dumps(zones, separators=(",", ":"))}\'' if zones else ""
     floors_attr = f' data-lane-floors=\'{json.dumps(floors, separators=(",", ":"))}\'' if floors else ""
     ws_attr = f' data-lane-ws=\'{json.dumps(widths, separators=(",", ":"))}\'' if widths else ""
+    # Round 61: the paving's own width, where the street's is wider than the walk. See the note in
+    # the renderer's `pavedAt`: a square's front row stands on its paving, not past it.
+    paveds = [[round(a * Z_SCALE), round(b * Z_SCALE), c] for a, b, c in lane["wsp"]] if lane.get("wsp") else []
+    ws_attr += f' data-lane-wsp=\'{json.dumps(paveds, separators=(",", ":"))}\'' if paveds else ""
     banner_html = """
     <div class="walk-banner" data-walk-banner aria-hidden="true">
       <b class="walk-banner-name"></b><span class="walk-banner-note"></span>
@@ -5759,6 +6333,23 @@ def walk_html(d, drawer):
     <p class="walk-game-status" data-game-status role="status"></p>
     <p class="walk-game-note">A toy, not a survey: the stalls of a festival lane stand at no surveyed address, and no button here claims one.</p>
   </div>"""
+    # Nothing to draw with. Round 54 deleted the second picture on the owner's ruling, so a visitor
+    # whose browser has no WebGL used to get an empty navy grid and one sentence three interactions
+    # away inside the info card. The lane now says it in the viewport it cannot fill — and only the
+    # sentence is words: the rails, the list and the compiled state keep answering, which is what
+    # the panel promises. Round 55 rendered the no-WebGL path for the first time and wrote this.
+    offline_html = f"""
+  <div class="walk-offline" data-walk-offline hidden>
+    <div class="walk-offline-inner">
+      <p class="eyebrow">{escape(label)}</p>
+      <p class="walk-offline-lead">This browser cannot draw the lane.</p>
+      <p class="walk-offline-note">The walk itself needs WebGL, and it is switched off or
+        unavailable here. Nothing is hidden that the lane owns: the numbered stops above still
+        carry you along it, the keys still turn and walk, and the list writes out this lane's
+        frames, its slots and what it may claim. Where you are standing is printed below.</p>
+      <p class="walk-offline-where" data-walk-offline-where aria-hidden="true"></p>
+    </div>
+  </div>"""
     if d.get("night"):
         hour_html = ""
     else:
@@ -5795,10 +6386,7 @@ def walk_html(d, drawer):
       {walk_islands(d, placed)}
     </div>
   </div>
-  <p class="walk-fallback" data-walk-fallback role="status" hidden>Rendering the lane is
-    unavailable in this browser. {label} still reads in the list: every frame, its caption and its
-    kind are written there, and the strip's ticks stand for those frames' depths.</p>
-  {game_html}
+{offline_html}{game_html}
   <div class="walk-tutor" data-walk-tutor hidden aria-hidden="false">
     <p class="walk-tutor-step" data-walk-tutor-text></p>
     <span class="walk-tutor-n" data-walk-tutor-count></span>

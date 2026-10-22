@@ -36,12 +36,12 @@ Before authoring geometry:
 The code/test gate is necessary but not sufficient. The visitor sees the renderer output. Use `skills/scene-quality-loop/SKILL.md` as the governing capture/inspection/repair loop and PUA for root-cause diagnosis; the steps below are the local scene-specific minimum, not a replacement for that review.
 
 1. Regenerate with `python3 _gen_html.py`; inspect the diff and confirm generated pages include the expected scene and cache-buster.
-2. Use `.verify/browser-shot.mjs` against the generated page (the Canvas2D `lane-shot` harness retired with the painter in round 54). A capture is valid only after the walk has actually reached the station depth. Do not treat a fixed-delay or early-arrival frame as an object review.
+2. Use the current browser harness (`.verify/browser-shot.mjs`, `PAGE=<page>`) against the generated page. A capture is valid only after the walk has actually reached the station depth. Do not treat a fixed-delay or early-arrival frame as an object review.
 3. At **every authored stop**, inspect the standard view. For each major exhibit, also inspect the left, right, and/or close object-facing view; use a perpendicular view when a flat side could hide a missing body. Inspect the returned image files themselves, not just the proof-sheet contact sheet or numeric metrics.
 4. Ask of each prop: Is the recognizable whole shape present? Does its depth read? Are its defining parts visible? Does the table support it? Is it obscured, clipped, floating, or mistaken for glass/cardboard? Does it remain legible at normal viewing distance and from a second angle?
 5. If any answer fails, fix the renderer/record rather than writing a more confident hint. Regenerate, re-walk and re-open the affected frames. Continue until the visual defect is resolved or document a genuine blocker.
 
-For a wide-angle or side view of an object, drive the harness's own view controls and keep its arrival/depth verification. If a batch cannot return to the entrance, record that separately; do not discard valid object frames or pretend the batch completed.
+For `browser-shot.mjs`, prefer the standard multi-stop set and add a side-angle batch (e.g. `LANE_SIDE_ANGLE=90`) for object geometry. Keep the checker's arrival/depth verification. If a wide-angle batch cannot return to the entrance, record that separately; do not discard valid object frames or pretend the batch completed.
 
 ## 5. Regression and acceptance gate
 

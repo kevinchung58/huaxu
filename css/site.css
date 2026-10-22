@@ -2118,30 +2118,67 @@ body.shell {
   inset: 0;
   z-index: 3;
 }
-/* One renderer, one fallback: when the pinned Three.js scene cannot start, the lane retires and
-   says so in this sentence. It cannot live inside the info card — that card ships hidden, so a
-   visitor without WebGL would face an empty viewport with the explanation behind a button — and it
-   cannot wear `.walk-note`, which is `display: none` on touch. The sentence is the fallback, so it
-   is visible on every device, above the canvas and below the chrome. */
-.walk-fallback {
+/* No renderer, so no picture: the viewport that would have held the lane holds the reason instead.
+   It is a stand-in, not a second picture — it draws no geometry and claims no view, and it names
+   only what the compiled state can still do (the stops, the keys, the written list). Under the HUD
+   (z 4) so the rail and the icons stay above it, and it takes no pointer input: every control it
+   points at is chrome that already works. */
+.walk-offline {
   position: absolute;
-  z-index: 3;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(32rem, calc(100% - 2.5rem));
-  margin: 0;
-  padding: 0.95rem 1.1rem;
-  background: var(--bg);
-  color: var(--ink);
-  border: 1px solid var(--line-strong);
-  border-left: 3px solid var(--accent);
-  font-family: var(--sans);
-  font-size: 0.92rem;
-  line-height: 1.5;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 6vw, 4rem);
+  background:
+    radial-gradient(115% 85% at 50% 40%, rgba(26, 43, 80, 0.9), rgba(13, 21, 38, 0.98) 70%);
   pointer-events: none;
 }
-.walk-fallback[hidden] { display: none; }
+.walk-offline[hidden] {
+  display: none;
+}
+.walk.is-offline .walk-hits {
+  /* a projection with nothing projected: the prop buttons would hang in the panel's text */
+  display: none;
+}
+.walk-offline-inner {
+  width: min(34rem, 100%);
+  padding: 1.35rem 1.5rem 1.5rem;
+  border-left: 2px solid rgba(242, 200, 142, 0.62);
+  background: linear-gradient(90deg, rgba(6, 11, 26, 0.6), rgba(6, 11, 26, 0));
+}
+.walk-offline .eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--accent-bright);
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.walk-offline-lead {
+  margin: 0 0 0.6rem;
+  color: #f4efe2;
+  font-family: var(--display);
+  font-size: clamp(1.30rem, 2.6vw, 1.72rem);
+  line-height: 1.25;
+}
+.walk-offline-note {
+  margin: 0;
+  max-width: 42ch;
+  color: var(--muted-navy);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+.walk-offline-where:not(:empty) {
+  margin: 0.9rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(205, 214, 238, 0.22);
+  color: rgba(233, 227, 211, 0.9);
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
 /* The lane is drawn rather than photographed, so it is allowed one visible grain: the film on a
    night scene that keeps flat wall panels from banding under the fog. */
 /* No overlay on the canvas: a screen-fixed stripe over a scene that moves reads as a

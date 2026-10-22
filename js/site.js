@@ -693,6 +693,27 @@ function leaveOverlay(root, trigger) {
 
   const statusEl = layer.querySelector("[data-walk-status]");
   const recordEl = layer.querySelector("[data-walk-record]");
+  /* Round 55: a lane with no renderer has no picture, and until now the only trace of that was one
+     sentence inside the info card — a visitor whose browser refuses WebGL saw an empty navy grid and
+     nothing that said why. The panel takes the viewport's place, and it prints the one thing the
+     picture was carrying that a reader still needs: where they are standing. That line is the status
+     region's own text, mirrored — the lane's published state, never a re-derivation of it. */
+  const offlineEl = layer.querySelector("[data-walk-offline]");
+  const offlineWhere = layer.querySelector("[data-walk-offline-where]");
+  const mirrorWhere = () => {
+    if (!offlineEl || offlineEl.hidden || !offlineWhere || !statusEl) return;
+    if (offlineWhere.textContent !== statusEl.textContent) offlineWhere.textContent = statusEl.textContent;
+  };
+  const noteOffline = () => {
+    if (!offlineEl) return;
+    offlineEl.hidden = false;
+    // The prop buttons are a projection of quads onto a picture. With no picture they are cards
+    // floating in an empty field — round 55's first no-WebGL frame showed two of them sitting on top
+    // of the sentence explaining why nothing was drawn. The reach itself stays: facing something and
+    // pressing E still opens its record, because that is geometry, not paint.
+    layer.classList.add("is-offline");
+    mirrorWhere();
+  };
   const card = layer.querySelector("[data-walk-card]");
   const listPanel = layer.querySelector("[data-walk-listpanel]");
   const listBtn = layer.querySelector("[data-walk-list]");
@@ -752,6 +773,23 @@ function leaveOverlay(root, trigger) {
     let h = HALF;
     for (const w of WSEGS) if (z >= w[0] && z <= w[1]) h = Math.max(h, w[2] - PLAYER_RADIUS);
     return h;
+  };
+  /* Round 61: the paving is wider than the walk.
+     `ws` is where a *body* may go, and round 58 pulled the square in to 17.5 m so a 64 m field
+     would not read as a car park. The paving answered to the same number, so the square's own
+     front row — the fronts at 16.4 m, the rails at 16.8, the wheel's apron at 19.3 — stood past
+     the last paver, over nothing: from the plaza you could see the pavement end and the sky begin
+     under the very shops that close the square. A street's paving runs to the buildings that line
+     it; the walk stays where it was. Authored as data-lane-wsp [[z0, z1, half]…]. */
+  const WPSEGS = (() => {
+    try { const a = JSON.parse(layer.getAttribute("data-lane-wsp") || "[]");
+          return Array.isArray(a) ? a.filter((w) => Array.isArray(w) && w.length >= 3) : []; }
+    catch (_) { return []; }
+  })();
+  const pavedAt = (z) => {
+    let h = HALF;
+    for (const w of WPSEGS) if (z >= w[0] && z <= w[1]) h = Math.max(h, w[2]);
+    return Math.max(h, halfAt(z));
   };
   const MIN_D = -30, REACH = 190, MAX_PITCH = 24;
   const MAX_HEIGHT = Math.max(0, CEIL - EYE - HEAD_CLEARANCE);
@@ -845,6 +883,17 @@ function leaveOverlay(root, trigger) {
   const SEG = 60, NEAR = 24, DPM = 2;   // panel, near plane, pattern scale: the renderer's own
   let W = 0, H = 0, focal = 620, tilePat = null, floorPat = null, floorTiers = null, winPat = null,
       concretePat = null, galvPat = null;
+  /* Two sizes, and they are not the same number (round 56).
+     `W`/`H` are the DISPLAY size: every projection here — the hit boxes measured in CSS pixels, the
+     HUD's stop rail, `camPt` — is written against them, so they stay what the layout says.
+     `RW`/`RH` are the RENDER size: the WebGL backing store, which the stylesheet then stretches to
+     the viewport. Until this round the two were the same, so a browser that rasterises in software
+     (the owner's preview runs on SwiftShader) paid a full-viewport fragment bill per frame: measured
+     4 fps at 1024×640 and 18 fps at 320×200 on the same street, with only 8 ms of JavaScript in the
+     frame. The frame budget governor below trades resolution for motion, which is the trade a felt
+     control scheme needs — the alternative it replaces was a picture that was sharp and unsteerable. */
+  let RW = 0, RH = 0, renderScale = 1, frameMs = 0, frameBudgetAt = 0, frameSamples = 0;
+  let pumping = false;   // was the last frame driven by held input or motion? see tick()
   // One lookup for every cladding the walls and the ground can be wearing; a kind with no entry falls
   // back to the wall's own tiles, which is the honest default for a surface nobody specified.
   /* Tiles a page asks for by name. Most are painted at boot; round 33's place materials are lazy
@@ -1044,20 +1093,59 @@ function leaveOverlay(root, trigger) {
      illumination's colour after dark. Seeded, like every scatter here: a curtain 600 m off aliases to
      grain, not to a lattice. */
   const paintFallsWater = (c) => {
+    /* Falling water, drawn as the thing itself rather than as a veil over somebody else's stripes.
+
+       Round 58 measured what this tile has to do: the sheet hangs 15-20 m from the rail, a visitor's
+       frame is 1024 px over about 45 degrees, so one centimetre of water is under half a pixel. The
+       old tile was 52 strands of one to three pixels with 10-40% alpha — at that distance it mips
+       down to its own mean, which is exactly what a flat wash is. Water seen at fifteen metres is
+       not fine grain: it is ropes twenty to ninety centimetres across, dark green between them and
+       white where they break. So the tile carries a few wide ropes, the dark water that shows
+       between them, and a little spray crossing all of it. */
     let seed = 35071;                                  // a fresh tile is clear: nothing to clear
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 52; i++) {
-      const x = rnd() * 128, w = 0.8 + rnd() * 3.6, a = 0.1 + rnd() * 0.34;
-      const dark = i % 4 === 0, per = 1 + Math.floor(rnd() * 2), ph = rnd() * Math.PI * 2;
-      const gr = c.createLinearGradient(0, 0, 0, 128);
-      for (let k = 0; k <= 8; k++) {
-        const f = 0.55 + 0.45 * Math.sin(ph + (k / 8) * per * Math.PI * 2);
-        gr.addColorStop(k / 8, dark ? `rgba(34,82,92,${(a * 0.55 * f).toFixed(3)})`
-                                    : `rgba(255,255,255,${(a * f).toFixed(3)})`);
-      }
+    const band = (x, w, stops) => {
+      const gr = c.createLinearGradient(x, 0, x + w, 0);
+      stops.forEach(([t, col]) => gr.addColorStop(t, col));
       c.fillStyle = gr;
       c.fillRect(x, 0, w, 128);
       if (x + w > 128) c.fillRect(x - 128, 0, w, 128);
+    };
+    // The water between the ropes: green, and darker at the edges of every rope.
+    c.fillStyle = "rgba(38,96,104,0.42)";
+    c.fillRect(0, 0, 128, 128);
+    // The ropes. Each is soft-edged (a gradient across its width) and fades in and out down its
+    // length on whole periods of its own, so a scrolling tile never shows a seam.
+    for (let i = 0; i < 9; i++) {
+      const w = 10 + rnd() * 24, x = rnd() * 128, a = 0.30 + rnd() * 0.40;
+      const per = 1 + Math.floor(rnd() * 2), ph = rnd() * Math.PI * 2;
+      const gv = c.createLinearGradient(0, 0, 0, 128);
+      for (let k = 0; k <= 10; k++) {
+        const f = 0.45 + 0.55 * Math.sin(ph + (k / 10) * per * Math.PI * 2);
+        gv.addColorStop(k / 10, `rgba(255,255,255,${(a * f).toFixed(3)})`);
+      }
+      c.save();
+      c.beginPath(); c.rect(x - 1, 0, w + 2, 128); c.clip();
+      c.fillStyle = gv; c.fillRect(x, 0, w, 128);
+      c.restore();
+      // the soft edge: the rope is densest down its middle
+      band(x + w * 0.25, w * 0.5, [[0, "rgba(255,255,255,0)"], [0.5, `rgba(255,255,255,${(a * 0.55).toFixed(3)})`],
+                                   [1, "rgba(255,255,255,0)"]]);
+      if (x + w > 128) { c.fillStyle = gv; c.fillRect(x - 128, 0, w, 128); }
+    }
+    // The dark troughs: the water that stands between two ropes, which is what gives the curtain
+    // its vertical grain instead of its blur.
+    for (let i = 0; i < 7; i++) {
+      const w = 3 + rnd() * 9, x = rnd() * 128, a = 0.12 + rnd() * 0.24;
+      band(x, w, [[0, "rgba(22,62,74,0)"], [0.5, `rgba(22,62,74,${a.toFixed(3)})`], [1, "rgba(22,62,74,0)"]]);
+    }
+    // The spray crossing the whole curtain: short white dashes, the one part of a falls that has no
+    // direction.
+    for (let i = 0; i < 34; i++) {
+      const x = rnd() * 128, y = rnd() * 128, w = 2 + rnd() * 7, h = 5 + rnd() * 18;
+      c.fillStyle = `rgba(255,255,255,${(0.10 + rnd() * 0.22).toFixed(3)})`;
+      c.fillRect(x, y, w, h);
+      if (y + h > 128) c.fillRect(x, y - 128, w, h);
     }
   };
   /* The gorge wall (round 35): the rock at Table Rock stands in horizontal beds, pale grey-buff, as
@@ -1697,11 +1785,26 @@ function leaveOverlay(root, trigger) {
     for (let r = 0; r <= 8; r++) { c.beginPath(); c.moveTo(0, r * 16); c.lineTo(128, r * 16); c.stroke(); }
   };
   loadPics();
+  /* The render size follows the display size and the governor's scale, and nothing else reads it
+     except the renderer call at the bottom of draw(). Everything the visitor can point at stays in
+     display pixels, so trading resolution for frame rate can never move a hit box. */
+  /* A governor with no floor of its own will happily draw a 112×70 lane and let the browser stretch
+     it across the window — measured at 320×200 in round 56, and the upscale is mush. Past roughly
+     360 physical pixels across, the fill rate saved is worth less than the legibility lost, so the
+     floor rides the display rather than being one constant: a wide window keeps the 0.35 a software
+     rasteriser needs, a small one is not allowed to go soft to save pixels nobody was paying for. */
+  const minRenderScale = () => Math.max(0.35, Math.min(1, 360 / Math.max(1, W)));
+  const applyRenderScale = () => {
+    renderScale = clamp(renderScale, minRenderScale(), 1);
+    RW = Math.max(1, Math.round(W * renderScale));
+    RH = Math.max(1, Math.round(H * renderScale));
+  };
   const size = () => {
     const cw = view.clientWidth || innerWidth, ch = view.clientHeight || innerHeight;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     W = Math.round(Math.min(1180, Math.max(320, cw * dpr)));
     H = Math.max(1, Math.round(W * (ch / Math.max(1, cw))));
+    applyRenderScale();
     tilePat = mkTile(paintWall);
     floorPat = mkTile(({ pod: paintPodFloor, paving: paintPaving, carpet: paintCarpet,
                          pavers: paintPavers, tunnel: paintBoards })[layer.dataset.floor] || paintFloor);
@@ -1861,6 +1964,11 @@ function leaveOverlay(root, trigger) {
     dia: parseFloat(el.dataset.dia) || 0, axle: parseFloat(el.dataset.axle) || 0,
     turn: parseFloat(el.dataset.turn) || 0, phase0: parseFloat(el.dataset.phase0) || 0,
     deck: parseFloat(el.dataset.deck) || 0, period: parseFloat(el.dataset.period) || 0,
+    // Round 58: a falls authored as a brink rather than as a standing sheet, and a material tile a
+    // slab can wear (a bluff face is rock, and rock at a card's flatness is a grey wall).
+    drop: el.dataset.drop === "true", tile: el.dataset.tile || null,
+    // Round 63: how many storeys of windows a block wears, and how many to a row
+    win: parseFloat(el.dataset.win) || 0, wincol: parseFloat(el.dataset.wincol) || 0,
     ry: num(el, "data-ry") || parseFloat(el.dataset.ry || 0),
     w: parseFloat(el.dataset.w) || 100, h: parseFloat(el.dataset.h) || 140,
     d: parseFloat(el.dataset.d) || 12, x: num(el, "--x"), z: num(el, "--z"), y: num(el, "--y"),
@@ -2185,6 +2293,8 @@ function leaveOverlay(root, trigger) {
                   drawbridge: "drawbridge", ship: "ship", stationfront: "stationfront",
                   // The round-52 shapes: a turning observation wheel and a working funicular.
                   wheel: "wheel", incline: "incline",
+                  // Round 58: the strip's second ride — the carousel, turning on the frame clock.
+                  carousel: "carousel",
                   // Round 54 audit: two kinds the authored records had been using while the table
                   // never named them — every `board` was reaching the plane branch by accident,
                   // not by decision, and the midway stall fell through although a stall branch
@@ -2211,6 +2321,9 @@ function leaveOverlay(root, trigger) {
                   parapet: "box", deckwall: "box", portal: "portal" };
   // A few props are named for what they are, not for the kind that draws them; these are the aliases.
   Object.assign(SHAPE, { pole: "box", barrel: "box", stool: "box", lamp: "box",
+                         // Round 58: a plain box and a post, named for what they are — the bridge
+                         // gate's two uprights and its lintel are exactly that and nothing more.
+                         box: "box", post: "box",
                          curtain: "cloth", stall: "stall", ledge: "plane",
                          // A shop is a front the record gave an awning: the id says shop, the
                          // painter is the retail one.
@@ -2219,6 +2332,14 @@ function leaveOverlay(root, trigger) {
                          // without the panels, handle and fanlight that make a street door.
                          lift: "door" });
   const mix = (hex, k) => {    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    /* Round 61: a caller that passes a third argument is calling the wrong function, and the result
+       used to be the literal string `rgb(NaN,NaN,NaN)` — an invalid colour that the renderer drew as
+       white. One such call (the SkyWheel's steel) was the wheel's 26 rim and A-frame quads. Loud in
+       development, harmless in production: fall back to the first colour and say so once. */
+    if (k !== undefined && typeof k !== "number") {
+      if (!mix.warned) { mix.warned = true; console.warn("mix() called with a non-numeric lift:", hex, k); }
+      return hex;
+    }
     const to = k >= 0 ? [255, 238, 208] : [10, 17, 40];
     const a = Math.abs(k);
     return `rgb(${c.map((v, i) => Math.round(v + (to[i] - v) * a)).join(",")})`;
@@ -2238,6 +2359,7 @@ function leaveOverlay(root, trigger) {
   const ZERO8 = [0, 0, 0, 0, 0, 0, 0, 0];
   const quads = [];
   let threeRenderer = null;
+  let nanLogged = 0;   // TEMP
   const add = (C, corners, uv, mode, arg, img) => {
     const pts = corners.map((c, i) => {
       const o = camPt(C, c[0], c[1], c[2]);
@@ -2267,6 +2389,7 @@ function leaveOverlay(root, trigger) {
        kept, so nothing that used to be drawn has stopped being drawn. */
     if (bx1 < -80 || bx0 > W + 80 || by1 < -80 || by0 > H + 80) return null;
     let z = 0; cp.forEach((q) => { z += q.z; });
+    if (typeof arg === "string" && /NaN/.test(arg) && nanLogged < 3) { nanLogged++; console.warn("NANCOLOUR", arg, new Error().stack.split("\n").slice(1,5).join(" | ")); }
     const texture = mode === "pat" && arg ? PATTERN_SOURCE.get(arg) : null;
     const quad = { z: z / cp.length, pts: cp, world: corners.map((c) => [c[0], c[1], c[2]]),
                    uv: corners.map((_, i) => [Number(uv[i * 2]) || 0, Number(uv[i * 2 + 1]) || 0]),
@@ -3518,12 +3641,23 @@ function leaveOverlay(root, trigger) {
     const cladCovers = (side, z0, z1) => {
       const rows = surfaces.filter((sc) => sc.side === side && sc.z0 < z1 && sc.z1 > z0).sort((a, b) => a.y0 - b.y0);
       let y = 0;
+      /* Round 59: "covers the wall" had to mean *covers the wall*, and 20 cm was enough to stop it.
+
+         Every parapet in the record is authored to 400 cm and every lane's ceiling is 420, so a
+         band set that ends at the top of the parapet left twenty centimetres of uncovered wall —
+         and one uncovered centimetre is all this test needs to decide the *whole* panel is bare and
+         paint the lane's default plaster over it, parapet and gorge included. That is the beige
+         wall standing behind the Table Rock rail in every frame from the brink: the bands were
+         right, the air above the iron was authored `open`, and the wall was painted anyway because
+         of the gap between the parapet's height and the ceiling's. A hand's breadth is the
+         tolerance; anything shorter than that is not a wall a visitor can see. */
+      const TOP = WALL_TOP - 24;
       for (const r of rows) {
         if (r.y0 > y + 0.01) break;
         if (r.y1 > y) y = r.y1;
-        if (y >= WALL_TOP) return true;
+        if (y >= TOP) return true;
       }
-      return y >= WALL_TOP;
+      return y >= TOP;
     };
     /* Holes in the floor (round 33): a glass floor is a window, so where one lies the floor is not
        painted and the surveyed world under it shows through -- only on a page that has a world to
@@ -3538,11 +3672,27 @@ function leaveOverlay(root, trigger) {
       if (x1 - x0 < 1 || zb - za < 1) return;
       const fd = Math.abs(zc - C.z);
       const corners = [[x0, 0, za], [x1, 0, za], [x1, 0, zb], [x0, 0, zb]];
-      const fl = floorTiers && fd >= 1600
+      /* Round 61: the floor does not go flat at sixteen metres.
+
+         It did — `fd >= 1600` drew one untextured quad of the pavers' mean, on the argument that a
+         distant paving stone is not worth a fill. On a promenade whose walk is 43 m that argument
+         held. On Clifton Hill it is 103 m of plaza with the SkyWheel, a carousel, two rows of
+         booths and six blocks standing on it, and the whole of it past sixteen metres was one flat
+         grey field: the district read as a car park with rides parked in it. The tile is mipmapped,
+         so the pave at 60 m costs a filtered tap and reads as paving; the measured mean is kept only
+         for the far end of the lane, where a cell is a few pixels and the tile would be its mean
+         anyway — 52 m, not 16. */
+      const fl = floorTiers && fd >= 5200
         ? add(C, corners, ZERO8, "flat", "#797570")          // the pavers' measured mean
         : add(C, corners, [za * DPM, x0 * DPM, za * DPM, x1 * DPM, zb * DPM, x1 * DPM, zb * DPM, x0 * DPM],
-              "pat", floorTiers && fd >= 450 ? floorTiers[fd >= 900 ? 1 : 0] : floorPat);
-      if (fl) { fl.lit = lightAt((x0 + x1) / 2, 6, zc) * 1.15; fl.air = haze(fl.z) * 0.7;
+              "pat", floorTiers && fd >= 900 ? floorTiers[fd >= 2600 ? 1 : 0] : floorPat);
+      /* Round 61: the paving is not a light source.
+         A 1.15 lift on a tile already painted at 180 grey, under a sky-bright hemisphere, clipped
+         the whole plaza to (212,227,236) — a white field with the rides standing in it, which is
+         what the fun strip read as from its own station. The lift is for the promenade's stone,
+         where the sun lands square; a 100 m plaza keeps its own value and shows its joints. */
+      if (fl) { fl.lit = lightAt((x0 + x1) / 2, 6, zc) * (Math.abs(zc - C.z) > 2600 ? 0.82 : 1.05);
+                fl.air = haze(fl.z) * 0.7;
                 fl.sz = fl.z + 4000;     // the ground paints before anything standing on it
                 if (UNDER) fl.nolite = true; }
     };
@@ -3587,13 +3737,14 @@ function leaveOverlay(root, trigger) {
         if (q) { q.lit = lightAt(px, 210, zc); q.wall = side; q.za = z; q.zb = z1; if (UNDER) q.nolite = true; }
       });
       const hole = holes.find((h) => h.z0 < z1 && h.z1 > z);
-      if (!hole) floorPiece(-W, W, z, z1, zc);
+      const P = pavedAt(zc);            // what is paved: the walk, or the square's whole floor
+      if (!hole) floorPiece(-P, P, z, z1, zc);
       else {
         const ha = Math.max(z, hole.z0), hb = Math.min(z1, hole.z1);
-        floorPiece(-W, W, z, ha, zc);
-        floorPiece(-W, Math.max(-W, hole.x0), ha, hb, zc);
-        floorPiece(Math.min(W, hole.x1), W, ha, hb, zc);
-        floorPiece(-W, W, hb, z1, zc);
+        floorPiece(-P, P, z, ha, zc);
+        floorPiece(-P, Math.max(-P, hole.x0), ha, hb, zc);
+        floorPiece(Math.min(P, hole.x1), P, ha, hb, zc);
+        floorPiece(-P, P, hb, z1, zc);
       }
       if (VAULT && !OPEN) {
         for (let k = 0; k < VK; k++) {
@@ -3936,12 +4087,62 @@ function leaveOverlay(root, trigger) {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
           if (toward <= 0) return;
+          /* Round 58: a box honours the `tile` its record authored. It never did — the material
+             lookup only knew `MATS`, so every block the strip gained came out as a bare tinted
+             cuboid, and six of them in a row read as grey packing cases. A face is textured when the
+             record names a tile for it; failing that, the old flat tint with its own face shade. */
           const mk2 = MATS[kind] || MATS[m.kind];
+          const tile = m.tile && PATS[m.tile];
           const q = mk2 && PATS[mk2]
             ? add(C, f.p, patUV(f), "pat", PATS[mk2])
-            : add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.24));
-          if (q) { q.lit = lit; drawn.push(q); }
+            : tile
+              ? add(C, f.p, patUV(f), "pat", tile)
+              : add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.24));
+          if (q) { q.lit = tile ? lit * (1 + f.k * 0.35) : lit; drawn.push(q); }
         });
+        /* Round 63: a block is a building, so it has storeys.
+           Six of these stand behind the strip's fronts and every one of them came out as a plain
+           crate: a 4 m face of brick with nothing on it, seen over the awnings from the whole
+           length of the street. A record that says `win` gets its windows — laid out by the face's
+           own corners, so a block turned to the lane is windowed on the side the lane sees — a
+           stone sill under each, and a cornice along the top. Nothing here is lettered. */
+        if (m.win) {
+          const rows = Math.max(1, m.win | 0), cols = Math.max(1, m.wincol || 3);
+          const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+          facesOf(m).forEach((f) => {
+            if (f.n[1] !== 0) return;                       // walls, not the lid
+            const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
+                         + f.n[2] * (C.z - f.p[0][2]);
+            if (toward <= 0) return;
+            const bx0 = f.p[0], bx1 = f.p[1], tx1 = f.p[2], tx0 = f.p[3];   // bottom left/right, top right/left
+            const proud = 2;                                // stand the joinery off its own wall
+            const at = (u, v) => { const b = lerp(bx0, bx1, u), t = lerp(tx0, tx1, u), p = lerp(b, t, v);
+              return [p[0] + proud * f.n[0], p[1], p[2] + proud * f.n[2]]; };
+            // a cornice: a course proud of the wall along the whole top, one course deep
+            const cq = add(C, [at(0, 0.965).map((v, i) => i === 1 ? v - 2 : v),
+                               at(1, 0.965).map((v, i) => i === 1 ? v - 2 : v),
+                               at(1, 1), at(0, 1)], ZERO8, "flat", mix(base, -0.26));
+            if (cq) { cq.lit = lit * 0.92; drawn.push(cq); }
+            for (let r = 0; r < rows; r++) {
+              for (let c = 0; c < cols; c++) {
+                const u0 = 0.12 + (c + 0.14) * (0.76 / cols), u1 = u0 + (0.76 / cols) * 0.64;
+                /* The top storey only: the front's own box and awning cover the bottom two and a
+                   half metres of these walls from the street, so windows there would be joinery
+                   nailed up behind a shopfront. */
+                const v0 = 0.46 + r * (0.46 / rows), v1 = v0 + (0.32 / rows);
+                const w = add(C, [at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)], ZERO8, "flat",
+                              blendHex("#22303f", "#93a6b8", DAY() * 0.55));
+                if (w) { w.lit = 0.9; drawn.push(w); }
+                // the sill: one line of stone under the opening, which is what makes a dark
+                // rectangle read as a window and not as a hole in the wall
+                const sl = add(C, [at(u0 - 0.01, v0 - 0.035), at(u1 + 0.01, v0 - 0.035),
+                                   at(u1 + 0.01, v0 - 0.005), at(u0 - 0.01, v0 - 0.005)],
+                               ZERO8, "flat", blendHex(base, "#d8d2c4", 0.55));
+                if (sl) { sl.lit = lit * 1.05; drawn.push(sl); }
+              }
+            }
+          });
+        }
         /* Round 35: a trail lamp is the park's black lantern on its post (the photographs at the
            brink), not a bare pole -- a glazed head on a collar, a cap and a finial over it, its glass
            grey by day and lit from within after dark. */
@@ -4271,16 +4472,38 @@ function leaveOverlay(root, trigger) {
             // Open: display glass at the wall's own face, mullions over it, and one warm shelf of
             // light that the sun mostly takes. The glass is pale by day and dark by night, so an
             // open shop reads as glass in both, not as a hole.
-            const gl = add(C, [P(-half, 4, 46), P(half, 4, 46), P(half, 4, yA - 4), P(-half, 4, yA - 4)],
-              ZERO8, "flat", blendHex("#31405a", "#93a6b8", DAY()));
-            if (gl) { gl.lit = 0.75 + 0.55 * DAY(); gl.daygain = 0.45; drawn.push(gl); }
-            for (let i = 1; i < 3; i++) {
-              const u0 = -half + (i / 3) * 2 * half - 3;
-              Q([P(u0, 3, 46), P(u0 + 6, 3, 46), P(u0 + 6, 3, yA - 4), P(u0, 3, yA - 4)],
-                "#2a3448", lit * 0.8);
+            /* Round 61: an open front read as a *plate*.
+
+               At three metres — which is where the plaza puts a visitor opposite an arcade — this
+               was one flat quad of `#93a6b8` at `lit` 1.3, i.e. a colour already near white carried
+               past the tone curve: every shop on the strip came out the same pale cream slab, with
+               nothing in it. Above that, one glass pane with two mullions is not a shopfront: the
+               frame of a fun-row arcade is narrow and often, the glass sits behind a deep reveal,
+               and what the eye reads at close range is *depth* — a dark interior with hangs of light
+               in it, and joinery in front of the dark.
+               So the pane is a recess now: the interior wall stands 40 cm back in its own dark, the
+               glass is dimmer than the render's own lift (it is glass, not a lamp), and the frame is
+               six narrow members over a stall riser and two transoms. */
+            Q([P(-half, 3, 0), P(half, 3, 0), P(half, 3, yA - 6), P(-half, 3, yA - 6)],
+              mix(base, -0.52), lit * 0.5);                     // the interior behind the glass
+            const gl = add(C, [P(-half + 6, 4, 46), P(half - 6, 4, 46), P(half - 6, 4, yA - 10),
+                               P(-half + 6, 4, yA - 10)], ZERO8, "flat", blendHex("#243146", "#7c8ea3", DAY()));
+            if (gl) { gl.lit = 0.52 + 0.22 * DAY(); gl.daygain = 0.5; drawn.push(gl); }
+            // What is behind the glass: a lit shelf of hangs, low, so the interior is not a void.
+            for (let i = 0; i < 3; i++) {
+              const u0 = -half * 0.62 + i * half * 0.62;
+              Q([P(u0, 7, 88), P(u0 + half * 0.36, 7, 88), P(u0 + half * 0.36, 7, 132), P(u0, 7, 132)],
+                i % 2 ? "#c9a06a" : "#d8b483", (0.42 + up * 0.5) * dl, 0.05);
             }
-            Q([P(-half * 0.7, 6, 60), P(half * 0.7, 6, 60), P(half * 0.7, 6, 120), P(-half * 0.7, 6, 120)],
-              "#e8b87a", (0.5 + up * 0.9) * dl * 0.5, 0.05);
+            for (let i = 0; i <= 6; i++) {
+              const u0 = -half + (i / 6) * 2 * half - 4;
+              Q([P(u0, 2, 40), P(u0 + 8, 2, 40), P(u0 + 8, 2, yA - 4), P(u0, 2, yA - 4)],
+                "#2a3448", lit * 0.62);
+            }
+            for (const yy of [46, 118, yA - 12]) {
+              Q([P(-half + 4, 2, yy), P(half - 4, 2, yy), P(half - 4, 2, yy + 8), P(-half + 4, 2, yy + 8)],
+                "#2a3448", lit * 0.62);
+            }
           } else {
             // Shut: the blade across the face, the same shutter as the cladding.
             const blade = add(C, [P(-half, 6, 0), P(half, 6, 0), P(half, 6, yA - 4), P(-half, 6, yA - 4)],
@@ -5118,6 +5341,435 @@ function leaveOverlay(root, trigger) {
         panel(-bz, -bz * 0.5, 0, Math.PI * op, 0.012 * op, "#8d989f");
         panel(0, bz * 0.5, bz * 0.5 * op, 0, 0.024 * op, "#848f98");
         panel(-bz * 0.5, 0, bz * op, 0, 0.036 * op, "#808b94");
+      } else if (shape === "falls" && m.drop) {
+        /* Round 58: everything this branch draws is water, and water opts out of the lane's
+           daylight wash. The shader adds a warm sun term to every quad that does not say
+           `day: false`, and on a teal curtain that term is the grey wall the owner called 一片平光 —
+           it was the *lighting*, not the colour. Captured by index so every quad the branch pushes
+           (sheet, ropes, seams, lip, foot, mist) is covered without a list to keep in sync. */
+        const fromHere = drawn.length;
+        /* Round 58: the falls as a brink, not as a wall.
+
+           The table model further down is right for a diorama you can walk round. In a lane it was
+           wrong in one decisive way: it stood a sheet of water on the ground, so a visitor eight
+           metres from the American Falls looked at a hundred metres of water standing upright and
+           the frame filled with stripes. A falls seen from a bank is not a wall in front of you —
+           it is water at your feet, a white lip, and then the river going away underneath. So a
+           `drop` falls is built the other way up: the crest lies at the prop's own height, the
+           sheet hangs *below* it into the gorge, the brink is a strip of water between the lane and
+           the crest, and the spray comes back up over the lip.
+
+           What the visitor sees from the edge, in order: the brink and its ripple, the lip line,
+           the descending sheet with its strands running down it (a texture scrolled by the frame
+           clock, so the motion is the walker's, as everything moving here is), the headlands either
+           side, and the mist climbing back past the crest. */
+        const along = Math.abs(m.ry) > 45;                 // the crest runs down the lane
+        const away = along ? (m.x < 0 ? -1 : 1) : (m.z < 0 ? -1 : 1);   // downstream, off the lane
+        const hw = m.w / 2, drop = m.h, crestY = m.y;
+        /* The strands' scale. A UV count of 1 is one tile, so this is centimetres of sheet per
+           tile: at 250 the ropes are half a metre to a metre and a half across, which is what a
+           curtain of water hangs in when you are standing twenty metres back from it. (The
+           pattern tiles themselves are 128 units wide and `DPM` 2 makes a brick 64 cm — that is
+           why the paving uses its own scale; the water's UVs are divided out here directly.) */
+        const tileCm = 320;
+        const Pt = (a, y, t) => along ? [m.x + away * t, y, m.z + a]
+                                      : [m.x + a, y, m.z + away * t];
+        /* The sheet moves without the visitor moving. The strands travel down a tile every 1.7 s
+           on the frame clock — the same clock that lights the lamps and turns the wheel, so a
+           frame rate this machine cannot hold never changes how fast the water falls. */
+        const uvAt = (a, y, drift) => [a / tileCm, (-y + (ease ? T * 420 : 0)) / tileCm + drift];
+        const Q = (a0, a1, y0, y1, t0, t1, col, l, air) => {
+          const q = add(C, [Pt(a0, y0, t0), Pt(a1, y0, t1), Pt(a1, y1, t1), Pt(a0, y1, t0)],
+                        ZERO8, "flat", col);
+          if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); return q; }
+          return null;
+        };
+        // A strip of water lying flat (the brink and the pool): four corner offsets across the
+        // crest and out from it, at one height. `Q` folds two of those corners onto each other.
+        const H = (a0, a1, t0, t1, y, col, l, air) => {
+          const q = add(C, [Pt(a0, y, t0), Pt(a1, y, t0), Pt(a1, y, t1), Pt(a0, y, t1)],
+                        ZERO8, "flat", col);
+          if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); return q; }
+          return null;
+        };
+        /* The brink: the river coming at you over the flat before it goes. Two steps of colour and
+           a ripple that travels, because still water at a brink is the one thing a falls never is. */
+        /* The river coming at the brink. It runs from the walk's own edge to the lip, so the
+           visitor stands with the water at their feet — the one view every photograph taken on this
+           bank has, and the reason a falls is not a picture of a wall. */
+        /* Round 58: the water between the visitor and the lip.
+           It was three 30 cm strips — bands a step apart, with the ground showing through between
+           them, which reads as paint rather than as a river. It is one continuous surface now, cut
+           into bands only so the ripples can travel at slightly different speeds: the current comes
+           at you at three speeds, which is what a brink looks like just before it goes. */
+        /* The water's near edge is the lane's own edge, not a fixed 40 cm: at 40 the river ran
+           under the paving and the visitor stood on its lid. `HALF` is the free half-width the body
+           may occupy, so the brink starts a hand's width beyond it. */
+        const edge = HALF + 8;
+        /* Round 58: the upper river lies on the *far* side of the lip. It used to run from the
+           crest all the way back to the visitor, and that is a contradiction the frame could not
+           survive: a plane of water at the crest's own height, between the eye and the sheet,
+           covers the entire drop — it was the flat teal wash in every screenshot. What is between
+           the visitor and the falls is the channel, below the crest, and it is its own prop. So
+           the brink is authored outward only: fourteen metres of river above the lip, enough to
+           read as water arriving rather than as an edge of the drawing. */
+        /* Round 58, fifth pass: fourteen metres of upper river seen from 25 m is a *ninety-pixel*
+           band of pale grey above the lip — the last flat horizontal thing in the frame, and the
+           reason the brink still read as a slab. The real American Falls gives you about four metres
+           of water above the brink before the ground takes it; four is what this draws now, and the
+           foam streaks carry the sense of arrival the extra ten metres were pretending to. */
+        const reach = 420;
+        const NBR = 4;
+        for (let i = 0; i < NBR; i++) {
+          const t0 = (i / NBR) * reach, t1 = ((i + 1) / NBR) * reach;
+          const q = add(C, [Pt(-hw, crestY + 1, -t0), Pt(hw, crestY + 1, -t0),
+                            Pt(hw, crestY + 1, -t1), Pt(-hw, crestY + 1, -t1)],
+                        [0, 0, hw * 2 / 260, 0, hw * 2 / 260, (t1 - t0) / 260, 0, (t1 - t0) / 260],
+                        "pat", PATS.rapids);
+          /* Round 58: this river was drawn at 0.88-0.98 `lit`, and `lit` washes a colour toward
+             the day's light — so the fourteen metres of water between the visitor and the lip came
+             out the colour of concrete, which is the last flat thing in this frame. The river above
+             a falls is the darkest water on the page: it is deep, it is moving, and it is about to
+             stop being a river. */
+          if (q) { q.lit = 0.46 + 0.10 * (i / NBR); q.air = 0.02; drawn.push(q); }
+        }
+        /* The water arriving, drawn as arrival: streaks of foam travelling toward the lip on the
+           frame clock, faster as they get closer (a river accelerates into its own drop), and a
+           standing boil where it breaks. Without these the brink is a painted plane seen edge-on. */
+        for (let i = 0; i < 9; i++) {
+          const a = -hw * 0.94 + (i / 8) * hw * 1.88;
+          const w = 90 + (i % 4) * 70;
+          for (let k = 0; k < 3; k++) {
+            const phase = ease ? ((T * 0.42 + k / 3 + i * 0.17) % 1) : (k / 3);
+            const t = -reach * 0.92 * (1 - phase);          // from upstream toward the lip
+            const len = 120 + 260 * phase;                   // stretches as it accelerates
+            const q = add(C, [Pt(a - w, crestY + 3, t), Pt(a + w, crestY + 3, t),
+                              Pt(a + w * 0.7, crestY + 3, t + len), Pt(a - w * 0.7, crestY + 3, t + len)],
+                          ZERO8, "flat", `rgba(226,244,243,${(0.06 + 0.12 * phase).toFixed(3)})`);
+            if (q) { q.lit = 0.9; q.air = 0.0; drawn.push(q); }
+          }
+        }
+        for (let i = 0; i < 7; i++) {
+          const a = -hw * 0.86 + (i + 0.5) * (hw * 1.72 / 7);
+          const ph = ease ? Math.sin(T * 1.1 + i * 1.7) : 0;
+          const b0 = Pt(a - 34, crestY + 2, -64 + ph * 6), b1 = Pt(a + 34, crestY + 2, -64 + ph * 6);
+          const b2 = Pt(a + 26, crestY + 2, -30 + ph * 4), b3 = Pt(a - 26, crestY + 2, -30 + ph * 4);
+          const q = add(C, [b0, b1, b2, b3], ZERO8, "flat", `rgba(238,250,250,${(0.16 + (i % 3) * 0.05).toFixed(2)})`);
+          if (q) { q.lit = 1.1; drawn.push(q); }
+        }
+        /* The lip: the unbroken white line every falls has where the water breaks over. Without it
+           the sheet's top edge is a cut, which is what "a striped wall" looked like. */
+        Q(-hw, hw, crestY - 6, crestY + 3, 0, 0, "#f2fbfa", 1.35, 0.02);
+        H(-hw, hw, -22, 0, crestY + 2, "rgba(240,250,250,0.5)", 1.2, 0.02);
+        /* The white water at the lip: a real falls spends its first several metres as foam, not as
+           its own deep teal. One band, in front of the sheet by 3 cm so the sorter cannot put the
+           sheet over it, and it fades down into the first break instead of stopping at a seam. */
+        /* The white water at the lip. Round 58's fourth pass: this was two bands, 59 cm and 138 cm
+           tall, drawn at 0.55 alpha over the full crest — and because the top of the sheet is the
+           part nearest the camera, those 138 cm projected as a fifty-pixel stripe of pale grey
+           across the whole frame, the last flat thing left in the picture. A falls breaks white for
+           about a metre and then fogs into strands; one narrow band, and the strands below it carry
+           the rest. */
+        Q(-hw, hw, crestY - drop * 0.055, crestY - 1, 0, 0, "#f4fbfa", 1.3, 0.02);
+        Q(-hw, hw, crestY - drop * 0.135, crestY - drop * 0.050, -3, -3, "rgba(228,247,246,0.46)", 1.15, 0.02);
+        Q(-hw, hw, crestY - drop * 0.225, crestY - drop * 0.130, -5, -5, "rgba(214,240,240,0.26)", 1.05, 0.02);
+        /* The sheet, in the source's four bands, with its strands sliding down it. Each band is a
+           tone; over each tone a translucent strand quad travels at the frame clock's rate. That is
+           the whole near-field difference: colour that holds still and water that does not. */
+        /* The curtain's four bands, authored from the foot up: the water is deepest at the lip and
+           breaks into white as it falls, so the *pale* end of the sheet is at the bottom, where it
+           lands, not at the top. Round 58 had these the other way round (pale at the crest), which
+           is why a twenty-metre fall read as a sheet of fog hung from the sky. */
+        /* The curtain's tone from the lip down, as a continuous ramp rather than four bands.
+
+           Round 58's fifth pass: four authored bands is four steps of colour, and at the brink a
+           visitor's eye lands on those steps as horizontal stripes — the same "striped wall" the
+           owner has been reporting since round 57, only now in the right colour. Water does not band.
+           Ten steps of a blend between the lip's deep teal and the foot's pale one is smooth enough
+           that only the noise across the crest reads. */
+        const BANDS = [];
+        const NB = 44;
+        const bt = (v) => 1 - (1 - v) ** 1.6;      // slice edges crowd toward the foot
+        for (let i = 0; i < NB; i++) {
+          const a = bt(i / NB), b = bt((i + 1) / NB);
+          // The curve is not linear: the water stays deep most of the way and pales at the foot.
+          const t = Math.max(0, (a - 0.22) / 0.78) ** 1.6;
+          /* Round 58, sixth pass — the palette. A falls is *aerated water*: the sheet is nearly white
+             over most of its face and the teal is what you see *between* the ropes, where the water
+             is still water. Round 57 painted it the other way round (teal sheet, dark seams) and that
+             is why every close frame read as a painted wall. The sheet is now the pale half of the
+             pair and the seams carry all the colour. */
+          BANDS.push([a, b, blendHex("#a7cfc9", "#eaf6f4", t)]);
+        }
+        const NA = 12;
+        const bow = (a) => drop * 0.012 * Math.max(0, 1 - (a / (hw * 0.88)) ** 2);
+        const throwAt = (p) => drop * 0.035 * Math.sqrt(p);
+        /* Round 58, sixth pass — the base course is gone.
+
+           This used to lay twelve broad slices of the gradient first, and it was those twelve
+           rectangles that the owner kept seeing as 一片平光: each slice is thirty bands tall and a
+           twelfth of the crest wide, so once the ropes were drawn into the same plane the slice
+           behind a rope won the depth sort half the time and painted its own flat rectangle over
+           the rope's tone. Two layers of the same water is one layer too many. The ropes carry the
+           gradient themselves now — `col` still comes from BANDS below — and the seams between them
+           are what the eye reads as water lines. */
+        /* The ropes.
+
+           Round 58's decisive finding: a texture cannot draw this. The sheet is fifteen metres from
+           the rail and forty degrees of frame covers it, so one centimetre of water is well under a
+           pixel — a strand tile mips down to its own mean and the curtain becomes the flat wash
+           the owner called 一片平光. What survives at that distance is *shape*, not grain: the
+           curtain hangs in ropes a metre or two wide, and the dark water between two ropes shows
+           through. So the ropes are drawn as geometry, each column a tone in its own right, and
+           each rope carries a slow travelling brightness down its length — the water moving, drawn
+           where it can actually be seen.
+
+           Forty-eight columns over the crest: at the American Falls' 290 m of real crest measured
+           at this page's scale that is a rope every couple of metres, which is what the photographs
+           of the fall from Terrapin Point show. */
+        const NCOL = 48;
+        /* Round 58, second pass: the ropes were all the same width at even spacing, and forty-eight
+           equal stripes read as a bead curtain, not as water. The boundaries are jittered by a seeded
+           hash (so the fall is the same every frame and every visit), and each rope's seam is its own
+           width. Water does not divide evenly. */
+        const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+        const B = (i) => -hw + hw * 2 * ((i + 0.55 * (hash(i) - 0.5)) / NCOL);
+        const nightK = NIGHT();
+        for (let k = 0; k < NCOL; k++) {
+          const a0 = B(k), a1 = B(k + 1), ac = (a0 + a1) / 2, aw = a1 - a0;
+          // Which column this is decides its water: a slow standing pattern across the crest,
+          // seeded so it is the same every frame — the fall does not reshuffle when you look away.
+          const sway = 0.74 + 0.26 * Math.sin(k * 1.7) * Math.cos(k * 0.61 + 0.4);
+          /* Round 58, sixth pass: three grades of water per rope, not two. A falls seen close is
+             mostly white water with a few dark ropes in it — the dark ones are where the sheet is
+             still thick and has not broken. Before this every rope sat within eight per cent of its
+             neighbours' tone, and forty-eight near-identical columns is a curtain of paint. */
+          const bright = sway > 0.885;                  // broken, aerated, almost white
+          const dark = sway < 0.66;                     // still unbroken water
+          const rope = sway > 0.80 && !bright;
+          const ph = (k * 0.37) % 1;
+          for (const [fa, fb, col] of BANDS) {
+            const y0 = crestY - drop * fa, y1 = crestY - drop * fb;
+            const t0 = throwAt(fa) + bow(a0), t1 = throwAt(fb) + bow(a0);
+            const t2 = throwAt(fb) + bow(a1), t3 = throwAt(fa) + bow(a1);
+            /* A rope's brightness travels down it: `droplet` is where the white is, and it drops a
+               fall's own height every four seconds. Without it the curtain is a still photograph of
+               water; with it, the eye reads motion even standing still. */
+            const fall = ease ? ((T * 0.24 + ph) % 1) : 0.5;
+            const near = Math.max(0, 1 - Math.abs((fa + fb) / 2 - fall) * 3.2);
+            /* `mix` takes a *fraction* toward warm white (positive) or the void (negative) — not a
+               multiplier. Round 58 doubled the curtain out to cream by passing 1.10 here: a
+               fraction of 1.1 overshoots white on every channel and clamps, so a "10 % brighter
+               rope" became a solid cream wall. These stay inside ±0.25. */
+            /* Only two terms, and both change slowly along the rope: the rope's own grade of water,
+               and the travelling brightness. Round 58 also added a per-band sine here, which
+               alternated sign every band and tiled the curtain into a visible chequerboard of
+               rectangles — a water line is continuous, so every term that builds one must be. */
+            const tone = (bright ? 0.52 : rope ? 0.06 : -0.24) + 0.16 * near;
+            /* One rope in five carries white water: the fall is not a tinted glass sheet, it is a
+               curtain with bright ropes in it, and that contrast is what the eye reads as motion
+               even in a still frame. */
+            /* And the rope leans: a slow sine of its own phase, so a seam leaves the lip in one place
+               and reaches the foot in another. A perfectly vertical seam is a barcode. */
+            const wA = Math.sin(fa * 5.3 + k * 2.1) * aw * 0.12;
+            const wB = Math.sin(fb * 5.3 + k * 2.1) * aw * 0.12;
+            /* Round 58: every rope changed tone at the same height, so the gradient's steps lined up
+               across the whole crest and drew horizontal rules over the water — the vertical grain
+               was finally right and the eye still had forty-four straight lines to read. Each rope
+               now carries its own vertical offset, so a step belongs to one rope and dies at its
+               seam. */
+            const vj = (hash(k * 3.1 + 0.7) - 0.5) * drop * 0.055;
+            /* The offset must not lift water above the lip: a rope pushed up by a few centimetres
+               stood over the crest line as a green tab floating above the railing. Only inward. */
+            const j0 = fa === 0 ? 0 : vj, j1 = vj;
+            /* Round 58, sixth pass — 夜間水色 on the water itself.
+
+               The illumination used to be one warm wash laid *over* the installed sheet, and the
+               sheet is drawn in the same plane as that wash: the painter sorted the wash behind half
+               the ropes and the fall came out blue under a blue sky, with warm patches where the
+               sort fell the other way. The light is on the water, so it belongs in the water's own
+               colour: every rope is blended toward the lamps' warm white by how dark it is, and the
+               seam quads below stay cold, which is what makes lit water read as lit. */
+            const colN = nightK > 0.02 ? blendHex(col, "#ffe9c6", 0.62 * nightK) : col;
+            const q = add(C, [Pt(a0 + wA, y0 + j0, t0), Pt(a1 + wA, y0 + j0, t3),
+                              Pt(a1 + wB, y1 + j1, t2), Pt(a0 + wB, y1 + j1, t1)],
+                          ZERO8, "flat", bright ? mix(mix(colN, 0.80), tone) : mix(colN, tone));
+            /* Round 58: `lit` is a wash *toward the day's light*, not a brightness multiplier, so
+               anything above 1.0 drives the colour to white — which is how a teal curtain became a
+               grey wall. The sheet is water, not a lit surface: it sits at the low end. */
+            /* Round 58: `air` is the aerial haze, and it is *computed from the quad's distance*
+               when it is not given — 55 % of the frame's fog at this range, which is exactly the
+               flat wash the owner reported. A falls fifteen metres away is not in the haze; it is
+               the haze. Pinned low, with a little left so the far end of the crest still recedes. */
+            if (q) {
+              q.lit = 0.72 + (fa >= 0.15 ? 0.10 : 0.02); q.air = 0.07;
+              /* Lit water is not night colour. The lane's night pass mixes every quad 62 % toward
+                 the sky's navy, so blending the lamps in *before* that mix is a wash that gets
+                 painted over: the fall came out blue at 3 a.m. with warm patches where the depth
+                 sort happened to favour the wash. `nolite` takes the sheet out of the night pass —
+                 which is the fact the illumination board records, that the falls is the lit thing
+                 in a dark gorge — and `day` false keeps the sun off it. */
+              if (nightK > 0.12) { q.nolite = true; q.day = false; q.lit = 1.0; }
+              drawn.push(q);
+            }
+          }
+          /* The seam between two ropes: the dark water standing in the gap, which is what gives a
+             curtain its vertical grain. One narrow column, painted in front of the columns beside
+             it so it always separates them. It widens as it falls — water pulls apart into ropes
+             on the way down and a gap at the lip is a crevasse at the foot. */
+          const gap = (rope ? 0.15 : 0.09) * (0.62 + 0.74 * hash(k + 41));
+          {
+            /* One column, lip to foot, tapering open as it falls. Round 58 drew this in three
+               chunks of different widths applied abruptly, and three abrupt widths per rope is a
+               stack of dark tabs down the face — the same failure as the old four-tone banding,
+               rotated ninety degrees. Water lines are continuous. */
+            const gA = aw * gap * 0.55, gB = aw * gap * 1.75;
+            const lean0 = Math.sin(0 * 5.3 + k * 2.1) * aw * 0.12;
+            const lean1 = Math.sin(1 * 5.3 + k * 2.1) * aw * 0.12;
+            const q = add(C, [Pt(ac - gA + lean0, crestY, throwAt(0) - 3), Pt(ac + gA + lean0, crestY, throwAt(0) - 3),
+                              Pt(ac + gB + lean1, crestY - drop, throwAt(1) - 3),
+                              Pt(ac - gB + lean1, crestY - drop, throwAt(1) - 3)],
+                          ZERO8, "flat", "rgba(30,76,88," + (0.34 + 0.26 * (1 - hash(k + 7))).toFixed(3) + ")");
+            if (q) { q.lit = 0.70; q.air = 0.05; drawn.push(q); }
+          }
+        }
+        /* The mist, in front of the sheet rather than behind it. Round 57's columns of spray stood
+           *over* the crest and read as fog on the horizon; what a visitor at the brink sees is mist
+           coming back up the face, thinnest at the lip and thickest where the water has just landed.
+           Seven soft quads, drifting on the frame clock, each denser at its foot. */
+        for (let i = 0; i < 7; i++) {
+          const a = -hw * 0.92 + (i / 6) * hw * 1.84;
+          const drift = ease ? Math.sin(T * 0.33 + i * 1.7) * 90 : 0;
+          const reach2 = 0.42 + 0.16 * Math.sin(i * 2.1);        // how far up the face it climbs
+          const yTop = crestY - drop * (1 - reach2), yBot = crestY - drop * 0.99;
+          const q = add(C, [Pt(a - 420 + drift, yBot, 46), Pt(a + 420 + drift, yBot, 46),
+                            Pt(a + 300 + drift, yTop, 40), Pt(a - 300 + drift, yTop, 40)],
+                        ZERO8, "soft", "rgba(244,251,250,0.30)");
+          if (q) { q.lit = 1.15; q.day = false; q.air = 0.0; drawn.push(q); }
+        }
+        /* The foot: the water arriving. Every falls ends in a white line — the plunge, where the
+           falling sheet turns into spray instead of water — and that line is the thing that says
+           how far the water has come. Two bands, the second thrown forward. */
+        Q(-hw, hw, crestY - drop * 0.985, crestY - drop * 0.90, 26, 20, "#f2fbfa", 1.35, 0.0);
+        Q(-hw, hw, crestY - drop * 0.93, crestY - drop * 0.80, 34, 24, "rgba(232,248,247,0.62)", 1.1, 0.02);
+        /* The billows standing at the foot: the water has landed and is coming back up. Four slabs
+           across the crest, drifting on the frame clock, each one highest where the water is. */
+        for (let i = 0; i < 9; i++) {
+          const a = -hw * 0.9 + (i / 8) * hw * 1.8;
+          const rise = 0.10 + 0.07 * Math.sin(i * 1.9);
+          const drift = ease ? Math.sin(T * 0.4 + i * 1.3) * 60 : 0;
+          const top = crestY - drop * (1 - rise);
+          /* Round 58: nine of these at `air` 0.30 stacked into one flat paper lid across the bottom
+             of the frame. Smaller, and each one its own soft centre. */
+          const q = add(C, [Pt(a - 170 + drift, crestY - drop * 0.995, 40), Pt(a + 170 + drift, crestY - drop * 0.995, 40),
+                            Pt(a + 120 + drift, top, 30), Pt(a - 120 + drift, top, 30)],
+                        ZERO8, "soft", "#ffffff", PATS.foam);
+          if (q) { q.lit = 1.05; q.air = 0.10; drawn.push(q); }
+        }
+        /* The mist the owner asked for.
+
+           Everything the falls does with mist, it does *in front of the water*: the plunge throws
+           spray back up the face, and from the rail that spray is a veil you see the sheet through,
+           not a fog on the horizon behind it. Round 57 put its spray columns behind and above the
+           crest, where they read as weather. These eleven soft quads stand between the camera and
+           the sheet, at the height the water has already fallen to, drifting up on the frame clock
+           and thinning as they rise — thin enough that the ropes are still legible through them,
+           which is the whole point of a veil. */
+        for (let i = 0; i < 11; i++) {
+          const a = -hw * 0.95 + (i / 10) * hw * 1.9;
+          const rise = 0.30 + 0.26 * hash(i * 7.7 + 3.1);
+          const ph = ease ? ((T * 0.13 + hash(i * 3.3)) % 1) : 0.4;
+          const lift = drop * rise * (0.25 + 0.75 * ph);
+          const yB = crestY - drop * (0.62 + 0.30 * ph);
+          const yT = yB + drop * (0.30 + 0.22 * hash(i * 5.1));      // taller as it climbs
+          const drift = ease ? Math.sin(T * 0.21 + i * 1.9) * 140 : 0;
+          const q = add(C, [Pt(a - 520 + drift, yB, 120), Pt(a + 520 + drift, yB, 120),
+                            Pt(a + 380 + drift, yT, 120), Pt(a - 380 + drift, yT, 120)],
+                        ZERO8, "soft", `rgba(232,246,246,${(0.055 + 0.055 * (1 - ph)).toFixed(3)})`);
+          if (q) { q.lit = 1.2; q.day = false; q.air = 0; drawn.push(q); }
+        }
+        /* Spray breaking over the lip: the puffs a falls throws *up*, above the crest line, small
+           and fast. Six, on the same clock, so the brink is never still. */
+        for (let i = 0; i < 6; i++) {
+          const a = -hw * 0.9 + (i / 5) * hw * 1.8 + (ease ? Math.sin(T * 0.9 + i) * 90 : 0);
+          const up = drop * (0.02 + 0.03 * Math.abs(Math.sin(i * 2.1)));
+          const q = add(C, [Pt(a - 230, crestY - up * 0.2, 60), Pt(a + 230, crestY - up * 0.2, 60),
+                            Pt(a + 170, crestY + up, 60), Pt(a - 170, crestY + up, 60)],
+                        ZERO8, "soft", "rgba(240,252,251,0.10)");
+          if (q) { q.lit = 1.3; q.day = false; q.air = 0; drawn.push(q); }
+        }
+        for (let i = fromHere; i < drawn.length; i++) drawn[i].day = false;
+        /* After dark the falls is the brightest thing in the gorge: the illumination board puts
+           lamps on the American side and the curtain goes warm white and then, on some nights,
+           green. One wash over the sheet, warm and low, is enough — the drawing does not have to
+           name the colour the lights were set to. */
+        if (nightK > 0.12) {
+          for (let i = 0; i < 5; i++) {
+            const a0 = -hw + (i / 5) * hw * 2, a1 = -hw + ((i + 1) / 5) * hw * 2;
+            const q = add(C, [Pt(a0, crestY - drop * 0.05, 52), Pt(a1, crestY - drop * 0.05, 52),
+                              Pt(a1, crestY - drop * 0.92, 44), Pt(a0, crestY - drop * 0.92, 44)],
+                          ZERO8, "flat", "rgba(255,236,200," + (0.30 * nightK).toFixed(3) + ")");
+            if (q) { q.lit = 1.5; q.day = false; q.nolite = true; q.air = 0; drawn.push(q); }
+          }
+        }
+        /* The headlands: the rock the water goes between, standing the drop's own height on the
+           bank so the sheet has an edge to disappear behind at either end. */
+        [-1, 1].forEach((sd) => {
+          const a = sd * (hw + 90);
+          const c0 = Pt(a - 90, crestY + 120, 120), c1 = Pt(a + 90, crestY + 120, 120);
+          const c2 = Pt(a + 70, crestY - drop, 260), c3 = Pt(a - 70, crestY - drop, 260);
+          const q = add(C, [c0, c1, c2, c3], ZERO8, "flat", sd < 0 ? "#2f3b46" : "#33404a");
+          if (q) { q.lit = 0.55; q.air = 0.28; drawn.push(q); }
+        });
+        /* The spray. It leaves the foot, comes back over the crest and hangs there at eye level,
+           drifting with the frame clock — the reason a falls is felt before it is read. Three
+           nested slabs per column, wide and faint outside, narrow and denser in: a gradient made of
+           quads, because that is what this painter has. */
+        for (let i = 0; i < 7; i++) {
+          const a = -hw * 0.86 + (i + 0.5) * (hw * 1.72 / 7);
+          const drift = ease ? Math.sin(T * 0.5 + i * 1.9) * 20 : 0;
+          const rise = 130 + (i % 4) * 55;
+          for (let k = 0; k < 3; k++) {
+            const w = 120 + k * 95, top = crestY + rise * (1 - k * 0.16);
+            /* Soft, not a slab. The lane's painter has one soft-edged quad (`soft`, a radial falloff
+               the renderer makes once): spray is the reason it exists, and a hard-edged pale
+               rectangle is exactly what mist must not look like up close. */
+            const q = add(C, [Pt(a - w + drift, crestY - 30, -40), Pt(a + w + drift, crestY - 30, -40),
+                              Pt(a + w * 0.8 + drift, top, -22), Pt(a - w * 0.8 + drift, top, -22)],
+                          ZERO8, "flat", "#eef8f8");
+            if (q) {
+              q.lit = 1.02; q.air = 0.03;
+              q.soft = { rgb: "238,248,250", a: 0.16 - k * 0.035 };
+              drawn.push(q);
+            }
+          }
+        }
+        // The churn over the lip itself: the whole crest disappears into its own spray, which is
+        // what the brink actually looks like from three paces back.
+        {
+          const veil = H(-hw, hw, -300, 20, crestY + 16, "#f2fbfb", 1.05, 0.02);
+          if (veil) veil.soft = { rgb: "242,251,251", a: 0.13 };
+        }
+        // The pool the sheet lands in: a pale churn below the crest, and the rock shelf it lands on.
+        H(-hw, hw, 40, 900, crestY - drop, "#dfeceb", 1.05, 0.12);
+        H(-hw, hw, 900, 2400, crestY - drop - 1, "#4f8f8b", 0.95, 0.16);
+        /* Round 58, sixth pass — the water below the falls after dark.
+
+           The illumination reaches the plunge pool as much as the sheet: the light comes off the
+           falling water, and the churn at its foot is the brightest part of the river for a hundred
+           metres downstream. This water had no night term at all, so at night the sheet went warm
+           white while the pool under it stayed daylight teal — the owner's 夜間水色, still unsolved
+           because only half the water was ever told what time it was. Warm wash, low, and the pool
+           surfaces lit from the falls' own side. */
+        if (nightK > 0.12) {
+          const wash = (t0, t1, y, a) => {
+            const q = add(C, [Pt(-hw, y, t0), Pt(hw, y, t0), Pt(hw, y, t1), Pt(-hw, y, t1)],
+                          ZERO8, "flat", "rgba(255,232,198," + (a * nightK).toFixed(3) + ")");
+            if (q) { q.lit = 1.35; q.day = false; q.nolite = true; q.air = 0.02; drawn.push(q); }
+          };
+          wash(40, 900, crestY - drop + 1, 0.34);      // the churn, nearest the sheet
+          wash(900, 2400, crestY - drop, 0.20);        // the pool running away from it
+        }
       } else if (shape === "falls") {
         /* The falls at table scale: a pale sheet over a ledge into mist, held between two dark
            headlands. The sheet's stripes shimmer with the frame clock — they move because the
@@ -5612,67 +6264,184 @@ function leaveOverlay(root, trigger) {
         const dAt = m.el && m.el.__demoAt ? Math.max(0, (performance.now() - m.el.__demoAt) / 1000) : -1;
         const beat = Math.floor(T / (dAt >= 0 && dAt < 4.2 ? 1.4 : 7)) % WHEELC.length;
         const night = NIGHT();
-        const steel = mix("#75858b", "#22303f", night * 0.45);
-        const Pw = (i, r, dy) => [m.x + Math.sin(th0 + (i / 42) * Math.PI * 2) * r,
-                                  hubY + Math.cos(th0 + (i / 42) * Math.PI * 2) * r + (dy || 0), m.z];
+        const steel = blendHex("#75858b", "#22303f", night * 0.45);
+        /* Round 62: the wheel is a thing, not a drawing of one.
+
+           Every quad in this branch used to lie in the plane z = m.z — a 50 m rim drawn as a
+           flat disc with 42 flat white squares hung on it. Standing on Clifton Hill, where the
+           plaza puts you *beside* the ride rather than in front of it, that plane is edge-on and
+           the district's one landmark came out as a handful of hairlines against the sky. The
+           rim has depth now (a band on each side of the plane and a tread between them), the
+           gondolas are boxes with a side face and a hanger, and the spokes carry a thickness, so
+           the same wheel reads from the strip, from the plaza and from under it. */
+        const DEPTH = 85;                                   // half the rim's depth, in cm
+        const hubW = 230;                                   // the hub's own radius
+        const gondola = 168;                                // a CWA cabin's width, and its height
+        const pt = (i, r, zOff, dy) => {
+          const a = th0 + (i / 42) * Math.PI * 2;
+          return [m.x + Math.sin(a) * r, hubY + Math.cos(a) * r + (dy || 0), m.z + (zOff || 0)];
+        };
+        const Q = (pts, col, l) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; drawn.push(q); return q; }
+          return null;
+        };
         // the A-frames, one pair to each side of the rim, splayed to the sourced 25 × 20.5 m base
         [-1, 1].forEach((sideX) => {
           [-1, 1].forEach((sideZ) => {
-            const q = add(C, [
-              [m.x + sideX * 1225 - 45, 20, m.z + sideZ * 1025 - 45],
-              [m.x + sideX * 1225 + 45, 20, m.z + sideZ * 1025 + 45],
-              [m.x + sideX * 90 + 45, hubY - 40, m.z + sideZ * 70],
-              [m.x + sideX * 90 - 45, hubY - 40, m.z + sideZ * 70 - 45]], ZERO8, "flat", steel);
-            if (q) { q.lit = lit; drawn.push(q); }
+            Q([[m.x + sideX * 1225 - 45, 20, m.z + sideZ * 1025 - 45],
+               [m.x + sideX * 1225 + 45, 20, m.z + sideZ * 1025 + 45],
+               [m.x + sideX * 90 + 45, hubY - 40, m.z + sideZ * 70],
+               [m.x + sideX * 90 - 45, hubY - 40, m.z + sideZ * 70 - 45]], steel, lit);
           });
         });
-        // the rim: 42 short bars between stations, and the lamps on every other one after dark
+        /* The rim: 42 stations, each a band across the tyre on both faces of the plane plus the
+           tread that joins them. `rimIn` is where the tyre's inner edge is, so the ring reads as
+           a ring and not as a hoop of wire. */
+        const rimIn = 0.935;
         for (let i = 0; i < 42; i++) {
-          const a0 = Pw(i, R), a1 = Pw(i + 1, R);
-          const o0 = [a0[0] * 1.0 + (a0[0] - m.x) * 0.035, a0[1] + (a0[1] - hubY) * 0.035, a0[2]];
-          const o1 = [a1[0] + (a1[0] - m.x) * 0.035, a1[1] + (a1[1] - hubY) * 0.035, a1[2]];
-          const in0 = [a0[0] - (a0[0] - m.x) * 0.035, a0[1] - (a0[1] - hubY) * 0.035, a0[2]];
-          const in1 = [a1[0] - (a1[0] - m.x) * 0.035, a1[1] - (a1[1] - hubY) * 0.035, a1[2]];
-          const q = add(C, [in0, in1, o1, o0], ZERO8, "flat", steel);
-          if (q) { q.lit = lit * 0.95; drawn.push(q); }
+          [-DEPTH, DEPTH].forEach((zf) => {
+            Q([pt(i, R * rimIn, zf), pt(i + 1, R * rimIn, zf),
+               pt(i + 1, R, zf), pt(i, R, zf)], steel, lit * 0.95);
+          });
+          Q([pt(i, R, -DEPTH), pt(i + 1, R, -DEPTH), pt(i + 1, R, DEPTH), pt(i, R, DEPTH)],
+            blendHex(steel, "#e6ecef", 0.18), lit);
+          Q([pt(i, R * rimIn, -DEPTH), pt(i, R * rimIn, DEPTH),
+             pt(i + 1, R * rimIn, DEPTH), pt(i + 1, R * rimIn, -DEPTH)], steel, lit * 0.8);
           if (night > 0.15) {
-            const lp = add(C, [[a1[0] - 55, a1[1] - 55, m.z - 55], [a1[0] + 55, a1[1] - 55, m.z - 55],
-                               [a1[0] + 55, a1[1] + 55, m.z + 55], [a1[0] - 55, a1[1] + 55, m.z + 55]],
-                           ZERO8, "flat", WHEELC[(i + beat) % WHEELC.length]);
-            if (lp) { lp.lit = 1.5; lp.nolite = true; drawn.push(lp); }
+            const a1 = pt(i + 1, R, -DEPTH);
+            const lp = Q([[a1[0] - 55, a1[1] - 55, a1[2] - 55], [a1[0] + 55, a1[1] - 55, a1[2] - 55],
+                          [a1[0] + 55, a1[1] + 55, a1[2] + 55], [a1[0] - 55, a1[1] + 55, a1[2] + 55]],
+                         WHEELC[(i + beat) % WHEELC.length], 1.5);
+            if (lp) lp.nolite = true;
           }
         }
-        // spokes from hub to every other station; the cabins hang from all 42 and stay level
-        const hubFace = add(C, [[m.x - 240, hubY - 240, m.z - 60], [m.x + 240, hubY - 240, m.z - 60],
-                                [m.x + 240, hubY + 240, m.z - 60], [m.x - 240, hubY + 240, m.z - 60]],
-                            ZERO8, "flat", "#536273");
-        if (hubFace) { hubFace.lit = lit; drawn.push(hubFace); }
+        // the hub, both faces, and the 21 spokes that carry the rim
+        [-DEPTH - 40, DEPTH + 40].forEach((zf) => {
+          const f = m.z + zf, k = hubW;
+          Q([[m.x - k, hubY - k, f], [m.x + k, hubY - k, f], [m.x + k, hubY + k, f], [m.x - k, hubY + k, f]],
+            "#536273", lit);
+        });
         for (let i = 0; i < 42; i += 2) {
-          const p = Pw(i, R - 40);
-          const sp = add(C, [[p[0] - 26, p[1] - 26, m.z - 26], [p[0] + 26, p[1] - 26, m.z - 26],
-                              [m.x + 26, hubY + 26, m.z - 26], [m.x - 26, hubY + 26, m.z - 26]],
-                          ZERO8, "flat", steel);
-          if (sp) { sp.lit = lit * 0.9; drawn.push(sp); }
-        }
-        for (let i = 0; i < 42; i++) {
-          const p = Pw(i, R);
-          // an enclosed CWA gondola, gravity-level always: the box does not ride its circle's angle
-          const cab = add(C, [[p[0] - 90, p[1] - 170, m.z - 90], [p[0] + 90, p[1] - 170, m.z - 90],
-                              [p[0] + 90, p[1] + 10, m.z - 90], [p[0] - 90, p[1] + 10, m.z - 90]],
-                          ZERO8, "flat", "#dce2df");
-          if (cab) { cab.lit = lit * 1.02; drawn.push(cab); }
-          if (night > 0.15) {
-            const glow = add(C, [[p[0] - 66, p[1] - 130, m.z - 92], [p[0] + 66, p[1] - 130, m.z - 92],
-                                 [p[0] + 66, p[1] - 34, m.z - 92], [p[0] - 66, p[1] - 34, m.z - 92]],
-                             ZERO8, "flat", "rgba(255,217,160,0.8)");
-            if (glow) { glow.lit = 1.35; glow.nolite = true; drawn.push(glow); }
+          const p = pt(i, R * rimIn, -26);
+          const sp = Q([[p[0] - 30, p[1] - 30, p[2]], [p[0] + 30, p[1] - 30, p[2]],
+                        [m.x + 30, hubY + 30, p[2]], [m.x - 30, hubY + 30, p[2]]], steel, lit * 0.9);
+          if (sp) {
+            // the same spoke's other edge, 52 cm behind: a bar has two sides, not one
+            Q([[p[0] - 30, p[1] - 30, p[2] + 52], [m.x - 30, hubY + 30, p[2] + 52],
+               [m.x + 30, hubY + 30, p[2] + 52], [p[0] + 30, p[1] - 30, p[2] + 52]], steel, lit * 0.82);
           }
+        }
+        /* The cabins. An enclosed CWA gondola does not ride its circle's angle — it hangs, level,
+           from a hanger on the rim — so the box below each station is drawn upright whatever the
+           wheel's phase, with the three faces a visitor can see from the plaza and a warm pane
+           when the lights are on. */
+        for (let i = 0; i < 42; i++) {
+          const p = pt(i, R, 0);
+          const gx = p[0], gy = p[1] - gondola, gz = m.z;
+          const hw = gondola / 2;
+          const faces = [
+            [[gx - hw, gy, gz - hw], [gx + hw, gy, gz - hw], [gx + hw, gy + gondola, gz - hw], [gx - hw, gy + gondola, gz - hw]],
+            [[gx - hw, gy, gz + hw], [gx + hw, gy, gz + hw], [gx + hw, gy + gondola, gz + hw], [gx - hw, gy + gondola, gz + hw]],
+            [[gx - hw, gy, gz - hw], [gx - hw, gy, gz + hw], [gx - hw, gy + gondola, gz + hw], [gx - hw, gy + gondola, gz - hw]],
+            [[gx + hw, gy, gz - hw], [gx + hw, gy, gz + hw], [gx + hw, gy + gondola, gz + hw], [gx + hw, gy + gondola, gz - hw]],
+          ];
+          faces.forEach((f) => {
+            const fx = (f[0][0] + f[2][0]) / 2, fz = (f[0][2] + f[2][2]) / 2;
+            const nx = f === faces[0] ? 0 : f === faces[1] ? 0 : (fx < gx ? -1 : 1);
+            const nz = f === faces[0] ? -1 : f === faces[1] ? 1 : 0;
+            if ((C.x - fx) * nx + (C.z - fz) * nz <= 0) return;
+            Q(f, "#c3ccd2", lit * 1.02);
+            if (night > 0.15) {
+              // the cabin's own window: the same face, inset, warm — a gondola is lit from inside
+              const cx = (f[0][0] + f[1][0]) / 2, cy = (f[0][1] + f[2][1]) / 2;
+              const inset = f.map((c) => [c[0] + (cx - c[0]) * 0.42, c[1] + (cy - c[1]) * 0.3, c[2] + (m.z - c[2]) * 0.16]);
+              const gl = Q(inset, "rgba(255,217,160,0.82)", 1.35);
+              if (gl) gl.nolite = true;
+            }
+          });
+          // the hanger: a short bar from the rim down to the roof of the cabin
+          Q([[gx - 22, gy + gondola, gz - 22], [gx + 22, gy + gondola, gz - 22],
+             [gx + 22, p[1] + 30, gz - 22], [gx - 22, p[1] + 30, gz - 22]], steel, lit);
         }
         // the base shed the drives live in, on the plaza side
-        const shed = add(C, [[m.x - 700, 0, m.z - 1650], [m.x + 700, 0, m.z - 1650],
-                             [m.x + 700, 380, m.z - 1650], [m.x - 700, 380, m.z - 1650]],
-                         ZERO8, "flat", "#33414e");
-        if (shed) { shed.lit = lit * 0.9; drawn.push(shed); }
+        Q([[m.x - 700, 0, m.z - 1650], [m.x + 700, 0, m.z - 1650],
+           [m.x + 700, 380, m.z - 1650], [m.x - 700, 380, m.z - 1650]], "#33414e", lit * 0.9);
+      } else if (shape === "carousel") {
+        /* A merry-go-round, drawn as the thing itself: a round deck, a mast, a striped canopy that
+           turns, and a ring of horses going up and down as it turns. Clifton Hill's strip has had a
+           carousel on it since the fun row was built, and a district with one ride in it is a
+           funfair ticket booth, not a district. The record authors the diameter, the canopy's
+           height and the turn in seconds; nothing here is named after a business.
+
+           Everything is drawn in the plane of the street (`ry` faces the lane), so the ring reads
+           as an ellipse on the ground with the canopy over it — the same trick the wheel uses. */
+        const R = (m.dia || 900) / 2;                     // cm to the deck's edge
+        const canopyY = m.y + (m.h || 420) - 40;          // the canopy's rim
+        const mastY = m.y + (m.h || 420) + 120;
+        const th = ((T / (m.turn || 26)) * Math.PI * 2) + (m.phase0 || 0);
+        const night = NIGHT();
+        const STRIPES = ["#c8463f", "#f0e6d2"];
+        /* A point on the ring, in the ground plane, at angle `a` and radius `r`.
+
+           Round 58, third pass: this squashed one axis by 0.42 — an *oval deck*, because I mistook
+           the ellipse perspective draws for something the geometry had to draw. A carousel's deck is
+           a circle on the ground; the camera is what makes it an ellipse. */
+        const P = (a, r, y) => [m.x + Math.cos(a) * r, y, m.z + Math.sin(a) * r];
+        // the deck: 24 sectors, so the ring is round rather than a square with corners cut off
+        for (let i = 0; i < 24; i++) {
+          const a0 = th * 0.35 + (i / 24) * Math.PI * 2, a1 = th * 0.35 + ((i + 1) / 24) * Math.PI * 2;
+          const q = add(C, [P(a0, R, m.y + 14), P(a1, R, m.y + 14),
+                            P(a1, R * 0.18, m.y + 18), P(a0, R * 0.18, m.y + 18)],
+                        ZERO8, "flat", i % 2 ? "#7d6a55" : "#8a7660");
+          if (q) { q.lit = lit * 0.92; drawn.push(q); }
+        }
+        // the canopy: alternating stripes, its rim lower than its crown, turning with the deck
+        for (let i = 0; i < 16; i++) {
+          const a0 = th + (i / 16) * Math.PI * 2, a1 = th + ((i + 1) / 16) * Math.PI * 2;
+          const q = add(C, [P(a0, R * 1.02, canopyY), P(a1, R * 1.02, canopyY),
+                            P(a1, R * 0.10, canopyY + 120), P(a0, R * 0.10, canopyY + 120)],
+                        ZERO8, "flat", STRIPES[i % 2]);
+          if (q) { q.lit = lit * 1.05; drawn.push(q); }
+        }
+        // the scalloped valance, the one part of a carousel everybody remembers
+        for (let i = 0; i < 32; i++) {
+          const a0 = th + (i / 32) * Math.PI * 2, a1 = th + ((i + 1) / 32) * Math.PI * 2;
+          const q = add(C, [P(a0, R * 1.02, canopyY - 26), P(a1, R * 1.02, canopyY - 26),
+                            P(a1, R * 1.02, canopyY), P(a0, R * 1.02, canopyY)],
+                        ZERO8, "flat", i % 2 ? "#e8d9b4" : "#b8403c");
+          if (q) { q.lit = lit * 1.02; drawn.push(q); }
+        }
+        // the mast, and the finial over it
+        const mast = add(C, [[m.x - 16, m.y, m.z - 16], [m.x + 16, m.y, m.z - 16],
+                             [m.x + 16, mastY, m.z - 16], [m.x - 16, mastY, m.z - 16]],
+                        ZERO8, "flat", "#9a8f7c");
+        if (mast) { mast.lit = lit; drawn.push(mast); }
+        // twelve horses, each on its own brass pole, rising and falling as the ride turns
+        for (let i = 0; i < 12; i++) {
+          const a = th + (i / 12) * Math.PI * 2;
+          const bob = Math.sin(th * 2 + i * 1.3) * 26;
+          const p = P(a, R * 0.72, 0);
+          const pole = add(C, [[p[0] - 5, m.y + 18, p[2] - 5], [p[0] + 5, m.y + 18, p[2] - 5],
+                               [p[0] + 5, canopyY, p[2] - 5], [p[0] - 5, canopyY, p[2] - 5]],
+                          ZERO8, "flat", "#c9a94e");
+          if (pole) { pole.lit = lit * 1.1; drawn.push(pole); }
+          const h = add(C, [[p[0] - 34, m.y + 74 + bob, p[2] - 12], [p[0] + 34, m.y + 74 + bob, p[2] - 12],
+                            [p[0] + 30, m.y + 148 + bob, p[2] - 12], [p[0] - 30, m.y + 148 + bob, p[2] - 12]],
+                        ZERO8, "flat", i % 2 ? "#efe6d0" : "#c9b48c");
+          if (h) { h.lit = lit * 1.04; drawn.push(h); }
+        }
+        // after dark the canopy's rim runs a ring of bulbs; the ride is the strip's light source
+        if (night > 0.15) {
+          for (let i = 0; i < 24; i++) {
+            const a = th + (i / 24) * Math.PI * 2;
+            const p = P(a, R * 1.02, canopyY + 6);
+            const b = add(C, [[p[0] - 22, p[1] - 22, p[2] - 22], [p[0] + 22, p[1] - 22, p[2] - 22],
+                              [p[0] + 22, p[1] + 22, p[2] + 22], [p[0] - 22, p[1] + 22, p[2] + 22]],
+                          ZERO8, "flat", i % 3 ? "#ffe6b0" : "#ffd07a");
+            if (b) { b.lit = 1.5; b.nolite = true; drawn.push(b); }
+          }
+        }
       } else if (shape === "incline") {
         /* The Falls Incline Railway (round 52; Wikipedia and the Parks' own page): the only one of
            the eight inclines the two cities ever ran that still runs — 59.8 m of double track at
@@ -5717,15 +6486,39 @@ function leaveOverlay(root, trigger) {
         });
         carAt(sNear, -925);
         carAt(1 - sNear, 925);
-        // the head pulley shed on the bluff and the stone under it at the rail
-        [-1, 1].forEach((sd) => {
-          const st = add(C, [[m.x + (sd < 0 ? -140 : L * CA - 160), m.y + (sd < 0 ? 0 : deckY), m.z - 1750],
-                             [m.x + (sd < 0 ? 60 : L * CA + 160), m.y + (sd < 0 ? 0 : deckY), m.z - 1750],
-                             [m.x + (sd < 0 ? 60 : L * CA + 160), m.y + (sd < 0 ? 300 : deckY + 420), m.z - 1750],
-                             [m.x + (sd < 0 ? -140 : L * CA - 160), m.y + (sd < 0 ? 300 : deckY + 420), m.z - 1750]],
-                         ZERO8, "flat", "#4b5568");
-          if (st) { st.lit = lit * 0.9; drawn.push(st); }
-        });
+        /* The head-pulley shed on the bluff, and its pair under the head house.
+
+           Round 58: each was ONE quad, painted on a single plane — and a single plane seen from the
+           side is the floating grey parallelogram the owner kept finding over the grass at Niagara's
+           fifth station. A shed is a volume: four walls and a lid, each face its own tint, so it
+           reads as a building from wherever the visitor stands. */
+        /* Round 59: `z = m.z - 1750` put both sheds 17.5 m *up the promenade* from the incline they
+           belong to, which is the middle of the walk at the parapet station — the blank grey slab
+           that filled the right half of the frame from the second stop is this building, not a wall.
+           A shed stands on its own track: the near one, `m.z - 925`, the line the cars run on. */
+        const shedAt = (x0, x1, y0, y1, base, z) => {
+          const face = (pts, tint) => {
+            const q = add(C, pts, ZERO8, "flat", mix(base, tint));
+            if (q) { q.lit = lit * 0.9; drawn.push(q); }
+          };
+          face([[x0, y0, z], [x1, y0, z], [x1, y1, z], [x0, y1, z]], -0.06);          // the lane side
+          face([[x0, y0, z - 160], [x0, y0, z], [x0, y1, z], [x0, y1, z - 160]], -0.16); // west wall
+          face([[x1, y0, z], [x1, y0, z - 160], [x1, y1, z - 160], [x1, y1, z]], -0.16); // east wall
+          face([[x0, y1, z - 160], [x1, y1, z - 160], [x1, y1, z], [x0, y1, z]], 0.10);  // the lid
+        };
+        const TRACK_Z = m.z - 925;                 // the near track, where the cars are
+        /* The lower station house stands against the west edge of the promenade, the way a station
+           stands beside the walk it serves — not across the middle of it. At x −206…−6 it filled a
+           third of the walk at the parapet station with a blank grey volume; at the edge it is the
+           building the visitor passes on the way to the car. */
+        /* The lower station house stands at the foot of the track — where the cars come down and
+           where the passenger boards — and the track's foot is the incline's own x, not a metre of
+           promenade chosen by hand. Round 59 had it 17.5 m up the walk, and then, on the first
+           correction, straddling the rail station itself: a blank 300 cm box 2 m from the visitor's
+           eye. */
+        shedAt(m.x - 140, m.x + 60, m.y, m.y + 300, "#4b5568", TRACK_Z);
+        shedAt(m.x + L * CA - 160, m.x + L * CA + 160, m.y + deckY, m.y + deckY + 420,
+               "#4b5568", TRACK_Z);
       } else if (shape === "massing") {
         /* The port table's footprints (round 36/39). The historic buildings and the Retro High Mart
            have their own stands now; the table keeps all five mapped outlines the way a site plan does
@@ -6584,7 +7377,14 @@ function leaveOverlay(root, trigger) {
           if (q) { q.lit = 1.4; drawn.push(q); }
         });
       } else {
-        const q = add(C, corners, uv.flat(), face, base, m.pic);
+        /* A card can wear a tile. The bluff under the Fallsview deck is rock: as a flat card it was
+           a featureless grey slab across half a frame, and the tile is the whole difference between
+           a wall and a cliff. Mapped in world centimetres, like every other built surface here. */
+        const tiled = m.tile && PATS[m.tile];
+        const q = tiled
+          ? add(C, corners, corners.flatMap((c) => [
+              (Math.abs(m.ry) > 45 ? c[2] : c[0]) * DPM, -c[1] * DPM]), "pat", PATS[m.tile])
+          : add(C, corners, uv.flat(), face, base, m.pic);
         if (q) {
           q.lit = m.kind === "vending" ? 1.7 : lit;
           // A hung frame is the one thing in an alley that is lit on purpose: it keeps its own
@@ -6639,7 +7439,9 @@ function leaveOverlay(root, trigger) {
     quads.sort((p, q) => (q.sz ?? q.z) - (p.sz ?? p.z));
     if (threeRenderer) {
       try {
-        threeRenderer.render({ camera: C, width: W, height: H, focal, time: T, quads,
+        // The backing store is the RENDER size; the projection is identical because the focal
+        // length travels with it (NDC depends on focal/width, and both carry renderScale).
+        threeRenderer.render({ camera: C, width: RW, height: RH, focal: focal * (RW / Math.max(1, W)), time: T, quads,
                               day: DAY(), dayPage: DAYPAGE, night: NIGHT(), sunAz: sunAz(),
                               fogMax: FOG_MAX, dayGain: DAY_GAIN,
                               effects: { lamps, wires, marks, surfaces, wall: WALL, ceil: CEIL,
@@ -6654,8 +7456,10 @@ function leaveOverlay(root, trigger) {
         if (window.console && typeof console.warn === "function") console.warn("Three.js frame failed; the lane stops rendering:", err);
         const note = layer.querySelector("[data-walk-fallback]");
         if (note) note.hidden = false;
+        noteOffline();
       }
     }
+    mirrorWhere();
   };
 
   const liveEl = layer.querySelector("[data-walk-live]");
@@ -6670,6 +7474,7 @@ function leaveOverlay(root, trigger) {
     if (liveEl && card && !card.hidden) {
       liveEl.textContent = [status, record].filter(Boolean).join(" ") || "Nothing is in front of you.";
     }
+    mirrorWhere();
   };
   const metres = (v) => `${(Math.abs(v) / 100).toFixed(1)} m`;
 
@@ -7003,12 +7808,52 @@ function leaveOverlay(root, trigger) {
 
   const tick = (t) => {
     raf = 0;
-    // Keep elapsed time instead of silently throwing away every frame after 50 ms. A render can
-    // miss its budget on a busy laptop; smaller physics steps keep the same walk speed and keep a
-    // long frame from jumping across a lane boundary. The 120 ms ceiling only discards a real
-    // suspension (for example, returning from a background tab), not ordinary low frame rates.
-    const elapsed = last ? Math.min(0.12, Math.max(0, (t - last) / 1000)) : 0.016;
+    /* Round 56, and this one was the difference between "slow" and "broken": the simulation used
+       to throw away every part of a frame longer than 120 ms. A frame longer than 120 ms is exactly
+       what a software rasteriser produces (measured here: 250 ms at 1024×640), so the body moved at
+       a fraction of its authored speed and turned at a fraction of its authored rate — the walk got
+       slower the weaker the machine, which reads as a laggy control scheme and is really a clock
+       that disagrees with the wall. Time is now kept up to a quarter of a second, the physics
+       subsamples at 25 ms (so a long frame is ten small steps, not one leap and no wall
+       tunnelling), and the governor below attacks the frame length itself. The ceiling still
+       discards a real suspension — a background tab, a sleeping laptop — rather than teleporting
+       the visitor down the lane. */
+    let rawGap = last ? Math.max(0, (t - last) / 1000) : 0.016;
+    /* A gap only counts if the previous frame was actually being pumped. The lane rests on a timer
+       rather than a frame loop, so the interval between two resting ticks is real time that nobody
+       spent moving — and replaying it is a lurch: round 56 measured the first frame after a 680 ms
+       rest travelling 82 cm, which reads as the camera being kicked. Resuming therefore restarts the
+       clock; a frame that interrupts *held* input still gets its whole gap, because that gap is
+       motion the visitor was asking for while the machine took its time. */
+    if (!pumping) rawGap = Math.min(rawGap, 0.05);
+    // Half a second is the ceiling otherwise: two long frames of a software rasteriser, or one frame
+    // of a browser that throttled us while a texture decoded. Beyond that it is a suspension, and a
+    // suspension must not be replayed as travel down the lane.
+    const elapsed = Math.min(0.5, rawGap);
     last = t;
+    /* The frame budget governor. Samples the frame's own length and moves the render scale toward
+       a playable cadence: below ~22 fps it gives up resolution, above ~45 fps it takes it back.
+       It never touches the display geometry, and it never runs on a page whose renderer refused
+       (there is no picture to budget). One step per ~0.6 s, ±10–12% at a time, clamped between
+       the display's own floor and 1: it is a governor, not a finder — a scale that swings per
+       frame is its own judder. */
+    if (threeRenderer && rawGap > 0) {
+      // the sample is the real gap: measuring the capped value would let a 600 ms frame pass for a
+      // 500 ms one and the governor would settle a step above what the machine can actually draw
+      frameMs = frameMs ? frameMs * 0.8 + Math.min(1.5, rawGap) * 1000 * 0.2 : Math.min(1.5, rawGap) * 1000;
+      frameSamples++;
+      if (!frameBudgetAt) frameBudgetAt = t;
+      if (t - frameBudgetAt > 600 && frameSamples > 4) {
+        frameBudgetAt = t; frameSamples = 0;
+        const before = renderScale;
+        // 24 fps is the floor this is trying to hold (a walk is steerable there; below it the
+        // picture stops answering the keys), 45 fps the ceiling it gives resolution back to.
+        const floor = minRenderScale();
+        if (frameMs > 42 && renderScale > floor) renderScale = Math.max(floor, renderScale - 0.12);
+        else if (frameMs < 22 && renderScale < 1) renderScale = Math.min(1, renderScale + 0.1);
+        if (renderScale !== before) { applyRenderScale(); layer.dataset.walkScale = renderScale.toFixed(2); }
+      }
+    }
     const steps = Math.max(1, Math.ceil(elapsed / 0.025));
     const step = elapsed / steps;
     const glideOnly = !!gliding;
@@ -7027,7 +7872,8 @@ function leaveOverlay(root, trigger) {
     // Held input keeps the pump alive at a wall; the idle pulse is for a genuinely resting walker.
     const hasWalkInput = ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"]
       .some((k) => keys.has(k)) || !!(stick && Math.hypot(stick.x, stick.y) > 0.04);
-    if (speed > 4 || gliding || height > 0 || vy !== 0 || hasWalkInput) loop();
+    pumping = speed > 4 || !!gliding || height > 0 || vy !== 0 || hasWalkInput;
+    if (pumping) loop();
     else startPulse();
   };
   // Asking for a real frame hands the pumping over to rAF, so the idle pulse is cancelled here rather
@@ -7049,7 +7895,11 @@ function leaveOverlay(root, trigger) {
     // another nudge if it is not. A bare repaint would look the same while standing still but would
     // strand a glide halfway down the lane, and a walker frozen between two frames is worse than a
     // lane that did not breathe.
-    pulse = setTimeout(() => { pulse = 0; tick(performance.now()); }, 90);
+    // A machine that needs a quarter of a second for one frame must not be asked for a full
+    // repaint every 90 ms: the pulse would then own the whole budget and every press would queue
+    // behind it. The idle breathe keeps its authored cadence when the frame is cheap and stands
+    // down to twice the measured frame on a slow one — still breathing, never starving input.
+    pulse = setTimeout(() => { pulse = 0; tick(performance.now()); }, Math.max(90, frameMs * 2));
   };
   if ("IntersectionObserver" in window) {
     new IntersectionObserver((es) => {
@@ -7348,8 +8198,12 @@ function leaveOverlay(root, trigger) {
     yaw = wrapYaw(down.yaw + dx * 0.09);                // turn through the room without Pointer Lock
     pitch = clamp(down.pitch - dy * 0.065, -MAX_PITCH, MAX_PITCH);
     gliding = null;
-    draw();
-    checkReach();
+    /* A pointer reports at 60–240 Hz; this renderer draws one frame at a time and, on a software
+       rasteriser, one frame is a quarter of a second. Drawing inside the event meant every one of
+       those reports queued a full scene rebuild behind the GPU, so a drag arrived in the picture in
+       bursts and the whole page stalled under it. The camera is set here and the frame is asked for
+       once; the reach is checked in the tick, which is the frame that will show the new heading. */
+    loop();
   });
   /* Releasing a grab has to hand the pumping back, or the lane dies the first time somebody looks
      around. `pointermove` paints directly and never asks for a frame, and the tick only schedules
@@ -7519,6 +8373,13 @@ function leaveOverlay(root, trigger) {
                    get velocity() { return Math.hypot(vx, vd); },
                    get maxSpeed() { return SPEED * RUN; }, get turnRate() { return TURN_RATE; },
                    get renderer() { return threeRenderer ? "three" : "off"; },
+                   // the governor's own numbers, so a gate can assert motion and a report can say
+                   // what the machine was actually asked to draw
+                   get renderScale() { return renderScale; }, get frameMs() { return frameMs; },
+                   get renderSize() { return [RW, RH]; }, get displaySize() { return [W, H]; },
+                   // The no-WebGL path is the lane's own state, not the mounted module's: the mount
+                   // reports the refusal here so one place decides what a renderer-less lane shows.
+                   noteOffline,
                    get backdrop() { return bd; }, get day() { return DAY(); }, get dayPage() { return DAYPAGE; },
                    attachThree(engine) {
                      if (!engine || typeof engine.render !== "function") return false;

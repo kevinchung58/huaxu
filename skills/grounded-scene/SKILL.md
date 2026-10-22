@@ -13,7 +13,7 @@ the details shrink.** He also said this will recur (「你到時候會做很多�
 the standing method for every scene that recreates somewhere real, not a CN Tower exception.
 
 What "nearly the same" means operationally: a visitor who has stood there should look at the stop's
-settled rendered frame and recognise the place — the right lake on the right side, the right stadium under the
+rendered frame and recognise the place — the right lake on the right side, the right stadium under the
 pod, the right order of floors under their feet. It does *not* mean a CAD model, exact window counts
 or photoreal materials; the current hybrid renderer does not claim those, and the owner has not asked
 for them. Three.js changes the geometry path, not the evidence standard.
@@ -94,8 +94,8 @@ needs another rendering technique) is cutting the experience and is refused.
 The renderer's current contract (`landmark-space` §4) stands: 168 cm eye, a full yaw turn, pitch
 bounded at ±24°, and `Z_SCALE` 2.9; all walkable lane and object geometry is rendered through the
 owner-approved Three.js 0.186.1 scene, with sourced `backdrop.world.prims` added when present.
-A browser without WebGL is told so in the lane's own sentence rather than shown a second picture
-(round 54). The actual room records and openings determine
+There is no second picture to fall back to: without WebGL the lane states that in the viewport and
+keeps its compiled state (`.verify/verify-nowebgl.mjs`, round 55). The actual room records and openings determine
 what is visible; there is no one-aperture renderer limit. Grounding governs *what is chosen* within
 those camera and data contracts:
 
@@ -115,7 +115,7 @@ On top of the `district-author` gate and the beauty gate (`landmark-space` §5):
 
 1. Every stop's sightline list traces to the measurement table, and every table row cites a rung.
    An uncited row fails the gate the way an unregistered raster fails the build.
-2. The captured stop frames are read twice as usual (numbers, then critique pass) — and the critique
+2. The captured frame set is read twice as usual (numbers, then critique pass) — and the critique
    pass now compares **against the reference panoramas**: Observation → Problem → Fix, with the
    real place as the standard, not the last draft.
 3. The recognition test: put the stop's shot beside a real panorama of the same facing. If

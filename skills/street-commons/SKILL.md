@@ -129,11 +129,11 @@ found by looking at the frame rather than by reasoning about it:
   had been `add()`ed after `quads.forEach(emit)` in `drawRoom()`, which means it was pushed into
   the array and never painted. The comments, the measurements and the commit message all claimed
   a shadow the screen did not have, and no structural harness saw it, because the fill count is
-  unchanged either way. The probe that found it (`_shadowdrawn.mjs`) measured the painter's fill
-  order and retired with the painter in round 54 — the rule it proved has not retired: a quad
-  created after the pass that would draw it does not exist. Since round 54 the scene's geometry is
-  collected into the batch it is drawn from, so the light system's quads are scene geometry rather
-  than a second pass, and the shadow is read off the rendered frame.
+  unchanged either way; the probe that proved it (`_shadowdrawn.mjs`) measured the painter's pass
+  order and was retired with the painter in round 54, and the claim is now held by the scene's own
+  geometry — every quad `add()` returns reaches the renderer, so a later pass cannot drop one. The
+  rule survives the machinery: anything the light system draws is drawn by the light system, not
+  queued for a pass that already ran.
 - **the night rhythm** — *built in round 17.* The street's night used to be four dots in a navy
   tube: the halo and the paper were there, the light on the ground was not. A lamp now reads
   three ways at night — halo in the air, body, and pool on the pavement (`groundLight()`), the

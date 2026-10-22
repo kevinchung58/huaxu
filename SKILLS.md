@@ -7,13 +7,13 @@ not have to relearn it.
 It is called SKILLS and not RULES because it is a craft rather than a checklist. Where AGENTS.md
 says what must be true of the repository, this file says how to get a district right.
 
-**Renderer decision (owner approval, 2026-10-16; full walkable migration; sole renderer since
-2026-10-20):** all eight walkable pages use the pinned, MIT-licensed Three.js 0.186.1 runtime as
-their environment/object renderer. Authored `backdrop.world.prims` are added when present; all scene
-geometry stays grounded in the existing records. The Canvas2D lane painter was deleted at the
-owner's ruling in round 54, so there is no no-WebGL picture: a browser without WebGL is told so in
-the lane's own sentence and the written list keeps answering. The Activities album remains CSS 3D
-and outside this renderer decision.
+**Renderer decision (owner approval, 2026-10-16; full walkable migration):** all seven walkable
+pages use the pinned, MIT-licensed Three.js 0.186.1 runtime as their primary environment/object
+renderer. Authored `backdrop.world.prims` are added when present; all scene geometry stays grounded
+in the existing records. There is no no-WebGL fallback picture: the Canvas2D painter was deleted in
+round 54, and a browser that refuses WebGL gets the lane's own statement in the viewport plus the
+compiled state (rail, list, keys) — pinned by `.verify/verify-nowebgl.mjs` since round 55. The album
+remains CSS 3D and outside this renderer decision.
 
 The loadable halves live in tracked `skills/` files. Route a real-place build through
 `scene-system` (the orchestrator) → `real-place-builder` plus `grounded-scene` and the matching
@@ -167,17 +167,13 @@ node .verify/verify-geometry.mjs
 node .verify/verify-clash.mjs
 node .verify/verify-walk.mjs
 node .verify/verify-collision.cjs        # the walker must not catch on walls (round 42)
-node bin/verify-three.mjs                # the pinned runtime, and the anti-revival gate (round 54)
+node .verify/verify-nowebgl.mjs          # no-WebGL: the lane names it and keeps its list (round 55)
+node .verify/verify-feel.mjs             # a walk's speed must not depend on the frame rate (round 56)
+node .verify/verify-body.mjs             # no body may stand inside a drawn prop; every depth keeps a 60 cm passage (round 57)
 node .verify/verify-objects.mjs          # needs LD_LIBRARY_PATH=/tmp/al2023/lib
-node .verify/_nogl.mjs                   # every WebGL context refused: the lane's sentence is visible
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 md5sum *.html; python3 _gen_html.py; md5sum *.html   # idempotent
 ```
-
-`_nogl.mjs` is a gate in the only sense this repository allows one: it fails when a visitor without
-WebGL is shown nothing. It was added in round 55 after the deletion left the fallback sentence inside
-the closed info card and wearing a hover-only class — visible to the harness that asked whether the
-element existed, invisible to the person it was written for.
 
 Then re-measure whatever the change touched, and record the numbers in the commit message.
 `git fetch` and compare `git rev-list --count HEAD..origin/<branch>` **before** committing.

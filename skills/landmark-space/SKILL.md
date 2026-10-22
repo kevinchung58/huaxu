@@ -96,7 +96,7 @@ with its source in `references/repo-survey.md`:
 - **Silhouette hierarchy is authored.** The landmark gets one of the palette's reserved saturated
   accents; every other prop stays mid-tone (sakura's `PAL` rule). At 20 m the object is recognised
   by outline and material, never by detail — so the silhouette is drawn first and the detail is
-  earned later, and the stop frames are read at arm's length before they are read at arm's length
+  earned later, and the rendered frame is read at arm's length before it is read at arm's length
   from a screen.
 - **One moment, on the body of the object.** The elevator runs the shaft; the night pattern comes
   up at its `liton`. A beacon blinking at low alpha is not a moment (`SKILLS.md` §3, sakura's
@@ -108,10 +108,9 @@ with its source in `references/repo-survey.md`:
   reads fake (the three.js pack's first lighting pitfall).
 - **Depth is painted, not hoped for.** `FOG_MAX` murk, the far plane's own exposure, and the
   round-17 shadow/pool system: contact shadow under every body, the landmark's own cast shadow by
-  hour, pools at night. A tower that throws no shadow on its plaza is a decal — and the scene's
-  shadow geometry is now `add()`ed into the same batch it is drawn from, so a shadow cannot be
-  queued after the pass that would have painted it (the failure `_shadowdrawn.mjs` was written for,
-  and which retired with the painter in round 54).
+  hour, pools at night. A tower that throws no shadow on its plaza is a decal, and `bin/verify-three.mjs`
+  asserts the authored wall shadow is a real triangulated mesh because a shadow in the comments is
+  not a shadow (the pass-order probe `_shadowdrawn.mjs` was retired with the painter in round 54).
 - **Rhythm on the surface.** Window grids, mullions, panel seams — repetition with one break is a
   facade; uniform repetition is a texture, and the critique calls it monotony. The facade's bands
   align at a constant height the way a shopping street's fascias do (`japan-place` §5) — cadence
@@ -120,7 +119,7 @@ with its source in `references/repo-survey.md`:
   railing, a floor line — three quads that are only found by looking. Sakura's check is ours: the
   detail is in the data, and the plate's caption never announces it.
 - **The critique pass, not the vibe pass.** Run `critique-composition`/`critique-color`'s loop —
-  Observation → Problem → Fix, rated — over the captured stop frames with the dimensions renamed for a
+  Observation → Problem → Fix, rated — over the captured frame set with the dimensions renamed for a
   space: silhouette, light hierarchy, depth, rhythm, palette coherence. The numbers (luma, colours,
   fills) catch collapse; the critique catches a frame that passes every number and still tips
   top-heavy. Both are in the gate, neither replaces the other.
@@ -130,11 +129,11 @@ with its source in `references/repo-survey.md`:
 ### Current contract (2026-10-17)
 
 The owner approved pinned, vendored Three.js 0.186.1 for the complete walkable-scene migration.
-All eight walkable pages use it as their renderer for lane surfaces, props and scene effects;
+All seven walkable pages use it as the primary renderer for lane surfaces, props and scene effects;
 sourced `backdrop.world.prims` become world-space meshes when present. There is no second picture:
-the Canvas2D lane painter was deleted in round 54, accessible DOM buttons remain the hit layer, and
-the lane says in its own sentence when WebGL is absent. This is one
-scene render, not a WebGL backdrop behind a separate 2D room. No additional runtime dependency,
+the Canvas2D lane painter was deleted in round 54, and a browser without WebGL is told so in the
+viewport while the lane's compiled state keeps answering (round 55). This is one scene render, not a
+WebGL backdrop behind a separate 2D room. No additional runtime dependency,
 CDN or npm build is authorized, and the Activities album remains CSS 3D and out of scope.
 
 The camera supports a full yaw turn and bounded pitch (±24°); neither is a substitute for authored
@@ -169,13 +168,12 @@ existing day cycle rather than requiring another page.
 
 `district-author` §4's gate unchanged, plus, for a landmark space:
 
-- the landmark's shadow and the furniture's pools are visible in its stop frames. The probe that
-  used to read them (`_shadowdrawn.mjs`) measured the painter's fill order and retired with the
-  painter in round 54; the shadow is now scene geometry in the batch that draws it, so the claim is
-  read off the rendered frame instead.
-- `_lumacheck`-style rows for the new page at its noon, dusk and night, from the first build —
-  the exposure is one authored value (§3), so it gets measured from the first frame, not after.
-- the stop frames, read twice: by the gates, and by the critique pass (§3), with the ratings
+- `node bin/verify-three.mjs` — the landmark's shadow and the furniture's pools are 3D objects in the
+  scene graph; a light with no body, or a shadow that never reaches the frame, is the round-17 bug
+  class, and it has already shipped once.
+- `_halltint`-style rows for the new page at its noon, dusk and night, from the first build — the
+  exposure is one authored value (§3), so it gets measured from the first frame, not after.
+- the captured frames, read twice: by the gates, and by the critique pass (§3), with the ratings
   recorded in the commit message the way round numbers are.
 - the link contract asserted by `node .verify/verify-story.mjs` (round 21, against a server on
   :8080): the prop carries a story, pressing it opens the rail first with the story's frames, the

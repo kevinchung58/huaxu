@@ -5,9 +5,9 @@ Static HTML, **no npm build step or runtime package install**. Deployed via GitH
 of `master` (see "Operational notes" below if the live site ever 404s). One owner-approved exception is
 pinned, MIT-licensed Three.js 0.186.1, vendored under `js/vendor/` and dynamically imported on every
 walkable page as its primary environment/object renderer; sourced `backdrop.world` records are added
-when present. It is also the only renderer: the Canvas2D lane painter was deleted at the owner's
-ruling (2026-10-20), so a browser without WebGL gets the lane's own sentence and the written list,
-never a second picture. The Activities album is out of scope;
+when present. There is no second renderer: the Canvas2D lane painter was deleted in round 54 and a
+lane whose browser refuses WebGL says so in the viewport and retires to its compiled state (round 55).
+The Activities album is out of scope;
 no package manifest, CDN, or additional runtime dependency is implied.
 
 ## Critical: source of truth
@@ -67,17 +67,17 @@ no package manifest, CDN, or additional runtime dependency is implied.
   banner hold is gone before a fixed sleep returns. Wait for the engine's own published values
   (`__walk.depth`, `__walk.height`, the record line) and sweep animation envelopes for the loudest
   frame; asserting against a timer turns a working feature into a flaky gate.
-- **Luma alone hides hue bugs; measure the channels against the authored palette.** A navy
+- **Luma alone hides hue bugs; measure the channels against the other path's own frame.** A navy
   flood and a lamp-lit hall can share a luma — round 51's black-hall fix passed every luma floor
   while tinting every hall blue-violet (mean RGB 30,53,103 against the painter's 111,121,138), and
   the owner saw 紫色 for a round before anyone measured for it. A lighting gate therefore reports
-  mean R/G/B, a cold pixel fraction and a purple-hue fraction (`.verify/_halltint.mjs`, hue 250–330°
-  at saturation > 0.15), judged against the room's authored palette rather than a remembered
-  constant. And since round 54 there is no second picture to take a reference from: aborting
-  `scene3d.js` now measures a retired lane, not a fallback, so a two-path comparison is no longer
-  available at all. The surviving trap is in reading the flag: it must be read in the same
-  evaluation as the screenshot — read early, and `attachThree` races the read, so the frame renders
-  while the label still says `off`.
+  mean R/G/B and a cold/purple pixel fraction, measured against a reference frame of the same path
+  (the previous committed render, or another view of the same scene) rather than a remembered
+  constant — the cross-path comparison this rule was written from died with the Canvas2D painter in
+  round 54. Two traps in taking any reference: `?v=<digest>` assets are cache-immortal, so aborting a
+  module without `setCacheEnabled(false)` measures the tested code a second time and calls it a
+  different path; and the renderer flag must be read in the same evaluation as the screenshot —
+  read early, and `attachThree` races the read, so the frame is 3D while the label says otherwise.
 - The cache-buster is **derived, not hand-bumped**: `VER` in `_gen_html.py` is the sha1 of
   `css/site.css`, `js/site.js`, `js/scene3d.js`, `js/games.js`, and the two pinned Three.js runtime
   files, truncated;
@@ -90,7 +90,7 @@ no package manifest, CDN, or additional runtime dependency is implied.
   generator look healthy, so `python3 _gen_html.py` exiting 0 is a precondition for
   committing, not a nice-to-have.
 - WebKit flattening is a CSS-3D concern for the Activities album, not the walkable renderer: the
-  walkable lane and objects use Three.js, its only renderer since round 54, while `.ig-grid` is the only current
+  walkable lane and objects use Three.js alone, while `.ig-grid` is the only current
   `preserve-3d` selector and `.ig-wall` owns its `perspective`. Keep non-visible `overflow` off
   `.ig-grid`, keep `filter`/`backdrop-filter` off the perspective wrapper, and never add a universal
   `preserve-3d` rule. These can flatten the album silently in Safari while appearing fine in Chrome.
@@ -498,7 +498,8 @@ proposal until they have read it, and the loop is not finished until they have.
 - Keep the static site free of package-manager installs and build tooling: no framework, no `package.json`,
   and no `npm run build`. The sole approved runtime library is the pinned, vendored MIT Three.js 0.186.1
   for all walkable-scene geometry and objects; it is dynamically imported on each walkable page, and
-  consumes `backdrop.world.prims` when present, and is the lane's only renderer. Do not extend
+  consumes `backdrop.world.prims` when present; a browser that refuses WebGL gets the lane's own
+  written refusal, never a second painter (`verify-nowebgl.mjs`). Do not extend
   that exception to the Activities album or add another dependency without approval.
 - Preserve accessibility features already present: skip link, `aria-*` attributes, semantic landmarks.
 - Inline SVG icons (Heroicons-style paths) are defined in `_gen_html.py`; add new icons there.
@@ -550,8 +551,10 @@ proposal until they have read it, and the loop is not finished until they have.
     hide content without scripting or drop borrowed components to 2:1 contrast. The lane, props and
     sourced outdoor world are rendered in the pinned Three.js scene with the authored box
     (`data-lane-w/-d/-ceil`, `data-eye`). There is no second picture: the Canvas2D lane painter was
-    deleted in round 54 on the owner's ruling, and where WebGL is absent the lane says so in its own
-    words and retires — the compiled state (rail, list, reading, keys) keeps answering without it.
+    deleted in round 54 on the owner's ruling, and where WebGL is absent the lane says so **in the
+    viewport it cannot fill** (`[data-walk-offline]`, round 55) and retires — the compiled state
+    (rail, list, reading, keys) keeps answering without it, and the projected prop buttons stand
+    down because a projection onto no picture is a card floating in a void.
     No Canvas2D lane painting may return to `js/site.js`. Do not put scene geometry into CSS
     transforms or invent a second set of dimensions in `js/site.js` or `js/scene3d.js`.
 

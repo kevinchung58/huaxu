@@ -1,8 +1,243 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-21（第五十六輪）· 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+## 0aj. 第六十一輪（2026-10-22）：站主「所以那邊遊樂園做好了嗎？」——先修量尺，再回答
 
-## 0ad. 第五十六輪（2026-10-21）：站主令「你這分之先處理日本的場景與物品還有全面豐富」——兩個日本房間的場景與物品全面加料，並補上三個「有名無實」的畫法
+### 站主指令
+「所以那邊遊樂園做好了嗎？」——要的是有證據的回答，不是宣告。承接 0ai 的「遊樂園也都要做完整」。
+
+### 這一輪最重要的一件事：**量尺是錯的**（比任何畫面修正都重要）
+前幾輪所有「轉頭看側面」的影格，都是**兩次轉向**：`pan.py` / `qc.js` / `px.js` 先用 `w.yaw` 讓 lane 把幾何轉過去，再用 `camera.lookAt()` 把相機再轉一次。於是 `yaw ≥ 90°` 的畫面看到的不是那個方向，而是「幾何已經轉走、相機又多轉一份」的空場——**那個「整片淡色空地／沒有地板」根本不是場景的缺陷**，是 harness 的缺陷。
+- 證據：紅底（`setClearColor(0xff0000)` + `scene.background = null`）只留 `walk lane` 時，`yaw 0` 有 66 690 px 的 lane，`yaw 180` 是 **0 px**——`rooms-tokyo.html`、`street.html` 完全相同。三個頁面不可能同時壞成一樣，壞的是量法。
+- 正確量法（`/tmp/h/pan3.py`，沿用 `walklib.aim()` 拖曳滑鼠）：`aim(yaw,pitch)` → **不碰相機** → `renderer.render()` + `toDataURL()` 同一個 evaluate。`walklib.state()` 直接改 `w.yaw` 也會被步行迴圈的平滑覆寫（實測設 `x=0` 讀回 −528）。
+- 教訓入冊：**任何「轉頭」影格，只能透過真實輸入（拖曳）改變視角；JS 直接改 `__walk.yaw` 或 `camera.lookAt` 都不可信。**
+
+### 用正確量尺看到的遊樂園（第 6 站，Clifton Hill 廣場）
+有：旋轉木馬（紅白條紋頂棚、燈柱、方形植栽槽、長椅）、SkyWheel 的輪圈與 A 字架、成排的門面（米白方塊 + 一條栗色／石板色雨篷）、頭上的跨街薄樑、鋪面（近處看得到磚縫）。
+沒有做到或做得不對：
+1. **門面是「米白紙箱」**。16.4 m 那三面 `front` 在 3–5 m 距離就是一顆 3 m 立方體，只有上方一條色帶；玻璃、門、窗、招牌底座、騎樓柱都不在畫面裡（`awn` 分支雖然有 recess 玻璃，但夜間/關閉狀態與側面完全沒有處理）。
+2. **摩天輪只有線**。輪圈與 A 字架是細白線，26 個吊艙遠到剩幾個白點；沒有 21 輻條的節奏、沒有吊艙的圓潤感——它讀起來像鷹架不像遊樂設施。
+3. **廣場尺度的鋪面沒有紋理**。`floorPiece` 在 45 m 之後換到 `floor-tier-1`、52 m 之後換成單色 `#797570`，整片廣場於是一塊淡灰；近處磚縫有了，遠處仍是紙。
+4. **跨街樑浮在天上**：`open` 的街道沒有天花，那幾根樑就只是天空裡的灰色薄片。
+5. **世界貼太近**：`hotelw` 的旅館塔（黑白棋盤窗）就站在廣場後面 100 m，尺度上像隔壁倉庫。
+
+### 本輪實際修掉（都有影格）
+1. **`mix(hex, hex, number)` 會回傳 `rgb(NaN,NaN,NaN)`**，three 把非法色畫成白色——SkyWheel 的輪鋼就是 26 個白 quad。改用 `blendHex`，並在 `mix()` 內對非數值 lift 出聲並回退。
+2. **廣場鋪面只鋪到 17.5 m**，可是方塊門面在 16.4 m、欄杆 16.8 m、摩天輪月台 19.3 m——門面整排站在鋪面之外的空地邊上。新增 `data-lane-wsp`（`pavedAt()`）：**步行寬度不變，鋪面寬度可以更寬**；niagara 廣場一段鋪到 33 m。
+3. **開口店面不再是奶油板**：`front` 的 open 分支改成 40 cm 進深的暗部室內 + 壓暗玻璃 + 6 根豎框 + 3 道橫檔 + 踢腳。
+4. floor 的單色 LOD 門檻 16 m → 52 m（`fd >= 5200`），並壓掉 26 m 以外鋪面的亮度加成。
+
+### 閘門
+`verify-shapes` 201/201、`verify-body` 16/16。jsdom/puppeteer 系列照舊不可跑（零依賴），不得記為通過。
+
+### 尚未做完（下一輪從這裡開）
+- 門面本體：玻璃/門/騎樓柱/招牌底座（不可有字），以及關閉狀態的側面。
+- SkyWheel：21 輻條、42 吊艙的真實節奏與形狀（現在是細線 + 白點）。
+- 廣場鋪面的遠景 LOD（`floor-tier-1` 在 45 m 應該還是磚，不是單色）。
+- 跨街樑在 `open` 街道要有依附物（燈串掛點、立柱），否則撤掉。
+- `niagara_world` 的 `hotelw`/`trcwall` 近距離仍是無貼圖米白板。
+
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-22 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
+## 0al. 第六十三輪（2026-10-22）：站主「繼續都弄好」——太陽改成乘法，方塊長出樓層
+
+### 這一輪修掉的
+1. **「太陽」一直是加法**：lane shader 對每個面 `+= uLaneSun * daylight * 0.62`。灰色鋪面（反照率 0.44）因此被推到 0.81——廣場、店面、瀑布霧全部漂成同一個淡奶油色，整區看起來像一片被洗白的場地。改成乘法（`*= 1 + daylight*0.62`）：陽光只放大表面自己的顏色。這是第 58 輪霧件同一個錯誤的第二次發生。
+2. **方塊長出樓層**：`block-a…f` 的上層現在有窗格（以面的四角插值排格子，因此轉向街道的那一面才有窗）、每扇窗下有石窗台、頂上有簷口。資料走 `data-win`／`data-wincol`（第一版只寫在 renderer 裡，meta 沒帶，畫面上完全看不到——教訓：**新的 prop 欄位要同時進 emit 的白名單**）。
+3. **燈串有了電桿**：三道跨街燈串原本 15–24 m 寬、兩端什麼都沒有，從廣場看是天空裡的三條彩帶。現在各止於自己那根鐵桿（新增六根 `lights-post-*`，在路緣線上）。
+4. **路燈搬離街心**：街段路燈從 ±4.97 m 移到路緣 ±8.6 m（廣場燈到 ±15 m），SkyWheel 站點也從路燈肩膀上挪開——那根 14 cm 的桿子在 1.4 m 處會佔掉整個畫面。
+
+### 量尺再記一條
+`aim()` 的拖曳校正會偶爾停在離目標 40–60° 的地方（本輪好幾張影格因此不是我要的角度）。**看影格前先讀 `state()['yaw']`**，不符就再 aim 一次；不要拿錯角度的畫面下結論。
+
+### 閘門
+`verify-shapes` 207/207（新增 6 根燈桿）、`verify-body` 16/16。影格：`.preview/r63/clifton-plaza-day.png`、`clifton-approach-day.png`。
+
+### 尚未做完
+- 店面的門（目前整排都是櫥窗＋雨篷）、騎樓柱、招牌底座（不可有字）。
+- 廣場東側（摩天輪那側）仍空：排隊欄、遮蔭。
+- 街後那片深綠 `canopy` 貼得很近，讓店面像開在森林前。
+- `niagara_world` 的 `hotelw`（旅館塔）／`trcwall` 近距離仍是無貼圖米白板。
+- 夜晚版還沒重拍（本輪影格都是白天）。
+
+## 0ak. 第六十二輪（2026-10-22）：站主「好剩下都做好」——街道接到店面上，摩天輪有了厚度
+
+### 站主指令
+「好剩下都做好」——照 §0aj 的清單往下做，不換題目。
+
+### 這一輪修掉的（每一條都有影格）
+1. **街上的方塊站在街中間**。`block-a…f` 從第 58 輪起擺在 ±11.8 m，而步道半寬是 15 m——所以店面前面還有 3.2 m 的空地，從街上看到的是六顆磚方塊，`front` 做的店面全部被擋在後面。方塊移到各自店面「後一間房」的位置（街段 ±12.8 m、廣場 ±19 m），步道收窄到 10.2 m 去對齊它自己的店面（廣場仍是 17.5 m）。影格：`.preview/r62/clifton-shops-day.png`（藍／栗／綠三色雨篷、暖窗、門前的植栽與長椅）。
+2. **摩天輪是一個平面**。整支 `wheel` 分支的 quad 全部躺在 z = m.z 這個平面上——站在廣場側面（也就是訪客真正站的方位）看過去是**edge-on**，地標只剩幾根髮絲。輪圈改成有厚度（兩面帶 + 中間踏面）、吊艙改成有側面與吊桿的箱體、輻條有兩面。影格：`.preview/r62/skywheel-day.png`。
+3. **鋪面 LOD 太早換色**：`floor-tier-0` 只在 4.5 m 內、`floor-tier-1` 到 9 m，之後一路單色。改成 9 m／26 m／52 m，廣場終於看得到磚縫。
+4. **六根 14 cm 燈桿沒有碰撞**：站在桿子裡時，桿面離眼睛 25 cm，佔掉三分之一畫面。六根全部 `solid`。`verify-body` 16/16、`verify-shapes` 201/201 照過。
+
+### 量尺再修正一條（比畫面更重要）
+**滑鼠停在畫布上時，頁面會浮出「預覽卡」——一張半透明、模糊的大面板**。所有 `pg.screenshot()` 拍的影格都帶著它，我一度把它當成「廣場上有一片灰色巨板」，花了三輪去關 mesh 找它（怎麼關都不會消失，因為它根本不在場景裡）。通規：**截圖前先把滑鼠移到畫面外**（或 `mouse.move(2,2)`），否則看到的是 UI 不是世界。
+
+### 尚未做完（下一次從這裡開）
+- 店面本體仍是「方塊 + 雨篷」：騎樓柱、門、招牌底座（不可有字）、關閉狀態的側面都還沒做。
+- 摩天輪的吊艙在 1024 px 下仍只有幾個像素；21 輻條的節奏要再檢查一次（`wheel` 段的 `pt()` 以 42 分格，輻條取偶數 21 根）。
+- 天上的跨街薄樑（`lights-a…c` 的 noren）在白天看仍是浮著的細帶，要接上燈串／立柱的依附關係。
+- `niagara_world` 的 `hotelw`／`trcwall` 近距離仍是無貼圖米白板。
+- 廣場東側（摩天輪那一側）在 yaw 47 看出去是大片鋪面與河岸，缺排隊欄與遮蔭。
+
+## 0ai. 第六十輪（2026-10-22）：馬蹄瀑布那「一片平光」的四個成因，量到哪裡為止
+
+### 站主指令
+承接 0ah：「建議剩下都做好」，瀑布指的是**加拿大境內**那條（Table Rock / Clifton Hill 那一側的馬蹄）。本輪只動 `rooms-niagara.html` 的近景，美國那一頁不動。
+
+### 這一輪真正量到、修掉的（每一條都有影格或像素差撐著）
+1. **水簾的「結構」項一直貼在最大值**。`fallsw` 是透明的水繩貼圖：只要有一根繩經過，它的 RGB 就是 1.0。拿它當遮罩取樣，整片水簾的 `structure` 幾乎恆為 1，於是 57 m 的水牆整面同一個近白色——這才是「一片平光」的本體。新增第二張**不透明色調貼圖** `fallsg`（粗繩／中間水流／透過的冷水／細粒，四個尺度，每個週期整數次淡出以免接縫），只給水簾的 shader 讀；`fallsw` 仍只管水繩與動態。
+2. **反差交給低頻、且必須是程序性的**。任何貼圖的每一層 mip 都收斂到自己的平均值，而平均值就是那片平光。水簾的明暗現在由崖線上的三條正弦（約 49 m／13.7 m／5.2 m，權重 0.50/0.34/0.16）加上貼圖的粗細紋共同決定，`structure` 再過 `smoothstep(0.32, 0.68)`；**陰影色改成「水自己的綠」而不是所在 band 的白**（`cold` 由 `uBand0/uBand1` 混出），否則中段之後的每個 band 都是近白，陰影也是白的。
+3. **霧的幾何：水簾的頂端就站在崖線上、往下游傾**。所以擺在碗裡的煙羽 100% 被那面不透明的水簾擋住——兩輪「把霧調大」都沒用，因為它們根本在牆的另一側。霧重寫在崖線**上游側**（`du` 負值）：貼著唇口的一排小柱、越過唇口的低飄、以及頂點那一柱（110 m 寬、90 m 高，三片薄的大圓）。另外雲貼圖峰值從 0.30 提到 0.62、`vColor.a` 不再多乘 0.55、每片位置／大小／透明度用位置雜湊做固定抖動（第一版全部落在同一個格點上，1024 px 下是一片「泡泡矩陣」）。
+4. **水面顏色是為它落到的光寫的**。`#3d706c` 的河道在這片天空的半球光＋環境光＋太陽下合成出來是 (146,163,172)——一條淡灰藍的平面，佔滿下半個畫面。河道改成 `#1b4341`（亮起來才是深綠），上游河面 `#4b8b8d → #1d3f42`，`air` 由 0.10 收到 0.03，浪花 `foam` 提亮到 `#e2ebe8`。
+5. **rail 站從走道中央搬到欄杆邊、並轉向瀑布**。站點 `x` 由 −520 改 −1290，但 `glideTo` 會夾在 `halfAt()=676`——實測落點 **x −676、depth 4191**，也就是欄杆（surface 在 ±698）前 22 cm。視角 `yaw −82 / pitch 2`：改成望向馬蹄的正面（由 −520 出發時 `yaw −15` 看到的是散步道本身，那也是「平的」的一部分）。夜間 `uNight` 的混色 0.55 → 0.38（夜裡仍要看得出水繩），霧在夜間改成「半個燈色」（先前整片煙羽是純紫）。
+
+### 閘門
+`verify-shapes` **201/201**、`verify-body` **16/16**。`verify-walk / chain / clash / objects / tables / story / games / feel` 本輪**未跑**：需要 `jsdom`／`puppeteer-core`，`node_modules` 不存在（零依賴政策），不得當成通過。頁面主控台只有 Google Fonts 的 `ERR_CONNECTION_CLOSED`（沙箱沒有 fonts.googleapis.com），`renderer: three`。影格：`.preview/r60/table-rock-rail-day.png`、`table-rock-rail-night.png`。
+
+### 尚未做完（下一輪從這裡開）
+- **深潭還是有硬邊**：本輪把浪花環從 4 圈固定 alpha（44/70/100/130 m）改成 6 圈 26→148 m 的遞減 alpha（0.40→0.06），環與環之間的階差不再是一條線；但 rail 站看出去，潭面仍有一條近乎筆直的明暗斜界——上一輪把它歸給浪花環是錯的，那條界是**平台邊緣與潭面的交界**（`lower` 網格最外圈 vs 河岸），下一輪要從那裡下手。
+- **水簾的水繩在 1024 px 下仍偏「筆刷」**：三條正弦的比例可以再調；另外水簾是單一 quad 帶，沒有輪廓變化，剪影永遠是一條直線。
+- `niagara_world` 的 `trcwall`／`hotelw`（Centre 遠牆）近距離仍是無貼圖米白板；`shopbay-*` 可達性、README/授權、PR #16、CV PDF、ORCID 仍在站主手上。
+
+## 0ah. 第五十九輪之二（2026-10-22）：站主「我原本以為是加拿大境內的那個」
+
+### 站主指令
+「建議剩下都做好。你現在做美國那下面的喔? 我原本以為是加拿大境內的那個」——不是問句，是糾正：前幾輪把心力放在 Goat Island 那一頁的 American Falls，站主要的其實是**加拿大境內**那條散步道（Table Rock）看出去的馬蹄瀑布。本輪先確認座標，再把加拿大的那一面做完。
+
+### 先確認（不是猜）
+- 影格撐著：`rooms-niagara.html` 第 2 站（Parapet over the gorge）與第 3 站（Table Rock rail）白天／夜間各一張；美國那一頁在 `rooms-goat.html`，兩者是不同的 lane。
+- 修之前，第 2 站整片右半是**一面沒有任何貼圖的米白牆**，第 3 站的欄杆之外是一整片平的灰白。兩者都不是「瀑布」。
+
+### 找到的四個真因（全部有影格／射線撐著）
+1. **單位錯一次，整條散步道沒有 surfaces**。`niagara_parapet_bands()` 回傳的是 record/Z_SCALE，產出器再乘一次 Z_SCALE；於是寫在清單裡的字面值 1483 被當成 record、變成 4301，**1483–4301 這 28 公尺（Parkway、Table Rock rail、纜車下站）一條 surface 都沒有**——lane 就退回預設的米白牆，那面牆站在欄杆與峽谷之間。改成 `round(1483/Z_SCALE,1)`。（與第 58 輪「米色隧道」是同一個病，只是單位又錯一層。）
+2. **`cladCovers` 只差 20 cm 就判定「整片牆沒包」**。所有 parapet band 最高到 400 cm、lane 天花 420，於是每片牆都留 20 cm 沒被蓋到 → 整片牆重畫成預設灰泥。改成容差 24 cm（一隻手掌）。設定本身是對的：欄杆以上本來就 authored `open`。
+3. **水霧 billboard 是全螢幕的罪魁**。`size = w × (0.32…0.54)`，一個 authored 84 m 的煙羽畫成 27–45 m 半徑的軟片，三片疊起來就是那片「有斜紋的米白牆」（pixel probe 逐 mesh 關掉確認：關掉 `surveyed spray billboards` 畫面還一模一樣，關掉 `foam` 才變）。改成 0.15–0.26 半徑、片數 ×3、每片淡一半、徑向漸層峰值 0.46 → 0.30。另外 `depthTest` 從 false 改 true：400 m 外的煙羽不該蓋住眼前的欄杆。
+4. **馬蹄水簾沒有水繩**。`fallsw` 是貼圖：一張 24 m 一個循環，站在 rail 上看到的是整片被拉長的貼圖——owner 說的「一片平光」在加拿大這一面是同一件事。世界座標 u 上直接生成水繩（`sin(vUv.x×100 + noise×9)`），並用 `fwidth` 做反鋸齒（否則細於一像素就變摩爾紋、整片發白——第一版就是這樣），暗縫留冷色、水繩吃光。夜間另加 `uNight`：這支 shader 自己有夜間項，世界的夜間 pass 摸不到它，所以先前半夜的馬蹄瀑布是白天的青色。
+
+### 順手修掉的
+- **下站小屋站錯位置**：`shedAt` 的 `z = m.z − 1750` 把兩棟小屋放到散步道上、正對欄杆站（就是那片擋住半個畫面的灰盒子）。改成站在自己的軌道上（`m.z − 925`），下站小屋放回纜車軌道腳（`m.x`），不再橫在走道中央。
+- **Table Rock rail 站點從 1440 移到 1510**：原站正好站在下站小屋裡。
+- **纜車 track 上兩片屋頂板**（`shedAt` 只畫 4 面，`z` 已改為參數）。
+
+### 閘門
+`verify-shapes` **201/201**、`verify-body` **16/16**；`verify-three / geometry / look / story / games` 仍是 `node_modules` 不存在**未跑**（零依賴政策），不得當成通過。影格：`.preview/r59/niagara-parapet-day.png`、`table-rock-rail-horseshoe.png`、`table-rock-rail-night.png`。
+
+### 尚未做完（下一輪從這裡開）
+- **Table Rock rail 往左（yaw −90）看到的仍是平的**：欄杆外是一片灰白水面，馬蹄的正面不在那個方位（`NIA_HS_CREST` 在東北），往 −100° 才看到水簾。rail 站的 yaw 已回到 −15（作者值），但「站在 rail 上該看到什麼」還沒定案；要嘛把那一段的看向改成 −100 並在註解寫明理由，要嘛在該方位補上真正的峽谷與對岸。
+- `foam` 貼圖在近距離仍是平台狀（`we got the sheet, the pool still reads as paper`）。
+- `niagara_world` 的 `trcwall`／`hotelw`（Centre 的遠牆）在近距離是無貼圖的米白板。
+- 其餘與 0ag 相同：`shopbay-*` 可達性、README/授權、PR #16、CV PDF、ORCID 在站主手上。
+
+## 0ag. 第五十九輪（2026-10-22）：同一句「繼續做完整」，把瀑布從「貼圖牆」改成「水」
+
+### 站主指令
+承接 0af 的「全部都要做好 還有旁邊遊樂園也都要做完整」，再次「繼續做完整」。SKILLS §1 仍由「自動推理」免除，§7、§8 照舊（一輪一次建置／一次驗證；每句結論都要有影格）。
+
+### 這一輪真正修掉的（每一條都有影格）
+1. **上游河面 14 m → 4.2 m，顏色由 0.88 lit 降到 0.46**。崖頂上那片水平河面在 25 m 外投影成 90 px 高的淡灰帶，是畫面裡最後一條「平」的東西。真實的美國瀑布唇後只有幾公尺水就見底岩。
+2. **唇口白水從 138 cm 收到 34 cm**，並改成兩條窄帶。舊版那 138 cm 因為離眼睛最近，投影成全寬 50 px 的灰條——就是「像欄杆」的那一條。
+3. **水簾的底色改成「水是打過氣的」**：`#a7cfc9 → #eaf6f4` 的連續斜坡（30 → 44 段、`1-(1-v)^1.6` 讓腳部切片更密），水繩才是深色。前一版是反面（深色布幕＋深縫），所以永遠像一道上了漆的牆。
+4. **刪掉 12 欄底層色塊**。那 12 片「寬底層」和 48 欄水繩在同一個平面裡互相比深度，一半的水繩被自己的底層蓋掉——`一片平光` 的最後一個成因。水繩現在自己扛漸層。
+5. **水繩三級（白水／亮繩／深繩）**，`tone` 只剩兩項且沿繩連續變化。上一版每個 band 都加 `sin` 抖動，抖出棋盤格；這一版一條水線是一整條。
+6. **每條繩自己的垂直偏移 `vj`**，階差不再連成一條橫貫畫面的直線（並且 `fa===0` 不收偏移，水不會高過唇口變成浮在欄杆上的綠片）。
+7. **縫改成唇到腳一整條、逐漸張開**。舊版三段不同寬度硬切，是「旋轉 90° 的橫條紋」。
+8. **霧真的在水前面**：11 片 `soft` 徑向軟片立在相機與水簾之間、由下往上飄（`T×0.13`）、越高越淡；另有 6 片小水沫越過唇口。影格裡欄杆上方那層白氣就是它。
+9. **夜間水色（站主的「夜間水色」）**：燈不再是蓋在水簾上的一片暖白（會被 depth sort 排到一半水繩後面，於是瀑布在 3 a.m. 是藍的、只有幾塊暖斑），而是**混進水繩自己的顏色**（`blendHex(col, "#ffe9c6", 0.62×night)`），並對水簾 `nolite`——夜裡瀑布是黑色峽谷裡唯一的亮面，縫仍是冷色，這才是「打燈的水」。
+10. **瀑布下方的潭與河道夜間也跟著亮**：`rgba(255,232,198, 0.34/0.20 × night)` 兩片，白浪比遠潭亮。
+11. **美國瀑布站的預設視角（pitch 9）本來就是往下看的**——橫幅浪費過的一輪是量測工具 `aim()` 的拖曳方向與 `data-view-pitch` 相反，不是資料錯。這條寫進註解，免得下一輪再翻一次。
+
+### 閘門（本輪）
+`verify-shapes` **201/201 全部解析到形狀**；`verify-body` **16/16**（`rooms.html` 32634 格、`street.html` 26410 格，最窄 377 cm）。`bin/verify-three.mjs`、`verify-geometry/look/story/games` 本輪因 `node_modules` 不存在（零依賴政策）**未跑**，不得當成通過。影格：`.preview/r59/goat-falls-brink-day.png`、`goat-falls-brink-night.png`。
+
+### 尚未做完（下一輪直接從這裡開）
+- **欄杆上方那兩個灰色梯台**（日夜都在，x≈160–290 與 720–850）：`drawQuads` 的掃描裡找不到對應的灰 quad（中性色 0 筆），`__dbg` 對這塊像素的射線也只打到水簾後方。下一輪第一步：把 `__dbg` 掛回去、對 (250,352) 打射線並印 `object.name`＋`material.type`，不要再用猜的。
+- **畫面下方左／中兩塊深灰梯形**：跟著 pitch 上抬才出現，研判是甲板地面與排水面在近裁剪處的自重疊；要看是不是 `floor-tier-*` 與 `floor-pavers` 的交界。
+- `niagara_world` 近距離無貼圖立面（world prim 那層）、`shopbay-*` 可達性、README/授權、PR #16、CV PDF、ORCID 仍在站主手上。
+- Niagara 作品牆 2 cm → 10 cm：TODO 0af 已記錄「`rooms-niagara.html` 無 d≤6 掛畫」，本輪未再動，需站主目視確認。
+
+## 0af. 第五十八輪（2026-10-21）：站主「瀑布近看是一片平光（沒有霧、沒有水線）…全部都要做好 還有旁邊遊樂園也都要做完整」
+
+### 站主指令
+「"Niagara / Goat 的瀑布近看是一片平光（沒有霧、沒有水線）：碰撞已修，美術未修，要不要這輪做請你說。"全部都要做好 還有旁邊遊樂園也都要做完整。你就當作你開發這邊的GTA 所需要規則 你要自動推理並做完整」，中途再令「繼續做完整」。SKILLS §1 的盤問本輪由「自動推理」免除，§7（一輪一次建置／一次驗證）與 §8（每句結論都要有影格）照舊。
+
+### 平光的真因（四個，逐層剝出來，全部有影格撐著）
+1. **`mix()` 是分數不是倍率**。`mix(hex,k)` 是「往暖白（k>0）或往夜色（k<0）混 `|k|` 的比例」，傳 1.10 等於整條水簾加成奶油白並在通道上溢出、被 clamp——第一張「米白平牆」就是它。修法：所有 tone 收進 ±0.25。
+2. **上游河面畫到訪客腳下**：`drop` 分支出生「崖頂以上的河」時，把水條一路鋪回相機（`t` 從 −reach 到 +reach），於是**一片跟崖頂等高的水平面**擋在眼睛與水簾之間，把整片瀑布蓋掉——這就是每一張截圖裡那片均勻的平色。修法：上游河只在唇外 14 m（`reach = 1400`，座標取負號），訪客與瀑布之間是**低於唇面的河道**（另一個 prop）。
+3. **`air` 未指定＝依距離自動起霧**：`scene3d` 對沒有 `q.air` 的 quad 用 `clamp((z-420)/2450,0,1) × 0.6` 算大氣，25 m 的瀑布被灌進 55% 霧——顏色再對也只剩灰。修法：水簾所有 quad 明確 `air = 0.05~0.07`。
+4. **日照洗色**：lane shader 對沒說 `day:false` 的 quad 一律加 `uLaneSun × 0.62`（≈ (0.35,0.33,0.28)）。水是水，不是被太陽照的牆：整個 drop 分支用 `fromHere` 索引一次 `day = false`。
+
+### 做進去的東西
+- **水簾改幾何**：48 欄「水繩」＋逐段變寬的暗縫（水在下墜中拉開成繩），每欄一口氣往下走的亮帶（`T × 0.24`，跑在影格鐘上，幀率無關），五分之一的水繩是白水；四段色帶改為「唇深、腳淺」（舊版相反，所以整片像掛在天空的霧）。唇線、腳的白浪、九片拍底水沫（`soft` + `foam`）都補上。**貼圖路線正式判死**：25 m 處一公分水不到一像素，任何條紋貼圖都會 mip 成自己的平均值。
+- **尺度回到實尺寸**：American Falls `h 1034 → 1966`（10 檔縮尺下的 20 m），plunge pool `y −1900`（與瀑布腳同高），channel `y −1900`、plunge 新增 `plunge-w`。
+- **Clifton Hill 補完（34 → 59 件）**：新 `carousel` 形狀（24 格地板／16 條棚布／32 片垂簾／12 匹上下起伏的馬／入夜燈圈，26 秒一圈，走影格鐘）＋ 落塔直立桿與座圈、鬼屋門面、兩側 midway 攤列、甜點亭、街口木門框（柱＋樑）、三道橫跨街道的燈串、廣場長椅／垃圾桶／花箱／燈柱成對、噴泉與石唇、廣場邊護欄。全部無字、無人名店名。
+
+### 閘門（本輪）
+`bin/verify-three.mjs` **PASS**（Three 0.186.1、8 頁、12682 世界＋864 水三角形、432 水簾、90 霧層、無 Canvas2D 塗裝器）；`verify-body` **16/16**；`verify-shapes` **175/175 全部解析到形狀**（新增 `carousel` 在內）。其餘 `.verify/*` 本輪因 `node_modules` 未安裝（零依賴政策）只能記錄為「未跑」，不得當成通過。影格：`.preview/r58/goat-falls-brink.png`、`goat-falls-crest.png`。
+### 第二輪（同日，站主「繼續都做好」）
+- **水繩不再等寬等距**：界線用播種雜湊抖動（同一次拜訪永遠同一個瀑布），每條縫自己一個寬度，欄身再疊一條慢正弦（`sin(fa×5.3 + k×2.1)`），所以縫從唇口到腳會偏——垂直縫就是條碼。
+- **霧在布幕前面**：七片 `soft` 徑向軟片貼著水面向上升，越高越淡，跑影格鐘；拍底的浪與唇線同時保留。
+- **入夜打燈**：`NIGHT()>0.12` 時水簾覆一層暖白（`rgba(255,236,200,0.30×night)`，`nolite` ＋ `day:false`），也就是尼加拉夜間照明打在美國瀑布上的樣子。
+- **上站不再是一扇浮空的門**：新增 `incline-station`（石造站房）、屋頂板、落車平台，門終於有牆可靠。
+- **街道補滿**：四支燈柱、兩個花箱、長椅、垃圾桶、河岸護欄與河岸長椅（沿街 20 m 一個節奏），街心不再是停車場。
+- 閘門：`verify-three` **PASS**、`verify-body` **16/16**、`verify-shapes` **178/178**。影格：`.preview/r58/goat-falls-ropes.png`、`niagara-strip-approach.png`、`niagara-st5-station.png`。
+
+### 第三輪（同日，站主「繼續都做完阿」）
+- **浮空灰片結案，而且不是猜的**：把 `__dbg` 掛回去，逐個查「誰的 quad 投影落在這塊像素上」，答案是 `incline` 的 **head-pulley shed**——它整棟只畫「一片」quad（`#4b5568`），從側面看就是那片浮在草上的灰平行四邊形。改成 `shedAt()`：四片牆＋頂蓋、每面自己的色階。第二片（頭屋下方那片）同一個函式一起補。另外 `incline-upper-door` 記錄裡沒有 w/h/d，門扇畫成零高度、只剩門檻陰影——補成 128×236×26 並把站房 `board` 改成 `box`、落車台改成 `box`。
+- **`box` 形狀現在真的吃 `tile`**：`box` 分支只查 `MATS`，從不看記錄的 `tile`，所以新增的六棟街區全是灰水泥塊。三個門面後面補了六個 `block-*`（brick 貼圖），Clifton 才從「一排臉」變成「一排樓」。
+- **街道兩側原本是預設走廊牆**：`surfaces` 在 1483 之後沒有條目，於是 lane 用預設 ±1500 的條紋牆——那面牆就擋在門面前面，整條街是米色隧道。改成 Parkway 之後兩側 `open`，靠門面、護欄與街區圍合。
+- **廣場從 64 m 收到 35 m 半寬**：上一輪為了讓 SkyWheel 的月台可達把廣場拉到 32 m 半寬，結果是一整片水泥地。連帶所有 x 大於 600 的街區物件乘 0.72 收進來，`ws` 改 1750；補西/北兩側門面、旗桿、噴泉、護欄，機台與攤位重新落到廣場邊緣。
+- **旋轉木馬**：圓盤改回正圓（上一輪把 x/z 壓成 0.42 的橢圓），並且設 `solid`——`verify-body` 當場抓到「人可以站在 carousel 裡面（360 格）」。
+- 閘門：`verify-three` **PASS**、`verify-body` **16/16**、`verify-shapes` **201/201**。影格更新：`niagara-strip-blocks.png`、`niagara-square.png`、`niagara-carousel.png`、`goat-falls-crest.png`。
+- **工具教訓**：`/tmp` 每輪會被清空（playwright、`/tmp/h/*.py`、`/tmp/al2023/lib` 全滅），Chromium 的 `al2023.tar.br` 要用 `zlib.brotliDecompressSync` 解，不是外部 `brotli` 指令；`walklib.goto_stop` 必須等 `--z` 目標值到手才算到站（車廂站 h 553 會讓「位移停止」提前成立）。
+
+### 尚未做完（下一輪接手直接從這裡開）
+- **st6 河岸的白牆**：`_gen_html.py` 的 `niagara_world` 有一塊近距離無貼圖立面（影格裡佔右半），要在 world prim 那層處理，不是在 props 層。
+- 水沫貼圖 `foam` 在白日仍偏淡；拍底的浪要再壓低加寬。
+- 夜間水色只做了瀑布本體，河道與潭面尚未跟著。
+- Niagara 作品牆 2 cm → 10 cm：本輪查過 `rooms-niagara.html` 已無 d≤6 的掛畫（最小是 `noren` d 6、`sign` d 10），此項可能已在前輪完成，需站主目視確認後才可劃掉。
+- 商店街 `shopbay-*` 可達性、README/授權、PR #16、CV PDF、ORCID 仍在站主手上。
+
+## 0ae. 第五十七輪（2026-10-21）：站主「你自己進去 e2e 從頭測到尾，很多物件卡在我身上，移動也有問題」——先把「卡」量成幾何，再改規則
+
+### 站主指令
+「你自己進去e2e操作從頭都測到尾。你會發現 很多問題 似乎有物件卡在我身上。然後移動也有點問題 不確定是不是因為卡了。」並且指定使用 `anthropics/skills` 的 **`webapp-testing`** skill。
+
+### 用 skill 的方式（Playwright，真 Chromium）
+裝 `playwright`（`pip install --user playwright`，Python 3.11 是 PEP 668 外部管理環境）＋ 直接指向沙箱已有的 `/tmp/chromium`（`@sparticuz/chromium`），不另抓瀏覽器。寫了三個可重用的探針放在 `/tmp`（不入庫）：`drive.py`（面對方位→按鍵走到座標）、`endtoend.py`（每頁按住 W 從頭走到尾，記錄卡住與「站在物件體內」的畫面）、`intrude/narrow`（用 walker 自己的碰撞數字重跑可行走集合）。**先量後改**。
+
+### 量到的三個真缺陷（都有數字）
+1. **「卡在身上」＝走進一個畫在身上的盒子裡。** `_gen_html.py` 的 solid 規則原本是 `kind in WALK_SOLID_KINDS and y <= 0 < y + h`——只有「從地面長出來」的物件才擋人。於是**所有起點高於地板的物件都是可以穿過去的佈景**：街上的 A 字板（y 150..236，腳沒畫，板子懸在胸口）、金魚攤與面具攤（kind `board`）、門司港的 High Mart 底座與水槽緣、Niagara 的崖壁與纜車、Goat Island 的馬蹄瀑——實測「身體可以站在裡面」的格點：`mart-base` 576 格、`bluff-face` 1922 格、`falls-american` 7250 格。站進去不是擦身而過，是**相機進到盒子裡**，整個畫面變成它的內壁（`.preview/r57/goat-before.png`）。這正是站主說的「卡在我身上」。
+2. **東京廳的走道只有 22 cm。** 記錄寫 8.8 m 寬「so a walker can still go round the table by the right-hand aisle」，桌子 7.4 m ⇒ 440−370−24 = 46 cm 中心、**22 cm 淨寬**（48 cm 身體）。實測：走到桌子正面就停死（z 2206），要沿牆刮過去。而 `verify-rooms-e2e` 當時的斷言是 `aisleClearance > 0` —— 它把 22 cm 叫作「full-body side aisle」。**閘門替 bug 背書**。
+3. **Goat Island 的瀑布直接蓋在步道上。** 美國瀑布寬 100 m、中心在步道西側 13 m，而步道只有 ±7.26 m ⇒ 整條路徑穿過瀑布本體（實測 x ±720 全寬、5 m 深都可站）。
+
+### 這一輪做了什麼
+- **`_gen_html.py` 換掉 solid 規則**：從「種類白名單＋貼地」改成**身體佔據**判定 `blocks_body()`——身體是 25..180 cm 的圓柱、半徑 24；物件只要佔到這個高度帶（≥25 cm 厚）、寬度足以容納身體（`hx*hz > 24²`，圓盤近似）、且與步道的**淨距**小於可站半徑，就擋人。地板物件（排水溝、玻璃地板、畫線、水面）、入口的 press box（`portal`，新欄位 `passable`）不受影響。記錄自身的 `solid:` 仍然最高優先。
+- **東京廳 8.8 m → 11.8 m**（牆上三張畫一起外移到新牆），右側走道 22 → **172 cm**；這是記錄自己的站點清單（x 405「the right aisle」）本來就假設的寬度。
+- **Goat Island 的美國瀑布 x −1300 → −5800**：近面離可走邊界 8 m，仍是從步道看瀑布的角度，但不再穿過它。
+- **`verify-rooms-e2e` 的走道斷言**：`> 0` → **≥ 100 cm**，並改掉「full-body side aisle」的說法。
+- **新閘門 `.verify/verify-body.mjs`（16/16）**：每頁用 walker 自己的數字（lane-w、wseg、每個 solid 的擴張盒）BFS 出可行走集合，然後問三件事——① 有沒有任何畫在身體高度帶的物件**含有**可站格點（逐格列座標）② 每個深度是否都留得下 **≥60 cm** 可轉向的通道 ③ 路線是否還能走到記錄授權的最深處。它是**幾何**閘門，不需要瀏覽器，比 `verify-collision` 快三個數量級（1.8 s vs 一小時）。
+
+### 咬合證明（§8）
+- 把 solid 規則改回舊式 → **7 FAIL**（東京廳 3、街道 2、Niagara 2、Goat 2…），與實測一致。
+- 把東京廳寬度改回 8.8 m → **1 FAIL**：「narrowest free run 22 cm at z 2220 (a 48 cm body)」——就是站主撞到的那面牆。
+- 還原 → 16/16。
+
+### 三頁影片式 e2e（真 Chromium，從頭走到尾）
+`street 4150/4150、rooms 4500/4500、toronto 2099/2099、fukuoka 3116/3143、niagara 10346/10350、journey 6193/6200、cntower 1809/1809、goat 15900/15900`；全程 **「站在物件體內」= 0 次**、page error 0。fukuoka 的 5 次「停住」是撞到桌子正面後改走右側走道（e2e 腳本自己側移繞開），不是卡死。
+移動本身也逐項量過（`street.html`，2 s）：W 133–171、A 154、D 161、S 171、W+A 168、W+Shift 209 cm/s；對牆 60° 斜走會沿牆滑、走到盡頭速度歸零不抖動。
+
+### 驗證（最終檔）
+`verify-body 16/16`、`verify-walk 189/189`（連跑 10 次皆 189，先前一次 188 未能重現）、`verify-rooms-e2e 0 failure`、`verify-collision 28/28`、`verify-feel 10/10`、`verify-nowebgl 35/35`、`verify-story 27/27`、`verify-chain 0`、shapes 131/131、geometry OK、clash 0、games 23/23、three PASS、impeccable `[]`、regen 冪等。
+影格：`.preview/r57/`（`goat-before.png` 站進瀑布內壁、`goat-beside-falls.png` 修後、`street-board-reach.png` A 字板在 190 cm 可達、`fukuoka-end.png` 走道走到水邊、`toronto-table.png` 桌子不再是死路）。
+
+### 仍然存在、需要站主決定的事
+1. **`shopbay-*` 七間店面的說明卡按不到**（第五十六輪記錄）：每間鐵門上都掛著一張畫，reach 以中心距離排序，5.5 m 寬的艙中心永遠比畫遠（99 cm vs 31 cm）。選項：(a) 畫移離艙中線 (b) reach 改面距 (c) 拿掉艙的說明。
+2. **貼牆的畫（Tokyo 六張、Niagara 兩張）與牆面差 10 cm**：站在它們前面時相機只剩 20 cm 視距，畫面是一整片內壁。這是「貼圖太近」不是「穿模」；要不要把畫再往外移 12 cm（會離牆）或改畫框厚度，屬視覺決定。
+3. **Niagara / Goat 的瀑布近看是一片平光**：站到崖邊 7 m 內，瀑布的布幕沒有霧、沒有水線，只剩條紋。碰撞已修，**美術未修**，需要站主的眼。
+4. 真機手感複核、PR #16、CV PDF、ORCID 仍在站主手上。
+
+## 0ad′. 第五十六輪（另一線，2026-10-21）：站主令「你這分之先處理日本的場景與物品還有全面豐富」——兩個日本房間的場景與物品全面加料，並補上三個「有名無實」的畫法
 
 ### 站主指令
 「你這分之先處理日本的場景與物品還有全面豐富」。範圍＝東京房間（`rooms.html`，夜裡的中見世通）與
@@ -82,124 +317,94 @@
    Toronto 授權＝站主窗口。
 4. 站主輸入 persistent 佇列：英文 CV PDF、ORCID id。
 
-## 0ac. 第五十五輪（2026-10-20）：拆掉 2D 之後,「沒有 WebGL」的訪客其實什麼都看不到——修好它,並讓全庫檔案說同一件事
+## 0ad. 第五十六輪（2026-10-21）：站主令「操作還是有明顯的問題並非流暢操作，你可以全面重構嗎？」——走速被幀率綁架、畫面被填充率綁架，兩處都先量後改
 
 ### 站主指令
-「請先讀根的 AGENTS.MD SKILLS 做該做的事情，再進到這個資料夾與 agents.md 進行任務。」本輪照辦：
-先讀 `AGENTS.md`、`SKILLS.md`，再依其規定讀 `karpathy-guidelines`、`pua`、`scene-system`、
-`real-place-builder`、`scene-quality-loop`、`pr-handoff`、`district-author`/`grounded-scene`/
-`landmark-space`/`lane-prop`/`place-intake`/`japan-place`/`street-commons` 的相關段，然後才開工。
-`sh bin/restore-env` 已跑（沙箱是空的：`node_modules`、`.claude/` 都不在；libs 解到 `/tmp/al2023`）。
+「操作還是有明顯的問題並非流暢操作，你可以全面重構嗎？」授權範圍是走路控制全部重寫；驗收方式不變、而且更硬：**同一秒的實際位移不得取決於幀率**，且全視窗的幀率必須上升。前幾輪「手感已量測通過」的閘門（walk-feel、collision）在本輪被當成**不足的代理量**，不是通過證明。
 
-### 本輪發現的三個既有缺陷（全部就地修）
-1. **沒有 WebGL 的訪客看不到任何字（本輪最重要）**。第五十四輪的裁決把 Canvas2D 畫家刪了，改成
-   「lane 用自己的句子說明」，但句子寫在 `<div class="walk-card">` 裡——那個卡片出廠是 `hidden`
-   ——而且穿著 `.walk-note`（CSS 在 `(hover: hover) and (pointer: fine)` 之外是 `display:none`）。
-   兩層都把它藏起來：手機與觸控裝置一定看不到，桌機要先把 info 卡打開才看得到，而卡片本身出廠
-   關著。實測證據（`.verify/_nogl.mjs`，把每個 `getContext("webgl*")` 回 `null`）：修前
-   `renderer="off"`、canvas `hidden`、句子的 `rect` 是 `0×0`、`display:"none"`、`inCard:true`、
-   `cardHidden:true`；截圖是一整片空 navy。
-   **修法**：句子搬出資訊卡，成為 lane 的直接子節點 `<p class="walk-fallback" role="status">`，
-   用新的 `.walk-fallback` 規則（紙面底、navy 字、`z-index:3` 與 hit layer 同層在 canvas 之上、
-   不依賴 hover）。`_gen_html.py` 產生、全站 regen（八頁 walkable 各一，非 walkable 頁零）。
-2. **`verify-walk` 的填充上限是一段沒有牙的歷史**：`ctx.fills` 的「天花板」檢查在拆除時已經
-   只剩註解（`const before = ctx.fills;` 是孤兒），而那段長註解還在描述「~6300 fills、第二趟
-   深度會讀到 12700」的畫家時代預算。留下的是一段會被下一個 reader 當成現況的謠言。
-   **修法**：刪掉孤兒；把註解改寫成現況——2D context 現在只量到共用的 tile raster（每個材質
-   boot 一次）、遊戲與相簿，唯一可信的失敗是「沒跑」與「畫出自己 tile 之外」，兩者已被相鄰斷言
-   釘住；lane 的每幀預算搬到 Three 的幾何（`__walk.quads` 由本閘、三角形由
-   `bin/verify-three.mjs`）。
-3. **`cost-probe.mjs` 是「前提已死」的量具（同一輪該清的垃圾）**：整支在數 2D fills（第五十四
-   輪之後只會量到 tile raster），加上首段之後還貼著 265 行 `verify-walk` 的舊副本，`process.exit(0)`
-   之後永遠不會執行。
-   **修法**：重寫成量「真正送進渲染器的東西」：每頁 `renderer`、`__walk.quads`（靜止與行走中）、
-   `threeStats`（laneQuads/laneTriangles/laneMeshes/worldTriangles/waterTriangles/waterSheets/
-   mistLayers/batches）與幀間隔，並在檔頭寫明兩個限制（軟體光柵的幀時是環境不是裝置；quads 是
-   「交給引擎的工作」不是 GPU 最後剔除的結果）。
+### 量到的三個根因（每一條都有數字）
+1. **走速被幀率綁架。** `tick()` 把 elapsed 夾在 **0.12 s**，而這台沙箱的軟體光柵在 1024×640 下一幀就是 250 ms —— 每一幀都把超過一半的時間丟掉。以臨時 `window.__dtCap` 掃描（`street.html` 1024×640、按住 W 5 s、作者速度 165 cm/s）：上限 0.12 → **52 cm/s**；0.25 → 90；0.5 → **127**；2 → 204。走路變慢不是物理，是時鐘跟牆上的鐘不一致。
+2. **幀率被填充率綁架。** backing store 等於顯示尺寸，每個像素都畫。已量：1024×640 4.0 fps、768×480 6.3、512×320 11.0、320×200 18.0。
+3. **靜止後的第一幀會回放整段空檔。** lane 靜止時是靠 90 ms 的 pulse 走，不是 rAF；所以使用者按下 W 的那一幀，`t - last` 可能是幾百毫秒（實測 680 ms），整段被當成「剛剛都在走」結算 —— 位移 82 cm、畫面像被踹一腳。這正是站主說的「不是流暢操作」最刺眼的一種。
 
-### 順手修掉的文件級矛盾（第五十四輪只清了一半）
-- `.impeccable/config.json`：`repeating-stripes-gradient` 的豁免在第五十四輪被當作「過時的謠言」
-  移除，但 `.walk-stall`（第 50 輪的攤位本體：條紋雨棚＋暗色檯面＋水盆）還在用它。結果 **HEAD
-  幹淨 worktree 上 `detect` 也不是 `[]`**（19 頁全中），與 TODO §0ab／AGENTS 宣稱的 0 findings
-  矛盾。本輪以「作者化的單一 prop，不是裝飾」為由按名恢復豁免，並把理由寫進 config 的 `$comment`
-  （新出現的條紋表面仍會被拿這條註記對讀）。
-- 我自己新加的 `.walk-fallback` 第一版帶 `box-shadow: var(--shadow-lg)`＋1px 邊框，detector 立刻
-  回 `gpt-thin-border-wide-shadow`。依「客觀缺陷改碼、不改設定」的規矩拿掉陰影（左側 3px amber
-  邊即為 commit 的邊）。
-- `AGENTS.md`：開頭與 Conventions 的「Canvas2D remains the complete fallback」、luma 條目的
-  「以 Canvas2D 影格為對照」與 `verify-three` 的反復活閘互相矛盾；luma 條目改為現況（沒有第二張
-  圖可對照，只讀 `_halltint` 的 mean RGB／cold／purple，並保留「flag 必須與截圖同一次 evaluation
-  讀」的陷阱）。
-- `SKILLS.md`：renderer 段改為「sole renderer since 2026-10-20，八頁」（原本寫 `seven`）；§4 閘門
-  清單補 `node bin/verify-three.mjs` 與 `node .verify/_nogl.mjs`。
-- `DESIGN.md`：`camPt()` 現在對齊的是 DOM hit layer（不是已刪的 2D 投影）；`seven walkable pages`
-  → `eight`；「A transparent Canvas2D canvas remains stacked…」改為現況；「No black rectangle on a
-  WebGL failure」段落改寫成「退回句子＋抽屜仍可讀」。
-- `skills/`（本輪改 12 個檔）：`scene-system`／`scene-quality-loop`／`grounded-scene`／
-  `landmark-space`／`japan-place`／`lane-prop`／`place-intake`／`real-place-builder`／
-  `street-commons`／`district-author`／兩份 reference，把 `lane-shot.mjs`（第五十四輪已刪）、
-  `_shadowdrawn.mjs`（已刪）與「Canvas2D 完整 fallback」全部改成現況：pixel 證據改指
-  `browser-shot` 的到站影格、`cost-probe` 的新讀數、`_nogl` 的句子；`japan-place` 另外修正
-  「verify-shapes 讀 id prefix」的過時說法（第五十四輪起讀 `data-kind`）；`district-author` §6
-  的 `ctx.fills` 段落與 `.verify/` 檔案守則同步改寫。
+### 這一輪做了什麼（`js/site.js`）
+- **時間上限 0.12 s → 0.5 s**，物理仍以 25 ms 子步進（長幀是十小步，不是一跳，穿牆防護不變）。0.5 s 以上的 gap 是真的暫停（背景分頁、睡了筆電），不當位移結算。
+- **`pumping` 旗標**：只有在「上一幀是被按住的輸入或殘餘速度驅動」時，gap 才算數；靜止後的第一幀把 gap 夾在 50 ms。間斷的長幀（機器慢）仍拿到整個 gap，因為那段時間訪客確實按著鍵。
+- **幀預算總管（frame-budget governor）**：以**真實**幀距（EMA 0.8/0.2，夾 1.5 s）取樣，每 ~600 ms 且樣本 >4 才動一步：>42 ms 降 0.12、<22 ms 升 0.1，經 `applyRenderScale()` 只改 backing store，不動顯示幾何，並發佈在 `layer.dataset.walkScale`。死區 22–42 ms 是刻意的不動帶：每幀都調的縮放本身就是抖動。
+- **解析度地板隨顯示寬度走**：初版地板是常數 0.35，320×200 時畫成 112×70 再被瀏覽器放大 —— 實拍就是糊（`.preview/r56/street-walk-small.png`）。改成 `max(0.35, min(1, 360/W))`：寬視窗保留軟體光柵需要的 0.35，小視窗不准為了省沒人付錢的像素而變糊（重拍 `.preview/r56/street-small-floor.png`，scale 1、320×200）。
+- **拖曳不再每事件重畫**：pointer drag 原本每個事件 `draw(); checkReach();`，現在只 `loop()`，由 tick 統一算 reach。
+- **靜止 pulse 間隔** `max(90, frameMs*2)`：慢機器不必為了指針而空轉。
+- **`layer.__walk` 公開** `renderScale`、`frameMs`、`renderSize`、`displaySize` —— 閘門量的是 lane 自己的數字，不是猜的。
+- 一度試過關掉 `antialias` 換幀率：實測 6.8 → 7.4 fps（`_feel7.cjs`），不值得畫面代價，`js/scene3d.js` 原樣還原。
 
-### 新閘門 `.verify/_nogl.mjs`（有牙,並附咬合證明）
-把每個 `getContext("webgl*")` 回 `null`，等 engine 自己說 `walkRenderer="off"`，再報告句子的
-`hidden`／`display`／`rect`／`inCard`／祖先鏈與截圖。判準：句子必須 **painted**（不在卡片裡、
-`display` 非 none、面積 > 0）。反向模式 `GL=1` 走健康路徑，斷言同一句「unavailable」不得出現。
-`TOUCH=1` 用 390×844 + touch 量手機情境（這個 puppeteer 版不能 emulate `hover`/`pointer`，
-所以報告裡直接印瀏覽器自己回的 `(pointer: coarse)=true`／`(hover: hover) and (pointer: fine)=false`）。
-**咬合證明**：把 `rooms.html` 臨時改回第五十四輪的寫法（句子在卡片裡、穿 `.walk-note`）→
-`exit=1`，訊息 `the sentence is not painted over the empty lane … rect 0×0 display:none inCard:true`；
-改回 → `exit=0`。
+### 收斂實測（`_feel8.cjs`，按 W 24 s）
+- 1024×640：scale 0.64→0.40→0.35，幀 331→53 ms，走速 140→**149 cm/s**，backing 358×224。
+- 320×200：scale 回到 0.9（新地板下為 1），走速 **168–171 cm/s**。
+- 位移與幀率無關：`verify-feel` 三種視窗都落在 165 ±20%（慢幀仍 ≥55%，實測 122→換算 >90）。
 
-### 驗證（本輪一輪 batch,全部 fresh）
-- `sh bin/restore-env`（起）、`python3 -m py_compile _gen_html.py`、`node --check` site/scene3d/
-  兩支 harness、`git diff --check`：通過。`python3 _gen_html.py` 兩次，19 頁＋sitemap md5 相同
-  （IDEMPOTENT-OK）；`curl` served 頁確認 `data-walk-fallback` 在 lane 內、`?v=50c747f3ab` 與磁碟
-  五檔 sha1 派生值一致。
-- 機械閘：verify-shapes **131 props 全 resolve**；geometry OK；clash 0；verify-walk
-  **190/190**（+4：fallback 兩條新斷言、加上原有的 painter 復活斷言；`before` 孤兒已移除）；
-  verify-games 23/23；verify-tables exit 0（7/9 framed）；verify-objects exit 0；verify-look
-  exit 0；verify-story 27/27；verify-three PASS（8 walkable pages、12,682 world + 864 water
-  triangles、432 sheets、90 spray、無 Canvas2D）；verify-chain **0 failures**；
-  verify-collision **28/28**（harness 跑完不自行收尾 → timeout 124 是收尸,不是 FAIL；本輪沿用
-  §0ab 的既有結論）。
-- `impeccable detect --json css/site.css $(ls *.html)` = **`[]`**（並附 HEAD worktree 對照：修前
-  19 頁全中 `repeating-stripes-gradient`，證明這是既有缺陷而非本輪引入）。
-- `_nogl`：桌機 8/8 頁 PASS（`renderer=off`、句子 512×121、`inCard=false`）；`TOUCH=1` 2/2 頁
-  PASS（句子 350×143，`(pointer: coarse)=true` 且 `noteQuery=false`）；`GL=1` 2/2 頁 PASS
-  （`renderer=three`、句子 `hidden`）。截圖在 `.preview/nogl/`（不進 git）。
-- `cost-probe` 全 8 頁（真 Chromium，`renderer=three`）：street 689 quads／1420 lane tris／14
-  meshes；rooms 518／1022／11；toronto 871／1908／15；cntower 159（＋8,755 world tris／3 batches）；
-  niagara 698（＋1,901 world／432 water／216 sheets／45 mist／14 batches）；journey 737（＋2,026／
-  432／216／45／17）；goat 1,088／2,219／9；fukuoka 1,254／2,851／13。幀間隔 p50 17–33 ms、
-  p95 17–533 ms——**軟體光柵的環境特徵,不是裝置效能結論**。
+### 一幀的钱花在哪（`.verify/_feel11.cjs`，1024×640、按 W 6 s、中位幀距）
+- baseline（scale 0.35、backing 360×225）：4.3 fps，中位 **238 ms**
+- 隱藏 HUD：5.0 fps，中位 **118 ms**
+- 隱藏 canvas：6.5 fps，中位 **19 ms**（剩下的長尾是 WebGL 自己）
+- 把 canvas 的 CSS 尺寸改成 360×225：5.5 fps，中位 **155 ms**
+- 關掉總管（scale 1、backing 1024×640）：4.0 fps，`frameMs` **540 ms**；開總管 0.35：**251 ms**。⇒ 降解析度在 1024×640 仍然值（幀時間砍半），但這個環境的**軟體合成器把 360×225 的畫布拉成 1024×640 的視窗**本身就吃掉一半以上的預算；這是 SwiftShader 的帳，不是站點的。真 GPU 上總管應該停在死區內、一動不動（未量測，不可宣稱）。
+- 512×320（地板 360px、scale 0.70）同條件：**14.3 fps、166 cm/s**（＝作者速度）。
 
-### 限制與未解
-- 沒有真 GPU、沒有 iOS Safari：手機只到「Chromium 模擬 touch viewport」這一層，真機行為仍未量。
-- `verify-collision` 跑完不退（124），需要外層 timeout 收尸；這是既有 harness 行為，本輪未改。
-- `cost-probe` 的 quads 是「交給引擎的工作量」，不是 GPU 剔除後的成本；真正 FPS 仍無裝置可量。
-- 站主窗口仍掛著：PR #16 合併授權、City of Toronto 授權釐清、英文 CV PDF、ORCID id。
+### 新閘門 `.verify/verify-feel.mjs`（10/10）與咬合證明
+量的是 lane 自己發佈的四個數：作者速度 ±20%（480×300）、顯示尺寸不變、backing store ≤ 顯示、轉頭 75°/s ±35%、慢幀仍走 ≥55%、總管必須降解析度（且落在 [0.35,0.95]）、**小視窗不得靠放大糊圖過關**、press box 仍投影在畫面上。
+咬合測試：把 0.5 s 上限改回 0.12 s 重跑 → **2 FAIL**（122 cm/s 與 54 cm/s@369 ms），還原 → 10/10。
 
-### 下一輪完整待辦（優先序；除標記者外 agent 可做）
-1. **PR 狀態整理（blocked-on-owner）**：#16（head `arena/2cc029e8-huaxu`，tip `8558ef6`）仍 OPEN。
-   本輪的 commit 直接長在 `8558ef6` 之上、在 `arena/225f83d4-huaxu`，所以新 PR 會整包包含 #16。
-   站主二選一：(a) 授權合併新 PR 並關掉 #16；(b) 先合 #16，再合本輪。合併後照 §0w 的部署查核法
-   核 Pages（`gh api` 看 pages build run）。
-2. **碰撞閘門收尾（低）**：`verify-collision.cjs` 在印出 `28/28` 後不 `process.exit`，每次都要
-   靠 timeout；修成正常退出，並在 `SKILLS.md` §4 註記。驗收＝`node .verify/verify-collision.cjs`
-   `exit 0`。
-3. **`_nogl` 進 CI 化的可行性（低）**：目前要 `LD_LIBRARY_PATH`／Chromium；若站主在意,可把它
-   併進 `bin/preview` 的收尾清單印一行摘要（仍不強制 fail 建置）。
-4. **§0ab／§0w 的場景 thread 續查全部保持**（Moji 立面圖、Niagara 欄杆／燈柱／parkway、Journey
-   平面圖＋2027 watch、Tokyo 逐戶立面、Toronto 授權＝站主窗口）——原文見 §0w,未完成項未變。
-5. 站主輸入 persistent 佇列：英文 CV PDF、ORCID id。
-6. 任何場景改動後照例全庫：regen 冪等＋七頁機械閘＋`bin/verify-three`＋改動頁 browser-shot
-   （`renderer:"three"` 到站）＋`_nogl`＋人眼讀格＋PR 前更新本檔。
+### `verify-rooms-e2e` 第 7 節重寫：舊測試是靠「踹一腳」通過的
+第 56 輪拿掉那段回放之後，東京館內連 3 條斷言失敗。診斷（不是猜）：舊測試走固定 150 cm 再側移，會停在「剛好」到達的位置 —— 而它真正到達的位置其實是 200 cm 附近，**因為第一幀回放把訪客多推了兩公尺**，推過了掛在鐵門上的畫作，於是 5.5 m 寬的店面艙 `shopbay-w1` 意外成為最近的可達物。時間誠實之後，站在那個位置最近的是那張畫（實測 31 cm vs 店面 99 cm）。
+- 新斷言：站到西側第一間店面、按 E，**看板上那張畫（`frame-sensoji`）在可達範圍**、按 E **開它自己的 rail**（不是靜默）、rail 的 Esc 先收 rail 再談離開、然後 Esc 才離開街道。舊行為下這 3 條會 FAIL（已實測），所以閘門會咬。
+- **順手記下的真欠項（未修，非本輪範圍）**：`shopbay-*` 七個店面艙的說明卡**永遠不可達** —— 每間艙的鐵門上都掛著一張畫，reach 以「中心距離」排序，寬 5.5 m 的艙中心永遠比畫遠。選項：(a) 把畫移離艙的中線；(b) reach 改以「面距」再以大者優先；(c) 拿掉艙的 `data-title/hint`。留給站主裁決。
 
-### 站主裁頂事項
-本輪無新裁頂需求。唯一需要站主決定的只有待辦 1 的 PR 整理方式（兩個 PR 的合併順序）。
+### 驗證（本輪最終檔實跑）
+verify-feel **10/10**、verify-walk **189/189**、verify-rooms-e2e **0 failure**、verify-story **27/27**、verify-nowebgl **35/35**、verify-chain 0、shapes 131/131、geometry OK、clash 0、games 23/23、three PASS、impeccable `detect --json` → `[]`、`python3 _gen_html.py` 冪等。（collision 全量見下一輪清單：本機單頁約 4 分鐘、七頁約一小時。）
+影格眼審：`.preview/r56/street-walk-full.png`（1024×640 行走中，scale 0.35、358×224）、`street-small-floor.png`（320×200、scale 1）、`fukuoka-night.png`、`tokyo-evening.png` —— 幾何、投影、HUD 皆正確，降解析度時只軟不歪。
+
+### 教訓
+- 「量測通過」如果量的是錯誤的量（走 4 秒走多遠），它會替真正的 bug 背書。站主說「不流暢」時，先問**哪個數會隨機器變**：這裡是 dt 上限與 backing store。
+- 一個靠意外到達點通過的測試，會在把意外修掉的那一輪爆炸。重寫時要問「這個 assertion 想證明什麼」，而不是把它調到綠。
+
+### 下一輪完整待辦（優先序）
+1. **合併 PR #16（blocked-on-owner）**：OPEN、MERGEABLE、base master；需要站主一句授權。
+2. **`shopbay-*` 說明卡不可達**（上面第 7 節）：三個選項待站主裁決。
+3. **站主輸入佇列（blocked-on-owner）**：英文 CV PDF、ORCID iD。
+4. **真機手感複核**：沙箱只有 SwiftShader，總管在真 GPU 上應該幾乎不動（實測 22–42 ms 死區）。驗收＝站主在真手機/桌機走一段並回報；未量測，不可宣稱已驗。
+5. **`verify-collision` 太慢**：七頁約一小時，建議先量 V1/V2 幀預算再談縮短，不要降取樣。
+
+## 0ac. 第五十五輪（2026-10-20）：第一幀「沒有 WebGL 的 lane」——空畫面與走失的說明，收回 viewport 裡；順手讓教義檔追上第五十四輪的刪除
+
+### 站主指令
+「先檢查一下理解這個專案，請用 skills 並且遵循該有的 AGENTS/SKILLS 做該做的事情並進行任務。」處理方式：先按 `skills/karpathy-guidelines`、`pua`、`scene-system`、`real-place-builder`、`grounded-scene`、`scene-quality-loop`、`pr-handoff` 走一遍現況稽核（不憑記憶），再依 §8「有證據的欠項就是本輪待辦」把找到的缺陷做完。
+
+### 稽核找到的兩個缺陷（都先量後改）
+1. **沒有 WebGL 的 lane 是一片空畫面。** 第五十四輪刪掉塗裝器時，`noteNoWebGL()` 只把 `[data-walk-fallback]` 的一句話放進「資訊卡」裡——而資訊卡要按 I 才開。實測（`.verify/_nowebgl.cjs` 擋掉 `getContext("webgl*")` 後截圖）：整頁只有深藍底、兩張孤零零的 prop 卡（投影在「不存在的畫面」上）、可點但不知所云的圖示列；唯一的解釋要三次互動才看得到。這正是 SKILLS §5「畫面說了謊」的同一類——不是畫錯，是**沒說**。
+2. **教義檔沒跟上第五十四輪的刪除。** `AGENTS.md`×4、`SKILLS.md`、`DESIGN.md`×6、`skills/{grounded-scene,japan-place,scene-system,landmark-space,lane-prop,place-intake,real-place-builder,scene-quality-loop,district-author,street-commons}` 與兩份 reference 仍在寫「Canvas2D 是完整 fallback」，多處還把已刪的 `.verify/lane-shot.mjs`、`_shadowdrawn.mjs` 當成現役閘門在教。下一個 session 照著做會去找不存在的檔案——這正是 AGENTS「skill 沒人指路的檔案不是 skill」的反面。
+
+### 這一輪做了什麼
+- **`_gen_html.py`**：`walk_html()` 新增 `[data-walk-offline]` 面板（只出現在 walk 頁、預設 `hidden`），文案三分：① 這台瀏覽器畫不出 lane（誠實說原因）② 不是騙人的「什麼都沒有」——站點、按鍵、清單仍可走可讀 ③ `[data-walk-offline-where]` 站立位置（`aria-hidden`，由 JS 從 status 行鏡射，不另立座標源）。
+- **`js/site.js`**：`noteOffline()` / `mirrorWhere()`——面板由 lane 自己發佈的狀態驅動；`draw()` 尾端與 `say()` 都鏡射位置；`layer.__walk.noteOffline` 公開給掛載端。renderer-less 時 `layer.is-offline` 讓 `.walk-hits` 退場（**投影到沒有的畫面上就是漂浮的卡片**），但 reach 本身保留：面向物件按 E 仍開它的紀錄。
+- **`js/scene3d.js`**：`noteNoWebGL()` 除了卡片那句，同時呼叫 `api.noteOffline()`——兩個入口（mount 拒絕、frame 失敗）都走同一條發佈通道。
+- **`css/site.css`**：`.walk-offline` 面板（z-index 2，在 HUD 之下、不動 pointer-events）、`.walk.is-offline .walk-hits{display:none}`。面板不畫幾何、不宣稱視野。
+- **新閘門 `.verify/verify-nowebgl.mjs`**（真 Chromium，需 `bin/preview`）：三頁 × 兩方向。無 WebGL → renderer `off`、面板可見且文案含 canvas/list/stops、位置行 = status 行、prop 卡退場、卡片 fallback 句仍在、canvas 隱藏、無 page error，且**站點晶片仍帶得動 walker**（depth 變化 > 200 cm）、清單仍讀得到；有 WebGL → 對照組：面板不出現、renderer `three`。
+- **`bin/verify-three.mjs`**（防復活閘）補三條：每頁必須有 shipped-closed 的面板、`site.js` 必須發佈 `noteOffline`、`scene3d.js` 必須呼叫 `api.noteOffline()`。
+- **教義檔**：所有「Canvas2D 完整 fallback」改寫為「沒有第二張圖；無 WebGL 即在 viewport 說明並退到編譯態」；所有 `lane-shot.mjs`／`_shadowdrawn.mjs` 的教學引用改指向現役 `browser-shot.mjs` / `verify-three.mjs` / `_halltint`。`SKILLS.md` §4 閘門清單加入 `verify-nowebgl.mjs`。
+
+### 驗證（實測）
+- **閘門咬合證明**：把 `noteOffline()` 臨時改成 no-op（等同第五十四輪後的行為）→ `PAGES=street.html verify-nowebgl.mjs` **4 FAIL**（面板不可見、位置行為空、prop 卡未退場、位置行不跟隨）；還原 → 35/35 PASS。咬合後以 `cp` 還原（不是 `git checkout`，工作區有未提交改動）。
+- **無 WebGL 影格眼審**：`.preview/r55-nowebgl/street.png`、`street-stops.png`、`fukuoka-mobile.png`（390×780）、`rooms-niagara` —— 面板在 1024×640 與手機直立皆完整可讀，未與 HUD、guide strip 打架；第一版面板曾在文字上壓著兩張 prop 卡，改正後消失（同一輪修、同一輪重拍）。
+- **全庫閘門（一輪全綠，實測）**：shapes 131/131、geometry OK、clash 0、walk 189/189、games 23/23、three PASS（12,682+864 三角、432 sheets、90 spray 不動）、chain 0 failure、rooms-e2e 0 failure、story 27/27、objects exit 0、**collision 28/28**（七頁 ×4 性質；street 4/4、fukuoka 14 站、niagara 8 站、journey 4 站、cntower 5 站），regen 冪等、`git diff --check` 乾淨、served 頁面帶面板且 `?v=c1e2433a` 與磁碟派生值一致。
+- **一般路徑影格**：`.preview/day/r55-normal.png`（street，WebGL 正常）——面板不出現、街道照常渲染，與改動前無視覺差異。
+- **impeccable：上一輪「[]」的記載是錯的，本輪量到 19 條 advisory。** `detect --json` 在 HEAD（第五十四輪 tip）同樣回 19 條，全部是同一條 `repeating-stripes-gradient`，來源是 `.walk-stall` 的條紋遮陽篷（棚布本來就是條紋，是被畫的物件而非裝飾）。處置＝按 `.impeccable/config.json` 自己的政策**具名豁免**（連同 DESIGN.md 的 waiver 清單與理由），不是刪掉遮陽篷、也不是放寬其他規則；豁免後 `detect` 為 0 findings。教訓：閘門要**當輪實跑**，上一輪寫下的「全綠」不能當本輪的證據。
+
+### 下一輪完整待辦（優先序）
+1. **合併 PR #16（blocked-on-owner）**：OPEN、MERGEABLE、base master；需要站主一句授權 → `gh pr merge 16 --merge`。
+2. **站主輸入佇列（blocked-on-owner）**：英文 CV PDF、ORCID iD（見下方 Backlog）。
+3. **本分支的 PR 交接**：本輪改動在 `arena/9a4f7733-huaxu`，尚未開 PR；若站主要合併，依 `pr-handoff` 先更新本節再開。
+4. **`verify-collision` 在這台沙箱上很慢（本輪實測）**：七頁全量約需 60 分鐘（單頁 street 約 4 分鐘；`GATE_PAGE=street.html` 的參數要給不含 `.html` 的頁名，給錯會 `ENOENT street.html.html`）。本輪曾因機器被佔滿而讓 `ps`/`sleep` 一併卡住——工具 timeout 量到的是機器，不是站點。下一輪若要縮短，先量 V1/V2 的幀預算再決定，不要為了跑得快而降低取樣。
+5. **無 WebGL 狀態的實機（手機）眼審**：沙箱無 iOS Safari，目前只有 Chromium 模擬（`verify-nowebgl` + 390×780 影格）。驗收＝站主在真手機開任一 walk 頁並回報；已知未量測，不可宣稱已驗。
 
 ## 0ab. 第五十四輪（2026-10-20）：站主令「2D fallback 全拆、全面3D JS」——塗裝器連垃圾一起清光,順手修掉這一拆照出的三個既有缺陷
 
