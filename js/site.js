@@ -3603,12 +3603,23 @@ function leaveOverlay(root, trigger) {
     const cladCovers = (side, z0, z1) => {
       const rows = surfaces.filter((sc) => sc.side === side && sc.z0 < z1 && sc.z1 > z0).sort((a, b) => a.y0 - b.y0);
       let y = 0;
+      /* Round 59: "covers the wall" had to mean *covers the wall*, and 20 cm was enough to stop it.
+
+         Every parapet in the record is authored to 400 cm and every lane's ceiling is 420, so a
+         band set that ends at the top of the parapet left twenty centimetres of uncovered wall —
+         and one uncovered centimetre is all this test needs to decide the *whole* panel is bare and
+         paint the lane's default plaster over it, parapet and gorge included. That is the beige
+         wall standing behind the Table Rock rail in every frame from the brink: the bands were
+         right, the air above the iron was authored `open`, and the wall was painted anyway because
+         of the gap between the parapet's height and the ceiling's. A hand's breadth is the
+         tolerance; anything shorter than that is not a wall a visitor can see. */
+      const TOP = WALL_TOP - 24;
       for (const r of rows) {
         if (r.y0 > y + 0.01) break;
         if (r.y1 > y) y = r.y1;
-        if (y >= WALL_TOP) return true;
+        if (y >= TOP) return true;
       }
-      return y >= WALL_TOP;
+      return y >= TOP;
     };
     /* Holes in the floor (round 33): a glass floor is a window, so where one lies the floor is not
        painted and the surveyed world under it shows through -- only on a page that has a world to
@@ -6101,8 +6112,11 @@ function leaveOverlay(root, trigger) {
            side is the floating grey parallelogram the owner kept finding over the grass at Niagara's
            fifth station. A shed is a volume: four walls and a lid, each face its own tint, so it
            reads as a building from wherever the visitor stands. */
-        const shedAt = (x0, x1, y0, y1, base) => {
-          const z = m.z - 1750;
+        /* Round 59: `z = m.z - 1750` put both sheds 17.5 m *up the promenade* from the incline they
+           belong to, which is the middle of the walk at the parapet station — the blank grey slab
+           that filled the right half of the frame from the second stop is this building, not a wall.
+           A shed stands on its own track: the near one, `m.z - 925`, the line the cars run on. */
+        const shedAt = (x0, x1, y0, y1, base, z) => {
           const face = (pts, tint) => {
             const q = add(C, pts, ZERO8, "flat", mix(base, tint));
             if (q) { q.lit = lit * 0.9; drawn.push(q); }
@@ -6112,8 +6126,19 @@ function leaveOverlay(root, trigger) {
           face([[x1, y0, z], [x1, y0, z - 160], [x1, y1, z - 160], [x1, y1, z]], -0.16); // east wall
           face([[x0, y1, z - 160], [x1, y1, z - 160], [x1, y1, z], [x0, y1, z]], 0.10);  // the lid
         };
-        shedAt(m.x - 140, m.x + 60, m.y, m.y + 300, "#4b5568");
-        shedAt(m.x + L * CA - 160, m.x + L * CA + 160, m.y + deckY, m.y + deckY + 420, "#4b5568");
+        const TRACK_Z = m.z - 925;                 // the near track, where the cars are
+        /* The lower station house stands against the west edge of the promenade, the way a station
+           stands beside the walk it serves — not across the middle of it. At x −206…−6 it filled a
+           third of the walk at the parapet station with a blank grey volume; at the edge it is the
+           building the visitor passes on the way to the car. */
+        /* The lower station house stands at the foot of the track — where the cars come down and
+           where the passenger boards — and the track's foot is the incline's own x, not a metre of
+           promenade chosen by hand. Round 59 had it 17.5 m up the walk, and then, on the first
+           correction, straddling the rail station itself: a blank 300 cm box 2 m from the visitor's
+           eye. */
+        shedAt(m.x - 140, m.x + 60, m.y, m.y + 300, "#4b5568", TRACK_Z);
+        shedAt(m.x + L * CA - 160, m.x + L * CA + 160, m.y + deckY, m.y + deckY + 420,
+               "#4b5568", TRACK_Z);
       } else if (shape === "massing") {
         /* The port table's footprints (round 36/39). The historic buildings and the Retro High Mart
            have their own stands now; the table keeps all five mapped outlines the way a site plan does

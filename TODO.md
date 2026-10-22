@@ -2,6 +2,35 @@
 
 > 本檔是與使用者對話的工作記憶。最後更新：2026-10-22 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
+## 0ah. 第五十九輪之二（2026-10-22）：站主「我原本以為是加拿大境內的那個」
+
+### 站主指令
+「建議剩下都做好。你現在做美國那下面的喔? 我原本以為是加拿大境內的那個」——不是問句，是糾正：前幾輪把心力放在 Goat Island 那一頁的 American Falls，站主要的其實是**加拿大境內**那條散步道（Table Rock）看出去的馬蹄瀑布。本輪先確認座標，再把加拿大的那一面做完。
+
+### 先確認（不是猜）
+- 影格撐著：`rooms-niagara.html` 第 2 站（Parapet over the gorge）與第 3 站（Table Rock rail）白天／夜間各一張；美國那一頁在 `rooms-goat.html`，兩者是不同的 lane。
+- 修之前，第 2 站整片右半是**一面沒有任何貼圖的米白牆**，第 3 站的欄杆之外是一整片平的灰白。兩者都不是「瀑布」。
+
+### 找到的四個真因（全部有影格／射線撐著）
+1. **單位錯一次，整條散步道沒有 surfaces**。`niagara_parapet_bands()` 回傳的是 record/Z_SCALE，產出器再乘一次 Z_SCALE；於是寫在清單裡的字面值 1483 被當成 record、變成 4301，**1483–4301 這 28 公尺（Parkway、Table Rock rail、纜車下站）一條 surface 都沒有**——lane 就退回預設的米白牆，那面牆站在欄杆與峽谷之間。改成 `round(1483/Z_SCALE,1)`。（與第 58 輪「米色隧道」是同一個病，只是單位又錯一層。）
+2. **`cladCovers` 只差 20 cm 就判定「整片牆沒包」**。所有 parapet band 最高到 400 cm、lane 天花 420，於是每片牆都留 20 cm 沒被蓋到 → 整片牆重畫成預設灰泥。改成容差 24 cm（一隻手掌）。設定本身是對的：欄杆以上本來就 authored `open`。
+3. **水霧 billboard 是全螢幕的罪魁**。`size = w × (0.32…0.54)`，一個 authored 84 m 的煙羽畫成 27–45 m 半徑的軟片，三片疊起來就是那片「有斜紋的米白牆」（pixel probe 逐 mesh 關掉確認：關掉 `surveyed spray billboards` 畫面還一模一樣，關掉 `foam` 才變）。改成 0.15–0.26 半徑、片數 ×3、每片淡一半、徑向漸層峰值 0.46 → 0.30。另外 `depthTest` 從 false 改 true：400 m 外的煙羽不該蓋住眼前的欄杆。
+4. **馬蹄水簾沒有水繩**。`fallsw` 是貼圖：一張 24 m 一個循環，站在 rail 上看到的是整片被拉長的貼圖——owner 說的「一片平光」在加拿大這一面是同一件事。世界座標 u 上直接生成水繩（`sin(vUv.x×100 + noise×9)`），並用 `fwidth` 做反鋸齒（否則細於一像素就變摩爾紋、整片發白——第一版就是這樣），暗縫留冷色、水繩吃光。夜間另加 `uNight`：這支 shader 自己有夜間項，世界的夜間 pass 摸不到它，所以先前半夜的馬蹄瀑布是白天的青色。
+
+### 順手修掉的
+- **下站小屋站錯位置**：`shedAt` 的 `z = m.z − 1750` 把兩棟小屋放到散步道上、正對欄杆站（就是那片擋住半個畫面的灰盒子）。改成站在自己的軌道上（`m.z − 925`），下站小屋放回纜車軌道腳（`m.x`），不再橫在走道中央。
+- **Table Rock rail 站點從 1440 移到 1510**：原站正好站在下站小屋裡。
+- **纜車 track 上兩片屋頂板**（`shedAt` 只畫 4 面，`z` 已改為參數）。
+
+### 閘門
+`verify-shapes` **201/201**、`verify-body` **16/16**；`verify-three / geometry / look / story / games` 仍是 `node_modules` 不存在**未跑**（零依賴政策），不得當成通過。影格：`.preview/r59/niagara-parapet-day.png`、`table-rock-rail-horseshoe.png`、`table-rock-rail-night.png`。
+
+### 尚未做完（下一輪從這裡開）
+- **Table Rock rail 往左（yaw −90）看到的仍是平的**：欄杆外是一片灰白水面，馬蹄的正面不在那個方位（`NIA_HS_CREST` 在東北），往 −100° 才看到水簾。rail 站的 yaw 已回到 −15（作者值），但「站在 rail 上該看到什麼」還沒定案；要嘛把那一段的看向改成 −100 並在註解寫明理由，要嘛在該方位補上真正的峽谷與對岸。
+- `foam` 貼圖在近距離仍是平台狀（`we got the sheet, the pool still reads as paper`）。
+- `niagara_world` 的 `trcwall`／`hotelw`（Centre 的遠牆）在近距離是無貼圖的米白板。
+- 其餘與 0ag 相同：`shopbay-*` 可達性、README/授權、PR #16、CV PDF、ORCID 在站主手上。
+
 ## 0ag. 第五十九輪（2026-10-22）：同一句「繼續做完整」，把瀑布從「貼圖牆」改成「水」
 
 ### 站主指令

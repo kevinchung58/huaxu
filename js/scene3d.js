@@ -707,9 +707,11 @@ function cloudTexture(THREE) {
   canvas.width = canvas.height = 128;
   const c = canvas.getContext("2d");
   const g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
-  g.addColorStop(0, "rgba(255,255,255,0.46)");
-  g.addColorStop(0.35, "rgba(255,255,255,0.24)");
-  g.addColorStop(0.72, "rgba(255,255,255,0.075)");
+  /* A soft core and a long, quiet tail. The old ramp reached 0.46 in the middle, which stacked to
+     an opaque lid wherever puffs overlapped; a spray cloud is mostly thin. */
+  g.addColorStop(0, "rgba(255,255,255,0.30)");
+  g.addColorStop(0.30, "rgba(255,255,255,0.17)");
+  g.addColorStop(0.62, "rgba(255,255,255,0.06)");
   g.addColorStop(1, "rgba(255,255,255,0)");
   c.fillStyle = g; c.fillRect(0, 0, 128, 128);
   const texture = new THREE.CanvasTexture(canvas);
@@ -721,10 +723,18 @@ function makeClouds(THREE, scene, prims) {
   const descriptors = [];
   for (const p of prims) {
     const [ox, oy, oz] = p.o || [0, 0, 0];
-    const count = Math.max(1, Math.min(9, p.np || 5));
+    const count = Math.max(1, Math.min(16, p.np || 9));
     for (let k = 0; k < count; k++) {
       const f = count === 1 ? 0 : k / (count - 1);
-      descriptors.push({ p, k, count, f, ox, oy, oz, size: (p.w || 1000) * (0.32 + 0.22 * f) });
+      /* Round 59: a puff is a puff, not a screen.
+
+         Size used to be 0.32-0.54 of the authored width, so a plume authored 84 m wide drew
+         billboards 27-45 m in radius — one of them covered half the frame at the Table Rock rail,
+         and three of them, each with the same radial falloff, stacked into the flat beige wall with
+         diagonal stripes that stood between the promenade and the gorge. Round 58's lesson for the
+         falls applies to its spray: what is *drawn* has to be smaller than what it stands for, and
+         the whole comes from many small puffs rather than from one big gradient. */
+      descriptors.push({ p, k, count, f, ox, oy, oz, size: (p.w || 1000) * (0.15 + 0.11 * f) });
     }
   }
   if (!descriptors.length) return null;
@@ -753,7 +763,15 @@ function makeClouds(THREE, scene, prims) {
     // is clipped to nothing — measured in round 43 (a full record set, 0.3/255 of visible change).
     // The veil over the rail is the whole effect, and renderOrder 2 still puts it after the water and
     // before the rainbow.
-    transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide,
+    /* Round 59: depth-tested after all.
+
+       The note above is right about *order* and wrong about *depth*: `depthTest: false` on an
+       overlay drawn after the world means the Horseshoe's plume — 400 m out, spread over the whole
+       bowl — paints over the parapet, the deck and the near bank alike, and from the Table Rock
+       rail the gorge came out one flat pale wash with the rail's own coping showing through it.
+       Writing no depth but *testing* it keeps the veil in front of the sheet it rises from and stops
+       it covering what is nearer than it is. */
+    transparent: true, depthWrite: false, depthTest: true, side: THREE.DoubleSide,
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = "surveyed spray billboards";
@@ -951,7 +969,9 @@ function updateClouds(THREE, clouds, camera, state, reducedMotion) {
     const dark = state.dayPage ? state.day < 0.25 : true;
     const tint = prim.il && dark ? NIGHT_LAMPS[Math.floor((state.time || 0) / 7) % NIGHT_LAMPS.length] : "#eef4f7";
     rgb.set(tint);
-    const alpha = (Number(prim.al) || 0.3) * (1 - 0.6 * f) * (prim.il && dark ? 0.5 : 1);
+    /* Each puff is weaker than before because there are three times as many of them; the plume's
+       density comes from the count, the way it does in the photographs. */
+    const alpha = (Number(prim.al) || 0.3) * (1 - 0.55 * f) * (prim.il && dark ? 0.5 : 1) * 0.55;
     for (let q = 0; q < 4; q++) col.setXYZW(vi + q, rgb.r, rgb.g, rgb.b, alpha);
   }
   pos.needsUpdate = true; col.needsUpdate = true;
@@ -1429,6 +1449,14 @@ function buildRenderer(THREE, canvas, backdrop, api) {
         uBand1: { value: new THREE.Color(waterData.bandPrims[1]?.c || "#7cc3b5") },
         uBand2: { value: new THREE.Color(waterData.bandPrims[2]?.c || "#c4e2de") },
         uBand3: { value: new THREE.Color(waterData.bandPrims[3]?.c || "#e4f0ef") },
+        /* Round 59 — 夜間水色, on the surveyed curtains as well as the brink-built ones.
+
+           This material is its own shader, so the world's night pass (which walks the batch colours)
+           never touched it: at 3 a.m. the Horseshoe stayed daylight teal while every rock around it
+           went navy, which is exactly backwards. The illumination does not put the falls out; it puts
+           lamps on it. The sheet takes the warm light by night, and the water between its strands
+           keeps the cold of the gorge, which is what photographs of the lit falls show. */
+        uNight: { value: 0 },
       }]),
       vertexShader: `attribute vec3 color; attribute float aOpacity; attribute float aFall;
         varying vec2 vUv; varying vec3 vColor; varying float vOpacity; varying float vFall;
@@ -1437,7 +1465,7 @@ function buildRenderer(THREE, canvas, backdrop, api) {
           vec4 mvPosition=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mvPosition;
           #include <fog_vertex>
         }`,
-      fragmentShader: `uniform sampler2D uStreaks; uniform float uTime; uniform float uMotion;
+      fragmentShader: `uniform sampler2D uStreaks; uniform float uTime; uniform float uMotion; uniform float uNight;
         uniform vec3 uBand0; uniform vec3 uBand1; uniform vec3 uBand2; uniform vec3 uBand3;
         varying vec2 vUv; varying vec3 vColor; varying float vOpacity; varying float vFall;
         #include <fog_pars_fragment>
@@ -1452,19 +1480,46 @@ function buildRenderer(THREE, canvas, backdrop, api) {
           // Interpolate the source's four falling-water color stops across their measured height
           // ranges: separate opaque band faces read as stacked slabs from the upper deck.
           vec3 base=fallColor(vFall);
+          // The lamps on the lit falls: warm white, more of it toward the foot where the sheet is
+          // aerated and catches the light, and never enough to lose the sheet's own colour.
+          vec3 lit=mix(base,vec3(1.0,0.905,0.775),uNight*0.62);
           // A centimetre-mapped, transparent grain tile travels down the sheet. Clear gaps leave the
           // band color visible; the old per-quad sine repeated a high-frequency "window" moire.
           // Round 58: two octaves, the second at three times the frequency and twice the speed. One
           // octave is a stripe at arm's length; water is a sheet of strands moving past each other.
+          /* Round 59 — the surveyed curtains get the ropes the brink-built falls got.
+
+             the fallsw tile is 24 m of water per repeat, so at the Table Rock rail the
+             Horseshoe was a 57 m wall of one stretched texture and read as the same 一片平光 the
+             owner reported from the American side. What a sheet at fifteen metres shows is *ropes*:
+             water hanging in columns a metre or two wide with dark water between them. Those are
+             built here from the world-space u (vUv.x, already centimetres of the real crest), so the
+             columns keep their size however close the visitor stands, and the seams are pushed
+             around by the same tile so they do not line up. */
+          float ropeN=texture2D(uStreaks,vec2(vUv.x*2.7,vUv.y*0.45+uTime*0.06*uMotion)).r;
+          float ropePhase=vUv.x*100.0+ropeN*9.0;
+          float rope=0.5+0.5*sin(ropePhase);
+          rope=pow(rope,1.6);
+          /* Antialiased by its own footprint: where a rope is narrower than a pixel the sine becomes
+             a moire, so the pattern fades to its mean as the derivative of the phase approaches the
+             size of a cycle. This is the same failure the tile mipping solves, solved for geometry. */
+          float ropeAA=clamp(1.6-fwidth(ropePhase),0.0,1.0);
+          rope=mix(0.5,rope,ropeAA);
           vec4 grain=texture2D(uStreaks,vec2(vUv.x,vUv.y+uTime*0.30*uMotion));
           vec4 fine=texture2D(uStreaks,vec2(vUv.x*3.3+0.17,vUv.y*1.7+uTime*0.66*uMotion));
           float lightStreak=smoothstep(0.18,0.78,grain.r);
           float hair=smoothstep(0.30,0.86,fine.r);
-          vec3 bright=min(vec3(1.0),base*1.32+vec3(0.06));
-          vec3 dark=base*vec3(0.52,0.71,0.77);
+          vec3 bright=min(vec3(1.0),lit*1.32+vec3(0.06)+vec3(0.10,0.08,0.04)*uNight);
+          vec3 dark=mix(base,lit,0.35)*vec3(0.52,0.71,0.77);
           vec3 strand=mix(dark,bright,clamp(lightStreak*0.78+hair*0.30,0.0,1.0));
           float coverage=vFall<0.0?0.0:clamp((grain.a*0.70+fine.a*0.50)*vOpacity,0.0,0.82);
-          vec3 color=mix(base,strand,coverage);
+          vec3 color=mix(lit,strand,coverage);
+          // The ropes themselves: the sheet between two of them is still water and stays cold, the
+          // rope is aerated and takes the light. Only below the glassy brink.
+          float below=smoothstep(0.06,0.22,vFall)*ropeAA;
+          vec3 ropeL=mix(color,vec3(0.94,0.98,0.98),0.42*below);
+          vec3 seamL=mix(color,color*vec3(0.50,0.68,0.74),0.75*below);
+          color=mix(seamL,ropeL,rope);
           // The lip. Every falls has one unbroken white line where the water breaks over the brink,
           // and without it the sheet's top is a cut edge — a wall, which is what it was called.
           float lip=smoothstep(0.040,0.0,max(vFall,0.0));
@@ -1616,7 +1671,11 @@ function buildRenderer(THREE, canvas, backdrop, api) {
       }
       lastDay = day; lastHeld = held; lastDayPage = dayPage;
     }
-    if (water) { water.uniforms.uTime.value = time; water.uniforms.uMotion.value = reducedMotion ? 0 : 1; }
+    if (water) {
+      water.uniforms.uTime.value = time; water.uniforms.uMotion.value = reducedMotion ? 0 : 1;
+      // Same curve the lane's falls use, so the two curtains go lit on the same evening.
+      water.uniforms.uNight.value = Math.max(0, Math.min(1, ((Number(state.night) || 0) - 0.45) / 0.5));
+    }
     updateClouds(THREE, clouds, state.camera, { ...state, day, time }, reducedMotion);
     if (rainbow) {
       const sun = Number(state.sunAz) || 0;

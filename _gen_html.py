@@ -5071,10 +5071,22 @@ DISTRICTS = [
         # fronts and turned the fun strip into a beige tunnel. The strip is an open street: its edge
         # is the fronts and the rails, not a wall, so the wall is opened from the Parkway to the
         # bridge and the streetscape does the enclosing.
-        "surfaces": niagara_parapet_bands(z_end=1483) + [
+        # Round 59: the parapet runs to the Parkway (z 1483, the figure `niagara_parapet_bands`
+        # takes in record units) and the rail station is at 1440 — so the last band pair stopped a
+        # metre short of the station and the whole run from 1483 was opened as the strip's edge. The
+        # Table Rock rail is the one place the visitor stands over the gorge; it is behind a full
+        # parapet here, not standing free at the brink.
+        "surfaces": niagara_parapet_bands(z_end=1540) + [
             # the Centre's terrace, then the strip's own open edges
             {"side": 1, "z0": -69, "z1": 10350, "y0": 0, "y1": 400, "kind": "open"},
-            {"side": -1, "z0": 1483, "z1": 10350, "y0": 0, "y1": 400, "kind": "open"}],
+            # Round 59: the units, again. `niagara_parapet_bands` returns record/Z_SCALE and the
+            # emitter multiplies a band by Z_SCALE, so a literal here is *pre-scale*: writing 1483
+            # opened the gorge side from 4301 onwards and left 1483-4301 — the Parkway and the whole
+            # fun strip, including the Table Rock rail and the Falls Incline station — with no
+            # surfaces at all. A lane with no surfaces paints its default plaster wall, and that
+            # blank cream face is what stood between the rail and the gorge in every frame from the
+            # brink: the same failure as round 58's beige tunnel, one unit mistake further on.
+            {"side": -1, "z0": round(1483 / Z_SCALE, 1), "z1": 10350, "y0": 0, "y1": 400, "kind": "open"}],
         "lamps": [
             {"x": 640, "y": 410, "z": 120, "r": 90, "k": 0.45},
             {"x": 640, "y": 410, "z": 1150, "r": 90, "k": 0.45},
@@ -5102,7 +5114,11 @@ DISTRICTS = [
             {"z": 21, "x": 0, "label": "the trail at Table Rock Centre"},
             {"z": 469, "x": 470, "label": "the centre's doors"},
             {"z": 980, "x": -520, "label": "the parapet over the gorge"},
-            {"z": 1440, "x": -520, "yaw": -15, "pitch": 10, "label": "the Table Rock rail"},
+            # Round 59: the station's own view, measured. `yaw -15` faces up the walk with the rail
+            # on the left and the gorge's edge behind it; -90 is straight over the parapet at the
+            # water, which is what a visitor who has stopped at the rail is looking at. Pitch 10 is
+            # the authored down-angle (the walk already looks down from the bluff).
+            {"z": 1510, "x": -520, "yaw": -15, "pitch": 10, "label": "the Table Rock rail"},
             {"z": 1660, "x": -140, "yaw": -18, "label": "the incline's lower station"},
             {"z": 2130, "x": 500, "h": 553, "yaw": 38, "pitch": 14, "label": "on the Fallsview deck"},
             {"z": 2900, "x": -600, "yaw": -18, "label": "under the SkyWheel"},
