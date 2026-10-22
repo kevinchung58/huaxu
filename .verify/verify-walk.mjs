@@ -168,9 +168,15 @@ const lights = island("lights"), wires = island("wires"), beams = island("beams"
       vista = island("vista"), bd = island("backdrop");
 const strips = lights.filter((L) => L.bulb === false);
 const lanterns = lights.filter((L) => L.body === "lantern");
+/* Round 56: a strip is the *bay's* strip. The street gained one more unlit source -- the vending
+   machine's own glow, which is authored on the prop and inherits its position from it -- so the
+   count that has to equal the bays is the count of strips that name a bay, and every other source
+   is asked, below, to name a prop that stands exactly where it does. */
+const bayStrips = strips.filter((L) => (L.of || "").startsWith("shopbay-"));
 ok("lights are data: a strip light under every bay's eave, and the globes on the fascias",
-   strips.length === bays.length && strips.every((L) => bays.some((b) => b.id === L.of && b.x === L.x && b.z === L.z))
-     && lights.filter((L) => L.bulb !== false).length >= 4, `${strips.length} strips / ${lights.length} lights`);
+   bayStrips.length === bays.length && bayStrips.every((L) => bays.some((b) => b.id === L.of && b.x === L.x && b.z === L.z))
+     && lights.filter((L) => L.bulb !== false).length >= 4,
+   `${bayStrips.length} bay strips / ${strips.length - bayStrips.length} prop glows / ${lights.length} lights`);
 ok("nothing hangs on a wire the street does not have",
    (wires || []).length === 0 && !lights.some((L) => L.body === "lantern") && (beams || []).length === 0);
 ok("the far end is Hozomon at its sourced size, with the pagoda 56 m west and 19 m north of it",
@@ -209,17 +215,42 @@ ok("and it runs the length of the lane on both sides, gate to plaza",
    }));
 ok("where a street crosses, the wall is that street's dark: its own band, and no shop light in it",
    [-1, 1].every((sd) => GAPS.every(([g0, g1]) => surf.some((b) => b.side === sd && b.z0 === g0 && b.z1 === g1)))
-     && strips.every((L) => GAPS.every(([g0, g1]) => L.z <= g0 || L.z >= g1)));     // islands are walk cm
+     && bayStrips.every((L) => GAPS.every(([g0, g1]) => L.z <= g0 || L.z >= g1)));  // islands are walk cm
 ok("the wall beneath a covered panel is painted zero times",
    /cladCovers/.test(js) && /if \(surfaces\.length && cladCovers\(side, z, z1\)\) return/.test(js));
-ok("the gutters run along the raised walks, flat on the floor and inside the walls",
-   !!ground && ground.length >= 2 && ground.every((m) => m.kind === "grate" && Math.abs(m.x0) <= 455
-     && Math.abs(m.x1) <= 455 && m.z0 >= -BACK && m.z1 <= WALK_D && m.x1 > m.x0 && m.z1 > m.z0));
+ok("the gutters run along the raised walks and across the mouths of the two side streets",
+   !!ground && ground.length >= 4
+     && ground.every((m) => (m.kind === "grate" || m.kind === "manhole")
+                    && Math.abs(m.x0) <= 455 && Math.abs(m.x1) <= 455 && m.z0 >= -BACK && m.z1 <= WALK_D
+                    && m.x1 > m.x0 && m.z1 > m.z0)
+     && ground.filter((m) => m.kind === "grate" && m.x1 - m.x0 > 600).length === 2
+     && ground.filter((m) => m.kind === "manhole").length === 1,
+   `${ground.length} marks`);
 const props = qa(".walk-hit").map((b) => ({ obj: b.dataset.obj,
   x: parseFloat(b.style.getPropertyValue("--x")), z: parseFloat(b.style.getPropertyValue("--z")) }));
+/* The furniture the street keeps out after closing is sized by the object table in
+   `skills/japan-place/references/japan-vocabulary.md` -- its ⚑ committed figures and its †
+   measured ones -- and not by eye, so that the three Japanese rooms cannot drift apart about how
+   wide a crate is. A prop whose numbers stop matching the table fails here, not in a photograph. */
+const OBJ = {};
+for (const t of hits) OBJ[attrOf(t, "data-obj")] = { w: Number(attrOf(t, "data-w")),
+  h: Number(attrOf(t, "data-h")), d: Number(attrOf(t, "data-d")), kind: attrOf(t, "data-kind") };
+const VOCAB = { vending: [96, 150, 52], crate: [62, 46, 52], bin: [68, 86, 68], bikes: [150, 102, 55],
+                planter: [104, 50, 46], bench: [150, 84, 48], signA: [70, 86, 52], mailbox: [52, 74, 36],
+                mirror: [78, 78, 24], ladder: [36, 268, 48], hydrant: [32, 94, 30], ac: [86, 30, 36],
+                pipe: [16, 300, 16], rack: [140, 76, 90] };
+const DRESS = ids.filter((id) => VOCAB[OBJ[id] && OBJ[id].kind] !== undefined);
+ok("the street's furniture is sized by the object table, not by eye",
+   DRESS.length >= 18 && DRESS.every((id) => {
+     const want = VOCAB[OBJ[id].kind];
+     return [OBJ[id].w, OBJ[id].h, OBJ[id].d].every((v, i) => v === want[i]);
+   }), `${DRESS.length} props at the table's sizes`);
 ok("every glow belongs to a named thing, so touching that thing is what changes the light",
    lights.filter((L) => L.bulb === false && L.body !== "lantern").every((L) => ids.includes(L.of))
      && /of: L\.of \|\| null/.test(js) && /setState/.test(js));
+ok("the only thing in this street that lights itself is the machine that never shuts",
+   strips.every((L) => (L.of || "").startsWith("shopbay-") || L.of === "vending-nakamise"),
+   strips.filter((L) => L.of === "vending-nakamise").length + " machine glow");
 ok("a state's light multiplier is a number, and every stop has one or none, never a guess",
    [...html.matchAll(/data-states="([^"]+)"/g)].every((raw) =>
      JSON.parse(raw[1].split(Q).join(DQ)).every((st) =>
@@ -235,7 +266,8 @@ ok("nothing writes prose into the scene", qa(".walk-hit").every((b) => !b.textCo
 ok("the sightline is in the accessible description, not only in pixels",
    /Hozomon, its great lantern lit, with the five-storey pagoda over the west row/.test(html));
 ok("and so is the dressing, because the room is the thing being described",
-   /two shallow rows of vermilion shopfronts nine metres apart, every shutter down and painted/.test(html));
+   /two shallow rows of vermilion shopfronts nine metres apart, every shutter down and painted/.test(html)
+     && /a lit white vending machine under the arcade's mouth/.test(html));
 
 /* ---- 1b. the display, which may not wear a word ----------------------------------------------- */
 {
@@ -286,7 +318,6 @@ ok("and so is the dressing, because the room is the thing being described",
 
 /* ---- 2. the raster, as recorded --------------------------------------------------------------- */
 ok("the raster ran at all", ctx.fills > 0, `${ctx.fills} fills after boot`);
-const before = ctx.fills;
 q("[data-walk-view]").dispatchEvent(new w.Event("pointerdown", { bubbles: true }));
 await sleep(30);
 ok("no non-finite number ever reaches the context", ctx.bad === 0, `${ctx.bad}`);
@@ -296,40 +327,16 @@ ok("every save is matched by a restore", ctx.saves === ctx.restores, `${ctx.save
 ok("the far plane stays a plane: nothing is projected off the ends of the earth",
    ctx.ptsMax > 0 && ctx.ptsMax < 60000, `widest coordinate ${Math.round(ctx.ptsMax)}`);
 ok("a texture covers its own quad and no more", ctx.huge === 0, `${ctx.huge} oversized fills`);
-/* The ceiling is a pass detector, not a freeze on detail — and it was calibrated on a build where
-   the compound beyond the lane's window was not being drawn at all (the vista and backdrop islands
-   were read with a list operation and came back `null`, so `if (vista)` was false). With the
-   compound actually in the frame the same boot costs ~600 more fills: the plaza is sliced into panels
-   for the same reason the walls are, and the crossing, eight city blocks, the tower, the mountain and
-   three sky bands are ~48 quads that were previously invisible. The number to watch is a *second
-   depth pass*, which doubles the room and lands near 6 000; if this ever reads that, the day's change
-   put the scene through twice.
-
-   It moved again for the same reason: seven props whose ids `kindOf()` could not resolve were being
-   drawn as one flat card each, and now draw what their own records say they are -- a stack of crates,
-   a planted trough, three A-boards, a sash window, a bicycle. Four of them live in `rooms.html` and
-   an A/B of that one page reads 4604 before and 4758 after, so the ceiling goes to 4900: still far
-   short of the ~6 000 a second pass would cost.
-
-   It moved once more when the city stop was walked in from z=230 to z=460: the hero table had been
-   a 289x295 px postage stamp and standing closer is what fixed it, but it also puts more of the
-   table's quads on screen. rooms-toronto reads 4758 before and 5194 after -- and the frame clock
-   was measured at every one of the five stops after the move and holds 60 fps (median 16.7 ms,
-   p95 under 21 ms), so this is a dressed room costing fills, not a room being redrawn. Ceiling
-   5600: still far short of the ~10 000 a second pass would now cost.
-
-   It moved again for the day-night cycle, and this one is worth reading before the next person
-   trusts the number. Darkness is painted on with `air`, and by day only distant quads are hazy
-   enough to earn that fill -- so at noon the room costs 5573 fills and after dark, when every quad
-   needs darkening, it costs 6164. The ceiling now has to cover the expensive hour, not the cheap
-   one, and it goes to 6300. A reading taken at a different time of day will differ by about 600
-   fills; that is the cycle working, not a regression. Still far short of a second pass.
-
-   It moved once more, and the A/B is exact this time: the falls' promenade registered two
-   material tiles (hedge, mistview) that every boot draws once, the way every other tile is
-   drawn — HEAD reads 6298, the promenade build reads 6380, and 82 is precisely the two
-   painters' fillRects. The ceiling goes to 6600; a second depth pass would now read near
-   12 700, so the detector still has a whole pass of daylight. */
+/* Round 55: there is no ceiling any more, and the reason is the round-54 ruling rather than a
+   relaxation. This recorder used to count a lane repaint -- one fill per visible quad, ~6 300 at
+   night -- so a *second depth pass* read near 12 700 and a ceiling could see it. The painter is
+   deleted; what still reaches a 2D context here is the shared tile raster in `mkTile` (each
+   material painted once at boot), the games, and the album plates -- quantities whose only
+   plausible failure is "did not run" or "wrote outside its own tile", and both of those are
+   asserted above. The lane's per-frame budget moved to the compiled geometry Three consumes:
+   `__walk.quads` is pinned by this gate's compiled-state section and the triangles by
+   `bin/verify-three.mjs`. A number here would measure the tiles and be mistaken for the lane,
+   which is exactly the kind of rumour the round-54 sweep was meant to end. */
 /* Round 32 recalibration, by the same honest A/B: this page is Nakamise now -- 30 m of street instead
 ok("no lettering is drawn anywhere in the scene, at any depth",
    !ctx.text && !/g\.fillText|\bfillText\(|strokeText/.test(js));
@@ -801,7 +808,16 @@ ok("the second district stays shut and says it is not open", /Not open yet/.test
 ok("printing prints the list, not a dark rectangle", /@media print \{[\s\S]*\.walk-view,[\s\S]*display: none/.test(css));
 ok("the canvas wears no overlay it cannot paint", !/walk-canvas::after/.test(css));
 const fb = q("[data-walk-fallback]");
-ok("the fallback names itself instead of hiding", fb && /unavailable|list below/i.test(fb.textContent + js));
+/* Round 55: the sentence IS the fallback now, so it must be in the lane rather than in the info
+   card (which ships hidden) and must not wear `.walk-note` (display:none on touch). A visitor with
+   no WebGL otherwise faces an empty viewport with the explanation behind a button. */
+ok("the fallback names itself instead of hiding",
+   fb && !fb.closest("[data-walk-card]") && !/\bwalk-note\b/.test(fb.className)
+     && fb.getAttribute("role") === "status" && /unavailable|list below/i.test(fb.textContent + js),
+   fb ? `${fb.className} inCard=${!!fb.closest("[data-walk-card]")}` : "missing");
+ok("the fallback is styled to be readable without hover",
+   /\.walk-fallback \{[\s\S]*?z-index: 3/.test(css)
+     && /\.walk-fallback\[hidden\] \{ display: none; \}/.test(css));
 /* Round 54, at the owner's ruling: 全站該是 3d js. The Canvas2D lane painter is deleted outright —
    this gate exists so it stays deleted: no second canvas in the markup, no raster pass in the
    engine, no "canvas2d" anywhere a browser could still be told it fell back. The tile raster keeps
