@@ -226,7 +226,40 @@ function patternCanvas(name) {
     }
   };
 
-  if (name === "fallsw") {
+  if (name === "fallsg") {
+    /* Round 60 — the curtain's structure tile, and the end of the flat wall.
+
+       The `fallsw` tile is a transparent strand overlay, so its RGB is white wherever a strand
+       touches: sampled as a mask it read 1.0 over almost the whole tile, the sheet's "structure"
+       term sat at its maximum, and every metre of the Horseshoe came out the same near-white —
+       the 一片平光 the owner kept reporting. This tile is opaque tone data instead: broad columns
+       of aerated white, the cold green water between them, medium strands and a grain, each drawn
+       twice so the repeat has no seam and each fading along whole periods so it moves. */
+    const S = canvas.width;
+    c.fillStyle = "rgb(122,122,122)"; c.fillRect(0, 0, S, S);
+    let seed = 90211;
+    const flow = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const column = (count, wMin, wMax, toneLo, toneHi) => {
+      for (let i = 0; i < count; i++) {
+        const x = flow() * S, w = wMin + flow() * (wMax - wMin);
+        const tone = Math.round(toneLo + flow() * (toneHi - toneLo));
+        const waves = 1 + Math.floor(flow() * 2), phase = flow() * Math.PI * 2;
+        const g = c.createLinearGradient(0, 0, 0, S);
+        for (let k = 0; k <= 12; k++) {
+          const f = 0.45 + 0.55 * Math.sin(phase + (k / 12) * waves * Math.PI * 2);
+          const v = Math.round(122 + (tone - 122) * f);
+          g.addColorStop(k / 12, `rgb(${v},${v},${v})`);
+        }
+        c.fillStyle = g;
+        c.fillRect(x, 0, w, S);
+        if (x + w > S) c.fillRect(x - S, 0, w, S);
+      }
+    };
+    column(7, 16, 34, 176, 246);      // the aerated columns the body of it hangs in
+    column(22, 4, 11, 150, 236);      // the streams strung between them
+    column(9, 7, 18, 52, 96);         // the cold water that shows through
+    column(46, 1, 3, 150, 210);       // the grain
+  } else if (name === "fallsw") {
     /* The authored material is a transparent overlay: full-height white/dark-green strands that a
        shader scrolls down the sheet. A grey opaque background here turned the Niagara water into a
        striped wall in WebGL.
@@ -337,7 +370,7 @@ function makeTexture(THREE, name, renderer) {
   const texture = new THREE.CanvasTexture(canvas);
   // The falls shader reads the tile as a mask/tone data source. Other canvases are authored in sRGB
   // display colors and use Three's normal color-space conversion.
-  texture.colorSpace = name === "fallsw" ? THREE.NoColorSpace : THREE.SRGBColorSpace;
+  texture.colorSpace = name === "fallsw" || name === "fallsg" ? THREE.NoColorSpace : THREE.SRGBColorSpace;
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.generateMipmaps = true;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -709,9 +742,13 @@ function cloudTexture(THREE) {
   const g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
   /* A soft core and a long, quiet tail. The old ramp reached 0.46 in the middle, which stacked to
      an opaque lid wherever puffs overlapped; a spray cloud is mostly thin. */
-  g.addColorStop(0, "rgba(255,255,255,0.30)");
-  g.addColorStop(0.30, "rgba(255,255,255,0.17)");
-  g.addColorStop(0.62, "rgba(255,255,255,0.06)");
+  /* Round 60 — 沒有霧, and the arithmetic of it: a 0.30 core times a 0.19 per-puff alpha is five
+     per cent, so the plume that was authored over the Horseshoe painted nothing the eye could find.
+     The density belongs in the puff's own alpha, where the count and the falloff can be reasoned
+     about; the tile only has to be a round cloud with a soft edge. */
+  g.addColorStop(0, "rgba(255,255,255,0.62)");
+  g.addColorStop(0.28, "rgba(255,255,255,0.40)");
+  g.addColorStop(0.60, "rgba(255,255,255,0.15)");
   g.addColorStop(1, "rgba(255,255,255,0)");
   c.fillStyle = g; c.fillRect(0, 0, 128, 128);
   const texture = new THREE.CanvasTexture(canvas);
@@ -967,11 +1004,15 @@ function updateClouds(THREE, clouds, camera, state, reducedMotion) {
     ];
     for (let q = 0; q < 4; q++) pos.setXYZ(vi + q, xyz[q][0], xyz[q][1], xyz[q][2]);
     const dark = state.dayPage ? state.day < 0.25 : true;
+    /* Round 60: the plume takes the lamps the way the sheet does — half of them. The illumination
+       plays on the spray; it does not turn the cloud over the Horseshoe into a purple object, which
+       is what a full lamp colour did at 3 a.m. on a still frame. */
     const tint = prim.il && dark ? NIGHT_LAMPS[Math.floor((state.time || 0) / 7) % NIGHT_LAMPS.length] : "#eef4f7";
-    rgb.set(tint);
+    rgb.set("#eef4f7");
+    if (prim.il && dark) rgb.lerp(new THREE.Color(tint), 0.55);
     /* Each puff is weaker than before because there are three times as many of them; the plume's
        density comes from the count, the way it does in the photographs. */
-    const alpha = (Number(prim.al) || 0.3) * (1 - 0.55 * f) * (prim.il && dark ? 0.5 : 1) * 0.55;
+    const alpha = Math.min(1, (Number(prim.al) || 0.3) * 2.3) * (1 - 0.50 * f) * (prim.il && dark ? 0.5 : 1);
     for (let q = 0; q < 4; q++) col.setXYZW(vi + q, rgb.r, rgb.g, rgb.b, alpha);
   }
   pos.needsUpdate = true; col.needsUpdate = true;
@@ -1442,9 +1483,10 @@ function buildRenderer(THREE, canvas, backdrop, api) {
     geometry.setAttribute("aFall", new THREE.Float32BufferAttribute(waterData.fallProgress, 1));
     const streaks = textures.get("fallsw") || makeTexture(THREE, "fallsw", renderer);
     if (streaks && !textures.has("fallsw")) textures.set("fallsw", streaks);
+    const sheetTile = makeTexture(THREE, "fallsg", renderer);
     const material = new THREE.ShaderMaterial({
       uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
-        uStreaks: { value: streaks }, uTime: { value: 0 }, uMotion: { value: 1 },
+        uStreaks: { value: streaks }, uSheet: { value: sheetTile }, uTime: { value: 0 }, uMotion: { value: 1 },
         uBand0: { value: new THREE.Color(waterData.bandPrims[0]?.c || "#3f9c8a") },
         uBand1: { value: new THREE.Color(waterData.bandPrims[1]?.c || "#7cc3b5") },
         uBand2: { value: new THREE.Color(waterData.bandPrims[2]?.c || "#c4e2de") },
@@ -1465,7 +1507,7 @@ function buildRenderer(THREE, canvas, backdrop, api) {
           vec4 mvPosition=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mvPosition;
           #include <fog_vertex>
         }`,
-      fragmentShader: `uniform sampler2D uStreaks; uniform float uTime; uniform float uMotion; uniform float uNight;
+      fragmentShader: `uniform sampler2D uStreaks; uniform sampler2D uSheet; uniform float uTime; uniform float uMotion; uniform float uNight;
         uniform vec3 uBand0; uniform vec3 uBand1; uniform vec3 uBand2; uniform vec3 uBand3;
         varying vec2 vUv; varying vec3 vColor; varying float vOpacity; varying float vFall;
         #include <fog_pars_fragment>
@@ -1496,38 +1538,69 @@ function buildRenderer(THREE, canvas, backdrop, api) {
              built here from the world-space u (vUv.x, already centimetres of the real crest), so the
              columns keep their size however close the visitor stands, and the seams are pushed
              around by the same tile so they do not line up. */
-          float ropeN=texture2D(uStreaks,vec2(vUv.x*2.7,vUv.y*0.45+uTime*0.06*uMotion)).r;
-          float ropePhase=vUv.x*100.0+ropeN*9.0;
-          float rope=0.5+0.5*sin(ropePhase);
-          rope=pow(rope,1.6);
-          /* Antialiased by its own footprint: where a rope is narrower than a pixel the sine becomes
-             a moire, so the pattern fades to its mean as the derivative of the phase approaches the
-             size of a cycle. This is the same failure the tile mipping solves, solved for geometry. */
-          float ropeAA=clamp(1.6-fwidth(ropePhase),0.0,1.0);
+          /* Round 60 — 一片平光, solved at the scale the eye reads it.
+
+             Round 59 built the ropes and left them switched off. ropePhase is a sine at 1.5 m, and
+             ropeAA fades to its mean as soon as one rope is smaller than a pixel: at the Table Rock
+             rail the nearest sheet is 30 m off and the apex 260 m, so most of what the visitor sees
+             was past that threshold — the ropes measured as present in the shader and as absent in
+             the frame. What a 57 m curtain needs is structure at every scale at once: masses ten
+             metres across that never alias, ropes a metre and a half that fade out with distance as
+             water does, and a grain that only ever adds a tooth. The contrast is carried by the tile
+             samples (mipmapped by their own derivatives) rather than by any procedural stripe, and
+             the sheet is no longer mixed nearly solid to white: 0.82 coverage of a saturated bright
+             was why the Horseshoe read as a plaster bowl. */
+          // Three scales of the tone tile, mipmapped by their own derivatives: 24 m columns of water,
+          // the 9 m streams inside them, and a 3 m grain. Weighted downward, so the sheet keeps a
+          // wide light and a wide shadow at any distance and only gains a tooth up close.
+          float sBroad=texture2D(uSheet,vec2(vUv.x+0.11,vUv.y*0.55+uTime*0.05*uMotion)).r;
+          float sMid=texture2D(uSheet,vec2(vUv.x*2.7+0.53,vUv.y*1.6+uTime*0.19*uMotion)).r;
+          float sFine=texture2D(uSheet,vec2(vUv.x*7.1+0.27,vUv.y*4.2+uTime*0.61*uMotion)).r;
+          float nBand=texture2D(uStreaks,vec2(vUv.x*0.47+0.07,vUv.y*0.62+uTime*0.16*uMotion)).g;
+          vec4 grain=texture2D(uStreaks,vec2(vUv.x*3.1+0.19,vUv.y*2.6+uTime*1.05*uMotion));
+          // The columns themselves: three sines of the crest, 21 m, 9 m and 3.7 m apart, summed to
+          // one irregular width. A tile alone could not carry this — every mip of it converges on
+          // its own mean, and the mean is the flat wash. These are low enough in frequency to be
+          // safe at 400 m and irregular enough not to read as a comb at 30 m.
+          float colA=0.5+0.5*sin(vUv.x*3.1+0.6);
+          float colB=0.5+0.5*sin(vUv.x*11.0+1.3);
+          float colC=0.5+0.5*sin(vUv.x*29.0+2.6);
+          float columns=0.50*colA+0.34*colB+0.16*colC;
+          float mass=clamp(columns*0.62+(sBroad*0.6+sMid*0.3+sFine*0.1)*0.38,0.0,1.0);
+          float structure=pow(smoothstep(0.32,0.68,mass),0.85);
+          // The sheet's shadow is the *water's* green, not the pale of the band it happens to be in:
+          // by the middle of the drop the authored stops are already near white, so a shadow mixed
+          // from them was a white shadow, which is how a 57 m curtain read as one flat wall.
+          vec3 cold=mix(mix(uBand0,uBand1,0.30),vec3(0.62,0.76,0.79),0.42);
+          vec3 deep=cold*vec3(0.44,0.58,0.62);
+          vec3 aerated=min(vec3(1.0),mix(cold,vec3(1.0),0.80)*1.02+vec3(0.12));
+          vec3 color=mix(deep,aerated,structure);
+          // By night the whole sheet is under the lamps: the same structure, lit warm.
+          color=mix(color,min(vec3(1.0),lit*1.12),uNight*0.38);
+          // The ropes: 1.5 m columns, still antialiased by their footprint, but only allowed to add
+          // a third of the sheet's contrast now that the tile carries the rest.
+          float ropePhase=vUv.x*100.0+nBand*11.0;
+          float rope=pow(0.5+0.5*sin(ropePhase),2.2);
+          float ropeAA=clamp(1.8-fwidth(ropePhase),0.0,1.0);
           rope=mix(0.5,rope,ropeAA);
-          vec4 grain=texture2D(uStreaks,vec2(vUv.x,vUv.y+uTime*0.30*uMotion));
-          vec4 fine=texture2D(uStreaks,vec2(vUv.x*3.3+0.17,vUv.y*1.7+uTime*0.66*uMotion));
-          float lightStreak=smoothstep(0.18,0.78,grain.r);
-          float hair=smoothstep(0.30,0.86,fine.r);
-          vec3 bright=min(vec3(1.0),lit*1.32+vec3(0.06)+vec3(0.10,0.08,0.04)*uNight);
-          vec3 dark=mix(base,lit,0.35)*vec3(0.52,0.71,0.77);
-          vec3 strand=mix(dark,bright,clamp(lightStreak*0.78+hair*0.30,0.0,1.0));
-          float coverage=vFall<0.0?0.0:clamp((grain.a*0.70+fine.a*0.50)*vOpacity,0.0,0.82);
-          vec3 color=mix(lit,strand,coverage);
-          // The ropes themselves: the sheet between two of them is still water and stays cold, the
-          // rope is aerated and takes the light. Only below the glassy brink.
-          float below=smoothstep(0.06,0.22,vFall)*ropeAA;
-          vec3 ropeL=mix(color,vec3(0.94,0.98,0.98),0.42*below);
-          vec3 seamL=mix(color,color*vec3(0.50,0.68,0.74),0.75*below);
-          color=mix(seamL,ropeL,rope);
-          // The lip. Every falls has one unbroken white line where the water breaks over the brink,
-          // and without it the sheet's top is a cut edge — a wall, which is what it was called.
-          float lip=smoothstep(0.040,0.0,max(vFall,0.0));
-          color=mix(color,vec3(0.968,0.988,0.986),lip*0.74);
-          // The foot. Over the last fifth the sheet stops being a sheet: it loses its strands and
-          // pales into its own spray, which is the band of white a plunge pool shows from above it.
-          float foot=smoothstep(0.64,1.0,max(vFall,0.0));
-          color=mix(color,mix(base,vec3(0.94,0.97,0.965),0.62),foot*0.66);
+          float below=smoothstep(0.05,0.20,vFall);
+          vec3 seam=color*vec3(0.58,0.74,0.80);
+          vec3 crestLift=min(vec3(1.0),color*1.10+vec3(0.10));
+          color=mix(color,mix(seam,crestLift,rope),0.30*below);
+          // A tooth of fine grain, never more: the second octave used to add brightness instead of
+          // tooth and was half of the flat white.
+          float tooth=(grain.r-0.5)*0.16*smoothstep(0.02,0.30,vFall);
+          color=clamp(color+vec3(tooth),0.0,1.0);
+          // The lip, and the dark the water turns as it leaves the edge and the light stops reaching
+          // through it: a sheet with a white lip over a cold band reads as falling water at once.
+          float belowLip=smoothstep(0.030,0.115,max(vFall,0.0))*(1.0-smoothstep(0.115,0.30,max(vFall,0.0)));
+          color=mix(color,color*vec3(0.72,0.86,0.90),belowLip*0.55);
+          float lip=smoothstep(0.028,0.0,max(vFall,0.0));
+          color=mix(color,vec3(0.968,0.988,0.986),lip*0.72);
+          // The foot: over the last third the strands go, the sheet loses its own colour and pales
+          // into the spray it raises, which is what hides the plunge from every rim above it.
+          float foot=smoothstep(0.60,1.0,max(vFall,0.0));
+          color=mix(color,mix(base,vec3(0.90,0.94,0.945),0.72),foot*0.80);
           gl_FragColor=vec4(color,1.0);
           #include <tonemapping_fragment>
           #include <colorspace_fragment>
