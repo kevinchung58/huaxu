@@ -5064,15 +5064,41 @@ function leaveOverlay(root, trigger) {
            the visitor and the falls is the channel, below the crest, and it is its own prop. So
            the brink is authored outward only: fourteen metres of river above the lip, enough to
            read as water arriving rather than as an edge of the drawing. */
-        const reach = 1400;
-        const NBR = 10;
+        /* Round 58, fifth pass: fourteen metres of upper river seen from 25 m is a *ninety-pixel*
+           band of pale grey above the lip — the last flat horizontal thing in the frame, and the
+           reason the brink still read as a slab. The real American Falls gives you about four metres
+           of water above the brink before the ground takes it; four is what this draws now, and the
+           foam streaks carry the sense of arrival the extra ten metres were pretending to. */
+        const reach = 420;
+        const NBR = 4;
         for (let i = 0; i < NBR; i++) {
           const t0 = (i / NBR) * reach, t1 = ((i + 1) / NBR) * reach;
           const q = add(C, [Pt(-hw, crestY + 1, -t0), Pt(hw, crestY + 1, -t0),
                             Pt(hw, crestY + 1, -t1), Pt(-hw, crestY + 1, -t1)],
                         [0, 0, hw * 2 / 260, 0, hw * 2 / 260, (t1 - t0) / 260, 0, (t1 - t0) / 260],
                         "pat", PATS.rapids);
-          if (q) { q.lit = 0.88 + 0.10 * (i / NBR); q.air = 0.04; drawn.push(q); }
+          /* Round 58: this river was drawn at 0.88-0.98 `lit`, and `lit` washes a colour toward
+             the day's light — so the fourteen metres of water between the visitor and the lip came
+             out the colour of concrete, which is the last flat thing in this frame. The river above
+             a falls is the darkest water on the page: it is deep, it is moving, and it is about to
+             stop being a river. */
+          if (q) { q.lit = 0.46 + 0.10 * (i / NBR); q.air = 0.02; drawn.push(q); }
+        }
+        /* The water arriving, drawn as arrival: streaks of foam travelling toward the lip on the
+           frame clock, faster as they get closer (a river accelerates into its own drop), and a
+           standing boil where it breaks. Without these the brink is a painted plane seen edge-on. */
+        for (let i = 0; i < 9; i++) {
+          const a = -hw * 0.94 + (i / 8) * hw * 1.88;
+          const w = 90 + (i % 4) * 70;
+          for (let k = 0; k < 3; k++) {
+            const phase = ease ? ((T * 0.42 + k / 3 + i * 0.17) % 1) : (k / 3);
+            const t = -reach * 0.92 * (1 - phase);          // from upstream toward the lip
+            const len = 120 + 260 * phase;                   // stretches as it accelerates
+            const q = add(C, [Pt(a - w, crestY + 3, t), Pt(a + w, crestY + 3, t),
+                              Pt(a + w * 0.7, crestY + 3, t + len), Pt(a - w * 0.7, crestY + 3, t + len)],
+                          ZERO8, "flat", `rgba(226,244,243,${(0.06 + 0.12 * phase).toFixed(3)})`);
+            if (q) { q.lit = 0.9; q.air = 0.0; drawn.push(q); }
+          }
         }
         for (let i = 0; i < 7; i++) {
           const a = -hw * 0.86 + (i + 0.5) * (hw * 1.72 / 7);
@@ -5089,8 +5115,15 @@ function leaveOverlay(root, trigger) {
         /* The white water at the lip: a real falls spends its first several metres as foam, not as
            its own deep teal. One band, in front of the sheet by 3 cm so the sorter cannot put the
            sheet over it, and it fades down into the first break instead of stopping at a seam. */
-        Q(-hw, hw, crestY - drop * 0.030, crestY - 1, 0, 0, "#f4fbfa", 1.3, 0.02);
-        Q(-hw, hw, crestY - drop * 0.070, crestY - drop * 0.028, -3, -3, "rgba(224,244,243,0.55)", 1.15, 0.02);
+        /* The white water at the lip. Round 58's fourth pass: this was two bands, 59 cm and 138 cm
+           tall, drawn at 0.55 alpha over the full crest — and because the top of the sheet is the
+           part nearest the camera, those 138 cm projected as a fifty-pixel stripe of pale grey
+           across the whole frame, the last flat thing left in the picture. A falls breaks white for
+           about a metre and then fogs into strands; one narrow band, and the strands below it carry
+           the rest. */
+        Q(-hw, hw, crestY - drop * 0.055, crestY - 1, 0, 0, "#f4fbfa", 1.3, 0.02);
+        Q(-hw, hw, crestY - drop * 0.135, crestY - drop * 0.050, -3, -3, "rgba(228,247,246,0.46)", 1.15, 0.02);
+        Q(-hw, hw, crestY - drop * 0.225, crestY - drop * 0.130, -5, -5, "rgba(214,240,240,0.26)", 1.05, 0.02);
         /* The sheet, in the source's four bands, with its strands sliding down it. Each band is a
            tone; over each tone a translucent strand quad travels at the frame clock's rate. That is
            the whole near-field difference: colour that holds still and water that does not. */
@@ -5098,27 +5131,39 @@ function leaveOverlay(root, trigger) {
            breaks into white as it falls, so the *pale* end of the sheet is at the bottom, where it
            lands, not at the top. Round 58 had these the other way round (pale at the crest), which
            is why a twenty-metre fall read as a sheet of fog hung from the sky. */
-        const BANDS = [[0.0, 0.06, "#6cb4ac"], [0.06, 0.26, "#438b88"],
-                       [0.26, 0.62, "#5aa49d"], [0.62, 1.0, "#93c6c0"]];
+        /* The curtain's tone from the lip down, as a continuous ramp rather than four bands.
+
+           Round 58's fifth pass: four authored bands is four steps of colour, and at the brink a
+           visitor's eye lands on those steps as horizontal stripes — the same "striped wall" the
+           owner has been reporting since round 57, only now in the right colour. Water does not band.
+           Ten steps of a blend between the lip's deep teal and the foot's pale one is smooth enough
+           that only the noise across the crest reads. */
+        const BANDS = [];
+        const NB = 44;
+        const bt = (v) => 1 - (1 - v) ** 1.6;      // slice edges crowd toward the foot
+        for (let i = 0; i < NB; i++) {
+          const a = bt(i / NB), b = bt((i + 1) / NB);
+          // The curve is not linear: the water stays deep most of the way and pales at the foot.
+          const t = Math.max(0, (a - 0.22) / 0.78) ** 1.6;
+          /* Round 58, sixth pass — the palette. A falls is *aerated water*: the sheet is nearly white
+             over most of its face and the teal is what you see *between* the ropes, where the water
+             is still water. Round 57 painted it the other way round (teal sheet, dark seams) and that
+             is why every close frame read as a painted wall. The sheet is now the pale half of the
+             pair and the seams carry all the colour. */
+          BANDS.push([a, b, blendHex("#a7cfc9", "#eaf6f4", t)]);
+        }
         const NA = 12;
         const bow = (a) => drop * 0.012 * Math.max(0, 1 - (a / (hw * 0.88)) ** 2);
         const throwAt = (p) => drop * 0.035 * Math.sqrt(p);
-        for (const [fa, fb, col] of BANDS) {
-          for (let k = 0; k < NA; k++) {
-            const a0 = -hw + (k / NA) * hw * 2, a1 = -hw + ((k + 1) / NA) * hw * 2;
-            const y0 = crestY - drop * fa, y1 = crestY - drop * fb;
-            const t0 = throwAt(fa) + bow(a0), t1 = throwAt(fb) + bow(a0);
-            const t2 = throwAt(fb) + bow(a1), t3 = throwAt(fa) + bow(a1);
-            /* Round 58: one column of tone per slice, so the curtain has breadth. Twelve slices of
-               the same four authored tones is a wall of paint; a curtain is never one tone across
-               its whole width — the volume of water at each point differs, and that is what the
-               eye reads as depth rather than as a decal. */
-            const tone = 0.10 * Math.sin(k * 2.3 + fa * 17.0);
-            const band = add(C, [Pt(a0, y0, t0), Pt(a1, y0, t3), Pt(a1, y1, t2), Pt(a0, y1, t1)],
-                             ZERO8, "flat", mix(col, tone));
-            if (band) { band.lit = 0.72 + (fa >= 0.15 ? 0.12 : 0.02); band.air = 0.07; drawn.push(band); }
-          }
-        }
+        /* Round 58, sixth pass — the base course is gone.
+
+           This used to lay twelve broad slices of the gradient first, and it was those twelve
+           rectangles that the owner kept seeing as 一片平光: each slice is thirty bands tall and a
+           twelfth of the crest wide, so once the ropes were drawn into the same plane the slice
+           behind a rope won the depth sort half the time and painted its own flat rectangle over
+           the rope's tone. Two layers of the same water is one layer too many. The ropes carry the
+           gradient themselves now — `col` still comes from BANDS below — and the seams between them
+           are what the eye reads as water lines. */
         /* The ropes.
 
            Round 58's decisive finding: a texture cannot draw this. The sheet is fifteen metres from
@@ -5146,8 +5191,13 @@ function leaveOverlay(root, trigger) {
           // Which column this is decides its water: a slow standing pattern across the crest,
           // seeded so it is the same every frame — the fall does not reshuffle when you look away.
           const sway = 0.74 + 0.26 * Math.sin(k * 1.7) * Math.cos(k * 0.61 + 0.4);
-          const rope = sway > 0.86;                     // the bright ropes
-          const bright = sway > 0.965;                  // the white ones
+          /* Round 58, sixth pass: three grades of water per rope, not two. A falls seen close is
+             mostly white water with a few dark ropes in it — the dark ones are where the sheet is
+             still thick and has not broken. Before this every rope sat within eight per cent of its
+             neighbours' tone, and forty-eight near-identical columns is a curtain of paint. */
+          const bright = sway > 0.885;                  // broken, aerated, almost white
+          const dark = sway < 0.66;                     // still unbroken water
+          const rope = sway > 0.80 && !bright;
           const ph = (k * 0.37) % 1;
           for (const [fa, fb, col] of BANDS) {
             const y0 = crestY - drop * fa, y1 = crestY - drop * fb;
@@ -5162,7 +5212,11 @@ function leaveOverlay(root, trigger) {
                multiplier. Round 58 doubled the curtain out to cream by passing 1.10 here: a
                fraction of 1.1 overshoots white on every channel and clamps, so a "10 % brighter
                rope" became a solid cream wall. These stay inside ±0.25. */
-            const tone = (rope ? 0.10 : -0.07) + 0.14 * near + 0.04 * Math.sin(k * 2.3 + fa * 11);
+            /* Only two terms, and both change slowly along the rope: the rope's own grade of water,
+               and the travelling brightness. Round 58 also added a per-band sine here, which
+               alternated sign every band and tiled the curtain into a visible chequerboard of
+               rectangles — a water line is continuous, so every term that builds one must be. */
+            const tone = (bright ? 0.52 : rope ? 0.06 : -0.24) + 0.16 * near;
             /* One rope in five carries white water: the fall is not a tinted glass sheet, it is a
                curtain with bright ropes in it, and that contrast is what the eye reads as motion
                even in a still frame. */
@@ -5170,9 +5224,27 @@ function leaveOverlay(root, trigger) {
                and reaches the foot in another. A perfectly vertical seam is a barcode. */
             const wA = Math.sin(fa * 5.3 + k * 2.1) * aw * 0.12;
             const wB = Math.sin(fb * 5.3 + k * 2.1) * aw * 0.12;
-            const q = add(C, [Pt(a0 + wA, y0, t0), Pt(a1 + wA, y0, t3),
-                              Pt(a1 + wB, y1, t2), Pt(a0 + wB, y1, t1)],
-                          ZERO8, "flat", bright ? mix(mix(col, 0.55), tone) : mix(col, tone));
+            /* Round 58: every rope changed tone at the same height, so the gradient's steps lined up
+               across the whole crest and drew horizontal rules over the water — the vertical grain
+               was finally right and the eye still had forty-four straight lines to read. Each rope
+               now carries its own vertical offset, so a step belongs to one rope and dies at its
+               seam. */
+            const vj = (hash(k * 3.1 + 0.7) - 0.5) * drop * 0.055;
+            /* The offset must not lift water above the lip: a rope pushed up by a few centimetres
+               stood over the crest line as a green tab floating above the railing. Only inward. */
+            const j0 = fa === 0 ? 0 : vj, j1 = vj;
+            /* Round 58, sixth pass — 夜間水色 on the water itself.
+
+               The illumination used to be one warm wash laid *over* the installed sheet, and the
+               sheet is drawn in the same plane as that wash: the painter sorted the wash behind half
+               the ropes and the fall came out blue under a blue sky, with warm patches where the
+               sort fell the other way. The light is on the water, so it belongs in the water's own
+               colour: every rope is blended toward the lamps' warm white by how dark it is, and the
+               seam quads below stay cold, which is what makes lit water read as lit. */
+            const colN = nightK > 0.02 ? blendHex(col, "#ffe9c6", 0.62 * nightK) : col;
+            const q = add(C, [Pt(a0 + wA, y0 + j0, t0), Pt(a1 + wA, y0 + j0, t3),
+                              Pt(a1 + wB, y1 + j1, t2), Pt(a0 + wB, y1 + j1, t1)],
+                          ZERO8, "flat", bright ? mix(mix(colN, 0.80), tone) : mix(colN, tone));
             /* Round 58: `lit` is a wash *toward the day's light*, not a brightness multiplier, so
                anything above 1.0 drives the colour to white — which is how a teal curtain became a
                grey wall. The sheet is water, not a lit surface: it sits at the low end. */
@@ -5180,22 +5252,36 @@ function leaveOverlay(root, trigger) {
                when it is not given — 55 % of the frame's fog at this range, which is exactly the
                flat wash the owner reported. A falls fifteen metres away is not in the haze; it is
                the haze. Pinned low, with a little left so the far end of the crest still recedes. */
-            if (q) { q.lit = 0.72 + (fa >= 0.15 ? 0.10 : 0.02); q.air = 0.07; drawn.push(q); }
+            if (q) {
+              q.lit = 0.72 + (fa >= 0.15 ? 0.10 : 0.02); q.air = 0.07;
+              /* Lit water is not night colour. The lane's night pass mixes every quad 62 % toward
+                 the sky's navy, so blending the lamps in *before* that mix is a wash that gets
+                 painted over: the fall came out blue at 3 a.m. with warm patches where the depth
+                 sort happened to favour the wash. `nolite` takes the sheet out of the night pass —
+                 which is the fact the illumination board records, that the falls is the lit thing
+                 in a dark gorge — and `day` false keeps the sun off it. */
+              if (nightK > 0.12) { q.nolite = true; q.day = false; q.lit = 1.0; }
+              drawn.push(q);
+            }
           }
           /* The seam between two ropes: the dark water standing in the gap, which is what gives a
              curtain its vertical grain. One narrow column, painted in front of the columns beside
              it so it always separates them. It widens as it falls — water pulls apart into ropes
              on the way down and a gap at the lip is a crevasse at the foot. */
           const gap = (rope ? 0.15 : 0.09) * (0.62 + 0.74 * hash(k + 41));
-          for (const [fa, fb, gk] of [[0.0, 0.26, 0.6], [0.26, 0.62, 1.0], [0.62, 1.0, 1.5]]) {
-            const y0 = crestY - drop * fa, y1 = crestY - drop * fb;
-            const lean0 = Math.sin(fa * 5.3 + k * 2.1) * aw * 0.12;
-            const lean1 = Math.sin(fb * 5.3 + k * 2.1) * aw * 0.12;
-            const g0 = ac - aw * gap * gk + lean0, g1 = ac + aw * gap * gk + lean0;
-            const q = add(C, [Pt(g0, y0, throwAt(fa) - 3), Pt(g1, y0, throwAt(fa) - 3),
-                              Pt(g1 + (lean1 - lean0), y1, throwAt(fb) - 3), Pt(g0 + (lean1 - lean0), y1, throwAt(fb) - 3)],
-                          ZERO8, "flat", "rgba(38,92,102,0.55)");
-            if (q) { q.lit = 0.78; q.air = 0.05; drawn.push(q); }
+          {
+            /* One column, lip to foot, tapering open as it falls. Round 58 drew this in three
+               chunks of different widths applied abruptly, and three abrupt widths per rope is a
+               stack of dark tabs down the face — the same failure as the old four-tone banding,
+               rotated ninety degrees. Water lines are continuous. */
+            const gA = aw * gap * 0.55, gB = aw * gap * 1.75;
+            const lean0 = Math.sin(0 * 5.3 + k * 2.1) * aw * 0.12;
+            const lean1 = Math.sin(1 * 5.3 + k * 2.1) * aw * 0.12;
+            const q = add(C, [Pt(ac - gA + lean0, crestY, throwAt(0) - 3), Pt(ac + gA + lean0, crestY, throwAt(0) - 3),
+                              Pt(ac + gB + lean1, crestY - drop, throwAt(1) - 3),
+                              Pt(ac - gB + lean1, crestY - drop, throwAt(1) - 3)],
+                          ZERO8, "flat", "rgba(30,76,88," + (0.34 + 0.26 * (1 - hash(k + 7))).toFixed(3) + ")");
+            if (q) { q.lit = 0.70; q.air = 0.05; drawn.push(q); }
           }
         }
         /* The mist, in front of the sheet rather than behind it. Round 57's columns of spray stood
@@ -5224,10 +5310,44 @@ function leaveOverlay(root, trigger) {
           const rise = 0.10 + 0.07 * Math.sin(i * 1.9);
           const drift = ease ? Math.sin(T * 0.4 + i * 1.3) * 60 : 0;
           const top = crestY - drop * (1 - rise);
-          const q = add(C, [Pt(a - 260 + drift, crestY - drop * 0.99, 40), Pt(a + 260 + drift, crestY - drop * 0.99, 40),
-                            Pt(a + 200 + drift, top, 30), Pt(a - 200 + drift, top, 30)],
+          /* Round 58: nine of these at `air` 0.30 stacked into one flat paper lid across the bottom
+             of the frame. Smaller, and each one its own soft centre. */
+          const q = add(C, [Pt(a - 170 + drift, crestY - drop * 0.995, 40), Pt(a + 170 + drift, crestY - drop * 0.995, 40),
+                            Pt(a + 120 + drift, top, 30), Pt(a - 120 + drift, top, 30)],
                         ZERO8, "soft", "#ffffff", PATS.foam);
-          if (q) { q.lit = 1.2; q.air = 0.30; drawn.push(q); }
+          if (q) { q.lit = 1.05; q.air = 0.10; drawn.push(q); }
+        }
+        /* The mist the owner asked for.
+
+           Everything the falls does with mist, it does *in front of the water*: the plunge throws
+           spray back up the face, and from the rail that spray is a veil you see the sheet through,
+           not a fog on the horizon behind it. Round 57 put its spray columns behind and above the
+           crest, where they read as weather. These eleven soft quads stand between the camera and
+           the sheet, at the height the water has already fallen to, drifting up on the frame clock
+           and thinning as they rise — thin enough that the ropes are still legible through them,
+           which is the whole point of a veil. */
+        for (let i = 0; i < 11; i++) {
+          const a = -hw * 0.95 + (i / 10) * hw * 1.9;
+          const rise = 0.30 + 0.26 * hash(i * 7.7 + 3.1);
+          const ph = ease ? ((T * 0.13 + hash(i * 3.3)) % 1) : 0.4;
+          const lift = drop * rise * (0.25 + 0.75 * ph);
+          const yB = crestY - drop * (0.62 + 0.30 * ph);
+          const yT = yB + drop * (0.30 + 0.22 * hash(i * 5.1));      // taller as it climbs
+          const drift = ease ? Math.sin(T * 0.21 + i * 1.9) * 140 : 0;
+          const q = add(C, [Pt(a - 520 + drift, yB, 120), Pt(a + 520 + drift, yB, 120),
+                            Pt(a + 380 + drift, yT, 120), Pt(a - 380 + drift, yT, 120)],
+                        ZERO8, "soft", `rgba(232,246,246,${(0.055 + 0.055 * (1 - ph)).toFixed(3)})`);
+          if (q) { q.lit = 1.2; q.day = false; q.air = 0; drawn.push(q); }
+        }
+        /* Spray breaking over the lip: the puffs a falls throws *up*, above the crest line, small
+           and fast. Six, on the same clock, so the brink is never still. */
+        for (let i = 0; i < 6; i++) {
+          const a = -hw * 0.9 + (i / 5) * hw * 1.8 + (ease ? Math.sin(T * 0.9 + i) * 90 : 0);
+          const up = drop * (0.02 + 0.03 * Math.abs(Math.sin(i * 2.1)));
+          const q = add(C, [Pt(a - 230, crestY - up * 0.2, 60), Pt(a + 230, crestY - up * 0.2, 60),
+                            Pt(a + 170, crestY + up, 60), Pt(a - 170, crestY + up, 60)],
+                        ZERO8, "soft", "rgba(240,252,251,0.10)");
+          if (q) { q.lit = 1.3; q.day = false; q.air = 0; drawn.push(q); }
         }
         for (let i = fromHere; i < drawn.length; i++) drawn[i].day = false;
         /* After dark the falls is the brightest thing in the gorge: the illumination board puts
@@ -5284,6 +5404,23 @@ function leaveOverlay(root, trigger) {
         // The pool the sheet lands in: a pale churn below the crest, and the rock shelf it lands on.
         H(-hw, hw, 40, 900, crestY - drop, "#dfeceb", 1.05, 0.12);
         H(-hw, hw, 900, 2400, crestY - drop - 1, "#4f8f8b", 0.95, 0.16);
+        /* Round 58, sixth pass — the water below the falls after dark.
+
+           The illumination reaches the plunge pool as much as the sheet: the light comes off the
+           falling water, and the churn at its foot is the brightest part of the river for a hundred
+           metres downstream. This water had no night term at all, so at night the sheet went warm
+           white while the pool under it stayed daylight teal — the owner's 夜間水色, still unsolved
+           because only half the water was ever told what time it was. Warm wash, low, and the pool
+           surfaces lit from the falls' own side. */
+        if (nightK > 0.12) {
+          const wash = (t0, t1, y, a) => {
+            const q = add(C, [Pt(-hw, y, t0), Pt(hw, y, t0), Pt(hw, y, t1), Pt(-hw, y, t1)],
+                          ZERO8, "flat", "rgba(255,232,198," + (a * nightK).toFixed(3) + ")");
+            if (q) { q.lit = 1.35; q.day = false; q.nolite = true; q.air = 0.02; drawn.push(q); }
+          };
+          wash(40, 900, crestY - drop + 1, 0.34);      // the churn, nearest the sheet
+          wash(900, 2400, crestY - drop, 0.20);        // the pool running away from it
+        }
       } else if (shape === "falls") {
         /* The falls at table scale: a pale sheet over a ledge into mist, held between two dark
            headlands. The sheet's stripes shimmer with the frame clock — they move because the

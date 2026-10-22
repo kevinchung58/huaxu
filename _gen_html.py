@@ -5468,14 +5468,17 @@ DISTRICTS = [
              "title": "The footbridge to Luna",
              "hint": "The pedestrian span Goat Island throws to its little sister. Walkable here; "
                      "in person it is a short crossing with water on both sides of it."},
-            {"id": "boulders-e1", "kind": "board", "x": -700, "z": 2120, "y": 0, "ry": 90,
-             "w": 200, "h": 120, "d": 150, "leaf": "#5d6068", "tile": "strata", "solid": True,
+            # Round 58: the talus stood at the walk's own height, 20 m above where the water lands,
+            # so two grey cards hung in front of the sheet at the bottom of every frame. Rock under a
+            # fall is at the foot of the fall.
+            {"id": "boulders-e1", "kind": "box", "x": -4200, "z": 2120, "y": -1926, "ry": 90,
+             "w": 900, "h": 320, "d": 700, "leaf": "#5d6068", "tile": "strata", "solid": False,
              "title": "The rock pile below the ledge",
              "hint": "Boulders the falls tore off its own lip, and the ones the engineers left "
                      "when they cleared the face in 1969. A falls into a rock pile is a shallower "
                      "fall; this one measures its drop to the boulders, not to the river."},
-            {"id": "boulders-e2", "kind": "board", "x": -690, "z": 2340, "y": 0, "ry": 90,
-             "w": 240, "h": 104, "d": 170, "leaf": "#4c5560", "tile": "strata", "solid": True,
+            {"id": "boulders-e2", "kind": "box", "x": -4300, "z": 2560, "y": -1926, "ry": 90,
+             "w": 1100, "h": 260, "d": 800, "leaf": "#4c5560", "tile": "strata", "solid": False,
              "title": "More of the pile",
              "hint": "The talus runs the length of the pool below the American side."},
             {"id": "terrapin", "kind": "board", "x": 620, "z": 4200, "y": 0, "ry": 0,
@@ -5545,6 +5548,10 @@ DISTRICTS = [
         ],
         "stations": [
             {"z": 40, "x": 0, "label": "the foot of the Goat Island walk"},
+            # Round 58: the stop's own pitch stays at 9 — it already looked *down* at the brink and
+            # the flat frame the owner saw came from the painter, not from where the camera pointed.
+            # (The drag in the harness aims by the opposite sign, which is how a round was spent
+            # turning this stop the wrong way before the frames were compared.)
             {"z": 2450, "x": -520, "yaw": 270, "pitch": 9, "label": "the rail at the American Falls"},
             {"z": 4200, "x": 600, "yaw": 75, "pitch": -4, "label": "Terrapin Point"},
             {"z": 5300, "x": 0, "yaw": 0, "label": "the rail above the lower river"},
