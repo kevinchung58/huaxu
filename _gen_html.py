@@ -2733,8 +2733,14 @@ def niagara_world(fr, view="rim"):
     # out (round 35: one even 55% band read as a grey shelf, not as water churned white).
     # The churned water itself (`foam`, opaque) to 44 m out, then three translucent bands, each
     # thinner than the last, so the white has no edge of its own.
-    rings = [foot] + [[(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)] for d in (44, 70, 100, 130)]
-    for b, al in enumerate((None, 0.45, 0.22, 0.1)):
+    # Round 60: the churn used to be four bands of *constant* alpha (44/70/100/130 m) and every
+    # boundary between them was a step across the pool — at the rail's grazing angle the plunge read
+    # as four stacked plates, not as water losing its white. Seven rings now, each fainter than the
+    # last and each a third as deep, so the falloff is a falloff: the foam's own texture carries the
+    # edge, which is the one place a hard line belongs.
+    RING_D = (26, 38, 52, 70, 92, 118, 148)
+    rings = [foot] + [[(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)] for d in RING_D]
+    for b, al in enumerate((None, 0.40, 0.30, 0.22, 0.15, 0.10, 0.06)):
         for i in range(0, 36, 3):
             j = min(i + 3, 36)
             quad = [rings[b][i], rings[b][j], rings[b + 1][j], rings[b + 1][i]]

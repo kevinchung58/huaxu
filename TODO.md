@@ -18,7 +18,7 @@
 `verify-shapes` **201/201**、`verify-body` **16/16**。`verify-walk / chain / clash / objects / tables / story / games / feel` 本輪**未跑**：需要 `jsdom`／`puppeteer-core`，`node_modules` 不存在（零依賴政策），不得當成通過。頁面主控台只有 Google Fonts 的 `ERR_CONNECTION_CLOSED`（沙箱沒有 fonts.googleapis.com），`renderer: three`。影格：`.preview/r60/table-rock-rail-day.png`、`table-rock-rail-night.png`。
 
 ### 尚未做完（下一輪從這裡開）
-- **深潭仍是階梯狀的幾塊平面**：水簾腳下的 `foam` 環（44/70/100/130 m 四圈）在這個掠射角下讀成階梯，不是浪。下一輪第一步：把那四圈換成沿崖線的窄浪帶＋潭面細紋，不要用同心環。
+- **深潭還是有硬邊**：本輪把浪花環從 4 圈固定 alpha（44/70/100/130 m）改成 6 圈 26→148 m 的遞減 alpha（0.40→0.06），環與環之間的階差不再是一條線；但 rail 站看出去，潭面仍有一條近乎筆直的明暗斜界——上一輪把它歸給浪花環是錯的，那條界是**平台邊緣與潭面的交界**（`lower` 網格最外圈 vs 河岸），下一輪要從那裡下手。
 - **水簾的水繩在 1024 px 下仍偏「筆刷」**：三條正弦的比例可以再調；另外水簾是單一 quad 帶，沒有輪廓變化，剪影永遠是一條直線。
 - `niagara_world` 的 `trcwall`／`hotelw`（Centre 遠牆）近距離仍是無貼圖米白板；`shopbay-*` 可達性、README/授權、PR #16、CV PDF、ORCID 仍在站主手上。
 
