@@ -774,6 +774,23 @@ function leaveOverlay(root, trigger) {
     for (const w of WSEGS) if (z >= w[0] && z <= w[1]) h = Math.max(h, w[2] - PLAYER_RADIUS);
     return h;
   };
+  /* Round 61: the paving is wider than the walk.
+     `ws` is where a *body* may go, and round 58 pulled the square in to 17.5 m so a 64 m field
+     would not read as a car park. The paving answered to the same number, so the square's own
+     front row — the fronts at 16.4 m, the rails at 16.8, the wheel's apron at 19.3 — stood past
+     the last paver, over nothing: from the plaza you could see the pavement end and the sky begin
+     under the very shops that close the square. A street's paving runs to the buildings that line
+     it; the walk stays where it was. Authored as data-lane-wsp [[z0, z1, half]…]. */
+  const WPSEGS = (() => {
+    try { const a = JSON.parse(layer.getAttribute("data-lane-wsp") || "[]");
+          return Array.isArray(a) ? a.filter((w) => Array.isArray(w) && w.length >= 3) : []; }
+    catch (_) { return []; }
+  })();
+  const pavedAt = (z) => {
+    let h = HALF;
+    for (const w of WPSEGS) if (z >= w[0] && z <= w[1]) h = Math.max(h, w[2]);
+    return Math.max(h, halfAt(z));
+  };
   const MIN_D = -30, REACH = 190, MAX_PITCH = 24;
   const MAX_HEIGHT = Math.max(0, CEIL - EYE - HEAD_CLEARANCE);
   /* Round 52 borrows two idioms from the browser open worlds the owner pointed at: the lane is
@@ -2304,6 +2321,14 @@ function leaveOverlay(root, trigger) {
                          // without the panels, handle and fanlight that make a street door.
                          lift: "door" });
   const mix = (hex, k) => {    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    /* Round 61: a caller that passes a third argument is calling the wrong function, and the result
+       used to be the literal string `rgb(NaN,NaN,NaN)` — an invalid colour that the renderer drew as
+       white. One such call (the SkyWheel's steel) was the wheel's 26 rim and A-frame quads. Loud in
+       development, harmless in production: fall back to the first colour and say so once. */
+    if (k !== undefined && typeof k !== "number") {
+      if (!mix.warned) { mix.warned = true; console.warn("mix() called with a non-numeric lift:", hex, k); }
+      return hex;
+    }
     const to = k >= 0 ? [255, 238, 208] : [10, 17, 40];
     const a = Math.abs(k);
     return `rgb(${c.map((v, i) => Math.round(v + (to[i] - v) * a)).join(",")})`;
@@ -2323,6 +2348,7 @@ function leaveOverlay(root, trigger) {
   const ZERO8 = [0, 0, 0, 0, 0, 0, 0, 0];
   const quads = [];
   let threeRenderer = null;
+  let nanLogged = 0;   // TEMP
   const add = (C, corners, uv, mode, arg, img) => {
     const pts = corners.map((c, i) => {
       const o = camPt(C, c[0], c[1], c[2]);
@@ -2352,6 +2378,7 @@ function leaveOverlay(root, trigger) {
        kept, so nothing that used to be drawn has stopped being drawn. */
     if (bx1 < -80 || bx0 > W + 80 || by1 < -80 || by0 > H + 80) return null;
     let z = 0; cp.forEach((q) => { z += q.z; });
+    if (typeof arg === "string" && /NaN/.test(arg) && nanLogged < 3) { nanLogged++; console.warn("NANCOLOUR", arg, new Error().stack.split("\n").slice(1,5).join(" | ")); }
     const texture = mode === "pat" && arg ? PATTERN_SOURCE.get(arg) : null;
     const quad = { z: z / cp.length, pts: cp, world: corners.map((c) => [c[0], c[1], c[2]]),
                    uv: corners.map((_, i) => [Number(uv[i * 2]) || 0, Number(uv[i * 2 + 1]) || 0]),
@@ -3634,11 +3661,27 @@ function leaveOverlay(root, trigger) {
       if (x1 - x0 < 1 || zb - za < 1) return;
       const fd = Math.abs(zc - C.z);
       const corners = [[x0, 0, za], [x1, 0, za], [x1, 0, zb], [x0, 0, zb]];
-      const fl = floorTiers && fd >= 1600
+      /* Round 61: the floor does not go flat at sixteen metres.
+
+         It did — `fd >= 1600` drew one untextured quad of the pavers' mean, on the argument that a
+         distant paving stone is not worth a fill. On a promenade whose walk is 43 m that argument
+         held. On Clifton Hill it is 103 m of plaza with the SkyWheel, a carousel, two rows of
+         booths and six blocks standing on it, and the whole of it past sixteen metres was one flat
+         grey field: the district read as a car park with rides parked in it. The tile is mipmapped,
+         so the pave at 60 m costs a filtered tap and reads as paving; the measured mean is kept only
+         for the far end of the lane, where a cell is a few pixels and the tile would be its mean
+         anyway — 52 m, not 16. */
+      const fl = floorTiers && fd >= 5200
         ? add(C, corners, ZERO8, "flat", "#797570")          // the pavers' measured mean
         : add(C, corners, [za * DPM, x0 * DPM, za * DPM, x1 * DPM, zb * DPM, x1 * DPM, zb * DPM, x0 * DPM],
               "pat", floorTiers && fd >= 450 ? floorTiers[fd >= 900 ? 1 : 0] : floorPat);
-      if (fl) { fl.lit = lightAt((x0 + x1) / 2, 6, zc) * 1.15; fl.air = haze(fl.z) * 0.7;
+      /* Round 61: the paving is not a light source.
+         A 1.15 lift on a tile already painted at 180 grey, under a sky-bright hemisphere, clipped
+         the whole plaza to (212,227,236) — a white field with the rides standing in it, which is
+         what the fun strip read as from its own station. The lift is for the promenade's stone,
+         where the sun lands square; a 100 m plaza keeps its own value and shows its joints. */
+      if (fl) { fl.lit = lightAt((x0 + x1) / 2, 6, zc) * (Math.abs(zc - C.z) > 2600 ? 0.82 : 1.05);
+                fl.air = haze(fl.z) * 0.7;
                 fl.sz = fl.z + 4000;     // the ground paints before anything standing on it
                 if (UNDER) fl.nolite = true; }
     };
@@ -3683,13 +3726,14 @@ function leaveOverlay(root, trigger) {
         if (q) { q.lit = lightAt(px, 210, zc); q.wall = side; q.za = z; q.zb = z1; if (UNDER) q.nolite = true; }
       });
       const hole = holes.find((h) => h.z0 < z1 && h.z1 > z);
-      if (!hole) floorPiece(-W, W, z, z1, zc);
+      const P = pavedAt(zc);            // what is paved: the walk, or the square's whole floor
+      if (!hole) floorPiece(-P, P, z, z1, zc);
       else {
         const ha = Math.max(z, hole.z0), hb = Math.min(z1, hole.z1);
-        floorPiece(-W, W, z, ha, zc);
-        floorPiece(-W, Math.max(-W, hole.x0), ha, hb, zc);
-        floorPiece(Math.min(W, hole.x1), W, ha, hb, zc);
-        floorPiece(-W, W, hb, z1, zc);
+        floorPiece(-P, P, z, ha, zc);
+        floorPiece(-P, Math.max(-P, hole.x0), ha, hb, zc);
+        floorPiece(Math.min(P, hole.x1), P, ha, hb, zc);
+        floorPiece(-P, P, hb, z1, zc);
       }
       if (VAULT && !OPEN) {
         for (let k = 0; k < VK; k++) {
@@ -4183,16 +4227,38 @@ function leaveOverlay(root, trigger) {
             // Open: display glass at the wall's own face, mullions over it, and one warm shelf of
             // light that the sun mostly takes. The glass is pale by day and dark by night, so an
             // open shop reads as glass in both, not as a hole.
-            const gl = add(C, [P(-half, 4, 46), P(half, 4, 46), P(half, 4, yA - 4), P(-half, 4, yA - 4)],
-              ZERO8, "flat", blendHex("#31405a", "#93a6b8", DAY()));
-            if (gl) { gl.lit = 0.75 + 0.55 * DAY(); gl.daygain = 0.45; drawn.push(gl); }
-            for (let i = 1; i < 3; i++) {
-              const u0 = -half + (i / 3) * 2 * half - 3;
-              Q([P(u0, 3, 46), P(u0 + 6, 3, 46), P(u0 + 6, 3, yA - 4), P(u0, 3, yA - 4)],
-                "#2a3448", lit * 0.8);
+            /* Round 61: an open front read as a *plate*.
+
+               At three metres — which is where the plaza puts a visitor opposite an arcade — this
+               was one flat quad of `#93a6b8` at `lit` 1.3, i.e. a colour already near white carried
+               past the tone curve: every shop on the strip came out the same pale cream slab, with
+               nothing in it. Above that, one glass pane with two mullions is not a shopfront: the
+               frame of a fun-row arcade is narrow and often, the glass sits behind a deep reveal,
+               and what the eye reads at close range is *depth* — a dark interior with hangs of light
+               in it, and joinery in front of the dark.
+               So the pane is a recess now: the interior wall stands 40 cm back in its own dark, the
+               glass is dimmer than the render's own lift (it is glass, not a lamp), and the frame is
+               six narrow members over a stall riser and two transoms. */
+            Q([P(-half, 3, 0), P(half, 3, 0), P(half, 3, yA - 6), P(-half, 3, yA - 6)],
+              mix(base, -0.52), lit * 0.5);                     // the interior behind the glass
+            const gl = add(C, [P(-half + 6, 4, 46), P(half - 6, 4, 46), P(half - 6, 4, yA - 10),
+                               P(-half + 6, 4, yA - 10)], ZERO8, "flat", blendHex("#243146", "#7c8ea3", DAY()));
+            if (gl) { gl.lit = 0.52 + 0.22 * DAY(); gl.daygain = 0.5; drawn.push(gl); }
+            // What is behind the glass: a lit shelf of hangs, low, so the interior is not a void.
+            for (let i = 0; i < 3; i++) {
+              const u0 = -half * 0.62 + i * half * 0.62;
+              Q([P(u0, 7, 88), P(u0 + half * 0.36, 7, 88), P(u0 + half * 0.36, 7, 132), P(u0, 7, 132)],
+                i % 2 ? "#c9a06a" : "#d8b483", (0.42 + up * 0.5) * dl, 0.05);
             }
-            Q([P(-half * 0.7, 6, 60), P(half * 0.7, 6, 60), P(half * 0.7, 6, 120), P(-half * 0.7, 6, 120)],
-              "#e8b87a", (0.5 + up * 0.9) * dl * 0.5, 0.05);
+            for (let i = 0; i <= 6; i++) {
+              const u0 = -half + (i / 6) * 2 * half - 4;
+              Q([P(u0, 2, 40), P(u0 + 8, 2, 40), P(u0 + 8, 2, yA - 4), P(u0, 2, yA - 4)],
+                "#2a3448", lit * 0.62);
+            }
+            for (const yy of [46, 118, yA - 12]) {
+              Q([P(-half + 4, 2, yy), P(half - 4, 2, yy), P(half - 4, 2, yy + 8), P(-half + 4, 2, yy + 8)],
+                "#2a3448", lit * 0.62);
+            }
           } else {
             // Shut: the blade across the face, the same shutter as the cladding.
             const blade = add(C, [P(-half, 6, 0), P(half, 6, 0), P(half, 6, yA - 4), P(-half, 6, yA - 4)],
@@ -5926,7 +5992,7 @@ function leaveOverlay(root, trigger) {
         const dAt = m.el && m.el.__demoAt ? Math.max(0, (performance.now() - m.el.__demoAt) / 1000) : -1;
         const beat = Math.floor(T / (dAt >= 0 && dAt < 4.2 ? 1.4 : 7)) % WHEELC.length;
         const night = NIGHT();
-        const steel = mix("#75858b", "#22303f", night * 0.45);
+        const steel = blendHex("#75858b", "#22303f", night * 0.45);
         const Pw = (i, r, dy) => [m.x + Math.sin(th0 + (i / 42) * Math.PI * 2) * r,
                                   hubY + Math.cos(th0 + (i / 42) * Math.PI * 2) * r + (dy || 0), m.z];
         // the A-frames, one pair to each side of the rim, splayed to the sourced 25 × 20.5 m base

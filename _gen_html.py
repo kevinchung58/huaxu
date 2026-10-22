@@ -4624,6 +4624,13 @@ DISTRICTS = [
                  # it — a car park, not a funfair. 24 m keeps the apron reachable and lets the front
                  # rows stand at the square's edge instead of floating in it.
                  "ws": [[1460, 3660, 1500], [2860, 3240, 1750]],
+                 # Round 61: what is *paved*, as against where a body may walk. The square's own
+                 # front row stands at 16.4 m (the fronts), 16.8 (the rails) and 19.3 (the wheel's
+                 # apron); a 17.5 m walk left all of it past the last paver, over the void. The
+                 # paving runs out to 33 m across the square only — the strip's own 15 m is the
+                 # tight corridor it always was, and 33 m of it is still 19 m less than the 64 m
+                 # field round 58 pulled back from.
+                 "wsp": [[2600, 3300, 3300]],
                  "floors": [[1500, 2200, 553, 340, 660]]},
         "floor": "pavers",
         "day": {"cycle": 900, "start": 0.5, "gain": 1},
@@ -6007,6 +6014,10 @@ def walk_html(d, drawer):
     zones_attr = f' data-lane-zones=\'{json.dumps(zones, separators=(",", ":"))}\'' if zones else ""
     floors_attr = f' data-lane-floors=\'{json.dumps(floors, separators=(",", ":"))}\'' if floors else ""
     ws_attr = f' data-lane-ws=\'{json.dumps(widths, separators=(",", ":"))}\'' if widths else ""
+    # Round 61: the paving's own width, where the street's is wider than the walk. See the note in
+    # the renderer's `pavedAt`: a square's front row stands on its paving, not past it.
+    paveds = [[round(a * Z_SCALE), round(b * Z_SCALE), c] for a, b, c in lane["wsp"]] if lane.get("wsp") else []
+    ws_attr += f' data-lane-wsp=\'{json.dumps(paveds, separators=(",", ":"))}\'' if paveds else ""
     banner_html = """
     <div class="walk-banner" data-walk-banner aria-hidden="true">
       <b class="walk-banner-name"></b><span class="walk-banner-note"></span>
