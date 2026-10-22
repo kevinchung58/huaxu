@@ -3674,7 +3674,7 @@ function leaveOverlay(root, trigger) {
       const fl = floorTiers && fd >= 5200
         ? add(C, corners, ZERO8, "flat", "#797570")          // the pavers' measured mean
         : add(C, corners, [za * DPM, x0 * DPM, za * DPM, x1 * DPM, zb * DPM, x1 * DPM, zb * DPM, x0 * DPM],
-              "pat", floorTiers && fd >= 450 ? floorTiers[fd >= 900 ? 1 : 0] : floorPat);
+              "pat", floorTiers && fd >= 900 ? floorTiers[fd >= 2600 ? 1 : 0] : floorPat);
       /* Round 61: the paving is not a light source.
          A 1.15 lift on a tile already painted at 180 grey, under a sky-bright hemisphere, clipped
          the whole plaza to (212,227,236) — a white field with the rides standing in it, which is
@@ -5993,66 +5993,108 @@ function leaveOverlay(root, trigger) {
         const beat = Math.floor(T / (dAt >= 0 && dAt < 4.2 ? 1.4 : 7)) % WHEELC.length;
         const night = NIGHT();
         const steel = blendHex("#75858b", "#22303f", night * 0.45);
-        const Pw = (i, r, dy) => [m.x + Math.sin(th0 + (i / 42) * Math.PI * 2) * r,
-                                  hubY + Math.cos(th0 + (i / 42) * Math.PI * 2) * r + (dy || 0), m.z];
+        /* Round 62: the wheel is a thing, not a drawing of one.
+
+           Every quad in this branch used to lie in the plane z = m.z — a 50 m rim drawn as a
+           flat disc with 42 flat white squares hung on it. Standing on Clifton Hill, where the
+           plaza puts you *beside* the ride rather than in front of it, that plane is edge-on and
+           the district's one landmark came out as a handful of hairlines against the sky. The
+           rim has depth now (a band on each side of the plane and a tread between them), the
+           gondolas are boxes with a side face and a hanger, and the spokes carry a thickness, so
+           the same wheel reads from the strip, from the plaza and from under it. */
+        const DEPTH = 85;                                   // half the rim's depth, in cm
+        const hubW = 230;                                   // the hub's own radius
+        const gondola = 168;                                // a CWA cabin's width, and its height
+        const pt = (i, r, zOff, dy) => {
+          const a = th0 + (i / 42) * Math.PI * 2;
+          return [m.x + Math.sin(a) * r, hubY + Math.cos(a) * r + (dy || 0), m.z + (zOff || 0)];
+        };
+        const Q = (pts, col, l) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; drawn.push(q); return q; }
+          return null;
+        };
         // the A-frames, one pair to each side of the rim, splayed to the sourced 25 × 20.5 m base
         [-1, 1].forEach((sideX) => {
           [-1, 1].forEach((sideZ) => {
-            const q = add(C, [
-              [m.x + sideX * 1225 - 45, 20, m.z + sideZ * 1025 - 45],
-              [m.x + sideX * 1225 + 45, 20, m.z + sideZ * 1025 + 45],
-              [m.x + sideX * 90 + 45, hubY - 40, m.z + sideZ * 70],
-              [m.x + sideX * 90 - 45, hubY - 40, m.z + sideZ * 70 - 45]], ZERO8, "flat", steel);
-            if (q) { q.lit = lit; drawn.push(q); }
+            Q([[m.x + sideX * 1225 - 45, 20, m.z + sideZ * 1025 - 45],
+               [m.x + sideX * 1225 + 45, 20, m.z + sideZ * 1025 + 45],
+               [m.x + sideX * 90 + 45, hubY - 40, m.z + sideZ * 70],
+               [m.x + sideX * 90 - 45, hubY - 40, m.z + sideZ * 70 - 45]], steel, lit);
           });
         });
-        // the rim: 42 short bars between stations, and the lamps on every other one after dark
+        /* The rim: 42 stations, each a band across the tyre on both faces of the plane plus the
+           tread that joins them. `rimIn` is where the tyre's inner edge is, so the ring reads as
+           a ring and not as a hoop of wire. */
+        const rimIn = 0.935;
         for (let i = 0; i < 42; i++) {
-          const a0 = Pw(i, R), a1 = Pw(i + 1, R);
-          const o0 = [a0[0] * 1.0 + (a0[0] - m.x) * 0.035, a0[1] + (a0[1] - hubY) * 0.035, a0[2]];
-          const o1 = [a1[0] + (a1[0] - m.x) * 0.035, a1[1] + (a1[1] - hubY) * 0.035, a1[2]];
-          const in0 = [a0[0] - (a0[0] - m.x) * 0.035, a0[1] - (a0[1] - hubY) * 0.035, a0[2]];
-          const in1 = [a1[0] - (a1[0] - m.x) * 0.035, a1[1] - (a1[1] - hubY) * 0.035, a1[2]];
-          const q = add(C, [in0, in1, o1, o0], ZERO8, "flat", steel);
-          if (q) { q.lit = lit * 0.95; drawn.push(q); }
+          [-DEPTH, DEPTH].forEach((zf) => {
+            Q([pt(i, R * rimIn, zf), pt(i + 1, R * rimIn, zf),
+               pt(i + 1, R, zf), pt(i, R, zf)], steel, lit * 0.95);
+          });
+          Q([pt(i, R, -DEPTH), pt(i + 1, R, -DEPTH), pt(i + 1, R, DEPTH), pt(i, R, DEPTH)],
+            blendHex(steel, "#e6ecef", 0.18), lit);
+          Q([pt(i, R * rimIn, -DEPTH), pt(i, R * rimIn, DEPTH),
+             pt(i + 1, R * rimIn, DEPTH), pt(i + 1, R * rimIn, -DEPTH)], steel, lit * 0.8);
           if (night > 0.15) {
-            const lp = add(C, [[a1[0] - 55, a1[1] - 55, m.z - 55], [a1[0] + 55, a1[1] - 55, m.z - 55],
-                               [a1[0] + 55, a1[1] + 55, m.z + 55], [a1[0] - 55, a1[1] + 55, m.z + 55]],
-                           ZERO8, "flat", WHEELC[(i + beat) % WHEELC.length]);
-            if (lp) { lp.lit = 1.5; lp.nolite = true; drawn.push(lp); }
+            const a1 = pt(i + 1, R, -DEPTH);
+            const lp = Q([[a1[0] - 55, a1[1] - 55, a1[2] - 55], [a1[0] + 55, a1[1] - 55, a1[2] - 55],
+                          [a1[0] + 55, a1[1] + 55, a1[2] + 55], [a1[0] - 55, a1[1] + 55, a1[2] + 55]],
+                         WHEELC[(i + beat) % WHEELC.length], 1.5);
+            if (lp) lp.nolite = true;
           }
         }
-        // spokes from hub to every other station; the cabins hang from all 42 and stay level
-        const hubFace = add(C, [[m.x - 240, hubY - 240, m.z - 60], [m.x + 240, hubY - 240, m.z - 60],
-                                [m.x + 240, hubY + 240, m.z - 60], [m.x - 240, hubY + 240, m.z - 60]],
-                            ZERO8, "flat", "#536273");
-        if (hubFace) { hubFace.lit = lit; drawn.push(hubFace); }
+        // the hub, both faces, and the 21 spokes that carry the rim
+        [-DEPTH - 40, DEPTH + 40].forEach((zf) => {
+          const f = m.z + zf, k = hubW;
+          Q([[m.x - k, hubY - k, f], [m.x + k, hubY - k, f], [m.x + k, hubY + k, f], [m.x - k, hubY + k, f]],
+            "#536273", lit);
+        });
         for (let i = 0; i < 42; i += 2) {
-          const p = Pw(i, R - 40);
-          const sp = add(C, [[p[0] - 26, p[1] - 26, m.z - 26], [p[0] + 26, p[1] - 26, m.z - 26],
-                              [m.x + 26, hubY + 26, m.z - 26], [m.x - 26, hubY + 26, m.z - 26]],
-                          ZERO8, "flat", steel);
-          if (sp) { sp.lit = lit * 0.9; drawn.push(sp); }
-        }
-        for (let i = 0; i < 42; i++) {
-          const p = Pw(i, R);
-          // an enclosed CWA gondola, gravity-level always: the box does not ride its circle's angle
-          const cab = add(C, [[p[0] - 90, p[1] - 170, m.z - 90], [p[0] + 90, p[1] - 170, m.z - 90],
-                              [p[0] + 90, p[1] + 10, m.z - 90], [p[0] - 90, p[1] + 10, m.z - 90]],
-                          ZERO8, "flat", "#dce2df");
-          if (cab) { cab.lit = lit * 1.02; drawn.push(cab); }
-          if (night > 0.15) {
-            const glow = add(C, [[p[0] - 66, p[1] - 130, m.z - 92], [p[0] + 66, p[1] - 130, m.z - 92],
-                                 [p[0] + 66, p[1] - 34, m.z - 92], [p[0] - 66, p[1] - 34, m.z - 92]],
-                             ZERO8, "flat", "rgba(255,217,160,0.8)");
-            if (glow) { glow.lit = 1.35; glow.nolite = true; drawn.push(glow); }
+          const p = pt(i, R * rimIn, -26);
+          const sp = Q([[p[0] - 30, p[1] - 30, p[2]], [p[0] + 30, p[1] - 30, p[2]],
+                        [m.x + 30, hubY + 30, p[2]], [m.x - 30, hubY + 30, p[2]]], steel, lit * 0.9);
+          if (sp) {
+            // the same spoke's other edge, 52 cm behind: a bar has two sides, not one
+            Q([[p[0] - 30, p[1] - 30, p[2] + 52], [m.x - 30, hubY + 30, p[2] + 52],
+               [m.x + 30, hubY + 30, p[2] + 52], [p[0] + 30, p[1] - 30, p[2] + 52]], steel, lit * 0.82);
           }
+        }
+        /* The cabins. An enclosed CWA gondola does not ride its circle's angle — it hangs, level,
+           from a hanger on the rim — so the box below each station is drawn upright whatever the
+           wheel's phase, with the three faces a visitor can see from the plaza and a warm pane
+           when the lights are on. */
+        for (let i = 0; i < 42; i++) {
+          const p = pt(i, R, 0);
+          const gx = p[0], gy = p[1] - gondola, gz = m.z;
+          const hw = gondola / 2;
+          const faces = [
+            [[gx - hw, gy, gz - hw], [gx + hw, gy, gz - hw], [gx + hw, gy + gondola, gz - hw], [gx - hw, gy + gondola, gz - hw]],
+            [[gx - hw, gy, gz + hw], [gx + hw, gy, gz + hw], [gx + hw, gy + gondola, gz + hw], [gx - hw, gy + gondola, gz + hw]],
+            [[gx - hw, gy, gz - hw], [gx - hw, gy, gz + hw], [gx - hw, gy + gondola, gz + hw], [gx - hw, gy + gondola, gz - hw]],
+            [[gx + hw, gy, gz - hw], [gx + hw, gy, gz + hw], [gx + hw, gy + gondola, gz + hw], [gx + hw, gy + gondola, gz - hw]],
+          ];
+          faces.forEach((f) => {
+            const fx = (f[0][0] + f[2][0]) / 2, fz = (f[0][2] + f[2][2]) / 2;
+            const nx = f === faces[0] ? 0 : f === faces[1] ? 0 : (fx < gx ? -1 : 1);
+            const nz = f === faces[0] ? -1 : f === faces[1] ? 1 : 0;
+            if ((C.x - fx) * nx + (C.z - fz) * nz <= 0) return;
+            Q(f, "#c3ccd2", lit * 1.02);
+            if (night > 0.15) {
+              // the cabin's own window: the same face, inset, warm — a gondola is lit from inside
+              const cx = (f[0][0] + f[1][0]) / 2, cy = (f[0][1] + f[2][1]) / 2;
+              const inset = f.map((c) => [c[0] + (cx - c[0]) * 0.42, c[1] + (cy - c[1]) * 0.3, c[2] + (m.z - c[2]) * 0.16]);
+              const gl = Q(inset, "rgba(255,217,160,0.82)", 1.35);
+              if (gl) gl.nolite = true;
+            }
+          });
+          // the hanger: a short bar from the rim down to the roof of the cabin
+          Q([[gx - 22, gy + gondola, gz - 22], [gx + 22, gy + gondola, gz - 22],
+             [gx + 22, p[1] + 30, gz - 22], [gx - 22, p[1] + 30, gz - 22]], steel, lit);
         }
         // the base shed the drives live in, on the plaza side
-        const shed = add(C, [[m.x - 700, 0, m.z - 1650], [m.x + 700, 0, m.z - 1650],
-                             [m.x + 700, 380, m.z - 1650], [m.x - 700, 380, m.z - 1650]],
-                         ZERO8, "flat", "#33414e");
-        if (shed) { shed.lit = lit * 0.9; drawn.push(shed); }
+        Q([[m.x - 700, 0, m.z - 1650], [m.x + 700, 0, m.z - 1650],
+           [m.x + 700, 380, m.z - 1650], [m.x - 700, 380, m.z - 1650]], "#33414e", lit * 0.9);
       } else if (shape === "carousel") {
         /* A merry-go-round, drawn as the thing itself: a round deck, a mast, a striped canopy that
            turns, and a ring of horses going up and down as it turns. Clifton Hill's strip has had a

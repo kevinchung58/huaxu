@@ -4623,7 +4623,12 @@ DISTRICTS = [
                  # reached, and the result was a 64 m field of concrete with a ride in the middle of
                  # it — a car park, not a funfair. 24 m keeps the apron reachable and lets the front
                  # rows stand at the square's edge instead of floating in it.
-                 "ws": [[1460, 3660, 1500], [2860, 3240, 1750]],
+                 # Round 62: the strip's walk answers to its own shopfronts. The fronts are
+                 # authored at 10 m (arcade-a…c, the funhouse, the midway line); the walk was left
+                 # at 15 m from round 52, so a visitor could walk *behind* the shops and the strip
+                 # read as a plaza with crates standing in it. 10.2 m puts the walk where the glass
+                 # is, and the square still opens to 17.5 m in front of the wheel.
+                 "ws": [[1460, 2860, 1020], [2860, 3240, 1750], [3240, 3660, 1020]],
                  # Round 61: what is *paved*, as against where a body may walk. The square's own
                  # front row stands at 16.4 m (the fronts), 16.8 (the rails) and 19.3 (the wheel's
                  # apron); a 17.5 m walk left all of it past the last paver, over the void. The
@@ -5000,30 +5005,35 @@ DISTRICTS = [
             # ---- The square's edge. A plaza with rides in it and nothing at its rim is a field:
             # these are the fronts that close the two sides the wheel does not, so a visitor standing
             # under the SkyWheel has a street around them and not a plain.
-            # ---- The buildings the fronts are the faces of. Opening the strip's side walls (see the
+            # ---- The buildings the fronts are the faces of. Round 62: they stand *behind* their
+            # fronts. They were authored at 11.8 m — inside a 15 m walk — so from the street the row
+            # read as six packing crates with the shopfronts hidden behind them. Each block now sits
+            # one room back from the glass it backs (12.8 m on the strip, 19 m where the square's
+            # fronts are at 16.4), and the strip's walk was narrowed to 10.2 m to meet its own
+            # shopfronts instead of running 5 m past them. Opening the strip's side walls (see the
             # surfaces below) let the street see round its own facades, and a facade with nothing
             # behind it is a card. These are the blocks: one behind each front, one storey deeper and
             # a course higher, so the strip reads as a row of buildings rather than a row of faces.
-            {"id": "block-a", "kind": "box", "x": 1181, "z": 2320, "y": 0, "ry": -90,
+            {"id": "block-a", "kind": "box", "x": 1280, "z": 2320, "y": 0, "ry": -90,
              "w": 360, "h": 380, "d": 500, "leaf": "#7b7266", "tile": "brick", "solid": True,
              "title": "The building behind the first front", "hint": "A fun row's fronts are one room "
                      "deep and one room tall; what stands behind them is a block, and the block is "
                      "what you see over the awning."},
-            {"id": "block-b", "kind": "box", "x": 1181, "z": 2560, "y": 0, "ry": -90,
+            {"id": "block-b", "kind": "box", "x": 1280, "z": 2560, "y": 0, "ry": -90,
              "w": 300, "h": 400, "d": 500, "leaf": "#6f6a62", "tile": "brick", "solid": True,
              "title": "The second block", "hint": "Slightly taller than its neighbour: a street of "
                      "identical heights is a barracks."},
-            {"id": "block-c", "kind": "box", "x": 1181, "z": 2800, "y": 0, "ry": -90,
+            {"id": "block-c", "kind": "box", "x": 1280, "z": 2800, "y": 0, "ry": -90,
              "w": 320, "h": 360, "d": 500, "leaf": "#7f7466", "tile": "brick", "solid": True,
              "title": "The block by the wheel", "hint": "The last of the row before the square."},
-            {"id": "block-d", "kind": "box", "x": -1181, "z": 2320, "y": 0, "ry": 90,
+            {"id": "block-d", "kind": "box", "x": -1280, "z": 2320, "y": 0, "ry": 90,
              "w": 330, "h": 420, "d": 500, "leaf": "#746c62", "tile": "brick", "solid": True,
              "title": "The west block behind the funhouse", "hint": "The funhouse's own building: "
                      "the face is three storeys, so the block is three storeys."},
-            {"id": "block-e", "kind": "box", "x": -1181, "z": 2600, "y": 0, "ry": 90,
+            {"id": "block-e", "kind": "box", "x": -1280, "z": 2600, "y": 0, "ry": 90,
              "w": 340, "h": 320, "d": 500, "leaf": "#7b7266", "tile": "brick", "solid": True,
              "title": "Its neighbour", "hint": "Lower, and set a step back from the funhouse's face."},
-            {"id": "block-f", "kind": "box", "x": -1181, "z": 2880, "y": 0, "ry": 90,
+            {"id": "block-f", "kind": "box", "x": -1900, "z": 2880, "y": 0, "ry": 90,
              "w": 320, "h": 340, "d": 500, "leaf": "#6f6a62", "tile": "brick", "solid": True,
              "title": "The last block on the west side", "hint": "The row turns the corner at the "
                      "carousel and carries on round the square."},
