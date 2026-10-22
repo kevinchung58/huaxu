@@ -4579,7 +4579,11 @@ DISTRICTS = [
                  # rim crosses the strip at 27.5 m (a 50.5 m rim on a 27.5 m axle), which is the
                  # view Clifton Hill's postcards are made of; the rim's own foot at 2.25 m stands
                  # past the walk's edge, where the queue is.
-                 "ws": [[1460, 3660, 1500], [2860, 3240, 3200]],
+                 # Round 58: the plaza opened to 32 m half-width so the wheel's apron could be
+                 # reached, and the result was a 64 m field of concrete with a ride in the middle of
+                 # it — a car park, not a funfair. 24 m keeps the apron reachable and lets the front
+                 # rows stand at the square's edge instead of floating in it.
+                 "ws": [[1460, 3660, 1500], [2860, 3240, 1750]],
                  "floors": [[1500, 2200, 553, 340, 660]]},
         "floor": "pavers",
         "day": {"cycle": 900, "start": 0.5, "gain": 1},
@@ -4674,7 +4678,7 @@ DISTRICTS = [
             # Round 58: the upper station's door stood on nothing — a grey leaf in mid-air over the
             # grass, which is what a door hung on no wall looks like from the deck. The station is a
             # block, so the block is drawn: stone behind the door, a slab under it, a roof over it.
-            {"id": "incline-station", "kind": "board", "x": 760, "z": 1620, "y": 553, "ry": -90,
+            {"id": "incline-station", "kind": "box", "x": 760, "z": 1620, "y": 553, "ry": -90,
              "w": 460, "h": 330, "d": 120, "leaf": "#5b6472", "tile": "concrete", "solid": True,
              "title": "The upper station's block",
              "hint": "The head house the cars pull into: a stone block at the top of the bluff, its "
@@ -4682,16 +4686,21 @@ DISTRICTS = [
             {"id": "incline-station-roof", "kind": "box", "x": 760, "z": 1620, "y": 883, "ry": -90,
              "w": 500, "h": 26, "d": 190, "leaf": "#3c4652",
              "title": "Its roof", "hint": "A slab over the head house, one course proud of its walls."},
-            {"id": "incline-station-slab", "kind": "board", "x": 560, "z": 1620, "y": 553, "ry": -90,
-             "w": 480, "h": 22, "d": 220, "leaf": "#6c7076", "tile": "concrete", "solid": False,
+            {"id": "incline-station-slab", "kind": "box", "x": 460, "z": 1620, "y": 553, "ry": -90,
+             "w": 300, "h": 22, "d": 220, "leaf": "#6c7076", "tile": "concrete", "solid": False,
              "title": "The landing slab", "hint": "The apron the cars come down to, 22 cm off the "
                      "deck — the same slab the wheel's gondolas step onto, at the other ride."},
-            {"id": "incline-upper-door", "kind": "door", "x": 620, "z": 1620, "y": 553, "ry": -90,
+            # Round 58: the door had no w/h/d in the record, so its leaf drew at zero height and all
+            # that survived was the reveal's shadow — a dark smear on the deck. Found by querying the
+            # drawn quads inside the station's own box: four quads there, two of them the station's
+            # face, two the door's threshold, and no leaf at all.
+            {"id": "incline-upper-door", "kind": "door", "x": 528, "z": 1620, "y": 553, "ry": -90,
+             "w": 128, "h": 236, "d": 26,
              "leaf": "#33414e", "ride": "1", "rideX": 500, "rideTop": 553,
              "title": "The upper station's door",
              "hint": "It keeps the weather off the car. Press it and the incline brings you back "
                      "down to the rail, the way it does every minute of the day."},
-            {"id": "skywheel", "kind": "wheel", "x": 3300, "z": 3050, "y": 0, "ry": 0, "solid": False,
+            {"id": "skywheel", "kind": "wheel", "x": 2376, "z": 3050, "y": 0, "ry": 0, "solid": False,
              "w": 25, "h": 1845, "d": 96, "dia": 5050, "axle": 2750, "turn": 40,
              "demo": "wheel",
              "title": "The Niagara SkyWheel",
@@ -4701,12 +4710,12 @@ DISTRICTS = [
                      "a ride. The model keeps the real rate: forty seconds a revolution, drifting, "
                      "never hurried. Press the platform and the rim lamps answer — the ride is not "
                      "for sale in a drawing."},
-            {"id": "wheel-booth", "kind": "board", "x": 2900, "z": 2950, "y": 0, "ry": -90, "tile": "galv", "solid": False,
+            {"id": "wheel-booth", "kind": "board", "x": 2088, "z": 2950, "y": 0, "ry": -90, "tile": "galv", "solid": False,
              "w": 42, "h": 33, "d": 28, "leaf": "#8b9ab0",
              "title": "The ticket box",
              "hint": "A booth at the wheel's loading apron. In the drawing it sells nothing; in "
                      "Clifton it sells the queue."},
-            {"id": "arcade-a", "kind": "front", "x": 1390, "z": 2320, "y": 0, "ry": -90,
+            {"id": "arcade-a", "kind": "front", "x": 1001, "z": 2320, "y": 0, "ry": -90,
              "w": 340, "h": 250, "d": 26, "awn": "#3f4d7a", "awnout": 150,
              "fascia": "#b9ac8e", "liton": 0.62,
              "glow": [{"r": 90, "k": 0.6, "dy": 210, "tint": "rgba(255,180,110,0.5)"}],
@@ -4715,7 +4724,7 @@ DISTRICTS = [
              "hint": "Clifton Hill is a street of games, wax, and water parks, and a drawing may "
                      "keep an arcade's glow but not its lease: the fronts here are unnamed on "
                      "purpose, so none of them claims a business that need not stand here."},
-            {"id": "arcade-b", "kind": "front", "x": 1390, "z": 2560, "y": 0, "ry": -90,
+            {"id": "arcade-b", "kind": "front", "x": 1001, "z": 2560, "y": 0, "ry": -90,
              "w": 300, "h": 260, "d": 26, "awn": "#7a3f3a", "awnout": 150,
              "fascia": "#b9ac8e", "liton": 0.66,
              "glow": [{"r": 90, "k": 0.55, "dy": 218, "tint": "rgba(255,180,110,0.5)"}],
@@ -4723,7 +4732,7 @@ DISTRICTS = [
              "title": "Another front, another marquee",
              "hint": "Two storeys of funhouse and a wall of lamps: the strip's measure again, not "
                      "the survey's."},
-            {"id": "arcade-c", "kind": "front", "x": 1390, "z": 2800, "y": 0, "ry": -90,
+            {"id": "arcade-c", "kind": "front", "x": 1001, "z": 2800, "y": 0, "ry": -90,
              "w": 320, "h": 240, "d": 26, "awn": "#3f6a4a", "awnout": 150,
              "fascia": "#b9ac8e", "liton": 0.7,
              "glow": [{"r": 90, "k": 0.6, "dy": 200, "tint": "rgba(255,180,110,0.5)"}],
@@ -4731,7 +4740,7 @@ DISTRICTS = [
              "title": "The arcade nearest the wheel",
              "hint": "From its door the SkyWheel fills the end of the street — the one view the "
                      "strip's own postcards use, and the reason the wheel stands exactly behind it."},
-            {"id": "midway-stall", "kind": "foodstall", "x": -1390, "z": 2440, "y": 0, "ry": 90,
+            {"id": "midway-stall", "kind": "foodstall", "x": -1001, "z": 2440, "y": 0, "ry": 90,
              "w": 110, "h": 58, "d": 70, "awn": "#8a3f3a", "leaf": "#6e4f38",
              "title": "A midway stall under an awning",
              "hint": "The strip keeps one food stall because a strip without one is not a strip. "
@@ -4740,61 +4749,61 @@ DISTRICTS = [
             # clutter between them — benches, bins, planters, bollards, the queue, and the lamps that
             # are on after everything else has shut. Every piece stands within a visitor's reach of
             # the plaza's floor, which is the rule the whole lane is held to.
-            {"id": "sign-a", "kind": "sign", "x": 1388, "z": 2320, "y": 268, "ry": -90,
+            {"id": "sign-a", "kind": "sign", "x": 999, "z": 2320, "y": 268, "ry": -90,
              "w": 300, "h": 54, "d": 10, "leaf": "#b98a4a", "liton": 0.55,
              "glow": [{"r": 120, "k": 0.5, "dy": 60, "tint": "rgba(255,196,120,0.45)"}],
              "title": "The first marquee, blank",
              "hint": "A lit board over a front. It carries no word: the lettering would belong to a "
                      "business that need not stand on this street, and a drawn street does not "
                      "pretend to have one."},
-            {"id": "sign-b", "kind": "sign", "x": 1388, "z": 2800, "y": 262, "ry": -90,
+            {"id": "sign-b", "kind": "sign", "x": 999, "z": 2800, "y": 262, "ry": -90,
              "w": 312, "h": 50, "d": 10, "leaf": "#8b5a4a", "liton": 0.68,
              "glow": [{"r": 120, "k": 0.5, "dy": 60, "tint": "rgba(255,180,120,0.45)"}],
              "title": "The marquee by the wheel",
              "hint": "Blank, like its pair. What a marquee says is a lease; what it does is throw "
                      "light on the pavement, and that is the part a drawing can keep."},
-            {"id": "stall-games", "kind": "foodstall", "x": 1390, "z": 3120, "y": 0, "ry": -90,
+            {"id": "stall-games", "kind": "foodstall", "x": 1001, "z": 3120, "y": 0, "ry": -90,
              "w": 104, "h": 56, "d": 66, "awn": "#3f5a7a", "leaf": "#5c4632",
              "title": "A game booth by the wheel",
              "hint": "A counter under a canvas, the way the strip's booths stand: a lit box, a prize "
                      "shelf, and nothing to win here. Drawn, not surveyed."},
-            {"id": "bench-strip-1", "kind": "bench", "x": 1330, "z": 2260, "y": 0, "ry": -90,
+            {"id": "bench-strip-1", "kind": "bench", "x": 958, "z": 2260, "y": 0, "ry": -90,
              "w": 176, "h": 44, "d": 46,
              "title": "A bench facing the strip",
              "hint": "Where the queue waits and the people who are not walking sit. Slats, a back, "
                      "two iron ends — the same bench the quays have."},
-            {"id": "bench-strip-2", "kind": "bench", "x": -1330, "z": 2620, "y": 0, "ry": 90,
+            {"id": "bench-strip-2", "kind": "bench", "x": -958, "z": 2620, "y": 0, "ry": 90,
              "w": 176, "h": 44, "d": 46,
              "title": "A bench on the other side",
              "hint": "A strip seats both sides. This one looks back down the hill at the falls' mist."},
-            {"id": "bin-strip", "kind": "bin", "x": 1350, "z": 2870, "y": 0, "ry": -90,
+            {"id": "bin-strip", "kind": "bin", "x": 972, "z": 2870, "y": 0, "ry": -90,
              "w": 44, "h": 92, "d": 44,
              "title": "A bin at the edge of the plaza",
              "hint": "Every strip has one every few doors. Drawn, and empty."},
-            {"id": "planter-strip-1", "kind": "planter", "x": -1350, "z": 2800, "y": 0, "ry": 90,
+            {"id": "planter-strip-1", "kind": "planter", "x": -972, "z": 2800, "y": 0, "ry": 90,
              "w": 92, "h": 80, "d": 92,
              "title": "A planter by the far fronts",
              "hint": "A square tub of grass at the plaza's edge: the strip's only green, apart from "
                      "the gorge."},
-            {"id": "planter-strip-2", "kind": "planter", "x": 1350, "z": 2420, "y": 0, "ry": -90,
+            {"id": "planter-strip-2", "kind": "planter", "x": 972, "z": 2420, "y": 0, "ry": -90,
              "w": 92, "h": 80, "d": 92,
              "title": "Its pair across the way",
              "hint": "Two tubs, one at each end of the lit stretch."},
-            {"id": "lamp-strip-1", "kind": "lamp", "x": -1400, "z": 2280, "y": 0, "ry": 0,
+            {"id": "lamp-strip-1", "kind": "lamp", "x": -1008, "z": 2280, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "title": "A lamp on the strip",
              "hint": "A post with a head on it, brighter and later than the promenade's lamps: this "
                      "is the street that stays on."},
-            {"id": "lamp-strip-2", "kind": "lamp", "x": 1400, "z": 2640, "y": 0, "ry": 0,
+            {"id": "lamp-strip-2", "kind": "lamp", "x": 1008, "z": 2640, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "title": "Its pair down the stretch",
              "hint": "The strip is lit end to end; two posts stand for the row."},
-            {"id": "queue-rail-a", "kind": "parapet", "x": 2260, "z": 2860, "y": 0, "ry": 0,
+            {"id": "queue-rail-a", "kind": "parapet", "x": 1627, "z": 2860, "y": 0, "ry": 0,
              "w": 900, "h": 96, "d": 12,
              "title": "The queue rail at the wheel",
              "hint": "The line that holds the ride's visitors: a steel tube on two feet, 900 cm of "
                      "it. It keeps the platform's edge honest, the way the parapet keeps the gorge's."},
-            {"id": "queue-rail-b", "kind": "parapet", "x": 2260, "z": 3240, "y": 0, "ry": 0,
+            {"id": "queue-rail-b", "kind": "parapet", "x": 1627, "z": 3240, "y": 0, "ry": 0,
              "w": 900, "h": 96, "d": 12,
              "title": "The rail's other side",
              "hint": "Two rails make a queue; the apron between them is the ride's own floor."},
@@ -4805,26 +4814,27 @@ DISTRICTS = [
             # booths down both sides, the gate that says you have arrived, the lights strung over
             # the street, and the furniture that makes forty metres of paving a street rather than a
             # corridor. Every piece is unnamed: a drawn street does not invent leases.
-            {"id": "carousel", "kind": "carousel", "x": -1560, "z": 3020, "y": 0, "ry": 90,
-             "w": 900, "h": 460, "d": 900, "dia": 900, "turn": 26, "solid": False,
+            {"id": "carousel", "kind": "carousel", "x": -1080, "z": 3060, "y": 0, "ry": 90,
+             # Round 58: the deck is a solid — a visitor walks up to the carousel, never through it.
+             "w": 900, "h": 460, "d": 900, "dia": 900, "turn": 26, "solid": True,
              "demo": "carousel",
              "title": "The carousel at the end of the strip",
              "hint": "A merry-go-round is the oldest ride on a fun row and the one that still runs: a "
                      "round deck, twenty-four sectors of painted floor, sixteen canopy stripes, and "
                      "twelve horses rising on their own poles as it turns. Twenty-six seconds a "
                      "revolution here — a carousel is a slow ride, and the drawing keeps it slow."},
-            {"id": "tower-mast", "kind": "post", "x": -1520, "z": 2480, "y": 0, "ry": 0,
+            {"id": "tower-mast", "kind": "post", "x": -1094, "z": 2480, "y": 0, "ry": 0,
              "w": 90, "h": 1960, "d": 90, "leaf": "#8b93a2", "solid": True,
              "title": "The drop tower's mast",
              "hint": "The strip's tall ride: a steel mast with a ring of seats that climbs it and "
                      "lets go. Drawn at the strip's measure, twenty metres — a tower you can see "
                      "over the fronts from the Parkway."},
-            {"id": "tower-ring", "kind": "board", "x": -1520, "z": 2480, "y": 1420, "ry": 0,
+            {"id": "tower-ring", "kind": "board", "x": -1094, "z": 2480, "y": 1420, "ry": 0,
              "w": 320, "h": 96, "d": 320, "leaf": "#c0533f", "solid": False,
              "title": "The ring of seats",
              "hint": "Twelve seats round a collar. It sits at its top station in the drawing: a ride "
                      "caught mid-fall in a still frame would be a lie about the ride."},
-            {"id": "funhouse", "kind": "front", "x": -1390, "z": 2320, "y": 0, "ry": 90,
+            {"id": "funhouse", "kind": "front", "x": -1001, "z": 2320, "y": 0, "ry": 90,
              "w": 330, "h": 330, "d": 26, "awn": "#6a4a86", "awnout": 170,
              "fascia": "#c9b98e", "liton": 0.6,
              "glow": [{"r": 100, "k": 0.55, "dy": 300, "tint": "rgba(196,150,255,0.42)"}],
@@ -4833,33 +4843,33 @@ DISTRICTS = [
              "hint": "Three storeys of painted front, an awning, and a lit board over the door with "
                      "nothing written on it. A funhouse is the one building on the strip whose whole "
                      "job is its face."},
-            {"id": "midway-a", "kind": "foodstall", "x": -1390, "z": 2560, "y": 0, "ry": 90,
+            {"id": "midway-a", "kind": "foodstall", "x": -1001, "z": 2560, "y": 0, "ry": 90,
              "w": 108, "h": 56, "d": 68, "awn": "#3f6a8a", "leaf": "#6a5138",
              "title": "A midway booth", "hint": "A canvas roof, a counter, a shelf of prizes. The "
                      "strip's booths stand shoulder to shoulder; this is the first of the row."},
-            {"id": "midway-b", "kind": "foodstall", "x": -1390, "z": 2660, "y": 0, "ry": 90,
+            {"id": "midway-b", "kind": "foodstall", "x": -1001, "z": 2660, "y": 0, "ry": 90,
              "w": 108, "h": 56, "d": 68, "awn": "#8a5a3f", "leaf": "#5c4632",
              "title": "The booth next door", "hint": "Same counter, different canvas. Nothing here "
                      "says what is for sale, because nothing here is for sale."},
-            {"id": "midway-c", "kind": "foodstall", "x": 1390, "z": 2340, "y": 0, "ry": -90,
+            {"id": "midway-c", "kind": "foodstall", "x": 1001, "z": 2340, "y": 0, "ry": -90,
              "w": 108, "h": 56, "d": 68, "awn": "#3f8a6a", "leaf": "#584636",
              "title": "A booth on the east side", "hint": "The row runs both sides of the street: a "
                      "visitor walking up sees canvas on the left and canvas on the right."},
-            {"id": "midway-d", "kind": "foodstall", "x": 1390, "z": 2660, "y": 0, "ry": -90,
+            {"id": "midway-d", "kind": "foodstall", "x": 1001, "z": 2660, "y": 0, "ry": -90,
              "w": 108, "h": 56, "d": 68, "awn": "#8a3f5a", "leaf": "#6a5138",
              "title": "The last booth before the plaza", "hint": "Past it the street opens to the "
                      "wheel's apron, which is where the strip stops being a corridor."},
-            {"id": "sweets-kiosk", "kind": "foodstall", "x": -1390, "z": 2870, "y": 0, "ry": 90,
+            {"id": "sweets-kiosk", "kind": "foodstall", "x": -1001, "z": 2870, "y": 0, "ry": 90,
              "w": 92, "h": 60, "d": 60, "awn": "#c05a86", "leaf": "#7a5a40",
              "title": "A sweet kiosk by the plaza", "hint": "A small counter with a striped awning, "
                      "the way every fun row has one: the smell is the only part of it a drawing "
                      "cannot carry."},
-            {"id": "strip-gate-l", "kind": "post", "x": -800, "z": 2200, "y": 0, "ry": 0,
+            {"id": "strip-gate-l", "kind": "post", "x": -576, "z": 2200, "y": 0, "ry": 0,
              "w": 30, "h": 360, "d": 30, "leaf": "#3a2f28", "solid": True,
              "title": "The gate post at the strip's mouth", "hint": "Two posts and a beam mark where "
                      "the Parkway ends and the fun row starts. They carry no word, and they do not "
                      "stop anybody."},
-            {"id": "strip-gate-r", "kind": "post", "x": 800, "z": 2200, "y": 0, "ry": 0,
+            {"id": "strip-gate-r", "kind": "post", "x": 576, "z": 2200, "y": 0, "ry": 0,
              "w": 30, "h": 360, "d": 30, "leaf": "#3a2f28", "solid": True,
              "title": "Its pair across the street", "hint": "The gate is a frame, not a barrier."},
             {"id": "strip-gate-beam", "kind": "box", "x": 0, "z": 2200, "y": 356, "ry": 0,
@@ -4878,82 +4888,154 @@ DISTRICTS = [
              "w": 2400, "h": 26, "solid": False,
              "title": "The span over the plaza", "hint": "Wider than the others: the street has "
                      "opened out by the time the cable reaches it."},
-            {"id": "plaza-bench-1", "kind": "bench", "x": 1200, "z": 3120, "y": 0, "ry": 0,
+            {"id": "plaza-bench-1", "kind": "bench", "x": 864, "z": 3120, "y": 0, "ry": 0,
              "w": 176, "h": 44, "d": 46,
              "title": "A bench on the plaza", "hint": "Facing the wheel. The apron's only seat."},
-            {"id": "plaza-bench-2", "kind": "bench", "x": 1200, "z": 3320, "y": 0, "ry": 0,
+            {"id": "plaza-bench-2", "kind": "bench", "x": 864, "z": 3320, "y": 0, "ry": 0,
              "w": 176, "h": 44, "d": 46,
              "title": "Its pair, a step down the plaza", "hint": "Two benches is what a plaza needs; "
                      "the rest is standing room."},
-            {"id": "plaza-bin", "kind": "bin", "x": 900, "z": 3180, "y": 0, "ry": 0,
+            {"id": "plaza-bin", "kind": "bin", "x": 648, "z": 3180, "y": 0, "ry": 0,
              "w": 44, "h": 92, "d": 44,
              "title": "A bin by the bench", "hint": "Drawn, and empty."},
-            {"id": "plaza-planter-1", "kind": "planter", "x": -1200, "z": 3140, "y": 0, "ry": 0,
+            {"id": "plaza-planter-1", "kind": "planter", "x": -864, "z": 3140, "y": 0, "ry": 0,
              "w": 92, "h": 80, "d": 92,
              "title": "A planter at the plaza's edge", "hint": "The strip's green, in a square tub."},
-            {"id": "plaza-planter-2", "kind": "planter", "x": -1200, "z": 3280, "y": 0, "ry": 0,
+            {"id": "plaza-planter-2", "kind": "planter", "x": -864, "z": 3280, "y": 0, "ry": 0,
              "w": 92, "h": 80, "d": 92,
              "title": "Its pair", "hint": "Two tubs mark the edge of the paving."},
-            {"id": "plaza-lamp-1", "kind": "lamp", "x": 1180, "z": 3020, "y": 0, "ry": 0,
+            {"id": "plaza-lamp-1", "kind": "lamp", "x": 850, "z": 3020, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "title": "A lamp on the plaza", "hint": "The strip's lamps are taller and later than "
                      "the promenade's: this is the street that stays on."},
-            {"id": "plaza-lamp-2", "kind": "lamp", "x": -1180, "z": 3020, "y": 0, "ry": 0,
+            {"id": "plaza-lamp-2", "kind": "lamp", "x": -850, "z": 3020, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "title": "The lamp opposite", "hint": "A pair, one to each side of the apron."},
-            {"id": "fountain", "kind": "pool", "x": 2100, "z": 3300, "y": 0, "ry": 0,
+            {"id": "fountain", "kind": "pool", "x": 1512, "z": 3300, "y": 0, "ry": 0,
              "w": 340, "h": 16, "d": 340, "solid": False,
              "title": "The fountain in the plaza",
              "hint": "A shallow round basin: water in a fun district is the one thing nobody has to "
                      "queue for. Drawn at the strip's measure, three and a half metres across."},
-            {"id": "fountain-rim", "kind": "board", "x": 2100, "z": 3300, "y": 0, "ry": 0,
+            {"id": "fountain-rim", "kind": "board", "x": 1512, "z": 3300, "y": 0, "ry": 0,
              "w": 380, "h": 46, "d": 380, "leaf": "#8c8578", "tile": "concrete", "solid": False,
              "title": "The fountain's rim", "hint": "A stone lip, knee high, and the water inside it."},
             # Round 58: the strip's paving ran thirty metres wide with four benches in it, which is a
             # car park, not a street. A fun row is furniture all the way down — a lamp, a tub, a
             # seat, a bin, again and again — and it is that repetition, not the fronts, that makes a
             # street feel walked. These are placed at the strip's own rhythm, 20 m apart.
-            {"id": "strip-lamp-1", "kind": "lamp", "x": 690, "z": 2260, "y": 0, "ry": 0,
+            {"id": "strip-lamp-1", "kind": "lamp", "x": 497, "z": 2260, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "title": "A lamp at the strip's mouth", "hint": "The row starts where the gate does."},
-            {"id": "strip-lamp-2", "kind": "lamp", "x": -690, "z": 2460, "y": 0, "ry": 0,
+            {"id": "strip-lamp-2", "kind": "lamp", "x": -497, "z": 2460, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "title": "A lamp on the west kerb", "hint": "The row alternates sides; a street lit from "
                      "one kerb only has a dark side."},
-            {"id": "strip-lamp-3", "kind": "lamp", "x": 690, "z": 2660, "y": 0, "ry": 0,
+            {"id": "strip-lamp-3", "kind": "lamp", "x": 497, "z": 2660, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "title": "A lamp by the midway", "hint": "Lit in the drawing whether or not it is dark."},
-            {"id": "strip-lamp-4", "kind": "lamp", "x": -690, "z": 2860, "y": 0, "ry": 0,
+            {"id": "strip-lamp-4", "kind": "lamp", "x": -497, "z": 2860, "y": 0, "ry": 0,
              "w": 14, "h": 470, "d": 14,
              "title": "A lamp at the plaza's edge", "hint": "The last of the row before the apron."},
-            {"id": "strip-plant-1", "kind": "planter", "x": 720, "z": 2380, "y": 0, "ry": 0,
+            {"id": "strip-plant-1", "kind": "planter", "x": 518, "z": 2380, "y": 0, "ry": 0,
              "w": 92, "h": 80, "d": 92,
              "title": "A tub on the east kerb", "hint": "Grass in a square tub, between the lamps."},
-            {"id": "strip-plant-2", "kind": "planter", "x": -720, "z": 2720, "y": 0, "ry": 0,
+            {"id": "strip-plant-2", "kind": "planter", "x": -518, "z": 2720, "y": 0, "ry": 0,
              "w": 92, "h": 80, "d": 92,
              "title": "Its pair", "hint": "The strip's planting is all in tubs: nothing grows in "
                      "paving that is swept every night."},
-            {"id": "strip-bench-3", "kind": "bench", "x": -760, "z": 2580, "y": 0, "ry": 90,
+            {"id": "strip-bench-3", "kind": "bench", "x": -547, "z": 2580, "y": 0, "ry": 90,
              "w": 176, "h": 44, "d": 46,
              "title": "A bench under the lights", "hint": "Facing the street: the queue sits, the "
                      "queue watches."},
-            {"id": "strip-bin-2", "kind": "bin", "x": 760, "z": 2520, "y": 0, "ry": 0,
+            {"id": "strip-bin-2", "kind": "bin", "x": 547, "z": 2520, "y": 0, "ry": 0,
              "w": 44, "h": 92, "d": 44,
              "title": "A bin by the booth", "hint": "Drawn, and empty."},
-            {"id": "river-rail", "kind": "parapet", "x": -3180, "z": 3060, "y": 0, "ry": 0,
+            # ---- The square's edge. A plaza with rides in it and nothing at its rim is a field:
+            # these are the fronts that close the two sides the wheel does not, so a visitor standing
+            # under the SkyWheel has a street around them and not a plain.
+            # ---- The buildings the fronts are the faces of. Opening the strip's side walls (see the
+            # surfaces below) let the street see round its own facades, and a facade with nothing
+            # behind it is a card. These are the blocks: one behind each front, one storey deeper and
+            # a course higher, so the strip reads as a row of buildings rather than a row of faces.
+            {"id": "block-a", "kind": "box", "x": 1181, "z": 2320, "y": 0, "ry": -90,
+             "w": 360, "h": 380, "d": 500, "leaf": "#7b7266", "tile": "brick", "solid": True,
+             "title": "The building behind the first front", "hint": "A fun row's fronts are one room "
+                     "deep and one room tall; what stands behind them is a block, and the block is "
+                     "what you see over the awning."},
+            {"id": "block-b", "kind": "box", "x": 1181, "z": 2560, "y": 0, "ry": -90,
+             "w": 300, "h": 400, "d": 500, "leaf": "#6f6a62", "tile": "brick", "solid": True,
+             "title": "The second block", "hint": "Slightly taller than its neighbour: a street of "
+                     "identical heights is a barracks."},
+            {"id": "block-c", "kind": "box", "x": 1181, "z": 2800, "y": 0, "ry": -90,
+             "w": 320, "h": 360, "d": 500, "leaf": "#7f7466", "tile": "brick", "solid": True,
+             "title": "The block by the wheel", "hint": "The last of the row before the square."},
+            {"id": "block-d", "kind": "box", "x": -1181, "z": 2320, "y": 0, "ry": 90,
+             "w": 330, "h": 420, "d": 500, "leaf": "#746c62", "tile": "brick", "solid": True,
+             "title": "The west block behind the funhouse", "hint": "The funhouse's own building: "
+                     "the face is three storeys, so the block is three storeys."},
+            {"id": "block-e", "kind": "box", "x": -1181, "z": 2600, "y": 0, "ry": 90,
+             "w": 340, "h": 320, "d": 500, "leaf": "#7b7266", "tile": "brick", "solid": True,
+             "title": "Its neighbour", "hint": "Lower, and set a step back from the funhouse's face."},
+            {"id": "block-f", "kind": "box", "x": -1181, "z": 2880, "y": 0, "ry": 90,
+             "w": 320, "h": 340, "d": 500, "leaf": "#6f6a62", "tile": "brick", "solid": True,
+             "title": "The last block on the west side", "hint": "The row turns the corner at the "
+                     "carousel and carries on round the square."},
+            {"id": "plaza-front-w1", "kind": "front", "x": -1642, "z": 2900, "y": 0, "ry": 90,
+             "w": 300, "h": 300, "d": 26, "awn": "#7a4a3a", "awnout": 160,
+             "fascia": "#c2b494", "liton": 0.62,
+             "glow": [{"r": 100, "k": 0.5, "dy": 250, "tint": "rgba(255,196,130,0.42)"}],
+             "states": [{"say": "Open. The glass is lit and the shutter stands up.", "k": 0.9, "shut": 0.94}],
+             "title": "A front on the square's west side",
+             "hint": "The strip turns the corner here: the fronts stop running down the street and "
+                     "start running round the square, the way a fun row does when it meets its ride."},
+            {"id": "plaza-front-w2", "kind": "front", "x": -1642, "z": 3180, "y": 0, "ry": 90,
+             "w": 300, "h": 320, "d": 26, "awn": "#3f5a6a", "awnout": 160,
+             "fascia": "#b9ac8e", "liton": 0.68,
+             "glow": [{"r": 100, "k": 0.52, "dy": 260, "tint": "rgba(255,186,120,0.42)"}],
+             "states": [{"say": "Open. A wall of lamps over a glass front.", "k": 0.9, "shut": 0.94}],
+             "title": "Its neighbour, round the corner",
+             "hint": "Two fronts and a rail are enough to make an edge; the rest of the square is "
+                     "paving, a fountain and the wheel."},
+            {"id": "plaza-front-n1", "kind": "front", "x": 1649, "z": 3060, "y": 0, "ry": -90,
+             "w": 280, "h": 270, "d": 26, "awn": "#6a4a3a", "awnout": 150,
+             "fascia": "#c2b494", "liton": 0.6,
+             "glow": [{"r": 90, "k": 0.5, "dy": 230, "tint": "rgba(255,196,130,0.4)"}],
+             "states": [{"say": "Open. The queue for the wheel stands outside it.", "k": 0.9, "shut": 0.94}],
+             "title": "The front facing the wheel",
+             "hint": "A ticket hall and a counter: the business the ride lives on, drawn as a face "
+                     "with a blank marquee above it."},
+            {"id": "plaza-flag-1", "kind": "post", "x": -936, "z": 3320, "y": 0, "ry": 0,
+             "w": 18, "h": 620, "d": 18, "leaf": "#9aa2ae", "solid": True,
+             "title": "A flag mast at the square's mouth", "hint": "Bare, in the drawing: the strip "
+                     "is a place where something is always being advertised, and a mast with nothing "
+                     "on it says that without inventing a word."},
+            {"id": "plaza-flag-2", "kind": "post", "x": 936, "z": 3320, "y": 0, "ry": 0,
+             "w": 18, "h": 620, "d": 18, "leaf": "#9aa2ae", "solid": True,
+             "title": "Its pair", "hint": "Two masts frame the way into the square."},
+            {"id": "river-rail", "kind": "parapet", "x": -1678, "z": 3060, "y": 0, "ry": 0,
              "w": 1200, "h": 96, "d": 12,
              "title": "The rail along the river edge", "hint": "The strip ends at the bluff. Iron on "
                      "stone, the same kit the promenade uses — beyond it the ground drops to the "
                      "gorge and the water is the river's own."},
-            {"id": "river-edge-bench", "kind": "bench", "x": -3000, "z": 3180, "y": 0, "ry": 0,
+            {"id": "river-edge-bench", "kind": "bench", "x": -1584, "z": 3180, "y": 0, "ry": 0,
              "w": 176, "h": 44, "d": 46,
              "title": "A bench at the river edge", "hint": "The strip's quiet end: the lights behind "
                      "you, the gorge in front."},
-            {"id": "plaza-rail", "kind": "parapet", "x": 3000, "z": 3320, "y": 0, "ry": 0,
+            # Round 58: opening the west edge to the gorge means the walker can now step off the
+            # point where the strip's paving ends. The rail is what makes an edge an edge.
+            {"id": "point-rail-w", "kind": "parapet", "x": -1627, "z": 2600, "y": 0, "ry": 0,
+             "w": 900, "h": 96, "d": 12,
+             "title": "The rail at the point's west edge", "hint": "Iron on stone, a hand's height "
+                     "above the paving: past it the bluff falls to the gorge and there is no way down."},
+            {"id": "point-rail-s", "kind": "parapet", "x": 0, "z": 3420, "y": 0, "ry": 90,
+             "w": 600, "h": 96, "d": 12,
+             "title": "The rail at the square's south edge", "hint": "The square ends where the "
+                     "point does; the bridge approach runs past beyond it."},
+            {"id": "plaza-rail", "kind": "parapet", "x": 1692, "z": 3320, "y": 0, "ry": 0,
              "w": 700, "h": 96, "d": 12,
              "title": "The rail at the plaza's edge", "hint": "Beyond it the ground falls away to "
                      "the gorge: the strip stands on the same bluff as the falls."},
-            {"id": "wheel-platform", "kind": "board", "x": 2680, "z": 3050, "y": 0, "ry": 0,
+            {"id": "wheel-platform", "kind": "board", "x": 1930, "z": 3050, "y": 0, "ry": 0,
              "w": 300, "h": 24, "d": 460, "leaf": "#6c7076", "tile": "concrete", "solid": False,
              "title": "The wheel's loading apron",
              "hint": "The platform the gondolas come down to: a slab 24 cm off the paving, so the "
@@ -4984,8 +5066,15 @@ DISTRICTS = [
         ],
         # The gorge side: an iron railing on a stone curb between stone posts, open air above
         # (the Getty photographs at the wall, May 2026); the terrace side is open to the centre.
-        "surfaces": niagara_parapet_bands() + [
-            {"side": 1, "z0": -69, "z1": 1483, "y0": 0, "y1": 400, "kind": "open"}],
+        # Round 58: past the Centre the lane had no surfaces of its own, so it fell back to the
+        # default corridor wall — a blank banded face at ±1500 that stood *in front of* Clifton's
+        # fronts and turned the fun strip into a beige tunnel. The strip is an open street: its edge
+        # is the fronts and the rails, not a wall, so the wall is opened from the Parkway to the
+        # bridge and the streetscape does the enclosing.
+        "surfaces": niagara_parapet_bands(z_end=1483) + [
+            # the Centre's terrace, then the strip's own open edges
+            {"side": 1, "z0": -69, "z1": 10350, "y0": 0, "y1": 400, "kind": "open"},
+            {"side": -1, "z0": 1483, "z1": 10350, "y0": 0, "y1": 400, "kind": "open"}],
         "lamps": [
             {"x": 640, "y": 410, "z": 120, "r": 90, "k": 0.45},
             {"x": 640, "y": 410, "z": 1150, "r": 90, "k": 0.45},

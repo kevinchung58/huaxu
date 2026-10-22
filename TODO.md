@@ -28,8 +28,16 @@
 - **街道補滿**：四支燈柱、兩個花箱、長椅、垃圾桶、河岸護欄與河岸長椅（沿街 20 m 一個節奏），街心不再是停車場。
 - 閘門：`verify-three` **PASS**、`verify-body` **16/16**、`verify-shapes` **178/178**。影格：`.preview/r58/goat-falls-ropes.png`、`niagara-strip-approach.png`、`niagara-st5-station.png`。
 
+### 第三輪（同日，站主「繼續都做完阿」）
+- **浮空灰片結案，而且不是猜的**：把 `__dbg` 掛回去，逐個查「誰的 quad 投影落在這塊像素上」，答案是 `incline` 的 **head-pulley shed**——它整棟只畫「一片」quad（`#4b5568`），從側面看就是那片浮在草上的灰平行四邊形。改成 `shedAt()`：四片牆＋頂蓋、每面自己的色階。第二片（頭屋下方那片）同一個函式一起補。另外 `incline-upper-door` 記錄裡沒有 w/h/d，門扇畫成零高度、只剩門檻陰影——補成 128×236×26 並把站房 `board` 改成 `box`、落車台改成 `box`。
+- **`box` 形狀現在真的吃 `tile`**：`box` 分支只查 `MATS`，從不看記錄的 `tile`，所以新增的六棟街區全是灰水泥塊。三個門面後面補了六個 `block-*`（brick 貼圖），Clifton 才從「一排臉」變成「一排樓」。
+- **街道兩側原本是預設走廊牆**：`surfaces` 在 1483 之後沒有條目，於是 lane 用預設 ±1500 的條紋牆——那面牆就擋在門面前面，整條街是米色隧道。改成 Parkway 之後兩側 `open`，靠門面、護欄與街區圍合。
+- **廣場從 64 m 收到 35 m 半寬**：上一輪為了讓 SkyWheel 的月台可達把廣場拉到 32 m 半寬，結果是一整片水泥地。連帶所有 x 大於 600 的街區物件乘 0.72 收進來，`ws` 改 1750；補西/北兩側門面、旗桿、噴泉、護欄，機台與攤位重新落到廣場邊緣。
+- **旋轉木馬**：圓盤改回正圓（上一輪把 x/z 壓成 0.42 的橢圓），並且設 `solid`——`verify-body` 當場抓到「人可以站在 carousel 裡面（360 格）」。
+- 閘門：`verify-three` **PASS**、`verify-body` **16/16**、`verify-shapes` **201/201**。影格更新：`niagara-strip-blocks.png`、`niagara-square.png`、`niagara-carousel.png`、`goat-falls-crest.png`。
+- **工具教訓**：`/tmp` 每輪會被清空（playwright、`/tmp/h/*.py`、`/tmp/al2023/lib` 全滅），Chromium 的 `al2023.tar.br` 要用 `zlib.brotliDecompressSync` 解，不是外部 `brotli` 指令；`walklib.goto_stop` 必須等 `--z` 目標值到手才算到站（車廂站 h 553 會讓「位移停止」提前成立）。
+
 ### 尚未做完（下一輪接手直接從這裡開）
-- **Niagara st5 那塊仍浮空的灰色斜片**：影格 `niagara-st5-station.png` 中右側、草皮上方約 2 m 的灰色平行四邊形，本輪判斷不是 `incline-upper-door`（站房已補、位置不符）；需要一輪專門的物件身分查詢（`drawQuads` 投影＋`data-obj` 對照）再決定是刪、是補底座。
 - **st6 河岸的白牆**：`_gen_html.py` 的 `niagara_world` 有一塊近距離無貼圖立面（影格裡佔右半），要在 world prim 那層處理，不是在 props 層。
 - 水沫貼圖 `foam` 在白日仍偏淡；拍底的浪要再壓低加寬。
 - 夜間水色只做了瀑布本體，河道與潭面尚未跟著。

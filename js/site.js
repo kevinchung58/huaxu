@@ -4021,11 +4021,18 @@ function leaveOverlay(root, trigger) {
           const toward = f.n[0] * (C.x - f.p[0][0]) + f.n[1] * (C.eye - f.p[0][1])
                        + f.n[2] * (C.z - f.p[0][2]);
           if (toward <= 0) return;
+          /* Round 58: a box honours the `tile` its record authored. It never did — the material
+             lookup only knew `MATS`, so every block the strip gained came out as a bare tinted
+             cuboid, and six of them in a row read as grey packing cases. A face is textured when the
+             record names a tile for it; failing that, the old flat tint with its own face shade. */
           const mk2 = MATS[kind] || MATS[m.kind];
+          const tile = m.tile && PATS[m.tile];
           const q = mk2 && PATS[mk2]
             ? add(C, f.p, patUV(f), "pat", PATS[mk2])
-            : add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.24));
-          if (q) { q.lit = lit; drawn.push(q); }
+            : tile
+              ? add(C, f.p, patUV(f), "pat", tile)
+              : add(C, f.p, ZERO8, "flat", mix(base, f.k + (lit - 0.7) * 0.24));
+          if (q) { q.lit = tile ? lit * (1 + f.k * 0.35) : lit; drawn.push(q); }
         });
         /* Round 35: a trail lamp is the park's black lantern on its post (the photographs at the
            brink), not a bare pole -- a glazed head on a collar, a cap and a finial over it, its glass
@@ -5847,11 +5854,12 @@ function leaveOverlay(root, trigger) {
         const th = ((T / (m.turn || 26)) * Math.PI * 2) + (m.phase0 || 0);
         const night = NIGHT();
         const STRIPES = ["#c8463f", "#f0e6d2"];
-        const side = m.ry && Math.abs(Math.abs(m.ry) - 90) < 45 ? 0 : 1;   // 0: ring in z, 1: ring in x
-        /* A point on the ring, in the ground plane, at angle `a` and radius `r`. */
-        const P = (a, r, y) => side
-          ? [m.x + Math.cos(a) * r, y, m.z + Math.sin(a) * r * 0.42]
-          : [m.x + Math.cos(a) * r * 0.42, y, m.z + Math.sin(a) * r];
+        /* A point on the ring, in the ground plane, at angle `a` and radius `r`.
+
+           Round 58, third pass: this squashed one axis by 0.42 — an *oval deck*, because I mistook
+           the ellipse perspective draws for something the geometry had to draw. A carousel's deck is
+           a circle on the ground; the camera is what makes it an ellipse. */
+        const P = (a, r, y) => [m.x + Math.cos(a) * r, y, m.z + Math.sin(a) * r];
         // the deck: 24 sectors, so the ring is round rather than a square with corners cut off
         for (let i = 0; i < 24; i++) {
           const a0 = th * 0.35 + (i / 24) * Math.PI * 2, a1 = th * 0.35 + ((i + 1) / 24) * Math.PI * 2;
@@ -5950,15 +5958,25 @@ function leaveOverlay(root, trigger) {
         });
         carAt(sNear, -925);
         carAt(1 - sNear, 925);
-        // the head pulley shed on the bluff and the stone under it at the rail
-        [-1, 1].forEach((sd) => {
-          const st = add(C, [[m.x + (sd < 0 ? -140 : L * CA - 160), m.y + (sd < 0 ? 0 : deckY), m.z - 1750],
-                             [m.x + (sd < 0 ? 60 : L * CA + 160), m.y + (sd < 0 ? 0 : deckY), m.z - 1750],
-                             [m.x + (sd < 0 ? 60 : L * CA + 160), m.y + (sd < 0 ? 300 : deckY + 420), m.z - 1750],
-                             [m.x + (sd < 0 ? -140 : L * CA - 160), m.y + (sd < 0 ? 300 : deckY + 420), m.z - 1750]],
-                         ZERO8, "flat", "#4b5568");
-          if (st) { st.lit = lit * 0.9; drawn.push(st); }
-        });
+        /* The head-pulley shed on the bluff, and its pair under the head house.
+
+           Round 58: each was ONE quad, painted on a single plane — and a single plane seen from the
+           side is the floating grey parallelogram the owner kept finding over the grass at Niagara's
+           fifth station. A shed is a volume: four walls and a lid, each face its own tint, so it
+           reads as a building from wherever the visitor stands. */
+        const shedAt = (x0, x1, y0, y1, base) => {
+          const z = m.z - 1750;
+          const face = (pts, tint) => {
+            const q = add(C, pts, ZERO8, "flat", mix(base, tint));
+            if (q) { q.lit = lit * 0.9; drawn.push(q); }
+          };
+          face([[x0, y0, z], [x1, y0, z], [x1, y1, z], [x0, y1, z]], -0.06);          // the lane side
+          face([[x0, y0, z - 160], [x0, y0, z], [x0, y1, z], [x0, y1, z - 160]], -0.16); // west wall
+          face([[x1, y0, z], [x1, y0, z - 160], [x1, y1, z - 160], [x1, y1, z]], -0.16); // east wall
+          face([[x0, y1, z - 160], [x1, y1, z - 160], [x1, y1, z], [x0, y1, z]], 0.10);  // the lid
+        };
+        shedAt(m.x - 140, m.x + 60, m.y, m.y + 300, "#4b5568");
+        shedAt(m.x + L * CA - 160, m.x + L * CA + 160, m.y + deckY, m.y + deckY + 420, "#4b5568");
       } else if (shape === "massing") {
         /* The port table's footprints (round 36/39). The historic buildings and the Retro High Mart
            have their own stands now; the table keeps all five mapped outlines the way a site plan does
