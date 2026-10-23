@@ -90,15 +90,30 @@ for (const view of VIEWS) {
   if (!arrived) { console.log(`NOT THERE: stop ${view.stop} — no frame saved`); continue; }
 
   // Turn with a held arrow key: the same rate the visitor has, and it cannot press anything.
-  for (let guard = 0; guard < 14; guard++) {
+  // The rate is the site's own (TURN_RATE in js/site.js), and the hold is cut short by a tenth:
+  // a frame on a software rasteriser can be a third of a second, and a hold sized for the frame
+  // rate overshoots by tens of degrees when the machine is busy -- which is how a frame labelled
+  // "yaw 90" ends up at 148 and photographs the wrong side of the street.
+  // The key stays down until the head has actually come round: a frame on a software rasteriser
+  // can be a third of a second, and a hold timed to the frame rate is a hold the lane never
+  // sees -- the key goes down and up between two ticks, and the head does not move at all.
+  const TURN_RATE = 120;
+  for (let guard = 0; guard < 24; guard++) {
     const s = await state();
     const d = ((view.yaw - s.yaw + 540) % 360) - 180;
     if (Math.abs(d) < 1.5) break;
     const key = d > 0 ? "ArrowRight" : "ArrowLeft";
     await page.keyboard.down(key);
-    await sleep(Math.max(80, Math.abs(d) / 75 * 1000));
+    const budget = Math.max(600, (Math.abs(d) / TURN_RATE) * 1000 * 1.35);
+    const t0 = Date.now();
+    while (Date.now() - t0 < budget) {
+      await sleep(60);
+      const s2 = await state();
+      const moved = Math.abs(((s2.yaw - s.yaw + 540) % 360) - 180);
+      if (moved >= Math.abs(d) - 1.2) break;
+    }
     await page.keyboard.up(key);
-    await sleep(400);
+    await sleep(160);
   }
   // The pointer out of the frame: a preview card floats over the picture when it rests on the canvas.
   await page.mouse.move(2, 2);

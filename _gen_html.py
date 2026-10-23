@@ -1708,7 +1708,7 @@ def _place_card(r):
 # you are inside, how you get back, and that the street's far end is open. It sits above the places,
 # because the moment after "walk in" is exactly where a first-time visitor is lost.
 HOW_TO_WALK = ("These three doors step into Toronto, Tokyo, or Fukuoka: W A S D to walk, "
-               "arrow keys or Q/E (or a gentle drag) to turn, E while standing still to use what "
+               "arrow keys or A/D (or a gentle drag) to turn, E while standing still to use what "
                "is in front of you, double-click to let the mouse look, or the on-screen pad on a "
                "phone. On the first visit a short guide teaches those keys in place, once, and the "
                "info card replays it. The sun-or-moon button in the chrome holds the lane in day or "
@@ -2688,7 +2688,11 @@ def fallsview(fr, air):
                          pat="canopy", u=2000, ax="v", c="#3b5631", cn="#121a1c", a=a, dg=0.45,
                          fn=_fn(fr, ey, -ex)))
     plateau = top + [(-2400, top[-1][1]), (-2400, top[0][1])]
-    out.append(_hprim("f", fr, plateau, rise, c="#5f7b47", cn="#1b2430", a=0.2, s=8.45, dg=0.55))
+    # Round 65: the bluff's top was a flat green polygon -- the one colour in the frame with no
+    # texture in it at all, and the band a visitor saw over the shopfronts. It is wooded ground
+    # seen from a hundred metres, so it wears the same tile as the slope below it.
+    out.append(_hprim("f", fr, plateau, rise, pat="canopy", u=2000, c="#5f7b47", cn="#1b2430",
+                      a=0.2, s=8.45, dg=0.55))
     for name, la, lo, h, floors, w in NIA_HOTELS:
         e, n = nia(la, lo)
         hw = w / 2
@@ -2697,7 +2701,7 @@ def fallsview(fr, air):
         for i in range(4):
             p0, p1 = box[i], box[(i + 1) % 4]
             out.append(_prim("x", [fr.cm(*p0, rise), fr.cm(*p1, rise), fr.cm(*p1, rise + h), fr.cm(*p0, rise + h)],
-                             pat="hotelw", pn="towerwin", u=round(800 * h / floors), ax="v", c="#969795",
+                             pat="hotelw", pn="hotelw", u=round(800 * h / floors), ax="v", c="#b6b3ab",
                              a=a, dg=0.55, fn=_fn(fr, *_outward(box, p0, p1))))
         out.append(_hprim("f", fr, box, rise + h, c="#7d7f80", cn="#141c2c", a=a, dg=0.5))
     return out
@@ -4921,6 +4925,22 @@ DISTRICTS = [
                                              "place here is drawn, not surveyed."},
             # The parapet's last stone post, at the brink corner: the closest the trail comes to
             # the water, the press that answers what the falls are.
+            # Round 65: the falls, as a thing a visitor can open. The Horseshoe's brink is 370 m
+            # west of the Table Rock rail as this lane draws it -- measured off the record's own
+            # crest line (NIA_HS_CREST, put through the lane's own frame, at the middle of the
+            # curve) -- and the water drops 57 m from there to the lower river. There was nothing to
+            # click: the water is a world prim, not a prop, so the visitor who wanted the falls had
+            # to find a 44-pixel box on a picture of them. This is a landmark: it draws nothing
+            # (the world already draws the water), it marks the falls where they are, and pressing
+            # it says what they are. The mark is the whole affordance, and it is the one mark in the
+            # lane that is not on a surface.
+            {"id": "falls-horseshoe", "kind": "landmark", "x": -34875, "z": 6429, "y": -2950, "ry": 0,
+             "w": 600, "h": 200, "d": 20, "landmark": True,
+             "title": "The Horseshoe Falls",
+             "hint": "57 metres of fall over a curve that runs 670 round, the Canadian bank's own "
+                     "water. From the rail above it the brink is three hundred metres off and "
+                     "the river goes over the edge and does not come back; the mist that stands over "
+                     "it is the spray off the lip, and it is the reason the promenade is wet."},
             {"id": "parapet-ng", "kind": "parapet", "x": -670, "z": 1462, "y": 0, "ry": 0,
              "w": 50, "h": 96, "d": 50,
              "title": "The Table Rock rail",
@@ -5487,6 +5507,21 @@ DISTRICTS = [
             {"z": 1510, "x": -600, "yaw": -82, "pitch": 2, "label": "the Table Rock rail"},
             {"z": 1660, "x": -140, "yaw": -18, "label": "the incline's lower station"},
             {"z": 2130, "x": 500, "h": 553, "yaw": 38, "pitch": 14, "label": "on the Fallsview deck"},
+            # Round 65: the fun row had no stop at all. The lane walked past six fronts, three
+            # booths, a funhouse and a carousel, and every one of them was a thing the visitor
+            # passed rather than a thing the visitor could be taken to -- the district's subject
+            # was the one part of the walk with no view of its own.
+            #
+            # It stands at x 300, not in the middle of the walk, and the reason is measured: the
+            # Falls Incline Railway's lower station house and its rails stand across the promenade
+            # at x -186..54, and a chip's glide is a straight line. A stop on the centre line
+            # (x 0) put that line straight through the station house, the glide stopped at the
+            # house's face nine hundred centimetres short of the strip, and the chip promised a
+            # view it could not deliver. At x 300 the line from the lane's mouth passes a clear
+            # 120 cm east of the house. It looks due east at the arcade's middle unit, seven
+            # metres off, which is the distance at which a shopfront is read as joinery rather
+            # than as a picture.
+            {"z": 2560, "x": 300, "yaw": 90, "pitch": -2, "label": "the fun row"},
             # Round 64: this stop was authored inside the carousel's own deck -- the carousel is a
             # solid 9 m round at x -1080 -- so the body could not stand there, the chip's glide
             # stalled three metres short of it, and the plaza's one stop was a promise the lane
@@ -6190,6 +6225,46 @@ def gap_to_box(bx, bz, hx, hz):
     return max(0.0, abs(bx) - hx)
 
 
+# Round 65: what is a target, and what is only scenery.
+#
+# The owner: "every interactive object should not have too many click targets, and not every
+# small object needs to pop an interface or be selectable -- I want to click a waterfall and it
+# is very hard". The repo's own rule already answers it (skills/district-author section 8): a
+# press target has to be a *verb*, and "if pressing a thing only opens a card that describes it,
+# what was interactive was the caption, not the room".
+#
+# A district's lamps, bins, benches, planters, posts, rails, kerbs and drains are exactly that:
+# captions. They are drawn, they are not pressable, they are not announced, and their written
+# notes move to the lane's list -- "the lane, written out" -- where the prose already lives. What
+# stays a target is a place: a shopfront, a door, a stall, a ride, the model halls, the water, the
+# bridges, and anything the record gives states to (it does something when pressed) or a way out.
+PLACE_KINDS = {
+    "front", "shopbay", "door", "open", "foodstall", "wheel", "carousel", "incline", "pool",
+    "island", "falls", "ship", "boat", "drawbridge", "stationfront", "customhouse", "osakashosen",
+    "dalianhall", "retrohighmart", "tower", "skyline", "dome", "track", "tram", "massing", "gate",
+    "portal", "deckwall", "glassfloor", "plinth", "hall", "hallbase", "hallplaster", "figure",
+    "art", "academic", "identity", "poster", "vending",
+}
+
+
+def is_target(o):
+    """True when a prop is a thing a visitor presses, and false when it is only scenery.
+
+    A prop earns a target by being a place in its own right, by carrying `states` (pressing it
+    changes the room), by carrying `leave` (it is the way out), or by the record saying so with
+    `"place": true` -- which is how a board that is really a place (the wheel's loading apron,
+    the curtain across the Rainbow) is kept in the set without making every board a target.
+    """
+    if o.get("states") or o.get("leave") or o.get("place") or o.get("landmark"):
+        return True
+    # A frame is a story: it is one of the reel's pictures, hung on a wall, and the reel is what
+    # the lane is for. Quieting it would take the site's own story off the wall and put it in a
+    # drawer nobody opens.
+    if o.get("frame") is not None:
+        return True
+    return o.get("kind") in PLACE_KINDS
+
+
 def walk_object(o, lane_half=10 ** 6):
     """One wall thing, expressed as a rectangle in centimetres plus whatever is painted on it.
 
@@ -6261,11 +6336,20 @@ def walk_object(o, lane_half=10 ** 6):
     # An id like `luna-island` was an island only if the prefix heuristic happened to agree; the
     # authored field is the truth, and the shape table reads it directly now.
     kind_attr = f' data-kind="{escape(o["kind"])}"' if o.get("kind") else ""
+    # Round 65: a prop that is only scenery says so in the document. The renderer draws it, the
+    # walk does not stop for it, the pointer does not press it, and the lane's list carries its
+    # note instead of a card in the middle of the picture.
+    quiet_attr = "" if is_target(o) else ' data-quiet="1" tabindex="-1"'
+    # A landmark stands for something far and large: the falls over the gorge, the bridge across
+    # it. It is a target with a long reach and a marker of its own, because the thing it names is
+    # not within a hand's reach of anywhere the visitor can stand.
+    landmark_attr = ' data-landmark="1"' if o.get("landmark") else ""
     return (f'<button type="button" class="walk-hit{stall}" data-obj="{escape(o["id"])}" '
             f'aria-label="{escape(o["title"])}" data-title="{escape(o["title"])}" '
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
             f'data-d="{dep}"{solid_attr}{kind_attr} style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
-            f'{states}{leave}{awn_attr}{noren_attr}{fascia_attr}{story_attr}{extra_attr}></button>')
+            f'{states}{leave}{awn_attr}{noren_attr}{fascia_attr}{story_attr}{extra_attr}'
+            f'{quiet_attr}{landmark_attr}></button>')
 
 
 def walk_html(d, drawer):
@@ -6339,6 +6423,21 @@ def walk_html(d, drawer):
                 f' <span class="when">the space the model owns, one press away in the lane</span></li>')
     label = escape(d["label"])
     did = escape(d["id"])
+    # Round 65: the small things are scenery now -- they are drawn, they are not pressed, and they
+    # do not stop the walk -- so their written notes move here, into the lane written out. Nothing is
+    # lost by quieting them: the prose was always the point, and a card in the middle of the
+    # picture was only ever a way of reading it.
+    small = [o for o in placed if not is_target(o)]
+    small_things = ""
+    if small:
+        rows = "".join(
+            f'<li><b>{escape(o["title"])}</b> <span class="when">{escape(o["hint"])}</span></li>'
+            for o in small)
+        small_things = f"""
+    <details class="walk-small">
+      <summary>The small things ({len(small)})</summary>
+      <ul>{rows}</ul>
+    </details>"""
     # What a screen reader is told the space is, in the same breath as the controls. The room's own
     # cladding is what you are walking through and the sightline is only where it ends, so the space is
     # described first and the view second; both halves are conditional on the data, because a district
@@ -6476,7 +6575,7 @@ def walk_html(d, drawer):
        data-lane-back="{lane["back"]}"{max_d_attr}{day_attr}{floor_attr}{zones_attr}{floors_attr}{ws_attr}
        data-eye="{EYE}">{banner_html}
   <div class="walk-view" tabindex="0" data-walk-view role="application"
-       aria-label="{label}, a lane you walk in person.{clad}{sight} Drag, arrow keys or Q/E to turn,
+       aria-label="{label}, a lane you walk in person.{clad}{sight} Drag, arrow keys or A/D to turn,
        W A S D to walk, Shift to run, Space to jump, E while standing still to open what you are
        facing, double-click to let the mouse look, L for the list, I for this note. The first visit is walked through once by a guide strip at the bottom of the screen; it is replayable from this note.
        Nothing is written over the space: every sentence is behind a button.">
@@ -6547,6 +6646,7 @@ def walk_html(d, drawer):
     <ul class="walk-districts">
       {INDENT.join(district_card(x) for x in DISTRICTS)}
     </ul>
+{small_things}
 {drawer}
     <ul class="walk-links">{"".join(links)}</ul>
   </aside>

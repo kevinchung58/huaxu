@@ -170,11 +170,12 @@ async function pageGate(file) {
           console.log(`   frz${still} (${s.x.toFixed(2)},${s.depth.toFixed(2)}) sp ${sp.toFixed(2)}`);
         // the wish this frame: view-plane projection of the held keys, same basis as stepMotion
         const a2 = (s.yaw * Math.PI) / 180, sy = Math.sin(a2), cy = Math.cos(a2);
+        // Round 65: A and D turn the head; they do not push the body sideways. The wish this
+        // frame is therefore only what the body was asked to *walk*, and a diagonal press is now
+        // an arc -- forward while the head comes round -- rather than a side-step.
         let mx = 0, md = 0;
         if (keys.includes("w")) md += 1;
         if (keys.includes("s")) md -= 1;
-        if (keys.includes("a")) mx -= 1;
-        if (keys.includes("d")) mx += 1;
         const wx = mx * cy + md * sy, wd = -mx * sy + md * cy;
         const norm = Math.hypot(wx, wd) || 1;
         // an exit counts only forward of the press: being able to back away is not an answer the
@@ -236,6 +237,9 @@ async function pageGate(file) {
 
   // V1: sweep the ring and a diagonal press at every wall — no freeze may find an exit
   for (let k = 0; k < 8; k++) { await turnTo(k * 45); await watch(["w"], 120); }
+  // The diagonal press: with A and D turning the head, holding W with A is an arc -- the body
+  // walks while the view comes round -- and it is the one press that can slide the body along a
+  // face it cannot walk straight into.
   await watch(["w", "a"], 100); await watch(["w", "d"], 100);
   // V1 (props): ram every solid's four front corners at 45 degrees from just off its face
   for (const b of props) {
@@ -327,4 +331,9 @@ async function pageGate(file) {
   for (const p of PAGES) await pageGate(p);
   console.log(`\nverify-collision: ${checks - fails.length}/${checks} pass`);
   if (fails.length) { for (const f of fails) console.log("FAILED " + f); process.exit(1); }
+  /* The gate used to leave the process standing after the last line, because the jsdom window it
+     opened keeps a handle open. The result was on the screen and the exit code was unreachable,
+     so "the gate passed" could only ever be read by eye and never by a script. Leave now, with
+     the code the result implies. */
+  process.exit(0);
 })();

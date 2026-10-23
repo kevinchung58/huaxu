@@ -604,7 +604,7 @@ function leaveOverlay(root, trigger) {
        — per-axis rejection against the walls, and against solids a contact-normal slide with
        push-out recovery, so a braced shoulder against a plinth lets the visitor walk past it (round
        41; the reject-only version pinned bodies at corners and sealed the wall aisles);
-     - yaw is free and pitch is clamped to ±24°; turning is drag or keys (Q/E, arrows) with double-click
+     - yaw is free and pitch is clamped to ±24°; turning is drag or keys (A/D, arrows) with double-click
        Pointer Lock as a desktop bonus — the space stays operable on phones, where drag is the whole
        control and Pointer Lock is unavailable;
      - world units are centimetres: eye at 168, walk at 165 cm/s, run at 206 cm/s, and a 420 cm/s
@@ -852,11 +852,29 @@ function leaveOverlay(root, trigger) {
   const HIT = 44;
   // A slower, eased walk and a limited turn rate are deliberate comfort choices. Camera roll is
   // removed, and the remaining head bob is sub-centimetre so motion never fights the place being read.
-  const SPEED = 165, RUN = 1.25, TURN_RATE = 75;   // release decay tau is 90 ms, in stepMotion
+  // Round 65: the head turns at 120 degrees a second, not 75. At 75 a right angle took a second
+  // and a quarter -- a quarter turn every time the visitor looked at the next thing -- and a
+  // lane you have to wait out is a lane that feels broken. The drag still turns as fast as the
+  // hand moves; this is the keyboard.
+  const SPEED = 165, RUN = 1.25, TURN_RATE = 120;   // release decay tau is 90 ms, in stepMotion
   const GRAV = 2400, JUMP = 420, GLIDE_SPEED = 165;
   let zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
   let vx = 0, vd = 0, phase = 0, bob = 0, raf = 0, last = 0, here = -1, reach = null;
+  let tickMs = 0;
   let gliding = null, keys = new Set(), stick = null, down = null, hereFar = Infinity, hereShown = -1;
+  /* Round 65: a press that no frame saw.
+
+     The lane samples the keyboard once a frame, so on a slow machine a tap of D can begin and end
+     between two frames -- and the head does not move at all. The visitor presses, nothing happens,
+     they press again, and the lane reads as broken. That is not a machine being slow; it is the
+     input being tied to the picture's clock, which is the one thing a control scheme must not be.
+
+     So every press carries its own duration, and a press that no frame saw still moves the
+     visitor: the tap is worth a floor of motion (a hundred and twenty milliseconds, which is one
+     slow frame), applied once, in the direction the visitor pressed. A press a frame *did* see is
+     not paid twice -- what is paid is only what that press still owes, and a long hold is
+     therefore still just a long hold. */
+  const tapState = new Map();   // key -> { ms, start, held }
   let wasDrag = false;   // the last gesture travelled, so the click it leaves behind is not a press
   const stopZ = stops.map((el) => num(el, "--z"));
   // Where across the lane a stop stands you (round 33): at the rail, not in the middle of a 14 m
@@ -893,6 +911,7 @@ function leaveOverlay(root, trigger) {
      frame. The frame budget governor below trades resolution for motion, which is the trade a felt
      control scheme needs — the alternative it replaces was a picture that was sharp and unsteerable. */
   let RW = 0, RH = 0, renderScale = 1, frameMs = 0, frameBudgetAt = 0, frameSamples = 0;
+  let renderMs = 0;                 // the picture's own cost, ms -- published for the harness
   let pumping = false;   // was the last frame driven by held input or motion? see tick()
   // One lookup for every cladding the walls and the ground can be wearing; a kind with no entry falls
   // back to the wall's own tiles, which is the honest default for a surface nobody specified.
@@ -1829,9 +1848,36 @@ function leaveOverlay(root, trigger) {
      360 physical pixels across, the fill rate saved is worth less than the legibility lost, so the
      floor rides the display rather than being one constant: a wide window keeps the 0.35 a software
      rasteriser needs, a small one is not allowed to go soft to save pixels nobody was paying for. */
-  const minRenderScale = () => Math.max(0.35, Math.min(1, 360 / Math.max(1, W)));
+  /* Round 65: the floor of the render scale is 0.26, not 0.35.
+
+     The governor's own comment says the walk is "steerable" at 24 fps and that below it "the
+     picture stops answering the keys" -- and the floor of 0.35 made that unreachable on a machine
+     without a GPU: measured in the sandbox's own software rasteriser, a 360 x 270 picture cost
+     353 ms a frame, which is three frames a second. The lane was playable in a picture and
+     unusable in the hand, and the owner's "the controls are terrible" was this floor.
+
+     A quarter scale is soft; three frames a second is worse. The scale only falls this far on a
+     machine that cannot hold the line, and it climbs back the moment it can.
+
+     The floor has two rules, and the second one is the old one: a window narrower than 360
+     physical pixels keeps its own resolution -- there is nothing to save on a picture that small,
+     and stretching a 260-pixel lane across a 360-pixel window is the smear the round-56 floor
+     was invented to stop. A wider window may go down to a quarter, and the ramp between the two
+     keeps the picture's width near 260 pixels, which is where the fill rate stops being the
+     whole of the frame time. */
+  const minRenderScale = () => (W <= 360 ? 1 : Math.max(0.26, 260 / Math.max(1, W)));
+  /* `?render=full` pins the picture at full resolution and turns the governor off.
+
+     The governor is right for a visitor and wrong for a photograph: a soft quarter-scale picture
+     is the price of a walkable frame rate on a machine without a GPU, and a screenshot taken at
+     that scale is not evidence of what the lane looks like. The knob is a URL parameter, so a
+     frame can be taken at the size the lane is authored at, and a visitor who wants the sharp
+     picture more than the smooth walk can have it the same way. */
+  const FULL_RENDER = (() => {
+    try { return new URLSearchParams(location.search).get("render") === "full"; } catch (e) { return false; }
+  })();
   const applyRenderScale = () => {
-    renderScale = clamp(renderScale, minRenderScale(), 1);
+    renderScale = FULL_RENDER ? 1 : clamp(renderScale, minRenderScale(), 1);
     RW = Math.max(1, Math.round(W * renderScale));
     RH = Math.max(1, Math.round(H * renderScale));
   };
@@ -2017,6 +2063,12 @@ function leaveOverlay(root, trigger) {
     w: parseFloat(el.dataset.w) || 100, h: parseFloat(el.dataset.h) || 140,
     d: parseFloat(el.dataset.d) || 12, x: num(el, "--x"), z: num(el, "--z"), y: num(el, "--y"),
     solid: el.dataset.solid === "true",
+    // Round 65: a prop that is only scenery (a lamp, a bin, a rail) is drawn and walked past; it
+    // is not a press target, it does not stop the walk, and it does not speak. A landmark is the
+    // other end of the range: something far and large that the visitor is meant to look at, and
+    // whose own marker says so.
+    quiet: el.dataset.quiet === "1",
+    landmark: el.dataset.landmark === "1",
     pic: el.dataset.tex ? pics.get(el.dataset.tex) : null, sx: 0, sy: 0, sw: 0, sh: 0, shown: false,
     // A prop with `data-states` can be done to; the count of stops is authored, and the index lives
     // here rather than in the scene graph so that the card, the light and the picture read one value.
@@ -2365,7 +2417,10 @@ function leaveOverlay(root, trigger) {
                   shopbay: "shopbay", gate: "gate",
                   // Round 33: posts and parapets are boxes of their own material; a tunnel's
                   // mouth is its reveal round an opening the wall's `open` band leaves.
-                  parapet: "box", deckwall: "box", portal: "portal" };
+                  parapet: "box", deckwall: "box", portal: "portal",
+  // Round 65: a landmark draws no body at all -- the world already draws the falls -- and its
+  // branch says so in one line, so the shape audit can tell a deliberate nothing from a default.
+  landmark: "landmark" };
   // A few props are named for what they are, not for the kind that draws them; these are the aliases.
   Object.assign(SHAPE, { pole: "box", barrel: "box", stool: "box", lamp: "box",
                          // Round 58: a plain box and a post, named for what they are — the bridge
@@ -6585,30 +6640,84 @@ function leaveOverlay(root, trigger) {
            from a hanger on the rim — so the box below each station is drawn upright whatever the
            wheel's phase, with the three faces a visitor can see from the plaza and a warm pane
            when the lights are on. */
+        /* Round 65: the cabin is a shape, not a crate.
+
+           The gondola used to be a box with four flat faces: from the plaza, where the wheel's
+           foot is fifteen metres away, the cabins read as squares on a string. A CWA gondola is a
+           rounded capsule -- eight sides, narrower at the roof, a band of glass round the middle
+           and a door on the boarding side -- and that is what this is now: an octagonal plan
+           (so the silhouette has corners cut, not corners), a taper towards the roof, a glazing
+           band with a mullion between each pane, and a door with a handle on the side the
+           platform is on. */
         for (let i = 0; i < 42; i++) {
           const p = pt(i, R, 0);
           const gx = p[0], gy = p[1] - gondola, gz = m.z;
           const hw = gondola / 2;
-          const faces = [
-            [[gx - hw, gy, gz - hw], [gx + hw, gy, gz - hw], [gx + hw, gy + gondola, gz - hw], [gx - hw, gy + gondola, gz - hw]],
-            [[gx - hw, gy, gz + hw], [gx + hw, gy, gz + hw], [gx + hw, gy + gondola, gz + hw], [gx - hw, gy + gondola, gz + hw]],
-            [[gx - hw, gy, gz - hw], [gx - hw, gy, gz + hw], [gx - hw, gy + gondola, gz + hw], [gx - hw, gy + gondola, gz - hw]],
-            [[gx + hw, gy, gz - hw], [gx + hw, gy, gz + hw], [gx + hw, gy + gondola, gz + hw], [gx + hw, gy + gondola, gz - hw]],
-          ];
-          faces.forEach((f) => {
-            const fx = (f[0][0] + f[2][0]) / 2, fz = (f[0][2] + f[2][2]) / 2;
-            const nx = f === faces[0] ? 0 : f === faces[1] ? 0 : (fx < gx ? -1 : 1);
-            const nz = f === faces[0] ? -1 : f === faces[1] ? 1 : 0;
-            if ((C.x - fx) * nx + (C.z - fz) * nz <= 0) return;
-            Q(f, "#c3ccd2", lit * 1.02);
-            if (night > 0.15) {
-              // the cabin's own window: the same face, inset, warm — a gondola is lit from inside
-              const cx = (f[0][0] + f[1][0]) / 2, cy = (f[0][1] + f[2][1]) / 2;
-              const inset = f.map((c) => [c[0] + (cx - c[0]) * 0.42, c[1] + (cy - c[1]) * 0.3, c[2] + (m.z - c[2]) * 0.16]);
-              const gl = Q(inset, "rgba(255,217,160,0.82)", 1.35);
-              if (gl) gl.nolite = true;
+          const oct = [];
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
+            oct.push([Math.cos(a) * hw, Math.sin(a) * hw]);
+          }
+          const face = (k, y0, y1, shrink) => {
+            const a0 = oct[k], a1 = oct[(k + 1) % 8];
+            const s = shrink === undefined ? 1 : shrink;
+            const b0 = [gx + a0[0] * s, y0, gz + a0[1] * s];
+            const b1 = [gx + a1[0] * s, y0, gz + a1[1] * s];
+            const b2 = [gx + a1[0] * s, y1, gz + a1[1] * s];
+            const b3 = [gx + a0[0] * s, y1, gz + a0[1] * s];
+            return [b0, b1, b2, b3];
+          };
+          for (let k = 0; k < 8; k++) {
+            const wall = face(k, gy, gy + gondola, 1);
+            const roof = face(k, gy + gondola, gy + gondola, 0.8);
+            const fx = (wall[0][0] + wall[1][0]) / 2, fz = (wall[0][2] + wall[1][2]) / 2;
+            const mx = (oct[k][0] + oct[(k + 1) % 8][0]) / 2, mz2 = (oct[k][1] + oct[(k + 1) % 8][1]) / 2;
+            const nl = Math.hypot(mx, mz2) || 1;
+            if ((C.x - fx) * (mx / nl) + (C.z - fz) * (mz2 / nl) <= 0) continue;
+            // the wall, tapering in towards the roof
+            Q([[wall[0][0], wall[0][1], wall[0][2]], [wall[1][0], wall[1][1], wall[1][2]],
+               [roof[1][0], roof[1][1], roof[1][2]], [roof[0][0], roof[0][1], roof[0][2]]],
+              "#c3ccd2", lit * 1.02);
+            // the glass: a band round the middle of the cabin, divided into panes
+            const band = (y0, y1, shrink, col, l) => {
+              const a0 = oct[k], a1 = oct[(k + 1) % 8];
+              const s = shrink;
+              const inset = (p0, p1, y) => {
+                const cx = (p0[0] + p1[0]) / 2, cz = (p0[2] + p1[2]) / 2;
+                return [gx + (p0[0] - cx) * s, y, gz + (p0[2] - cz) * s];
+              };
+              const q = [inset(a0, a1, y0), inset(a1, a0, y0), inset(a1, a0, y1), inset(a0, a1, y1)];
+              const out = Q(q, col, l);
+              if (out && night > 0.15) out.nolite = true;
+              return out;
+            };
+            const glass = night > 0.15 ? "rgba(255,217,160,0.86)" : "#42525f";
+            band(gy + gondola * 0.3, gy + gondola * 0.74, 1.03, glass, night > 0.15 ? 1.35 : lit * 0.9);
+            // the mullion between the panes
+            const mxq = (wall[0][0] + wall[1][0]) / 2, mzq = (wall[0][2] + wall[1][2]) / 2;
+            Q([[gx + (wall[0][0] - mxq) * 1.02, gy + gondola * 0.3, gz + (wall[0][2] - mzq) * 1.02],
+               [gx + (wall[1][0] - mxq) * 1.02, gy + gondola * 0.3, gz + (wall[1][2] - mzq) * 1.02],
+               [gx + (wall[1][0] - mxq) * 1.02, gy + gondola * 0.74, gz + (wall[1][2] - mzq) * 1.02],
+               [gx + (wall[0][0] - mxq) * 1.02, gy + gondola * 0.74, gz + (wall[0][2] - mzq) * 1.02]],
+              "#9aa6ad", lit * 0.95);
+            // the door: on the side the platform is on, with a handle
+            if (mz2 < -hw * 0.5) {
+              Q([[wall[0][0] + (gx - wall[0][0]) * -0.03, gy + gondola * 0.06, wall[0][2]],
+                 [wall[1][0] + (gx - wall[1][0]) * -0.03, gy + gondola * 0.06, wall[1][2]],
+                 [wall[1][0] + (gx - wall[1][0]) * -0.03, gy + gondola * 0.94, wall[1][2]],
+                 [wall[0][0] + (gx - wall[0][0]) * -0.03, gy + gondola * 0.94, wall[0][2]]],
+                "#aeb9bf", lit * 0.98);
+              const hx = gx + (wall[0][0] + wall[1][0]) / 4 - gx, hz = gz + (wall[0][2] + wall[1][2]) / 4 - gz;
+              Q([[gx + hx - 6, gy + gondola * 0.44, gz + hz - 6], [gx + hx + 6, gy + gondola * 0.44, gz + hz - 6],
+                 [gx + hx + 6, gy + gondola * 0.52, gz + hz - 6], [gx + hx - 6, gy + gondola * 0.52, gz + hz - 6]],
+                "#6e7a82", lit);
             }
-          });
+          }
+          // the roof cap: the cabin's own lid, a shade lighter than its walls. It is a square
+          // plate inscribed in the octagon's plan -- the renderer draws quads, and a lid is a lid.
+          const cw = hw * 0.8 * 0.7071;
+          Q([[gx - cw, gy + gondola, gz - cw], [gx + cw, gy + gondola, gz - cw],
+             [gx + cw, gy + gondola, gz + cw], [gx - cw, gy + gondola, gz + cw]], "#d7dee2", lit * 1.04);
           // the hanger: a short bar from the rim down to the roof of the cabin
           Q([[gx - 22, gy + gondola, gz - 22], [gx + 22, gy + gondola, gz - 22],
              [gx + 22, p[1] + 30, gz - 22], [gx - 22, p[1] + 30, gz - 22]], steel, lit);
@@ -7550,6 +7659,15 @@ function leaveOverlay(root, trigger) {
           const wq = Q(wn, warm(0.14), 1.3);
           if (wq) wq.nolite = true;
         }
+      } else if (shape === "landmark") {
+        /* Round 65: a landmark draws nothing at all.
+
+           It stands for something the world already draws -- the falls over the gorge, the bridge
+           across it -- so painting it would paint the falls twice. What it owns is the mark that
+           says "this is a thing you can open": a small soft disc, placed by the hit-box pass from
+           the landmark's own point in the world, that the visitor can find and press. It is the
+           only mark in the lane that is not on a surface, and it is the answer to a visitor who
+           said the waterfall was very hard to click. */
       } else if (shape === "tree") {
         /* A model tree: a trunk, and a crown that is a pinch of flock on a wire.
 
@@ -7652,6 +7770,34 @@ function leaveOverlay(root, trigger) {
          of its own windows and painted them out. */
       if (m.y > 40) drawn.forEach((q) => { q.z -= 70; if (q.sz !== undefined) q.sz -= 70; });
       m.shown = false;
+      /* Round 65: a landmark draws nothing -- it stands for something the world prims already
+         draw, the falls over the gorge -- and a prop with no geometry used to be culled here, which
+         would have made the marker unplaceable. So a landmark gets its box from its own point in
+         the world, and a fixed disc of screen for the finger: a thing that is a hundred metres off
+         has to be a target you can find, not a target you have to hunt. */
+      if (m.landmark) {
+        // The mark sits at the landmark's own point in the world -- the middle of the falls'
+        // sheet, say -- not at the middle of its bounding box: the point is what the visitor is
+        // looking at, and the box is only the record's way of saying how big it is.
+        const pt = camPt(C, m.x, m.y, m.z);
+        if (pt.z > NEAR) {
+          const sx = W * 0.5 + (focal * pt.x) / pt.z, sy = H * 0.5 + (focal * pt.y) / pt.z;
+          const R = 46;
+          m.el.style.visibility = "visible";
+          m.el.tabIndex = m.quiet ? -1 : 0;
+          m.el.style.setProperty("--padx", "0px");
+          m.el.style.setProperty("--pady", "0px");
+          m.el.style.transform = `translate3d(${(sx - R).toFixed(1)}px, ${(sy - R).toFixed(1)}px, 0)`;
+          m.el.style.width = `${R * 2}px`;
+          m.el.style.height = `${R * 2}px`;
+          m.el.style.zIndex = "1200";
+          m.shown = true;
+          return;
+        }
+        m.el.style.visibility = "hidden";
+        m.el.tabIndex = -1;
+        return;
+      }
       if (!drawn.length) { m.el.style.visibility = "hidden"; m.el.tabIndex = -1; return; }
       const q = drawn[0];
       const b = box(C, q);
@@ -7665,7 +7811,7 @@ function leaveOverlay(root, trigger) {
       b[2] -= b[0]; b[3] -= b[1];                  // corners in, size out — once, at the end
       if (b[2] > 6 && b[3] > 6 && b[0] > -40 && b[0] < W + 40 && b[1] < H + 40 && b[1] > -40) {
         m.el.style.visibility = "visible";
-        m.el.tabIndex = 0;
+        m.el.tabIndex = m.quiet ? -1 : 0;     // scenery is not in the tab order either
         // Two things a hand needs and a picture does not: a press floor, and paint order that follows
         // depth. The box grows to HIT while `--padx/--pady` pull the ring back onto the silhouette, and
         // of two overlapping boxes the nearer one wins the press. In a DOM without layout these are
@@ -7690,11 +7836,17 @@ function leaveOverlay(root, trigger) {
       try {
         // The backing store is the RENDER size; the projection is identical because the focal
         // length travels with it (NDC depends on focal/width, and both carry renderScale).
+        // Round 65: the render's own time is measured and published. `frameMs` is the gap between
+        // frames, which on a resting lane is the idle pulse's 90 ms and says nothing about the
+        // picture; this is the picture's own cost, and it is the number that decides whether a
+        // machine can walk.
+        const rT0 = performance.now();
         threeRenderer.render({ camera: C, width: RW, height: RH, focal: focal * (RW / Math.max(1, W)), time: T, quads,
                               day: DAY(), dayPage: DAYPAGE, night: NIGHT(), sunAz: sunAz(),
                               fogMax: FOG_MAX, dayGain: DAY_GAIN,
                               effects: { lamps, wires, marks, surfaces, wall: WALL, ceil: CEIL,
                                 zBack: Z_BACK, zFar: Z_FAR, phase: phaseNow(), reducedMotion: reduce() } });
+        renderMs = renderMs ? renderMs * 0.7 + (performance.now() - rT0) * 0.3 : performance.now() - rT0;
       } catch (err) {
         // Round 54: there is no second picture to degrade into. The renderer retires, the lane says
         // so in its own words, and the compiled state (hits, list, rail) keeps answering the keys.
@@ -7773,21 +7925,65 @@ function leaveOverlay(root, trigger) {
   /* The reach: what you can open is decided by where you stand and where you look, so the scene
      answers before anything is pressed, and `E` is never a guess. */
   const a = () => (yaw * Math.PI) / 180;
+  /* Round 65: a hand's reach, or a look.
+
+     The reach used to be one number -- 190 cm, a hand's reach -- and it was the reason the owner
+     could not click a waterfall. A shopfront ten metres away, the SkyWheel fifteen metres off,
+     the falls a hundred and fifty metres down the gorge: every one of them was out of reach, so
+     the only way to open any of them was to find a 44-pixel box on the picture and click it, and
+     the bigger and further the thing was, the harder that was.
+
+     So there are two reaches now. A thing you can *touch* -- a shutter, a door, a stall counter --
+     is in reach within a hand's reach. A thing you can only *look at* is in reach when you face
+     it, from as far as the lane can see it: the shopfronts, the rides, the water, the model
+     halls, and the landmarks, which stand for something too large to stand next to. The nearest
+     of the two wins, as before, so a doorway still wins over a marquee behind it. */
+  const LOOK_KINDS = new Set(["front", "shopbay", "foodstall", "wheel", "carousel", "incline", "pool",
+    "island", "falls", "ship", "boat", "drawbridge", "stationfront", "customhouse", "osakashosen",
+    "dalianhall", "retrohighmart", "tower", "skyline", "dome", "track", "tram", "massing", "gate",
+    "portal", "deckwall", "glassfloor", "plinth", "hall", "hallbase", "hallplaster", "figure", "art",
+    "academic", "identity", "poster", "vending"]);
+  const FAR_REACH = 8000;          // cm: how far a thing you can only look at still answers
+  /* A landmark answers from anywhere the lane can see it. The Horseshoe's brink is three hundred
+     and seventy metres from the promenade and the mark is a fixed disc on the picture, so a
+     reach that stopped at eighty metres would put a mark on the screen that the lane never
+     mentions -- and a visitor would learn that the mark does not mean anything. */
+  const LANDMARK_REACH = 60000;
   const checkReach = () => {
     const fx = Math.sin(a()), fd = Math.cos(a());
     // Which frame you are standing at is asked on every frame, not only when the reach changes. Three
     // returns below end this function early, and a station highlight that went stale because a shrine
     // happened to be in front of you would be the kind of lie the rail tells without meaning to.
     markStops();
-    let best = null, bestD = REACH;
+    /* Two kinds of answer, in the order a visitor means them.
+
+       Everything you can press is one pool and the nearest thing in it wins, which is the rule
+       the lane has always used and the one a visitor expects: what is in front of me, not what
+       is nearer along the pavement. A thing you can only look at -- a shopfront, a ride, a
+       marquee -- answers from further off, and still only when you face it.
+
+       A landmark -- the water, the bridge -- is the thing the district is named for, and it
+       outranks the pool: a visitor who has turned to the falls must not be handed the funicular
+       that happens to be nearer along the lane, which is what the nearest-wins rule alone did
+       to the one mark that mattered most. */
+    let near = null, nearD = Infinity;     // the nearest thing you can press
+    let mark = null, markD = Infinity;     // a landmark
     meta.forEach((m) => {
+      if (m.quiet) return;                 // scenery is not a verb: it does not answer
       const dx = m.x - x, dd = m.z - depth;
       const dist = Math.hypot(dx, dd);
-      if (dist > bestD) return;
+      const isMark = m.landmark === true;
+      const isLook = isMark || LOOK_KINDS.has(m.kind);
+      const limit = isMark ? LANDMARK_REACH : (isLook ? FAR_REACH : REACH);
+      if (dist > limit) return;
       const facing = dist < 4 ? 1 : (dx * fx + dd * fd) / dist;
-      if (facing < 0.35) return;
-      best = m; bestD = dist;
+      if (facing < (isLook ? 0.2 : 0.35)) return;
+      // A tie is settled the way the old single pool settled it: the later prop wins, so a
+      // model standing on its plinth is the thing you get, not the table it stands on.
+      if (isMark) { if (dist <= markD) { mark = m; markD = dist; } return; }
+      if (dist <= nearD) { near = m; nearD = dist; }
     });
+    const best = mark || near;
     if (best && best.el === (reach && reach.el)) { reach = best; return; }
     if (reach) reach.el.classList.remove("is-reach");
     reach = best;
@@ -7797,7 +7993,13 @@ function leaveOverlay(root, trigger) {
     // something to read about what is in front of you.
     layer.classList.add("has-reach");
     const title = best.el.dataset.title || "";
-    say(`${title} · ${metres(best.z - depth)} ahead`,
+    /* A landmark is measured across the gorge, not along the lane: the falls are three hundred
+       and seventy metres away in a straight line and a hundred and eighty along the promenade,
+       and "183 metres ahead" would be a number about the pavement rather than about the water. */
+    const where = best.landmark
+      ? `${metres(Math.hypot(best.x - x, best.z - depth))} away`
+      : `${metres(best.z - depth)} ahead`;
+    say(`${title} · ${where}`,
         best.el.dataset.frame === undefined ? "Press E to look closer." : "Press E to open the frame.");
   };
 
@@ -7839,11 +8041,20 @@ function leaveOverlay(root, trigger) {
     if (!collidesAt(cx, oldDepth)) nx2 = cx; else blockedX = true;
     if (!collidesAt(nx2, cz)) nz2 = cz; else blockedD = true;
     let projected = false;
-    if (blockedX && blockedD && (cx !== oldX || cz !== oldDepth)) {
-      // Both axes refused: the corner wedge. Take the contact normal, slide the intended move along
-      // its tangent, and push that candidate clear — the same order of operations as the
-      // pointer-lock demo's slide, kept continuous so a diagonal touch against a plinth's face
-      // turns into walking past it instead of standing at it with the keys doing nothing.
+    if ((blockedX || blockedD) && (cx !== oldX || cz !== oldDepth)) {
+      /* The slide. Take the contact normal, slide the intended move along its tangent, and push
+         that candidate clear — the same order of operations as the pointer-lock demo's slide, kept
+         continuous so a diagonal touch against a plinth's face turns into walking past it instead
+         of standing at it with the keys doing nothing.
+
+         Round 65: this used to run only when *both* axes were refused, which is the corner and
+         not the wall. A body that walks into a long face is refused on one axis only — the other
+         one is free — and the solver answered that by killing the blocked axis and stopping dead,
+         which is the oldest way to make a control scheme feel broken: the visitor presses forward,
+         the body stops, and nothing on the screen says why. The field's answer is the slide: the
+         press that survives is the one along the face, and the body goes on past it. So the branch
+         runs whenever the move was refused, and the tangent it tries is the face's own. */
+
       const hit = pushAt(cx, cz) || pushAt(oldX, oldDepth);
       if (hit) {
         const tX = -hit.nz, tD = hit.nx;
@@ -7977,13 +8188,18 @@ function leaveOverlay(root, trigger) {
       }
     } else if (!glideOnly) {
       if (ride) return;   // the car carries you; the keys wait
-      const turn = (keys.has("arrowright") || keys.has("e") ? 1 : 0) - (keys.has("arrowleft") || keys.has("q") ? 1 : 0);
+      /* Round 65: A and D turn the head, the way every first-person lane is driven.
+
+         They used to strafe, with the arrows turning instead, and that is a scheme nobody arrives
+         with: a visitor who presses D expects to look right, and here the world slid sideways
+         under them instead -- which is why the movement read as broken rather than as unusual.
+         The stick on a touch screen still strafes (it has to: there is no A and D on a phone), and
+         the strafe is gone from the keyboard, where it was never what anybody wanted. */
+      const turn = (keys.has("arrowright") || keys.has("d") ? 1 : 0) - (keys.has("arrowleft") || keys.has("a") ? 1 : 0);
       if (turn) yaw = wrapYaw(yaw + turn * TURN_RATE * dt);
       let mx = stick ? stick.x : 0, md = stick ? -stick.y : 0;
       if (keys.has("w") || keys.has("arrowup")) md += 1;
       if (keys.has("s") || keys.has("arrowdown")) md -= 1;
-      if (keys.has("a")) mx -= 1;
-      if (keys.has("d")) mx += 1;
       const len = Math.hypot(mx, md) || 1;
       const r = keys.has("shift") ? RUN : 1;
       // WASD and the stick live in the view plane, not the room's fixed axes. `camPt` maps a
@@ -8066,6 +8282,7 @@ function leaveOverlay(root, trigger) {
 
   const tick = (t) => {
     raf = 0;
+    const tickT0 = performance.now();
     /* Round 56, and this one was the difference between "slow" and "broken": the simulation used
        to throw away every part of a frame longer than 120 ms. A frame longer than 120 ms is exactly
        what a software rasteriser produces (measured here: 250 ms at 1024×640), so the body moved at
@@ -8084,10 +8301,21 @@ function leaveOverlay(root, trigger) {
        clock; a frame that interrupts *held* input still gets its whole gap, because that gap is
        motion the visitor was asking for while the machine took its time. */
     if (!pumping) rawGap = Math.min(rawGap, 0.05);
-    // Half a second is the ceiling otherwise: two long frames of a software rasteriser, or one frame
-    // of a browser that throttled us while a texture decoded. Beyond that it is a suspension, and a
-    // suspension must not be replayed as travel down the lane.
-    const elapsed = Math.min(0.5, rawGap);
+    /* Round 65: the walk keeps the wall clock's time, even when the machine cannot keep up.
+
+       The half-second ceiling was there to stop a *suspension* -- a hidden tab, a sleeping laptop --
+       from being replayed as travel down the lane, and against that it is right. But a machine
+       that draws one frame every 0.6 s is not suspended, it is slow, and the ceiling was eating
+       the difference: measured here, holding W on a software rasteriser, the model believed it
+       was walking at 165 cm/s while the body covered 101 -- the walk ran in slow motion and the
+       picture could not keep up with it, which is exactly what "the controls are terrible" feels
+       like. A held key is motion the visitor asked for, so a held key's frame is spent whole: the
+       ceiling for a held walk is two seconds, and the suspension case is already covered by the
+       visibility and blur handlers, which let go of the keys and the velocity when the page goes
+       away. */
+    const holding = ["w", "a", "s", "d", "shift", "arrowup", "arrowdown", "arrowleft", "arrowright"]
+      .some((k) => keys.has(k));
+    const elapsed = Math.min(holding ? 2 : 0.5, rawGap);
     last = t;
     /* The frame budget governor. Samples the frame's own length and moves the render scale toward
        a playable cadence: below ~22 fps it gives up resolution, above ~45 fps it takes it back.
@@ -8095,22 +8323,55 @@ function leaveOverlay(root, trigger) {
        (there is no picture to budget). One step per ~0.6 s, ±10–12% at a time, clamped between
        the display's own floor and 1: it is a governor, not a finder — a scale that swings per
        frame is its own judder. */
-    if (threeRenderer && rawGap > 0) {
+    if (threeRenderer && rawGap > 0 && !FULL_RENDER) {
       // the sample is the real gap: measuring the capped value would let a 600 ms frame pass for a
       // 500 ms one and the governor would settle a step above what the machine can actually draw
       frameMs = frameMs ? frameMs * 0.8 + Math.min(1.5, rawGap) * 1000 * 0.2 : Math.min(1.5, rawGap) * 1000;
       frameSamples++;
       if (!frameBudgetAt) frameBudgetAt = t;
-      if (t - frameBudgetAt > 600 && frameSamples > 4) {
+      if (t - frameBudgetAt > 400 && frameSamples > 3) {
         frameBudgetAt = t; frameSamples = 0;
         const before = renderScale;
         // 24 fps is the floor this is trying to hold (a walk is steerable there; below it the
         // picture stops answering the keys), 45 fps the ceiling it gives resolution back to.
+        // Round 65: the step is quicker and larger, because a lane that takes four seconds to
+        // notice the machine is slow spends those four seconds at three frames a second.
         const floor = minRenderScale();
-        if (frameMs > 42 && renderScale > floor) renderScale = Math.max(floor, renderScale - 0.12);
+        if (frameMs > 42 && renderScale > floor) renderScale = Math.max(floor, renderScale - 0.16);
         else if (frameMs < 22 && renderScale < 1) renderScale = Math.min(1, renderScale + 0.1);
         if (renderScale !== before) { applyRenderScale(); layer.dataset.walkScale = renderScale.toFixed(2); }
       }
+    }
+    /* A press that no frame saw still moves the visitor: the input is not tied to the picture's
+       clock. A tap of D that begins and ends between two frames is paid out here, once, in the
+       direction the visitor pressed -- a hundred and twenty milliseconds of motion, which is one
+       slow frame's worth. A press a frame did see is left to the held path above, so a long hold
+       is never counted twice and the walk never gains a step it was not given. */
+    let tapTurn = 0, tapWalk = 0;
+    tapState.forEach((tap, k) => {
+      if (tap.start) {
+        // The key is down: the held path is answering it now, and the time it has had is time
+        // the tap does not owe. A frame that saw the key for a thousandth of a second gave the
+        // visitor a thousandth of a second of turn, and a tap that is owed a response has to be
+        // paid the difference -- not suppressed by the fact that a frame looked at it.
+        tap.held += elapsed;
+        tap.ms = 0;
+        return;
+      }
+      const owed = Math.min(tap.ms, 120) - tap.held;
+      if (owed > 0) {
+        const t = owed / 1000;
+        if (k === "a" || k === "arrowleft") tapTurn -= t;
+        else if (k === "d" || k === "arrowright") tapTurn += t;
+        else if (k === "w" || k === "arrowup") tapWalk += t;
+        else if (k === "s" || k === "arrowdown") tapWalk -= t;
+      }
+      tap.ms = 0; tap.held = 0;
+    });
+    if (tapTurn) yaw = wrapYaw(yaw + tapTurn * TURN_RATE);
+    if (tapWalk) {
+      const th = a(), sy = Math.sin(th), cy = Math.cos(th);
+      moveBody(x + sy * SPEED * tapWalk, depth + cy * SPEED * tapWalk);
     }
     const steps = Math.max(1, Math.ceil(elapsed / 0.025));
     const step = elapsed / steps;
@@ -8131,6 +8392,11 @@ function leaveOverlay(root, trigger) {
     const hasWalkInput = ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"]
       .some((k) => keys.has(k)) || !!(stick && Math.hypot(stick.x, stick.y) > 0.04);
     pumping = speed > 4 || !!gliding || height > 0 || vy !== 0 || hasWalkInput;
+    /* The tick's own cost, measured: `frameMs` is the gap between frames, `renderMs` is the
+       Three.js pass, and this is everything the lane's own JavaScript costs -- the scene rebuild,
+       the hit boxes, the reach. The gap minus this is the browser's own painting and the wait for
+       the next frame, which is the part a visitor feels as lag when the picture cannot keep up. */
+    tickMs = tickMs ? tickMs * 0.85 + (performance.now() - tickT0) * 0.15 : performance.now() - tickT0;
     if (pumping) loop();
     else startPulse();
   };
@@ -8260,7 +8526,7 @@ function leaveOverlay(root, trigger) {
     set() { try { window.localStorage.setItem(TUTOR_FLAG, "1"); } catch (e) { /* private mode: this visit only */ } },
   };
   const TUT = [
-    "Turn first: the lane continues behind you. Arrow keys or Q / E, or drag the view.",
+    "Turn first: the lane continues behind you. Arrow keys or A / D, or drag the view.",
     "Now walk in: hold W; Shift lets it run. The walls hold you — nothing here is a picture to walk through.",
     "Stand in front of anything worth reading and press E, or tap it: every record lives behind a button, never painted on the scene.",
     "Those ticks above are the rail. Press one and the lane carries you to where the view is worth stopping for; Esc walks you back out.",
@@ -8441,7 +8707,9 @@ function leaveOverlay(root, trigger) {
        The separation this was protecting lives one line down instead: a grab that travels is a
        look, one that does not is a press on whatever was under it. */
     down = { x: event.clientX, y: event.clientY, yaw, pitch, id: event.pointerId, moved: 0,
-             obj: event.target.closest(".walk-hit") };
+             // A quiet prop is scenery: the finger passes through it to whatever is behind, and a
+             // tap on it opens whatever the visitor is actually facing.
+             obj: event.target.closest(".walk-hit:not([data-quiet])") };
     wasDrag = false;
     view.classList.add("is-dragging");
     /* No capture when the grab started on a thing: with a capture target override the browser
@@ -8569,24 +8837,31 @@ function leaveOverlay(root, trigger) {
       return;
     }
     if (k === "e") {
-      // While a move key is held, e is the turn key and must not use the object; still, a tap
-      // of e is the "use" key it has always been.
-      if (["w", "a", "s", "d", "shift", "e"].some((m) => keys.has(m))) {
-        event.preventDefault(); keys.add("e"); gliding = null; loop(); return;
-      }
+      // E is the verb and only the verb. It used to double as the right-hand turn key, which made
+      // "press E to open this" mean two different things depending on what else was held down; now
+      // that A and D turn the head, E does one thing, and it does it.
       event.preventDefault(); act(reach); return;
     }
-    if (k === "q") { event.preventDefault(); keys.add("q"); gliding = null; loop(); return; }
     if (k === " ") { event.preventDefault(); jump(); return; }
     if (k === "enter" && document.activeElement === view && reach) { event.preventDefault(); act(reach); return; }
     if (["w", "a", "s", "d", "shift", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) {
       event.preventDefault();
       keys.add(k);
+      // the press keeps its own clock, so a tap no frame saw still counts (see tapState)
+      const tap = tapState.get(k) || { ms: 0, start: 0, held: 0 };
+      if (!tap.start) tap.start = performance.now();
+      tapState.set(k, tap);
       gliding = null;
       loop();
     }
   });
-  root.addEventListener("keyup", (event) => { keys.delete(event.key.toLowerCase()); });
+  root.addEventListener("keyup", (event) => {
+    const k = event.key.toLowerCase();
+    keys.delete(k);
+    // the press is over: bank how long it lasted, so a tap no frame saw can still be paid out
+    const tap = tapState.get(k);
+    if (tap && tap.start) { tap.ms += performance.now() - tap.start; tap.start = 0; }
+  });
   const releaseInput = () => {
     keys.clear(); stick = null; vx = 0; vd = 0; gliding = null; last = 0;
     const knob = pad && pad.querySelector(".walk-knob");
@@ -8625,6 +8900,12 @@ function leaveOverlay(root, trigger) {
                    // the harness reads the real answer, not a re-implementation of it: the wall-gap
                    // gate calls this on positions a visitor could reach and requires no wall quad frees
                    get blockedAt() { return collidesAt; },
+                   /* The solver's own numbers, read-only, for the harness: a body that has stopped
+                      with the keys held is either against the world or against a mistake, and the
+                      difference is visible here (the wish, the two axes, the contact). */
+                   get solver() { return { x, depth, vx, vd, yaw,
+                                          half: halfAt(depth), radius: PLAYER_RADIUS,
+                                          contact: pushAt(x, depth) }; },
                    // the model's own velocity magnitude, cm/s — walk-feel reads this instead of
                    // dividing position deltas by wall-clock, which renderer clamps (0.12 s/frame)
                    // and swiftshader cadence (0.3-1.2 s/frame) distort in opposite directions
@@ -8634,6 +8915,8 @@ function leaveOverlay(root, trigger) {
                    // the governor's own numbers, so a gate can assert motion and a report can say
                    // what the machine was actually asked to draw
                    get renderScale() { return renderScale; }, get frameMs() { return frameMs; },
+                   get tickMs() { return tickMs; },
+                   get renderMs() { return renderMs; },
                    get renderSize() { return [RW, RH]; }, get displaySize() { return [W, H]; },
                    // The no-WebGL path is the lane's own state, not the mounted module's: the mount
                    // reports the refusal here so one place decides what a renderer-less lane shows.

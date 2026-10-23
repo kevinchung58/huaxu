@@ -14,8 +14,8 @@
  *   speed     — four seconds of held W covers the authored 165 cm/s (±20%) when the machine keeps up
  *   lowfps    — the same held W on a frame the machine cannot afford still covers ≥55% of it, i.e.
  *               the walk is not slowed by the renderer (the 120 ms clamp measured ~32% here)
- *   turn      — a held arrow key turns at the authored 75°/s (±30%)
- *   governor  — render scale stays in [0.35, 1], the backing store never exceeds the display size,
+ *   turn      — a held arrow key turns at the authored 120°/s (±30%)
+ *   governor  — render scale stays in [0.26, 1], the backing store never exceeds the display size,
  *               a slow viewport sheds resolution and a fast one takes it back
  *   geometry  — the display size never moves: the hit layer and the HUD are placed in display
  *               pixels, so trading resolution must not move a single target
@@ -32,7 +32,7 @@ const PAGE = process.env.GATE_PAGE || "street";
 const out = [];
 const ok = (name, cond, detail = "") => out.push(`${cond ? "PASS" : "FAIL"}  ${name}${cond ? "" : "  — " + detail}`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const SPEED = 165, TURN_RATE = 75;   // the authored constants in js/site.js
+const SPEED = 165, TURN_RATE = 120;  // the authored constants in js/site.js
 
 const browser = await puppeteer.launch({ executablePath: await chromium.executablePath(),
   args: [...chromium.args, "--no-sandbox", "--disable-dev-shm-usage"], headless: true });
@@ -96,8 +96,32 @@ const state = (page) => page.evaluate(() => {
   await page.keyboard.up("ArrowRight");
   const y1 = await page.evaluate(() => document.querySelector("[data-walk]").__walk.yaw);
   const turned = Math.abs(((y1 - y0 + 540) % 360) - 180) / 1.5;
-  ok("a held turn key turns at the authored rate (75°/s ±35%)",
+  ok("a held turn key turns at the authored rate (120°/s ±35%)",
      Math.abs(turned - TURN_RATE) <= TURN_RATE * 0.35, `${turned.toFixed(0)}°/s`);
+
+  /* A tap is never swallowed between two frames. The lane samples the keyboard once a frame, so
+     on a machine that draws a frame every third of a second a forty-millisecond tap of the turn
+     key begins and ends between two samples -- and the head does not move at all. The visitor
+     presses, nothing happens, and the lane reads as broken. The input must not be tied to the
+     picture's clock. */
+  const tapYaw = async () => page.evaluate(() => document.querySelector("[data-walk]").__walk.yaw);
+  const yTap0 = await tapYaw();
+  await page.keyboard.down("ArrowRight");
+  await sleep(40);
+  await page.keyboard.up("ArrowRight");
+  await sleep(1600);
+  const yTap1 = await tapYaw();
+  const tapped = Math.abs(((yTap1 - yTap0 + 540) % 360) - 180);
+  ok("a tap of the turn key is never swallowed between two frames", tapped >= 3, `${tapped.toFixed(1)}°`);
+
+  const dTap0 = await page.evaluate(() => document.querySelector("[data-walk]").__walk.depth);
+  await page.keyboard.down("w");
+  await sleep(40);
+  await page.keyboard.up("w");
+  await sleep(1600);
+  const dTap1 = await page.evaluate(() => document.querySelector("[data-walk]").__walk.depth);
+  ok("a tap of the walk key is never swallowed between two frames",
+     Math.abs(dTap1 - dTap0) >= 3, `${(dTap1 - dTap0).toFixed(1)} cm`);
   await page.close();
 }
 
@@ -110,9 +134,9 @@ const state = (page) => page.evaluate(() => {
   ok("a slow frame still walks (≥55% of 165 cm/s: the renderer must not slow the walk)",
      measured >= SPEED * 0.55, `${measured.toFixed(0)} cm/s at ${after.frameMs.toFixed(0)} ms/frame`);
   ok("the governor sheds resolution instead of the visitor's speed",
-     after.scale < 0.95 && after.scale >= 0.35, `scale ${after.scale.toFixed(2)} → ${after.render.join("x")}`);
+     after.scale < 0.95 && after.scale >= 0.26, `scale ${after.scale.toFixed(2)} → ${after.render.join("x")}`);
   ok("…and the picture it draws fits on the display it was given",
-     after.render[0] <= after.display[0] + 1 && after.render[0] >= after.display[0] * 0.34,
+     after.render[0] <= after.display[0] + 1 && after.render[0] >= after.display[0] * 0.25,
      `${after.render} in ${after.display}`);
   await page.close();
 }

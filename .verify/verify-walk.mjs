@@ -420,12 +420,13 @@ ok("the plaza is walked into, and the gate stands past the clamp: a street that 
 // The scramble plate, from the stop between the shuttered rows, 44 cm ahead of it at the post line.
 click(stopAt(1392));
 await settle(1392);
-await hold("a", 2500);                                   // to the authored left wall, x clamps inside it
+await hold("a", 700);                                     // turn left: A turns the head, as the
+await hold("w", 1400);                                    // arrows do, so the lane is walked into
 await sleep(120);
 ok("the wall prop nearer you wins: the reach is nearest-first, not list-order",
    /The scramble at Shibuya|A shop on the west row/.test(status()), status());
-click(stopAt(1392));
-await settle(1392);
+await hold("d", 700);                                     // and the head comes back down the lane
+await sleep(120);
 ok("standing at the frame's own depth brings it into reach",
    /The scramble at Shibuya/.test(status()), status());
 ok("the reach is announced with a dot on the note button, never with a caption",
@@ -503,9 +504,8 @@ ok("closing hands focus back to the thing on the wall that opened it",
 // between the shuttered rows, step across to the east row's posts.
 click(stopAt(1392));
 await settle(1392);
-await holdTogether(["d", "shift"], 4200);                 // run across to the east row's posts
-await hold("ArrowRight", 250);                           // turn enough to face the shop rather than only the lane
-await hold("w", 950);                                    // and along it, toward the middle of the bay ahead
+await hold("d", 700);                                  // turn right, to face the east row
+await hold("w", 1500);                                  // and walk into the lane's east side
 await sleep(120);
 ok("between the rows, the shop at the posts is what you are standing in front of",
    /A shop on the east row/i.test(status()), `${status()} | x=${body().x.toFixed(1)} d=${body().depth.toFixed(1)} yaw=${body().yaw.toFixed(1)} reach=${title0()}`);
@@ -518,6 +518,10 @@ ok("the card says what is left out and why: the mural's people, the fascia's nam
 click(q("[data-walk-card-close]"));
 await sleep(40);
 ok("the card closes again", card.hidden);
+// and the head comes back down the lane, so the press boxes below are the ones a visitor
+// walking forward would meet -- not the two that happen to be east of where the card was read
+await hold("a", 700);
+await sleep(120);
 
 /* The states contract, tested where the states are (round 32). Nakamise after closing has nothing a
    visitor operates -- every shop is shut, and nothing is invented to press -- so the rule that a state
@@ -673,7 +677,16 @@ ok("and the enlarged box never loses its focus state, because the ring moved wit
 
 // The synthetic context-menu probe ends in a pointerup that jsdom counts as a tap, so fold its card
 // above, then sidestep from the standpipe's tangent face before the depth-only glides.
-await hold("a", 1800);
+// The sidestep is the touch stick's: A and D turn the head on a keyboard, so the one control that
+// still slides sideways is the one a thumb drives -- and it has to be able to leave a wall's face.
+const pad = q("[data-walk-pad]");
+const padEvent = (type, clientX = 1, clientY = 0) => pad.dispatchEvent(new w.PointerEvent(type, {
+  bubbles: true, cancelable: true, pointerId: 9, button: 0, clientX, clientY,
+}));
+padEvent("pointerdown", 0, 1);          // the stick, pushed hard left
+await sleep(1200);
+padEvent("pointerup", 0, 1);
+await sleep(500);
 ok("lateral input can leave the mouth furniture without entering a wall",
    body().x < 180, `x=${body().x.toFixed(1)} cm; depth=${body().depth.toFixed(1)} cm`);
 const tower = q('[data-obj="frame-tower"]');
@@ -706,7 +719,9 @@ ok("a place chosen while the lane was resting is still walked to, not just drawn
    Math.abs(body().depth - 740) < 6, `${body().depth}`);
 ok("and the rail keeps up with the body, whatever the reach happens to be lit on",
    home.classList.contains("is-here") && hereIdx() === stops.indexOf(home)
-     && /markStops\(\);\s*\n\s*let best = null/.test(js)
+     // the stations are asked on every reach check, so a prop standing in front of you cannot
+     // freeze the rail's highlight (the check reads the shape of checkReach, not a variable name)
+     && /const checkReach = \(\) => \{[\s\S]{0,600}?markStops\(\);/.test(js)
      && !/if \(!best\) \{ layer\.classList\.remove\("has-reach"\); markStops/.test(js),
    `here=${stops.indexOf(home)} reach=${qa(".is-reach").length} / ${status()}`);
 ok("one pump at a time: asking for a real frame cancels the idle nudge",
@@ -732,24 +747,29 @@ ok("W follows the view after a turn, rather than the lane's fixed depth axis",
    `yaw=${turnedYaw.toFixed(1)}°, forward=${wVector.forward.toFixed(1)} cm, side=${wVector.side.toFixed(1)} cm`);
 await sleep(650);                         // let the previous velocity ease out before changing verbs
 const a0 = { x: body().x, depth: body().depth };
+const yawBeforeA = body().yaw;
 await hold("a", 550);
 const a1 = { x: body().x, depth: body().depth };
-const aVector = projection(a0, a1, turnedYaw);
-ok("A strafes left in the turned camera plane",
-   aVector.side < -18 && Math.abs(aVector.forward) < Math.abs(aVector.side) * 0.55,
-   `forward=${aVector.forward.toFixed(1)} cm, side=${aVector.side.toFixed(1)} cm`);
+const aVector = projection(a0, a1, yawBeforeA);
+const dyawA = ((body().yaw - yawBeforeA + 540) % 360) - 180;
+/* Round 65: A and D turn the head, and the arrows turn with them.
+
+   They used to strafe, and the owner called the lane's controls "terrible" -- which is what a
+   strafe does to a visitor who arrives expecting to look right: the world slides sideways under
+   them while the thing they wanted stays where it was, and the reach cone never opens on it.
+   Turning is the one gesture that shows the visitor where they are now looking, and the gate is
+   here to keep the turn honest: the head must turn, and the body must not slide. */
+ok("A turns the head left, and the body does not slide sideways under it",
+   dyawA < -25 && dyawA > -140 && Math.abs(aVector.side) < 8 && Math.abs(aVector.forward) < 8,
+   `turned ${dyawA.toFixed(1)}°, forward=${aVector.forward.toFixed(1)} cm, side=${aVector.side.toFixed(1)} cm`);
 await sleep(650);
-const pad = q("[data-walk-pad]");
-const padEvent = (type) => pad.dispatchEvent(new w.PointerEvent(type, {
-  bubbles: true, cancelable: true, pointerId: 9, button: 0, clientX: 1, clientY: 0,
-}));
 const stick0 = { x: body().x, depth: body().depth };
 padEvent("pointerdown");
 await sleep(430);
 padEvent("pointerup");
 await sleep(650);
 const stick1 = { x: body().x, depth: body().depth };
-const stickVector = projection(stick0, stick1, turnedYaw);
+const stickVector = projection(stick0, stick1, body().yaw);
 ok("the touch stick shares camera-relative forward with W",
    stickVector.forward > 12 && Math.abs(stickVector.side) < Math.abs(stickVector.forward) * 0.5,
    `forward=${stickVector.forward.toFixed(1)} cm, side=${stickVector.side.toFixed(1)} cm`);
@@ -1099,7 +1119,7 @@ ok("the 2D lane painter is deleted, not dormant", !/data-walk-canvas|canvas2d/.t
     Math.abs(parseFloat(best.style.getPropertyValue("--z")) - z) ? el : best, gstops[0]);
   const gz = parseFloat(gstop(1392).style.getPropertyValue("--z"));
   gclick(gstop(1392)); await gsettle(gz);
-  await gholdT(["d", "shift"], 4200); await ghold("ArrowRight", 250); await ghold("w", 950);
+  await ghold("d", 700); await ghold("w", 1500);
   await sleep(120);
   gkey("e"); await sleep(80);
   ok("opening a card finishes the teaching: last step, a way out where Skip was",
@@ -1185,7 +1205,11 @@ const fail = out.filter((l) => l.startsWith("FAIL")).length;
     ok("and the night fold keeps a readable floor under it, never full murk",
        /clamp\(\(Number\(state\.night\) \|\| 0\) \* 0\.40, 0, 0\.58\)/.test(scjs)
        && /laneDark=min\(0\.62,/.test(scjs)
-       && /diffuseColor\.rgb\+=uLaneNight\*min\(0\.62,vLaneDarkness\)\*3\.2/.test(scjs));
+       && /diffuseColor\.rgb\+=uLaneNight\*murkK\*3\.2\*murkTex/.test(scjs)
+     && /float murkK=min\(0\.62,vLaneDarkness\)/.test(scjs)
+     // the murk must be proportional to the surface's own value, so a paving joint keeps its
+     // share of the contrast under the navy instead of being drowned by a flat floor of it
+     && /float murkTex=clamp\(dot\(diffuseColor\.rgb,vec3\(0\.2126,0\.7152,0\.0722\)\)\*2\.2,0\.0,1\.0\)/.test(scjs));
     ok("and the surveyed world's own materials carry the night wash as a self-lit emissive",
        (scjs.match(/material\.userData\.nightGlow = true/g) || []).length >= 2
        && /emissive: new THREE\.Color\(0x16223c\), emissiveIntensity: 0/.test(scjs)
@@ -1210,13 +1234,13 @@ const fail = out.filter((l) => l.startsWith("FAIL")).length;
      site.js, the double-click pointer lock, the first-visit guide, the sun-or-moon hour). A gate can
      no longer pass on "the page contains a paragraph": the phrases are pinned here, because every
      one of them is a promise the engine keeps. */
-  ok("the wall teaches the whole keyboard it ships: Q/E, double-click, the guide, the hour button",
-     /arrow keys or Q\/E \(or a gentle drag\)/.test(gen) && /double-click to let the mouse look, or the/.test(gen)
+  ok("the wall teaches the whole keyboard it ships: A/D, double-click, the guide, the hour button",
+     /arrow keys or A\/D \(or a gentle drag\)/.test(gen) && /double-click to let the mouse look, or the/.test(gen)
      && /first visit a short guide teaches those keys in place, once, and the/.test(gen)
      && /sun-or-moon button in the chrome holds the lane in day or/.test(gen)
      && /fixed night keeps its own hour/.test(gen));
   ok("and the walk-view's own aria-label says the same to a screen reader",
-     /Drag, arrow keys or Q\/E to turn,/.test(gen)
+     /Drag, arrow keys or A\/D to turn,/.test(gen)
      && /facing, double-click to let the mouse look, L for the list, I for this note\./.test(gen)
      && /guide strip at the bottom of the screen; it is replayable from this note/.test(gen));
 }

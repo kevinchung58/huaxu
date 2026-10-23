@@ -3,7 +3,7 @@
    velocity model — so the proof is the velocity model under real key events at real rAF cadence:
    how many frames a held key takes to reach full speed (answer sought: 1 — the three.js demo's
    direct-assign model, no ramp), how fast release lands at zero (a decay then a snap, a handful of
-   frames, not an exponential slide), whether Q/E actually turn, and whether double-click requests
+   frames, not an exponential slide), whether A/D actually turn, and whether double-click requests
    pointer lock at all in this build. It also shoots the two frames a visitor's eye would hold —
    spawn and after a 30-frame walk — so the instrument's numbers can be eyeballed against pixels.
    Numbers are the verdict; screenshots under OUT are for the human reading this run.
@@ -107,9 +107,9 @@ for (const name of PAGES) {
   //    by design a bare e is the "use the object" tap (it turns only while a move key is held),
   //    so probing e by itself would measure the intent to interact, not a broken turn
   const yaw0 = await page.evaluate("document.querySelector('[data-walk]').__walk.yaw");
-  await page.keyboard.down("q");
+  await page.keyboard.down("a");
   await page.evaluate("window.__start()"); await page.evaluate("window.__until(4)");
-  await page.keyboard.up("q");
+  await page.keyboard.up("a");
   const yaw1 = await page.evaluate(() => { window.__stop(); return document.querySelector("[data-walk]").__walk.yaw; });
   const turnMoved = Math.abs(((yaw1 - yaw0 + 540) % 360) - 180) > 1;
 
@@ -146,7 +146,7 @@ for (const name of PAGES) {
   const pass = crisp && stops && turnMoved && walked > 100;
   if (!pass) fails++;
   console.log(`${name}: vel ${startSp.join("/")}→rest ${restMark} cm/s, `
-    + `Q/E turn ${turnMoved ? "yes" : "NO"}, walk30f ${walked}cm, `
+    + `A/D turn ${turnMoved ? "yes" : "NO"}, walk30f ${walked}cm, `
     + `lock ${lockSeen.granted ? "granted" : lockSeen.changed ? "changed" : "no-grant(headless)"} — ${pass ? "PASS" : "FAIL"}`);
   await browser.close();
 }

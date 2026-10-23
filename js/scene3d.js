@@ -301,12 +301,46 @@ function patternCanvas(name) {
     strand(7, 10, 30, 0.10, 0.26, 1, true);           // the green water showing through
     strand(70, 1.2, 3.4, 0.06, 0.22, 2, false);       // the grain at arm's length
   } else if (name === "canopy") {
-    c.fillStyle = "#777777"; c.fillRect(0, 0, 128, 128);
-    for (let i = 0; i < 115; i++) {
-      const v = Math.round(96 + rnd() * 145), r = 3 + rnd() * 9;
+    /* Round 65: the wooded slope behind the strip, at the distance it is read.
+
+       The tile used to speckle the mass with half-metre spots on a twenty-metre tile, which is
+       finer than a pixel at a hundred metres: mipmapping averaged the whole treeline into one
+       flat green band behind the shopfronts, and the band was the thing the eye found first. A
+       tree crown is two metres across, so the masses are drawn at two metres, with darker
+       hollows under them -- at a hundred metres the line still has a texture and still reads as
+       trees rather than as a painted wall. */
+    c.fillStyle = "#6d6d6d"; c.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 90; i++) {
+      const v = Math.round(70 + rnd() * 150), r = 9 + rnd() * 21;
       spot(rnd() * 128, rnd() * 128, r, `rgb(${v},${v},${v})`);
     }
-  } else if (name === "towerwin" || name === "hotelw" || name === "cityn") {
+    for (let i = 0; i < 28; i++) {
+      const v = Math.round(34 + rnd() * 44), r = 7 + rnd() * 15;
+      spot(rnd() * 128, rnd() * 128, r, `rgb(${v},${v},${v})`);
+    }
+  } else if (name === "hotelw") {
+    /* Round 65: the Fallsview hotels' own wall.
+
+       The hotels were drawn with the shared `towerwin` tile -- a dark grid of bright and dark
+       squares on a near-black ground -- which is a slab with no material: measured on the frame
+       from the promenade, the towers came out at luma 50-60 against a sky of 75, so they were
+       darker than the weather and read as silhouettes rather than as buildings. The hotels on
+       the Fallsview side are pale concrete and glass, and this tile is that: a pale ashlar
+       ground, one storey to a tile (the record gives the tile the height of a floor), a
+       spandrel band at the sill line, and a row of dark windows with a pale reveal under each
+       and a mullion down the middle. */
+    c.fillStyle = "rgb(174,171,163)"; c.fillRect(0, 0, 128, 128);
+    for (let y = 0; y < 128; y += 16) line(0, y, 128, y, "rgba(96,94,88,0.32)", 1);
+    c.fillStyle = "rgb(150,148,142)"; c.fillRect(0, 84, 128, 44);       // the spandrel between storeys
+    line(0, 84, 128, 84, "rgba(78,76,72,0.5)", 1);
+    for (let x = 4; x < 128; x += 10) {
+      c.fillStyle = "rgb(44,48,56)"; c.fillRect(x, 18, 7, 44);          // the window
+      c.fillStyle = "rgba(152,168,188,0.32)"; c.fillRect(x + 1, 30, 5, 7);   // the sky in it
+      c.fillStyle = "rgb(208,204,195)"; c.fillRect(x, 62, 7, 2);        // the reveal under the sill
+      c.fillStyle = "rgba(66,64,60,0.55)"; c.fillRect(x + 3, 18, 1, 44);     // the mullion
+    }
+    noise(70, 120, 48);
+  } else if (name === "towerwin" || name === "cityn") {
     const dark = name === "cityn" ? 52 : 88;
     c.fillStyle = `rgb(${dark},${dark},${dark})`; c.fillRect(0, 0, 128, 128);
     const cellW = name === "cityn" ? 9 : 14, cellH = name === "cityn" ? 12 : 13;
@@ -638,7 +672,18 @@ function laneShaderMaterial(THREE, map, transparent) {
            colour times the light, never plus a colour; multiplying keeps the paving dark and the
            cream walls cream, and it is the same fix the round-58 mist needed. */
         diffuseColor.rgb*=1.0+max(0.0,vLaneDaylight)*0.62;
-        diffuseColor.rgb+=uLaneNight*min(0.62,vLaneDarkness)*3.2;
+        /* Round 65: the murk floor is the surface's own texture, tinted -- not a flat wash.
+
+           The night added the murk navy as a constant, so every surface in the lane got the
+           same amount of light added on top of it: the promenade's paving, whose joints are a
+           few per cent of its own value, was drowned by them and the ground read as one flat
+           navy field (measured: 33,61,119, no structure anywhere in it). The murk now carries
+           the surface's own value into the tint, so the paving's joints survive the night the
+           way a street's joints do under its lamps, and the flat part of the floor is no
+           brighter than it was. */
+        float murkK=min(0.62,vLaneDarkness);
+        float murkTex=clamp(dot(diffuseColor.rgb,vec3(0.2126,0.7152,0.0722))*2.2,0.0,1.0);
+        diffuseColor.rgb+=uLaneNight*murkK*3.2*murkTex;
         diffuseColor.a*=clamp(vLaneOpacity,0.0,1.0);
 `);
   };
