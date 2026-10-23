@@ -8,7 +8,7 @@
 
 - **站台**：靜態學術網站（Hua-Xu Zhong）。零依賴、零 build step；所有 `*.html` 只由 `_gen_html.py` 產生；runtime 只有 vendored 的 Three.js 0.186.1。
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、`rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
-- **分支 / PR**：`arena/b5407904-huaxu` → `master`；PR #19（站主已授權合併）。
+- **分支 / PR**：`arena/b5407904-huaxu` → `master`；**PR #19 已合併**（2026-10-23，merge commit `4a3757b`）。下一輪從 master 繼續。
 - **進度（第 67 輪，已交付）**：
   - 垃圾清除：`image-search/` 的 3 張參考照片**退出 Git**（磁碟保留；來源未追溯，所以永不入庫）、`js/site.js` 的死定義 `SUN`/`uvAt` 刪掉、PR 草稿刪掉、34 支一次性探針刪掉（`.verify` 89 → 55 檔）。
   - **CSS 孤兒 class 的清理「暫緩」**：先刪了 44 條規則，walk 閘門立刻抓到兩條（相簿的 `object-fit` 與手機版控制條）——它們不是孤兒，是**契約**。正確做法寫在 P1b：**用閘門問，不要用 grep 猜**。
@@ -156,7 +156,7 @@ walk 192/192、feel 12/12、story 27/27、body 73/73、games 23/23、nowebgl 35/
 
 ### 5.6 倉庫大小
 
-tracked 約 16.7 MB：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、`rooms-cntower.html` 722 KB、`js/site.js` 558 KB、`_gen_html.py` 483 KB、`TODO-archive.md` 368 KB。`image-search/`（1.2 MB，3 張 CN Tower 參考照，**來源未追溯 → 永不入庫**）只留在磁碟。
+tracked 約 15.5 MB、183 個檔：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、`rooms-cntower.html` 722 KB、`js/site.js` 558 KB、`_gen_html.py` 483 KB、`TODO-archive.md` 368 KB。`image-search/`（1.2 MB，3 張 CN Tower 參考照，**來源未追溯 → 永不入庫**）只留在磁碟。
 
 ## 6. 已知限制（不要假裝解決了）
 
