@@ -318,7 +318,37 @@ function patternCanvas(name) {
       }
       if (row % 2 === 0) line(0, y + cellH - 1, 128, y + cellH - 1, "rgba(30,30,30,0.5)", 1);
     }
-  } else if (name === "stonewall" || name === "strata" || name === "tunnelc" || name === "trcwall") {
+  } else if (name === "trcwall") {
+    /* Round 64: the Centre's own wall, not a generic course of stone.
+
+       The record asks for "tall windows, one tile the wall's height", and until now the WebGL tile
+       for it was the same masonry every other wall in the world used: courses of blocks and no
+       openings at all. The building the visitor walks under was therefore a blank board of stone,
+       and the tall windows the record names never reached the screen. This tile is the wall:
+       pale ashlar, a base course, a string course between the storeys, and two rows of tall
+       windows — arched in the lower storey, square above — dark against the stone. */
+    c.fillStyle = "rgb(176,176,176)"; c.fillRect(0, 0, 128, 128);
+    for (let y = 0; y < 128; y += 18) {
+      line(0, y, 128, y, "rgba(64,64,64,0.42)", 1);
+      let x = (y / 18) % 2 ? -14 : 0;
+      while (x < 128) { const w = 22 + Math.floor(rnd() * 26); line(x, y, x, y + 18, "rgba(64,64,64,0.3)", 1); x += w; }
+    }
+    c.fillStyle = "rgb(146,146,146)"; c.fillRect(0, 120, 128, 8);     // the base course
+    c.fillStyle = "rgb(202,202,202)"; c.fillRect(0, 60, 128, 4);      // the string course
+    const win = (x, y, w, h, arch) => {
+      c.fillStyle = "rgb(56,56,56)";
+      c.fillRect(x, y + (arch ? w / 2 : 0), w, h - (arch ? w / 2 : 0));
+      if (arch) { c.beginPath(); c.arc(x + w / 2, y + w / 2, w / 2, Math.PI, 0); c.fill(); }
+      c.fillStyle = "rgba(150,162,176,0.45)";
+      c.fillRect(x + 1, y + h * 0.34, w - 2, Math.max(1, h * 0.14));
+      c.fillStyle = "rgb(34,34,34)";
+      c.fillRect(x + w / 2 - 0.5, y + (arch ? w / 2 : 2), 1, h - (arch ? w / 2 : 2));
+      c.fillRect(x, y + h * 0.62, w, 1);
+    };
+    win(14, 72, 22, 46, true); win(53, 72, 22, 46, true); win(92, 72, 22, 46, true);
+    win(16, 18, 18, 34, false); win(55, 18, 18, 34, false); win(94, 18, 18, 34, false);
+    noise(90, 150, 58);
+  } else if (name === "stonewall" || name === "strata" || name === "tunnelc") {
     const step = name === "strata" ? 13 : 18;
     for (let y = 0, row = 0; y < 128; y += step, row++) {
       const v = 133 + Math.floor(rnd() * 48);
@@ -1449,6 +1479,7 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   const laneMaterials = new Map();
   const laneMeshes = new Map();
   let laneSoftTexture = null;
+  let laneAnisotropy = null;
   let sceneEffects = null;
   const stats = { triangles: staged.triangles, waterTriangles: 0, waterSheets: staged.water.length,
     mistLayers: staged.mist.length, batches: staged.groups.length, unsupported: staged.unsupported,
@@ -1649,6 +1680,15 @@ function buildRenderer(THREE, canvas, backdrop, api) {
       texture.wrapS = texture.wrapT = group.textureKind === "pattern" ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
       texture.minFilter = THREE.LinearMipmapLinearFilter;
       texture.magFilter = THREE.LinearFilter;
+      /* Round 64: a floor is a surface seen at a grazing angle, and a mipmap chosen by the depth
+         derivative alone averages a paving's joints away long before the eye would. The world
+         prims have had anisotropic filtering for rounds; the lane's own surfaces did not, so the
+         plaza's paving was smoothed into a sheet by the filter and not by the paving. Eight taps
+         is what the software renderer here offers, and a floor is where it shows. */
+      if (renderer && renderer.capabilities) {
+        if (laneAnisotropy === null) laneAnisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+        texture.anisotropy = laneAnisotropy;
+      }
       texture.needsUpdate = true;
       entry = { texture, source };
       laneTextures.set(cacheKey, entry);

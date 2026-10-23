@@ -53,6 +53,7 @@ for (const file of PAGES) {
     const where = layer.querySelector("[data-walk-offline-where]");
     const hits = layer.querySelector(".walk-hits");
     const note = layer.querySelector("[data-walk-fallback]");
+    const card = layer.querySelector("[data-walk-card]");
     return {
       renderer: layer.dataset.walkRenderer,
       panelShown: !!panel && !panel.hidden && panel.getBoundingClientRect().height > 100,
@@ -62,6 +63,8 @@ for (const file of PAGES) {
       isOfflineClass: layer.classList.contains("is-offline"),
       hitsShown: !!hits && getComputedStyle(hits).display !== "none",
       noteShown: !!note && !note.hidden,
+      staleNote: !!note,
+      cardText: card ? card.innerText.replace(/\s+/g, " ").trim() : "",
       canvasHidden: layer.querySelector("canvas[data-walk-three]").hidden,
     };
   });
@@ -73,7 +76,15 @@ for (const file of PAGES) {
   ok(`${file}: the panel carries the lane's own standing position`,
      state.where.length > 3 && state.where === state.status, `${state.where} vs ${state.status}`);
   ok(`${file}: the projected prop buttons retire`, state.isOfflineClass && !state.hitsShown);
-  ok(`${file}: the info card keeps its fallback sentence`, state.noteShown);
+  /* Round 55 moved the sentence about the missing picture into the viewport, where a visitor with no
+     WebGL can read it without opening anything. Round 64: this gate was still asking for the old
+     `[data-walk-fallback]` element inside the info card -- an element the page has not carried since
+     round 55 -- so it failed on every page while proving nothing. The sentence must be on the page
+     and not behind a card, and no dead element may be left behind claiming to be it. */
+  ok(`${file}: the sentence about the missing picture is on the page, not behind a button`,
+     /cannot draw the lane/.test(state.panelText) && !/cannot draw the lane/.test(state.cardText)
+       && !state.staleNote,
+     `card=${state.cardText.slice(0, 60)} stale=${state.staleNote}`);
   ok(`${file}: the dead canvas is hidden`, state.canvasHidden);
   ok(`${file}: no page error on the way to the panel`, errors.length === 0, errors.join(" | "));
 

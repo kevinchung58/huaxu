@@ -1,5 +1,80 @@
 # TODO — 使用者的問題、需求與現況（給下一個接手的 LLM）
 
+## 0am. 第六十四輪（2026-10-23）：廣場東側做出來了；「鋪面是一張白紙」的真正原因不是霧
+
+### 站主指令
+延續 0aj / 0ak / 0al 的「繼續都弄好」：把 Clifton Hill 廣場**東側（摩天輪那一排）**做出來（0al 留下的「排隊欄、遮蔭」），並且收掉 0al 留下的兩件事：廣場鋪面的遠景 LOD 與「夜晚版沒重拍」。
+
+### 一、廣場東側（Round 64 新增的 authored props）
+站在 x 830 往東看得到的那一片，原先是空的：只有兩條欄杆與一段空地。
+- `plaza-ticket`（front，x2120 z3050 ry−90，w170 h240 d20，awn #3f5a7a／fascia #b9ac8e／leaf #8a7f6d，liton 0.58，solid）：售票亭。
+- `queue-rail-c`（parapet，x1790 z3050 ry90，w620 h96 d12）：第三條排隊欄。
+- `plaza-shade-1/2`（parasol，x1650 z2950／z3150，w/d 420，leaf #9c8460，rise 40）+ `plaza-shade-mast-1/2`（post 18×244×18，solid）：兩支遮陽傘。傘布 y204、頂點 244＝桿頂，桿是另一件 solid 的 prop，傘布只畫布。
+- `queue-bench`（x2150 z2900 ry90）、`queue-bin`（x2200 z3200）。
+- parasol 畫法重寫：布不再是「一張淺奶油色」——四根肋、肋之間下垂 7 cm、每片布中間下墜一個扇形邊、傘布在鋪面上投下自己的方形影子（跟著 record 的太陽方位與高度角走）。
+  量過：`#c9b489` 經 tile 的 tone map 後是 (205,200,187)，幾乎漂白；改成 `#9c8460` → (192,182,164)。
+
+### 二、「鋪面是一張白紙」：三個假設，兩個是錯的
+1. **霧（死路）**：`_pix.mjs` 量到廣場地面 (143,161,178)——一片沒有結構的藍灰。把 camera-relative 的 `groundAir(z, camZ)` 接到地面 quad 與 5 個地面標記上，重新生成、重拍，影格**逐像素相同** → 不是霧。scene3d 的 lane shader 裡 `air` 只會往夜色暗（`uLaneNight`），白天根本不產生天空色的洗刷。
+2. **快取（半對，但不是原因）**：改了 `js/site.js` 沒重生成 HTML，瀏覽器就拿舊檔；`_gen_html.py` 會把 js 的 hash 蓋進 `site.js?v=`，重生成後 hash 才變。教訓照舊：**改完 js 一定要重生成 HTML**。
+3. **真正的原因（量到的）**：`_lane.mjs` 直接讀 lane 自己畫出來的 quad——廣場地面是 32 片 quad、兩種 key（`floor-pavers` 15 片、`floor-tier-0` 17 片）、uv = z×2。**貼圖有到畫面上，比例不對**：一格 tile 只有 64 cm，舊的「磚」是 15 cm 的一條條 tint（5–12%），而 WebGL 的 mipmap 以深度方向的導數選級 → 掠射角下 15 cm 的磚不到一個像素，整片鋪面被濾成一個平均值（連 tile 裡畫了什麼都看不見）。
+   - **修法一（js/site.js）**：`paintPavers` 改成「深色縫 + 淺色石」：石頭 48 cm 見方、縫 3 cm；`FLOOR_PERIOD = { pavers: 3 }` → 鋪面 tile 一格 192 cm（`floorPiece` 的 uv 除以 3）。遠層 `paintPaversCoarse` 是同一張縫底、石頭大一倍（90 cm），縫的比例相同 → 兩層平均相同。
+   - **修法二（js/scene3d.js）**：lane 的貼圖開**各向異性過濾**（`min(8, getMaxAnisotropy())`）。世界 prim 從第 40 輪就有，lane 自己的表面卻沒有——而地面正是以掠射角看的面。
+   - **連帶修掉三層 tier 的色階斷層**：舊的「往 (121,117,112) 洗」是在 tone map **之前**寫的，落地時已被 lift 成 ~205，比磚還亮，所以三層量到 (170,168,164)／(173,171,168)；現在洗向 tile 自己的平均，量到 **157／157／156** → 三層之間沒有階。
+   - **順手**：`toneMirror` 的 rgb regex 只吃整數（`\d{1,3}`），小數色會整個繞過 tone map（我第一版的磚有一半縫是這個原因）；改成 `[\d.]+`。
+   - **量**：廣場地面 (143,161,178) 無結構 → (142,161,173) 且有 48 cm 的縫；`_strip.mjs` 逐行掃描看得到縫線的階調，沒有縫的地方全平。
+
+### 三、站點 6 重新定位（三次量尺，最後一次才對）
+站點 6「under the SkyWheel」本來在 x 1300、yaw 4。
+- **x 1300**：走得到，但 rail 的 glide 走「直線到站點」，那條線穿過街區自己的背牆（arcade/back block 在 x 988..1440、z 7870..8370）→ 身體卡住，**stranded**。
+- **x 960**：擦到 `strip-lamp-3`（860, 7714）。
+- **x 900**：撞 `lights-post-b2`（860, 8004），身體停在 (836, 7978) 不動。
+- **x 830（通過）**：街區路緣的傢具全部從 x 853 起（燈 860/7714、鐵燈桿 860/8004、midway-d 1001/7714、arcade-c 1001/8120、bin-strip 972/8323），直線全程在西側走，離最靠西的那件還有 55 cm；摩天輪的腳在東邊 15.5 m。**collision gate 4/4，8 個站點全到，stranded 0。**
+- 另外修掉 glide 自己的 bug：`homeGlide()` 只看正前方 150 cm 一點，撞到東西就退回原線，於是來回撞（ping-pong）；改成掃 depth+120…+900 再回家。
+- **yaw 4 → 78**：輪圈在頭上 71°，從廣場地板看永遠在畫面外，摩天輪只能靠它自己的 A 字架與它腳下的排隊區來認。yaw 78 拍到的正是：正前方的 A 字架、售票亭、兩支遮陽傘、後面的 fun row 屋脊、以及一路鋪到地平線的鋪面。
+
+### 四、夜晚
+`.preview/r64/night/stop6-yaw78-640x480.png`：售票亭的窗是亮的、路燈的光在左上方、傘是剪影、夜是一整片藍（地面 33,61,119）。**鋪面的縫在夜裡看不見**——night fold 會把地面往 navy 混 62%，這是第 49/51 輪定下來的規則，不是本輪改的；要不要讓夜景的地面留一點結構，留給下一輪判。
+
+### 五、閘門（一次建置、一次驗證）
+- `verify-shapes` 247 props 全有形、**72/72** `verify-body`、`verify-geometry`／`verify-clash`／`verify-objects`／`verify-tables`／`verify-games`／`verify-look`／`verify-chain`／`verify-nowebgl` **PASS**、`verify-walk` **192/192**、`verify-story` **27/27**、`verify-three` **PASS**（8 頁、12826 world + 864 water triangles）、`verify-collision` **28/28**（七頁 ×4 性質全跑：street／rooms／rooms-fukuoka／rooms-toronto／rooms-cntower／rooms-niagara／rooms-journey，每頁的每個 rail stop 都到、stranded 0）、`verify-feel` **10/10**、impeccable detect **0 findings**。
+- `verify-feel` 第一次失敗（「慢幀仍在走」70 cm/s @ 407 ms）是**同時背景還在跑 collision gate** 造成的 CPU 搶用，不是程式問題：背景停掉後單跑即 PASS（量尺要獨佔機器）。
+- 修了四個**過期**的閘門（都是「門在問一個頁面早就不寫的東西」，不是放寬標準）：`verify-body` 讀的是 `data-lane-wseg`（頁面寫的是 `data-lane-ws`，單引號），順手加了「每個站點都必須站得住」這條新斷言（72/72）；`verify-nowebgl` 還在問第 55 輪就刪掉的 `data-walk-fallback`；`verify-story` 還在問第 33 輪的 rail stop 視角（-15/10，現為 -82/2）；`verify-walk` 還在問舊名 `walk-fallback`。
+- `bin/verify-three.mjs` 的離線面板正則原本要求字面 `<div class="walk-offline" data-walk-offline hidden>`，與 `verify-walk` 要求的「面板自己帶 role=status」互相矛盾（live region 嵌 live region 更糟）→ 面板把 role 放回外層，正則放寬成「hidden 後面可以有屬性」，意圖（面板要出貨時是關閉的）不變。
+
+### 六、本輪新增的量具（都在 .verify/，已入 Git）
+- `_lane.mjs`：走到某站點後，讀 lane 自己畫的 quad——地面有沒有貼圖、貼圖的 key、uv 的週期、tile 的平均色與對比。
+- `_tile.mjs`：直接看那張 tile（平均、最小最大、ASCII 圖、row/col 掃描）——不必走過去。
+- `_pix.mjs`：影格的具名取樣 + 近地面 patch 的對比。
+- `_strip.mjs`：影格的一直一橫掃描——「沒有結構」和「有結構但很淡」分得出來。
+
+### 尚未做完（下一輪的優先順序清單；每條都有前提與可驗收的證據）
+1. **店面本體**（0aj／0al 起，最久的一條）：門、騎樓柱、招牌底座（**不可有字**——§5 紅線），以及關閉狀態的側面。
+   *前提*：`front` 的 open 分支已有 40 cm 進深的暗部室內、壓暗玻璃、6 根豎框、3 道橫檔、踢腳；門與騎樓柱是同一個分支裡的形狀，不是新的一套。
+   *驗收*：站在店前 4 m 的影格裡，門與柱都在畫面上且有深度（不是貼紙）；`verify-shapes` 全綠。
+2. **街後那片深綠 `canopy`** 貼得太近，店面像開在森林前。
+   *前提*：先量它離店面幾公尺、離地面多高（record 裡的 w/d/h 與 x 位置）。
+   *驗收*：同一張店面影格裡，樹木退到店面後方而不是貼在雨篷上。
+3. **`niagara_world` 的 `hotelw`**（旅館塔）近距離仍是無貼圖米白板（本輪已給 `trcwall` 專屬磚：`patternCanvas` 裡獨立分支，淡色石材、基座腰線、三拱三方窗、深玻璃帶豎梃）。
+   *前提*：先讀 `hotelw` prim 的 `u`（一格幾公尺）與塔的實高（Wikipedia 的清單已在 record 裡）。
+   *驗收*：同一張影格裡旅館塔有窗、有樓層線、有材質，不是米白板。
+4. **SkyWheel 吊艙近看**：圓潤感、門、座椅的節奏（0aj 起）。
+   *前提*：`wheel` 分支已有 21 輻條與 42 吊艙；先量吊艙在輪圈上的直徑與間距。
+   *驗收*：一張近距離影格裡能數出吊艙、認出它的門與玻璃。
+5. **夜景的地面**：night fold 62% 往 navy，鋪面的縫全沒了（地面 33,61,119 全平）。
+   *前提*：第 49/51 輪定下的 night fold 是全站規則，改它要先想清楚大堂那條（`verify-walk` 有「night fold keeps a readable floor」的斷言）。
+   *驗收*：夜景影格裡地面仍有可辨的縫（或站主明確說「夜景要是一片靜」——那是站主決定，不是代理的）。
+6. **站點 6 的位置**：x 830 離路緣傢具 55 cm。要不要再往東（例如讓 A 字架進畫面）要先量那條直線，不許先改後說。
+7. **量具維護**：`_lane.mjs` / `_tile.mjs` 只量 Niagara 的鋪面；下一輪若要量別的頁面鋪面，先確認 `FLOOR_PERIOD` 對那個 floor style 的意義。
+
+### 已知限制（本輪沒解決、也不該假裝解決的）
+- 夜裡的鋪面沒有結構（見上第 5 條）。
+- 摩天輪的輪圈從廣場地板看永遠在畫面外（幾何如此：輪圈在頭上 71°），所以站點 6 的畫面裡永遠只有它的腿與它的排隊區。
+- 影格：640×480 的白天／夜晚在 `.preview/r64/day6/` 與 `.preview/r64/night/`，另有一張 1024×768 的白天（`.preview/r64/day-hd/stop6-yaw78-1024x768.png`）——1024 的版本看得到鋪面的縫一路退到地平線，640 的版本看得見傘的肋。
+- `verify-feel` 的「慢幀仍在走」需要機器空閒才會過（背景有別的 Chromium 在跑就會掉到 70 cm/s）；量尺要獨佔機器。
+
+> 本檔是與使用者對話的工作記憶。最後更新：2026-10-23 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+
 ## 0aj. 第六十一輪（2026-10-22）：站主「所以那邊遊樂園做好了嗎？」——先修量尺，再回答
 
 ### 站主指令
@@ -36,7 +111,6 @@
 - 跨街樑在 `open` 街道要有依附物（燈串掛點、立柱），否則撤掉。
 - `niagara_world` 的 `hotelw`/`trcwall` 近距離仍是無貼圖米白板。
 
-> 本檔是與使用者對話的工作記憶。最後更新：2026-10-22 · 站點零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
 
 ## 0al. 第六十三輪（2026-10-22）：站主「繼續都弄好」——太陽改成乘法，方塊長出樓層
 

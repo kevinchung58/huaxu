@@ -807,17 +807,20 @@ ok("L and the button do the same thing", drawer.classList.contains("is-closed"))
 ok("the second district stays shut and says it is not open", /Not open yet/.test(html) && /Purpose not declared/.test(html));
 ok("printing prints the list, not a dark rectangle", /@media print \{[\s\S]*\.walk-view,[\s\S]*display: none/.test(css));
 ok("the canvas wears no overlay it cannot paint", !/walk-canvas::after/.test(css));
-const fb = q("[data-walk-fallback]");
-/* Round 55: the sentence IS the fallback now, so it must be in the lane rather than in the info
-   card (which ships hidden) and must not wear `.walk-note` (display:none on touch). A visitor with
-   no WebGL otherwise faces an empty viewport with the explanation behind a button. */
+const fb = q("[data-walk-offline]");
+/* Round 55, and the gate that came with it: the sentence IS the fallback now, so it must be in the
+   lane rather than in the info card (which ships hidden) and must not wear `.walk-note`
+   (display:none on touch). A visitor with no WebGL otherwise faces an empty viewport with the
+   explanation behind a button. Round 64: the panel was renamed to `walk-offline` when it took the
+   viewport's place, and this gate was still asking for the old name -- three failures a day, in
+   the one gate that is supposed to prove the no-WebGL path. */
 ok("the fallback names itself instead of hiding",
    fb && !fb.closest("[data-walk-card]") && !/\bwalk-note\b/.test(fb.className)
-     && fb.getAttribute("role") === "status" && /unavailable|list below/i.test(fb.textContent + js),
+     && fb.getAttribute("role") === "status" && /cannot draw the lane/i.test(fb.textContent),
    fb ? `${fb.className} inCard=${!!fb.closest("[data-walk-card]")}` : "missing");
 ok("the fallback is styled to be readable without hover",
-   /\.walk-fallback \{[\s\S]*?z-index: 3/.test(css)
-     && /\.walk-fallback\[hidden\] \{ display: none; \}/.test(css));
+   /\.walk-offline \{[\s\S]*?z-index: 2/.test(css)
+     && /\.walk-offline\[hidden\] \{ display: none; \}/.test(css));
 /* Round 54, at the owner's ruling: 全站該是 3d js. The Canvas2D lane painter is deleted outright —
    this gate exists so it stays deleted: no second canvas in the markup, no raster pass in the
    engine, no "canvas2d" anywhere a browser could still be told it fell back. The tile raster keeps

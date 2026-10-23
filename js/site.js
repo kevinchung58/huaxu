@@ -651,7 +651,7 @@ function leaveOverlay(root, trigger) {
       return [enc(r), enc(gc), enc(b)];
     };
     const HEX = /^(#)([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-    const RGB = /^(rgba?\()\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(,[^)]*)?(\))$/;
+    const RGB = /^(rgba?\()\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(,[^)]*)?(\))$/;
     const map = (style) => {
       if (typeof style !== "string") return style;
       const m = HEX.exec(style);
@@ -1334,17 +1334,53 @@ function leaveOverlay(root, trigger) {
   };
   /* The Recreation Trail's paving stones (OSM: surface=paving_stones): small grey pavers in a
      running bond, a little uneven in tone. */
+  /* Round 64: the joints are the paving's own drawing.
+
+     They used to be 5-12% tints on a mid grey, drawn straight onto the base — enough to see at arm's
+     length and gone by ten metres, which is why Clifton Hill's plaza was a pale sheet with a
+     pattern in the file and none in the eye (measured: the ground sampled (143,161,178), a
+     blue-grey with no structure in it at all). A pavement is a dark bed with stones laid on it, so
+     the bed is now the dark colour and the stones sit on top of it, and the tile's mean is held
+     where it was so the two distance tiers still meet without a step.
+
+     And the stones are a paver's size: 48 cm square with a 3 cm joint, which on a 192 cm tile is
+     four across. The old tile drew eight rows of 15 cm stones on a 64 cm period, and a 15 cm
+     stone at a grazing angle is under a pixel — the mipmap ate the plaza's paving long before the
+     eye lost it. The floor's own period says how big the tile is (FLOOR_PERIOD below). */
   const paintPavers = (c) => {
-    c.fillStyle = "#7d7a74"; c.fillRect(0, 0, 128, 128);
-    for (let r = 0; r < 8; r++) {
+    c.fillStyle = "#2b2b27"; c.fillRect(0, 0, 128, 128);          // the joint bed
+    for (let r = 0; r < 4; r++) {
       const off = r % 2 ? 16 : 0;
       for (let x = -off; x < 128; x += 32) {
-        c.fillStyle = `rgba(${(r + x) % 3 ? "40,38,34" : "235,230,220"},${(0.05 + ((x / 32 + r) % 4) * 0.025).toFixed(3)})`;
-        c.fillRect(x + 1, r * 16 + 1, 30, 14);
+        const v = (r * 7 + Math.round((x + 256) / 32)) % 5;        // no two stones are one colour
+        c.fillStyle = `rgb(${97 + v * 3},${95 + v * 3},${87 + v * 3})`;
+        c.fillRect(x + 1, r * 32 + 1, 30, 30);
       }
-      c.fillStyle = "rgba(34,32,28,0.5)"; c.fillRect(0, r * 16, 128, 1);
     }
   };
+  /* The far tier of the floor is the same paving at twice the size: a 48 cm paver is a few pixels
+     wide at twenty-six metres, and a paving whose stones have gone is a car park with rides
+     parked in it. So the far tile is the same joint bed with twice the stones in it, and the same
+     proportion of bed, so the two tiers carry the same mean and meet without a step. */
+  const paintPaversCoarse = (c) => {
+    c.fillStyle = "#2b2b27"; c.fillRect(0, 0, 128, 128);
+    for (let r = 0; r < 2; r++) {
+      const off = r % 2 ? 32 : 0;
+      for (let x = -off; x < 128; x += 64) {
+        const v = (r * 5 + Math.round((x + 256) / 64)) % 4;
+        c.fillStyle = `rgb(${97 + v * 4},${95 + v * 4},${87 + v * 4})`;
+        c.fillRect(x + 2, r * 64 + 2, 60, 60);
+      }
+    }
+  };
+  /* Round 64: the tile's world size belongs to the floor, not to the painter.
+
+     The u v scale says how many centimetres one tile covers, and at the renderer's DPM 2 a tile
+     is 64 cm -- the size of a trail's paving stones and a quarter of a plaza's paver. The paver
+     tile above is drawn for 48 cm stones, so the floor that lays it down draws it three times
+     larger: 192 cm to the tile, four pavers across. Without this the plaza's paving was half a
+     paver wide at the size the canvas was drawn, and the mipmap averaged it away. */
+  const FLOOR_PERIOD = { pavers: 3 };
   /* A lit city seen down from 346 m: a dark ground with a scatter of street lights and windows.
      The scatter is a texture and says so in the room's caveat -- the lights are drawn at a lit
      city's density, not surveyed street by street. */
@@ -1815,9 +1851,17 @@ function leaveOverlay(root, trigger) {
        but a paved floor is the case a mean is right for: what a walkway twenty metres off looks like
        is its average colour. So the floor has tiers: the tile, the tile pulled half and then four
        fifths of the way to its own measured mean, and the mean, by the slice's distance ahead. The
-       mean is kept exactly at every tier, so the tiers meet without a step in tone. */
+       mean is kept exactly at every tier, so the tiers meet without a step in tone.
+
+       Round 64: the wash now pulls toward the tile's OWN mean, in the tile's own colour space.
+       The old target was an authored (121,117,112), which the canvas's tone map lifts to about
+       (205,201,193) before it is ever laid down -- so the far tier was being washed toward a
+       colour 50 levels lighter than the paving it was washing, which is why the tiers measured
+       (170,168,164) and (173,171,168) and the plaza had one flat tone from the kerb to the wheel.
+       The wash is weaker too (0.18 and 0.45): the far paving should soften, not go. */
     floorTiers = layer.dataset.floor === "pavers"
-      ? [0.5, 0.8].map((k) => mkTile((c) => { paintPavers(c); c.fillStyle = `rgba(121,117,112,${k})`; c.fillRect(0, 0, 128, 128); }))
+      ? [[0.18, paintPavers], [0.45, paintPaversCoarse]]
+        .map(([k, paint]) => mkTile((c) => { paint(c); c.fillStyle = `rgba(90,88,82,${k})`; c.fillRect(0, 0, 128, 128); }))
       : null;
     winPat = mkTile(paintWindows);
     PATS.shutter = mkTile(paintShutter);
@@ -2271,7 +2315,7 @@ function leaveOverlay(root, trigger) {
                   booth: "glass", bikes: "bikes", planter: "planter", cones: "cones",
                   mailbox: "flap", signA: "aboard", banner: "cloth", front: "front", pane: "pane",
                   bin: "bin", bollard: "box", steps: "box", pipe: "box", awning: "box",
-                  sign: "box", drain: "plate", noren: "cloth", poster: "plane", frame: "plane",
+                  sign: "signboard", drain: "plate", noren: "cloth", poster: "plane", frame: "plane",
                   track: "track", tram: "tram", tree: "tree",
                   mirror: "mirror", ladder: "ladder", hydrant: "hydrant", recycle: "flap",
                   meter: "box", camera: "camera",
@@ -2295,6 +2339,9 @@ function leaveOverlay(root, trigger) {
                   wheel: "wheel", incline: "incline",
                   // Round 58: the strip's second ride — the carousel, turning on the frame clock.
                   carousel: "carousel",
+                  // Round 64: the shade over the queue — the plaza's east side was an apron with
+                  // two rails on it and nothing overhead.
+                  parasol: "parasol",
                   // Round 54 audit: two kinds the authored records had been using while the table
                   // never named them — every `board` was reaching the plane branch by accident,
                   // not by decision, and the midway stall fell through although a stall branch
@@ -2842,6 +2889,20 @@ function leaveOverlay(root, trigger) {
      unchanged, the whole-frame luma was 180.7 while the floor and the middle of the frame differed
      by 3 points. Where the record says the place is a day, the air clears as the sun rises. */
   const haze = (z) => clamp((z - 420) / 2450, 0, 1) * FOG_MAX * (DAYPAGE ? 1 - 0.62 * DAY() : 1);
+  /* Round 64: the ground's own air.
+
+     The floor took its wash from `haze(z)`, which is the lane's *depth*. On a short street the
+     lane's depth and the distance to the far wall are the same thing, so the two agreed by
+     accident. On a hundred-metre lane they are not: Clifton Hill's plaza is eighty metres down
+     this one, and the paving under the visitor's own feet was washed as hard as the paving a
+     mile away, so the joints were in the picture and not in the eye — the plaza read as one pale
+     sheet, which is what the owner kept reporting about it.
+
+     The ground's air is now the air between the eye and the ground, which is what a fog is. The
+     walls never took this wash, so the ground and the wall a visitor leans on now agree with
+     each other instead of disagreeing with the ground underfoot. */
+  const groundAir = (z, camZ) => clamp((Math.abs(z - camZ) - 420) / 2450, 0, 1) * FOG_MAX * 0.7
+    * (DAYPAGE ? 1 - 0.62 * DAY() : 1);
 
   const drawMarks = (C) => {
     // The ground's own kit: the tactile guide path along each wall, a painted gutter line at the
@@ -2858,7 +2919,7 @@ function leaveOverlay(root, trigger) {
             pts.push([cx + Math.cos(a0) * rad, 1, cz + Math.sin(a0) * rad * 0.8]);
           }
           const q = add(C, pts, ZERO8.slice(0, 16), "flat", col);
-          if (q) { q.lit = lightAt(cx, 2, cz); q.air = haze(q.z) * 0.7; }
+          if (q) { q.lit = lightAt(cx, 2, cz); q.air = groundAir(q.z, C.z); }
         };
         ring(r, "#2b3648");
         ring(r * 0.78, "#1a2330");
@@ -2879,7 +2940,7 @@ function leaveOverlay(root, trigger) {
           const q = add(C, [[px, 0, za], [px, 0, zb], [px, mk.y1, zb], [px, mk.y1, za]],
               [za * DPM, 0, zb * DPM, 0, zb * DPM, -mk.y1 * DPM, za * DPM, -mk.y1 * DPM],
               "pat", PATS.kerb);
-          if (q) { q.lit = lightAt(px, 3, (za + zb) / 2) * 1.18; q.air = haze(q.z) * 0.7; }
+          if (q) { q.lit = lightAt(px, 3, (za + zb) / 2) * 1.18; q.air = groundAir(q.z, C.z); }
         }
         return;
       }
@@ -2890,7 +2951,7 @@ function leaveOverlay(root, trigger) {
            the lane's floor, this is not a plane running to the horizon. */
         const q = add(C, [[mk.x0, 1, mk.z0], [mk.x1, 1, mk.z0], [mk.x1, 1, mk.z1], [mk.x0, 1, mk.z1]],
                       ZERO8, "flat", "#c3d3e6");
-        if (q) { q.lit = lightAt((mk.x0 + mk.x1) / 2, 6, (mk.z0 + mk.z1) / 2) * 1.0; q.air = haze(q.z) * 0.6; }
+        if (q) { q.lit = lightAt((mk.x0 + mk.x1) / 2, 6, (mk.z0 + mk.z1) / 2) * 1.0; q.air = groundAir(q.z, C.z) * 0.86; }
         return;
       }
       if (mk.kind === "wet") {
@@ -2909,7 +2970,7 @@ function leaveOverlay(root, trigger) {
              z1 * DPM * 2, mk.x1 * DPM * 2, z1 * DPM * 2, mk.x0 * DPM * 2], "pat", pat);
         if (q) {
           q.lit = lightAt((mk.x0 + mk.x1) / 2, 4, (z0 + z1) / 2) * (mk.kind === "gutter" ? 0.8 : 1.05);
-          q.air = haze(q.z) * 0.7;
+          q.air = groundAir(q.z, C.z);
         }
       }
     });
@@ -3681,10 +3742,17 @@ function leaveOverlay(root, trigger) {
          grey field: the district read as a car park with rides parked in it. The tile is mipmapped,
          so the pave at 60 m costs a filtered tap and reads as paving; the measured mean is kept only
          for the far end of the lane, where a cell is a few pixels and the tile would be its mean
-         anyway — 52 m, not 16. */
+         anyway — 52 m, not 16.
+
+         Round 64: the tile's period is the floor's own (FLOOR_PERIOD), and the far tier's flat
+         colour is the tile's mean measured in the tile's own space — the flat quad's colour is not
+         tone-mapped the way a canvas is, so it has to be authored at the value the canvas already
+         carries, or the plaza wears a step at fifty-two metres. */
+      const per = FLOOR_PERIOD[layer.dataset.floor] || 1;
+      const k = DPM / per;
       const fl = floorTiers && fd >= 5200
-        ? add(C, corners, ZERO8, "flat", "#797570")          // the pavers' measured mean
-        : add(C, corners, [za * DPM, x0 * DPM, za * DPM, x1 * DPM, zb * DPM, x1 * DPM, zb * DPM, x0 * DPM],
+        ? add(C, corners, ZERO8, "flat", "#9c9c96")          // the pavers' measured mean
+        : add(C, corners, [za * k, x0 * k, za * k, x1 * k, zb * k, x1 * k, zb * k, x0 * k],
               "pat", floorTiers && fd >= 900 ? floorTiers[fd >= 2600 ? 1 : 0] : floorPat);
       /* Round 61: the paving is not a light source.
          A 1.15 lift on a tile already painted at 180 grey, under a sky-bright hemisphere, clipped
@@ -3692,7 +3760,7 @@ function leaveOverlay(root, trigger) {
          what the fun strip read as from its own station. The lift is for the promenade's stone,
          where the sun lands square; a 100 m plaza keeps its own value and shows its joints. */
       if (fl) { fl.lit = lightAt((x0 + x1) / 2, 6, zc) * (Math.abs(zc - C.z) > 2600 ? 0.82 : 1.05);
-                fl.air = haze(fl.z) * 0.7;
+                fl.air = groundAir(fl.z, C.z);
                 fl.sz = fl.z + 4000;     // the ground paints before anything standing on it
                 if (UNDER) fl.nolite = true; }
     };
@@ -4162,6 +4230,126 @@ function leaveOverlay(root, trigger) {
           part(-19, 9, 40, base, false);                                   // the cap
           part(-10, 12, 14, base, false);                                  // the finial
         }
+      } else if (shape === "signboard") {
+        /* Round 64: a marquee is a lit board on a building, and it needs something to hold it up.
+
+           The strip's two boards were plain boxes floating a metre above the awnings with nothing
+           under them: at three metres -- which is where the square puts a visitor opposite the
+           arcade -- a blank slab reads as a card on a stick. The base is the part that says how a
+           board is held: a rail under it, a frame round its face, and two standoffs back to the
+           wall. That is what makes a board part of the building instead of a shape in the air.
+
+           The face stays blank. What a marquee says is a lease, and the lettering would belong to
+           a business this street does not claim to have; what a board does is throw light on the
+           pavement, and that much a drawing can keep. */
+        const along = Math.abs(m.ry) > 45;
+        const dir = m.x < 0 ? 1 : -1;                 // into the lane, whichever wall this is
+        const half = m.w / 2, dep = m.d / 2;
+        const P = (u, v, y) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
+        const Q = (pts, col, l, keep) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (!q) return;
+          q.lit = l;
+          if (keep) { q.nolite = true; q.day = false; }
+          drawn.push(q);
+        };
+        const y0 = m.y, y1 = m.y + m.h;
+        /* The board keeps the district's clock: it comes up at its own phase, as the record's
+           `liton` says, and a board that lit with the street would be one more lamp. */
+        const phz = dayPhase();
+        const np = ((((phz - 0.7) % 1) + 1) % 1) / 0.6;
+        const ez = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+        const NL = m.liton ? NIGHT() * ez((np - (m.liton - 0.7) / 0.6) / 0.05) : NIGHT();
+        // the face: a plate lit from within after dark, and a painted board by day
+        Q([P(-half, dep, y0), P(half, dep, y0), P(half, dep, y1), P(-half, dep, y1)],
+          blendHex(base, "#ffe0a8", NL * 0.82), 0.66 + 0.78 * NL, true);
+        // the frame: a lip round the face, so the board is joinery and not a rectangle of colour
+        Q([P(-half - 4, dep + 2, y1 - 10), P(half + 4, dep + 2, y1 - 10),
+           P(half + 4, dep + 2, y1 + 4), P(-half - 4, dep + 2, y1 + 4)], mix(base, 0.16), lit);
+        for (const uu of [-half - 4, half - 1]) {
+          Q([P(uu, dep + 2, y0 - 4), P(uu + 5, dep + 2, y0 - 4),
+             P(uu + 5, dep + 2, y1 + 4), P(uu, dep + 2, y1 + 4)], mix(base, 0.16), lit);
+        }
+        // the base rail: the board's own bottom member, standing proud of the wall
+        Q([P(-half - 7, dep + 5, y0 - 17), P(half + 7, dep + 5, y0 - 17),
+           P(half + 7, dep + 5, y0), P(-half - 7, dep + 5, y0)], mix(base, -0.2), lit * 0.88);
+        // the standoffs: two short blocks that carry the board back to the wall it hangs on
+        for (const uu of [-half + 26, half - 42]) {
+          Q([P(uu, 0, y0 + 6), P(uu + 16, 0, y0 + 6),
+             P(uu + 16, dep, y0 + 6), P(uu, dep, y0 + 6)], mix(base, -0.4), lit * 0.6);
+          Q([P(uu, 0, y0 + 6), P(uu + 16, 0, y0 + 6),
+             P(uu + 16, 0, y0 + 30), P(uu, 0, y0 + 30)], mix(base, -0.4), lit * 0.6);
+        }
+      } else if (shape === "parasol") {
+        /* Round 64: the plaza's east side was an apron with two rails on it and nothing over the
+           queue. A queue in the sun is a queue nobody stands in — the shade is what makes the
+           apron a place to wait rather than a place to cross. This is the strip's own cloth on a
+           mast: a square canvas pitched over four ribs, striped along the slope the way the
+           awnings over the fronts are pitched, with a scalloped hem at its edge. The mast is a
+           separate prop, so it can be solid: this draws only the cloth that hangs from it.
+
+           The cloth was one pale sheet, and it was pale for a reason: #c9b489 is a light canvas,
+           and the tile's tone map lifts the light end hardest, so it arrived as a bleached cream
+           with no seam in it. A real parasol is read by its ribs, its sag between them and the
+           shade it puts on the ground — so the cloth is deeper, the ribs are drawn, the hem
+           scallops, and the square of shade falls on the paving where the sun says it falls. */
+        const hw = m.w / 2, hd = m.d / 2, y0 = m.y;
+        /* The apex's rise above the cloth's edge: the mast beside the canopy is 244 cm tall and the
+           cloth's edge hangs at 204, so the apex is the mast's top and the canopy sits on its post
+           instead of floating over it. */
+        const rise = 40;
+        const cloth = m.leaf || "#9c8460";
+        const P = (u, v, y) => [m.x + u, y, m.z + v];
+        const Q = (pts, col, l) => {
+          const q = add(C, pts, ZERO8, "flat", col);
+          if (q) { q.lit = l; drawn.push(q); }
+        };
+        const c = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]];
+        /* The canopy's own shade on the paving: a parasol is the one thing in this plaza that
+           puts a square of shade on the ground, and the ground is a paving now — something that
+           can receive one. The sun stands where the record says it stands. */
+        if (DAYPAGE && DAY() > 0.05) {
+          const az = sunAz(), sgn = az < 0 ? 1 : -1;
+          const L = Math.min(620, (y0 / Math.tan(sunAlt())) * Math.abs(az));
+          if (L > 12) {
+            const fs = add(C, [[m.x + sgn * 12, 2, m.z - hd * 0.82], [m.x + sgn * (L + 12), 2, m.z - hd * 0.82],
+                               [m.x + sgn * (L + 12), 2, m.z + hd * 0.82], [m.x + sgn * 12, 2, m.z + hd * 0.82]],
+                           ZERO8, "flat", `rgba(26,34,52,${(0.3 * DAY()).toFixed(3)})`);
+            if (fs) { fs.day = false; fs.air = 0; drawn.push(fs); }
+          }
+        }
+        for (let i = 0; i < 4; i++) {
+          const [ax, az] = c[i], [bx, bz] = c[(i + 1) % 4];
+          for (let s2 = 0; s2 < 4; s2++) {
+            const t0 = s2 / 4, t1 = (s2 + 1) / 4;
+            const p0 = [ax + (bx - ax) * t0, az + (bz - az) * t0];
+            const p1 = [ax + (bx - ax) * t1, az + (bz - az) * t1];
+            const q0 = [p0[0] * 0.1, p0[1] * 0.1], q1 = [p1[0] * 0.1, p1[1] * 0.1];
+            /* The cloth hangs between the ribs: the hem of a real parasol is a scallop, and the
+               panel between two ribs sits lower than the rib it hangs from. */
+            const sag0 = s2 === 0 ? 0 : 7, sag1 = s2 === 3 ? 0 : 7;
+            Q([P(p0[0], p0[1], y0 - sag0), P(p1[0], p1[1], y0 - sag1),
+               P(q1[0], q1[1], y0 + rise), P(q0[0], q0[1], y0 + rise)],
+              s2 % 2 ? mix(cloth, 0.2) : cloth, lit * (s2 % 2 ? 0.9 : 0.78));
+          }
+          /* The hem: a band at the edge with a scallop's point under every panel's middle. */
+          for (let s2 = 0; s2 < 4; s2++) {
+            const t0 = s2 / 4, t1 = (s2 + 1) / 4;
+            const p0 = [ax + (bx - ax) * t0, az + (bz - az) * t0];
+            const p1 = [ax + (bx - ax) * t1, az + (bz - az) * t1];
+            const pm = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2];
+            Q([P(p0[0], p0[1], y0), P(p1[0], p1[1], y0),
+               P(p1[0], p1[1], y0 - 15), P(p0[0], p0[1], y0 - 15)], mix(cloth, -0.12), lit * 0.72);
+            Q([P(p0[0], p0[1], y0 - 15), P(pm[0], pm[1], y0 - 34),
+               P(p1[0], p1[1], y0 - 15)], mix(cloth, -0.12), lit * 0.72);
+          }
+          /* The rib: the seam the cloth is stretched over, a narrow strip down each corner. */
+          const prev = c[(i + 3) % 4], next = c[(i + 1) % 4];
+          const B = [ax + (prev[0] - ax) * 0.035, az + (prev[1] - az) * 0.035];
+          const Cc = [ax + (next[0] - ax) * 0.035, az + (next[1] - az) * 0.035];
+          Q([P(ax, az, y0), P(B[0], B[1], y0), P(0, 0, y0 + rise)], mix(cloth, -0.2), lit * 0.6);
+          Q([P(ax, az, y0), P(0, 0, y0 + rise), P(Cc[0], Cc[1], y0)], mix(cloth, -0.2), lit * 0.6);
+        }
       } else if (shape === "vending") {
         /* A machine that is still working when the street is not (round 56). The object table's
            whole read is the lit shelf of cans behind glass over a *white* cabinet, and its delivery
@@ -4465,9 +4653,40 @@ function leaveOverlay(root, trigger) {
           if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); }
         };
         const up = S && S.shut !== undefined ? S.shut : 0;
+        const yA = m.h * 0.8;                       // the head of the unit's own wall
+        /* Round 64: a shopfront is a wall with a hole in it, and the hole has two parts.
+
+           The strip's units had one: a window bay across the whole frontage. At three metres --
+           which is where the square puts a visitor opposite an arcade -- a row of them read as
+           cream boards with a stripe over them: a shopfront with no door is a display case, and a
+           row of display cases with nothing between them is a fence. So a unit now carries a door
+           bay at one end (the end alternates along the row, so the run has a rhythm), a window bay
+           beside it, and a pier at each end standing proud of the wall -- the arcade's columns.
+           The door is the part that says "you may come in": a recessed leaf, a frame, a fanlight
+           and a threshold, warm from within after dark. */
+        const pier = Math.min(26, half * 0.22);              // a column's width, at each end
+        const doorW = Math.min(104, Math.max(58, (half * 2 - pier * 2) * 0.34));
+        const idTxt = (m.el && m.el.dataset.obj) || "";
+        let hsum = 0;
+        for (let i = 0; i < idTxt.length; i++) hsum = (hsum * 31 + idTxt.charCodeAt(i)) % 100003;
+        const side = hsum % 2 ? -1 : 1;                       // which end the door stands on
+        const dOut = side > 0 ? half - pier : -half + pier;   // the door bay's outer edge
+        const dIn = dOut - side * doorW;                      // and its inner edge
+        const w0 = side > 0 ? -half + pier : dIn;             // the window bay's extent
+        const w1 = side > 0 ? dIn : half - pier;
+        const doorH = Math.min(210, yA - 40);
         if (m.awn) {
-          const yA = m.h * 0.8, out = m.awnout || 130, yB = yA - 34, val = 20;
+          const out = m.awnout || 130, yB = yA - 34, val = 20;
           Q([P(-half, 2, 0), P(half, 2, 0), P(half, 2, 46), P(-half, 2, 46)], mix(base, -0.22), lit);
+          // The arcade's columns: a pier at each end of the unit, standing proud of the wall. They
+          // are the building's, so they stand whether the shop is open or shut -- which is what
+          // makes a row of units read as one colonnade instead of a row of separate boxes.
+          for (const [pa, pb] of [[-half, -half + pier], [half - pier, half]]) {
+            Q([P(pa, 15, 0), P(pb, 15, 0), P(pb, 15, yA), P(pa, 15, yA)], mix(base, 0.1), lit);
+            Q([P(pa, 0, 0), P(pa, 15, 0), P(pa, 15, yA), P(pa, 0, yA)], mix(base, -0.22), lit * 0.72);
+            Q([P(pa - 4, 3, yA - 18), P(pb + 4, 3, yA - 18), P(pb + 4, 3, yA), P(pa - 4, 3, yA)],
+              mix(base, 0.18), lit);
+          }
           if (up > 0.5) {
             // Open: display glass at the wall's own face, mullions over it, and one warm shelf of
             // light that the sun mostly takes. The glass is pale by day and dark by night, so an
@@ -4484,26 +4703,47 @@ function leaveOverlay(root, trigger) {
                So the pane is a recess now: the interior wall stands 40 cm back in its own dark, the
                glass is dimmer than the render's own lift (it is glass, not a lamp), and the frame is
                six narrow members over a stall riser and two transoms. */
-            Q([P(-half, 3, 0), P(half, 3, 0), P(half, 3, yA - 6), P(-half, 3, yA - 6)],
+            Q([P(w0, 3, 0), P(w1, 3, 0), P(w1, 3, yA - 6), P(w0, 3, yA - 6)],
               mix(base, -0.52), lit * 0.5);                     // the interior behind the glass
-            const gl = add(C, [P(-half + 6, 4, 46), P(half - 6, 4, 46), P(half - 6, 4, yA - 10),
-                               P(-half + 6, 4, yA - 10)], ZERO8, "flat", blendHex("#243146", "#7c8ea3", DAY()));
+            const gl = add(C, [P(w0 + 6, 4, 46), P(w1 - 6, 4, 46), P(w1 - 6, 4, yA - 10),
+                               P(w0 + 6, 4, yA - 10)], ZERO8, "flat", blendHex("#243146", "#7c8ea3", DAY()));
             if (gl) { gl.lit = 0.52 + 0.22 * DAY(); gl.daygain = 0.5; drawn.push(gl); }
             // What is behind the glass: a lit shelf of hangs, low, so the interior is not a void.
+            const wspan = w1 - w0;
             for (let i = 0; i < 3; i++) {
-              const u0 = -half * 0.62 + i * half * 0.62;
-              Q([P(u0, 7, 88), P(u0 + half * 0.36, 7, 88), P(u0 + half * 0.36, 7, 132), P(u0, 7, 132)],
+              const u0 = w0 + (i / 3) * wspan;
+              Q([P(u0, 7, 88), P(u0 + wspan * 0.26, 7, 88), P(u0 + wspan * 0.26, 7, 132), P(u0, 7, 132)],
                 i % 2 ? "#c9a06a" : "#d8b483", (0.42 + up * 0.5) * dl, 0.05);
             }
-            for (let i = 0; i <= 6; i++) {
-              const u0 = -half + (i / 6) * 2 * half - 4;
+            for (let i = 0; i <= 5; i++) {
+              const u0 = w0 + (i / 5) * wspan - 4;
               Q([P(u0, 2, 40), P(u0 + 8, 2, 40), P(u0 + 8, 2, yA - 4), P(u0, 2, yA - 4)],
                 "#2a3448", lit * 0.62);
             }
             for (const yy of [46, 118, yA - 12]) {
-              Q([P(-half + 4, 2, yy), P(half - 4, 2, yy), P(half - 4, 2, yy + 8), P(-half + 4, 2, yy + 8)],
+              Q([P(w0 + 4, 2, yy), P(w1 - 4, 2, yy), P(w1 - 4, 2, yy + 8), P(w0 + 4, 2, yy + 8)],
                 "#2a3448", lit * 0.62);
             }
+            /* The door bay. The leaf stands in the same recess as the glass, so the unit reads as
+               one wall with two holes in it rather than a window with a door stuck on the side. */
+            Q([P(dIn, 0, 0), P(dOut, 0, 0), P(dOut, ins, 4), P(dIn, ins, 4)],
+              mix("#8d8578", base, 0.25), lit);                  // the threshold at the door's feet
+            Q([P(dIn, 3, 0), P(dOut, 3, 0), P(dOut, 3, yA - 4), P(dIn, 3, yA - 4)],
+              mix(base, -0.64), lit * 0.3);                      // the reveal behind the leaf
+            Q([P(dIn + 9, 4, 0), P(dOut - 9, 4, 0), P(dOut - 9, 4, doorH), P(dIn + 9, 4, doorH)],
+              mix("#3c2f26", base, 0.3), lit * (0.62 + up * 0.38) * dl);
+            // the frame: two jambs and a head, proud of the leaf
+            for (const uu of [dIn + 2, dOut - 9]) {
+              Q([P(uu, 2, 0), P(uu + 7, 2, 0), P(uu + 7, 2, doorH + 44), P(uu, 2, doorH + 44)],
+                "#39404e", lit * 0.8);
+            }
+            Q([P(dIn + 2, 2, doorH + 44), P(dOut - 7, 2, doorH + 44), P(dOut - 7, 2, doorH + 56),
+               P(dIn + 2, 2, doorH + 56)], "#39404e", lit * 0.8);
+            // the fanlight over the door: the one warm pane of the unit
+            const fan = add(C, [P(dIn + 9, 4, doorH + 12), P(dOut - 9, 4, doorH + 12),
+                                P(dOut - 9, 4, doorH + 40), P(dIn + 9, 4, doorH + 40)], ZERO8, "flat",
+                             blendHex("#5d6a7c", "#ffce8e", NIGHT() * 0.92));
+            if (fan) { fan.lit = 0.45 + 0.85 * NIGHT(); fan.daygain = 0.35; drawn.push(fan); }
           } else {
             // Shut: the blade across the face, the same shutter as the cladding.
             const blade = add(C, [P(-half, 6, 0), P(half, 6, 0), P(half, 6, yA - 4), P(-half, 6, yA - 4)],
@@ -4511,6 +4751,15 @@ function leaveOverlay(root, trigger) {
                  m.z * DPM + half * DPM, -(yA - 4) * DPM, m.z * DPM - half * DPM, -(yA - 4) * DPM],
                 "pat", PATS.shutter);
             if (blade) { blade.lit = lit * 1.05; drawn.push(blade); }
+            // Round 64: a closed unit was a blade and nothing else -- no returns, no hood, so the
+            // shut shops on the strip read as a flat band of corrugation. The hood over the blade
+            // and the two reveals at its ends are what make it a closed shopfront.
+            Q([P(-half - 3, 7, yA - 6), P(half + 3, 7, yA - 6), P(half + 3, 7, yA + 16), P(-half - 3, 7, yA + 16)],
+              mix("#39404e", base, 0.2), lit * 0.9);
+            for (const uu of [-half, half - 9]) {
+              Q([P(uu, 2, 0), P(uu + 9, 2, 0), P(uu + 9, 2, yA - 4), P(uu, 2, yA - 4)],
+                mix(base, -0.34), lit * 0.6);
+            }
           }
           // The shop's own weather: a blank fascia board, a canvas over the walk at shoulder height,
           // a valance at its edge, and — if the record names one — a noren in the recess head. The
@@ -7688,7 +7937,16 @@ function leaveOverlay(root, trigger) {
   };
   const homeGlide = () => {
     if (!gliding || gliding.origX === undefined || gliding.origX === gliding.x) return;
-    if (collidesAt(gliding.origX, Math.min(depth + 150, gliding.to))) return;  // still box alongside
+    /* Round 64: the walk home looked at ONE point 150 cm ahead and called the line clear when
+       that point was clear. A body pressed against a lamp post was therefore sent straight back
+       onto its line the moment the post was 150 cm behind it, and the glide ping-ponged between
+       the line and the detour and never got round anything at all — the visitor was left standing
+       in the lane with a chip that promised an arrival. Home now waits until the line is clear
+       the whole way along, not clear at one step. */
+    const to = Math.min(gliding.to, depth + 900);
+    for (let d = depth + 120; d <= to; d += 120) {
+      if (collidesAt(gliding.origX, d)) return;     // still box alongside: stay on the detour
+    }
     gliding.x = gliding.origX;
     delete gliding.origX;
   };

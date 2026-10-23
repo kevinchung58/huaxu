@@ -71,7 +71,11 @@ for (const file of pageFiles) {
     `${file} needs the cache-busted Three.js bridge`);
   // Round 55: there is no fallback picture, so the renderer-less lane must ship the panel that says
   // so — and it must ship it closed, because a lane that always wears that panel is a broken page.
-  assert.match(html, /<div class="walk-offline" data-walk-offline hidden>/,
+  // Round 64: the panel carries role="status" — it is the live region that announces why the
+  // lane cannot be drawn, and a live region nested inside another live region is worse than
+  // none. So the markup reads `... hidden role="status">` and this check reads the panel as
+  // "the panel element, shipped closed" instead of as one literal string.
+  assert.match(html, /<div class="walk-offline" data-walk-offline hidden[^>]*>/,
     `${file} needs the no-WebGL panel, shipped closed`);
   assert.match(html, /data-walk-offline-where/, `${file} needs the panel's standing-position line`);
   const match = html.match(/<script type="application\/json" data-walk-backdrop>([\s\S]*?)<\/script>/);

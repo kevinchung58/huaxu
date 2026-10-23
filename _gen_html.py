@@ -1938,6 +1938,8 @@ OBJ_SIZE = {
     # The winter walkway's kit. A snow bank is wide and low because that is what a ploughed edge
     # looks like; a bench and a rack are the two things every campus walk has and nobody draws.
     "bank": (520, 60, 150), "bench": (150, 84, 48), "rack": (140, 76, 90),
+    # Round 64: the shade over the queue — a square canvas on a mast, and the mast is a post.
+    "parasol": (420, 60, 420),
 }
 
 # Props whose ground footprint is physically occupied. The generator stamps these as collision
@@ -4847,7 +4849,13 @@ DISTRICTS = [
                  # at 15 m from round 52, so a visitor could walk *behind* the shops and the strip
                  # read as a plaza with crates standing in it. 10.2 m puts the walk where the glass
                  # is, and the square still opens to 17.5 m in front of the wheel.
-                 "ws": [[1460, 2860, 1020], [2860, 3240, 1750], [3240, 3660, 1020]],
+                 # Round 64: the wide walk begins at the strip's gate, not at the Parkway. The
+                 # segment used to start at record 1460 -- the rail's own depth -- so the parkway's
+                 # walk was 9.96 m wide while its parapet stood at 6.98 m: the body could step
+                 # three metres past the rail onto paving that hangs over the gorge, and the rail's
+                 # own stop (x -1290) was outside the lane altogether and could never be reached.
+                 # The parkway keeps the lane's own width; the rail is its edge again.
+                 "ws": [[2200, 2860, 1020], [2860, 3240, 1750], [3240, 3660, 1020]],
                  # Round 61: what is *paved*, as against where a body may walk. The square's own
                  # front row stands at 16.4 m (the fronts), 16.8 (the rails) and 19.3 (the wheel's
                  # apron); a 17.5 m walk left all of it past the last paver, over the void. The
@@ -5078,6 +5086,50 @@ DISTRICTS = [
              "w": 900, "h": 96, "d": 12,
              "title": "The rail's other side",
              "hint": "Two rails make a queue; the apron between them is the ride's own floor."},
+            # ---- Round 64: the plaza's east side, the side the wheel stands on. It was an apron
+            # with two rails on it and nothing else — a queue with no queue in it, no shade, and a
+            # ride whose platform had nothing standing in front of it. What a fun row puts at the
+            # foot of its wheel is a ticket kiosk, a rail that holds the line along the deck's
+            # edge, and shade over the line, so that is what stands here now. None of it names a
+            # business, and none of it sells anything this drawing has not drawn.
+            {"id": "plaza-ticket", "kind": "front", "x": 2120, "z": 3050, "y": 0, "ry": -90,
+             "w": 170, "h": 240, "d": 20, "awn": "#3f5a7a", "fascia": "#b9ac8e",
+             "leaf": "#8a7f6d", "liton": 0.58, "solid": True,
+             "states": [{"say": "The kiosk is open; the light inside is on.", "k": 0.9, "shut": 0.9}],
+             "title": "The ticket kiosk at the wheel",
+             "hint": "A little booth of painted wood under a canvas, where a ticket would be sold. "
+                     "It sells nothing here: the drawing keeps the wheel's glow, not its prices, "
+                     "and a booth with no name on it is the honest one."},
+            {"id": "queue-rail-c", "kind": "parapet", "x": 1790, "z": 3050, "y": 0, "ry": 90,
+             "w": 620, "h": 96, "d": 12,
+             "title": "The rail along the platform",
+             "hint": "The line where the queue hands the visitor over to the wheel: the same steel "
+                     "tube on two feet, run along the deck's west edge."},
+            # The cloth hangs at 204 cm — just over a head — and its apex at 244 cm is the top of
+            # the mast beside it, so the canopy is on its post instead of floating over it.
+            {"id": "plaza-shade-1", "kind": "parasol", "x": 1650, "z": 2950, "y": 204, "ry": 0,
+             "w": 420, "h": 74, "d": 420, "leaf": "#9c8460",
+             "title": "Shade over the queue",
+             "hint": "A canvas on a mast, in the strip's own cloth. It is here because a queue in "
+                     "the sun is a queue nobody stands in."},
+            {"id": "plaza-shade-mast-1", "kind": "post", "x": 1650, "z": 2950, "y": 0, "ry": 0,
+             "w": 18, "h": 244, "d": 18, "leaf": "#8b93a2", "solid": True,
+             "title": "The mast", "hint": "The canopy's own post, and the only part of it you can walk into."},
+            {"id": "plaza-shade-2", "kind": "parasol", "x": 1650, "z": 3150, "y": 204, "ry": 0,
+             "w": 420, "h": 74, "d": 420, "leaf": "#9c8460",
+             "title": "Its pair, down the line",
+             "hint": "Two shades along the queue: one over the front of the line and one over the back of it."},
+            {"id": "plaza-shade-mast-2", "kind": "post", "x": 1650, "z": 3150, "y": 0, "ry": 0,
+             "w": 18, "h": 244, "d": 18, "leaf": "#8b93a2", "solid": True,
+             "title": "Its mast", "hint": "The other post."},
+            {"id": "queue-bench", "kind": "bench", "x": 2150, "z": 2900, "y": 0, "ry": 90,
+             "w": 176, "h": 44, "d": 46,
+             "title": "A bench by the kiosk",
+             "hint": "Somebody waits for somebody else. The apron keeps the strip's rhythm: a "
+                     "lamp, a seat, a bin, again and again."},
+            {"id": "queue-bin", "kind": "bin", "x": 2200, "z": 3200, "y": 0, "ry": 0,
+             "w": 44, "h": 92, "d": 44,
+             "title": "A bin by the rail", "hint": "Drawn, and empty."},
             # ---- Round 58, the rest of the district. Round 52 built Clifton Hill's faces and its
             # wheel and called the strip done; a fun row with one ride, three fronts and a stall is a
             # postcard of a fun row. What stands here now is the district a visitor can actually
@@ -5326,10 +5378,20 @@ DISTRICTS = [
              "w": 900, "h": 96, "d": 12,
              "title": "The rail at the point's west edge", "hint": "Iron on stone, a hand's height "
                      "above the paving: past it the bluff falls to the gorge and there is no way down."},
-            {"id": "point-rail-s", "kind": "parapet", "x": 0, "z": 3420, "y": 0, "ry": 90,
+            # Round 64: the square's south rail stood *across* the walk -- six metres of iron on the
+            # centre line, a metre and a half short of the gate it was meant to lead to. The body
+            # stopped dead against it, and the "bridge approach" stop could never be reached: the
+            # rail was the wall between the square and the bridge. The edge is railed in two runs
+            # with the gate's width open between them, which is what the place does -- the square
+            # ends at the point, and the way on to the bridge is the gap.
+            {"id": "point-rail-sw", "kind": "parapet", "x": -648, "z": 3420, "y": 0, "ry": 0,
              "w": 600, "h": 96, "d": 12,
              "title": "The rail at the square's south edge", "hint": "The square ends where the "
-                     "point does; the bridge approach runs past beyond it."},
+                     "point does; the bridge approach runs past beyond it, through the gate."},
+            {"id": "point-rail-se", "kind": "parapet", "x": 648, "z": 3420, "y": 0, "ry": 0,
+             "w": 600, "h": 96, "d": 12,
+             "title": "Its pair across the way", "hint": "Two runs of iron close the square's south "
+                     "side and leave the gate's width open between them."},
             {"id": "plaza-rail", "kind": "parapet", "x": 1692, "z": 3320, "y": 0, "ry": 0,
              "w": 700, "h": 96, "d": 12,
              "title": "The rail at the plaza's edge", "hint": "Beyond it the ground falls away to "
@@ -5417,10 +5479,36 @@ DISTRICTS = [
             # on the left and the gorge's edge behind it; -90 is straight over the parapet at the
             # water, which is what a visitor who has stopped at the rail is looking at. Pitch 10 is
             # the authored down-angle (the walk already looks down from the bluff).
-            {"z": 1510, "x": -1290, "yaw": -82, "pitch": 2, "label": "the Table Rock rail"},
+            # Round 64: the stop stood at x -1290, six metres outside the lane (the parkway's walk
+            # ends at 6.76 m), so the glide clamped the body to the rail and the stop never
+            # arrived -- the rail was the one place a visitor could not be taken to. It stands at
+            # the parapet now, 98 cm off its face, and `yaw -82` looks west over the rail at the
+            # Horseshoe's brink, which is what the view was measured for in round 59.
+            {"z": 1510, "x": -600, "yaw": -82, "pitch": 2, "label": "the Table Rock rail"},
             {"z": 1660, "x": -140, "yaw": -18, "label": "the incline's lower station"},
             {"z": 2130, "x": 500, "h": 553, "yaw": 38, "pitch": 14, "label": "on the Fallsview deck"},
-            {"z": 2960, "x": -880, "yaw": -18, "label": "under the SkyWheel"},
+            # Round 64: this stop was authored inside the carousel's own deck -- the carousel is a
+            # solid 9 m round at x -1080 -- so the body could not stand there, the chip's glide
+            # stalled three metres short of it, and the plaza's one stop was a promise the lane
+            # could not keep. It stands on the open floor now, west of the wheel's axle and under
+            # the western arc of its rim, with the queue rails and the ticket kiosk to the right
+            # and the fun row behind. `yaw 4` looks up the street under the wheel's underside.
+            # Round 64, second measurement: x 1300 was reachable on foot but not on the rail's
+            # own terms -- the glide walks the straight line to the stop, and that line ran
+            # through the strip's built edge (the arcade's back wall and the block behind it sit
+            # at x 988..1440 across z 7870..8370), so the body stopped against a shopfront and
+            # the chip's promise went unkept. The stop stands at x 830: the strip's kerb furniture
+            # (its lamps, the iron posts that carry the light strings, the booths and the arcade)
+            # all stand from x 853 eastward, and a walk from the lane's mouth to the plaza's own
+            # floor has to pass west of them -- so the straight line to this stop is clear of the
+            # kerb from either end, and the wheel's foot is 15.5 m east.
+            # Round 64, third measurement: the view. `yaw 4` looked up the street under the
+            # wheel's underside and framed a lamp post and 40 m of lane; the rim itself sits 71
+            # degrees up, so from the plaza's floor it is never in the picture and the wheel is
+            # read by its own legs and the queue it stands over. `yaw 78` frames that: the
+            # A-frame leg dead ahead, the ticket kiosk and the two shades along the queue, the
+            # fun row's roofline behind, and the plaza's paving running out to the horizon.
+            {"z": 2960, "x": 830, "yaw": 78, "pitch": 8, "label": "under the SkyWheel"},
             {"z": 3480, "x": 0, "label": "the bridge approach"},
         ],
         "exit": {"id": "door-back", "kind": "door", "x": 678, "z": 340, "y": 0, "ry": -90, "leaf": "#33414e",
@@ -6209,11 +6297,23 @@ def walk_html(d, drawer):
         objects.append(dict(d["exit"], leave=d.get("back_to", "activities.html")))
     parts = []
     placed = []
+    # The half-width a body can reach at a depth: the lane's own half, widened where the record
+    # says the walk opens (Clifton's strip and its square). Round 64: `blocks_body` was reading the
+    # lane's *nominal* half, so every prop standing inside the strip's wider band -- the booths, the
+    # shopfronts, the kiosks -- was judged clear of a walk it was standing in, and the body walked
+    # straight through the canvas. The half a prop is measured against is the half a visitor can
+    # reach, which is what that function's own comment says it wants.
+    ws_bands = [[round(a * Z_SCALE), round(b * Z_SCALE), c] for a, b, c in lane.get("ws", [])]
+    def walk_half_at(z):
+        half = lane["w"] / 2
+        for a, b, c in ws_bands:
+            if a <= z <= b: half = max(half, c)
+        return half
     for o in objects:
         o = dict(o)
         o["z"] = round(o["z"] * Z_SCALE)
         placed.append(o)
-        parts.append(walk_object(o, lane["w"] / 2))
+        parts.append(walk_object(o, walk_half_at(o["z"])))
     chips = []
     for n, st in enumerate(d["stations"]):
         # A tick, not a caption: where the words go is the card, and the accessible name is what a
@@ -6339,7 +6439,7 @@ def walk_html(d, drawer):
     # sentence is words: the rails, the list and the compiled state keep answering, which is what
     # the panel promises. Round 55 rendered the no-WebGL path for the first time and wrote this.
     offline_html = f"""
-  <div class="walk-offline" data-walk-offline hidden>
+  <div class="walk-offline" data-walk-offline hidden role="status">
     <div class="walk-offline-inner">
       <p class="eyebrow">{escape(label)}</p>
       <p class="walk-offline-lead">This browser cannot draw the lane.</p>

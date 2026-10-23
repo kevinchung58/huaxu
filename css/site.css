@@ -2134,9 +2134,7 @@ body.shell {
     radial-gradient(115% 85% at 50% 40%, rgba(26, 43, 80, 0.9), rgba(13, 21, 38, 0.98) 70%);
   pointer-events: none;
 }
-.walk-offline[hidden] {
-  display: none;
-}
+.walk-offline[hidden] { display: none; }
 .walk.is-offline .walk-hits {
   /* a projection with nothing projected: the prop buttons would hang in the panel's text */
   display: none;

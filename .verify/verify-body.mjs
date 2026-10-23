@@ -56,7 +56,12 @@ for (const file of pages) {
   const half = Math.max(0, num(tag, "lane-w", 640) / 2 - R);
   const back = -30;   // MIN_D, js/site.js: the lane lets a body stand a little behind its start
   const maxD = num(tag, "lane-max-d", num(tag, "lane-d", 0));
-  const segs = (() => { try { return JSON.parse((tag.match(/data-lane-wseg="([^"]*)"/) || [, "[]"])[1]); }
+  /* The per-depth walk widths are stamped with single quotes, because the JSON inside carries its
+     own double quotes: `data-lane-ws='[[z0,z1,half],…]'`. Round 64: the gate read a name the site
+     has never written (`data-lane-wseg`), so every lane's width profile came back empty and the
+     walkable set was the narrowest band on the page -- the plaza's own floor was not walkable in
+     the gate's eyes, and the stops inside it could not be checked at all. */
+  const segs = (() => { try { return JSON.parse((tag.match(/data-lane-ws='([^']*)'/) || [, "[]"])[1]); }
                         catch (_) { return []; } })();
   const halfAt = (z) => {
     let h = half;
@@ -146,6 +151,24 @@ for (const file of pages) {
   // 3. The authored walk must still be walkable end to end — solidity may not sever the route.
   say(far >= maxD - 60, `${file}: the lane still reaches its authored depth`,
     `reached ${far} cm of ${maxD}`);
+
+  /* 4. Every authored stop must be a place the body can actually stand.
+     Round 64: the Niagara lane's last three stops were places no body could reach — one stood six
+     metres outside the lane, one inside the carousel's own deck, one behind a rail that crossed the
+     walk — and the chip that walks you there simply stalled. Nothing in the battery saw it: the
+     collision gate counts a stop as arrived when the *body* gets close, and the body was never
+     asked. This asks the record's own question: is the stop's own point standable? */
+  for (const chip of page.matchAll(/<button[^>]*class="walk-stop"[^>]*style="--z:([0-9.]+)px;--p:([0-9.]+)(?:;--x:(-?[0-9.]+)px)?[^"]*"[^>]*aria-label="([^"]*)"/g)) {
+    const z = parseFloat(chip[1]);
+    const x = chip[3] !== undefined ? parseFloat(chip[3]) : 0;
+    const label = chip[4];
+    const why = !free(x, z)
+      ? (Math.abs(x) > halfAt(z) + 0.01
+          ? `x ${x} is outside the walk's ${Math.round(halfAt(z))} cm`
+          : `x ${x}, z ${z} is inside a solid`)
+      : "";
+    say(free(x, z), `${file}: the stop "${label}" is a place the body can stand`, why);
+  }
 
   console.log(`${file}: ${seen.size} standable cells, route to ${Math.round(far)}/${Math.round(maxD)} cm, `
     + `narrowest run ${tightest.toFixed(0)} cm, ${intrusions.length} intrusion${intrusions.length === 1 ? "" : "s"}`);

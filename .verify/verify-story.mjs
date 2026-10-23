@@ -112,17 +112,23 @@ const railView = await page.evaluate(() => {
   const stop = document.querySelector("[data-walk-stop='3']");
   return stop ? { yaw: stop.dataset.viewYaw, pitch: stop.dataset.viewPitch } : null;
 });
-ok("the Table Rock rail stop aims down and toward the Horseshoe",
-   railView?.yaw === "-15" && railView?.pitch === "10", JSON.stringify(railView));
+/* Round 59 re-aimed the rail stop: the view was measured against the photographs and the west
+   quarter (yaw -82, a shallow pitch of 2) is what a visitor who has stopped at the rail is
+   actually looking at -- the Horseshoe's face over the parapet. Round 64: this gate still asked for
+   the round-33 numbers (-15 / 10), so it hung on its waitForFunction and the story gate had not
+   run to the end for four rounds. The numbers below are the record's, and a change to them has to
+   come through here with its reason. */
+ok("the Table Rock rail stop aims over the parapet at the Horseshoe",
+   railView?.yaw === "-82" && railView?.pitch === "2", JSON.stringify(railView));
 await page.evaluate(() => document.querySelector("[data-walk-stop='3']").click());
 await page.waitForFunction(() => {
   const w = document.querySelector("[data-walk]")?.__walk;
-  return w && w.yaw === -15 && w.pitch === 10;
+  return w && w.yaw === -82 && w.pitch === 2;
 }, { timeout: 5000 });
 ok("choosing the rail stop applies its authored camera view",
    await page.evaluate(() => {
      const w = document.querySelector("[data-walk]").__walk;
-     return w.yaw === -15 && w.pitch === 10;
+     return w.yaw === -82 && w.pitch === 2;
    }));
 await page.goto("http://127.0.0.1:8080/rooms-niagara.html", { waitUntil: "networkidle0" });
 await sleep(1500);
