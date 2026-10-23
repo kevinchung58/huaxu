@@ -152,7 +152,7 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 ### 5.5 閘門現況（2026-10-23，第 67 輪）
 
-walk 192/192、feel 12/12、story 27/27、body 73/73、games 23/23、nowebgl 35/35、shapes 248、geometry／clash／objects／tables／look／chain PASS、three PASS、impeccable `[]`、generator 冪等 19/19、collision 28/28（g-coll5；g-coll6 有一次偶發 → P0）。
+walk 192/192、feel 12/12、story 27/27、body 73/73、games 23/23、nowebgl 35/35、shapes 248、geometry／clash／objects／tables／look／chain PASS、three PASS、impeccable `[]`、generator 冪等 19/19、collision **28/28**（g-coll7，第 67 輪合併前那次全綠；但 g-coll6 有一次偶發 → P0）。
 
 ### 5.6 倉庫大小
 
