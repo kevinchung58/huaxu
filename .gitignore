@@ -37,3 +37,7 @@ package-lock.json
 
 # reference material: the owner's photographs of a place, read to build a room and never shipped
 ref/
+
+# reference photographs: the sources are untraceable, so they stay out of the repository
+# (they live on the working disk for human comparison only — see TODO.md)
+image-search/

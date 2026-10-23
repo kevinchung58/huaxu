@@ -1727,6 +1727,50 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
 .walk-hit:hover::after {
   border-color: rgba(242, 200, 142, 0.5);
 }
+/* Round 65: scenery is not a target. A lamp, a bin, a rail and a bench are drawn, walked past and
+   read in the lane's list; the finger goes through them to whatever is behind, and no ring ever
+   appears on one. */
+.walk-hit[data-quiet] {
+  pointer-events: none;
+}
+.walk-hit[data-quiet]::after {
+  display: none;
+}
+/* A landmark: something too large to stand next to -- the falls over the gorge, the bridge across
+   it. It has no surface of its own, so the mark is the whole of it: a soft disc, a little warmer
+   than the sky, that brightens when the finger is on it and again when the visitor faces it. It is
+   the one mark in the lane that is not on a surface, and it is the answer to a visitor who said the
+   waterfall was very hard to click. */
+.walk-hit[data-landmark] {
+  cursor: pointer;
+}
+.walk-hit[data-landmark]::before {
+  content: "";
+  position: absolute;
+  inset: 20%;
+  border-radius: 50%;
+  border: 1px solid rgba(242, 200, 142, 0.46);
+  /* A bright core, so the mark reads against the white of the falls as well as against the sky:
+     a ring of the same warmth as the night lamps, with a pale heart in the middle. */
+  background: radial-gradient(circle, rgba(255, 238, 202, 0.62) 0%, rgba(246, 206, 150, 0.3) 15%,
+                              rgba(242, 200, 142, 0.12) 48%, transparent 76%);
+  box-shadow: 0 0 24px rgba(242, 164, 60, 0.24), inset 0 0 12px rgba(255, 226, 170, 0.2);
+  pointer-events: none;
+  transition: opacity 200ms var(--ease), transform 220ms var(--ease), background 200ms var(--ease);
+}
+/* The ring the lane draws on a thing you are facing is a rectangle for everything else; for a
+   landmark, which has no surface to sit on, it is the same circle as the mark. */
+.walk-hit[data-landmark]::after {
+  inset: 20%;
+  border-radius: 50%;
+}
+.walk-hit[data-landmark]:hover::before,
+.walk-hit[data-landmark].is-reach::before {
+  border-color: rgba(255, 228, 176, 0.78);
+  background: radial-gradient(circle, rgba(255, 244, 216, 0.78) 0%, rgba(255, 226, 170, 0.4) 16%,
+                              rgba(242, 200, 142, 0.16) 50%, transparent 78%);
+  transform: scale(1.14);
+}
 .walk-hit:focus-visible {
   outline: none;
 }
@@ -2134,9 +2178,7 @@ body.shell {
     radial-gradient(115% 85% at 50% 40%, rgba(26, 43, 80, 0.9), rgba(13, 21, 38, 0.98) 70%);
   pointer-events: none;
 }
-.walk-offline[hidden] {
-  display: none;
-}
+.walk-offline[hidden] { display: none; }
 .walk.is-offline .walk-hits {
   /* a projection with nothing projected: the prop buttons would hang in the panel's text */
   display: none;
