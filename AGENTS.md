@@ -188,6 +188,13 @@ Files you MAY edit directly:
 | `IMG/` | Portrait and gallery photos |
 | `SPEC-gallery-3d.md` | **Not built.** The owner-facing proposal for a walkable Activities archive, written from a first-hand read of his reference site; read it before any 3D work or any change to the dependency rule |
 | `.nojekyll` | Keeps GitHub Pages from running Jekyll — do not delete |
+| `TODO.md` | The working plan for the next round: what is next, how we work, and the measured facts. Rewritten each round; a finished item is deleted rather than narrated. Update it before every PR operation. |
+| `TODO-archive.md` | The earlier rounds' full log, kept for provenance. Read-only: if a fact is still relevant, move it into `TODO.md` instead of editing the archive. |
+
+Reference photographs (`image-search/`) are deliberately **not tracked**: their sources are
+untraceable, so they stay on the working disk for human comparison only. The same rule covers any
+photograph the owner sends; the repository keeps code, documents, generated HTML, and the pinned
+runtime only.
 
 ## Reference packs the design work leans on
 

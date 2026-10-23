@@ -2889,7 +2889,6 @@ function leaveOverlay(root, trigger) {
   catch (e) { /* private mode: the choice lives this visit only */ }
   const dayPhase = () => hourPhaseSet;                  // the station clock reads the hour the visitor
                                                          // chose, so the hands and the light agree
-  const SUN = () => clamp(Math.sin((dayPhase() - 0.25) * Math.PI * 2) * 0.5 + 0.5, 0, 1);
   const NIGHT = () => 1 - sunNow();
   /* A lane whose place is a day.
 
@@ -5681,7 +5680,6 @@ function leaveOverlay(root, trigger) {
         /* The sheet moves without the visitor moving. The strands travel down a tile every 1.7 s
            on the frame clock — the same clock that lights the lamps and turns the wheel, so a
            frame rate this machine cannot hold never changes how fast the water falls. */
-        const uvAt = (a, y, drift) => [a / tileCm, (-y + (ease ? T * 420 : 0)) / tileCm + drift];
         const Q = (a0, a1, y0, y1, t0, t1, col, l, air) => {
           const q = add(C, [Pt(a0, y0, t0), Pt(a1, y0, t1), Pt(a1, y1, t1), Pt(a0, y1, t0)],
                         ZERO8, "flat", col);
