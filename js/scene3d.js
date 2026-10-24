@@ -1089,8 +1089,18 @@ function updateClouds(THREE, clouds, camera, state, reducedMotion) {
     /* Round 60: the plume takes the lamps the way the sheet does — half of them. The illumination
        plays on the spray; it does not turn the cloud over the Horseshoe into a purple object, which
        is what a full lamp colour did at 3 a.m. on a still frame. */
-    const tint = prim.il && dark ? NIGHT_LAMPS[Math.floor((state.time || 0) / 7) % NIGHT_LAMPS.length] : "#eef4f7";
-    rgb.set("#eef4f7");
+    /* Round 69 — a mist that is brighter than both its backgrounds can only add light.
+       `#eef4f7` is luma 243; the sheet it crosses is clipped to 227 and the plunge pool under it is
+       54. So the same puff was invisible over the water (243 on 227, both near the tone-map ceiling)
+       and a wash over the pool — and no amount of alpha fixes that, because a value above both
+       backgrounds has nowhere to go but the ceiling. Real spray in the gorge is *aerial
+       perspective*: a grey-blue veil that sits between the white water and the dark rock, darker
+       than the sheet it crosses and paler than the pool it rises from. Measured over the pool
+       (luma 54) a 0.4-alpha veil at luma ~205 lifts it to ~114; over the sheet (227) the same veil
+       pulls it to ~218. Both are small, both are real, and the plume finally has an edge where it
+       meets the water instead of a white-on-white nothing. */
+    const tint = prim.il && dark ? NIGHT_LAMPS[Math.floor((state.time || 0) / 7) % NIGHT_LAMPS.length] : "#c9d8e0";
+    rgb.set("#c9d8e0");
     if (prim.il && dark) rgb.lerp(new THREE.Color(tint), 0.55);
     /* Each puff is weaker than before because there are three times as many of them; the plume's
        density comes from the count, the way it does in the photographs. */

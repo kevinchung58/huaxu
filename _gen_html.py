@@ -3012,10 +3012,23 @@ def niagara_world(fr, view="rim"):
         # the water — where the backdrop is the dark plunge (measured luma 54) rather than the white
         # sheet. Over the sheet, more alpha would still be white on white; over the pool it is the
         # bright mass a visitor actually sees.
-        for dd, u, w, h, al, np in ((9, -47, 3300, 2400, 0.55, 6), (16, -36, 3900, 2800, 0.50, 6),
-                                    (24, -24, 4300, 3100, 0.40, 5), (31, -12, 4100, 3000, 0.29, 5),
-                                    (37, 1, 3500, 2700, 0.19, 4), (42, 15, 2900, 2300, 0.12, 3)):
-            puff(e + nx * dd, n + ny * dd, NIA_RIVER + u + 58, w, h, al, np, 0.9)
+        # …and 第三個錯：均勻.
+        #
+        # Even with the base heavy, the frame still read as a fog bank, because the puffs were spread
+        # over all 36 points of a 670 m crest at 33-43 m each. A horseshoe *funnels*: the water
+        # converges toward the middle of the arc, and every source that describes the falls says the
+        # same thing about the spray — the permanent column stands at the centre, and the wings are
+        # comparatively clear (niagaraparks.com's figures, and the guide pages that tell you the mist
+        # column is visible far down the Parkway). So the plume is authored as one column, weighted
+        # toward the middle of the brink with the wings fading out, and the puffs are small enough to
+        # read as puffs (14-24 m) instead of as wallpaper.
+        core = math.exp(-((i - 18) / 7.0) ** 2)
+        for dd, u, w, h, al, np in ((9, -47, 1900, 1500, 0.62, 6), (16, -36, 2200, 1800, 0.56, 6),
+                                    (24, -24, 2500, 2000, 0.44, 5), (31, -12, 2400, 1900, 0.31, 5),
+                                    (37, 1, 2100, 1700, 0.20, 4), (42, 15, 1800, 1500, 0.13, 3)):
+            if core < 0.04:
+                continue
+            puff(e + nx * dd, n + ny * dd, NIA_RIVER + u + 58, w, h, al * core, np, 0.9)
     # A second row, offset half a step, so the line of puffs has no beat in it.
     for i in range(1, 34, 2):
         e, n = hs[i]
