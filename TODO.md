@@ -105,7 +105,9 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 ### P2 — 世界資料搬出 HTML（本輪做了，§1 有數字）
 
 - **已完成**：> 60 KB 的 island → `js/places/<place>.js`（`window.__HX_PLACES[place][attr]`），頁面只留 `data-place` 標記＋普通 `<script>`；`readAny` 在 store 裡找；jsdom 閘門在 strip 前內聯；`verify-three` 讀標記指向的檔案。cntower 739 KB → 27 KB。
-- **沒做（下一輪的第一件事）**：`js/places/index.js`（停止點／district／地標索引），以及 runtime 不再 parse DOM——**現在仍然 parse DOM**，只是最大的那塊不在 DOM 裡了。要做這件事，`readAny` 的呼叫點要一個一個搬到 index，並且 jsdom 閘門要改讀 index，不是改讀標記。
+- **P2 之後補的洞（第 69 輪）**：資料搬走之後，**有一個閘門悄悄失去它的對象**——`verify-collision` 的「painted floor-walls」直接讀 `.textContent`，對 cntower／niagara／journey 讀到空白，於是對著什麼都沒掃還印 `holes x0`（niagara 與 journey 正是第 45 輪 526/786 個自由站立點的兩頁）。修好後 niagara 回到 2 runs。**教訓寫進這一條**：搬資料的那一手，必須把每一個讀 island 的閘門一起改，否則閘門不會紅，只會瞎。
+  - `journey` 掃到 0 runs 是**舊有**的（不是這一輪造成）：它 56 面牆都比「run 不超過半條 lane」的濾網寬。要動這個濾網，先量它到底在排除什麼，不要為了讓數字好看而放寬。
+- **還沒做（下一輪的第一件事，而且它不再是「搬 island」）**：剩下的大塊**不是資料，是可互動的 UI**——niagara 93.9 KB 裡絕大多數是 `<button class="walk-hit" data-…>`，每一顆都是可以按的元素，不是 JSON。要再縮，唯一的辦法是**把 prop 也寫成資料、由 runtime 產生按鈕**（generator → `js/places/<place>.props.js` → `js/site.js` 建 DOM）。代價與風險要寫在前面：約 40 個 `data-*` 屬性與 `dataset` 的大小寫規則（`data-rideX` → `dataset.ridex`，見 AGENTS 單位規則）、`verify-chain` 直接讀 HTML 字串裡的 `data-leave`／`data-story`、`verify-walk` 讀 `.walk-hit` 的 DOM 與「nothing writes prose into the scene」、以及沒有 JS 時整條 lane 本來就已经不能走（不是新問題）。**先寫一支量具量「按鈕 markup 佔幾 KB」再動手**，不要憑印象。
 - **不要重做**：把資料改成 `fetch`／`await`。`js/site.js` 在載入時同步組出世界，async 會讓「先畫出一個沒有世界的 lane」變成可能；普通 `<script>` 在它之前跑，是這條規則的實作。
 
 ### P3 — 拆掉兩個巨型檔（純搬移，零行為變更）
