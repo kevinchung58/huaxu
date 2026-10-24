@@ -37,7 +37,15 @@ function boot(file) {
     const vc = new VirtualConsole();
     vc.on("jsdomError", (e) => { const m = String((e && e.message) || e);
       if (!/navigation/.test(m)) errors.push(m); });
-    const html = fs.readFileSync(file, "utf8").replace(/<script src="[^"]*"><\/script>/g, "");
+    /* P2 (round 69): a place's world data is its own file now, loaded by a plain <script> in a real
+       browser. jsdom does not fetch external scripts at all — this harness strips every one of them
+       and evals js/site.js itself — so the place data is inlined here, before that strip, exactly as
+       the browser would have run it. Skipping this leaves __HX_PLACES empty and every big page boots
+       into a lane with no world, which the collision checks would then measure as "nothing to hit". */
+    const html = fs.readFileSync(file, "utf8")
+      .replace(/<script src="(js\/places\/[a-z0-9-]+\.js)(\?[^"]*)?"><\/script>/g,
+               (_m, src) => `<script>${fs.readFileSync(src, "utf8")}</script>`)
+      .replace(/<script src="[^"]*"><\/script>/g, "");
     const dom = new JSDOM(html, { runScripts: "dangerously", pretendToBeVisual: true,
       url: "https://huaxu.test/" + file, virtualConsole: vc });
     const w = dom.window;

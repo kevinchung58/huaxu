@@ -48,6 +48,19 @@ no package manifest, CDN, or additional runtime dependency is implied.
   own state at timeout; if the site answered and the harness blinked, fix the budget (or the lifecycle
   event waited on: `domcontentloaded` plus a state wait, not `load` over abandoned subresources) and
   say so in the gate's comment.
+- **A movement gate that passes once has measured one walk, not the walker.** `verify-collision`'s
+  route through a page depends on the state its own earlier rams leave behind (a corner watch is
+  skipped when the body already stands within 60 cm of it), and the lane's idle pulse can land a
+  frame between two pumped ones — so two runs of the same page are two different approaches to the
+  same geometry. Round 68's wedge appeared in one run of four and in none of the next six; a single
+  green run is one sample, and the acceptance for a solver change is a loop (20 runs) *plus* the
+  wide instrument (`.verify/_wedge.cjs`: every rail stop at 16 headings, the diagonal presses, every
+  solid's four corners). And when a gate says a body stands still with a legal way out, print the
+  solver's own decision (`_wedge2.cjs` patches `moveStep` in memory, one anchor at a time) instead of
+  re-deriving its maths in the gate: the three defects that round closed — a creep step below the
+  anti-flip-flop price, a clearance probe that clamped at the lane wall, and a push-out that landed
+  exactly on the collision boundary the accept test asks about with a strict `<` — were all "the
+  escape was legal, tested and refused", and none of them was visible from the outside.
 
 - **The unit rule, all of it:** only the depth axis converts — record `z` and `d` cross into walk
   space ×2.9 (`Z_SCALE`), while `x`, `y`, `w`, `h`, stop `--x` and every dataset passthrough field

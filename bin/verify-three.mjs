@@ -78,9 +78,26 @@ for (const file of pageFiles) {
   assert.match(html, /<div class="walk-offline" data-walk-offline hidden[^>]*>/,
     `${file} needs the no-WebGL panel, shipped closed`);
   assert.match(html, /data-walk-offline-where/, `${file} needs the panel's standing-position line`);
-  const match = html.match(/<script type="application\/json" data-walk-backdrop>([\s\S]*?)<\/script>/);
-  if (!match) continue;
-  const backdrop = JSON.parse(match[1]);
+  /* P2 (round 69): a big place keeps its world data in js/places/<place>.js and leaves an empty
+     marker carrying `data-place`. Read the marker's file exactly as the page's <script src> does —
+     the check is still "what does this page hand the renderer", just through the file it points at
+     instead of through an inline blob. */
+  const inline = html.match(/<script type="application\/json" data-walk-backdrop>([\s\S]*?)<\/script>/);
+  const marker = html.match(/<script type="application\/json" data-walk-backdrop data-place="([a-z0-9-]+)"><\/script>/);
+  let backdrop = null;
+  if (inline) {
+    backdrop = JSON.parse(inline[1]);
+  } else if (marker) {
+    const dataFile = path.join(ROOT, "js", "places", `${marker[1]}.js`);
+    assert.ok(fs.existsSync(dataFile), `${file} points its world at ${dataFile}, which the generator did not write`);
+    const src = fs.readFileSync(dataFile, "utf8");
+    const assignment = src.slice(src.indexOf("window.__HX_PLACES["));
+    const obj = assignment.slice(assignment.indexOf("=") + 1, assignment.lastIndexOf(";"));
+    const store = JSON.parse(obj);
+    backdrop = store["data-walk-backdrop"];
+    assert.ok(backdrop && backdrop.world, `${dataFile} must carry the backdrop the marker promises`);
+  }
+  if (!backdrop) continue;
   const prims = backdrop.world && backdrop.world.prims;
   if (!Array.isArray(prims) || !prims.length) continue;
 
