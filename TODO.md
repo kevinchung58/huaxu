@@ -9,6 +9,14 @@
 - **站台**：靜態學術網站（Hua-Xu Zhong）。零依賴、零 build step；所有 `*.html` 只由 `_gen_html.py` 產生；runtime 只有 vendored 的 Three.js 0.186.1。
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、`rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支 / PR**：`arena/adedb8cc-huaxu` → `master`（本輪開 PR；合併要站主一句授權）。
+- **進度（第 69 輪，未交付）** —— 站主四件事（「通通弄好」）的現況：
+  - **站主的問題先回答清楚**：那個 3D repo 是 `mrdoob/slop-newyork`（2026-10-23 的指示，見 `TODO-archive.md` §0aq）。**瀑布沒有照它重建**：它整份 `js/` 沒有一行 waterfall／river-fall，只有落葉噴霧與水窪；它的 WebGPU/TSL ＋ jsDelivr import map 也違反本站「零 build、零 CDN」。瀑布是第 58–60 輪從照片與本站自己的量測做出來的。真正能沿用它的只有 **P2 的 data module 架構**，而那件事到現在都還沒做。
+  - **A 霧（做了，有數字）**：`_plume.mjs` 的紅染測試證明霧的幾何一直在、位置也對，看不見的原因是**白對白**：840 張 billboard 佔畫面 20.7%，平均亮度只 +1.1。改法是作者三列（碗內、崖邊、越過唇緣），spray 從 216 → 436 張。實測 y600-640 帶 Δluma **0 → 23.5**、y560-600 → 8.6、y520-560 → 6.9；整片不再只有崖上的白。
+  - **B 水幕（做了，有數字）**：三處 —— 白端封頂（`aerated` 0.80 → 0.62，天花板的 227 不再是水幕自己的值）、落下方向的明暗（`densityDark`／`boilLift`，讓水幕有身體而不是一面牆）、底部改到最後四分之一才轉白。
+  - **C 接地（做了）**：遠岸不是黑的。raycast（`_ray.mjs`，pixel 800,330）證明橫過瀑布的黑條就是 Goat Island 的 `canopy` 牆（326 m 外，`#2c4428`／夜 `#0f1618`）。改成 `#57764a`／`#24322a` 並提 ambient；同一個影格裡它從黑條變成遠岸的樹。
+  - **新閘門 `.verify/shader-lits.mjs`**：GLSL 註解裡的一個 backtick 會提早結束 template literal，`node --check` 照過、瀏覽器整個場景空白（本輪被它害兩次，兩次都差點把空畫面當成「沒有霧」量下去）。閘門會先自我測試：合成的壞例必須被抓到，才去讀真的檔案。`_plume.mjs`／`_water.mjs` 也改成遇到 pageerror 直接 exit 2、不印數字。
+  - **未做：P2**（世界資料搬出 HTML）。本輪把預算花在「量到成因 → 修 → 再量」上，P2 仍完整留在 §3，沒有動一行。
+
 - **進度（第 68 輪，已交付）**：
   - **P0 站死修好，成因有三個，全在 `js/site.js` 的 `moveStep`**（每處都有 `Round 68` 註解與量測）：
     1. **楔角蠕行被反向門檻否決**：`buzz` 只用「上一個被接受滑動的方向」記帳，卻活得比那個面久；繞過箱角後新面的唯一暢通蠕行是 `115 cm/s × 8.3 ms = 0.955 cm`，永遠付不起 1.2 cm 的反向價 → 站在角上不動。修法：蠕行方向由 `cornerAssist`（自己的記憶＋四步淨空測試）決定，不受 `buzz` 管。
@@ -59,6 +67,7 @@ node .verify/verify-look.mjs
 node .verify/verify-chain.mjs
 node .verify/verify-nowebgl.mjs                # 35/35
 node bin/verify-three.mjs                      # 12,826 world + 864 water
+node .verify/shader-lits.mjs                   # 6 個 shader program 完整、沒有被 backtick 截斷
 node_modules/.bin/impeccable detect --json .   # []
 md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff /tmp/a /tmp/b   # 冪等
 ```
@@ -72,6 +81,7 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 - **量測**：`_pix.mjs`（像素比對）、`_strip.mjs`（抽一條像素帶）、`_lumacheck.mjs`（各時段的平均亮度）、`_hourprobe.cjs`（夜景的可讀性）、`_lane.mjs` / `_tile.mjs`（鋪面與材質的實際尺度）、`verify-motion.mjs`（每個物件自己框內的像素變化）、`audit-all.mjs`（一次載入量所有可見 prop）、`cost-probe.mjs`（一幀提交多少 quad／三角形）、`make-cover.mjs`（把一張真影格存成封面）。
 - **手感與互動**：`_turn.mjs` / `_keys.mjs`（鍵盤手感與速度）、`_census.mjs`（互動普查）、`browser-check.py`（**點擊真的落在地上**——AGENTS 指定；jsdom 沒有 hit-testing）、`wall-live.mjs`（真瀏覽器的撞牆連段）、`wall-pierce-live.mjs`（真瀏覽器的穿牆取樣）、`walk-feel.mjs`（真瀏覽器的加減速與轉向）。
 - **碰撞診斷（第 68 輪）**：`_wedge.cjs`（寬掃描：每個 rail stop 16 個方位＋斜向壓牆＋每個 solid 四角，**連續**回報「有合法出口卻站著」的 STALL）、`_wedge2.cjs`（同一條路線，但把 `js/site.js` 的 `moveStep` **在記憶體裡**逐點插旗，印出 `clear`／`along`／`hop2`／`buzz`／`ok`；每個 anchor 都 assert 只命中一次）。**改 `moveStep` 就要重對 anchor**，這是它的代價，也是它抓出三個成因的方式。
+- **水與霧（第 69 輪）**：`_plume.mjs`（把 `js/scene3d.js` **在記憶體裡**補上 `window.__threeScene`，回報霧的 billboard 數／alpha／包圍盒；`MIST=red` 把霧染紅證明幾何在哪、`MIST=off` 關掉它）、`_water.mjs`（40 px 一條帶的平均／sd／p05-p95／rgb，以及開霧前後每帶的 Δluma；`STOP/YAW/HOUR/SCENE/OUT`，`SCENE=` 可以拿舊版 `scene3d.js` 做 A/B）、`_ray.mjs`（在活的場景裡對某個像素射線，回報前三個命中的 mesh 名與世界座標——「畫面那條黑的是什麼」用這個問，不要猜）、`_fps.mjs`（同一台 headless 上的 fps，用來判斷多出來的幾何有沒有代價）。**三支瀏覽器量具遇到 pageerror 一律 exit 2、不印數字**：空白背景配上 HUD 也會量出一張表，那張表不是場景。
 - **診斷**：`_stuck.mjs` / `_stuck2.mjs`（卡住）、`_tapdiag.mjs`（點擊診斷）、`_wallgap.mjs`（畫牆與可行走空間）、`_csscheck.mjs`（樣式表解析與套用）、`wall-probe.cjs`（受困／滑動／擱淺普查）、`verify-rooms-e2e.cjs`（jsdom 啟動樣板，碰撞閘門共用同一份 boot）。
 
 ### 2.5 記憶的規則
@@ -147,6 +157,17 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
   - `pushAt` 推離後候選距離 24.0009（R = 24）、`h2.p` 0.07、`col:true` → move 0（浮點在嚴格 `<` 上翻面）。
   - 修好後：`_wedge` 寬掃描 5 輪 0 freeze（19,240–20,040 幀／輪）；`verify-collision` 7 頁 28/28。
 - 停止點（HTML z）：61 / 1360 / 2842 / 4379 / 4814 / 6177 / 7424（fun row x 300, yaw 90）/ 8584（SkyWheel x 830, yaw 78）/ 10092。
+
+### 5.4 瀑布（第 69 輪量到的；在做任何「霧／水幕」的改動前先讀這一節）
+
+- **取景**：`rooms-niagara.html`，stop 3（Table Rock 步道），yaw −90，1024×768，day。`_water.mjs` 的一條帶 = 40 px。
+- **改動前的樣子（第 68 輪的產物，存成 `/tmp/baseline.txt`）**：水幕從 y400 到 y520 是**一面白牆**（y440-480 `198.9`／sd `31.0`，p05-p95 `153-227`），y520-560 一步掉到 `82.0`，池面 `54.1`／sd `10.7`。霧的 Δluma 在崖下全部 ≈ 0（0.46／0.51／0.62／0.18／0.03／0）。
+- **霧為什麼看不見**：`_plume` 紅染測試 → 幾何一直在、位置也對；840 張 billboard 佔畫面 **20.7%**，平均亮度只推 **+1.1**。顏色 `#eef4f7` 疊在近白的天空與近白的水幕上 = 白對白。**不要用「把 alpha／亮度調高」修它**，那是同一個錯誤再試一次。
+- **改完之後（本輪）**：y600-640 帶 Δluma **23.5**（`56.1→72.2`），y560-600 **8.6**，y520-560 **6.9**，y640-720 也有 7–11。霧站在**池上**、在水幕的下三分之一前面，而不是崖上的天空裡。
+- **水幕**：白端封頂後 y440-480 從 `198.9`／p95 `227` 變成 `185.1`／sd `36.2`；落下方向有明暗（上三分之一偏綠暗、下三分之一轉白）。**p95 仍是 227**：那是畫面右側那棟白色量體（不在水幕上），不要把它當成水幕的量測值。
+- **遠岸的黑條**：不是著色錯誤，是 `_gen_html.py` 的 Goat Island `canopy` 牆（`#2c4428`，夜 `#0f1618`）。`_ray.mjs` 800,330 命中 326 m 的那面牆。改成 `#57764a`／`#24322a`、ambient ×1.9+240 之後仍是深綠，但不再是剪影。
+- **shader 的 backtick 陷阱**：`js/scene3d.js` 的 6 個 shader 是 template literal。GLSL 註解裡一個 backtick 會提早收掉字串，`node --check` 照過（` `` ` 讀成 tagged template），瀏覽器整個空白。`.verify/shader-lits.mjs` 就是為此存在的閘門。
+- **代價**：spray 216 → 436 張 billboard，`_fps.mjs` 同機比較 `1.4/1.4/8.1` → `1.3/1.5/8.1` fps（headless SwiftShader，絕對值沒有意義，差別才是）。
 
 ### 5.4 夜景
 

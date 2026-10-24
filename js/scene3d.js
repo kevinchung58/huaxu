@@ -1656,8 +1656,24 @@ function buildRenderer(THREE, canvas, backdrop, api) {
           // from them was a white shadow, which is how a 57 m curtain read as one flat wall.
           vec3 cold=mix(mix(uBand0,uBand1,0.30),vec3(0.62,0.76,0.79),0.42);
           vec3 deep=cold*vec3(0.44,0.58,0.62);
-          vec3 aerated=min(vec3(1.0),mix(cold,vec3(1.0),0.80)*1.02+vec3(0.12));
+          // Round 69: the pale end stops short of paper. Measured at the rail, the sheet's brightest
+          // value and its p95 were both 227 — the same value as the sky it is seen against, and an
+          // edge cannot exist between two equal values. That is a large part of why the crest read
+          // as a cut-out rather than as water.
+          vec3 aerated=min(vec3(1.0),mix(cold,vec3(1.0),0.62)*0.99+vec3(0.05));
+          /* Round 69 — 水面本身沒有明暗, and that is what "flat" means.
+             Measured on the round-68 artefact at the rail: the upper sheet sat at one value across
+             120 px of a 57 m fall (sd 31-33), because past vFall 0.42 the authored stop is uBand3,
+             which is near white, and the structure term is near 1 nearly everywhere. Falling water
+             is not one value: the upper third is sheet you can still see into (dense, green, dark),
+             the lower third is the boil it becomes (aerated, pale), and that gradient is a function
+             of the drop and of nothing else. It multiplies the existing structure rather than
+             replacing it, so the strands the owner has already seen keep their shape. */
+          float densityDark=smoothstep(0.05,0.26,vFall)*(1.0-smoothstep(0.52,0.88,vFall));
+          float boilLift=smoothstep(0.55,0.95,vFall);
           vec3 color=mix(deep,aerated,structure);
+          color*=mix(1.0,0.74,densityDark*0.85);
+          color=mix(color,min(vec3(1.0),color*1.05+vec3(0.03)),boilLift*0.45);
           // By night the whole sheet is under the lamps: the same structure, lit warm.
           color=mix(color,min(vec3(1.0),lit*1.12),uNight*0.38);
           // The ropes: 1.5 m columns, still antialiased by their footprint, but only allowed to add
@@ -1682,8 +1698,12 @@ function buildRenderer(THREE, canvas, backdrop, api) {
           color=mix(color,vec3(0.968,0.988,0.986),lip*0.72);
           // The foot: over the last third the strands go, the sheet loses its own colour and pales
           // into the spray it raises, which is what hides the plunge from every rim above it.
-          float foot=smoothstep(0.60,1.0,max(vFall,0.0));
-          color=mix(color,mix(base,vec3(0.90,0.94,0.945),0.72),foot*0.80);
+          // Round 69: the foot started at 60% of the drop and paled to 0.93, which measured as the
+          // last 40% of the curtain sitting at the tone-map ceiling with no interior detail — the
+          // white wash under the crest. The aeration is real, but it belongs in the last quarter and
+          // it ends at the aerated value, not above it.
+          float foot=smoothstep(0.74,1.0,max(vFall,0.0));
+          color=mix(color,mix(base,vec3(0.84,0.88,0.885),0.58),foot*0.78);
           gl_FragColor=vec4(color,1.0);
           #include <tonemapping_fragment>
           #include <colorspace_fragment>

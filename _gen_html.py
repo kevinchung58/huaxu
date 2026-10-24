@@ -2895,8 +2895,18 @@ def niagara_world(fr, view="rim"):
     ring = NIA_GOAT + [NIA_GOAT[0]]
     for i in range(len(ring) - 1):
         a, b = ring[i], ring[i + 1]
+        # Round 69 — the far bank read as a black bar across the falls.
+        #
+        # Measured by raycasting the served frame (`_ray.mjs`, pixel 800,330): the first world hit
+        # behind the plume is this Goat Island canopy wall at 326 m, authored #2c4428 with a #0f1618
+        # night colour. A dark green at 325 m through 325 m of air does not stay black in daylight:
+        # what the eye sees across the bowl is a hazed mid-green because the air itself scatters
+        # between the bank and the rail. The authored value is the *surface* value, and the ambient
+        # is the only handle this renderer has for distance haze on a `x`-type wall, so both move —
+        # the geometry does not. (The same reading the source gives: from Table Rock the far shore
+        # is green woodland above the gorge, never a silhouette.)
         P.append(_prim("x", [fr.cm(*a, 0), fr.cm(*b, 0), fr.cm(*b, NIA_GOAT_TREES), fr.cm(*a, NIA_GOAT_TREES)],
-                       pat="canopy", u=2000, ax="v", c="#2c4428", cn="#0f1618", a=air(*a), dg=0.45,
+                       pat="canopy", u=2000, ax="v", c="#57764a", cn="#24322a", a=air(*a) * 1.9 + 240, dg=0.45,
                        fn=_fn(fr, *_outward(NIA_GOAT, a, b))))
     gg = resample(NIA_GOAT_GORGE, 12)
     gfoot = [(e - 8, n) for e, n in gg]
@@ -2980,6 +2990,22 @@ def niagara_world(fr, view="rim"):
         nx, ny = nrm[i]
         for k, (du, u, al) in enumerate(((-4, 5, 0.34), (-9, 15, 0.36), (-15, 27, 0.28), (-22, 42, 0.18))):
             puff(e + nx * du, n + ny * du, NIA_CREST + u, 3400 + 520 * k, 2600 + 460 * k, al, 4, 1.0)
+    # Round 69: the plume that stands *in the bowl*, between the sheet's foot and the near bank.
+    #
+    # Measured on the round-69 frame at the Table Rock rail: mist placed at negative distance from
+    # the crest (round 60's fix) draws against the plunge pool 20 px lower in the picture and changes
+    # the sheet itself by 1 luma. The plume a rim visitor sees rising *in front of the fall* stands
+    # downstream of the brink, over the bowl — that is where `curtain` throws the water (24 m at the
+    # foot, its own parabola), so the same positive normal is the side the camera looks across.
+    # Authored as a column: dense and wide at the pool, thinning and drifting as it climbs past the
+    # lip, so the sheet's foot is veiled and the water above it keeps its own edge.
+    for i in range(0, 36, 2):
+        e, n = hs[i]
+        nx, ny = nrm[i]
+        for dd, u, w, h, al, np in ((10, -46, 3600, 2600, 0.34, 5), (18, -34, 4200, 3000, 0.30, 5),
+                                    (26, -22, 4400, 3200, 0.26, 5), (33, -10, 4000, 3000, 0.21, 4),
+                                    (38, 2, 3400, 2600, 0.16, 4), (42, 16, 2800, 2200, 0.11, 3)):
+            puff(e + nx * dd, n + ny * dd, NIA_RIVER + u + 58, w, h, al, np, 0.9)
     # A second row, offset half a step, so the line of puffs has no beat in it.
     for i in range(1, 34, 2):
         e, n = hs[i]
@@ -3002,6 +3028,39 @@ def niagara_world(fr, view="rim"):
         ring = [(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)]
         for i in range(2, 35, step):
             puff(ring[i][0], ring[i][1], NIA_RIVER + up, w, h, al, 4, 0.9)
+
+    # Round 69, the fidelity fix: 從桌岩看瀑布，霧是這地方最認得的那一件事。
+    #
+    # Round 60 moved the crest puffs to the upstream side of the brink, which was the right reading
+    # of the geometry — but it put every one of them *above* the crest, against a sky that is already
+    # #d4e3ec. Measured on the served frame this round, at the Table Rock rail: 840 billboards cover
+    # 20.7% of the picture and change its mean brightness by 1.1 luma. That is a mist that exists in
+    # the data, is in front of the camera, and cannot be seen — which is exactly what the owner
+    # reported as 沒有霧.
+    #
+    # The part of a plunge-pool column a rim visitor actually sees is the part standing between them
+    # and the *dark*: the lower sheet (measured luma 55) and the churned pool (34). So the column is
+    # authored from the river up, upstream of the crest line, where it is in front of the sheet at
+    # every height — the sheet leans downstream to 24 m at its foot, so anything at negative distance
+    # is nearer the eye than the water it hides. Sources: niagaraparks.com (57 m drop, 670 m crest,
+    # 35 m plunge pool) and the same "permanent column of mist above it is visible from far down the
+    # Niagara Parkway" the round-60 note quotes. The plume is not decoration here; it is the
+    # identifying feature of the place, and it is the one thing the earlier build did not draw.
+    for i in range(1, 36, 2):
+        e, n = hs[i]
+        nx, ny = nrm[i]
+        for dn, u, w, h, al in ((-3, 3, 3000, 2200, 0.30), (-6, 13, 3300, 2500, 0.27),
+                                (-10, 24, 3200, 2600, 0.23), (-14, 34, 3000, 2400, 0.18),
+                                (-17, 44, 2800, 2200, 0.14)):
+            puff(e + nx * dn, n + ny * dn, NIA_RIVER + u, w, h, al, 4, 0.85)
+    # The column does not stop at the crest: it boils up past the lip and leans back over the rail,
+    # and that overhang is the part of the plume that reads against the sky from the promenade. One
+    # row, thin, so the white above the brink has a *shape* rather than a wash.
+    for i in range(2, 35, 3):
+        e, n = hs[i]
+        nx, ny = nrm[i]
+        for dn, u, w, h, al in ((-20, 6, 2400, 1900, 0.16), (-26, 16, 2100, 1700, 0.11)):
+            puff(e + nx * dn, n + ny * dn, NIA_CREST + u, w, h, al, 3, 0.8)
     # A low bank far down the gorge, so the gorge's own floor is not a clean line at the horizon.
     puff(610, 650, NIA_RIVER + 2, 7000, 2600, 0.10, 4)
     # The American Falls: a foot cloud under Luna Island's sheet, small, and one at its own plunge.
