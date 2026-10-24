@@ -120,9 +120,22 @@ const withSpray = async (visible) => {
   await sleep(900);
 };
 
-const on = await shot("plume-on");
+/* Round 69: the plume is animated, and a single frame of it is a sample, not a measurement.
+   Two runs of the same build reported 6.9 and 0.6 luma in the same band because the billboards had
+   drifted between them. So each state is sampled FRAMES times and every band is reported as its
+   median — and the frame-to-frame spread is printed beside it, so a band whose spread is larger than
+   the effect says so instead of looking like a result. */
+const FRAMES = Number(process.env.FRAMES || 5);
+const on = [], off = [];
+for (let i = 0; i < FRAMES; i++) {
+  on.push(await shot(i === 0 ? "plume-on" : `plume-on-${i}`));
+  await sleep(450);
+}
 await withSpray(false);
-const off = await shot("plume-off");
+for (let i = 0; i < FRAMES; i++) {
+  off.push(await shot(i === 0 ? "plume-off" : `plume-off-${i}`));
+  await sleep(450);
+}
 await withSpray(true);
 
 const stats = async (file) => {
@@ -132,7 +145,7 @@ const stats = async (file) => {
   c.drawImage(img, 0, 0);
   return { W, H, data: c.getImageData(0, 0, W, H).data };
 };
-const A = await stats(off), B = await stats(on);
+const A = await stats(off[0]), B = await stats(on[0]);
 const luma = (d, i) => 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
 const region = (d, y0, y1) => {
   const vals = [];
@@ -147,24 +160,66 @@ const region = (d, y0, y1) => {
   return { mean: +mean.toFixed(1), sd: +sd.toFixed(1), p05: vals[(n * 0.05) | 0] | 0, p95: vals[(n * 0.95) | 0] | 0,
            rgb: `${(r / n) | 0},${(g / n) | 0},${(b / n) | 0}` };
 };
-const delta = (y0, y1) => {
+const deltaOf = (dA, dB, y0, y1) => {
   let s = 0, n = 0;
   for (let y = y0; y < y1; y += 2) for (let x = 0; x < A.W; x += 2) {
     const i = (A.W * y + x) << 2;
-    s += Math.abs(luma(A.data, i) - luma(B.data, i)); n++;
+    s += Math.abs(luma(dA, i) - luma(dB, i)); n++;
   }
-  return +(s / n).toFixed(2);
+  return s / n;
+};
+const median = (xs) => {
+  const a = xs.slice().sort((p, q) => p - q);
+  return a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2;
+};
+/* Round 69, second correction: averaging, not sampling.
+   The two states are captured seconds apart, and the sheet's own shader animates — so a frame-paired
+   difference is measuring the water's motion as much as the mist. Five frames of each state are
+   averaged into one image first; the plume is then what survives the average, and the band table
+   below reads a stabilised picture instead of one that flickers between 0.4 and 22. */
+const avg = async (files) => {
+  const imgs = [];
+  for (const f of files) imgs.push(await stats(f));
+  const out = { W: imgs[0].W, H: imgs[0].H, data: new Float32Array(imgs[0].data.length) };
+  for (const im of imgs) for (let i = 0; i < im.data.length; i++) out.data[i] += im.data[i] / imgs.length;
+  return out;
+};
+const MEAN_OFF = await avg(off), MEAN_ON = await avg(on);
+const FR = [{ on: MEAN_ON, off: MEAN_OFF }];
+/* How much the scene moves on its own between two frames of the SAME state: if this is comparable to
+   a band's Δ, that band cannot tell the mist from the water's animation and says so. */
+const SELF = [];
+{
+  const d0 = await stats(on[0]);
+  for (const f of on.slice(1)) SELF.push(await stats(f));
+  var selfNoise = async (y0, y1) => {
+    const ds = SELF.map((im) => deltaOf(d0.data, im.data, y0, y1));
+    return median(ds);
+  };
+}
+const regionOver = (key, y0, y1) => {
+  const rs = FR.map((f) => region(f[key].data, y0, y1));
+  return { mean: median(rs.map((r) => r.mean)), sd: median(rs.map((r) => r.sd)),
+           p05: median(rs.map((r) => r.p05)), p95: median(rs.map((r) => r.p95)), rgb: rs[0].rgb };
+};
+const deltaOver = (y0, y1) => {
+  const ds = FR.map((f) => deltaOf(f.off.data, f.on.data, y0, y1));
+  return { med: median(ds), lo: Math.min(...ds), hi: Math.max(...ds) };
 };
 
 // Fixed 40 px bands, so a before/after pair is read on the same ruler whatever moved in the frame.
 const BANDS = [];
 for (let y = 240; y < 720; y += 40) BANDS.push([y, y + 40, `y ${y}-${y + 40}`]);
 console.log("");
-console.log("band                     no mist (mean/sd/p05-p95/rgb)      with mist                    mist Δluma");
+console.log("band                     no mist (mean/sd/p05-p95/rgb)      with mist                    mist Δ   (frame-to-frame noise, same state)");
+console.log(`(${FRAMES} frames per state, median; Δ is median [min..max] across frames)`);
 for (const [y0, y1, label] of BANDS) {
-  const a = region(A.data, y0, y1), b = region(B.data, y0, y1);
+  const a = regionOver("off", y0, y1), b = regionOver("on", y0, y1);
+  const d = deltaOver(y0, y1);
   const f = (s) => `${s.mean}/${s.sd}/${s.p05}-${s.p95}/${s.rgb}`;
-  console.log(label.padEnd(24), f(a).padEnd(36), f(b).padEnd(30), String(delta(y0, y1)).padStart(6));
+  const noise = await selfNoise(y0, y1);
+  console.log(label.padEnd(24), f(a).padEnd(36), f(b).padEnd(30),
+              d.med.toFixed(1).padStart(6), `   scene moves ±${noise.toFixed(1)}`);
 }
 console.log("\nframes:", path.join(OUT, "plume-on.png"), path.join(OUT, "plume-off.png"));
 // A broken shader still renders a background and a HUD, and every band below would be measured

@@ -3002,9 +3002,19 @@ def niagara_world(fr, view="rim"):
     for i in range(0, 36, 2):
         e, n = hs[i]
         nx, ny = nrm[i]
-        for dd, u, w, h, al, np in ((10, -46, 3600, 2600, 0.34, 5), (18, -34, 4200, 3000, 0.30, 5),
-                                    (26, -22, 4400, 3200, 0.26, 5), (33, -10, 4000, 3000, 0.21, 4),
-                                    (38, 2, 3400, 2600, 0.16, 4), (42, 16, 2800, 2200, 0.11, 3)):
+        # Round 69, second pass — 霧要像一根柱子, not a fog bank.
+        #
+        # The red-dye frame (`MIST=red`) showed what the alpha numbers had hidden: the billboards
+        # cover the right place but they are a *wash* — broad, even, and never denser anywhere in
+        # particular. A plume is the opposite shape: dense where it leaves the water, thinning and
+        # spreading as it climbs, with a base you could point at. So the base is heavier (0.34 → 0.55
+        # at the pool), the falloff is steeper with height, and the puffs sit closer together near
+        # the water — where the backdrop is the dark plunge (measured luma 54) rather than the white
+        # sheet. Over the sheet, more alpha would still be white on white; over the pool it is the
+        # bright mass a visitor actually sees.
+        for dd, u, w, h, al, np in ((9, -47, 3300, 2400, 0.55, 6), (16, -36, 3900, 2800, 0.50, 6),
+                                    (24, -24, 4300, 3100, 0.40, 5), (31, -12, 4100, 3000, 0.29, 5),
+                                    (37, 1, 3500, 2700, 0.19, 4), (42, 15, 2900, 2300, 0.12, 3)):
             puff(e + nx * dd, n + ny * dd, NIA_RIVER + u + 58, w, h, al, np, 0.9)
     # A second row, offset half a step, so the line of puffs has no beat in it.
     for i in range(1, 34, 2):
