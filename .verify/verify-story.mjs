@@ -142,7 +142,9 @@ await sleep(1500);
 // deck), not a prop called falls-jb; what the tunnel owns is the deck's parapet at its mouth.
 ok("behind the falls boots in the tunnel, its deck at the mouth and the falls in its world",
    await page.evaluate(() => {
-     const bd = JSON.parse(document.querySelector("[data-walk-backdrop]")?.textContent || "{}");
+     const el = document.querySelector("[data-walk-backdrop]");
+     const t = (el.textContent || "").trim();
+     const bd = t ? JSON.parse(t) : (((window.__HX_PLACES || {})[el.dataset.place] || {})["data-walk-backdrop"] || {});
      return !!document.querySelector("[data-obj='deckwall-jb']")
        && ((bd.world && bd.world.prims) || []).some((p) => p.t === "w");
    }));

@@ -2024,10 +2024,23 @@ function leaveOverlay(root, trigger) {
     const v = readAny(sel);
     return v && typeof v === "object" && !Array.isArray(v) ? v : null;
   };
+  /* P2 (round 69): the biggest island no longer lives in the page. A place whose world data runs
+     past 60 KB is emitted into js/places/<place>.js, and the marker here keeps the same attribute
+     with `data-place` and no text — so every caller, every gate and every selector still asks the
+     same question. The bytes arrive from a plain <script> tag placed before this file, which is
+     why the read can stay synchronous: no fetch, no await, no build step, and no page that paints
+     a walk before its world exists. */
   const readAny = (sel) => {
     const node = layer.querySelector(sel);
     if (!node) return null;
-    try { return JSON.parse(node.textContent); } catch (err) { return null; }
+    const text = (node.textContent || "").trim();
+    if (text) {
+      try { return JSON.parse(text); } catch (err) { return null; }
+    }
+    const name = sel.replace(/^\[|\]$/g, "");
+    const place = node.dataset && node.dataset.place;
+    const store = place && window.__HX_PLACES && window.__HX_PLACES[place];
+    return store && Object.prototype.hasOwnProperty.call(store, name) ? store[name] : null;
   };
   const jsonData = (v) => { try { return v ? JSON.parse(v) : null; } catch (e) { return null; } };
   const meta = objs.map((el) => ({
@@ -2096,9 +2109,8 @@ function leaveOverlay(root, trigger) {
      by the base test alone. Without this, `wall-probe` measured 786 free standing points inside
      the journey tunnel's own walls — a visitor walks through exactly what they see (round 45). */
   {
-    const bdEl = layer.querySelector("[data-walk-backdrop]");
-    let world = null;
-    try { world = (JSON.parse(bdEl.textContent).world || {}); } catch (err) { world = null; }
+    const bdIsland = readAny("[data-walk-backdrop]");
+    const world = (bdIsland && bdIsland.world) || null;
     for (const p of (world && world.prims) || []) {
       if (p.t !== "f" && p.t !== "x") continue;
       const pts = p.p || [];

@@ -15,7 +15,11 @@
   - **B 水幕（做了，有數字）**：三處 —— 白端封頂（`aerated` 0.80 → 0.62，天花板的 227 不再是水幕自己的值）、落下方向的明暗（`densityDark`／`boilLift`，讓水幕有身體而不是一面牆）、底部改到最後四分之一才轉白。
   - **C 接地（做了）**：遠岸不是黑的。raycast（`_ray.mjs`，pixel 800,330）證明橫過瀑布的黑條就是 Goat Island 的 `canopy` 牆（326 m 外，`#2c4428`／夜 `#0f1618`）。改成 `#57764a`／`#24322a` 並提 ambient；同一個影格裡它從黑條變成遠岸的樹。
   - **新閘門 `.verify/shader-lits.mjs`**：GLSL 註解裡的一個 backtick 會提早結束 template literal，`node --check` 照過、瀏覽器整個場景空白（本輪被它害兩次，兩次都差點把空畫面當成「沒有霧」量下去）。閘門會先自我測試：合成的壞例必須被抓到，才去讀真的檔案。`_plume.mjs`／`_water.mjs` 也改成遇到 pageerror 直接 exit 2、不印數字。
-  - **未做：P2**（世界資料搬出 HTML）。本輪把預算花在「量到成因 → 修 → 再量」上，P2 仍完整留在 §3，沒有動一行。
+  - **D P2（做了）**：世界資料搬出 HTML。`_gen_html.py` 把超過 60 KB 的 island 寫成 `js/places/<place>.js`（`window.__HX_PLACES[place][attr]`），頁面只留一個帶 `data-place` 的標記＋一支普通 `<script>`（**在 `js/site.js` 之前**，所以仍然是同步可讀：沒有 fetch、沒有 await、沒有 build step）。`js/site.js` 的 `readAny` 讀不到文字就翻到 store；jsdom 型閘門（jsdom 不抓外部 script）在 strip 之前把 place 檔內聯進去；`bin/verify-three` 讀標記指向的那個檔案。
+    - **頁面大小**：`rooms-cntower.html` 739,002 → **27,304 B**（驗收門檻 < 80 KB）、`rooms-journey.html` 293,392 → **26,201 B**、`rooms-niagara.html` 355,858 → **93,897 B**。
+    - **三角形數不變**：`bin/verify-three.mjs` 仍報 12,826 world + 864 water、3 sourced worlds。
+    - 小 island 留在頁內（2 KB 不值得一個 request），所以 `rooms.html`／`street.html` 等頁面只多了 VER 字串的差別。
+  - **閘門現況（第 69 輪量到的）**：collision 28/28、feel 12/12、body 73/73、story 27/27、games 23/23、nowebgl 35/35、three PASS、shader-lits PASS、impeccable `[]`、`_gen_html.py` 冪等。**`verify-walk` 的那一項是擲硬幣**：`opening a card finishes the teaching…` 在 **HEAD 也是 4 次裡失敗 2 次**（本分支 8 次裡失敗 4 次），訊息都是 `3 / 4 card=false reach=1`——按 E 時站在一個「不值得讀」的東西前面，E 依規則不回應。這是**閘門自己的不決定性**（它靠 700 ms 轉身＋1500 ms 前進「漂」到某個 prop 前面），不是本輪改壞的；第 68 輪的 192/192 是一次幸運抽樣。
 
 - **進度（第 68 輪，已交付）**：
   - **P0 站死修好，成因有三個，全在 `js/site.js` 的 `moveStep`**（每處都有 `Round 68` 註解與量測）：
@@ -92,12 +96,11 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 
 ## 3. 下一輪計畫（依優先序；每項都有驗收證據）
 
-### P2 — 世界資料搬出 HTML（最大的結構改動）
+### P2 — 世界資料搬出 HTML（本輪做了，§1 有數字）
 
-- **目標**：世界資料從「烘焙進 HTML」改成獨立的 data module（照 `mrdoob/slop-newyork` 的 `nyc-geodata.js` 做法），頁面回到約 30 KB。
-- **現況**：`rooms-cntower.html` 722 KB（**695 KB 是 `data-walk-backdrop`**，3,827 個 world prim）；`rooms-niagara.html` 325 KB（1,351 prim）；`rooms-journey.html` 264 KB（1,400 prim，其中約 1,140 個與 niagara 重複）。
-- **做法**：新增 `js/places/*.js`（generator 照樣產生它，**不引入 build step**）；`js/places/index.js` 當 place index（停止點、district、地標），runtime 不再 parse DOM。
-- **驗收**：cntower < 80 KB、`verify-three` 的三角形數不變（12,826 world + 864 water）、impeccable 0、全閘門全綠。
+- **已完成**：> 60 KB 的 island → `js/places/<place>.js`（`window.__HX_PLACES[place][attr]`），頁面只留 `data-place` 標記＋普通 `<script>`；`readAny` 在 store 裡找；jsdom 閘門在 strip 前內聯；`verify-three` 讀標記指向的檔案。cntower 739 KB → 27 KB。
+- **沒做（下一輪的第一件事）**：`js/places/index.js`（停止點／district／地標索引），以及 runtime 不再 parse DOM——**現在仍然 parse DOM**，只是最大的那塊不在 DOM 裡了。要做這件事，`readAny` 的呼叫點要一個一個搬到 index，並且 jsdom 閘門要改讀 index，不是改讀標記。
+- **不要重做**：把資料改成 `fetch`／`await`。`js/site.js` 在載入時同步組出世界，async 會讓「先畫出一個沒有世界的 lane」變成可能；普通 `<script>` 在它之前跑，是這條規則的實作。
 
 ### P3 — 拆掉兩個巨型檔（純搬移，零行為變更）
 
@@ -123,6 +126,12 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 4. **SkyWheel 吊艙近看**：圓潤感、門、座椅的節奏。*驗收*：近照裡能數出吊艙、認出門與玻璃。
 5. **其他頁面的地標盤**：Goat 的兩道瀑布、Toronto 的 `falls` 模型（現在是「看得見就算」，沒有盤）。
 6. **量具覆蓋**：`_lane.mjs` / `_tile.mjs` 只量 Niagara 的鋪面；量別的頁面前，先確認 `FLOOR_PERIOD` 對那個 floor style 的意義。
+
+### P0 — `verify-walk` 的那一項要變成真的閘門
+
+- **事實**：`opening a card finishes the teaching…` 在 **HEAD（第 68 輪）** 也失敗 4 次裡 2 次；本分支 8 次裡 4 次。訊息固定是 `3 / 4 card=false reach=1`，並顯示「Kaminarimon, at your back · 5.2 m ahead」。E 不回應是因為當下 `reach` 指向一個「不值得讀」的東西（規則正確），測試卻假設 700 ms 轉身＋1500 ms 前進一定漂到一個 prop 前面。
+- **兩條路**（下一輪挑一條，不要兩條都做）：(a) 測試自己走到一個 `[data-obj]` 有 `data-title` 的 prop 前面再按 E（決定性，但要寫轉向）；(b) 讓 `act()` 在 reach 是 scenery 時回一句狀態（「這裡沒有東西可讀」），測試改成驗那句話——但那就不是同一個 assertion 了，要先用 `skills/pua` 想清楚這樣測的是什麼。
+- **不要做**：把 assertion 放寬、或加 sleep 到剛好會過。第 68 輪的 192/192 就是這樣來的。
 
 ## 4. 需要站主決定（代理不能替他決定）
 

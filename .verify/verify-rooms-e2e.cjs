@@ -36,7 +36,12 @@ function boot(file, hash = "") {
       const m = String((e && e.message) || e);
       if (/navigation/.test(m)) navs.push(m); else errors.push(m);
     });
-    let html = fs.readFileSync(file, "utf8").replace(/<script[^>]*src=[^>]*><\/script>/g, "");
+    // P2 (round 69): the place's world data is a plain script file now; jsdom fetches nothing, so it
+    // is inlined here before the external-script strip, the same bytes the browser loads.
+    let html = fs.readFileSync(file, "utf8")
+      .replace(/<script[^>]*src="(js\/places\/[a-z0-9-]+\.js)(\?[^"]*)?"[^>]*><\/script>/g,
+               (_m, src) => `<script>${fs.readFileSync(src, "utf8")}</script>`)
+      .replace(/<script[^>]*src=[^>]*><\/script>/g, "");
     const dom = new JSDOM(html, {
       runScripts: "dangerously", pretendToBeVisual: true,
       url: "https://huaxu.test/" + file + hash, virtualConsole: vc,
