@@ -8075,8 +8075,15 @@ function leaveOverlay(root, trigger) {
               // round 54 review: the half is read at the candidate's own depth — `pd`, because the
               // wedge steps (px, pd) together; the rebuild wrote `halfAt(pz)`, a name the solver
               // never had, and any body that crept round a corner died mid-tick on all pages.
-              px = clamp(px + tX * sgn * creep, -halfAt(pd), halfAt(pd));
-              pd = clamp(pd + tD * sgn * creep, MIN_D, MAX_D);
+              // Round 68: the step has to be *taken*, not clamped. A creep heading into the lane's
+              // own wall was clamped onto the wall and reported clear, so at a prop corner beside
+              // a wall the solver picked the wall side on every frame, the clamp ate the step, and
+              // the body stood still beside a face it could walk along (`_wedge2` caught it at
+              // x=-431 with `clear:[1,1]` and a 0.51 cm hop that cancelled itself). The lane
+              // boundary is a face like any other: a side that the wall refuses is not clear.
+              const qx = px + tX * sgn * creep, qd = pd + tD * sgn * creep;
+              if (clamp(qx, -halfAt(qd), halfAt(qd)) !== qx || clamp(qd, MIN_D, MAX_D) !== qd) return 0;
+              px = qx; pd = qd;
               if (collidesAt(px, pd)) return 0;
             }
             return 1;
@@ -8093,8 +8100,17 @@ function leaveOverlay(root, trigger) {
         let sd = clamp(oldDepth + tD * along, MIN_D, MAX_D);
         const h2 = pushAt(sx, sd);
         if (h2) {
-          sx = clamp(sx + h2.nx * h2.p, -halfAt(depth), halfAt(depth));
-          sd = clamp(sd + h2.nz * h2.p, MIN_D, MAX_D);
+          /* Round 68: a tenth of a millimetre of clearance after the push-out.
+             `pushAt` resolves by exactly `pen = R - dist`, so the resolved point sits ON the
+             surface the accept test below then asks about with a strict `<`. Rounding decides
+             that comparison, and when it falls on the wrong side the body is refused the one
+             step it had found — every frame, at the same corner, with the keys held
+             (`_wedge2`: ladder southeast corner, `h2.p` 0.07, `col:true`, move 0, a clear 45°
+             exit). Clearance makes the answer the solver's rather than the FPU's; a hundredth
+             of a centimetre is far below anything the eye or the body can spend. */
+          const clear2 = h2.p + 0.01;
+          sx = clamp(sx + h2.nx * clear2, -halfAt(depth), halfAt(depth));
+          sd = clamp(sd + h2.nz * clear2, MIN_D, MAX_D);
         }
         // The dead zone is anti-flip-flop, not anti-slow: buzz means the normal alternating and
         // the slide reversing — a reversal pays the 1.2 cm threshold, a monotone creep never does,
@@ -8105,7 +8121,21 @@ function leaveOverlay(root, trigger) {
         const hop2 = Math.hypot(sx - oldX, sd - oldDepth);
         const dir = along > 0.01 ? 1 : along < -0.01 ? -1 : 0;
         const buzz = dir !== 0 && slideDir !== 0 && dir !== slideDir;
-        if (!collidesAt(sx, sd) && hop2 > 0.01 && (!buzz || hop2 > 1.2)) {
+        /* Round 68: the wedge creep does not pay the reversal price.
+           `buzz` remembers the direction of the last accepted slide so two faces cannot alternate
+           the body between them — but the memory is keyed to the direction alone, and it outlives
+           the face that taught it. A body rounding a prop's corner keeps the memory of the face it
+           came from; the new face's only clear creep is 115 cm/s times this step's dt, and at the
+           sub-sampled 8.3 ms that is 0.96 cm, so the 1.2 cm reversal it is charged can never be
+           afforded and the body stands between the two faces with a legal way out. The gate caught
+           eight of these in one run on rooms.html (round 68) — every one with `clear:[1,0]` or
+           `[0,1]`, `collidesAt(sx,sd) === false`, a clear 45° exit, and `hop2` 0.955 refused by
+           `buzz`. A 60 Hz frame at one hop creeps 1.9 cm and passed, which is why the same wedge
+           was only ever seen on a slow frame. The creep is already guarded by its own memory
+           (`cornerAssist`, which cannot alternate) and by the four-step clearance test above, so
+           the direction it chose is an answer, not a buzz. */
+        const wedged = cornerAssist !== 0;
+        if (!collidesAt(sx, sd) && hop2 > 0.01 && (wedged || !buzz || hop2 > 1.2)) {
           nx2 = sx; nz2 = sd; blockedX = false; blockedD = false;
           if (dir) slideDir = dir;
         }
