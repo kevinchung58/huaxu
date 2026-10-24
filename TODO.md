@@ -19,7 +19,11 @@
     - **頁面大小**：`rooms-cntower.html` 739,002 → **27,304 B**（驗收門檻 < 80 KB）、`rooms-journey.html` 293,392 → **26,201 B**、`rooms-niagara.html` 355,858 → **93,897 B**。
     - **三角形數不變**：`bin/verify-three.mjs` 仍報 12,826 world + 864 water、3 sourced worlds。
     - 小 island 留在頁內（2 KB 不值得一個 request），所以 `rooms.html`／`street.html` 等頁面只多了 VER 字串的差別。
-  - **閘門現況（第 69 輪量到的）**：collision 28/28、feel 12/12、body 73/73、story 27/27、games 23/23、nowebgl 35/35、three PASS、shader-lits PASS、impeccable `[]`、`_gen_html.py` 冪等。**`verify-walk` 的那一項是擲硬幣**：`opening a card finishes the teaching…` 在 **HEAD 也是 4 次裡失敗 2 次**（本分支 8 次裡失敗 4 次），訊息都是 `3 / 4 card=false reach=1`——按 E 時站在一個「不值得讀」的東西前面，E 依規則不回應。這是**閘門自己的不決定性**（它靠 700 ms 轉身＋1500 ms 前進「漂」到某個 prop 前面），不是本輪改壞的；第 68 輪的 192/192 是一次幸運抽樣。
+  - **P0 自動走（上一輪以為是閘門不穩，其實是站上的錯）**：`verify-walk` 的教學段落先轉頭 48°、走兩公尺，再點 z 1392 的停止點；上一輪它 4 次失敗 2 次（HEAD 也一樣），被當成「閘門擲硬幣」。這輪查下去，**兩件事疊在一起**：
+    1. **閘門自己**：兩支 JSDOM lane 同時活在一個行程裡，各自跑 rAF，第二支只剩一半的幀；而 glide 是「每秒幾公分 × 實際時間」，所以它在 9.6 s 的等待裡到不了 1,392 cm（單一視窗實測 8.5 s 到）。修法：開第二支之前先 `w.close()`，等待改成**等身體**（上限 40 s，實測的 5 倍）並且**加一條 assertion**：到不了就紅，不是默默量錯地方。步伐也改成「走到 200 cm 為止」而不是「按 1800 ms」。
+    2. **站上真的有 bug**：身體到了 x≈270、z≈962 就**永遠到不了停止點**——`_rail.mjs` 把 glide 的狀態印出來，x 在 **206 與 343 之間被推來推去**，40–90 秒內一公分都沒靠近。成因兩個：`moved` 把**被推開**也算成「有在動」，所以繞路永遠不觸發；繞路又一邊側移一邊仍瞄準終點，每一步都是斜的、剛好撞回那個花台（`planter-nakamise-1`，x 278／z 1010／104×46 cm）。修法：**用「有沒有靠近」判定撞到**（`gained < stride/2` 就算擋住）、繞路時**先純側移到旁線再前進**、繞路基準取停止點自己的線（不是被推開的位置）、`homeGlide` 加上身體自己那一點與前 30 cm 的檢查（原本從 120 cm 外開始掃，正好跳過花台的深度）。
+    - **結果**：`verify-rail.mjs`（新閘門，四種起點）**4/4，5.4–7.9 s 到達**；同一支閘門對**舊版 `site.js` 只有 1/4**（三個起點 30 s 內一公分都沒靠近，最後八幀印出的就是被推來推去的位置）——所以它真的量到這個 bug，不是量到運氣。`verify-walk` **193/193 連三次**；`verify-collision` 28/28（七頁的「every rail stop arrives」含在內）；`_wedge` 寬掃描 20 次 STALL 全部 `exits: []`（合法貼牆），**freeze-with-exit 0**。
+  - **閘門現況（第 69 輪，最終 artefact）**：walk 193/193（連三次）、collision 28/28、feel 12/12、body 73/73、story 27/27、games 23/23、nowebgl 35/35、shapes 248、geometry／clash／chain／tables／look／objects 全過、three PASS（12,826 + 864）、shader-lits PASS、impeccable `[]`、`_gen_html.py` 冪等。
 
 - **進度（第 68 輪，已交付）**：
   - **P0 站死修好，成因有三個，全在 `js/site.js` 的 `moveStep`**（每處都有 `Round 68` 註解與量測）：
@@ -59,7 +63,8 @@ sh bin/restore-env && sh bin/preview          # 環境 + 伺服器（0.0.0.0:808
 node .verify/verify-shapes.mjs                 # 248 個 prop 都有形
 node .verify/verify-geometry.mjs
 node .verify/verify-clash.mjs
-node .verify/verify-walk.mjs                   # 192/192
+node .verify/verify-walk.mjs                   # 193/193（含「rail 帶你到停止點」）
+node .verify/verify-rail.mjs                   # 4/4（四個起點都要到同一顆停止點；舊版 1/4）
 node .verify/verify-collision.cjs              # 28/28（7 頁）
 node .verify/verify-feel.mjs                   # 12/12
 node .verify/verify-body.mjs                   # 73/73
@@ -86,6 +91,7 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 - **手感與互動**：`_turn.mjs` / `_keys.mjs`（鍵盤手感與速度）、`_census.mjs`（互動普查）、`browser-check.py`（**點擊真的落在地上**——AGENTS 指定；jsdom 沒有 hit-testing）、`wall-live.mjs`（真瀏覽器的撞牆連段）、`wall-pierce-live.mjs`（真瀏覽器的穿牆取樣）、`walk-feel.mjs`（真瀏覽器的加減速與轉向）。
 - **碰撞診斷（第 68 輪）**：`_wedge.cjs`（寬掃描：每個 rail stop 16 個方位＋斜向壓牆＋每個 solid 四角，**連續**回報「有合法出口卻站著」的 STALL）、`_wedge2.cjs`（同一條路線，但把 `js/site.js` 的 `moveStep` **在記憶體裡**逐點插旗，印出 `clear`／`along`／`hop2`／`buzz`／`ok`；每個 anchor 都 assert 只命中一次）。**改 `moveStep` 就要重對 anchor**，這是它的代價，也是它抓出三個成因的方式。
 - **水與霧（第 69 輪）**：`_plume.mjs`（把 `js/scene3d.js` **在記憶體裡**補上 `window.__threeScene`，回報霧的 billboard 數／alpha／包圍盒；`MIST=red` 把霧染紅證明幾何在哪、`MIST=off` 關掉它）、`_water.mjs`（40 px 一條帶的平均／sd／p05-p95／rgb，以及開霧前後每帶的 Δluma；`STOP/YAW/HOUR/SCENE/OUT`，`SCENE=` 可以拿舊版 `scene3d.js` 做 A/B）、`_ray.mjs`（在活的場景裡對某個像素射線，回報前三個命中的 mesh 名與世界座標——「畫面那條黑的是什麼」用這個問，不要猜）、`_fps.mjs`（同一台 headless 上的 fps，用來判斷多出來的幾何有沒有代價）。**三支瀏覽器量具遇到 pageerror 一律 exit 2、不印數字**：空白背景配上 HUD 也會量出一張表，那張表不是場景。
+- **自動走（第 69 輪）**：`verify-rail.mjs`（閘門：四個起點點同一顆停止點，每個都要在 30 s 內到，失敗會印出最後八幀的「身體 ↔ 目標」與是否在繞路；舊版 `site.js` 跑 1/4，修好後 4/4。它把 `js/site.js` 在記憶體裡補一行 trace，anchor 命中數不對就拋錯）
 - **診斷**：`_stuck.mjs` / `_stuck2.mjs`（卡住）、`_tapdiag.mjs`（點擊診斷）、`_wallgap.mjs`（畫牆與可行走空間）、`_csscheck.mjs`（樣式表解析與套用）、`wall-probe.cjs`（受困／滑動／擱淺普查）、`verify-rooms-e2e.cjs`（jsdom 啟動樣板，碰撞閘門共用同一份 boot）。
 
 ### 2.5 記憶的規則
@@ -127,12 +133,6 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 5. **其他頁面的地標盤**：Goat 的兩道瀑布、Toronto 的 `falls` 模型（現在是「看得見就算」，沒有盤）。
 6. **量具覆蓋**：`_lane.mjs` / `_tile.mjs` 只量 Niagara 的鋪面；量別的頁面前，先確認 `FLOOR_PERIOD` 對那個 floor style 的意義。
 
-### P0 — `verify-walk` 的那一項要變成真的閘門
-
-- **事實**：`opening a card finishes the teaching…` 在 **HEAD（第 68 輪）** 也失敗 4 次裡 2 次；本分支 8 次裡 4 次。訊息固定是 `3 / 4 card=false reach=1`，並顯示「Kaminarimon, at your back · 5.2 m ahead」。E 不回應是因為當下 `reach` 指向一個「不值得讀」的東西（規則正確），測試卻假設 700 ms 轉身＋1500 ms 前進一定漂到一個 prop 前面。
-- **兩條路**（下一輪挑一條，不要兩條都做）：(a) 測試自己走到一個 `[data-obj]` 有 `data-title` 的 prop 前面再按 E（決定性，但要寫轉向）；(b) 讓 `act()` 在 reach 是 scenery 時回一句狀態（「這裡沒有東西可讀」），測試改成驗那句話——但那就不是同一個 assertion 了，要先用 `skills/pua` 想清楚這樣測的是什麼。
-- **不要做**：把 assertion 放寬、或加 sleep 到剛好會過。第 68 輪的 192/192 就是這樣來的。
-
 ## 4. 需要站主決定（代理不能替他決定）
 
 - **瀑布的圈要不要更亮／卡片文字要不要更短**（影格 `.preview/r65e/`、`.preview/r65b/falls2/`）。
@@ -166,6 +166,7 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
   - `pushAt` 推離後候選距離 24.0009（R = 24）、`h2.p` 0.07、`col:true` → move 0（浮點在嚴格 `<` 上翻面）。
   - 修好後：`_wedge` 寬掃描 5 輪 0 freeze（19,240–20,040 幀／輪）；`verify-collision` 7 頁 28/28。
 - 停止點（HTML z）：61 / 1360 / 2842 / 4379 / 4814 / 6177 / 7424（fun row x 300, yaw 90）/ 8584（SkyWheel x 830, yaw 78）/ 10092。
+- **自動走的實測**：空線 1,332 cm 用 8.5 s（≈157 cm/s）。**修好前**，直線切過 `planter-nakamise-1`（x 278／z 1010／104×46 cm）時，身體在 x 206↔343、z≈962 之間被推來推去，40–90 s 一公分都沒靠近；**修好後**四種起點都 6–8 s 到達。判準是「這一步有沒有讓到終點的距離縮短一半以上」，不是「身體有沒有動」。
 
 ### 5.4 瀑布（第 69 輪量到的；在做任何「霧／水幕」的改動前先讀這一節）
 

@@ -8174,10 +8174,16 @@ function leaveOverlay(root, trigger) {
      gives up, because being walled off from a stop is truer than pretending through it. */
   const detourAround = () => {
     if (!gliding) return false;
-    for (let off = 20; off <= 220; off += 20) {
-      for (const sg of (x >= 0 ? [1, -1] : [-1, 1])) {
-        const gx = clamp(x + sg * off, -halfAt(depth), halfAt(depth));
-        if (Math.abs(gx - x) < 12) continue;              // the wall ate it: no strip there
+    /* Round 69: the strip is chosen from the stop's own line, not from wherever the body was just
+       thrown, and an existing detour is *widened* rather than recomputed. Re-centring on the thrown
+       body made every recomputation pick a different side, so the glide followed the shove instead of
+       going round anything. */
+    const base = gliding.origX === undefined ? x : gliding.origX;
+    const first = gliding.origX === undefined ? 20 : Math.max(20, Math.abs(x - base) + 20);
+    for (let off = first; off <= 320; off += 20) {
+      for (const sg of (base >= x ? [1, -1] : [-1, 1])) {
+        const gx = clamp(base + sg * off, -halfAt(depth), halfAt(depth));
+        if (Math.abs(gx - x) < 12 && gliding.origX === undefined) continue;   // the wall ate it: no strip there
         if (collidesAt(gx, depth) || collidesAt(gx, Math.min(depth + 150, gliding.to))) continue;
         if (gliding.origX === undefined) gliding.origX = gliding.x;
         gliding.x = gx;
@@ -8188,14 +8194,25 @@ function leaveOverlay(root, trigger) {
   };
   const homeGlide = () => {
     if (!gliding || gliding.origX === undefined || gliding.origX === gliding.x) return;
+    // Round 69: not before the side lane is reached. Homing mid-cross reset the target to the stop's
+    // line every frame, which re-armed the sidestep every frame, and the body never advanced at all
+    // (measured: 0 cm in 120 s). The detour is finished only when the body is standing on it.
+    if (Math.abs(x - gliding.x) > 12) return;
     /* Round 64: the walk home looked at ONE point 150 cm ahead and called the line clear when
        that point was clear. A body pressed against a lamp post was therefore sent straight back
        onto its line the moment the post was 150 cm behind it, and the glide ping-ponged between
        the line and the detour and never got round anything at all — the visitor was left standing
        in the lane with a chip that promised an arrival. Home now waits until the line is clear
        the whole way along, not clear at one step. */
+    /* Round 69: the scan started 120 cm ahead, and a body *beside* a shop bay therefore read its own
+       line as clear — home fired on the next frame, re-aimed straight into the bay, was thrown out,
+       detoured again, and ping-ponged there for as long as the visitor waited (`_rail.mjs`: x between
+       206 and 343 at z 962, never closer to the stop). A line is clear from where the body *is*, so
+       the body's own point is tested first, and the first metre is walked in 30 cm steps instead of
+       120 — a bay's footprint is about that deep, and the coarse step stepped over it. */
+    if (collidesAt(gliding.origX, depth)) return;
     const to = Math.min(gliding.to, depth + 900);
-    for (let d = depth + 120; d <= to; d += 120) {
+    for (let d = depth + 30; d <= to; d += d <= depth + 300 ? 30 : 120) {
       if (collidesAt(gliding.origX, d)) return;     // still box alongside: stay on the detour
     }
     gliding.x = gliding.origX;
@@ -8212,19 +8229,41 @@ function leaveOverlay(root, trigger) {
   // it can never diverge by construction.
   const stepMotion = (dt, glideOnly = false) => {
     if (gliding) {
-      const dx = gliding.x - x, dd = gliding.to - depth;
+      /* Round 69 — 撞到先側移, 再前進.
+         A detour used to keep aiming at the stop while it moved sideways, so the step was a diagonal
+         straight into the very bay it was trying to avoid: the solver pushed the body back out, the
+         glide re-aimed, and the visitor travelled 1100 cm in 40-90 s of visible judder (`_rail.mjs`,
+         measured; a 7 s walk on a clear line). While a detour is in force and the side lane has not
+         been reached, the step's depth target is *here* — pure lateral motion, which the solver
+         handles without a fight — and only then does the glide advance along the lane at the new x.
+         Normal glides are untouched: with no detour in force this is the same diagonal it always was. */
+      const sidestep = gliding.origX !== undefined && Math.abs(x - gliding.x) > 6;
+      const aimX = gliding.x, aimZ = sidestep ? depth : gliding.to;
+      const dx = aimX - x, dd = aimZ - depth;
       const distance = Math.hypot(dx, dd);
-      if (distance < 1.2) {
+      if (!sidestep && distance < 1.2) {
         moveBody(gliding.x, gliding.to);
         if (Math.hypot(gliding.x - x, gliding.to - depth) < 1.2) gliding = null;
-      } else {
+      } else if (distance > 0.001) {
         const stride = Math.min(distance, GLIDE_SPEED * dt);
         const moved = moveBody(x + dx * stride / distance, depth + dd * stride / distance);
-        const remaining = Math.hypot(gliding.x - x, gliding.to - depth);
-        if (remaining < 1.2) gliding = null;
-        else if (moved < 0.001 && !detourAround())
-          gliding = null;     // a solid object with no room round it is still the truth —
-        else homeGlide();     // but an auto-walk must not abandon the visitor mid-lane
+        const remaining = Math.hypot(aimX - x, aimZ - depth);
+        /* Round 69 — 撞到就繞, and "撞到" is measured in progress, not in displacement.
+           `moved` is what the body did, and a push-out is also something the body did: a rail glide
+           whose straight line clips a shop bay was shoved 70 cm sideways every frame, `moved` read
+           70, the detour never fired, and the visitor juddered between x 206 and x 343 at z 962 for
+           as long as they stood there (`.verify/_rail.mjs`; the gate that reported it was called
+           flaky for two rounds). The question a glide has to ask is "did I get closer to the place
+           I promised", so it is asked in those terms: a step that does not close at least half the
+           distance it meant to close is blocked, however far the body was thrown.
+           `moved` is kept — a body that moved nothing at all is still worth a detour without the
+           arithmetic — and a solid with no room round it still ends the glide, because being walled
+           off from a stop is truer than pretending through it (round 41). */
+        const gained = distance - remaining;
+        const progressed = gained >= stride * 0.5;
+        if (!sidestep && remaining < 1.2) gliding = null;
+        else if ((!progressed || moved < 0.001) && !detourAround()) gliding = null;
+        else homeGlide();
       }
     } else if (!glideOnly) {
       if (ride) return;   // the car carries you; the keys wait

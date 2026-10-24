@@ -1088,6 +1088,16 @@ ok("the 2D lane painter is deleted, not dormant", !/data-walk-canvas|canvas2d/.t
    own glide deliberately comes after the walking step, so a carried body can never impersonate
    strides. */
 {
+  /* Round 69: close the lane this gate has been walking before the guide boots its own.
+     Two live JSDOM windows in one process each keep a requestAnimationFrame pump running, so the
+     second window got roughly half the frames of the first — and the rail's glide is measured in
+     wall-clock seconds, not in frames. Measured with one window: the stop at z 1392 is reached in
+     8.5 s (1332 cm at ~157 cm/s). Measured with the first window still alive, the same glide had not
+     arrived in 9.6 s; the settle timed out; the next keypress cancelled the glide (`gliding = null`
+     on the first W/A/S/D); and every assertion after it was about wherever the body happened to be
+     standing. That is the coin flip — 2 of 4 runs failed on HEAD before any round-69 change.
+     Nothing after this line uses the first window. */
+  w.close();
   const g = boot(rooms, "https://huaxu.test/rooms-guide.html");
   const gdoc = g.document;
   const gq = (s) => gdoc.querySelector(s);
@@ -1097,8 +1107,20 @@ ok("the 2D lane painter is deleted, not dormant", !/data-walk-canvas|canvas2d/.t
   const ghold = async (k, ms) => { gkey(k); await sleep(ms); gkey(k, "keyup"); };
   const gholdT = async (ks, ms) => { ks.forEach((k) => gkey(k)); await sleep(ms); ks.forEach((k) => gkey(k, "keyup")); };
   const gbody = () => gq("[data-walk]").__walk;
+  /* Waits for the body, not for a stopwatch — and says whether it got there. The 40 s ceiling is
+     ~5x the measured 8.5 s, so a slow machine is merely slow; if it ever is not enough, the
+     assertion below fails loudly instead of measuring the wrong place (round 68's rule: a gate that
+     passes once has measured one walk). */
   const gsettle = async (want) => {
-    for (let i = 0; i < 240; i++) { await sleep(40); if (Math.abs(gbody().depth - want) < 2) return; }
+    const trace = [];
+    for (let i = 0; i < 1000; i++) {
+      await sleep(40);
+      const d = gbody().depth;
+      if (i % 50 === 0) trace.push(Math.round(d));
+      if (Math.abs(d - want) < 2) return true;
+    }
+    gsettle.trace = trace;
+    return false;
   };
   const gt = () => gq("[data-walk-tutor-text]").textContent;
   const status0 = () => gq("[data-walk-status]").textContent.trim();
@@ -1110,15 +1132,25 @@ ok("the 2D lane painter is deleted, not dormant", !/data-walk-canvas|canvas2d/.t
   await ghold("ArrowRight", 400); await sleep(300);
   ok("a turn that actually turned hands over the walking step",
      gc() === "2 / 4" && /Now walk in/.test(gt()), `${gc()} ${gt()}`);
-  await gholdT(["w", "shift"], 1800); await sleep(300);
+  /* Strides measured in centimetres, not in milliseconds: 1800 ms of held keys is 2.8 m on an idle
+     machine and 1.2 m on a busy one, and "two metres" is the contract. So the keys are held until
+     the body has actually moved two metres (with a ceiling, so a broken walk fails here and not
+     three assertions later). */
+  const gz0 = gbody().depth;
+  for (let i = 0; i < 200 && gbody().depth - gz0 < 200; i++) { await gholdT(["w", "shift"], 120); }
+  await sleep(300);
   ok("real strides of two metres — not the rail's carrying — open the reading step",
-     gc() === "3 / 4" && /press E/.test(gt()), `${gc()} d-moved ok`);
+     gc() === "3 / 4" && /press E/.test(gt()),
+     `${gc()} moved ${(gbody().depth - gz0).toFixed(0)} cm`);
   const gstops = [...gdoc.querySelectorAll("[data-walk-stop]")];
   const gstop = (z) => gstops.reduce((best, el) =>
     Math.abs(parseFloat(el.style.getPropertyValue("--z")) - z) <
     Math.abs(parseFloat(best.style.getPropertyValue("--z")) - z) ? el : best, gstops[0]);
   const gz = parseFloat(gstop(1392).style.getPropertyValue("--z"));
-  gclick(gstop(1392)); await gsettle(gz);
+  gclick(gstop(1392));
+  const garrived = await gsettle(gz);
+  ok("the rail carries the visitor to the stop it names — round the planter in its way, before any key is pressed",
+     garrived, `at ${gbody().depth.toFixed(0)} of ${gz} — every 2 s: ${(gsettle.trace || []).join(" ")}`);
   await ghold("d", 700); await ghold("w", 1500);
   await sleep(120);
   gkey("e"); await sleep(80);
