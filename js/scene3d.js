@@ -1093,14 +1093,15 @@ function updateClouds(THREE, clouds, camera, state, reducedMotion) {
        `#eef4f7` is luma 243; the sheet it crosses is clipped to 227 and the plunge pool under it is
        54. So the same puff was invisible over the water (243 on 227, both near the tone-map ceiling)
        and a wash over the pool — and no amount of alpha fixes that, because a value above both
-       backgrounds has nowhere to go but the ceiling. Real spray in the gorge is *aerial
-       perspective*: a grey-blue veil that sits between the white water and the dark rock, darker
-       than the sheet it crosses and paler than the pool it rises from. Measured over the pool
-       (luma 54) a 0.4-alpha veil at luma ~205 lifts it to ~114; over the sheet (227) the same veil
-       pulls it to ~218. Both are small, both are real, and the plume finally has an edge where it
-       meets the water instead of a white-on-white nothing. */
-    const tint = prim.il && dark ? NIGHT_LAMPS[Math.floor((state.time || 0) / 7) % NIGHT_LAMPS.length] : "#c9d8e0";
-    rgb.set("#c9d8e0");
+       backgrounds has nowhere to go but the ceiling. Round 69e answered that by darkening the
+       spray to a grey-blue veil (#c9d8e0), which is right for a plume spread across the whole
+       brink and wrong for the plume as it is now built: five narrow columns, measured, standing
+       clear of the sheet. A veil has to sit *between* its backgrounds; a column has to be the
+       brightest thing in the frame. Against the pool (luma 54) and the far bank (90) a bright
+       column reads at once, and the sky at the top of the frame (220) is only 20 below it, so the
+       crown fades out instead of stamping a rectangle — which is what the photographs show. */
+    const tint = prim.il && dark ? NIGHT_LAMPS[Math.floor((state.time || 0) / 7) % NIGHT_LAMPS.length] : "#e8f1f4";
+    rgb.set("#e8f1f4");
     if (prim.il && dark) rgb.lerp(new THREE.Color(tint), 0.55);
     /* Each puff is weaker than before because there are three times as many of them; the plume's
        density comes from the count, the way it does in the photographs. */

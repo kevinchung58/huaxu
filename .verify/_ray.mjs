@@ -29,7 +29,11 @@ page.on("request", async (req) => {
       .replace("const scene = new THREE.Scene();",
                "const scene = new THREE.Scene(); window.__threeScene = scene; window.__THREE = THREE;")
       .replace("const camera = new THREE.PerspectiveCamera(45, 1, 20, 600000);",
-               "const camera = (window.__cam = new THREE.PerspectiveCamera(45, 1, 20, 600000));");
+               "const camera = (window.__cam = new THREE.PerspectiveCamera(45, 1, 20, 600000));")
+      // The batch's own item table: a merged mesh records which prim each vertex range came from,
+      // so a hit triangle can be traced back to the authored record instead of guessed at.
+      .replace("colorBatches.push({ geometry, items: batch.items });",
+               "colorBatches.push({ geometry, items: batch.items }); window.__colorBatches = colorBatches;");
     req.respond({ status: 200, contentType: "application/javascript", body });
   } catch (e) { req.continue(); }
 });
@@ -64,19 +68,42 @@ const hits = await page.evaluate((pts) => {
   for (const [px, py] of pts) {
     const ndc = new THREE.Vector2((px / 1024) * 2 - 1, -(py / 768) * 2 + 1);
     ray.setFromCamera(ndc, cam);
-    const h = ray.intersectObjects(scene.children, true).slice(0, 3).map((x) => ({
-      mesh: x.object.name || "(unnamed)",
-      mat: x.object.material && (x.object.material.name || x.object.material.type),
-      p: x.point.toArray().map((v) => Math.round(v)),
-      d: Math.round(x.distance),
-    }));
+    const h = ray.intersectObjects(scene.children, true).slice(0, 3).map((x) => {
+      // What colour is the *triangle* that was hit? Its three vertex colours, read straight out of
+      // the batch the mesh was built from: a white slab in the frame is otherwise guesswork between
+      // twenty systems that all report their material colour as #ffffff.
+      let prim = null;
+      const cb = (window.__colorBatches || []).find((b) => b.geometry === x.object.geometry);
+      if (cb && x.face) {
+        const t = x.faceIndex;
+        const v0 = x.object.geometry.index ? x.object.geometry.index.getX(t * 3) : t * 3;
+        const it = cb.items.find((q) => v0 >= q.start && v0 < q.start + q.count);
+        if (it) prim = it.prim;
+      }
+      let vc = null;
+      const col = x.object.geometry && x.object.geometry.getAttribute("color");
+      if (col && x.face) {
+        const idx = x.object.geometry.index;
+        const tri = idx ? [idx.getX(x.face.a), idx.getX(x.face.b), idx.getX(x.face.c)] : [x.face.a, x.face.b, x.face.c];
+        vc = tri.map((i) => [col.getX(i), col.getY(i), col.getZ(i)].map((v) => +v.toFixed(3)));
+      }
+      return {
+        mesh: x.object.name || "(unnamed)",
+        mat: x.object.material && (x.object.material.name || x.object.material.type),
+        p: x.point.toArray().map((v) => Math.round(v)),
+        d: Math.round(x.distance), vc, prim,
+        op: x.object.material && x.object.material.opacity,
+      };
+    });
     out.push({ px, py, h });
   }
   return out;
 }, PX);
 for (const r of hits) {
   console.log(`pixel ${r.px},${r.py}`);
-  for (const h of r.h) console.log(`   ${String(h.d).padStart(6)} cm  ${h.mesh.padEnd(34)} at ${JSON.stringify(h.p)}`);
+  for (const h of r.h) console.log(`   ${String(h.d).padStart(6)} cm  ${h.mesh.padEnd(34)} at ${JSON.stringify(h.p)}` +
+    (h.vc ? `  vcol ${JSON.stringify(h.vc)}` : "") + (h.op !== undefined && h.op < 1 ? `  op ${h.op}` : "") +
+    (h.prim ? `\n           prim ${JSON.stringify(h.prim).slice(0, 260)}` : ""));
 }
 await browser.close();
 process.exit(0);

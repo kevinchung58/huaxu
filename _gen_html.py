@@ -2860,15 +2860,20 @@ def niagara_world(fr, view="rim"):
     # edge, which is the one place a hard line belongs.
     RING_D = (26, 38, 52, 70, 92, 118, 148)
     rings = [foot] + [[(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)] for d in RING_D]
-    for b, al in enumerate((None, 0.40, 0.30, 0.22, 0.15, 0.10, 0.06)):
+    # Round 69e: measured from the rail, hiding these eight rings turned the foreground from a
+    # white plate into dark green water (`_who`/`_pool` frames). The churn is real, but the rings
+    # reached 148 m out at 40/30/22 % -- at a grazing angle 300 m away that is a solid sheet with
+    # the river's own colour nowhere in it. The outer rings keep their shape and lose their weight;
+    # the white now belongs to the 26 m at the sheet's foot, where the water actually lands.
+    for b, al in enumerate((None, 0.30, 0.17, 0.11, 0.07, 0.04, 0.025)):
         for i in range(0, 36, 3):
             j = min(i + 3, 36)
             quad = [rings[b][i], rings[b][j], rings[b + 1][j], rings[b + 1][i]]
             if al is None:
-                P.append(_hprim("x", fr, quad, NIA_RIVER + 0.35, pat="foam", u=1800, rot=0, c="#e2ebe8",
+                P.append(_hprim("x", fr, quad, NIA_RIVER + 0.35, pat="foam", u=1800, rot=0, c="#cfdfda",
                                cn="#5f6c74", a=air(*hs[i], 0.8), s=9.5, dg=0.4))
             else:
-                P.append(_hprim("f", fr, quad, NIA_RIVER + 0.35 - 0.02 * b, c="rgba(232,242,240,%s)" % al,
+                P.append(_hprim("f", fr, quad, NIA_RIVER + 0.35 - 0.02 * b, c="rgba(226,238,236,%s)" % al,
                                a=air(*hs[i], 0.8), s=9.5, d0=1))
     am_foam = [(e + nx * 62, n + ny * 62) for (e, n), (nx, ny) in zip(am_cr, amn0)]
     for i in range(len(am_cr) - 1):
@@ -2925,7 +2930,14 @@ def niagara_world(fr, view="rim"):
         full below."""
         nr = left_normals(crest)
         tk = [min(1.0, i / taper) if taper else 1.0 for i in range(len(crest))]
-        cut = [0.0, 0.05, 0.15, 0.42, 1.0]
+        # Round 69f: the bands' heights and colours together decide how much of the drop is water
+        # and how much is white. As authored, the two near-white bands covered from 15 % of the drop
+        # to the foot -- 85 % of a 57 m curtain, and from the rail the measured falls box came out
+        # mean 188 with a standard deviation of 31, one flat plate with a thin teal stripe at the
+        # lip. Photographs from Table Rock are the other way round: the sheet keeps its green down
+        # to the aerated last third. The green reaches 62 % now, and each band is a step darker, so
+        # the sheet has a body, a turn and a foot instead of a lip and a plate.
+        cut = [0.0, 0.06, 0.24, 0.62, 1.0]
         for s in range(4):
             fa, fb = cut[s], cut[s + 1]
             ua, ub = u_top + (u_bot - u_top) * fa, u_top + (u_bot - u_top) * fb
@@ -2939,7 +2951,7 @@ def niagara_world(fr, view="rim"):
                 P.append(_prim("w", [fr.cm(*pa, ua), fr.cm(*pb, ua), fr.cm(*qb, ub), fr.cm(*qa, ub)],
                                c=colours[s], a=air(*crest[i], 0.75), il=1, dg=0.35, s=low,
                                k=(k_streaks if s > 1 else 0), pat="fallsw", u=grain, pa=(0.55, 0.8, 0.95, 1.0)[s]))
-    curtain(hs, NIA_CREST, NIA_RIVER, 24, ("#3f9c8a", "#7cc3b5", "#d8ecea", "#eef6f5"), 2, taper=4)
+    curtain(hs, NIA_CREST, NIA_RIVER, 24, ("#37907f", "#63b7a9", "#a9d2cd", "#e2efee"), 2, taper=4)
     amr = resample(am_cr, 12)
     curtain(amr, NIA_AM_CREST, NIA_TALUS, 4, ("#7fb9ae", "#b6d8d1", "#dfecea", "#e9f2f1"), 2, grain=1400)
     amn = left_normals(amr)
@@ -2977,6 +2989,32 @@ def niagara_world(fr, view="rim"):
         sw = 1 + (h1 - 0.5) * j * 0.7
         P.append({"t": "m", "o": fr.cm(e + de, n + dn, u + du), "w": int(w * sw), "h": int(h * (2 - sw)),
                   "al": round(al * mist_k * (1 + (h2 - 0.5) * j * 0.5), 3), "a": 0.02, "il": 1, "np": np})
+    # 第四個錯，也是最大的那個：霧沿著整條崖線鋪，包括鋪到訪客頭上.
+    #
+    # 紅染影格（`MIST=red`）把每一朵 billboard 都塗成紅色，於是看得見幾何本身：崖線的每一點都有霧，
+    # 連站在桌岩護欄邊的那一端也有——那裡離視點 **20 m**，一朵 35 m 寬的板子在 20 m 處佔掉 82° 的視角，
+    # 也就是整個左上角那一塊紅。那不是霧，那是一面貼在臉上的牆。
+    #
+    # 來源說的是另一件事：馬蹄是**漏斗**，水往弧的中間收，永久霧柱站在中央，兩翼相對乾淨。所以霧的
+    # 權重必須是**沿崖線的位置**的函數，而且必須套在**每一列**上（只套一列，其餘各列照樣鋪滿）。
+    # 弧的頂點不寫死，從懸崖折線自己算：離兩端連線最遠的那一點。量出來是第 16 點，離桌岩護欄 345 m、
+    # 而崖線全長 881 m（來源的 670–820 m 是主瀑寬，量到的是整條 OSM way，兩者不衝突）。
+    _ax, _ay = hs[0]
+    _bx, _by = hs[-1]
+    _cl = math.hypot(_bx - _ax, _by - _ay) or 1.0
+    FUNNEL_AT = max(range(len(hs)), key=lambda q: abs((_by - _ay) * (hs[q][0] - _ax) - (_bx - _ax) * (hs[q][1] - _ay)))
+    def funnel(i):
+        """How much of the plume belongs at crest point i: 1 at the arc's apex, ~0 at the rim.
+
+        σ 3.5 points ≈ 86 m along a brine 881 m long, so the column is about 170 m across at its base
+        and the last 200 m at either end of the brink carry almost none. The visitor stands at
+        hs[0] — the Table Rock corner — which is 13.7 σ from the apex, so their own end contributes
+        nothing, which is also what the photographs show: the plume you see from that rail is the one
+        over the middle of the horseshoe, three hundred metres out.
+        """
+        d = (i - FUNNEL_AT) / 3.5
+        return math.exp(-d * d)
+
     # Round 60, the geometry of it — and the reason two rounds of mist tuning painted nothing: the
     # curtain's top edge stands *on* the crest line and leans downstream to its foot, so every puff
     # placed in the bowl is behind an opaque sheet from the rail, and the plume that everyone can see
@@ -2985,11 +3023,15 @@ def niagara_world(fr, view="rim"):
     # is: the boil at the lip, the column over the apex, and the low drift that crosses the rail.
     # Where it hangs over the water it is seen against the dark river and reads white, which is what
     # the photographs show and what no amount of density on the far side could ever draw.
-    for i in range(1, 35):
-        e, n = hs[i]
-        nx, ny = nrm[i]
-        for k, (du, u, al) in enumerate(((-4, 5, 0.34), (-9, 15, 0.36), (-15, 27, 0.28), (-22, 42, 0.18))):
-            puff(e + nx * du, n + ny * du, NIA_CREST + u, 3400 + 520 * k, 2600 + 460 * k, al, 4, 1.0)
+    # Round 69e — the plume is built as ONE column, and the rows that spread it are gone.
+    #
+    # What the frames said: with every other system hidden, these billboards alone covered the whole
+    # lower half of the view (`onlyspray`), and at the rail the veil had no centre at all. Five rows
+    # had each been written for a different round -- the boil at the lip, the bowl behind it, the
+    # rings over the churned water, the climb off the river, the overhang -- and each was reasonable
+    # alone; together they stacked 40 m plates along 670 m of brink, thirty deep at the eye, and the
+    # sum of thirty translucent plates is not a plume, it is fog. So the boil rows are removed and
+    # the plume is authored once, where `funnel()` finds the funnel's throat.
     # Round 69: the plume that stands *in the bowl*, between the sheet's foot and the near bank.
     #
     # Measured on the round-69 frame at the Table Rock rail: mist placed at negative distance from
@@ -2999,42 +3041,66 @@ def niagara_world(fr, view="rim"):
     # foot, its own parabola), so the same positive normal is the side the camera looks across.
     # Authored as a column: dense and wide at the pool, thinning and drifting as it climbs past the
     # lip, so the sheet's foot is veiled and the water above it keeps its own edge.
-    for i in range(0, 36, 2):
-        e, n = hs[i]
-        nx, ny = nrm[i]
-        # Round 69, second pass — 霧要像一根柱子, not a fog bank.
-        #
-        # The red-dye frame (`MIST=red`) showed what the alpha numbers had hidden: the billboards
-        # cover the right place but they are a *wash* — broad, even, and never denser anywhere in
-        # particular. A plume is the opposite shape: dense where it leaves the water, thinning and
-        # spreading as it climbs, with a base you could point at. So the base is heavier (0.34 → 0.55
-        # at the pool), the falloff is steeper with height, and the puffs sit closer together near
-        # the water — where the backdrop is the dark plunge (measured luma 54) rather than the white
-        # sheet. Over the sheet, more alpha would still be white on white; over the pool it is the
-        # bright mass a visitor actually sees.
-        # …and 第三個錯：均勻.
-        #
-        # Even with the base heavy, the frame still read as a fog bank, because the puffs were spread
-        # over all 36 points of a 670 m crest at 33-43 m each. A horseshoe *funnels*: the water
-        # converges toward the middle of the arc, and every source that describes the falls says the
-        # same thing about the spray — the permanent column stands at the centre, and the wings are
-        # comparatively clear (niagaraparks.com's figures, and the guide pages that tell you the mist
-        # column is visible far down the Parkway). So the plume is authored as one column, weighted
-        # toward the middle of the brink with the wings fading out, and the puffs are small enough to
-        # read as puffs (14-24 m) instead of as wallpaper.
-        core = math.exp(-((i - 18) / 7.0) ** 2)
-        for dd, u, w, h, al, np in ((9, -47, 1900, 1500, 0.62, 6), (16, -36, 2200, 1800, 0.56, 6),
-                                    (24, -24, 2500, 2000, 0.44, 5), (31, -12, 2400, 1900, 0.31, 5),
-                                    (37, 1, 2100, 1700, 0.20, 4), (42, 15, 1800, 1500, 0.13, 3)):
-            if core < 0.04:
-                continue
-            puff(e + nx * dd, n + ny * dd, NIA_RIVER + u + 58, w, h, al * core, np, 0.9)
+    # Signed the way the sightline is. The curtain's top edge stands on the crest and leans
+    # *downstream*; every puff on the downstream side is behind an opaque sheet from this rail.
+    # Red-dye proved it: with the column on +n, one blob of fifty-three was visible. So the whole
+    # plume is authored on the upstream side of the brink, where the rail's own line of sight is.
+    #
+    # The column: eighteen rounds from the plunge pool to 58 m over it. Narrow at the water, where
+    # the sheet's momentum is still a jet (9 m), widening as it slows (25 m at the top), leaning
+    # downwind as it climbs -- the shape a plume has in every photograph taken from the Parkway.
+    # The alpha *falls* as it rises: dense at the foot, thin at the crown, so the top dissolves into
+    # the sky instead of stamping a white rectangle on it.
+    CE, CN = hs[FUNNEL_AT]
+    CNX, CNY = nrm[FUNNEL_AT]
+    # Round 69f: the column stopped at the brink and nobody could see it. The first stack rose
+    # 56 m from the pool -- the falls' own height, so its crown sat exactly on the crest line,
+    # inside the pale band of horizon sky where a #c9d8e0 puff is 4 luma away from the air behind
+    # it. Photographs of the Horseshoe from the Parkway show the opposite: the plume stands *above*
+    # the brink, thirty to sixty metres clear of it, and it is read against the darker sky at the
+    # top of the frame. So the stack climbs to 120 m over the river -- 62 m over the crest -- and
+    # only its lowest rounds are read against the sheet.
+    # Round 69f — a line of columns, not one. The single column stood at `FUNNEL_AT`, the point of
+    # the brink farthest from its own chord, and from the rail that point is 40 degrees off the
+    # frame: measured, the plume had 3 of 53 billboards inside the picture at the heading that
+    # frames the curtain. A rail visitor does not see the horseshoe's geometric apex; they see the
+    # near limb of it, sweeping away from them, and the spray stands along that limb wherever the
+    # sheet lands. So the mist is authored as five columns down the brink -- the middle ones
+    # tallest, which is the funnel's own shape -- each a stack of ten rounds, each narrower and
+    # fainter as it climbs, none of them wider than 22 m at the water.
+    for ci, (anchor, tall) in enumerate(((24, 92), (27, 104), (30, 96), (33, 78))):
+        e0, n0 = hs[anchor]
+        nx0, ny0 = nrm[anchor]
+        for k in range(9):
+            up = k / 8.0
+            # The scatter is the difference between a plume and a ladder: at even heights and a
+            # metre of jitter the eye finds the row instantly (the red-dye frame draws them as
+            # four stacks of squares). Twelve metres of horizontal scatter, six of height, and
+            # the puff's own size grows with the scatter, so no two rounds share an outline.
+            jx = ((k * 7 + ci * 3) % 9 - 4) * 3.4
+            jy = ((k * 5 + ci * 4) % 7 - 3) * 2.2
+            # The width is authored in the renderer's own units. `makeClouds` draws a billboard at
+            # 0.15-0.26 of the prim's `w`, so an honest-looking 900 cm is a 1.5 m dot: measured, the
+            # mint column came out fourteen pixels wide at 350 m and the natural-colour frame showed
+            # nothing where the red-dye frame showed squares. 4200-7600 cm draws puffs 12-20 m
+            # across, which is what a spray column at that distance actually looks like.
+            puff(e0 + nx0 * (3.0 + 15.0 * up) + jx * 2.2, n0 + ny0 * (3.0 + 15.0 * up) + jy * 2.2,
+                 NIA_RIVER + 3.0 + k * (tall / 8.0) + jy * 0.9, 4200 + 3400 * up, 2600 + 1800 * up,
+                 0.30 - 0.19 * up, 3, 0.8)
+    for anchor in (24, 27, 30, 33):
+        e0, n0 = hs[anchor]
+        nx0, ny0 = nrm[anchor]
+        for k in range(-2, 3):
+            t = k / 2.0
+            puff(e0 + nx0 * 5 + ny0 * t * 26, n0 + ny0 * 5 - nx0 * t * 26,
+                 NIA_RIVER + 1.2, 5200 + 2600 * (1 - abs(t)), 2600,
+                 0.05 + 0.10 * (1 - abs(t)), 3, 0.6)
+    # The wind: what the column loses is carried downstream and up, four rounds that get thinner as
+    # they go -- the haze a visitor sees drifting over the gorge from a kilometre down the Parkway.
+    for k, (dn, u, al) in enumerate(((28, 22, 0.10), (46, 30, 0.075), (68, 38, 0.055), (92, 46, 0.04))):
+        puff(CE - CNX * dn, CN - CNY * dn, NIA_RIVER + u, 9000 + 2600 * k, 4200 + 900 * k,
+             al * 0.55, 4, 0.8)
     # A second row, offset half a step, so the line of puffs has no beat in it.
-    for i in range(1, 34, 2):
-        e, n = hs[i]
-        nx, ny = nrm[i]
-        for k, (du, u, al) in enumerate(((-6, 9, 0.26), (-12, 21, 0.24), (-19, 34, 0.18))):
-            puff(e + nx * du + 3, n + ny * du - 3, NIA_CREST + u, 2600 + 400 * k, 2200 + 380 * k, al, 3, 0.8)
     # The column over the apex, standing clear of the crest against the sky: the one thing at the
     # Horseshoe that is taller than the fall itself.
     # A plume is not a puff: the column over the bowl is a hundred metres across and sixty high at
@@ -3047,10 +3113,6 @@ def niagara_world(fr, view="rim"):
             puff(e + 10 * k, n - 9 * k, NIA_CREST + 16 + 20 * k, w, h, al, 7, 0.55)
     # What the deck below the brink sees: the bowl's own cloud, low over the churned water, behind
     # the sheet for the rail and in front of it once the visitor is inside the gorge.
-    for d, step, w, h, al, up in ((26, 4, 2600, 1400, 0.26, 4), (52, 6, 3400, 1600, 0.18, 3)):
-        ring = [(e + nx * d, n + ny * d) for (e, n), (nx, ny) in zip(hs, nrm)]
-        for i in range(2, 35, step):
-            puff(ring[i][0], ring[i][1], NIA_RIVER + up, w, h, al, 4, 0.9)
 
     # Round 69, the fidelity fix: 從桌岩看瀑布，霧是這地方最認得的那一件事。
     #
@@ -3069,21 +3131,9 @@ def niagara_world(fr, view="rim"):
     # 35 m plunge pool) and the same "permanent column of mist above it is visible from far down the
     # Niagara Parkway" the round-60 note quotes. The plume is not decoration here; it is the
     # identifying feature of the place, and it is the one thing the earlier build did not draw.
-    for i in range(1, 36, 2):
-        e, n = hs[i]
-        nx, ny = nrm[i]
-        for dn, u, w, h, al in ((-3, 3, 3000, 2200, 0.30), (-6, 13, 3300, 2500, 0.27),
-                                (-10, 24, 3200, 2600, 0.23), (-14, 34, 3000, 2400, 0.18),
-                                (-17, 44, 2800, 2200, 0.14)):
-            puff(e + nx * dn, n + ny * dn, NIA_RIVER + u, w, h, al, 4, 0.85)
     # The column does not stop at the crest: it boils up past the lip and leans back over the rail,
     # and that overhang is the part of the plume that reads against the sky from the promenade. One
     # row, thin, so the white above the brink has a *shape* rather than a wash.
-    for i in range(2, 35, 3):
-        e, n = hs[i]
-        nx, ny = nrm[i]
-        for dn, u, w, h, al in ((-20, 6, 2400, 1900, 0.16), (-26, 16, 2100, 1700, 0.11)):
-            puff(e + nx * dn, n + ny * dn, NIA_CREST + u, w, h, al, 3, 0.8)
     # A low bank far down the gorge, so the gorge's own floor is not a clean line at the horizon.
     puff(610, 650, NIA_RIVER + 2, 7000, 2600, 0.10, 4)
     # The American Falls: a foot cloud under Luna Island's sheet, small, and one at its own plunge.
@@ -5586,7 +5636,14 @@ DISTRICTS = [
             # arrived -- the rail was the one place a visitor could not be taken to. It stands at
             # the parapet now, 98 cm off its face, and `yaw -82` looks west over the rail at the
             # Horseshoe's brink, which is what the view was measured for in round 59.
-            {"z": 1510, "x": -600, "yaw": -82, "pitch": 2, "label": "the Table Rock rail"},
+            # Round 69e: the aim was 27 degrees short of the falls. Measured with the page's own
+            # camera (`__cam`), stop 3 at `yaw -82` puts the mist's alpha-weighted centre at screen
+            # x 220 of 1024 -- the plume is cut by the left edge and the horseshoe's middle is out of
+            # frame, which is why two rounds of tuning the plume changed nothing anyone could see.
+            # At `yaw -109` the same centroid lands at x 508, the curtain fills the frame and the
+            # brink runs corner to corner. The number is derived from the crest, not chosen: the
+            # point of the brink farthest from the end-to-end chord is 356 m out at -109.4 degrees.
+            {"z": 1510, "x": -600, "yaw": -109, "pitch": 2, "label": "the Table Rock rail"},
             {"z": 1660, "x": -140, "yaw": -18, "label": "the incline's lower station"},
             {"z": 2130, "x": 500, "h": 553, "yaw": 38, "pitch": 14, "label": "on the Fallsview deck"},
             # Round 65: the fun row had no stop at all. The lane walked past six fronts, three
