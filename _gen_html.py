@@ -2916,6 +2916,31 @@ def niagara_world(fr, view="rim"):
     gg = resample(NIA_GOAT_GORGE, 12)
     gfoot = [(e - 8, n) for e, n in gg]
     P += world_quads_between(fr, gg, gfoot, 0, NIA_RIVER, "#6e6a5f", air(400, 300), cn="#1d2026", dg=0.45, s=low)
+    # Round 69f — 島的西角沒有臉.
+    #
+    # The gorge wall above runs along `NIA_GOAT_GORGE`, which begins at the island's *north*-west
+    # corner and follows its face north down the lower river. The island's west corner -- the two
+    # segments between (253.5, 122.6) and (292.0, 91.3), the rock that faces the Horseshoe and that
+    # the crest's own last node meets -- got a canopy top and a canopy wall and no rock underneath.
+    #
+    # Measured, not guessed: `.verify/_gap.mjs` casts a 10 px grid through the served frame at the
+    # Table Rock rail (yaw -109) and reports every ray that goes *down* and meets nothing. The hole
+    # is x 550-1020, y 360-510 -- and projecting the island's own mapped corners through the page's
+    # camera puts (253.5, 122.6) at x 680 and (292.0, 91.3) at x 564, both at y 366, with the river
+    # 149 px below. The pale rectangle in the frame is that face and nothing else; `_ray.mjs` hit
+    # nothing at five pixels inside it, which is why no colour or mist change ever moved it.
+    #
+    # The face is the island's own outline (NIA_GOAT[:3]), offset into the water the way the gorge
+    # wall above offsets, so the rock reads as one face with the two it joins.
+    # The face wears the gorge's own rock tile. A flat `#6e6a5f` quad that close to the eye (290 m)
+    # is a grey card: the Canadian wall two hundred metres further on already wears `strata` at
+    # 16 m a tile, and this face is the same dolomite seen at the same distance, so it takes the
+    # same tile at the same scale. It also gives the top edge something to break against -- the
+    # canopy's own dark line reads as the lip of the island rather than as a drawn border.
+    wc = resample(NIA_GOAT[:3], 10)
+    wcfoot = [(e - 8, n) for e, n in wc]
+    P += world_quads_between(fr, wc, wcfoot, 0, NIA_RIVER, "#6e6a5f", air(400, 300), t="x",
+                             pat="strata", u=1600, ax="v", cn="#1d2026", dg=0.45, s=low)
     P.append(_hprim("f", fr, NIA_LUNA, 9, c="#3c5734", cn="#121a1c", a=air(650, 560), dg=0.45))
     lr = NIA_LUNA + [NIA_LUNA[0]]
     for i in range(len(lr) - 1):
