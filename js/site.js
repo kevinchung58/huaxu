@@ -3148,15 +3148,31 @@ function leaveOverlay(root, trigger) {
         R(xp - 46, 50 * k, xp + 46, 960 * k, gz, "#c8442f", flood * 1.05);
       }
       R(-hw - 40, 880 * k, hw + 40, 960 * k, gz - 2, "#ad3a2b", flood * 0.95);
-      // The lanterns: the red chōchin in the centre bay, the copper tōrō either side of it.
+      /* The lanterns: the red chōchin in the centre bay, the copper tōrō either side of it.
+         Round 69h: the chōchin was drawn in six slices of the wall's own red (#c22f22) under the
+         lane's night murk, and measured 69.7 luma against the pillar beside it at 68.8 and the paving
+         at 72.5 -- the plaza's hero object was the *dimmest* thing standing in it, a flat maroon
+         rectangle (sd 0.0 across its body). A paper lantern is a lamp: its paper carries its own
+         light, so its slices are authored `nolite` (the idiom every lit window in this file already
+         uses) and its body colour is the colour it gives off rather than the colour the wall gives
+         back. The ribs are the lantern's own structure and are drawn, not shaded in. */
       const LR = 135 * k, Lb = 470 * k, Lt = 845 * k;
-      for (let i = 0; i < 6; i++) {
-        const t0 = i / 6, t1 = (i + 1) / 6;
+      const CH = 10;                                    // slices up the body: 7 paper, 3 ribs
+      const rib = (t) => Math.abs(t - 0.26) < 0.03 || Math.abs(t - 0.5) < 0.03 || Math.abs(t - 0.74) < 0.03;
+      for (let i = 0; i < CH; i++) {
+        const t0 = i / CH, t1 = (i + 1) / CH;
         const r0 = LR * (0.84 + 0.16 * Math.sin(Math.PI * t0)), r1 = LR * (0.84 + 0.16 * Math.sin(Math.PI * t1));
-        const col = t0 < 0.12 || t1 > 0.88 ? "#1f1a18" : "#c22f22";
-        T0([[gx - r0, Lb + (Lt - Lb) * t0, gz - 20], [gx + r0, Lb + (Lt - Lb) * t0, gz - 20],
-            [gx + r1, Lb + (Lt - Lb) * t1, gz - 20], [gx - r1, Lb + (Lt - Lb) * t1, gz - 20]], col, flood * 1.15);
+        const cap = t0 < 0.1 || t1 > 0.9;
+        const q = T0([[gx - r0, Lb + (Lt - Lb) * t0, gz - 20], [gx + r0, Lb + (Lt - Lb) * t0, gz - 20],
+                      [gx + r1, Lb + (Lt - Lb) * t1, gz - 20], [gx - r1, Lb + (Lt - Lb) * t1, gz - 20]],
+                     cap ? "#241a16" : rib(t0) ? "#7d2b20" : "#e8503a", flood * (cap ? 0.9 : 1.35));
+        if (q && !cap) q.nolite = true;                 // the paper is the lamp; the caps are metal
       }
+      // What the lantern throws: a hot pool at the gate's foot, under it and no wider than the bay.
+      const lp = T0([[gx - LR * 4, 2, gz - 30], [gx + LR * 4, 2, gz - 30],
+                     [gx + LR * 5.2, 2, gz - 780], [gx - LR * 5.2, 2, gz - 780]],
+                    `rgba(255,206,164,${(0.16 + 0.2 * NIGHT()).toFixed(3)})`, 1.25, 0.03);
+      if (lp) lp.nolite = true;
       [-1, 1].forEach((s) => {
         const cx = s * bay, top = 835 * k, bot = 560 * k, w2 = 55 * k;
         T0([[gx + cx - w2, bot, gz - 18], [gx + cx + w2, bot, gz - 18], [gx + cx + w2 * 0.8, top - 60 * k, gz - 18],

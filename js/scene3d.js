@@ -1043,6 +1043,24 @@ function backdropSkyStops(backdrop, dayPage, day) {
   }));
 }
 
+/* How much of this sky is a light source at this hour.
+
+   The environment map is the same authored sky the backdrop is painted from, so a lane that had no
+   sky table had no environment either; giving one a table also gives it a PMREM of that table at
+   three's default intensity 1. Measured at Nakamise (round 69h), a night sky over the lane at
+   intensity 1 is not a night: the vermilion posts (#c8442f) came back at (36,57,114) -- blue three
+   times red on a red post -- and the paving at (40,65,120) where it had been (76,78,87). A night
+   sky is a dim source and the street's own lamps are the light, so a record may say what its sky is
+   worth at each hour; a record that says nothing keeps 1, which is what every lane already had. */
+function skyEnvIntensity(backdrop, dayPage, day) {
+  const e = (backdrop || {}).skyEnv;
+  if (!e) return 1;
+  const night = Number.isFinite(Number(e.night)) ? Number(e.night) : 1;
+  const light = Number.isFinite(Number(e.day)) ? Number(e.day) : 1;
+  const t = dayPage ? clamp(Number(day) || 0, 0, 1) : 0;
+  return night + (light - night) * t;
+}
+
 function makeSkyEnvironment(THREE, renderer, backdrop, dayPage, day) {
   if (typeof document === "undefined" || !renderer || !THREE.PMREMGenerator) return null;
   const stops = backdropSkyStops(backdrop || {}, dayPage, day);
@@ -1535,7 +1553,10 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   // sampled once, turned into a prefiltered radiance map by PMREM. Reflections and the visible sky
   // cannot disagree, because they read the same record (the one-world-query rule, pointed at light).
   const environment = makeSkyEnvironment(THREE, renderer, backdrop, api.dayPage, api.day);
-  if (environment) scene.environment = environment;
+  if (environment) {
+    scene.environment = environment;
+    scene.environmentIntensity = skyEnvIntensity(backdrop, api.dayPage, api.day);
+  }
   // A hemisphere light, coloured from the same elevation table as the sky and the environment:
   // it is the floor under which a scene may never go black — PMREM can fail on a weak software
   // renderer, and a lit-painted world must degrade to "gentle sky bounce", not to "unlit black".
@@ -1924,6 +1945,8 @@ function buildRenderer(THREE, canvas, backdrop, api) {
       const stops = backdropSkyStops(backdrop, Boolean(state.dayPage), day);
       const horizon = skyColorAt(stops, 0, Boolean(state.dayPage), day);
       scene.fog.color.set(horizon);
+      // The same hour that changes the sky changes how much light it is worth (skyEnvIntensity).
+      if (environment) scene.environmentIntensity = skyEnvIntensity(backdrop, Boolean(state.dayPage), day);
       lastSky = `${day}|${Boolean(state.dayPage)}`;
     }
     renderer.render(scene, camera);

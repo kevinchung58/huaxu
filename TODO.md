@@ -4,7 +4,7 @@
 > **規則：完成的項目直接刪掉，不留敘述。** 方法與永遠成立的約束留在第 2 節；量出來的事實留在第 5 節。
 > 舊的 66 輪流水帳在 `TODO-archive.md`（git 追蹤、唯讀）；要找「那時候為什麼這樣做」再去查它。
 
-## 1. 現在在哪裡（2026-10-24）
+## 1. 現在在哪裡（2026-10-25）
 
 - **站台**：靜態學術網站（Hua-Xu Zhong）。零依賴、零 build step；所有 `*.html` 只由 `_gen_html.py` 產生；runtime 只有 vendored 的 Three.js 0.186.1。
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、`rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
@@ -25,6 +25,15 @@
   - **順帶發現的閘門盲點**：`verify-story` 把 rail stop 的方位硬寫成 −82，69e 改成 −109 之後它的 `waitForFunction` 直接逾時，**整支閘門只跑到一半就停**（還印 26/27）。現在它寫 −109 並附上 69e 的理由，而且真的跑完：**27/27**。
   - **留下來的**：遠岸仍然有**每 ~20 px 一段的橫向明暗階梯**。量過三種貼圖設定（1 px／3 px／3.5 px 接縫、16 m／26 m 磚），sd 只從 5.1 動到 5.5——**不是貼圖**，是 `world_quads_between` 每塊 quad 各自一個平面法線（`fn`）＋ `flatShading`，於是相鄰 quad 的受光不同。要修得動整條 `world_quads_between` 的法線策略，屬於 P3 的範圍，不是瀑布這一項。
 - **閘門（本輪 artefact）**：walk 193/193、collision 28/28、rail 4/4、body 73/73、shapes 248、look 全過、three PASS（1,973 world + 432 water、216 sheets、**74 spray layers**）、shader-lits PASS、`_fps` 0.2/22.4/20.1（第 69d 是 2.6/13.1/18.4）、generator 冪等（md5 兩次相同）。
+
+- **第 69h 輪：東京的量具、天空與時辰都停在錯的地方** —— 站主說「之前跟你看的那個 repo 都做得很完整，東京也應該做完整」。先量再改，量到五件事：
+  - **量具自己先錯**：`_view.mjs` 用「壓住方向鍵 ≥600 ms」對準方位，而轉速是 120°/s —— 600 ms 就是 **72°**。標成 `yaw0` 的影格實際在 **−15.9 / −34.1 / −20.9**，三張都是斜著拍的（前一輪對東京的「平」有一部分是看錯角度）。改成：每個脈衝依剩餘角度給、短、之後重新讀頭並**等它穩定**（步進的最後幾度是下一幀才套用的），對不到 1.2° 內就**不存影格**並印 `NOT AIMED`，檔名一律寫實測角度。修好後三站都是 **0.09°**。
+  - **東京的天空是死資料**：`rooms.html` 的三條 `sky` 色帶畫在 z=120000 的平面上，換算成仰角只有 **0.76° 與 3.34°** —— 4.8 m 屋簷以上（訪客看到的全部天空）只有最暗那一條。同一條 150 px 垂直線量到 **8.7–13.4 luma（Δ4.7）**，日夜一模一樣。改成仰角表 `TOKYO_SKY`（0°–90°，每個仰角同時有 `c` 日色與 `n` 夜色）→ 同一條線 **14.4–38.1（Δ23.7）**；天頂 (12.4,18.0,35.0)、近地平 (28.7,35.9,59.3)。天空同時變成環境光來源，所以加的 `skyEnv`（日 1、夜 0.22）是「這片天空在這一小時值多少光」，寫在 record 上、預設 1（既有頁面不受影響）。
+  - **時辰是假的**：東京有日夜鈕，白天量到地坪 **73.8 → 107.1 luma** 變亮，天空卻是同一個夜 —— 因為「這頁有沒有白天」寫在 lane record 上，東京沒寫，`dayC` 就永遠不套用。兩條路：給它一個白天（要拉起鐵門、擺攤、有人，record 裡沒有），或**釘在自己的夜裡**（`"night": 0.92`、按鈕消失，與 LookOut 同一個慣用法，理由寫在 record 裡）。選後者。驗證：把訪客偏好設成 `day` 再拍，天頂逐值相同（**15.0/21.2/29.6/36.5**）。
+  - **主角燈籠比旁邊的柱子暗**：Hōzōmon 中央的紅燈籠用牆面的紅（`#c22f22`）畫、再被夜色 murk 壓過去，量到 **69.7（sd 0.0，整塊同值）**；旁邊柱子 **68.8**、地坪 **72.5** —— 廣場上最重要的物件是畫面裡最暗的平面。改成紙燈籠自己的顏色（`#e8503a`）＋`nolite`（自己發光、不吃夜色）＋三圈暗肋，同一個位置 **109.0（sd 8.6）**，並在門下加一圈暖光池（地坪 75.3 → 77.4）。
+  - **店簷的燈原本不是燈**：`r:260`、沒有燈體、tint 是 `rgba(...,0.22)`，被 `scaledEffectTint` 再乘上燈的強度 → **0.10 不透明度**；整條街的夜間光源在 1024 px 影格裡是三個白點。改成 `body:"lantern"`、`size:24`、`r:34`、hex tint（hub street 自己的燈籠就是 30 cm 光暈配 22 cm 燈體；260 cm 在 3 m 高的走道上讀起來是探照燈），影格裡兩排暖光＋落在百葉上的光斑。
+  - **閘門跟著改，不是放寬**：`verify-walk` 的東京段把「每個 bay 只有沒有燈體的 strip」「街上沒有 lantern body」「天空是三條 y 色帶」都寫死了。改成新的事實：每個 bay 一個燈籠、燈籠 `r ≤ 40` 且 `size ≤ 32` 且顏色是 hex、`skyAround` ≥ 6 個仰角（首 ≤ 0°、末 ≥ 90°，`c`/`n` 都在）、`skyEnv.night ∈ (0,1)`，並**新增**「這條街只有一個時辰」（有 `data-lane-night="0.92"`、沒有 `data-lane-day`）；鐘的測試段落改在 `rooms-niagara.html`（有白天的頁）跑，東京與 LookOut 兩頁一起驗「釘死的頁沒有按鈕、訪客偏好改不動它」。`walk` **193 → 197/197**。
+  - **另一支壞掉的量具**：`audit-all.mjs` 把「最佳視角」存成單一物件、報告卻當陣列用，跑到最後一行 TypeError（Toronto 的 10 個視角全白拍）。修好後第一次印出清單，Toronto 有幾個真的平的物件（見 §3 P6）。
 
 - **進度（第 69 輪，未交付）** —— 站主四件事（「通通弄好」）的現況：
   - **站主的問題先回答清楚**：那個 3D repo 是 `mrdoob/slop-newyork`（2026-10-23 的指示，見 `TODO-archive.md` §0aq）。**瀑布沒有照它重建**：它整份 `js/` 沒有一行 waterfall／river-fall，只有落葉噴霧與水窪；它的 WebGPU/TSL ＋ jsDelivr import map 也違反本站「零 build、零 CDN」。瀑布是第 58–60 輪從照片與本站自己的量測做出來的。真正能沿用它的只有 **P2 的 data module 架構**，而那件事到現在都還沒做。
@@ -177,6 +186,11 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 4. **SkyWheel 吊艙近看**：圓潤感、門、座椅的節奏。*驗收*：近照裡能數出吊艙、認出門與玻璃。
 5. **其他頁面的地標盤**：Goat 的兩道瀑布、Toronto 的 `falls` 模型（現在是「看得見就算」，沒有盤）。
 6. **量具覆蓋**：`_lane.mjs` / `_tile.mjs` 只量 Niagara 的鋪面；量別的頁面前，先確認 `FLOOR_PERIOD` 對那個 floor style 的意義。
+7. **東京的廣場底**（第 69h 輪量到，未修）：站 5 的地坪在掠射角下有一道沿 x≈0 的**軟性暗帶**（3× 放大圖 `.preview/tokyo/seam.png`）＋細密橫紋。不是縫、不是洞：`_ray.mjs` 在該處第一個命中是 `flat/flat` 的暖光池（y=2 cm）蓋在 `pattern/floor-paving` 上；8 m 一磚的貼圖在 4–17 m 處每公尺不到一個 texel，mipmap 把接縫糊成帶。*驗收*：同一張影格裡地坪的橫紋 sd 低於目前值，暗帶消失。
+8. **東京最後一站只看得到門的基座**（第 69h 輪量到）：站 5 在 z 4292、Hōzōmon 在 z 6000，17 m 處 22.7 m 高的門在 45° 視角裡只露出下層五間；五重塔在 x −5600／z 7900（方位 −57°），**永遠進不了 yaw 0 的畫面**。*先決定*：把最後一站退到 28 m（真實的廣場進深）還是加一個面向門的停點；不要靠改 FOV。
+9. **`look` 對 Toronto 的 market 盤印「nothing on screen」卻 exit 0**：那 5 個 id 在 stop 3／−90° 一個都沒有可見 box。量具靜靜地什麼都沒量，與 69g 的 `verify-story` 同一類。*驗收*：要嘛它量到東西，要嘛它紅。
+10. **Toronto 的平物件**（修好 `audit-all.mjs` 後第一次量到）：`skyline-cn` sd **6**、14 色、10 個視角裡 **0** 個 sd > 20；`island-i1` sd **2**、5 色；`pool-lake` sd **10**；`falls-n` sd 25 但只有 2/6 個視角有結構。*驗收*：每個物件的 `views>sd20` ≥ 一半。
+11. **2D mirror 裡兩個三參數 `mix()` 呼叫**（`js/site.js` 4812、4817）：`mix` 只吃 `(hex, k)`，第 61 輪的守衛會印 `mix() called with a non-numeric lift: #8d8578 #2c3a56` 並用原色——鏡射畫的門檻因此沒有 lift。Three 路徑不受影響。*驗收*：那道警告在閘門輸出裡消失，門檻顏色與 Three 路徑一致。
 
 ## 4. 需要站主決定（代理不能替他決定）
 
@@ -248,9 +262,15 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 `murkK = min(0.62, vLaneDarkness)`、`murkTex = clamp(luma × 2.2, 0, 1)` → 霧的比例來自表面自己的亮度，鋪面的縫活著。
 
-### 5.5 閘門現況（2026-10-24，第 68 輪）
+- **夜空有兩種寫法，只有一種會被畫出來。** `backdrop.sky` 是遠平面（z=120000）上的**高度色帶**，`backdrop.skyAround.stops` 是**仰角表**（`{e, c, n}`）。`backdropSkyStops()` 只有在 `skyGradient` 或 `skyAround` 存在時才有東西，否則回空陣列 → `scene.background` 是 `FALLBACK_COLOR`、環境光也沒有。寫高度色帶時，**色帶的 y 要落在 120000 的尺度上**（y=1600 → 0.76°、y=8000 → 3.8°、y=42000 → 19.3°）；東京原本寫 −260/1600/7000，所以天頂到地平只看到一條。
+- **`skyEnv`（新，第 69h 輪）**：`{"day":1,"night":0.22}`，乘在 `scene.environmentIntensity` 上，隨時辰內插。沒有這個欄位的頁面維持 1（既有頁面零變更）。夜空的 PMREM 在強度 1 下不是夜：量到 Nakamise 的朱紅柱子變成 (36,57,114)、地坪 (40,65,120)（原 (76,78,87)）。
+- **釘死的時辰**：`"night": 0.92` → `data-lane-night`，`HELD` 蓋掉訪客偏好、頁面不出現 `data-walk-hour`。`DAYPAGE` 與它無關：有 `"night"` 的頁面也不會有白天。**東京從 69h 起是這一類**（`rooms.html`）；`rooms-cntower.html` 原本就是。
+- **燈的參數語意**（`scaledEffectTint`）：hex tint → 不透明度＝燈的強度；`rgba(r,g,b,a)` tint → 不透明度＝`a × 強度`。`r` 是**光暈半徑（cm）**，不是照明範圍：hub street 的燈籠是 `r:30` 配 22 cm 燈體，寫 260 會在畫面上變成探照燈。要有燈體就用 `"body":"lantern"`（自帶吊線、光錐、地面光池），要一顆會發亮的點就用 `"bulb":true`。
+- **自發光平面**：`q.nolite = true` 讓那塊 quad 不吃夜色 murk（`darkness = 0`）也不吃太陽——這是全站「亮著的窗」的既有慣用法（`js/site.js` 40 餘處）。燈籠的紙、亮窗、招牌背光都該用它；牆面不該用。
 
-walk 192/192、feel 12/12、story 27/27、body 73/73、games 23/23、nowebgl 35/35、shapes 248、geometry／clash／objects／tables／look／chain PASS、three PASS（12,826 world + 864 water）、impeccable `[]`、generator 冪等 19/19、collision **28/28**（全 7 頁）＋ rooms 單頁 **20/20**（第 68 輪的 acceptance loop）。
+### 5.5 閘門現況（2026-10-25，第 69h 輪）
+
+walk **197/197**、feel 12/12、story 27/27、body 73/73、games 23/23、nowebgl 35/35、shapes 248、rail 4/4、collision **28/28**（全 7 頁）＋ rooms 單頁 **20/20**、chain 0 failure、three PASS（12,866 world + 864 water、432 sheets、148 spray）、shader-lits PASS、impeccable `[]`、generator 冪等（md5 兩次相同）、`look` 可用（見 §3 P6 的 market 那條）。
 
 ### 5.6 倉庫大小
 

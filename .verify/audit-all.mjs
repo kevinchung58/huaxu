@@ -58,8 +58,12 @@ for (const [stop,deg] of VIEWS) {
         +Math.abs(A[p+2]-B[p+2]))/3; d+=v; if(v>14)big++;}}
     d/=(3*(A.length/4)); big=100*big/(3*(A.length/4));
     const rec={b,stop,deg,mean,sd,col:seen.size,mot:d,big};
-    const area=b.w*b.h;
-    if(!best[id]||area>best[id].b.w*best[id].b.h) best[id]=rec;
+    // Every view that paints the prop is kept: the report filters them by whether the object is
+    // painted at all and then asks how many views have structure worth looking at. Keeping only the
+    // largest box (what this did) left a record where the report expected a list, and the whole
+    // audit died on its own last line -- a measuring tool that cannot print its measurement.
+    if(!best[id]) best[id]=[];
+    best[id].push(rec);
   }
   process.stderr.write(`  view ${stop}/${deg}: ${Object.keys(boxes).length} props\n`);
 }

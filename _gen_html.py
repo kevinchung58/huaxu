@@ -2047,14 +2047,24 @@ def _nakamise():
                 if posts:
                     o["posts"] = posts
                 bays.append(o)
-                # the strip light under this bay's eave: the bay's own light, so it is pointable
+                # The bay's own light, hanging under its eave as the paper lantern a shut shop
+                # still leaves burning. Round 69h: this was a light with no body and a 0.22-alpha
+                # tint, which the effects pass multiplies by the lamp's strength -- 0.10 opacity on
+                # a 260 cm halo, so the row that is the whole street's light at night was three
+                # white pixels in a frame. A hex tint is taken as the strength itself (scaledEffectTint)
+                # and `body: lantern` gives it the cord, the paper body's halo and the cone of light
+                # down to the walk, which is what makes a shut Nakamise read as lit.
+                # `r` is the halo's radius in cm, not the light's reach: the hub street's own
+                # lanterns carry 30 on a 22 cm body, and a 260 halo on a 3 m-high lane twice as wide
+                # as that one read as a searchlight standing in the walk. Same body, same halo.
                 lamps.append({"x": x, "y": 300, "z": round(zc / Z_SCALE, 2), "of": o["id"],
-                              "r": 260, "k": 0.5, "bulb": False, "tint": "rgba(255,236,206,0.22)"})
+                              "r": 34, "k": 0.55, "body": "lantern", "size": 24,
+                              "tint": "#ffd9a6"})
     # the white globes standing on the fascias, at the ends of each run, alternating rows
     for j, (z0, z1) in enumerate(NAKAMISE_RUNS):
         for k2, zz in enumerate((z0 + 40, z1 - 40)):
             lamps.append({"x": -305 if (j + k2) % 2 == 0 else 305, "y": 430, "z": round(zz / Z_SCALE, 2),
-                          "r": 200, "k": 0.32, "tint": "rgba(255,246,230,0.20)"})
+                          "r": 26, "k": 0.32, "bulb": True, "tint": "#fff2dc"})
     surfaces = []
     for side in (-1, 1):
         surfaces.append({"side": side, "z0": -103.45, "z1": 1040, "y0": 0, "y1": 500,
@@ -3579,6 +3589,19 @@ NIAGARA_SKY = {"stops": [{"e": -2, "c": "#d9e6ee", "n": "#1e2639"}, {"e": 0, "c"
 # Toronto's night over the LookOut: the horizon's glow off the city, the zenith near black.
 TORONTO_SKY = {"stops": [{"e": -2, "c": "#3d4260"}, {"e": 0, "c": "#4a4b66"}, {"e": 2, "c": "#363b58"},
                          {"e": 8, "c": "#22283f"}, {"e": 30, "c": "#121829"}, {"e": 90, "c": "#080c18"}]}
+# Tokyo's sky over Nakamise: the city's glow sitting on the horizon, gone to navy overhead.
+# Round 69h. Until this round the lane authored three *height bands* instead --
+# (-260..1600, 1600..7000, 7000..200000) on the 1,200 m far plane. At that distance band 1 ends
+# 0.76 deg above the horizon and band 2 at 3.34 deg, so everything above the 4.8 m roofline, which
+# is most of the sky a visitor ever sees, was band 3 alone: one flat colour, measured 8.4-12.4 luma
+# down a 130 px column, at both hours. The same numbers read as a gradient when they are authored as
+# elevations, which is what this table is: `c` is the day the lane now opens, `n` the night it trades
+# to (the shape NIAGARA_SKY already uses, so one reading of the sky serves the picture and the
+# environment map both).
+TOKYO_SKY = {"stops": [{"e": -2, "c": "#c3d6e8", "n": "#2f3a58"}, {"e": 0, "c": "#cfdfee", "n": "#45527a"},
+                       {"e": 3, "c": "#bcd3e8", "n": "#38446a"}, {"e": 8, "c": "#a3c1de", "n": "#2b3556"},
+                       {"e": 16, "c": "#8db1d5", "n": "#202841"}, {"e": 30, "c": "#7fa6cf", "n": "#171d31"},
+                       {"e": 55, "c": "#74a0cd", "n": "#101523"}, {"e": 90, "c": "#6c9ac9", "n": "#0b0f1a"}]}
 
 
 def niagara_parapet_bands(z_back=-200, z_end=4301, every=300, first=150, half=25):
@@ -4065,8 +4088,18 @@ DISTRICTS = [
         # every shop's width and both gates' sizes are kept, and it is the count that shrinks.
         "lane": {"w": 910, "d": 1040, "ceil": 500, "back": 300, "max_d": 4500, "open": True},
         "floor": "paving",
+        # Held at its own night (round 69h). The lane offered the hour button and lit the street
+        # with the sun -- the paving measured 73.8 -> 107.1 luma between the two hours -- while the
+        # sky could not follow, because the day a lane may show is declared on the lane and this one
+        # declared none: the same shut street under the same night sky at noon. Two ways to stop
+        # that being a lie; this is the smaller one. The place's subject is "the shops are shut and
+        # the gates are lit", its own text says so, and the site already has the idiom for a room
+        # whose clock is a fact rather than an option (`data-lane-night`, no button): the sun is
+        # not traded for a morning this street never shows. If a day is ever authored here it needs
+        # the shutters up, the stalls out and the crowds, and none of that is in the record.
+        "night": 0.92,
         "purpose": "Nakamise-dori at night: the approach from Kaminarimon to Hozomon, the shutters "
-                   "down and the gates lit",
+                   "down, the eave lanterns lit and the gates lit",
         "status": "open",
         "kind": "personal",
         "cover": "IMG/tokyo-cover.jpg",
@@ -4111,11 +4144,12 @@ DISTRICTS = [
         "wires": [],
         "vista": {"x": 0, "y0": 2, "y1": 498, "w": 900},
         "backdrop": {
-            # A Tokyo night: the sky holds the city's glow low and goes dark overhead, high enough to
-            # cover the frame now that the street has no lid.
-            "sky": [{"y0": -260, "y1": 1600, "c": "#3a4868", "glow": 0.9},
-                    {"y0": 1600, "y1": 7000, "c": "#26314c"},
-                    {"y0": 7000, "y1": 200000, "c": "#161e32"}],
+            # The sky above the street, authored as elevations rather than as far-plane heights:
+            # TOKYO_SKY's own comment carries the measurement that moved it here. At night this
+            # sky is a dim source and the street's strip lights are the light, so it is worth a
+            # fifth of itself then; at day it is the light, and worth all of it.
+            "skyAround": TOKYO_SKY,
+            "skyEnv": {"day": 1, "night": 0.22},
             # The plaza under Hozomon continues the street's own paving: 28 m from the last shops to
             # the gate in life, 30 m here, kept nearly whole because the gate's size is the moment.
             "plaza": {"y": 0, "z0": 3016, "z1": 7600, "half": 2600, "lit": 0.8},

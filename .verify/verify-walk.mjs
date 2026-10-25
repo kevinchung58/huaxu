@@ -168,24 +168,51 @@ const lights = island("lights"), wires = island("wires"), beams = island("beams"
       vista = island("vista"), bd = island("backdrop");
 const strips = lights.filter((L) => L.bulb === false);
 const lanterns = lights.filter((L) => L.body === "lantern");
+/* Round 69h: a bay's light is a paper lantern under its eave, not a strip with no body. The old
+   shape -- `bulb: false` and a 0.22-alpha tint -- was multiplied by the lamp's own strength
+   (scaledEffectTint), so the row that is the street's whole light at night came out at 0.10 opacity
+   and measured three white pixels in a 1024 px frame. What has to stay true is the count and the
+   place: one per bay, standing where its bay stands, hanging under the eave and above a head. */
+const bayLanterns = lanterns.filter((L) => (L.of || "").startsWith("shopbay-"));
 /* Round 56: a strip is the *bay's* strip. The street gained one more unlit source -- the vending
    machine's own glow, which is authored on the prop and inherits its position from it -- so the
    count that has to equal the bays is the count of strips that name a bay, and every other source
    is asked, below, to name a prop that stands exactly where it does. */
 const bayStrips = strips.filter((L) => (L.of || "").startsWith("shopbay-"));
-ok("lights are data: a strip light under every bay's eave, and the globes on the fascias",
-   bayStrips.length === bays.length && bayStrips.every((L) => bays.some((b) => b.id === L.of && b.x === L.x && b.z === L.z))
-     && lights.filter((L) => L.bulb !== false).length >= 4,
-   `${bayStrips.length} bay strips / ${strips.length - bayStrips.length} prop glows / ${lights.length} lights`);
-ok("nothing hangs on a wire the street does not have",
-   (wires || []).length === 0 && !lights.some((L) => L.body === "lantern") && (beams || []).length === 0);
+ok("lights are data: a lantern under every bay's eave, and the globes on the fascias",
+   bayLanterns.length === bays.length
+     && bayLanterns.every((L) => bays.some((b) => b.id === L.of && b.x === L.x && b.z === L.z)
+                                && L.y >= 260 && L.y <= 340 && L.size >= 18 && L.size <= 32)
+     && strips.filter((L) => (L.of || "").startsWith("shopbay-")).length === 0
+     && lights.filter((L) => L.bulb === true).length >= 4,
+   `${bayLanterns.length} bay lanterns / ${lights.filter((L) => L.bulb === true).length} globes / ${lights.length} lights`);
+/* A halo's radius is a size in centimetres, and the hub street's own lanterns carry 30 on a 22 cm
+   body. Authored at 260 on a 3 m-high lane twice that street's width, one lamp covered the walk and
+   read as a searchlight standing in it (round 69h, measured in the frame before the number moved). */
+ok("lanterns hang under an eave on their own cord, at a lantern's size and a lantern's halo",
+   lanterns.every((L) => (L.of || "").startsWith("shopbay-") && L.r <= 40 && L.size <= 32 && /^#[0-9a-f]{6}$/i.test(L.tint || ""))
+     && (beams || []).length === 0);
+ok("nothing crosses the walk: the street has no wires, and no lantern hangs off one",
+   (wires || []).length === 0 && lanterns.every((L) => L.swing === undefined));
 ok("the far end is Hozomon at its sourced size, with the pagoda 56 m west and 19 m north of it",
    bd && bd.temple && bd.temple.gate.w === 2100 && bd.temple.gate.h === 2270 && bd.temple.z > WALK_D
      && bd.temple.pagoda.x === -5600 && bd.temple.pagoda.z - bd.temple.z === 1900 && bd.temple.pagoda.h === 5332);
 ok("the plaza continues the street's own paving, at street level, from the last shops on",
    bd.plaza.y === 0 && bd.plaza.z0 === WALK_D && bd.plaza.z1 > bd.temple.z);
-ok("a street with no lid has a sky that reaches the top of the frame",
-   bd.sky.length === 3 && bd.sky[bd.sky.length - 1].y1 >= 120000 && /const cl = OPEN \|\| VAULT \? null : lidQuad\(/.test(js) && /if \(VAULT && !OPEN\)/.test(js));
+/* Round 69h: the sky was three *far-plane height* bands on a 1,200 m plane, which put band 2's top
+   3.34 deg above the horizon -- above the 4.8 m roofline a visitor only ever saw band 3, one flat
+   colour (measured 8.7-13.4 luma down a 150 px column, at both hours). The table is now authored as
+   elevations with a day and a night colour each, and the gain that makes it a light source is
+   authored per hour beside it. */
+ok("a street with no lid opens onto a sky with a gradient, not onto one band seen through a hole",
+   bd && bd.skyAround && Array.isArray(bd.skyAround.stops) && bd.skyAround.stops.length >= 6
+     && bd.skyAround.stops[0].e <= 0 && bd.skyAround.stops[bd.skyAround.stops.length - 1].e >= 90
+     && bd.skyAround.stops.every((st) => /^#[0-9a-f]{6}$/i.test(st.n || "") && /^#[0-9a-f]{6}$/i.test(st.c || ""))
+     && bd.skyEnv && bd.skyEnv.night > 0 && bd.skyEnv.night < 1 && bd.skyEnv.day >= bd.skyEnv.night
+     && /const cl = OPEN \|\| VAULT \? null : lidQuad\(/.test(js) && /if \(VAULT && !OPEN\)/.test(js),
+   bd && bd.skyAround ? `${bd.skyAround.stops.length} stops, env ${bd.skyEnv && JSON.stringify(bd.skyEnv)}` : "no sky table");
+ok("the lane keeps one hour, and it is the hour its own text is written in",
+   /data-lane-night="0\.92"/.test(rooms) && !/data-lane-day=/.test(rooms));
 ok("the aperture opens the whole end of the street onto the plaza",
    vista && vista.w >= 880 && vista.y0 <= 4 && vista.y1 >= 490);
 ok("no prop's z is left in record units (all scaled by 2.9)",
@@ -364,8 +391,9 @@ ok("glass lets the far side through, and says so in code", /rgba\(186,214,240,0\
 ok("a hanging lamp is tied to the wire and the swing moves the body with it",
    /const swayOf = \(L\) =>/.test(js) && /reduce\(\) \? 0 :/.test(js)
    && /3D wire or lamp cord/.test(fs.readFileSync("js/scene3d.js", "utf8")));
-ok("a lantern's period and amplitude are authored, not random",
-   lanterns.every((L) => L.swing > 0 && L.period > 1 && L.phase !== undefined));
+ok("a lantern that swings has an authored period and amplitude, not a random one",
+   lanterns.every((L) => L.swing === undefined
+     || (L.swing > 0 && L.period > 1 && L.phase !== undefined)));
 ok("textures are mapped, not stretched photographs",
    /textureKind = soft \? "soft" : textureSource \? "pattern" : image \? "image" : "flat"/.test(fs.readFileSync("js/scene3d.js", "utf8")));
 /* The air and the night used to share one ceiling of 0.6, which is why the far half of a room
@@ -1198,11 +1226,16 @@ const fail = out.filter((l) => l.startsWith("FAIL")).length;
 }
 
 /* ---- the hour is the visitor's (round 49) --------------------------------------------------------
-   The owner's ruling: no browser clock may darken a lane behind the visitor's back. The page opens
-   in day, one button trades it for night, the choice carries across lanes, and a place held at its
-   own authored night (the LookOut) gets no button at all. */
+   The owner's ruling: no browser clock may darken a lane behind the visitor's back. A lane that
+   authors a day opens in it, one button trades it for night, the choice carries across lanes, and a
+   place held at its own authored night gets no button at all because its hour is a fact.
+
+   Round 69h moved Tokyo into the second group, so this block no longer boots `rooms.html` to prove
+   the first: a page that has no day cannot demonstrate the trade. It boots Niagara (a day page) for
+   the cycle and keeps the held-place assertions for both Tokyo and the LookOut. */
 {
-  const h = boot(rooms, "https://huaxu.test/rooms-hour.html");
+  const dayPage = fs.readFileSync("rooms-niagara.html", "utf8");
+  const h = boot(dayPage, "https://huaxu.test/rooms-hour.html");
   const hl = h.document.querySelector("[data-walk]");
   const hb = h.document.querySelector("[data-walk-hour]");
   ok("a lane opens in day, held there — the chrome carries the hour", hl.dataset.walkClock === "day" && !!hb, hl.dataset.walkHour);
@@ -1216,18 +1249,21 @@ const fail = out.filter((l) => l.startsWith("FAIL")).length;
      && /Night now\. Switch/.test(hb.getAttribute("aria-label")) && /Night comes/.test(h.document.querySelector("[data-walk-record]").textContent),
      `${hl.dataset.walkClock} ${hb.getAttribute("aria-label")}`);
   ok("and the choice is remembered for the site", h.localStorage.getItem("huaxu.walk-hour.v1") === "night");
-  const h2 = boot(rooms, "https://huaxu.test/rooms-hour2.html", "night");
+  const h2 = boot(dayPage, "https://huaxu.test/rooms-hour2.html", "night");
   ok("a lane entered with the choice set opens already in night",
      h2.document.querySelector("[data-walk]").dataset.walkClock === "night"
        && h2.document.querySelector("[data-walk-hour]").classList.contains("is-night"));
   h2.document.querySelector("[data-walk-hour]").dispatchEvent(new h2.MouseEvent("click", { bubbles: true, cancelable: true }));
   ok("back to day crosses the lane the same way", h2.localStorage.getItem("huaxu.walk-hour.v1") === "day");
-  const held = fs.readFileSync("rooms-cntower.html", "utf8");
-  ok("a room whose window shows one fixed night carries no hour button at all",
-     !/data-walk-hour/.test(held) && /data-lane-night/.test(held));
-  const heldBoot = boot(held, "https://huaxu.test/rooms-cntower.html", "day");
-  ok("…and the visitor's choice cannot overwrite the authored hour there",
-     heldBoot.localStorage.getItem("huaxu.walk-hour.v1") === "day" && !heldBoot.document.querySelector("[data-walk-hour]"));
+  const heldPages = { "rooms.html": "Tokyo", "rooms-cntower.html": "the LookOut" };
+  for (const [file, who] of Object.entries(heldPages)) {
+    const held = fs.readFileSync(file, "utf8");
+    ok(`a place whose hour is a fact (${who}) carries no hour button at all`,
+       !/data-walk-hour/.test(held) && /data-lane-night="0\.92"/.test(held) && !/data-lane-day=/.test(held));
+    const heldBoot = boot(held, `https://huaxu.test/${file}`, "day");
+    ok(`…and the visitor's choice cannot overwrite the authored hour in ${who}`,
+       heldBoot.localStorage.getItem("huaxu.walk-hour.v1") === "day" && !heldBoot.document.querySelector("[data-walk-hour]"));
+  }
   {
     const scjs = fs.readFileSync("js/scene3d.js", "utf8");
     ok("the lit path folds the same navy the painter calls murk, as the sun goes",
