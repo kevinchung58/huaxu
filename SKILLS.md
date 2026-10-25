@@ -33,6 +33,14 @@ acceptance; `pua` is the evidence-first debugging method; and `pr-handoff` owns 
 grounding, and domain skills before environment work, the visual loop before sign-off, and the PR
 handoff before every PR operation.
 
+`frame-evidence` is the sixteenth-track skill and the one that keeps the other fifteen honest: it
+owns arrival, aim, units, refusal, and the difference between "measured" and "believed". Every
+number quoted by `scene-quality-loop`, `pua`, or a PR body is supposed to come through it. It exists
+because three tools in this repository ran to completion, printed confident lines, and were wrong —
+a gate that framed two of seven ids, a stop photographed from wherever the glide had got to, and a
+ray hit printed in centimetres that a round of TODO read as kilometres. Route any claim about a
+rendered frame through it (round 69k).
+
 ---
 
 ## 1. Grill first, build second

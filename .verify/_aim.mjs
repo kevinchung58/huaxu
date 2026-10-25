@@ -1,142 +1,200 @@
-/* _aim — photograph a stop at a chosen heading, and say where the spray actually lands.
+/* _aim -- one honest way to put the body at a stop and the head on a heading.
 
-   Why this exists: the rail stop's own `data-view-yaw` is a number somebody wrote, and for two
-   rounds the mist was tuned against frames shot at that number while the plume stood outside the
-   frame. `_view.mjs` turns with the visitor's own arrow keys and is honest but slow to settle;
-   this one turns, stops when the head has arrived, and then answers the only question that
-   matters -- how many of the spray billboards are inside the picture, and where.
+   Every frame argument in this repo has ended the same way: someone believed a picture because a
+   script said it was "the view from stop 6". Three separate scripts were doing the three steps
+   differently, and two of them could not report that they had missed. This module is the answer:
+   one implementation of arrival and aim, imported by every tool that needs a camera, so there is
+   one place where "on the page" and "on the heading" are decided.
 
-   Run:  LD_LIBRARY_PATH=/tmp/al2023/lib AIM_YAW=-97 STOP=3 node .verify/_aim.mjs
-         MIST=red ... paints the spray red first (does the plume have a shape or is it a wash?)
-         OUT=.preview/x/yaw-97.png  (default .preview/water/aim/yaw-<n>.png)
+   What it refuses to guess:
+
+   ARRIVAL is a position, read back from the body, against the stop's own `--z`/`--x`.
+     - Waiting for the body to *stop moving* is not enough: before the click it is also still, so
+       round 69k's first prim map photographed the lane's mouth and printed it as the fun row.
+     - A fixed sleep is not enough: the software rasteriser walks at wall-clock speed that varies.
+     - A loose band is not enough: the body was still gliding when a 200 cm band called it arrived,
+       and the frame was of a place 2 m short of the stop.
+   So: wait for the authored position (default 6 cm), and treat "not moving any more, and still
+   short" as its own result (`blocked`), with the shortfall in centimetres. A caller may shoot a
+   blocked stop only by asking for it out loud, and then the shortfall goes in the file name.
+
+   AIM is a drag, never a key hold, and the heading is read back afterwards.
+     - Turning integrates per frame with dt clamped to 0.12 s at 120 deg/s, so the smallest turn a
+       key press can make is 14.4 degrees (measured, round 69i). No key can land a heading.
+     - A drag sets the heading from distance at 0.09 deg/px, so one drag goes where it is put.
+     - The residual is then read from the body's own yaw, not from the intent, and a miss over
+       1.2 degrees is a refusal (`aimed: false`), not a frame with a hopeful name.
+     - A pointerup that travels under 8 px is a *tap* in the lane's own rule and presses whatever
+       is under it, so every drag travels at least 9 px or does not happen.
+
+   UNITS: every distance in this repo's world data is in CENTIMETRES. `_ray.mjs` reported the
+   Escarpment canopy at "19416" and a round of TODO called it 19.4 km; it is 194 m. Anything printed
+   from here carries both numbers.
+
+   Usage:
+     import { launch, openPage, arrive, aim, park, shot } from "./_aim.mjs";
+     const browser = await launch();
+     const page = await openPage(browser, { rooms: "rooms-niagara.html", hour: "night" });
+     const a = await arrive(page, 6);            // { arrived, at, target, short, blocked }
+     const g = await aim(page, 90);              // { aimed, yaw, pitch, off }
+     await park(page); await shot(page, ".preview/x/stop6-yaw90.png");
 */
-import fs from "node:fs";
 import { createRequire } from "node:module";
+
 const require = createRequire(import.meta.url);
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium").default || require("@sparticuz/chromium");
 
-const BASE = process.env.BASE || "http://127.0.0.1:8080";
-const FILE = process.env.FILE || "rooms-niagara.html";
-const STOP = Number(process.env.STOP || 3);
-const AIM = Number(process.env.AIM_YAW || -97);
-const OUT = process.env.OUT || `.preview/water/aim/yaw${Math.round(AIM)}.png`;
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+export const DRAG_DEG_PER_PX = 0.09;   // js/site.js: the lane's own drag constant
+export const TAP_PX = 8;               // js/site.js: a move under this is a tap, not a drag
+export const DEG_PER_KEY = 14.4;       // 120 deg/s x the 0.12 s dt clamp: a key's smallest turn
+/* Vertical is not the horizontal constant, and it runs the other way. Measured at stop 7 (niagara,
+   day): a 100 px drag DOWN moved pitch 8.00 -> 1.50 (-6.5 deg, 0.065 deg/px), a 100 px drag UP took
+   it back to 8.00, and 40 px up moved it +2.6. Round 69k's first `_shot_at` run assumed 0.09 and
+   asked for -28; the head arrived at +24, and the refusal printed both numbers instead of saving a
+   frame pointed at the paving. */
+export const PITCH_DEG_PER_PX = 0.065;
 
-fs.mkdirSync(OUT.slice(0, OUT.lastIndexOf("/")) || ".", { recursive: true });
-const browser = await puppeteer.launch({
-  executablePath: await chromium.executablePath(),
-  args: [...chromium.args, "--no-sandbox", "--disable-dev-shm-usage"],
-  headless: true, defaultViewport: { width: 1024, height: 768 },
-});
-const page = await browser.newPage();
-const errors = [];
-page.on("pageerror", (e) => { errors.push(String(e)); console.log("PAGEERROR", String(e).slice(0, 160)); });
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// scene3d.js keeps camera and scene private; publishing them changes no behaviour.
-await page.setRequestInterception(true);
-let patched = false;
-page.on("request", async (req) => {
-  if (!/js\/scene3d\.js/.test(req.url())) return req.continue();
-  try {
-    let body = (await (await fetch(req.url())).text())
-      .replace("const scene = new THREE.Scene();", "const scene = new THREE.Scene(); window.__threeScene = scene;")
-      .replace("const camera = new THREE.PerspectiveCamera(45, 1, 20, 600000);",
-               "const camera = new THREE.PerspectiveCamera(45, 1, 20, 600000); window.__cam = camera;");
-    if (process.env.MIST === "red") {
-      const before = body;
-      body = body.replace("void main(){ vec4 tex=texture2D(uCloud,vUv); gl_FragColor=vec4(vColor.rgb, tex.a*vColor.a); }",
-                          "void main(){ vec4 tex=texture2D(uCloud,vUv); gl_FragColor=vec4(1.0,0.0,0.0, max(0.35, tex.a*vColor.a)); }");
-      if (body === before) console.log("  !! cloud shader anchor moved; MIST=red did nothing");
-    }
-    if (!patched) { patched = true; console.log("patched scene3d: camera", /__cam/.test(body)); }
-    req.respond({ status: 200, contentType: "application/javascript", body });
-  } catch (e) { console.log("FETCH FAIL", String(e).slice(0, 90)); req.continue(); }
-});
-
-await page.goto(`${BASE}/${FILE}`, { waitUntil: "load", timeout: 90000 });
-await page.waitForFunction(() => document.querySelector("[data-walk]")?.__walk, { timeout: 60000 });
-await sleep(2500);
-await page.evaluate((i) => document.querySelectorAll("[data-walk-stop]")[i].click(), STOP);
-// the rail glides: wait for the body to stop moving rather than for a stopwatch
-await page.waitForFunction(() => {
-  const w = document.querySelector("[data-walk]").__walk;
-  if (!w.__aimT) w.__aimT = [];
-  w.__aimT.push([w.depth, performance.now()]);
-  if (w.__aimT.length > 12) w.__aimT.shift();
-  const a = w.__aimT[0], b = w.__aimT[w.__aimT.length - 1];
-  return Math.abs(b[0] - a[0]) < 40 && b[1] - a[1] > 900;
-}, { timeout: 240000, polling: 500 }).catch(() => console.log("  (did not settle; shooting anyway)"));
-
-// Turn with the visitor's own keys. One burst overshoots by tens of degrees on a software
-// rasteriser (a frame can be a third of a second), so the burst is sized from the distance and
-// the loop re-reads the head afterwards -- measured, never assumed.
-const yawNow = () => page.evaluate(() => document.querySelector("[data-walk]").__walk.yaw);
-for (let i = 0; i < 40; i++) {
-  const y = await yawNow(), d = AIM - y;
-  if (Math.abs(d) < 2) { console.log("aimed at", y.toFixed(1)); break; }
-  const key = d > 0 ? "ArrowRight" : "ArrowLeft";
-  await page.keyboard.down(key);
-  await sleep(Math.min(400, Math.max(80, Math.abs(d) * 1.6)));
-  await page.keyboard.up(key);
-  await sleep(400);
+export async function launch({ width = 1024, height = 768 } = {}) {
+  return puppeteer.launch({
+    executablePath: await chromium.executablePath(),
+    args: [...chromium.args, "--no-sandbox", "--disable-dev-shm-usage", "--allow-file-access-from-files"],
+    headless: true, defaultViewport: { width, height },
+  });
 }
 
-// where the spray is, in pixels, from the page's own camera
-// Aim at an object, not at a number: the offset between where the head points and where a chosen
-// column stands is read off the camera's own basis, so no yaw convention has to be guessed.
-const aimAt = async (anchor) => {
-  const r = await page.evaluate((a) => {
-    const cam = window.__cam, V = cam.position.constructor;
-    const prims = Object.values(window.__HX_PLACES)[0]["data-walk-backdrop"].world.prims;
-    const cols = prims.filter((q) => q.t === "m" && q.w < 2200 && q.o[1] > -4000);
-    if (!cols.length) return { err: "no column" };
-    const top = cols.reduce((m, q) => (q.o[1] > m.o[1] ? q : m), cols[0]);
-    const m = cam.matrixWorld.elements;
-    const f = [-m[8], -m[9], -m[10]], rt = [m[0], m[1], m[2]];
-    const d = [top.o[0] - cam.position.x, top.o[1] - cam.position.y, top.o[2] - cam.position.z];
-    const off = Math.atan2(d[0] * rt[0] + d[2] * rt[2], d[0] * f[0] + d[1] * f[1] + d[2] * f[2]) * 180 / Math.PI;
-    return { yaw: document.querySelector("[data-walk]").__walk.yaw, offset: +off.toFixed(1), crown: top.o };
-  }, anchor);
-  if (r.err) return r;
-  const target = r.yaw + r.offset * Number(process.env.SIGN || 1);
-  console.log("aimAt: yaw", r.yaw.toFixed(1), "offset", r.offset, "→ target", target.toFixed(1), "crown", r.crown);
-  for (let i = 0; i < 24; i++) {
-    const y = await yawNow(), d = target - y;
-    if (Math.abs(d) < 2) break;
-    const key = d > 0 ? "ArrowRight" : "ArrowLeft";
-    await page.keyboard.down(key); await sleep(Math.min(300, Math.max(70, Math.abs(d) * 1.4)));
-    await page.keyboard.up(key); await sleep(380);
-  }
-  return { target };
-};
-if (process.env.AIM_AT) await aimAt(Number(process.env.AIM_AT));
+/* The hour is the visitor's and it is kept across pages, so it is set before the lane boots. */
+export async function openPage(browser, { rooms, hour = "day", base = "http://127.0.0.1:8080",
+                                            width = 1024, height = 768, intercept = null } = {}) {
+  const page = await browser.newPage();
+  page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
+  /* A rewrite of one source file has to be armed BEFORE the navigation that loads it. Installing
+     interception afterwards and reloading closed the connection the page was still using, and the
+     camera was never published -- the failure printed as "NO CAMERA", which is the right alarm. */
+  if (intercept) { await page.setRequestInterception(true); page.on("request", intercept); }
+  page.on("console", (m) => { if (m.type() === "error") console.log("CONSOLE", m.text()); });
+  await page.evaluateOnNewDocument((h) => {
+    try { if (h === "night") window.localStorage.setItem("huaxu.walk-hour.v1", "night"); }
+    catch (e) { /* private mode: the choice lives this visit only */ }
+  }, hour);
+  await page.goto(`${base}/${rooms}`, { waitUntil: "networkidle0", timeout: 120000 });
+  await page.waitForFunction(() => document.querySelector("[data-walk]")?.__walk?.renderer, { timeout: 60000 });
+  await sleep(800);
+  return page;
+}
 
-const where = await page.evaluate(() => {
-  const cam = window.__cam;
-  if (!cam) return { err: "no camera" };
-  const V = cam.position.constructor;
-  const prims = Object.values(window.__HX_PLACES || {})[0]["data-walk-backdrop"].world.prims.filter((q) => q.t === "m");
-  const on = [];
-  for (const q of prims) {
-    const v = new V(q.o[0], q.o[1], q.o[2]).project(cam);
-    const px = (v.x + 1) / 2 * 1024, py = (1 - v.y) / 2 * 768;
-    if (v.z < 1 && px >= 0 && px < 1024 && py >= 0 && py < 768) on.push([Math.round(px), Math.round(py), q.al]);
-  }
-  const grid = Array.from({ length: 6 }, () => Array(8).fill(0));
-  for (const [x, y] of on) grid[Math.min(5, Math.floor(y / 128))][Math.min(7, Math.floor(x / 128))]++;
-  const wsum = on.reduce((a, r) => a + r[2], 0) || 1;
-  return { n: prims.length, onScreen: on.length,
-           centroid: on.length ? [Math.round(on.reduce((a, r) => a + r[0] * r[2], 0) / wsum),
-                                 Math.round(on.reduce((a, r) => a + r[1] * r[2], 0) / wsum)] : null,
-           grid, yaw: Math.round(document.querySelector("[data-walk]").__walk.yaw) };
+export const state = (page) => page.evaluate(() => {
+  const w = document.querySelector("[data-walk]")?.__walk;
+  return w ? { x: w.x, z: w.depth, yaw: w.yaw, pitch: w.pitch, quads: w.quads } : null;
 });
-console.log("spray", JSON.stringify(where));
 
-// the HUD out of the picture: a preview card floats over the canvas when it rests on it
-await page.mouse.move(2, 2);
-await page.evaluate(() => document.querySelectorAll(".walk-card,.walk-stops,.walk-tools").forEach((e) => { e.style.display = "none"; }));
-await sleep(900);
-await page.screenshot({ path: OUT });
-console.log("SHOT", OUT, "at yaw", (await yawNow()).toFixed(1), errors.length ? `(${errors.length} page errors)` : "");
-await browser.close();
+/* The stop's authored position: `--z`/`--x` on the button, read from computed style because that is
+   where the generator writes them. A stop with no `--z` is a data defect; say so. */
+export const stopTarget = (page, i) => page.evaluate((k) => {
+  const el = document.querySelectorAll("[data-walk-stop]")[k];
+  if (!el) return null;
+  const read = (n) => { const v = Number.parseFloat(getComputedStyle(el).getPropertyValue(n)); return Number.isFinite(v) ? v : null; };
+  return { z: read("--z"), x: read("--x"),
+           yaw: el.dataset.viewYaw !== undefined ? Number(el.dataset.viewYaw) : null,
+           pitch: el.dataset.viewPitch !== undefined ? Number(el.dataset.viewPitch) : null,
+           label: el.getAttribute("aria-label") };
+}, i);
+
+/* Arrival. Returns the body's real position either way; `blocked` means it stopped short and the
+   caller has to decide out loud. `shortfall` is signed and in centimetres. */
+export async function arrive(page, stop, { tol = 6, arriveMs = 300000, settleSamples = 6 } = {}) {
+  const target = await stopTarget(page, stop);
+  if (!target) return { arrived: false, blocked: false, target: null, at: null, why: `no stop ${stop}` };
+  if (target.z === null) return { arrived: false, blocked: false, target, at: await state(page), why: `stop ${stop} has no --z` };
+  await page.evaluate((i) => document.querySelectorAll("[data-walk-stop]")[i].click(), stop);
+  const t0 = Date.now();
+  let at = await state(page), still = 0, prev = at;
+  while (Date.now() - t0 < arriveMs) {
+    await sleep(300);
+    at = await state(page);
+    if (!at) continue;
+    const zOk = Math.abs(at.z - target.z) <= tol;
+    const xOk = target.x === null || Math.abs(at.x - target.x) <= tol;
+    const moving = prev && (Math.abs(at.z - prev.z) > 0.5 || Math.abs(at.x - prev.x) > 0.5);
+    still = moving ? 0 : still + 1;
+    prev = at;
+    if (zOk && xOk) {
+      // Within tolerance once is not arrival if it is drifting through; require it to hold.
+      if (still >= 1) {
+        const short = Math.round(at.z - target.z);
+        return { arrived: true, blocked: false, target, at, short,
+                 waited: Math.round((Date.now() - t0) / 1000) };
+      }
+    }
+    if (still >= settleSamples && !zOk) {
+      /* Stopped, still short: something is in the way. Report it as a fact, not as a failure of
+         the instrument -- the frame may still be the right one, but the caller must say so. */
+      const short = Math.round(at.z - target.z);
+      return { arrived: false, blocked: true, target, at, short,
+               why: `body settled ${short >= 0 ? "+" : ""}${short} cm from --z (${Math.round(at.z)} vs ${target.z})`,
+               waited: Math.round((Date.now() - t0) / 1000) };
+    }
+  }
+  return { arrived: false, blocked: false, target, at, short: at ? Math.round(at.z - target.z) : null,
+           why: `no arrival after ${Math.round(arriveMs / 1000)} s`, waited: Math.round((Date.now() - t0) / 1000) };
+}
+
+/* Aim, by drag, with the heading read back. `pitch` is positive DOWN (scene3d.js: eye - sin(pitch)). */
+export async function aim(page, yaw, { pitch = null, tol = 0.8, refuseOver = 1.2,
+                                      width = 1024, height = 768 } = {}) {
+  const cx = Math.round(width / 2), cy = Math.round(height / 2);
+  const dragBy = async (px, py) => {
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + px, cy + py, { steps: 3 });
+    await page.mouse.up();
+    await sleep(260);
+  };
+  for (let guard = 0; guard < 10; guard++) {
+    const s = await state(page);
+    if (!s) break;
+    const off = ((yaw - s.yaw + 540) % 360) - 180;
+    const pOff = pitch === null ? 0 : pitch - s.pitch;
+    if (Math.abs(off) <= tol && Math.abs(pOff) <= tol) break;
+    let px = Math.max(-420, Math.min(420, Math.round(off / DRAG_DEG_PER_PX)));
+    if (Math.abs(off) > tol && Math.abs(px) < 9) px = Math.sign(off) * 9;
+    // Vertical: its own constant, its own sign (drag down looks up), both measured -- see
+    // PITCH_DEG_PER_PX above.
+    let py = pitch === null ? 0
+      : Math.max(-300, Math.min(300, Math.round((s.pitch - pitch) / PITCH_DEG_PER_PX)));
+    if (Math.abs(px) < TAP_PX + 1 && Math.abs(py) < TAP_PX + 1) break;
+    await dragBy(px, py);
+  }
+  let s = await state(page);
+  for (let i = 0; i < 8 && s; i++) { await sleep(200); const n = await state(page); if (n && Math.abs(n.yaw - s.yaw) < 0.02 && Math.abs(n.pitch - s.pitch) < 0.02) { s = n; break; } s = n; }
+  if (!s) return { aimed: false, yaw: null, pitch: null, off: null };
+  const off = ((yaw - s.yaw + 540) % 360) - 180;
+  const pOff = pitch === null ? 0 : pitch - s.pitch;
+  return { aimed: Math.abs(off) <= refuseOver && Math.abs(pOff) <= refuseOver,
+           yaw: s.yaw, pitch: s.pitch, off, pOff };
+}
+
+/* The pointer to the corner with no button held: a hover, not a drag, so the head does not move and
+   a preview card no longer floats over the picture. */
+export async function park(page, ms = 900) {
+  await page.mouse.move(2, 2);
+  await sleep(ms);
+}
+
+export async function shot(page, path) {
+  await park(page);
+  await page.screenshot({ path });
+  return path;
+}
+
+/* The name of a frame is the head that was actually there, never the one that was wished for. */
+export async function namedShot(page, dir, prefix, { width = 1024, height = 768, allowShort = 0 } = {}) {
+  const s = await state(page);
+  if (!s) throw new Error("namedShot: no walk state");
+  if (allowShort && Math.abs(allowShort) > 0) prefix += `-short${Math.abs(Math.round(allowShort))}cm`;
+  const path = `${dir}/${prefix}-yaw${Math.round(s.yaw)}-p${Math.round(s.pitch)}-${width}x${height}.png`;
+  await shot(page, path);
+  return { path, at: s };
+}

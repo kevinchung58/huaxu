@@ -29,6 +29,15 @@ Do not create a second coordinate system or an unsupported visual requirement. U
 
 Use the repository's current `.verify/browser-shot.mjs` for actual browser movement and its route checks (the renderer-independent raster harness, `lane-shot.mjs`, was retired with the Canvas2D painter in round 54). Preserve its arrival checks. A frame is not evidence for a stop until the runtime has reached its authored depth, lateral position, and view. Fixed sleeps, a partially completed glide, or an early timeout are not proof of a movement defect.
 
+**Every frame in this loop comes through `frame-evidence`** (round 69k). In practice: arrival is the
+stop's own `--z`/`--x` read back from the body, never a fixed sleep — a loose band called arrival
+2 m early and a stillness test fired before the glide began. Aim is a drag at 0.09 °/px read back,
+never a key hold (a press turns at least 14.4°); pitch is a separate constant, 0.065 °/px with the
+opposite sign, and the lane clamps it to ±24°. Distances are centimetres — print metres too, because
+`19416` was once written down as 19.4 km and a whole diagnosis was built on it. A frame whose
+heading or place was missed is a **refusal**, not a slightly-off picture: name it and take the frame
+again. `.verify/_aim.mjs` is the single implementation; do not write a fourth wait loop.
+
 For the changed page, capture:
 
 1. the entrance and every authored stop in its intended view;

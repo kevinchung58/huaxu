@@ -5664,11 +5664,11 @@ function leaveOverlay(root, trigger) {
               const nb = Math.max(4, Math.round(t.h / 14));
               const on = NIGHT();
               for (let i = 1; i < nb; i++) {
-                const k0 = i / nb, k1 = k0 + 0.32 / nb;
+                const k0 = i / nb, k1 = k0 + 0.42 / nb;
                 const lo0 = at(a, d2, k0), lo1 = at(b, c2, k0), hi1 = at(b, c2, k1), hi0 = at(a, d2, k1);
                 const lt = 0.18 + 0.5 * on * (0.6 + 0.4 * Math.sin(bi * 1.7 + i * 2.3 + Math.floor(T * 0.2)));
                 const bq = add(C, [lo0, lo1, hi1, hi0], ZERO8, "flat",
-                               on > 0.35 ? `rgba(255,224,170,${lt.toFixed(3)})` : "rgba(20,26,38,0.28)");
+                               on > 0.35 ? `rgba(255,224,170,${lt.toFixed(3)})` : "rgba(24,30,44,0.46)");
                 if (bq) { bq.lit = on > 0.35 ? 1.3 : lit; if (on > 0.35) bq.nolite = true; drawn.push(bq); }
               }
               if (t.crown === "v") {
@@ -7849,7 +7849,13 @@ function leaveOverlay(root, trigger) {
                   ZERO8, "flat", "#4c6a3a");
           if (q) { q.lit = lit * tone; drawn.push(q); }
         };
-        clump(0.6, 1, 1.06);
+        /* Three clumps, not two: at model scale a crown 40 px across was one disc of one tone with a
+           lighter disc on top -- measured sd 0.7 on `tree-f2`, the flattest prop in the hall. The
+           low wide clump is darker than the ones above it, which is what a lit crown actually does,
+           and the width jitters with where the tree stands so no two crowns are the same ellipse. */
+        const jitter = 0.9 + ((Math.round(m.x) * 7 + Math.round(m.z) * 13) % 21) / 100;
+        clump(0.40, 1.12 * jitter, 0.86);
+        clump(0.6, 1.0 * jitter, 1.06);
         clump(0.84, 0.66, 1.18);      // a smaller clump above: the silhouette is not a disc
       } else if (shape === "track") {
         // Ballast and rails along the table's front edge: the strip the streetcar runs on.

@@ -2493,6 +2493,10 @@ NIA_RIVER = -58.5        # the lower river: the Horseshoe's sourced 57 m drop be
 NIA_CREST = -1.5         # water at the Horseshoe's brink, just under the terrace rail
 NIA_AM_CREST = -1.0      # the American Falls' brink
 NIA_TALUS = -29.0        # top of the American Falls' boulders: a free fall inside the sourced 21-30 m
+# The wooded bluff's crowns, darkest to lightest. A single tone made the tree line vanish: a crown
+# painted in the colour of the slope it stands on has no edge, and a straight horizon is what a
+# visitor reads as "a green board" (round 69k, measured at 211-252 m, not 19 km).
+CANOPY_CROWNS = ("#4a6a3a", "#557a44", "#3f5c31")
 NIA_GOAT_TREES = 14.0    # Goat Island's woods over the gorge (approximate canopy, not surveyed)
 
 
@@ -2691,11 +2695,34 @@ def fallsview(fr, air):
                                fr.cm(*foot[j], 0), fr.cm(*foot[i], 0)],
                          pat="canopy", u=2000, ax="v", c="#3b5631", cn="#121a1c", a=a, dg=0.45,
                          fn=_fn(fr, ey, -ex)))
-        # the trees along its top, their crowns 9-15 m over the edge (a seeded run, not a survey)
-        t0, t1 = 9 + (i * 37 % 7), 9 + (j * 37 % 7)
-        out.append(_prim("x", [fr.cm(*top[i], rise * hk[i] + t0 * hk[i]), fr.cm(*top[j], rise * hk[j] + t1 * hk[j]),
+        # The trees along its top, their crowns 9-15 m over the edge (a seeded run, not a survey).
+        # Round 69k: they were painted in the SLOPE's own colour, so a crown standing on the slope
+        # had no edge against it and the tree line was a straight rule across the sky. Three tones
+        # from a seeded cycle, and the tone is chosen per segment, so neighbouring crowns differ.
+        # One crown per 56 m segment was a fence rail, not a wood: its top varied 9-15 m over the
+        # whole segment, which at 211 m is a 3-pixel zigzag and reads as a ruled edge. A tree line is
+        # TEETH -- 7-9 m trees of different heights -- so the segment is cut into trees and each one
+        # stands at its own height, tip between 8 and 18 m over the edge.
+        seg = math.hypot(top[j][0] - top[i][0], top[j][1] - top[i][1])
+        nt = max(2, round(seg / 7.0))
+        for k in range(nt):
+            k0, k1 = k / nt, (k + 1) / nt
+            e0 = (top[i][0] + (top[j][0] - top[i][0]) * k0, top[i][1] + (top[j][1] - top[i][1]) * k0)
+            e1 = (top[i][0] + (top[j][0] - top[i][0]) * k1, top[i][1] + (top[j][1] - top[i][1]) * k1)
+            h0 = rise * (hk[i] + (hk[j] - hk[i]) * k0)
+            h1 = rise * (hk[i] + (hk[j] - hk[i]) * k1)
+            tip0 = h0 + (8 + ((i * 7 + k * 13) % 11)) * (hk[i] + (hk[j] - hk[i]) * k0)
+            tip1 = h1 + (8 + ((i * 7 + (k + 1) * 13) % 11)) * (hk[i] + (hk[j] - hk[i]) * k1)
+            out.append(_prim("x", [fr.cm(*e0, tip0), fr.cm(*e1, tip1), fr.cm(*e1, h1), fr.cm(*e0, h0)],
+                             pat="canopy", u=2000, ax="v", c=CANOPY_CROWNS[(i + k) % 3], cn="#121a1c",
+                             a=a, dg=0.45, fn=_fn(fr, ey, -ex)))
+        # A second, taller run behind the trees, darker: the depth of a wood is the number of tree
+        # lines in it, and one band of crowns -- however toothed -- still reads as a fence.
+        t2 = 6 + ((i * 53 + 11) % 11)
+        out.append(_prim("x", [fr.cm(*top[i], rise * hk[i] + (t2 + 4) * hk[i]),
+                               fr.cm(*top[j], rise * hk[j] + (t2 + 6) * hk[j]),
                                fr.cm(*top[j], rise * hk[j]), fr.cm(*top[i], rise * hk[i])],
-                         pat="canopy", u=2000, ax="v", c="#3b5631", cn="#121a1c", a=a, dg=0.45,
+                         pat="canopy", u=2000, ax="v", c=CANOPY_CROWNS[(i + 1) % 3], cn="#121a1c", a=a, dg=0.45,
                          fn=_fn(fr, ey, -ex)))
     plateau = top + [(-2400, top[-1][1]), (-2400, top[0][1])]
     # Round 65: the bluff's top was a flat green polygon -- the one colour in the frame with no
