@@ -4152,7 +4152,11 @@ DISTRICTS = [
             "skyEnv": {"day": 1, "night": 0.22},
             # The plaza under Hozomon continues the street's own paving: 28 m from the last shops to
             # the gate in life, 30 m here, kept nearly whole because the gate's size is the moment.
-            "plaza": {"y": 0, "z0": 3016, "z1": 7600, "half": 2600, "lit": 0.8},
+            # The precinct, not just the apron in front of the gate. Round 69i: this stopped at
+            # z 7600, and the pagoda stands at 7900 -- so from the plaza the pagoda floated on the
+            # sky, its stone base sitting on nothing, with the haze showing under the horizon behind
+            # it. The courtyard now runs past the pagoda to its own far wall, 90 m from the gate.
+            "plaza": {"y": 0, "z0": 3016, "z1": 9000, "half": 3400, "lit": 0.8},
             "temple": {"x": 0, "z": 6000, "gate": {"w": 2100, "h": 2270},
                        "pagoda": {"x": -5600, "z": 7900, "h": 5332}},
         },

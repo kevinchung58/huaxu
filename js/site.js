@@ -3270,29 +3270,74 @@ function leaveOverlay(root, trigger) {
       // The floodlights' spill on the plaza in front of the gate: the light that makes it a place to stand.
       T0([[gx - hw - 400, 2, gz - 2200], [gx + hw + 400, 2, gz - 2200], [gx + hw + 200, 2, gz - 60],
           [gx - hw - 200, 2, gz - 60]], `rgba(255,214,160,${(0.1 + 0.12 * NIGHT()).toFixed(3)})`, 1.1, 0.04);
+      /* The five-storey pagoda, 56 m west and 19 m north of the gate (OpenStreetMap), 53.32 m to the
+         top of its finial, its base 150 cm of stone.
+
+         Round 69i: like the gate it was a picture of a building. Every storey was a quad on one z,
+         so from anywhere off the axis it was a red cut-out four metres thick at its thinnest, and
+         its roofs were flat trapezoids with no overhang to see under. A pagoda's whole silhouette is
+         its roofs' overhangs seen from below and its storeys stepping back -- neither exists on a
+         plane. Each storey is now a box with four walls, the roof above it is four slopes with an
+         overhang on every side and a drawn underside, and the balconies project. Sizes are the
+         record's: five storeys, 53.32 m to the finial, base 12.4 m square, each storey's body
+         narrower than the one below it. */
       const pg = tp.pagoda;
       if (pg) {
         const px = pg.x, pz = pg.z, PH = pg.h || 5332;
-        const S = (x0, y0, x1, y1, col, l) =>
-          T0([[px + x0, y0, pz], [px + x1, y0, pz], [px + x1, y1, pz], [px + x0, y1, pz]], col, l, 0.1);
-        S(-620, 0, 620, 150, "#77746e", flood * 0.75);
-        let y = 150;
+        const F = (pts, col, l, air = 0.1) => T0(pts, col, l, air);
+        const L = (x0, y0, x1, y1, z, col, l) =>
+          F([[px + x0, y0, pz + z], [px + x1, y0, pz + z], [px + x1, y1, pz + z], [px + x0, y1, pz + z]], col, l);
+        // The stone base, 12.4 m square and 1.5 m of it, with its top and two returns.
+        const B = 620, BH = 150;
+        F([[px - B, BH, pz - B], [px + B, BH, pz - B], [px + B, BH, pz + B], [px - B, BH, pz + B]], "#77746e", flood * 0.75, 0.06);
+        [-1, 1].forEach((sd) => {
+          L(-B, 0, B, BH, sd * B, "#6a6762", flood * 0.62);                       // front / back
+          F([[px + sd * B, 0, pz - B], [px + sd * B, 0, pz + B],
+             [px + sd * B, BH, pz + B], [px + sd * B, BH, pz - B]], "#6a6762", flood * 0.55);   // sides
+        });
+        let y = BH;
         for (let i = 0; i < 5; i++) {
-          const bw = 360 - i * 30, bh = 600 - i * 30, rw = 700 - i * 55;
-          S(-bw, y, bw, y + bh, "#bf412e", flood * (1 - i * 0.03));
-          S(-bw * 0.4, y + bh * 0.15, bw * 0.4, y + bh * 0.8, "#2a1712", 0.5);
-          T0([[px - rw, y + bh, pz - 30], [px + rw, y + bh, pz - 30], [px + bw * 0.9, y + bh + 150, pz + 30],
-              [px - bw * 0.9, y + bh + 150, pz + 30]], "#2f3543", flood * 0.72, 0.1);
-          [-1, 1].forEach((s) => T0([[px + s * rw, y + bh, pz - 31], [px + s * (rw + 50), y + bh + 50, pz - 31],
-                                     [px + s * (rw - 90), y + bh + 30, pz - 31]], "#4d5464", flood * 0.8, 0.1));
-          y += bh + 150;
+          // The body steps back storey by storey, as the record's silhouette does.
+          const bw = 300 - i * 26, bh = 600 - i * 30, rw = 660 - i * 46, rd = rw * 0.82;
+          // four walls of the body
+          L(-bw, y, bw, y + bh, -rd, "#bf412e", flood * (1 - i * 0.03));
+          L(-bw, y, bw, y + bh, rd, "#a83a2b", flood * (1 - i * 0.03) * 0.82);
+          [-1, 1].forEach((sd) => F([[px + sd * bw, y, pz - rd], [px + sd * bw, y, pz + rd],
+                                     [px + sd * bw, y + bh, pz + rd], [px + sd * bw, y + bh, pz - rd]],
+                                    "#b23c2c", flood * (1 - i * 0.03) * 0.9));
+          // the dark opening on the front of each storey, inset so it is a hole and not a stripe
+          L(-bw * 0.34, y + bh * 0.18, bw * 0.34, y + bh * 0.76, -rd - 2, "#2a1712", 0.5);
+          // the balcony: a projecting slab and a rail, on the front and both returns
+          F([[px - bw * 1.06, y, pz - rd - 130], [px + bw * 1.06, y, pz - rd - 130],
+             [px + bw * 1.06, y, pz - rd], [px - bw * 1.06, y, pz - rd]], "#2a1b16", flood * 0.6, 0.08);
+          L(-bw * 1.06, y, bw * 1.06, y + 46, -rd - 130, "#7d3325", flood * 0.8);
+          // The roof: four slopes to a short ridge, overhanging on every side, with the underside.
+          const yr = y + bh, yt = yr + 150;
+          F([[px - rw, yr, pz - rd - 180], [px + rw, yr, pz - rd - 180],
+             [px + bw * 0.92, yt, pz - 20], [px - bw * 0.92, yt, pz - 20]], "#2f3543", flood * 0.78, 0.1);
+          F([[px - rw, yr, pz + rd + 180], [px + rw, yr, pz + rd + 180],
+             [px + bw * 0.92, yt, pz + 20], [px - bw * 0.92, yt, pz + 20]], "#272c38", flood * 0.6, 0.1);
+          [-1, 1].forEach((sd) => F([[px + sd * rw, yr, pz - rd - 180], [px + sd * rw, yr, pz + rd + 180],
+                                     [px + sd * bw * 0.92, yt, pz + 20], [px + sd * bw * 0.92, yt, pz - 20]],
+                                    "#313846", flood * 0.7, 0.1));
+          // the eave's underside: the band that makes a pagoda roof read as a roof from below
+          F([[px - rw, yr, pz - rd - 180], [px + rw, yr, pz - rd - 180],
+             [px + rw, yr, pz + rd + 180], [px - rw, yr, pz + rd + 180]], "#181c24", flood * 0.42, 0.04);
+          // the eave's tip, curling up at the corners
+          [-1, 1].forEach((sd) => F([[px + sd * rw, yr, pz - rd - 182], [px + sd * (rw + 44), yr + 56, pz - rd - 182],
+                                     [px + sd * (rw - 90), yr + 40, pz - rd - 182]], "#4d5464", flood * 0.8));
+          L(-rw, yr - 10, rw, yr + 10, pz - rd - 182, "#5a6170", flood * 0.8);
+          y = yt;
         }
-        S(-18, y, 18, PH - 120, "#5e5446", flood * 0.8);
+        // The sourin: mast, nine rings, and the finial at the record's 53.32 m.
+        L(-18, y, 18, PH - 120, -20, "#5e5446", flood * 0.8);
+        L(-18, y, 18, PH - 120, 20, "#4a4340", flood * 0.7);
         for (let r = 0; r < 9; r++) {
           const ry = y + 140 + r * ((PH - y - 420) / 9);
-          S(-62, ry, 62, ry + 26, "#8a7a54", flood * 0.9);
+          L(-62, ry, 62, ry + 26, -30, "#8a7a54", flood * 0.9);
+          L(-62, ry, 62, ry + 26, 30, "#6f6344", flood * 0.75);
         }
-        S(-34, PH - 160, 34, PH, "#a68c52", flood);
+        L(-34, PH - 160, 34, PH, -20, "#a68c52", flood);
       }
     }
     /* The Kanmon Strait beyond the Moji table, at the table's own scale (round 32; TODO §0n): one
