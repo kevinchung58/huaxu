@@ -384,21 +384,53 @@ function patternCanvas(name) {
     noise(90, 150, 58);
   } else if (name === "stonewall" || name === "strata" || name === "tunnelc") {
     const step = name === "strata" ? 13 : 18;
+    /* Round 69g — a pattern tile is a *modulation*, not a value.
+     *
+     * `strata` was painted as rows of rgb(133..181), a mid grey. Every face that wears it is drawn
+     * as vertexColor * texture, so the tile silently multiplied the authored rock colour by ~0.33
+     * in linear light: the island's gorge wall came out at luma **41** at 300 m while the *same*
+     * colour, *same* normal and *same* air, drawn without a tile, came out at **84**. Two faces of
+     * one cliff, 2.4x apart, and the darker one is the one the eye reads as a slab.
+     *
+     * Nothing in the record asked for that: `c="#6e6a5f"` is the surface colour there, and a tile
+     * whose job is the beds and the joints has no business also deciding how bright the rock is.
+     * The base is near-white now, so the seams and the bed lines carry the pattern and the authored
+     * colour carries the value. (The Canadian wall in the same tile, 700 m further on, is the check
+     * that this reads as pale dolomite rather than as paper.)
+     */
     for (let y = 0, row = 0; y < 128; y += step, row++) {
-      const v = 133 + Math.floor(rnd() * 48);
+      /* Round 69g — 300 m 遠的岩壁，條紋要在 mipmap 之後還活著.
+       *
+       * A 1-px joint in a 128-texel tile is 0.4 px on screen at the far bank, so the sampler
+       * averaged it into the base and the wall measured a standard deviation of **4.4** — a flat
+       * grey rectangle with no beds in it at all, which is the same slab in a different grey. The
+       * joints are three texels now and the beds differ from each other by up to 22 % instead of
+       * jittering around one value; both survive the mip chain at that distance, which is the only
+       * distance this tile is looked at through.
+       */
+      const v = name === "strata" ? 190 + Math.floor(rnd() * 58) : 133 + Math.floor(rnd() * 48);
       c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(0, y, 128, step - 1);
       let x = row % 2 ? -16 : 0;
       while (x < 128) {
         const w = 24 + Math.floor(rnd() * 31);
-        line(x, y, x, y + step, "rgba(48,48,48,0.42)", 1);
+        /* The vertical joints are the ones that survive distance. A bed line runs *across* the
+           tile, so at 300 m it is one pixel tall against 26 m of rock and the mip chain averages
+           it away; a joint runs *down* the tile and is sampled the same way along its whole
+           length, so it stays a line. Round 69g measured both: horizontal-only, the island's face
+           at 300 m read sd 5.5 (a slab); with the joints at 3 texels, sd 14.5 with the beds
+           visible in the frame. */
+        line(x, y, x, y + step, "rgba(48,48,48,0.42)", name === "strata" ? 3.5 : 1);
         if (name === "stonewall") {
           line(x + 2, y + step - 3, x + w - 4, y + step - 3, "rgba(232,232,232,0.18)", 1);
         }
         x += w;
       }
-      if (name === "strata") line(0, y + 2, 128, y + 2, "rgba(235,235,235,0.23)", 1);
+      if (name === "strata") {
+        line(0, y, 128, y, "rgba(40,40,44,0.34)", 2);
+        line(0, y + 2, 128, y + 2, "rgba(255,255,255,0.26)", 1);
+      }
     }
-    noise(85, 118, 78);
+    if (name === "strata") noise(78, 150, 78); else noise(85, 118, 78);
   } else if (name === "rapids" || name === "foam") {
     c.fillStyle = name === "foam" ? "#9e9e9e" : "#777777"; c.fillRect(0, 0, 128, 128);
     for (let y = 2; y < 128; y += name === "foam" ? 9 : 7) {

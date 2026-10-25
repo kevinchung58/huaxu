@@ -2913,9 +2913,15 @@ def niagara_world(fr, view="rim"):
         P.append(_prim("x", [fr.cm(*a, 0), fr.cm(*b, 0), fr.cm(*b, NIA_GOAT_TREES), fr.cm(*a, NIA_GOAT_TREES)],
                        pat="canopy", u=2000, ax="v", c="#57764a", cn="#24322a", a=air(*a) * 1.9 + 240, dg=0.45,
                        fn=_fn(fr, *_outward(NIA_GOAT, a, b))))
+    # Round 69g — 遠岸是一張灰卡. The island's gorge wall was the one big rock face in the frame
+    # drawn *without* a tile: a flat `#6e6a5f` quad 300 m out, meeting the west corner (which wears
+    # `strata`) at a hard vertical edge and reading 84 luma against its 69. Two greys side by side
+    # is what the eye calls a slab, and it is half of what the owner has been pointing at. The same
+    # face now wears the same tile as every other rock in the gorge, at the same 16 m scale.
     gg = resample(NIA_GOAT_GORGE, 12)
     gfoot = [(e - 8, n) for e, n in gg]
-    P += world_quads_between(fr, gg, gfoot, 0, NIA_RIVER, "#6e6a5f", air(400, 300), cn="#1d2026", dg=0.45, s=low)
+    P += world_quads_between(fr, gg, gfoot, 0, NIA_RIVER, "#6e6a5f", air(400, 300), t="x",
+                             pat="strata", u=2600, ax="v", cn="#1d2026", dg=0.45, s=low)
     # Round 69f — 島的西角沒有臉.
     #
     # The gorge wall above runs along `NIA_GOAT_GORGE`, which begins at the island's *north*-west
@@ -2940,7 +2946,7 @@ def niagara_world(fr, view="rim"):
     wc = resample(NIA_GOAT[:3], 10)
     wcfoot = [(e - 8, n) for e, n in wc]
     P += world_quads_between(fr, wc, wcfoot, 0, NIA_RIVER, "#6e6a5f", air(400, 300), t="x",
-                             pat="strata", u=1600, ax="v", cn="#1d2026", dg=0.45, s=low)
+                             pat="strata", u=2600, ax="v", cn="#1d2026", dg=0.45, s=low)
     P.append(_hprim("f", fr, NIA_LUNA, 9, c="#3c5734", cn="#121a1c", a=air(650, 560), dg=0.45))
     lr = NIA_LUNA + [NIA_LUNA[0]]
     for i in range(len(lr) - 1):
