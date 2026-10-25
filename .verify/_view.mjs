@@ -89,54 +89,46 @@ for (const view of VIEWS) {
   console.log(`STOP ${view.stop} ${target.label} → ${JSON.stringify({ target, at, arrived, waited: Math.round((Date.now() - t0) / 1000) })}`);
   if (!arrived) { console.log(`NOT THERE: stop ${view.stop} — no frame saved`); continue; }
 
-  /* The pointer out of the frame FIRST. A preview card floats over the picture when the pointer
-     rests on the canvas, so the pointer has to leave -- but a pointer-lock lane turns its head on
-     mouse movement, so moving it after the aim is a drag and the head ends up somewhere the label
-     never asked for. Round 69h: frames named yaw0 were shot at -15.9, -34.1 and -20.9 because of
-     exactly that; the label was the wish and the gesture was the truth. Move, then aim, then shoot. */
-  await page.mouse.move(2, 2);
-  await sleep(200);
+  /* Aiming, third version, because the first two were both wrong and both looked fine.
 
-  /* Sized bursts, measured between them (round 69h). This used to hold the key for at least 600 ms,
-     reasoning that a software rasteriser's frame is a third of a second and a shorter hold would be
-     missed entirely. It was the other way round: the lane turns 120 deg/s on elapsed time, so 600 ms
-     is 72 degrees, and a target four degrees away was shot at -15.9, -34.1, -20.9 across three stops.
-     A burst is now proportional to the remaining angle and short enough to be a correction, and the
-     angle is re-read after every one; the frame is refused if the head never arrives. */
-  /* Sized bursts, measured between them, then measured again after the frame it landed on.
-     The lane turns on elapsed time and clamps a frame's dt to 120 ms, so a burst's last few degrees
-     are applied by the *next* frame -- a head read the instant the key goes up reports where it was,
-     not where it is. Round 69h: one run aimed at 0 deg and shot at 10.8 for exactly that reason.
-     Every burst is proportional to the angle left and short, the reading after it waits for the
-     lane to settle, and the frame is refused rather than mislabelled if it never arrives. */
-  const TURN_RATE = 120;
-  const settle = async () => {
-    let last = null;
-    for (let i = 0; i < 8; i++) {
-      const s2 = await state();
-      if (last !== null && Math.abs(s2.yaw - last) < 0.05) return s2;
-      last = s2.yaw;
-      await sleep(220);
-    }
-    return state();
+     v1 held an arrow key for at least 600 ms ("a software rasteriser needs a long hold"): at 120
+     deg/s that is 72 degrees, and three frames named yaw0 were shot at -15.9, -34.1 and -20.9.
+     v2 sized the burst to the angle left and re-read the head. It still could not land: the lane
+     integrates turning per frame with dt clamped to 0.12 s, so the SMALLEST turn a key press can
+     make is 120 * 0.12 = 14.4 degrees (measured: a 150 ms hold moved the head 14.4 and stopped).
+     A key cannot aim a camera to a degree on a slow frame; a drag can.
+
+     So the aim is the gesture a visitor with a mouse or a thumb actually uses: pointer down, move,
+     up. That path sets the heading from the drag distance (0.09 deg per pixel, site.js) instead of
+     integrating it over frames, so one drag lands wherever it is aimed. Drags travel at least 9 px
+     because a pointerup that moved less than 8 px is a *tap* in the lane's own rule, and a tap
+     presses whatever is under the pointer. Residual under 0.8 deg is left alone: it is under a
+     pixel at this focal length, and inside the tolerance the stops are read back with. */
+  const DRAG = 0.09, cx = Math.round(VW / 2), cy = Math.round(VH / 2);
+  const dragBy = async (px) => {
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + px, cy, { steps: 3 });
+    await page.mouse.up();
+    await sleep(260);
   };
-  let off = 0;
-  for (let pass = 0; pass < 3; pass++) {
-    for (let guard = 0; guard < 20; guard++) {
-      const s2 = await settle();
-      off = ((view.yaw - s2.yaw + 540) % 360) - 180;
-      if (Math.abs(off) < 1.2) break;
-      const key = off > 0 ? "ArrowRight" : "ArrowLeft";
-      await page.keyboard.down(key);
-      await sleep(Math.min(260, Math.max(60, (Math.abs(off) / TURN_RATE) * 1000)));
-      await page.keyboard.up(key);
-      await sleep(200);
-    }
-    const s3 = await settle();
-    off = ((view.yaw - s3.yaw + 540) % 360) - 180;
-    if (Math.abs(off) < 1.2) break;
+  let off = 0, aimed = false;
+  for (let guard = 0; guard < 8; guard++) {
+    const s2 = await state();
+    off = ((view.yaw - s2.yaw + 540) % 360) - 180;
+    if (Math.abs(off) <= 0.8) { aimed = true; break; }
+    const px = Math.max(-420, Math.min(420, Math.round(off / DRAG)));
+    if (Math.abs(px) < 9) { aimed = Math.abs(off) <= 0.8; break; }
+    await dragBy(px);
   }
-  if (Math.abs(off) >= 1.2) { console.log(`NOT AIMED: stop ${view.stop} — ${off.toFixed(1)} deg off, no frame saved`); continue; }
+  // The last word is the head's own, read after it settles.
+  let s3 = await state();
+  for (let i = 0; i < 6 && s3; i++) { await sleep(200); const n = await state(); if (n && Math.abs(n.yaw - s3.yaw) < 0.02) break; s3 = n; }
+  off = s3 ? ((view.yaw - s3.yaw + 540) % 360) - 180 : 0;
+  if (Math.abs(off) > 1.2) { console.log(`NOT AIMED: stop ${view.stop} — ${off.toFixed(1)} deg off, no frame saved`); continue; }
+  // The pointer to the corner with no button held: a hover, not a drag, so the head does not move,
+  // and a preview card no longer floats over the picture.
+  await page.mouse.move(2, 2);
   await sleep(900);
   const s = await state();
   // The file is named for the head that was actually there, never for the wish.

@@ -197,6 +197,31 @@ ok("nothing crosses the walk: the street has no wires, and no lantern hangs off 
 ok("the far end is Hozomon at its sourced size, with the pagoda 56 m west and 19 m north of it",
    bd && bd.temple && bd.temple.gate.w === 2100 && bd.temple.gate.h === 2270 && bd.temple.z > WALK_D
      && bd.temple.pagoda.x === -5600 && bd.temple.pagoda.z - bd.temple.z === 1900 && bd.temple.pagoda.h === 5332);
+/* Round 69i: the gate was a flat picture of a gatehouse -- every quad at one z, a roof of one
+   trapezoid (measured sd 1.2 luma across it), 60 quads in the whole frame. It is a building now, and
+   these are the properties that make it one rather than a cut-out: the record's own 8 m of depth
+   (a second, far face and side walls at +-400 cm), a passage clean through the mass at the centre
+   bay (2 * 2100/5 wide, with a ceiling above it), and a roof of four slopes meeting at a ridge with
+   an eave overhanging on every side. A frame of it is also taken, so the gate cannot regress to a
+   plane while the numbers still add up. */
+{
+  const gateFrom = js.indexOf("five-storey pagoda at the head of Nakamise");
+  const gateSrc = gateFrom < 0 ? "" : js.slice(gateFrom, js.indexOf("The Kanmon Strait beyond the Moji table"));
+  ok("Hozomon is a building with the record's 8 m of depth: a far face and two side walls",
+     /const DZ = 400, zf = gz - DZ, zb = gz \+ DZ/.test(gateSrc)
+       && (gateSrc.match(/zb, "/g) || []).length >= 3 && /gx \+ s \* hw, t, zf/.test(gateSrc));
+  ok("its centre bay is a passage clean through the mass, with walls and a ceiling of its own",
+     /const PW = bay, PH = 830/.test(gateSrc) && /gx \+ s \* PW \/ 2, t, zb/.test(gateSrc)
+       && /gx - PW \/ 2, PH, zf/.test(gateSrc) && /\[gx - PW \/ 2, PH, zf\], \[gx \+ PW \/ 2, PH, zf\]/.test(gateSrc));
+  ok("its roof is four slopes, a ridge and an eave with an underside, not one trapezoid",
+     /const E2 = hw \+ 420 \* k, yE = 1640 \* k, yR = 2190 \* k/.test(gateSrc)
+       // the source wraps between the eave corners and the ridge, so the two ends are matched
+       // separately: a slope is the pair of them, not one line of text.
+       && /gz - zE\]/.test(gateSrc) && /gz \+ zE\]/.test(gateSrc)
+       && (gateSrc.match(/\[gx \+ rH, yR, gz\], \[gx - rH, yR, gz\]/g) || []).length === 2
+       && /gx \+ s \* rH, yR, gz\]\], "#333a48"/.test(gateSrc)
+       && /"#171b23", flood \* 0\.4/.test(gateSrc) && /gx \+ hw \* 0\.66, G\.h, gz/.test(gateSrc));
+}
 ok("the plaza continues the street's own paving, at street level, from the last shops on",
    bd.plaza.y === 0 && bd.plaza.z0 === WALK_D && bd.plaza.z1 > bd.temple.z);
 /* Round 69h: the sky was three *far-plane height* bands on a 1,200 m plane, which put band 2's top
@@ -387,6 +412,19 @@ ok("a wet patch earns its place: every patch has a light standing above it",
      && L.x >= m.x0 && L.x <= m.x1 && L.z >= m.z0 && L.z <= m.z1)));
 ok("a shopfront is a recess in whichever wall it hangs on, built through the wall's own axes",
    /const P = \(u, v, y\) =>/.test(js) && !/face\(inset\/2/.test(js));
+/* Round 69i: `mix` takes (hex, lift), and four call sites were still passing a third argument from
+   a signature that no longer exists -- the guard fired, the colour was returned unchanged, and the
+   threshold/hood that was meant to be tinted by the shopfront was never tinted at all. It is a
+   warning nobody reads in a console nobody opens; this reads the source. */
+{
+  // Comments are stripped first: this file's own notes quote the old signature, and a gate that
+  // reads prose as code fails on its own explanation.
+  const code = js.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+  const threeArg = [...code.matchAll(/\bmix\(([^()]*)\)/g)].filter((m) => m[1].split(",").length >= 3
+    && !/hex,\s*k/.test(m[1]));
+  ok("no call site passes `mix` a third argument: a blend of two colours is `blendHex`",
+     threeArg.length === 0, threeArg.slice(0, 3).map((m) => m[0].trim()).join(" | "));
+}
 ok("glass lets the far side through, and says so in code", /rgba\(186,214,240,0\.2\d?\)/.test(js));
 ok("a hanging lamp is tied to the wire and the swing moves the body with it",
    /const swayOf = \(L\) =>/.test(js) && /reduce\(\) \? 0 :/.test(js)

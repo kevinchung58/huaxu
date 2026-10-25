@@ -4245,7 +4245,17 @@ DISTRICTS = [
             {"z": 480, "label": "between the shuttered rows"},
             {"z": 724, "label": "where Denboin-dori crosses"},
             {"z": 1000, "label": "the last shops before the plaza"},
-            {"z": 1480, "label": "in the plaza under Hozomon"},
+            # Round 69i: the final stop stood 17 m from a 22.7 m gate. A 45-degree lens holds 2*17*
+            # tan(22.5) = 14.1 m at that distance, so 22.7 m could not fit whatever the heading --
+            # the frame was the gate's lower storey over forty per cent empty paving, and the pagoda
+            # sits at a bearing of -57 deg where no 45-degree frame reaches it. The stop now stands
+            # the record's own 28 m out (the plaza runs z0 = 3016 to the gate at 6000) and looks up
+            # 16 deg: the gate's ridge is at atan((2270-168)/2800) = 36.9 deg, inside the 38.5 deg
+            # top edge, with paving still under it. `pitch` is POSITIVE DOWN in this codebase
+            # (scene3d lookAt subtracts sin(pitch) from the eye height), so looking up is negative.
+            # The stop's view is authored data (`data-view-pitch`, applied by site.js); no field of
+            # view was widened and no geometry was moved to suit the camera.
+            {"z": 1103, "label": "the plaza before Hozomon, the gate at its full height", "pitch": -16},
         ],
         # Kaminarimon at your back: the gate the street is entered through and left by. The wiring
         # block decides the href; the street outside is the hub.

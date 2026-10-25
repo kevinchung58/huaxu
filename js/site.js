@@ -3128,27 +3128,64 @@ function leaveOverlay(root, trigger) {
       const gx = tp.x || 0, gz = tp.z, G = tp.gate || { w: 2100, h: 2270 };
       const R = (x0, y0, x1, y1, z, col, l, air) =>
         T0([[gx + x0, y0, z], [gx + x1, y0, z], [gx + x1, y1, z], [gx + x0, y1, z]], col, l, air);
-      const hw = G.w / 2, k = G.h / 2270;
-      // Stone podium, the lower storey's shadowed bays, then the six pillars across five bays.
-      R(-hw - 60, 0, hw + 60, 50 * k, gz - 30, "#7d7a74", flood * 0.8);
-      R(-hw, 50 * k, hw, 960 * k, gz + 40, "#5a3024", flood * 0.62);
-      const bay = G.w / 5;
+      const hw = G.w / 2, k = G.h / 2270, bay = G.w / 5;
+      /* Round 69i: the gate was a picture of a building, not a building.
+
+         Every piece of it was a quad at one z: the whole gatehouse lived inside 230 cm of depth, its
+         roof was one trapezoid (sd 2.5 luma across it -- a single flat colour) and the frame it stood
+         in held 60 quads. At 28 m that reads as a cut-out, and it is the last thing the lane shows a
+         visitor. It now has the record's own 8 m: the centre bay is a passage clean through the mass,
+         so the plaza sees a near face with a hole in it, two jambs receding to a far face and the
+         courtyard's light at the end; the sides are walls an oblique stop can see; the roof is four
+         slopes, a ridge and an eave whose underside is the dark band that gives a Japanese roof its
+         weight. Nothing about the record's sizes moved: 21 m wide, 22.7 m to the cap, 8 m deep, five
+         bays of 4.2 m, the lantern 3.75 m tall in the centre bay, the Nio in the outer bays. */
+      const DZ = 400, zf = gz - DZ, zb = gz + DZ;   // 8 m deep; the plaza sees zf, the courtyard zb
+      const PW = bay, PH = 830, t = 50 * k;         // clear opening of the passage, podium top
+      // The podium: its face, its top, and the two returns under the side walls.
+      R(-hw - 60, 0, hw + 60, t, zf - 110, "#6f6c66", flood * 0.72);
+      T0([[gx - hw - 60, t, zf - 110], [gx + hw + 60, t, zf - 110],
+          [gx + hw + 60, t, zb], [gx - hw - 60, t, zb]], "#7d7a74", flood * 0.8, 0.04);
+      [-1, 1].forEach((s) => T0([[gx + s * (hw + 60), 0, zf - 110], [gx + s * (hw + 60), 0, zb],
+                                 [gx + s * (hw + 60), t, zb], [gx + s * (hw + 60), t, zf - 110]],
+                                "#6f6c66", flood * 0.66));
+      // The near face, built around the passage: two piers and the lintel over the hole. The hole is
+      // the whole point -- it is what makes the gate stand in front of the courtyard instead of on it.
+      R(-hw, t, -PW / 2, 960 * k, zf, "#5a3024", flood * 0.62);
+      R(PW / 2, t, hw, 960 * k, zf, "#5a3024", flood * 0.62);
+      R(-PW / 2, PH, PW / 2, 960 * k, zf, "#5a3024", flood * 0.62);
+      // The far face: the same three pieces, seen through the passage and from behind.
+      R(-hw, t, -PW / 2, 960 * k, zb, "#5a3024", flood * 0.5);
+      R(PW / 2, t, hw, 960 * k, zb, "#5a3024", flood * 0.5);
+      R(-PW / 2, PH, PW / 2, 960 * k, zb, "#5a3024", flood * 0.5);
+      // The passage's own walls and ceiling, out of the floods' reach, so the lantern is read against
+      // a real shadow and the way through has a length.
+      [-1, 1].forEach((s) => T0([[gx + s * PW / 2, t, zf], [gx + s * PW / 2, t, zb],
+                                 [gx + s * PW / 2, PH, zb], [gx + s * PW / 2, PH, zf]],
+                                "#3d211a", flood * 0.4, 0.02));
+      T0([[gx - PW / 2, PH, zf], [gx + PW / 2, PH, zf], [gx + PW / 2, PH, zb], [gx - PW / 2, PH, zb]],
+         "#2a1814", flood * 0.34, 0.02);
+      // The gatehouse's own side walls: the faces an oblique stop sees, 8 m of them.
+      [-1, 1].forEach((s) => T0([[gx + s * hw, t, zf], [gx + s * hw, t, zb],
+                                 [gx + s * hw, 960 * k, zb], [gx + s * hw, 960 * k, zf]],
+                                "#7a3326", flood * 0.7));
+      // The Nio bays: the outer bays, behind their grilles, and never drawn themselves.
       for (let i = 0; i < 5; i++) {
         const x0 = -hw + i * bay;
-        if (i === 0 || i === 4) {
-          R(x0, 60 * k, x0 + bay, 900 * k, gz + 10, "#6a2a20", flood * 0.75);
-          for (let j = 1; j < 8; j++) {
-            const xb = x0 + (bay * j) / 8;
-            R(xb - 5, 80 * k, xb + 5, 880 * k, gz + 6, "#8c3a2c", flood * 0.85);
-          }
+        if (i !== 0 && i !== 4) continue;
+        R(x0, 60 * k, x0 + bay, 900 * k, zf - 8, "#6a2a20", flood * 0.75);
+        for (let j = 1; j < 8; j++) {
+          const xb = x0 + (bay * j) / 8;
+          R(xb - 5, 80 * k, xb + 5, 880 * k, zf - 12, "#8c3a2c", flood * 0.85);
         }
       }
+      // Six pillars on the near face, standing proud of it, so the face has relief.
       for (let i = 0; i <= 5; i++) {
         const xp = -hw + i * bay;
-        R(xp - 46, 50 * k, xp + 46, 960 * k, gz, "#c8442f", flood * 1.05);
+        R(xp - 46, t, xp + 46, 960 * k, zf - 26, "#c8442f", flood * 1.05);
       }
-      R(-hw - 40, 880 * k, hw + 40, 960 * k, gz - 2, "#ad3a2b", flood * 0.95);
-      /* The lanterns: the red chōchin in the centre bay, the copper tōrō either side of it.
+      R(-hw - 40, 880 * k, hw + 40, 960 * k, zf - 30, "#ad3a2b", flood * 0.95);
+      /* The lanterns: the red chōchin in the passage, the copper tōrō either side of it.
          Round 69h: the chōchin was drawn in six slices of the wall's own red (#c22f22) under the
          lane's night murk, and measured 69.7 luma against the pillar beside it at 68.8 and the paving
          at 72.5 -- the plaza's hero object was the *dimmest* thing standing in it, a flat maroon
@@ -3156,46 +3193,80 @@ function leaveOverlay(root, trigger) {
          light, so its slices are authored `nolite` (the idiom every lit window in this file already
          uses) and its body colour is the colour it gives off rather than the colour the wall gives
          back. The ribs are the lantern's own structure and are drawn, not shaded in. */
-      const LR = 135 * k, Lb = 470 * k, Lt = 845 * k;
+      const LR = 135 * k, Lb = 400 * k, Lt = 775 * k, LZ = gz;   // inside the passage now
       const CH = 10;                                    // slices up the body: 7 paper, 3 ribs
-      const rib = (t) => Math.abs(t - 0.26) < 0.03 || Math.abs(t - 0.5) < 0.03 || Math.abs(t - 0.74) < 0.03;
+      const rib = (tt) => Math.abs(tt - 0.26) < 0.03 || Math.abs(tt - 0.5) < 0.03 || Math.abs(tt - 0.74) < 0.03;
       for (let i = 0; i < CH; i++) {
         const t0 = i / CH, t1 = (i + 1) / CH;
         const r0 = LR * (0.84 + 0.16 * Math.sin(Math.PI * t0)), r1 = LR * (0.84 + 0.16 * Math.sin(Math.PI * t1));
         const cap = t0 < 0.1 || t1 > 0.9;
-        const q = T0([[gx - r0, Lb + (Lt - Lb) * t0, gz - 20], [gx + r0, Lb + (Lt - Lb) * t0, gz - 20],
-                      [gx + r1, Lb + (Lt - Lb) * t1, gz - 20], [gx - r1, Lb + (Lt - Lb) * t1, gz - 20]],
+        const q = T0([[gx - r0, Lb + (Lt - Lb) * t0, LZ], [gx + r0, Lb + (Lt - Lb) * t0, LZ],
+                      [gx + r1, Lb + (Lt - Lb) * t1, LZ], [gx - r1, Lb + (Lt - Lb) * t1, LZ]],
                      cap ? "#241a16" : rib(t0) ? "#7d2b20" : "#e8503a", flood * (cap ? 0.9 : 1.35));
         if (q && !cap) q.nolite = true;                 // the paper is the lamp; the caps are metal
       }
-      // What the lantern throws: a hot pool at the gate's foot, under it and no wider than the bay.
-      const lp = T0([[gx - LR * 4, 2, gz - 30], [gx + LR * 4, 2, gz - 30],
-                     [gx + LR * 5.2, 2, gz - 780], [gx - LR * 5.2, 2, gz - 780]],
+      // The cord that hangs it, from the passage ceiling to its cap.
+      R(-4, Lt, 4, PH, LZ, "#1c1410", flood * 0.5);
+      // What the lantern throws: a pool at the gate's foot, under it and no wider than the bay.
+      const lp = T0([[gx - LR * 4, 2, zf - 30], [gx + LR * 4, 2, zf - 30],
+                     [gx + LR * 5.2, 2, zf - 780], [gx - LR * 5.2, 2, zf - 780]],
                     `rgba(255,206,164,${(0.16 + 0.2 * NIGHT()).toFixed(3)})`, 1.25, 0.03);
       if (lp) lp.nolite = true;
+      // The copper toro, 2.75 m, either side of the passage.
       [-1, 1].forEach((s) => {
         const cx = s * bay, top = 835 * k, bot = 560 * k, w2 = 55 * k;
-        T0([[gx + cx - w2, bot, gz - 18], [gx + cx + w2, bot, gz - 18], [gx + cx + w2 * 0.8, top - 60 * k, gz - 18],
-            [gx + cx - w2 * 0.8, top - 60 * k, gz - 18]], "#56614f", flood * 0.85);
-        T0([[gx + cx - w2 * 1.3, top - 60 * k, gz - 19], [gx + cx + w2 * 1.3, top - 60 * k, gz - 19],
-            [gx + cx, top, gz - 19]], "#3f4a3c", flood * 0.8);
+        T0([[gx + cx - w2, bot, zf - 34], [gx + cx + w2, bot, zf - 34], [gx + cx + w2 * 0.8, top - 60 * k, zf - 34],
+            [gx + cx - w2 * 0.8, top - 60 * k, zf - 34]], "#56614f", flood * 0.85);
+        T0([[gx + cx - w2 * 1.3, top - 60 * k, zf - 35], [gx + cx + w2 * 1.3, top - 60 * k, zf - 35],
+            [gx + cx, top, zf - 35]], "#3f4a3c", flood * 0.8);
       });
-      // Pent roof between the storeys, the upper storey with its balustrade, and the great roof.
-      T0([[gx - hw - 260 * k, 960 * k, gz - 60], [gx + hw + 260 * k, 960 * k, gz - 60],
-          [gx + hw + 40, 1170 * k, gz + 60], [gx - hw - 40, 1170 * k, gz + 60]], "#323846", flood * 0.7);
-      R(-hw - 250 * k, 955 * k, hw + 250 * k, 985 * k, gz - 64, "#5a6170", flood * 0.8);
-      R(-hw * 0.86, 1170 * k, hw * 0.86, 1250 * k, gz + 70, "#8f2f24", flood * 0.9);
-      R(-hw * 0.82, 1250 * k, hw * 0.82, 1650 * k, gz + 80, "#4d2a20", flood * 0.6);
+      // The pent roof between the storeys: a real slope with an overhang, and the shadowed soffit
+      // under the overhang -- from 28 m out that underside is what says the roof is a roof.
+      const E1 = hw + 260 * k, y1a = 960 * k, y1b = 1170 * k;
+      T0([[gx - E1, y1a, zf - 320], [gx + E1, y1a, zf - 320],
+          [gx + E1, y1b, zf + 60], [gx - E1, y1b, zf + 60]], "#323846", flood * 0.7);
+      T0([[gx - E1, y1a, zf - 320], [gx + E1, y1a, zf - 320],
+          [gx + hw, y1a, zf], [gx - hw, y1a, zf]], "#191d26", flood * 0.46, 0.04);
+      R(-E1, y1a - 8, E1, y1a + 10, zf - 322, "#5a6170", flood * 0.8);
+      // The upper storey: a box too, with its balustrade, its own pillars and a back wall.
+      const UW = hw * 0.82;
+      R(-hw * 0.86, y1b, hw * 0.86, 1250 * k, zf + 80, "#8f2f24", flood * 0.9);
+      // the balustrade's posts, so the railing reads as a railing and not as a stripe
+      for (let i = 0; i <= 11; i++) {
+        const xp = -hw * 0.86 + i * (hw * 1.72 / 11);
+        R(xp - 9, 1180 * k, xp + 9, 1250 * k, zf + 74, "#a83a2b", flood * 0.95);
+      }
+      R(-UW, 1250 * k, UW, 1650 * k, zf + 80, "#4d2a20", flood * 0.6);
+      R(-UW, 1250 * k, UW, 1650 * k, zb - 80, "#43241c", flood * 0.5);
+      [-1, 1].forEach((s) => T0([[gx + s * UW, 1250 * k, zf + 80], [gx + s * UW, 1250 * k, zb - 80],
+                                 [gx + s * UW, 1650 * k, zb - 80], [gx + s * UW, 1650 * k, zf + 80]],
+                                "#5a2c21", flood * 0.66));
       for (let i = 0; i <= 5; i++) {
         const xp = -hw * 0.82 + i * (hw * 1.64 / 5);
-        R(xp - 26, 1250 * k, xp + 26, 1650 * k, gz + 76, "#c2412e", flood * 0.95);
+        R(xp - 26, 1250 * k, xp + 26, 1650 * k, zf + 76, "#c2412e", flood * 0.95);
       }
-      T0([[gx - hw - 420 * k, 1640 * k, gz - 40], [gx + hw + 420 * k, 1640 * k, gz - 40],
-          [gx + hw * 0.62, 2190 * k, gz + 200], [gx - hw * 0.62, 2190 * k, gz + 200]], "#2e3442", flood * 0.72);
-      [-1, 1].forEach((s) => T0([[gx + s * (hw + 420 * k), 1640 * k, gz - 41], [gx + s * (hw + 480 * k), 1720 * k, gz - 41],
-                                 [gx + s * (hw + 300 * k), 1700 * k, gz - 41]], "#4f5667", flood * 0.8));
-      R(-hw - 410 * k, 1632 * k, hw + 410 * k, 1660 * k, gz - 44, "#5a6170", flood * 0.8);
-      R(-hw * 0.66, 2190 * k, hw * 0.66, G.h, gz + 200, "#262b36", flood * 0.7);
+      // The great roof: four slopes and a ridge, with an eave that overhangs on every side.
+      const E2 = hw + 420 * k, yE = 1640 * k, yR = 2190 * k, zE = 480, rH = hw * 0.62;
+      T0([[gx - E2, yE, gz - zE], [gx + E2, yE, gz - zE],
+          [gx + rH, yR, gz], [gx - rH, yR, gz]], "#2e3442", flood * 0.8);
+      T0([[gx - E2, yE, gz + zE], [gx + E2, yE, gz + zE],
+          [gx + rH, yR, gz], [gx - rH, yR, gz]], "#262b36", flood * 0.58);
+      [-1, 1].forEach((s) => T0([[gx + s * E2, yE, gz - zE], [gx + s * E2, yE, gz + zE],
+                                 [gx + s * rH, yR, gz]], "#333a48", flood * 0.7));
+      // The eave's underside: one plane under the whole overhang, darker than the slope above it,
+      // which is the band that gives the roof thickness when it is looked up at.
+      T0([[gx - E2, yE, gz - zE], [gx + E2, yE, gz - zE],
+          [gx + E2, yE, gz + zE], [gx - E2, yE, gz + zE]], "#171b23", flood * 0.4, 0.03);
+      // The eave tips at the corners, and the fascia along the front edge.
+      [-1, 1].forEach((s) => T0([[gx + s * E2, yE, gz - zE - 2], [gx + s * (E2 + 60 * k), yE + 80 * k, gz - zE - 2],
+                                 [gx + s * (E2 - 120 * k), yE + 60 * k, gz - zE - 2]], "#4f5667", flood * 0.8));
+      R(-E2, yE - 16, E2, yE + 16, gz - zE - 2, "#5a6170", flood * 0.8);
+      // The ridge: the two planes meet under a cap, and the cap's faces are what a viewer sees
+      // instead of the seam.
+      T0([[gx - hw * 0.66, yR, gz - 150], [gx + hw * 0.66, yR, gz - 150],
+          [gx + hw * 0.66, G.h, gz], [gx - hw * 0.66, G.h, gz]], "#262b36", flood * 0.82);
+      T0([[gx - hw * 0.66, yR, gz + 150], [gx + hw * 0.66, yR, gz + 150],
+          [gx + hw * 0.66, G.h, gz], [gx - hw * 0.66, G.h, gz]], "#22262f", flood * 0.68);
       // The floodlights' spill on the plaza in front of the gate: the light that makes it a place to stand.
       T0([[gx - hw - 400, 2, gz - 2200], [gx + hw + 400, 2, gz - 2200], [gx + hw + 200, 2, gz - 60],
           [gx - hw - 200, 2, gz - 60]], `rgba(255,214,160,${(0.1 + 0.12 * NIGHT()).toFixed(3)})`, 1.1, 0.04);
@@ -4808,12 +4879,16 @@ function leaveOverlay(root, trigger) {
             }
             /* The door bay. The leaf stands in the same recess as the glass, so the unit reads as
                one wall with two holes in it rather than a window with a door stuck on the side. */
+            /* Round 69i: two of these were `mix(from, to, t)` calls left over from a signature that
+               no longer exists. `mix` takes (hex, lift) now, so the third argument hit its own
+               guard -- a console warning, an unchanged colour, and a threshold that was never
+               lifted -- every time a shopfront was built. A two-colour blend is `blendHex`. */
             Q([P(dIn, 0, 0), P(dOut, 0, 0), P(dOut, ins, 4), P(dIn, ins, 4)],
-              mix("#8d8578", base, 0.25), lit);                  // the threshold at the door's feet
+              blendHex("#8d8578", base, 0.25), lit);             // the threshold at the door's feet
             Q([P(dIn, 3, 0), P(dOut, 3, 0), P(dOut, 3, yA - 4), P(dIn, 3, yA - 4)],
               mix(base, -0.64), lit * 0.3);                      // the reveal behind the leaf
             Q([P(dIn + 9, 4, 0), P(dOut - 9, 4, 0), P(dOut - 9, 4, doorH), P(dIn + 9, 4, doorH)],
-              mix("#3c2f26", base, 0.3), lit * (0.62 + up * 0.38) * dl);
+              blendHex("#3c2f26", base, 0.3), lit * (0.62 + up * 0.38) * dl);
             // the frame: two jambs and a head, proud of the leaf
             for (const uu of [dIn + 2, dOut - 9]) {
               Q([P(uu, 2, 0), P(uu + 7, 2, 0), P(uu + 7, 2, doorH + 44), P(uu, 2, doorH + 44)],
@@ -4837,7 +4912,7 @@ function leaveOverlay(root, trigger) {
             // shut shops on the strip read as a flat band of corrugation. The hood over the blade
             // and the two reveals at its ends are what make it a closed shopfront.
             Q([P(-half - 3, 7, yA - 6), P(half + 3, 7, yA - 6), P(half + 3, 7, yA + 16), P(-half - 3, 7, yA + 16)],
-              mix("#39404e", base, 0.2), lit * 0.9);
+              blendHex("#39404e", base, 0.2), lit * 0.9);
             for (const uu of [-half, half - 9]) {
               Q([P(uu, 2, 0), P(uu + 9, 2, 0), P(uu + 9, 2, yA - 4), P(uu, 2, yA - 4)],
                 mix(base, -0.34), lit * 0.6);
