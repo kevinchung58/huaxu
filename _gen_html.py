@@ -6060,7 +6060,12 @@ DISTRICTS = [
             # 120 cm east of the house. It looks due east at the arcade's middle unit, seven
             # metres off, which is the distance at which a shopfront is read as joinery rather
             # than as a picture.
-            {"z": 2560, "x": 300, "yaw": 90, "pitch": -2, "label": "the fun row"},
+                        # Round 69m: the hotel towers on the Fallsview bluff were in this view all along and in
+            # no frame of it -- at the authored -2 degrees the frame's top edge cut them at the roof
+            # line (`.preview/nia69mq/stop6-yaw90-p6`, and the same at 0). `_map` puts `hotelw` at
+            # 324-333 m in this direction; at -8 the near tower stands 110x220 px clear above the
+            # shopfronts (mean 113.5, sd 41.9, 82 colours) and the shopfront is untouched at 7 m.
+            {"z": 2560, "x": 300, "yaw": 90, "pitch": -8, "label": "the fun row, with the bluff's towers"},
             # Round 64: this stop was authored inside the carousel's own deck -- the carousel is a
             # solid 9 m round at x -1080 -- so the body could not stand there, the chip's glide
             # stalled three metres short of it, and the plaza's one stop was a promise the lane
