@@ -151,6 +151,47 @@ Every retraction and every measured constant goes into `TODO.md` in the same rou
 that made the claim. A correction that lives only in a chat message is a correction that will be
 undone.
 
+## 9. Prove the instrument against the paint before quoting its numbers
+
+A per-prop rectangle is a *projection*, and a projection can be wrong. Round 70 measured `skyline-cn`
+in `rooms-toronto.html` at stop 4 and found the `[data-obj]` rectangle **not on the model**:
+
+| heading | rectangle (x, y, w, h) | where the four towers are painted |
+|---|---|---|
+| 0° | 582, 191, 312, 552 | x 130-420, y 160-690 |
+| 30° | 163, 172, 305, 566 | x 548-860, y 170-700 |
+| 31° | 153, 171, 307, 569 | — |
+| 60° | -22, 147, 350, 622 | — |
+
+The rectangle *tracks* the heading (so it is not a stale DOM read) but it moves the **opposite way** to
+the paint, and the offset reverses sign between 0° and 30° — about +450 px one way, -400 px the other.
+Cropping the rectangle gives bare wall: mean 102.3, **sd 14.6**, 192 colours — exactly the number
+`audit-all.mjs` printed as "flat". The towers inside the same frame measure **sd 24.2**, 246 colours.
+
+So the verdict "skyline-cn is flat" was a measurement of a wall. And it is not one row of the table:
+`audit-all.mjs` and `verify-tables.mjs` both measure *through* those rectangles, so a rectangle that
+misses its prop makes every number derived from it void — including the ones that passed.
+
+The offset turned out to be a mirror, not a shift: every rectangle satisfies `x_rect = 1024 - x_paint`
+about the frame centre. `skyline-cn` 582-894 vs paint 130-420 at 0 deg; 163-466 vs 548-860 at 30 deg;
+the CN Tower's 500-586 vs paint 455-530; the dome's -25-431 vs paint 820-960. The cause is the camera,
+not the props: Three's `lookAt` with `up = +Y` looking down `+Z` gives a camera right axis of `-X`
+(`x = up x z`), while the 2D painter's `camPt` puts `+X` on the right (`W/2 + focal*dx/az`). The 3D
+picture is the 2D model's left-right mirror -- which also means the hit boxes, the reach test, and
+`_map.mjs`'s "the water is on your right" are all on the other side of what the visitor sees.
+
+The rule, before any per-prop number is quoted:
+
+1. Draw the rectangle on the frame (`.verify/_mark.mjs SRC DST X Y W H`) and look at it.
+2. If it is not on the paint, the **instrument** is the defect. Say so, and file it as an instrument
+   defect with the heading it was measured at — not as a scene defect with an adjective.
+3. Prefer a unit that cannot drift: `.verify/_box.py` over a rectangle *you chose by looking* beats a
+   rectangle the page handed you.
+
+A rectangle can also be honest and still uninformative: `tram-t`'s is the whole 380 cm track (because
+the record's `w` is the line, not the car), and `boat-lake`'s is clipped to 1x1 in most views. A prop
+that moves, or whose record describes its path, is not measured by its hit box.
+
 ## Procedure
 
 1. State the claim in one sentence and the page/stop/view it is about.
