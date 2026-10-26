@@ -111,6 +111,35 @@ sample side by side, and pick the axis where they differ most. A detector that i
 strict direction fails good work; wrong in the loose direction passes bad work. Print the count and
 the sizes it found — "14 blobs of 10–20 px" is checkable against the focal length; "PASS" is not.
 
+## 6c. Project the geometry before you press the shutter
+
+Round 69m re-aimed one stop three times (yaw 75, 66, 62) and the falls were not in frame any of
+those times, because the fault was not the heading. A 40 m drop 6-17 m to the side of a walk subtends
+almost nothing: measured by projecting the authored crest into the camera, the curtain occupied
+**0-1 % of the frame at every heading** from the middle of that walk. The fix -- a stop at the floor's
+end, yaw 88, pitch 14 -- took one pass once the numbers existed.
+
+The tool is cheap: ~60 lines of Python that read the same constants the generator wrote (the crest,
+the plane heights, the throw), build the camera basis from yaw/pitch (forward `(sin y, cos y)`,
+pitch positive **down**), and project every prim's vertices. Print the share of the frame each
+surface owns over a grid of candidate (x, z, yaw, pitch). Two things this catches that a frame does
+not: a surface **behind** the camera (negative depth), and a surface that is in frame but hidden
+**behind another of the same colour**.
+
+Two traps, both hit in that round:
+
+- **A planar water surface hides the drop behind its own crest.** Standing upstream of a brink, the
+  sight line that grazes the lip descends at `atan(eye_height / distance_to_lip)`; everything on the
+  sheet below that line is occluded by the water in front. From 6 m back the line already descends
+  24 degrees, and at 5 degrees of pitch the sheet is *not in the frame even though the crest is*.
+  Either pitch down past the grazing angle or move the eye back -- do not turn the head.
+- **`_map.mjs` defaults to `rooms.html`.** Its first run in this round mapped a different page and
+  returned surfaces that exist nowhere on the one being fixed (spray at 12.9 m on a page with no
+  spray model). Pass `ROOMS=`. A map of the wrong page is worse than no map.
+
+A projected share is a number, not a picture: it says the sheet is 39 % of the frame, not that it
+looks like water. Use it to **choose** the shot, then look at the shot.
+
 ## 7. Strip the subject before scanning for it
 
 When a gate greps source for a forbidden shape, strip `/* */` and `//` first. A gate that quotes the

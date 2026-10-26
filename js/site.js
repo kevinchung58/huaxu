@@ -2831,10 +2831,22 @@ function leaveOverlay(root, trigger) {
 
   const box = (C, q) => {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    /* Round 69m: a point at or behind the near plane has no screen position, and dividing by its
+       depth does not make one -- it makes 84,326 by 99,753. Measured on rooms-goat.html: standing at
+       Terrapin Point (stop 2) and looking at the Horseshoe, the falls' own click box became
+       84326x99753 px and was then culled by the bounds test, so the thing filling the view was
+       unpressable -- and its stale width stayed on the element for every frame after. The projection
+       is clamped to the near plane here, and to a frame's worth of overflow, so a screen-filling
+       prop stays a target and a degenerate one is merely small. */
     q.pts.forEach((p) => {
-      const sx = W * 0.5 + (focal * p.x) / p.z, sy = H * 0.5 + (focal * p.y) / p.z;
+      if (!(p.z > 0)) return;
+      const z = Math.max(p.z, NEAR);
+      const sx = W * 0.5 + (focal * p.x) / z, sy = H * 0.5 + (focal * p.y) / z;
       x0 = Math.min(x0, sx); y0 = Math.min(y0, sy); x1 = Math.max(x1, sx); y1 = Math.max(y1, sy);
     });
+    if (!Number.isFinite(x0)) return [W * 0.5, H * 0.5, W * 0.5, H * 0.5];
+    x0 = Math.max(x0, -W); x1 = Math.min(x1, W * 2);
+    y0 = Math.max(y0, -H); y1 = Math.min(y1, H * 2);
     // Absolute corners, not [x0, y0, w, h]: the hit-box union below maxes x1/y1 against the other
     // faces' absolute edges. A relative width here met that union as if it were an edge, so any
     // object drawn as a single quad — the chain doors, the wall frames, a drain plate — came out

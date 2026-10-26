@@ -24,15 +24,22 @@ const TABLES = {
      the ones that put each diorama largest on screen (measured across all five stops and both
      directions: lake 115,460 px2 at stop 0/-19, falls 45,144 at 0/-4, market 20,790 at 3/-12,
      city 192,800 at 4/-9). */
-  lake:   { stop: 0, yaw: -19, ids: ["plinth-lake","pool-lake","boat-lake","tree-i1","tree-i2","tree-s1","tree-s2"] },
-  falls:  { stop: 0, yaw: -4,  ids: ["plinth-falls","falls-n","tree-f1","tree-f2"] },
-  market: { stop: 3, yaw: -12, ids: ["plinth-market","tree-m1"] },
-  city:   { stop: 4, yaw: -9,  ids: ["plinth-sky","tower-cn","skyline-cn","dome-rc","track-c","tram-t","tree-c1","tree-c2","tree-c3"] },
+  lake:   { rooms: "rooms-toronto.html", stop: 0, yaw: -19, ids: ["plinth-lake","pool-lake","boat-lake","tree-i1","tree-i2","tree-s1","tree-s2"] },
+  falls:  { rooms: "rooms-toronto.html", stop: 0, yaw: -4,  ids: ["plinth-falls","falls-n","tree-f1","tree-f2"] },
+  market: { rooms: "rooms-toronto.html", stop: 3, yaw: -12, ids: ["plinth-market","tree-m1"] },
+  city:   { rooms: "rooms-toronto.html", stop: 4, yaw: -9,  ids: ["plinth-sky","tower-cn","skyline-cn","dome-rc","track-c","tram-t","tree-c1","tree-c2","tree-c3"] },
+  /* Goat Island (round 69m). The two falls are one place from one spot: Terrapin Point looks
+     north-west over the American Falls and north over the Horseshoe's own crest. Measured over all
+     four stops and twelve headings (`_probe_goat.mjs`), stop 2 at yaw -30 is where both are large
+     on the same frame — the American Falls 357,408 px2 and the Horseshoe 415,484 px2. A plate that
+     measured them from two different stands would be a picture of two views, not of the place. */
+  goat:   { rooms: "rooms-goat.html", stop: 2, yaw: -30,
+            ids: ["falls-american","falls-horseshoe","pool-lower","terrapin"] },
 };
 const page = await browser.newPage();
 let failed = 0;
 for (const [name, t] of Object.entries(TABLES)) {
-  await page.goto("http://127.0.0.1:8080/rooms-toronto.html", { waitUntil: "networkidle0" });
+  await page.goto(`http://127.0.0.1:8080/${t.rooms}`, { waitUntil: "networkidle0" });
   await sleep(1500);
   await page.evaluate((s) => document.querySelectorAll("[data-walk-stop]")[s].click(), t.stop);
   await sleep(2600);

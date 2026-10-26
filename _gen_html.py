@@ -3249,6 +3249,288 @@ def niagara_world(fr, view="rim"):
     return P
 
 
+# ---- Goat Island: the island's own surroundings, at the walk's own measure ------------------------
+# Round 69m. This page shipped from round 52 with no world at all, and round 58 left a comment
+# saying it "borrows" the Canadian page's: no line ever emitted one. `verify-island` measures what
+# that costs -- at stop 2 (Terrapin Point) the eye meets nothing in 100 % of the eye-level band, and
+# the island's walk stands on fog. Two things hid it for seventeen rounds: the lane's default
+# plaster wall, which sealed the walk from 47.5 m on (a wall where a landscape should be reads as a
+# wall, not as a missing world), and a projection bug that made the falls unpressable, so nothing
+# ever reported the scene as empty either.
+#
+# What the page needs is not the Canadian page's world. `niagara_world` is authored from the Table
+# Rock rail: its terrace, its parapet, its promenade. From the island's point those are things
+# 300 m off, *across* the fall. What belongs here is the walk's own surroundings.
+#
+# The crest is the survey's own, not a shape drawn by eye. `NIA_HS_CREST`'s last 148 m -- points 19
+# to 26, the part that closes on Terrapin Point -- are laid into the lane's plane at 1:1 (east to
+# +x, north to +z) with the survey's own last node on the lane's point. That is why the crest
+# leaves the walk's start 55 m out on the right and comes in to 12 m at the point: it is the same
+# brink the Canadian page draws, seen from its American end, at the record's size.
+#
+# Heights come from the same record as the Canadian page's, in the strip's vertical. The strip
+# draws the American Falls' 29 m talus as 19.66 m (its own `falls-american` `h`), so one metre of
+# the Niagara record is GOAT_GS centimetres here, and every height below is a record height times
+# it: water at the brink 1.5 m under the rail (`NIA_CREST`), the lower river 58.5 m under it
+# (`NIA_RIVER`), the island's woods 14 m (`NIA_GOAT_TREES`), both banks at the walk's own level.
+GOAT_POINT = (12.0, 161.0)          # NIA_HS_CREST's last node -- Terrapin Point -- in the lane's metres
+GOAT_GS = 1966.0 / -NIA_TALUS       # cm of the strip per metre of the record's heights (67.8)
+BANK = 90.0                          # the Canadian side of the gorge, in the lane's metres
+# The far side of the gorge, at the strip's own compression. The page already keeps distances at
+# about a tenth of the record's (the American Falls' 290 m of crest stands 30 m from the walk, and
+# the comment above says so); the Canadian bank is 300-670 m from Terrapin in the survey, so it
+# stands 90 m here. At 320 m the horseshoe's far curtain was a 3.8 degree strip at the frame's edge
+# -- measured in `.preview/goat69mf`, 90x120 px -- which is not what the point looks at.
+
+
+def goat_crest():
+    """The Horseshoe's brink in the lane's plane: the survey's last 148 m, then round the point.
+
+    The two nodes added past the survey's end are `NIA_GOAT`'s first three, which is the island's
+    own west corner: at Terrapin the brink *is* the shore, so the water closes round the island the
+    way the map closes, not the way a prop edge would.
+    """
+    tail = NIA_HS_CREST[19:]
+    e0, n0 = tail[-1]
+    # Round 69m, the one distortion in this file, and why it is one.
+    #
+    # At 1:1 the brink runs 12 m from the walk at the point and 55 m at the start of it, and from
+    # eighteen metres back a 40 m drop is a 1.5 degree band: measured at stop 2 before this, the
+    # whole lower two thirds of the frame was the upper river and the sheet was not in it at all.
+    # A brink is looked over, not back at. The strip already compresses every distance it draws --
+    # the American's 290 m of crest stands 30 m from the walk -- so the brink's own offsets are
+    # compressed by the same kind of factor and the page says so, here. The *shape* is the survey's;
+    # only its depth away from the walk is the strip's.
+    K = 0.30
+    out = [(GOAT_POINT[0] + K * (e - e0), GOAT_POINT[1] + n - n0) for e, n in tail]
+    for e, n in reversed(NIA_GOAT[:2]):        # (292.0, 91.3) is the survey's own last node
+        out.append((GOAT_POINT[0] + e - e0, GOAT_POINT[1] + n - n0))
+    out.append((out[-1][0] - 14.0, out[-1][1] + 9.0))       # off the frame, not stopping in mid-air
+    return out
+
+
+def goat_world():
+    """The island's walk drawn round: its two waters, the Horseshoe's brink, both far banks."""
+    P = []
+    fr = LaneFrame(0.0, 0.0, 0.0, 0.0)          # the lane's own metres: +x right, +z ahead
+    def U(m):
+        return m * GOAT_GS / 100.0
+    BRINK, LOW, TREES = U(NIA_CREST), U(NIA_RIVER), U(NIA_GOAT_TREES)
+    def air(e, n, k=1.0):
+        d = math.hypot(e, n)
+        return round(min(0.5, 0.03 + d / 3200 * 0.5) * k, 3)
+    cr = goat_crest()
+
+    def normals(pts, side):
+        """Unit normals across a crest: `side` +1 is its right, -1 its left (the falling side)."""
+        out = []
+        for i in range(len(pts)):
+            a, b = pts[max(0, i - 1)], pts[min(len(pts) - 1, i + 1)]
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            L = math.hypot(dx, dy) or 1.0
+            out.append((side * dy / L, -side * dx / L))
+        return out
+
+    def curtain(crest, nrm, u_top, u_bot, throw, bands, tile):
+        """Four bands down a drop, the sheet thrown `throw` metres out at its foot."""
+        cut = [0.0, 0.06, 0.24, 0.62, 1.0]
+        for s in range(4):
+            fa, fb = cut[s], cut[s + 1]
+            ua, ub = u_top + (u_bot - u_top) * fa, u_top + (u_bot - u_top) * fb
+            oa, ob = throw * math.sqrt(fa), throw * math.sqrt(fb)
+            for i in range(len(crest) - 1):
+                j = i + 1
+                pa = (crest[i][0] + nrm[i][0] * oa, crest[i][1] + nrm[i][1] * oa)
+                pb = (crest[j][0] + nrm[j][0] * oa, crest[j][1] + nrm[j][1] * oa)
+                qa = (crest[i][0] + nrm[i][0] * ob, crest[i][1] + nrm[i][1] * ob)
+                qb = (crest[j][0] + nrm[j][0] * ob, crest[j][1] + nrm[j][1] * ob)
+                P.append(_prim("w", [fr.cm(*pa, ua), fr.cm(*pb, ua), fr.cm(*qb, ub), fr.cm(*qa, ub)],
+                               c=bands[s], pat="fallsw", u=tile, pa=(0.55, 0.8, 0.95, 1.0)[s]))
+
+    nrm = normals(cr, 1)          # downstream of a crest that runs with +z on its left is +x
+
+    # The upper river: from the walk's own edge out to the brink. The island's shore is the lane's
+    # right edge for the whole walk, so this is the water between the visitor and the fall.
+    up = [(8.3, -42.0), (8.3, 159.0)] + list(reversed(cr[:8]))
+    P.append(_hprim("f", fr, up, BRINK, pat="rapids", u=900, rot=round((20 - 0) % 360, 1),
+                    c="#6aa9ab", cn="#17333a", dg=0.5, s=9.0))
+    # The water arriving at the brink: 1.6 m of pale churn along the crest, so the eye reads a
+    # current running to a lip and not a colour boundary. (The 10 cm lip above carries the line.)
+    for i in range(len(cr) - 1):
+        a = (cr[i][0] - nrm[i][0] * 2.3, cr[i][1] - nrm[i][1] * 2.3)
+        b = (cr[i + 1][0] - nrm[i + 1][0] * 2.3, cr[i + 1][1] - nrm[i + 1][1] * 2.3)
+        P.append(_hprim("f", fr, [(cr[i][0] - nrm[i][0] * 0.7, cr[i][1] - nrm[i][1] * 0.7),
+                                  (cr[i + 1][0] - nrm[i + 1][0] * 0.7, cr[i + 1][1] - nrm[i + 1][1] * 0.7),
+                                  (b[0], b[1]), (a[0], a[1])], BRINK + 0.03,
+                        c="rgba(232,242,241,0.34)", pat="foam", u=1400, d0=1, s=9.5))
+    # The brink's own lip: unbroken pale line where the water lets go. Without it the crest is a
+    # colour boundary rather than an edge.
+    for i in range(len(cr) - 1):
+        a = (cr[i][0] - nrm[i][0] * 0.7, cr[i][1] - nrm[i][1] * 0.7)
+        b = (cr[i + 1][0] - nrm[i + 1][0] * 0.7, cr[i + 1][1] - nrm[i + 1][1] * 0.7)
+        P.append(_prim("f", [fr.cm(*cr[i], BRINK + 0.10), fr.cm(*cr[i + 1], BRINK + 0.10),
+                             fr.cm(*b, BRINK + 0.10), fr.cm(*a, BRINK + 0.10)],
+                       c="rgba(238,246,246,0.5)", dg=0.2, d0=1))
+
+    # The curtain: four bands down the drop, the sheet thrown `throw` metres out at its foot. Same
+    # cut as the Canadian page's, because it is the same water; a lighter first band, because this
+    # one is looked at from six metres and #37907f is a black slab at that range.
+    throw = U(24.0)
+    bands = ("#4e9c8d", "#63b7a9", "#a9d2cd", "#e2efee")
+    curtain(cr, nrm, BRINK, LOW, throw, bands, 150)
+    # The American Falls, by the same code and out of the same record: its brink is the prop's own
+    # line (x -30 m, z 21-121 m, 0.4 m above the walk), the sheet falls away from the walk, and it
+    # lands on the talus the record already puts at -19.26 m. The prop drew this as four bands of
+    # the `fallsw` tile on the lane's canvas painter, which at twenty-five metres reads as a picket
+    # fence; this is the water shader the Horseshoe has worn since round 59.
+    # The arc's far side -- the sheet the visitor actually looks at from Terrapin, and the reason
+    # the page still had no falling water in it after three rounds of aiming.
+    #
+    # The survey's crest turns 180 degrees round the horseshoe. This strip has 150 m of lane and a
+    # crest compressed onto its near side, so the far half of the turn folds onto the near half:
+    # edge-on to the eye, under the water plane, and invisible -- measured, the sheet occupied 0-1 %
+    # of the frame from the middle of the walk and 39 % only from the floor's end, where it is the
+    # *near* crest seen obliquely. What stands in front of a visitor at the point is the other half
+    # of the same brink, 300-670 m off across the pool, facing back at the island. So it is drawn
+    # where the pool puts it -- along the Canadian bank's foot, crest at the brink's height, sheet
+    # falling toward the walk -- from the same four bands, the same `curtain()` and the same
+    # surveyed crest. Nothing new is invented: the sheet is the horseshoe's own far side, and the
+    # only number the strip decides is how far away the compression puts it.
+    far = resample([(BANK - 6.0, -520.0), (BANK - 6.0, 620.0)], 12)
+    fnr = normals(far, -1)        # its sheet falls toward -x, i.e. toward the island
+    curtain(far, fnr, BRINK, LOW, throw, bands, 150)
+    for i in range(len(far) - 1):
+        a = (far[i][0] - fnr[i][0] * 0.7, far[i][1] - fnr[i][1] * 0.7)
+        b = (far[i + 1][0] - fnr[i + 1][0] * 0.7, far[i + 1][1] - fnr[i + 1][1] * 0.7)
+        P.append(_prim("f", [fr.cm(*far[i], BRINK + 0.10), fr.cm(*far[i + 1], BRINK + 0.10),
+                             fr.cm(*b, BRINK + 0.10), fr.cm(*a, BRINK + 0.10)],
+                       c="rgba(238,246,246,0.5)", dg=0.2, d0=1))
+    # Its churn, and the permanent mist the horseshoe keeps. The plume is here, 300 m out, and not
+    # in front of the eye: a puff a visitor could reach is a screen, not spray (round 60, round 69m).
+    ffoot = [(e + nx * throw, n + ny * throw) for (e, n), (nx, ny) in zip(far, fnr)]
+    for k, (d0, d1, al) in enumerate(((0.0, 9.0, None), (9.0, 26.0, 0.26))):
+        for i in range(len(far) - 1):
+            j = i + 1
+            q = [(far[i][0] + fnr[i][0] * d0, far[i][1] + fnr[i][1] * d0),
+                 (far[j][0] + fnr[j][0] * d0, far[j][1] + fnr[j][1] * d0),
+                 (far[j][0] + fnr[j][0] * d1, far[j][1] + fnr[j][1] * d1),
+                 (far[i][0] + fnr[i][0] * d1, far[i][1] + fnr[i][1] * d1)]
+            if al is None:
+                P.append(_hprim("x", fr, q, LOW + 0.35, pat="foam", u=1800, c="#cfdfda", cn="#5f6c74",
+                                dg=0.4, s=9.5))
+            else:
+                P.append(_hprim("f", fr, q, LOW + 0.33, c="rgba(226,238,236,%s)" % al, d0=1, s=9.5))
+    # Two columns, not a wash. Sixty overlapping billboards of eighteen metres made an even haze
+    # over the whole far bank -- the canopy's edge came out soft and the falls had no plume at all
+    # (measured in `.preview/goat69mh`). The horseshoe keeps its mist where its crest turns: one
+    # column at the point's own reach and one at the far end of the arc, each a dozen puffs.
+    for ce, cn_ in ((-8.0, 40.0), (-4.0, 150.0)):
+        for k in range(11):
+            up = 3.0 + k * 4.2
+            P.append({"t": "m", "o": fr.cm(BANK + ce, cn_ - 2.0 + (k % 3) * 2.0, BRINK + up),
+                      "w": 4200 + 260 * (k % 4), "h": 3200, "al": round(0.30 - 0.016 * k, 3),
+                      "np": 5})
+
+    amr = [(-30.0, 21.0), (-30.0, 121.0)]
+    amn = normals(amr, -1)        # its sheet falls to -x, away from the island
+    curtain(amr, amn, U(0.4), -19.26, U(4.0), ("#7fb9ae", "#b6d8d1", "#dfecea", "#e9f2f1"), 300)
+
+    # The water the sheet lands in, from the foot of the curtain out to the Canadian bank.
+    foot = [(e + nx * throw, n + ny * throw) for (e, n), (nx, ny) in zip(cr, nrm)]
+    P.append(_hprim("f", fr, [(BANK, -520.0)] + foot + [(BANK, 620.0)], LOW,
+                    c="#1b4341", cn="#0e1a1e", dg=0.92))
+    # The churn at the foot: two bands, the near one opaque, the far one a veil.
+    for k, (d0, d1, al) in enumerate(((0.0, 9.0, None), (9.0, 26.0, 0.26))):
+        for i in range(0, len(cr) - 1):
+            j = i + 1
+            q = [(cr[i][0] + nrm[i][0] * d0, cr[i][1] + nrm[i][1] * d0),
+                 (cr[j][0] + nrm[j][0] * d0, cr[j][1] + nrm[j][1] * d0),
+                 (cr[j][0] + nrm[j][0] * d1, cr[j][1] + nrm[j][1] * d1),
+                 (cr[i][0] + nrm[i][0] * d1, cr[i][1] + nrm[i][1] * d1)]
+            if al is None:
+                P.append(_hprim("x", fr, q, LOW + 0.35, pat="foam", u=1800, c="#cfdfda", cn="#5f6c74",
+                                dg=0.4, s=9.5))
+            else:
+                P.append(_hprim("f", fr, q, LOW + 0.33, c="rgba(226,238,236,%s)" % al, d0=1, s=9.5))
+
+    # The Canadian bank across the lower river: at the walk's own level, so the eye reads the gorge
+    # as a wall and not as a horizon. Its edge carries the woodline, and the woodline is where the
+    # buildings that belong to the other drawing would rise -- they stay on that page.
+    edge = [(BANK, 620.0), (BANK, -520.0)]
+    P.append(_hprim("f", fr, [(BANK, 620.0), (BANK + 880.0, 680.0), (BANK + 880.0, -900.0), (BANK, -520.0)], 0.0,
+                    c="#5f7b47", cn="#1b2430", dg=0.55))
+    P += world_quads_between(fr, edge, edge, 0.0, LOW, "#6f6a5e", air(BANK, 0), t="x", pat="strata",
+                             u=1600, ax="v", cn="#1c1f25", dg=0.45, out="R")
+    P += world_quads_between(fr, edge, edge, 0.0, TREES, "#57764a", air(BANK, 0), t="x", pat="canopy",
+                             u=2000, ax="v", cn="#24322a", dg=0.45, out="R")
+
+    # The island's own face on the channel side: a rock cliff from the walk's left edge down to the
+    # water the American Falls lands in, so the left of the lane is an edge and not a cut.
+    P.append(_hprim("x", fr, [(-7.4, -42.0), (-8.6, -42.0), (-8.6, 202.0), (-7.4, 202.0)], -0.04,
+                    c="#6e6a5f", cn="#1d2026", dg=0.45))
+    P += world_quads_between(fr, [(-8.6, 202.0), (-8.6, -42.0)], [(-8.6, 202.0), (-8.6, -42.0)],
+                             0.0, -19.0, "#6e6a5f", air(0, 80), t="x", pat="strata", u=2600, ax="v",
+                             cn="#1d2026", dg=0.45, out="R")
+
+    # Past the walk's floor the point is water on both sides, not land: the crest turns across here,
+    # and a `strata` card filling the wedge stood in front of the brink as a dark slab (measured at
+    # stop 3: the shelf met 21 rays between 8.1 and 491 m, the sheet behind it 27 between 17 and
+    # 71). The lane's floor (`d`, 162.4 m) is the last paving; everything beyond curls.
+    P.append(_hprim("f", fr, [(-8.6, 159.0), (7.5, 159.0), (12.0, 161.0), (8.0, 180.6),
+                              (-26.5, 192.3), (-40.0, 200.0), (-40.0, 159.0)], BRINK,
+                    c="#6aa9ab", cn="#17333a", dg=0.5, pat="rapids", u=260))
+
+    # The American bank beyond its pool: the far side of the second water, at the walk's level with
+    # its own wall down to the river and its own woodline.
+    fb = [(-240.0, 230.0), (-240.0, -200.0)]
+    P.append(_hprim("f", fr, [(-240.0, 230.0), (-2400.0, 260.0), (-2400.0, -260.0), (-240.0, -200.0)],
+                    0.0, c="#5a7348", cn="#1b2430", dg=0.5))
+    P += world_quads_between(fr, [(-240.0, -200.0), (-240.0, 230.0)], [(-240.0, -200.0), (-240.0, 230.0)],
+                             0.0, -19.0, "#6c675c", air(240, 0), t="x", pat="strata", u=2200, ax="v",
+                             cn="#1d2026", dg=0.45, out="L")
+    P += world_quads_between(fr, [(-240.0, -200.0), (-240.0, 230.0)], [(-240.0, -200.0), (-240.0, 230.0)],
+                             0.0, TREES, "#556f45", air(240, 0), t="x", pat="canopy", u=2000, ax="v",
+                             cn="#24322a", dg=0.45, out="L")
+
+    # The rail. Every photograph taken at Terrapin has one, and without it the frames were water,
+    # paving and sky with nothing at a metre to read the water's size against: a 96 cm stone parapet
+    # along the walk's own edge and across the floor's end, so the visitor stands behind it and the
+    # brink starts beyond. Same kit as the Canadian terrace's (`stonewall`, a post every 3 m), at the
+    # walk's own scale -- 41 m of rail, 14 posts.
+    rl = [(8.1, -4.0), (8.1, 155.4), (6.0, 159.0), (-8.6, 159.0)]
+    rlen = sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(rl, rl[1:]))
+    rr = resample(rl, max(2, round(rlen / 3.0)))
+    rn = normals(rr, -1)                 # the walker's side, so the wall is seen from inside
+    for i in range(len(rr) - 1):
+        a, b = rr[i], rr[i + 1]
+        P.append(_prim("x", [fr.cm(*a, 0.0), fr.cm(*b, 0.0), fr.cm(*b, 0.92), fr.cm(*a, 0.92)],
+                       pat="stonewall", u=110, ax="v", c="#7a766d", cn="#23262b", dg=0.8,
+                       fn=_fn(fr, *rn[i])))
+        P.append(_prim("f", [fr.cm(*a, 0.92), fr.cm(*b, 0.92), fr.cm(*b, 0.96), fr.cm(*a, 0.96)],
+                       c="#8d8a80", cn="#2a2d33", dg=0.9))       # the coping, the brightest line
+    for i, (e, n) in enumerate(rr):
+        if i % 1 and i not in (0, len(rr) - 1):
+            continue
+        P.append({"t": "f", "p": [fr.cm(e - 0.14, n - 0.14, 0.96), fr.cm(e + 0.14, n - 0.14, 0.96),
+                                  fr.cm(e + 0.14, n + 0.14, 0.96), fr.cm(e - 0.14, n + 0.14, 0.96)],
+                  "c": "#6b6860", "cn": "#202329", "dg": 0.85})
+
+    # The spray. The crest's own apex is the point farthest from the chord between its ends -- the
+    # same place the Canadian page puts its column, found the same way, so the two pages agree about
+    # where the mist is without either one naming it.
+    # Round 69m, the mist, and why there is no column here.
+    #
+    # The Canadian page's funnel test puts the plume at the crest's own apex, and that is right from
+    # Table Rock, where the apex is 345 m out. Mapped into this walk the same test lands somewhere
+    # else: the walk *ends* at the American end of the brink, so the horseshoe's apex is behind the
+    # visitor and the tail's own "farthest from the chord" node is 35 m from the eye. Measured at
+    # stop 2 with a column there, 72 of 96 rays met spray at 12.9-24.3 m and nothing else -- a wall
+    # of billboards, which is round 60's finding again (a puff bigger than the thing it stands for
+    # is a screen). What Terrapin actually gets is the veil the brink throws *up* along its whole
+    # length, not a column: small, faint, and on the water rather than in front of the eye.
+    return P
+
+
 # ---- Toronto from the LookOut (OpenStreetMap + Wikipedia's list of tallest buildings) -------------
 TOR_O = (43.6425637, -79.3870872)       # the CN Tower (OSM way 32742038)
 TOR_LOOKOUT = 346.0                     # LookOut level, metres above the base
@@ -6097,7 +6379,11 @@ DISTRICTS = [
                        "boulders with the Bridal Veil past Luna, and down-river the gorge the two "
                        "banks share. The Canadian page stands at these falls from the other side; "
                        "this page is where that page's far curtain opens."),
-        "lane": {"w": 1500, "d": 5600, "ceil": 420, "back": 220, "max_d": 15900, "open": True,
+        # Round 69m: `d` is the lane's own floor and `max_d` is how far the visitor may walk. They
+        # were 16240 and 15900 -- 3.4 m of paving beyond the last step -- and standing at the rail
+        # (z 155.99) with the floor's far edge 6.4 m ahead, the paving filled the lower frame and
+        # the brink beyond it was a 20 px band. A floor ends where the walk ends.
+        "lane": {"w": 1500, "d": 5483, "ceil": 420, "back": 220, "max_d": 15900, "open": True,
                  "open_back": True, "open_end": True,
                  "zones": [[-10, "The Goat Island walk", "timber, then the roar"],
                            [2400, "Luna and the American Falls", "290 m over a ledge onto boulders"]]},
@@ -6114,9 +6400,16 @@ DISTRICTS = [
         # walled corridor — walls at ±750 stood between the visitor and the falls the page is named
         # for, which is why the brink was never in the frame. `open` strips the cladding: the west
         # side looks over the American bank, the east over the gorge.
+        # Round 69m: `open` covered z 2150-3700 and 3900-4750 only, and the lane runs to 15900 --
+        # so from 47.5 m on, every stop on this page stood in a sealed plaster corridor. Measured at
+        # stop 2 (Terrapin Point, z 12180): the first thing in front of the eye was
+        # `walk lane: pattern/plaster` at 13.3-15.7 m, 83% of the frame was empty sky, and the falls
+        # the page is named for were not in any direction. A walk on an island is open air; the
+        # backdrop draws what the walls were hiding. Both sides, the whole length, is the record of
+        # the place, not a shortcut.
         "surfaces": [
-            {"side": -1, "z0": 2150, "z1": 3700, "y0": 0, "y1": 420, "kind": "open"},
-            {"side": 1, "z0": 3900, "z1": 4750, "y0": 0, "y1": 420, "kind": "open"},
+            {"side": -1, "z0": 0, "z1": 15900, "y0": 0, "y1": 420, "kind": "open"},
+            {"side": 1, "z0": 0, "z1": 15900, "y0": 0, "y1": 420, "kind": "open"},
         ],
         "objects": [
             # Round 57 put the sheet beside the lane; round 58 found that a sheet standing on the
@@ -6125,15 +6418,22 @@ DISTRICTS = [
             # western edge at the walk's own height, the curtain hangs *below* it into the gorge, and
             # the walk looks over the lip. The crest's 5.6 km of scale-length is the American bank's
             # 290 m kept at the strip's measure; the drop is the sourced 21-30 m, kept at 10.34.
-            {"id": "falls-american", "kind": "falls", "x": -3000, "z": 2450, "y": 40, "ry": 90,
-             "w": 10000, "h": 1966, "d": 500, "solid": False, "drop": True,
+            # Round 69m: the crest and its sheet are the world's now (see `goat_world`), drawn by
+            # the same shader as the Horseshoe's. The prop is the mark on the water.
+            {"id": "falls-american", "kind": "landmark", "x": -3000, "z": 2450, "y": -900, "ry": 0,
+             "w": 2000, "h": 900, "d": 20, "landmark": True,
              "title": "The American Falls",
              "hint": "290 metres of crest, a 21-to-30-metre drop onto the boulders below it — the "
                      "ledge they left there on purpose in 1969, when the river was dammed above "
                      "and the face cleaned for the first time in living memory. Three years of "
                      "silence, then the water came back over."},
-            {"id": "falls-horseshoe", "kind": "falls", "x": 3200, "z": 4300, "y": -1200, "ry": 90,
-             "w": 12000, "h": 1966, "d": 620, "solid": False, "drop": True,
+            # Round 69m: this was a `falls` prop -- a 120 m sheet standing at x 3200 with its crest
+            # 12 m *below* the walk and its end at z 103 m, so from Terrapin Point (z 121.8) the
+            # falls the page is named for were behind the eye. The crest is the world's now: the
+            # survey's own last 148 m, at the walk's own level, curving round the point. What is
+            # left for the prop is the mark -- the same trade the Canadian page made in round 65.
+            {"id": "falls-horseshoe", "kind": "landmark", "x": 2600, "z": 3448, "y": -1500, "ry": 0,
+             "w": 2000, "h": 900, "d": 20, "landmark": True,
              "title": "The Horseshoe, from the American side",
              "hint": "57 metres over a curve that runs 670 round, the Canadian bank's own water. "
                      "From Terrapin Point it is not a fall in front of you; it is a wall of noise "
@@ -6175,8 +6475,12 @@ DISTRICTS = [
              "title": "The rail at Terrapin",
              "hint": "Iron on stone, the same kit the Canadian parapet uses; the two banks "
                      "standardised on keeping people back from the brink long ago."},
-            {"id": "woodline-c1", "kind": "island", "x": 1500, "z": 2400, "y": -40, "ry": 0,
-             "w": 420, "h": 34, "d": 200,
+            # Round 69m: the far bank is drawn now (the Canadian shore at x 320 m, the American one
+            # at -240), so these three are marks on water that exists instead of models of it. A
+            # 4 m by 2 m "island" standing in for a bank 300 m off was a card with a card's copy on
+            # it -- the copy is right, the body was the wrong shape for it.
+            {"id": "woodline-c1", "kind": "landmark", "x": 8800, "z": 3448, "y": 400, "ry": 0,
+             "w": 2000, "h": 900, "d": 20, "landmark": True,
              "title": "The Canadian bank's trees, across the river",
              "hint": "The Table Rock promenade hides behind its own woodline from here; the "
                      "buildings rise above it and belong to the other drawing."},
@@ -6202,13 +6506,13 @@ DISTRICTS = [
              "hint": "The water lands in a basin of its own boulders rather than in the river, which "
                      "is why the American side is read as a fall onto rock and the Horseshoe as a "
                      "fall into water."},
-            {"id": "channel-e", "kind": "pool", "x": 3400, "z": 4600, "y": -1900, "ry": 90,
-             "w": 2400, "h": 14, "d": 8000, "solid": False,
+            {"id": "channel-e", "kind": "landmark", "x": 12000, "z": 4138, "y": -2500, "ry": 0,
+             "w": 2400, "h": 800, "d": 20, "landmark": True,
              "title": "The gorge on the eastern side",
              "hint": "The same river after the drop, running north-east to the whirlpool. The "
                      "Canadian bank stands across it."},
-            {"id": "pool-lower", "kind": "pool", "x": -600, "z": 6900, "y": 0, "ry": 0,
-             "w": 24000, "h": 20, "d": 9000,
+            {"id": "pool-lower", "kind": "landmark", "x": 15000, "z": 7414, "y": -3000, "ry": 0,
+             "w": 24000, "h": 900, "d": 20, "landmark": True,
              "title": "The lower river, above the whirlpool",
              "hint": "Everything that goes over either falls ends here, running north-east toward "
                      "the whirlpool and the gorge. The water's colour is the gorge's own: a hard "
@@ -6219,7 +6523,8 @@ DISTRICTS = [
             {"x": 420, "y": 360, "z": 2100, "r": 80, "k": 0.4},
             {"x": 2450, "y": 360, "z": 3700, "r": 85, "k": 0.42},
         ],
-        "backdrop": {"skyAround": NIAGARA_SKY},
+        # Round 69m: the world this page has been claiming since round 58, finally emitted.
+        "backdrop": {"skyAround": NIAGARA_SKY, "world": {"prims": goat_world()}},
         "slots_title": "Places on the island",
         "slots": [
             {"label": "The American Falls at full height",
@@ -6236,8 +6541,20 @@ DISTRICTS = [
             # (The drag in the harness aims by the opposite sign, which is how a round was spent
             # turning this stop the wrong way before the frames were compared.)
             {"z": 2450, "x": -520, "yaw": 270, "pitch": 9, "label": "the rail at the American Falls"},
-            {"z": 4200, "x": 600, "yaw": 75, "pitch": -4, "label": "Terrapin Point"},
-            {"z": 5300, "x": 0, "yaw": 0, "label": "the rail above the lower river"},
+            # Round 69m: from the middle of the walk the falls cannot be in frame, and that is a
+            # measurement now, not an opinion. The crest runs 6-17 m off the walk's right edge and
+            # the sheet falls *away* from it, so mid-walk the frame is paving, rail, a 6 m channel
+            # and sky: the authored geometry projected from (7.0, 121.8) put the curtain at 0-1 %
+            # of the frame at every heading tried (62, 66, 75 -- three rounds of re-aiming, none of
+            # which could have worked). What the middle of the walk does hold, level and looking
+            # down the rail, is the water and the gorge past it.
+            {"z": 4200, "x": 250, "yaw": 70, "pitch": 6, "label": "the rail above the upper river"},
+            # Round 69m: the point itself, 3 m short of the floor's end. Projected at (7.0, 156.0)
+            # yaw 6 pitch 12: 38 % sheet, 22 % lower river, 26 % sky, 6 % rail. The drop reads as a
+            # drop. Both stops then moved in from the lane's edge (x 700 -> 250): the parapet stands
+            # at x 7.85-8.35, so a station at 700 stood 0.7 m from a 92 cm wall, and the frame was a
+            # stone diagonal with the falls behind it (`.preview/goat69mk`).
+            {"z": 5379, "x": 250, "yaw": 88, "pitch": 14, "label": "Terrapin Point"},
         ],
         "exit": {"id": "curtain-home", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
                  "title": "The way back across the Rainbow",
