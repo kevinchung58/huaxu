@@ -81,6 +81,12 @@ screen — verify by comparing two frames (md5 or a crop), never by assuming. Re
 
 A box that includes the background is not a measurement of the prop. Say what the box contains.
 
+**Known limit of `_map.mjs`:** the lane's scenery is merged per material, so many props come back
+under the mesh name `walk lane: flat/flat` (16,384 verts) rather than by prop. The map names the
+*mesh*, so it can prove "this pixel is 86 m away and part of the merged scenery", and it cannot
+prove "this pixel is the SkyWheel". When a claim needs the prop, measure the frame (`_box.py`,
+`_edge.py`) and give the gate its own detector, as `verify-wheel.cjs` does.
+
 ## 6. A gate must be able to fail
 
 - Every id or stop a gate names must be resolved against the page (`[data-obj]`, `[data-walk-stop]`)
@@ -92,6 +98,18 @@ A box that includes the background is not a measurement of the prop. Say what th
   and do not let a gate hide behind a report.
 - A threshold must be stated with the reason it is that number. "sd > 20" on a 51×51 px miniature
   measures the background, not the prop: state a minimum area or the verdict is noise.
+
+## 6b. A threshold measures what separates the two things, not what makes one of them bright
+
+Round 69l's `verify-wheel` counted "blobs brighter than the row's median by 34" and found **2**
+cabins in a frame that has **14**, then failed a scene that was fine. The cabins are pale grey
+`#c3ccd2` on pale blue sky `#76a1cb`: luminance 155 vs 147 (indistinguishable), chroma **b−r 15 vs
+85** (obvious). The separating measurement was not brightness at all.
+
+So: before writing a threshold, print the actual pixel values of one instance and one background
+sample side by side, and pick the axis where they differ most. A detector that is wrong in the
+strict direction fails good work; wrong in the loose direction passes bad work. Print the count and
+the sizes it found — "14 blobs of 10–20 px" is checkable against the focal length; "PASS" is not.
 
 ## 7. Strip the subject before scanning for it
 

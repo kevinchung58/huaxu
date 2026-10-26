@@ -34,6 +34,16 @@
   - **四支 `mix(a, b, t)`**：`mix` 只吃 `(hex, lift)`，第三個參數撞到第 61 輪的守衛 → 顏色原樣返回（店面門檻與遮簷本想用店面自己的色調染色，其實從來沒染）。改成既有的 `blendHex(a, b, t)`，並加一條閘門掃原始碼（先剝註解，否則它會抓到自己的說明）。
   - **閘門**：`walk` **197 → 201/201**（三條「門是真建築」：8 m 進深與遠面側牆、中央穿堂、四坡屋頂與簷底；一條「沒有三參數 mix」）、`look` 四桌全部量到（lake 467×276、falls 228×261、market 165×102、city 260×230），其餘 gate 全綠。
 
+- **第 69l 輪：skill 不會自己開，所以要有一支會紅的閘門** —— 站主問「skill-creator 會自動判斷／自動啟用嗎？發現問題有必要就建 skills」＋「都去弄好」。
+  - **實話先說**：`/tmp/anthropic-skills/skills/skill-creator/` 是一份**文件**，不是執行中的偵測器；沒有任何 runtime 會監看「你想改 skill」。它在我讀它的時候才存在，`/tmp` 一重置就沒了。所以「自動」只能由兩件事實現：**寫下來的觸發規則** ＋ **一支會紅的閘門**。
+  - **閘門**：`.verify/verify-skills.mjs`。檢查 15 個 skill 的 front matter（`name` 要等於目錄、description 要說「何時用」且 ≥60 字）、<500 行上限、`skills/README.md` 有列、`SKILLS.md`／`AGENTS.md` 有路由、以及反向（README 列了但目錄不存在）。**第一次跑就紅 12 條**：`skills/` 有 15 個 skill、README 只登記 4 個。補完登記後 75/75 綠。
+  - **規則**：`AGENTS.md` 新增「任何發現缺陷類別、實測常數或新量具的輪次，必須同一輪寫或改一個 skill，並跑 `node .verify/verify-skills.mjs`」；`SKILLS.md` 加路由段。
+  - **新 skill**：`skills/skill-authoring/SKILL.md`（何時該寫成 skill、四個條件、要登記的三個地方、`evals/evals.json` 3 個 case）。
+  - **P6-3 SkyWheel 結案**：輪面在 x–y 平面、pitch 夾 ±24°，所以「站在輪下」（stop 6/7/8，25–27 m、仰角 46–65°）看不到輪 —— 這是構圖問題，不是建模問題。**從 stop 2（欄杆，66.7 m、輪心仰角 22.4°）yaw 26 / pitch −21.5 看，整輪在框內、艙數得出來**：新閘門 `verify-wheel.cjs` 量到 **1023×615 px、上緣 14／下緣 629、14 個艙**（艙 10–20 px，與焦長 927 px、168 cm 於 66.7 m 的 23 px 相符）。
+  - **這支閘門自己先錯了一次**：第一版用「比該列中位數亮 34」，在一個有 14 個艙的畫面裡只數到 **2** 個，然後對一個好好的場景報 FAIL。原因是艙（#c3ccd2，lum 155）與天空（#76a1cb，lum 147）**亮度幾乎一樣**，差的是彩度（b−r 15 vs 85）。改用「比天空亮且沒那麼藍」，並要求 7–60 px 的連通塊 ≥45 px。**故意讓它紅（MIN_CABINS=30）確認 exit=1**。
+  - **`_map.mjs` 的已知限制**：車道的景物是**按材質合併**的，所以很多 prop 會回報成 `walk lane: flat/flat`（16,384 verts）而不是 prop 名。它可以證明「這個像素在 86 m 外、屬於合併景物」，**不能**證明「這個像素是 SkyWheel」。要 prop 名就用量畫面（`_box.py`／`_edge.py`）＋該 prop 專屬的偵測器。已寫進 `frame-evidence` §5。
+  - **教訓寫進 skill**：新 §6b「閾值要量的是『把兩者分開的那個軸』，不是『讓其中一個變亮的那個軸』」——並要印出計數與尺寸，因為「14 個 10–20 px 的塊」可以對照焦距驗算，「PASS」不行。
+
 - **第 69k 輪：量具先說謊，場景才跟著錯** —— 站主說「通通都弄好」並且「每次必用 skills creator」。
   - **先撤回一個數字，因為整條診斷都建在它上面**：`_ray.mjs` 印的 `19416` 是**公分**，也就是 **194.16 m**；TODO 的 P6 把它寫成「19.4 km、一面牆不到一個 texel、mipmap 壓成一片」，於是「森林太遠／太近」整段推理都是錯的。用 `_map.mjs` 重新射線：店面後面那面樹牆在 **211–252 m**、`canopy` 91 個 prim、頂在視線上方 8.6°。**19416 cm ≠ 19.4 km；這條已寫進 `frame-evidence` skill。**
   - **量具抽成一份共用實作**：`.verify/_aim.mjs`（`arrive()` 讀回站點自己的 `--z/--x`、`aim()` 用拖曳＋讀回、`park()`、`shot()`）。實測常數：水平 **0.09 °/px**、垂直 **0.065 °/px 且方向相反**（往下拖＝往上看；8.00 → 1.50 over 100 px）、pitch 夾在 **±24°**（`js/site.js:8946`）、一次按鍵最小 **14.4°**。到達不是「停住」（起步前也停著），也不是「進了一個 200 cm 的帶」（身體還在滑行）；`arrive()` 只在站點位置讀回時才算到，停在短處會印出 signed shortfall。
@@ -209,7 +219,7 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 
 還開著：
 1. **`hotelw` 旅館塔近看**：已給 `trcwall` 專屬磚，**仍欠一張近照**。本輪拍到 stop 5/6/7/8，視野裡沒有旅館塔（`_map.mjs` 在 stop 6 量到 `hotelw` 在 317–387 m）；需要先算 bearing 再取景，不要憑印象按快門。
-2. **SkyWheel 吊艙（有證據，未修）**：四個視角只有 **1 個艙**可見；輪面在 x–y 平面、輪心 15.7 m、pitch 夾 ±24° ⇒ 站在輪下看不見輪。要嘛把輪面轉到能從 fun row 看見（`ry`），要嘛在 stop 8 加一個仰角站點，並在 `_map.mjs` 的圖例裡指名 `wheel` 的 prim。
+2. ~~SkyWheel 吊艙~~ **已結案（第 69l 輪）**：從 stop 2 yaw 26 / pitch −21.5 看得到整輪，`verify-wheel.cjs` 量到 14 個艙、閘門會紅也會綠。輪下的 stop 6/7/8 看不到輪是**構圖**（輪面在 x–y 平面、pitch 夾 ±24°），不是缺陷；不要為此轉動地標。
 3. **其他頁面的地標盤**：Goat 的兩道瀑布、Toronto 的 `falls` 模型（現在只有 `look` 的數值，沒有專屬量具）。
 4. **量具覆蓋**：`_lane.mjs` / `_tile.mjs` 只量 Niagara 的鋪面；量別的頁面前，先確認 `FLOOR_PERIOD` 對那個 floor style 的意義。
 5. **Toronto 還平的三個**（`audit-all.mjs`，`STRICT=1` 會紅）：`boat-lake` **6.7**（24,455 px）、`tram-t` **18.0**（43,384 px）、`skyline-cn` **14.9**（172,630 px）。*驗收*：面積 ≥ 120×120 px 的物件 sd ≥ 20；小於這個面積的印「too small to judge」，不當成平。

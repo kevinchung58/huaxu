@@ -1,0 +1,32 @@
+{
+  "skill": "skill-authoring",
+  "evals": [
+    {
+      "id": "does-the-creator-auto-activate",
+      "prompt": "Does the skill creator detect on its own that we need to add or change a skill, and turn itself on?",
+      "expect": [
+        "no: a skill is a file, and the creator is a document read on purpose; nothing watches for intent",
+        "the automatic part is a written trigger rule plus a gate that fails on an unregistered skill",
+        "names the gate: node .verify/verify-skills.mjs"
+      ]
+    },
+    {
+      "id": "new-defect-class",
+      "prompt": "This round found that a gate listed seven ids and framed two. Should that become a skill or a TODO line?",
+      "expect": [
+        "a skill, because it is a class that the next round can repeat (frame-evidence already owns it: extend it)",
+        "extends an existing owner instead of adding a sixteenth skill",
+        "registers the change in skills/README.md and SKILLS.md, then runs the gate"
+      ]
+    },
+    {
+      "id": "register",
+      "prompt": "I added skills/new-thing/SKILL.md. Anything else?",
+      "expect": [
+        "a row in skills/README.md and a routing sentence in SKILLS.md",
+        "front matter name must equal the directory, under 500 lines",
+        "verify-skills must pass and must have been seen failing at least once"
+      ]
+    }
+  ]
+}

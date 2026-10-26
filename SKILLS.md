@@ -33,6 +33,12 @@ acceptance; `pua` is the evidence-first debugging method; and `pr-handoff` owns 
 grounding, and domain skills before environment work, the visual loop before sign-off, and the PR
 handoff before every PR operation.
 
+`skill-authoring` owns the register itself: when a lesson becomes a skill rather than a `TODO.md`
+line, how to write one (front matter, refusals, the measured number, a procedure), and the three
+places it must be registered. `.verify/verify-skills.mjs` is its gate — it cannot read intent, but it
+fails when a skill on disk is unregistered or unrouted, which is exactly the state `skills/` was in
+at round 69k (fifteen skills, four rows). Run it every round, not only the rounds that edit skills.
+
 `frame-evidence` is the sixteenth-track skill and the one that keeps the other fifteen honest: it
 owns arrival, aim, units, refusal, and the difference between "measured" and "believed". Every
 number quoted by `scene-quality-loop`, `pua`, or a PR body is supposed to come through it. It exists

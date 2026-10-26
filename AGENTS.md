@@ -136,7 +136,13 @@ no package manifest, CDN, or additional runtime dependency is implied.
   `skills/grounded-scene/SKILL.md`, and the matching domain skills above. Before the visual gate,
   read `skills/scene-quality-loop/SKILL.md`; before any PR is opened or updated, read
   `skills/pr-handoff/SKILL.md` and update `TODO.md` with a complete, prioritized plan for the next
-  round. These are tracked project skills, not optional suggestions. Apply PUA as an evidence-first
+  round. Before drawing a conclusion from a screenshot, a ray, a pixel statistic or a stop position,
+  read `skills/frame-evidence/SKILL.md`; every number quoted from a frame comes through it. **Any
+  round that discovers a defect class, a measured constant, or a new instrument must write or amend a
+  skill in the same round** — read `skills/skill-authoring/SKILL.md`, add the `skills/README.md` row
+  and the `SKILLS.md` routing sentence, and run `node .verify/verify-skills.mjs`. The agent's skills
+  do not activate themselves; this rule and that gate are what make the habit automatic, so neither
+  is optional. These are tracked project skills, not optional suggestions. Apply PUA as an evidence-first
   method—diagnose, change approach when stalled, inspect related effects, and verify the actual
   artifact. Do **not** use shaming, threats, fabricated performance reviews/KPIs, endless retries,
   or PUA as authority to bypass permissions, user constraints, safety, or tests. A scene is not
