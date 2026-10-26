@@ -52,7 +52,7 @@
   - **崖線的壓縮（`K=0.30`，上一輪加的）還在，理由沒變**：1:1 的崖線從 18 m 外看是一條 1.5° 的帶。**但水幕的條紋不是**：tile 從 3.8 m 改成 1.5 m（`u=150`）——3.8 m 一條在 84 m 外是 46 px 的直條，整個瀑布像帆布（`.preview/goat69mj`）。
   - **兩個站的取景（都量過，frames 在 `.preview/goat69ml`）**：stop 2 `x 250 z 4200 yaw 70 pitch 6`「the rail above the upper river」——隔著水池看加拿大側的水幕＋林線；stop 3 `x 250 z 5379 yaw 88 pitch 14`「Terrapin Point」——**鋪面 → 欄杆 → 水幕 → 林線 → 天**，量到空框 **0%**（`.preview/goat69ml/stop3-yaw88-p14`）。站位從 x 700 收到 250：欄杆在 x 7.85–8.35，站在 700 等於離一道 92 cm 的牆 0.7 m，畫面是一條石頭斜線（`.preview/goat69mk`）。
   - **閘門（本輪 artefact）**：`verify-island` 全站 40 stops＋goat 4 stops 全過（41.7／16.7／**13.3**／**0**% 空框）、walk 201/201、look 全量到、rail 4/4、skills 75/75、collision 28/28（另外跑）；`_map`／`_shot_at`／`_box.py` 三個量具照舊。
-  - **還沒做的，照實寫**：美國瀑布那一面**還是舊的 `falls` prop 畫法**（25 m 外是直條柵欄，`.preview/goat69mh/stop1-yaw-90`），沒有改成世界的水幕；鋪面在腳下偏亮（`_box` 量 148.7，記錄值是 121）；林線那一帶偏暗（`canopy` 的斑塊）；水面在 5 m 內仍偏平（`rapids` tile 900 cm）。這三項是下一輪的 P6。
+  - **還沒做的，照實寫**：美國瀑布那一面**還是舊的 `falls` prop 畫法**（25 m 外是直條柵欄，`.preview/goat69mh/stop1-yaw-90`），沒有改成世界的水幕；鋪面在腳下偏亮（最終幀 `_box` 量 143.7，記錄值是 121）；林線那一帶偏暗（`canopy` 的斑塊）；水面在 5 m 內仍偏平（`rapids` tile 900 cm）。這三項是下一輪的 P6。
 
 - **第 69k 輪：量具先說謊，場景才跟著錯** —— 站主說「通通都弄好」並且「每次必用 skills creator」。
   - **先撤回一個數字，因為整條診斷都建在它上面**：`_ray.mjs` 印的 `19416` 是**公分**，也就是 **194.16 m**；TODO 的 P6 把它寫成「19.4 km、一面牆不到一個 texel、mipmap 壓成一片」，於是「森林太遠／太近」整段推理都是錯的。用 `_map.mjs` 重新射線：店面後面那面樹牆在 **211–252 m**、`canopy` 91 個 prim、頂在視線上方 8.6°。**19416 cm ≠ 19.4 km；這條已寫進 `frame-evidence` skill。**
@@ -234,7 +234,7 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 4. **量具覆蓋**：`_lane.mjs` / `_tile.mjs` 只量 Niagara 的鋪面；量別的頁面前，先確認 `FLOOR_PERIOD` 對那個 floor style 的意義。
 5. **Toronto 還平的三個**（`audit-all.mjs`，`STRICT=1` 會紅）：`boat-lake` **6.7**（24,455 px）、`tram-t` **18.0**（43,384 px）、`skyline-cn` **14.9**（172,630 px）。*驗收*：面積 ≥ 120×120 px 的物件 sd ≥ 20；小於這個面積的印「too small to judge」，不當成平。
 6. **Niagara 的夜**：`HOUR=night` 沒有夜色授權 ⇒ 整頁深藍（mean 42.1）、只有兩顆燈光暈。要不要給 Clifton 一條夜色記錄，是站主的決定（見 §4）。
-7. **Goat Island 三件沒收尾的**（第 69m 輪量的，見 §1 末）：①美國瀑布改成世界水幕（現況 25 m 外是直條柵欄）；②鋪面偏亮（量到 148.7，記錄值 121）；③近水面偏平（`rapids` tile 900 cm，5 m 內看不到流）。
+7. **Goat Island 三件沒收尾的**（第 69m 輪量的，見 §1 末）：①美國瀑布改成世界水幕（現況 25 m 外是直條柵欄）；②鋪面偏亮（最終幀量到 143.7，記錄值 121）；③近水面偏平（`rapids` tile 900 cm，5 m 內看不到流）。
 
 ## 4. 需要站主決定（代理不能替他決定）
 
