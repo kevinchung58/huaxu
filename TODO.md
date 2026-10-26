@@ -52,7 +52,11 @@
   - **崖線的壓縮（`K=0.30`，上一輪加的）還在，理由沒變**：1:1 的崖線從 18 m 外看是一條 1.5° 的帶。**但水幕的條紋不是**：tile 從 3.8 m 改成 1.5 m（`u=150`）——3.8 m 一條在 84 m 外是 46 px 的直條，整個瀑布像帆布（`.preview/goat69mj`）。
   - **兩個站的取景（都量過，frames 在 `.preview/goat69ml`）**：stop 2 `x 250 z 4200 yaw 70 pitch 6`「the rail above the upper river」——隔著水池看加拿大側的水幕＋林線；stop 3 `x 250 z 5379 yaw 88 pitch 14`「Terrapin Point」——**鋪面 → 欄杆 → 水幕 → 林線 → 天**，量到空框 **0%**（`.preview/goat69ml/stop3-yaw88-p14`）。站位從 x 700 收到 250：欄杆在 x 7.85–8.35，站在 700 等於離一道 92 cm 的牆 0.7 m，畫面是一條石頭斜線（`.preview/goat69mk`）。
   - **閘門（本輪 artefact）**：`verify-island` 全站 40 stops＋goat 4 stops 全過（41.7／16.7／**13.3**／**0**% 空框）、walk 201/201、look 全量到、rail 4/4、skills 75/75、collision 28/28（另外跑）；`_map`／`_shot_at`／`_box.py` 三個量具照舊。
-  - **還沒做的，照實寫**：美國瀑布那一面**還是舊的 `falls` prop 畫法**（25 m 外是直條柵欄，`.preview/goat69mh/stop1-yaw-90`），沒有改成世界的水幕；鋪面在腳下偏亮（最終幀 `_box` 量 143.7，記錄值是 121）；林線那一帶偏暗（`canopy` 的斑塊）；水面在 5 m 內仍偏平（`rapids` tile 900 cm）。這三項是下一輪的 P6。
+  - **同一輪補的三件（第二趟）**：
+    - **回頭把一個結論撤回**：我原先寫「美國瀑布還是舊的 `falls` prop 畫法」——**錯**。`_map` 在 stop 1 量到 30 格 `surveyed waterfall sheets` 25.1–33.9 m，它從上一輪起就**已經是世界水幕**（同一支 `curtain()`、`u=300`）。真正的缺陷是別的：那一面**西側根本沒有欄杆**，而 stop 1 的標籤寫著「the rail at the American Falls」。補上同款欄杆（`parapet()` 抽成函式，東西兩側共用），量到的西側牆在 1.5–2.2 m。
+    - **停點離欄杆多遠就是構圖**：穿過 96 cm 壓頂的視線以 `atan(0.72/d)` 下降，3 m 外是 14°，把 19.5 m 的水幕遮到只剩 6.7 m（`.preview/goat69mn/stop1-yaw-60-p6`）。stop 1 改到**欄杆邊**（`x -700`，離壓頂 1.2 m）、`yaw 285 pitch 12`：壓頂落到畫面最底，水幕就是整個框（`.preview/goat69mp/stop1-yaw-75-p12`）。
+    - **上水面的水流**：沿崖線內側 4.2／2.6／1.2 m 各一條 38 cm 寬的 `foam` 線（透明 0.20／0.26／0.32），`rapids` tile 900 → 380 cm。原因是近水面量到 **sd 6.3、27 色**——一張壁紙。
+  - **還沒做的，照實寫**：鋪面在腳下偏亮（最終幀 `_box` 量 143.7，記錄值 121；那個值在 `js/site.js` 的遠層與 `paintPavers` 裡共用，動它會移動別的頁）；林線那一帶偏暗（`canopy` 的斑塊）；近水面即使加了水流線仍偏平（要動 shader 才能真的流）。這三項列在 §3 P6-7。
 
 - **第 69k 輪：量具先說謊，場景才跟著錯** —— 站主說「通通都弄好」並且「每次必用 skills creator」。
   - **先撤回一個數字，因為整條診斷都建在它上面**：`_ray.mjs` 印的 `19416` 是**公分**，也就是 **194.16 m**；TODO 的 P6 把它寫成「19.4 km、一面牆不到一個 texel、mipmap 壓成一片」，於是「森林太遠／太近」整段推理都是錯的。用 `_map.mjs` 重新射線：店面後面那面樹牆在 **211–252 m**、`canopy` 91 個 prim、頂在視線上方 8.6°。**19416 cm ≠ 19.4 km；這條已寫進 `frame-evidence` skill。**
@@ -230,11 +234,11 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 還開著：
 1. **`hotelw` 旅館塔近看**：已給 `trcwall` 專屬磚，**仍欠一張近照**。本輪拍到 stop 5/6/7/8，視野裡沒有旅館塔（`_map.mjs` 在 stop 6 量到 `hotelw` 在 317–387 m）；需要先算 bearing 再取景，不要憑印象按快門。
 2. ~~SkyWheel 吊艙~~ **已結案（第 69l 輪）**：從 stop 2 yaw 26 / pitch −21.5 看得到整輪，`verify-wheel.cjs` 量到 14 個艙、閘門會紅也會綠。輪下的 stop 6/7/8 看不到輪是**構圖**（輪面在 x–y 平面、pitch 夾 ±24°），不是缺陷；不要為此轉動地標。
-3. **其他頁面的地標盤**：~~Goat 的兩道瀑布~~ —— 第 69m 輪把 Horseshoe 的崖線與水幕做成世界幾何（見 §1），美國瀑布仍是舊的 `falls` prop 畫法；Toronto 的 `falls` 模型（現在只有 `look` 的數值，沒有專屬量具）仍在。
+3. **其他頁面的地標盤**：~~Goat 的兩道瀑布~~ —— 第 69m 輪把兩道瀑布都做成世界幾何（Horseshoe 的崖線＋水幕＋弧線對面那一半；美國瀑布的崖線＋水幕），見 §1；Toronto 的 `falls` 模型（現在只有 `look` 的數值，沒有專屬量具）仍在。
 4. **量具覆蓋**：`_lane.mjs` / `_tile.mjs` 只量 Niagara 的鋪面；量別的頁面前，先確認 `FLOOR_PERIOD` 對那個 floor style 的意義。
 5. **Toronto 還平的三個**（`audit-all.mjs`，`STRICT=1` 會紅）：`boat-lake` **6.7**（24,455 px）、`tram-t` **18.0**（43,384 px）、`skyline-cn` **14.9**（172,630 px）。*驗收*：面積 ≥ 120×120 px 的物件 sd ≥ 20；小於這個面積的印「too small to judge」，不當成平。
 6. **Niagara 的夜**：`HOUR=night` 沒有夜色授權 ⇒ 整頁深藍（mean 42.1）、只有兩顆燈光暈。要不要給 Clifton 一條夜色記錄，是站主的決定（見 §4）。
-7. **Goat Island 三件沒收尾的**（第 69m 輪量的，見 §1 末）：①美國瀑布改成世界水幕（現況 25 m 外是直條柵欄）；②鋪面偏亮（最終幀量到 143.7，記錄值 121）；③近水面偏平（`rapids` tile 900 cm，5 m 內看不到流）。
+7. **Goat Island 三件沒收尾的**（第 69m 輪量的，見 §1）：①鋪面偏亮（143.7 vs 記錄值 121，共用繪法，要動先確認別的頁）；②林線那帶偏暗（`canopy` 斑塊）；③近水面仍偏平（加了 `foam` 水流線，要真的流得改 shader）。
 
 ## 4. 需要站主決定（代理不能替他決定）
 

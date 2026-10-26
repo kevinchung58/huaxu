@@ -3352,7 +3352,7 @@ def goat_world():
     # The upper river: from the walk's own edge out to the brink. The island's shore is the lane's
     # right edge for the whole walk, so this is the water between the visitor and the fall.
     up = [(8.3, -42.0), (8.3, 159.0)] + list(reversed(cr[:8]))
-    P.append(_hprim("f", fr, up, BRINK, pat="rapids", u=900, rot=round((20 - 0) % 360, 1),
+    P.append(_hprim("f", fr, up, BRINK, pat="rapids", u=380, rot=round((20 - 0) % 360, 1),
                     c="#6aa9ab", cn="#17333a", dg=0.5, s=9.0))
     # The water arriving at the brink: 1.6 m of pale churn along the crest, so the eye reads a
     # current running to a lip and not a colour boundary. (The 10 cm lip above carries the line.)
@@ -3363,6 +3363,18 @@ def goat_world():
                                   (cr[i + 1][0] - nrm[i + 1][0] * 0.7, cr[i + 1][1] - nrm[i + 1][1] * 0.7),
                                   (b[0], b[1]), (a[0], a[1])], BRINK + 0.03,
                         c="rgba(232,242,241,0.34)", pat="foam", u=1400, d0=1, s=9.5))
+    # A current on the upper river, so the water arriving at the brink is running water and not a
+    # colour field. Three thin foam lines inside the crest, faint to strong: at five metres from the
+    # rail a single pattern tile reads as wallpaper (`_box` on the near water: sd 6.3, 27 colours).
+    for d in (4.2, 2.6, 1.2):
+        for i in range(len(cr) - 1):
+            a = (cr[i][0] - nrm[i][0] * d, cr[i][1] - nrm[i][1] * d)
+            b = (cr[i + 1][0] - nrm[i + 1][0] * d, cr[i + 1][1] - nrm[i + 1][1] * d)
+            a2 = (a[0] - nrm[i][0] * 0.38, a[1] - nrm[i][1] * 0.38)
+            b2 = (b[0] - nrm[i + 1][0] * 0.38, b[1] - nrm[i + 1][1] * 0.38)
+            P.append(_hprim("f", fr, [a, b, b2, a2], BRINK + 0.02,
+                            c="rgba(226,238,236,%.2f)" % (0.20 if d > 3 else (0.26 if d > 2 else 0.32)),
+                            pat="foam", u=700, d0=1, s=9.5))
     # The brink's own lip: unbroken pale line where the water lets go. Without it the crest is a
     # colour boundary rather than an edge.
     for i in range(len(cr) - 1):
@@ -3501,33 +3513,33 @@ def goat_world():
     rlen = sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(rl, rl[1:]))
     rr = resample(rl, max(2, round(rlen / 3.0)))
     rn = normals(rr, -1)                 # the walker's side, so the wall is seen from inside
-    for i in range(len(rr) - 1):
-        a, b = rr[i], rr[i + 1]
-        P.append(_prim("x", [fr.cm(*a, 0.0), fr.cm(*b, 0.0), fr.cm(*b, 0.92), fr.cm(*a, 0.92)],
-                       pat="stonewall", u=110, ax="v", c="#7a766d", cn="#23262b", dg=0.8,
-                       fn=_fn(fr, *rn[i])))
-        P.append(_prim("f", [fr.cm(*a, 0.92), fr.cm(*b, 0.92), fr.cm(*b, 0.96), fr.cm(*a, 0.96)],
-                       c="#8d8a80", cn="#2a2d33", dg=0.9))       # the coping, the brightest line
-    for i, (e, n) in enumerate(rr):
-        if i % 1 and i not in (0, len(rr) - 1):
-            continue
-        P.append({"t": "f", "p": [fr.cm(e - 0.14, n - 0.14, 0.96), fr.cm(e + 0.14, n - 0.14, 0.96),
-                                  fr.cm(e + 0.14, n + 0.14, 0.96), fr.cm(e - 0.14, n + 0.14, 0.96)],
-                  "c": "#6b6860", "cn": "#202329", "dg": 0.85})
+    def parapet(run, side):
+        """One run of the same kit: 92 cm of `stonewall`, its coping, a post every 3 m."""
+        L = sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(run, run[1:]))
+        pts = resample(run, max(2, round(L / 3.0)))
+        ns = normals(pts, side)         # the walker's side, so the wall is seen from inside
+        for i in range(len(pts) - 1):
+            a, b = pts[i], pts[i + 1]
+            P.append(_prim("x", [fr.cm(*a, 0.0), fr.cm(*b, 0.0), fr.cm(*b, 0.92), fr.cm(*a, 0.92)],
+                           pat="stonewall", u=110, ax="v", c="#7a766d", cn="#23262b", dg=0.8,
+                           fn=_fn(fr, *ns[i])))
+            P.append(_prim("f", [fr.cm(*a, 0.92), fr.cm(*b, 0.92), fr.cm(*b, 0.96), fr.cm(*a, 0.96)],
+                           c="#8d8a80", cn="#2a2d33", dg=0.9))   # the coping, the brightest line
+        for i, (e, n) in enumerate(pts):
+            P.append({"t": "f", "p": [fr.cm(e - 0.14, n - 0.14, 0.96), fr.cm(e + 0.14, n - 0.14, 0.96),
+                                      fr.cm(e + 0.14, n + 0.14, 0.96), fr.cm(e - 0.14, n + 0.14, 0.96)],
+                      "c": "#6b6860", "cn": "#202329", "dg": 0.85})
 
-    # The spray. The crest's own apex is the point farthest from the chord between its ends -- the
-    # same place the Canadian page puts its column, found the same way, so the two pages agree about
-    # where the mist is without either one naming it.
-    # Round 69m, the mist, and why there is no column here.
-    #
-    # The Canadian page's funnel test puts the plume at the crest's own apex, and that is right from
-    # Table Rock, where the apex is 345 m out. Mapped into this walk the same test lands somewhere
-    # else: the walk *ends* at the American end of the brink, so the horseshoe's apex is behind the
-    # visitor and the tail's own "farthest from the chord" node is 35 m from the eye. Measured at
-    # stop 2 with a column there, 72 of 96 rays met spray at 12.9-24.3 m and nothing else -- a wall
-    # of billboards, which is round 60's finding again (a puff bigger than the thing it stands for
-    # is a screen). What Terrapin actually gets is the veil the brink throws *up* along its whole
-    # length, not a column: small, faint, and on the water rather than in front of the eye.
+    parapet(rl, -1)
+    # Round 69m: the other edge. Stop 1 is called "the rail at the American Falls" and there was no
+    # rail on that side at all -- the walk's west edge was a cut with the channel 19 m below it. One
+    # run of the same kit, mirrored (`side` +1 puts the face toward the walker).
+    parapet([(-8.2, -4.0), (-8.2, 155.4)], 1)
+
+    # The mist. Round 69m first put the Canadian page's funnel test here and it put a column 12.9 m
+    # from the eye -- a wall of billboards (round 60's finding again: a puff bigger than the thing it
+    # stands for is a screen). The horseshoe's plume belongs at the fall's own foot, 80 m out, which
+    # is where the two columns below stand; nothing is placed between the visitor and the brink.
     return P
 
 
@@ -6539,8 +6551,16 @@ DISTRICTS = [
             # Round 58: the stop's own pitch stays at 9 — it already looked *down* at the brink and
             # the flat frame the owner saw came from the painter, not from where the camera pointed.
             # (The drag in the harness aims by the opposite sign, which is how a round was spent
+            # Round 69m: the rail is 3 m from this stop and 92 cm tall, so at the authored pitch of
+            # 9 it hid everything below 14.6 degrees -- the American's sheet is 19.5 m deep and only
+            # its top 6.7 m stood above the coping (`.preview/goat69mn/stop1-yaw-60-p6`). The stop
+            # moved to the rail itself (x -700, 1.2 m from the coping at x -8.2) and turned to yaw
+            # 285. Distance from a parapet is the whole composition: the sight line through a 96 cm
+            # coping descends at atan(0.72 / d), so 3 m away it cuts the falls at 14 degrees while
+            # 1.2 m away it cuts at 31 -- at the rail the coping is at the bottom of the frame and
+            # the sheet is the frame.
             # turning this stop the wrong way before the frames were compared.)
-            {"z": 2450, "x": -520, "yaw": 270, "pitch": 9, "label": "the rail at the American Falls"},
+            {"z": 2450, "x": -700, "yaw": 285, "pitch": 12, "label": "the rail at the American Falls"},
             # Round 69m: from the middle of the walk the falls cannot be in frame, and that is a
             # measurement now, not an opinion. The crest runs 6-17 m off the walk's right edge and
             # the sheet falls *away* from it, so mid-walk the frame is paving, rail, a 6 m channel
