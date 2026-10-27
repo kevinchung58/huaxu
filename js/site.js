@@ -8296,7 +8296,18 @@ function leaveOverlay(root, trigger) {
         // the walk is free and this branch does not run.
         const wishAlong = (vx * tX + vd * tD) * dt;
         if (Math.abs(wishAlong) > Math.abs(along)) along = wishAlong;
-        if (Math.abs(along) < 1.9) {
+        /* Round 73: the dead zone is a speed, not a distance. The 1.9 cm this used to ask for is
+           exactly 115 cm/s at a 16.6 ms frame -- the creep's own speed -- but a step is not always a
+           frame: `moveBody` walks any hop longer than 2.6 cm in micro-steps, so an ordinary 2.8 cm
+           frame at full walking speed arrives here as two 1.4 cm hops, each below a fixed 1.9, and
+           every frame spent against a long face was read as "straight into a corner". The assist
+           then crept the body toward the room's centre at 115 cm/s while the visitor pressed on
+           along the face: measured in the Moji hall (`.verify/_aisleprobe.cjs`), a body walking east
+           along the port table stalled at x 368 with the aisle behind it closing. Scaled by the
+           step's own dt, the same threshold means the same thing at any frame length and any
+           sub-sampling, and a body pressing along a face slides instead of being dragged back. */
+        const deadAlong = 115 * dt;
+        if (Math.abs(along) < deadAlong) {
           // Straight into a corner: the bisector leaves neither face a tangent to ride, and W+A
           // is exactly 45° to an axis-aligned box — the old solver's signature freeze. Assist it
           // like the 2-D games do: pick the side whose next steps are clear and creep round it,
@@ -8804,6 +8815,24 @@ function leaveOverlay(root, trigger) {
       listBtn.focus({ preventScroll: true });
     }
   };
+  /* Round 73: a landmark's record is read where the lane is written out, not in a window over the
+     picture. Opening it opens the drawer, opens the folded list it lives in, carries the visitor to
+     that row and marks it for a moment -- so a press on the falls has an answer that is the falls'
+     own words, and the picture is never covered by anything. */
+  let calledRow = null, calledTimer = 0;
+  const revealThing = (el) => {
+    const row = el ? document.getElementById(`thing-${el.dataset.obj}`) : null;
+    toggleList(true);
+    if (!row) return;
+    const box = row.closest("details");
+    if (box) box.open = true;
+    if (calledRow) calledRow.classList.remove("is-called");
+    if (typeof row.scrollIntoView === "function") row.scrollIntoView({ block: "center" });
+    row.classList.add("is-called");
+    calledRow = row;
+    if (calledTimer) clearTimeout(calledTimer);
+    calledTimer = setTimeout(() => { row.classList.remove("is-called"); calledRow = null; }, 2400);
+  };
   const boot = () => {
     // A texture that arrives after the first paint would otherwise stay black until the visitor
     // moves, so the frame it lands in is repainted on its own. Attached here, not where the images
@@ -8833,26 +8862,12 @@ function leaveOverlay(root, trigger) {
     if (infoBtn) infoBtn.setAttribute("aria-expanded", "false");
     if (wasOpen) overlayLeft();
   };
-  const showCard = (m) => {
-    if (!card) return;
-    const wasOpen = !card.hidden;
-    tutorCardOpened();          // the guide's third step completes on a card actually opening
-    const where = card.querySelector("[data-walk-where]");
-    const title = card.querySelector("[data-walk-title]");
-    const hint = card.querySelector("[data-walk-hint]");
-    card.dataset.mode = "prop";
-    if (asideEl) asideEl.hidden = true;      // the lane's own note is not this prop's business
-    if (where) where.textContent = `${district} · ${metres(m.z)} in`;
-    const st = m.states ? (m.states[m.st] || null) : null;
-    if (title) title.textContent = m.el.dataset.title || "";
-    if (hint) hint.textContent = st ? st.say : (m.el.dataset.hint || "");
-    if (liveEl) liveEl.textContent = statusEl ? statusEl.textContent : "";
-    card.hidden = false;
-    if (!wasOpen) overlayEntered();
-    if (infoBtn) infoBtn.setAttribute("aria-expanded", "false");
-    const btn = card.querySelector("[data-walk-card-close]");
-    if (btn) btn.focus({ preventScroll: true });
-  };
+  /* Round 73: `showCard(m)` is gone. It was the window that opened over the picture with a prop's
+     paragraph in it, and the owner has now ruled on it twice: 「你幫我全部拿掉這種」 and then
+     「全部拿掉多餘的。你只要真的有意義的物件才留著」. A press either does something (goes through a
+     door, shows a photograph, rides, plays, opens a shutter on a door you can use) or the thing was
+     never a button -- the generator's `is_target` decides which. The paragraph is not lost: it is
+     written in the lane's own list, which is where a landmark's press now opens it. */
   /* --- the guide: a first-visit strip that teaches the keys by having them used (round 46) ---
      The rule is that nothing is written over the space, and the guide honours it: it lives in the
      bottom chrome, takes no input away, grabs no focus, and never returns once learned. Each step
@@ -8873,7 +8888,7 @@ function leaveOverlay(root, trigger) {
   const TUT = [
     "Turn first: the lane continues behind you. Arrow keys or A / D, or drag the view.",
     "Now walk in: hold W; Shift lets it run. The walls hold you — nothing here is a picture to walk through.",
-    "Stand in front of anything worth reading and press E, or press the bar that names it at the foot of the picture: every record lives behind a button, never painted on the scene.",
+    "Stand in front of something and press E, or press the bar that names it at the foot of the picture: a door takes you through, a picture shows you the reel, a machine plays. What everything else is, and why, is written in the list.",
     "Those ticks above are the rail. Press one and the lane carries you to where the view is worth stopping for; Esc walks you back out.",
   ];
   let tutStep = -1, tutYaw = 0, tutX = 0, tutD = 0;
@@ -8898,7 +8913,9 @@ function leaveOverlay(root, trigger) {
     if (tutStep === 0 && Math.abs((((yaw - tutYaw) % 360) + 540) % 360 - 180) > 25) showTutor(1);
     else if (tutStep === 1 && Math.hypot(x - tutX, depth - tutD) > 180) showTutor(2);
   };
-  const tutorCardOpened = () => { if (tutStep === 2) showTutor(3); };
+  // The third step completes when a press is *answered* -- round 73, that is a door, a reel, a toy or
+  // a landmark's record, never a card for whatever the visitor happened to be facing.
+  const tutorAnswered = () => { if (tutStep === 2) showTutor(3); };
 
   /* The space's own text — the legend, the disclaimer, the fallback sentence — is written into the
      page inside a card that is closed until you ask for it. Nothing in the head-up display is a
@@ -8915,8 +8932,8 @@ function leaveOverlay(root, trigger) {
     if (title) title.textContent = thing ? `${thing} · ${metres(reach.z - depth)} ahead`
                                           : "How to be in the lane";
     if (hint) hint.textContent = thing
-      ? "Its own card holds the reason a thing like this is in the space: press E, or open the list for "
-        + "everything at once."
+      ? "It is in front of you and it answers a press: E, or the bar at the foot of the picture. "
+        + "Everything this lane draws, and what pressing it does, is written out in the list."
       : "Nothing here is labelled and nothing is named: the shutters carry no shop, the board is blank, "
         + "because a name would be a claim about a place that is drawn rather than found.";
     if (liveEl) liveEl.textContent = statusEl ? statusEl.textContent : "";
@@ -8944,6 +8961,13 @@ function leaveOverlay(root, trigger) {
 
   const act = (m) => {
     if (!m) return;
+    /* Round 73 puts the guard back at the top, and it is safe again because the *generator* now
+       guarantees the invariant this file had to work around: `is_target` gives a press to anything
+       with a verb (a door, a photograph, a ride, a game, a demonstration, a landmark, a door you use),
+       so a thing can no longer be quiet and be a verb at once. Round 71 had the guard here and moved
+       it down, because the goldfish stall was scenery by kind and a toy by behaviour; that case is
+       decided in `is_target` now, which is the only place that knows what a thing does. */
+    if (m.quiet) return;
     // The curtain at your back is the way out of the space and into the rest of the site, and the
     // record says so: `data-leave` is authored on the prop, so the renderer obeys rather than knowing
     // an id. Pressing it used to open a card that read "part it to leave the lane" and did nothing,
@@ -8952,8 +8976,10 @@ function leaveOverlay(root, trigger) {
     if (leave) { window.location.assign(leave); return; }
     // A stall with a game plays before it explains: the owner asked for toys you press in the
     // environment itself, and a card that says "press to play" instead of playing is a dead end.
-    if (m.el.dataset.ride && boardRide(m.el)) return;
-    if (m.el.dataset.game && window.huaxuStalls && window.huaxuStalls.open(m.el.dataset.game, m.el)) return;
+    if (m.el.dataset.ride && boardRide(m.el)) { tutorAnswered(); return; }
+    if (m.el.dataset.game && window.huaxuStalls && window.huaxuStalls.open(m.el.dataset.game, m.el)) {
+      tutorAnswered(); return;
+    }
     // Pressed models demonstrate: the bridge replays its opening, the basin its ripple. The real
     // clock is never rewritten — the record's schedule (six openings, nothing after dark) keeps
     // running underneath, and the demonstration rides on top as a 24-second envelope. This is the
@@ -8987,25 +9013,39 @@ function leaveOverlay(root, trigger) {
       };
       if (pulse) clearTimeout(pulse);
       pulse = setTimeout(pump, 90);
+      tutorAnswered();
       return;
     }
-    if (m.el.dataset.story && openStoryRail(m.el.dataset.story, m.el)) return;
-    if (m.el.dataset.frame !== undefined && openDistrictRail(Number(m.el.dataset.frame), m.el)) return;
-    if (m.el.dataset.obj === "vending" && openDistrictRail(0, m.el)) return;
-    // A thing with stops is opened by being *used*: the shutter goes up, the flap swings, and the card
-    // says what the lane looks like now. Pressing it again takes it to the next stop.
-    if (m.states && m.states.length > 1) { setState(m, (m.st + 1) % m.states.length); draw(); }
-    /* Scenery never shows a record (round 71). The guard sits *here*, after every real verb, and not
-       at the top of the function: `quiet` means "not announced and not written about", not "does
-       nothing" -- the goldfish stall is scenery by kind and a playable toy by behaviour, and a guard
-       at the top took the toy away with the card. */
-    if (m.quiet) return;
-    showCard(m);
+    if (m.el.dataset.story && openStoryRail(m.el.dataset.story, m.el)) { tutorAnswered(); return; }
+    if (m.el.dataset.frame !== undefined && openDistrictRail(Number(m.el.dataset.frame), m.el)) {
+      tutorAnswered(); return;
+    }
+    /* A thing with stops is *used*: a door opens, the glass floor comes on. Round 73 keeps only the
+       two kinds whose state is what standing there is for (a door, the LookOut's glass floor); the
+       seventeen shopfront and arcade toggles are the painting now. The sentence the state carries is
+       announced on the record line instead of being painted into a card -- a screen reader gets it
+       and a sighted visitor gets the door opening, which is the change itself. */
+    if (m.states && m.states.length > 1) {
+      setState(m, (m.st + 1) % m.states.length); draw();
+      const said = m.states[m.st] && m.states[m.st].say;
+      if (recordEl && said) { delete recordEl.dataset.demoHold; recordEl.textContent = said; }
+      tutorAnswered();
+      return;
+    }
+    /* The one record that is still worth a whole press: the thing the place is named for. It opens
+       the written lane on its own row rather than a window over the picture (round 73). */
+    if (m.landmark) { revealThing(m.el); tutorAnswered(); }
   };
   const nearestOf = (el) => meta.find((m) => m.el === el);
+  /* Stand in front of a frame that has been opened. The lateral share used to be 0.45 of the frame's
+     own x, which for a print hung at x −295 cm left the body 202 cm from it: one hand's reach is 190,
+     so the thing you had just opened was out of reach of the next press -- you had to step in to open
+     it again, and the bar at the foot of the picture disappeared the moment the reel closed. 0.58
+     stands 1.7 m off the wall, inside the reach, which is also the distance a print on a shutter is
+     read from. */
   const atFrame = (n) => {
     const m = meta.find((it) => it.el.dataset.frame === String(n));
-    if (m) glideTo(m.z - 120, m.x * 0.45);
+    if (m) glideTo(m.z - 120, m.x * 0.58);
   };
 
   /* --- input: every verb has both a key and a finger --- */

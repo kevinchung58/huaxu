@@ -100,8 +100,10 @@ function patchedSite() {
      "let along = (__d.along0 = +((cx - oldX) * tX + (cz - oldDepth) * tD).toFixed(3));"],
     ["if (Math.abs(wishAlong) > Math.abs(along)) along = wishAlong;",
      "if (Math.abs(wishAlong) > Math.abs(along)) along = wishAlong; __d.along1 = +along.toFixed(3); __d.t = [+tX.toFixed(3), +tD.toFixed(3)]; __d.cx = +cx.toFixed(2); __d.cz = +cz.toFixed(2); __d.wish = +(vx * tX + vd * tD).toFixed(2);"],
-    ["if (Math.abs(along) < 1.9) {",
-     "__d.dead = Math.abs(along) < 1.9; if (__d.dead) {"],
+    /* Round 73: the dead zone carries its own name now (it is a speed, `115 * dt`, not the fixed
+       1.9 cm a 16.6 ms frame made of it), so the anchor follows the line rather than the number. */
+    ["if (Math.abs(along) < deadAlong) {",
+     "__d.deadAlong = deadAlong; __d.dead = Math.abs(along) < deadAlong; if (__d.dead) {"],
     ["let sgn = cornerAssist",
      "let __c1 = clear(1), __cm1 = clear(-1); __d.clear = [__c1, __cm1]; __d.ca0 = cornerAssist; let sgn = cornerAssist"],
     ["const qx = px + tX * sgn * creep, qd = pd + tD * sgn * creep;",

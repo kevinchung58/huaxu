@@ -196,12 +196,29 @@ for (const file of PAGES) {
        bar && !bar.hidden && bar.textContent.trim() === (reach.dataset.title || "").trim(),
        bar ? JSON.stringify(bar.textContent) : "missing");
     clearAll(doc);
+    /* Round 73: a press is answered by one of four things, and "a window with a paragraph in it" is
+       no longer one of them. What can answer: a surface (a reel, the written lane, a toy, the note);
+       a door the thing names (the answer is leaving, which jsdom records as a navigation); the thing
+       you use changing its own state (a lift opening, the glass floor coming on); a landmark opening
+       its own row in the written lane. Anything else is a press that does nothing, and it fails. */
+    const stateBefore = doc.querySelector(".walk-hit.is-reach")?.dataset.state;
+    const navsBefore = navs.length;
     click(bar);
-    await sleep(60);
+    await sleep(80);
     const after = surfaces(doc);
-    const aske = after.card === 1 || after.plate === 1 || after.game === 1 || after.list === 1;
-    ok(`${file}: pressing the bar answers with a surface, never nothing`, aske,
-       JSON.stringify(after));
+    const stateAfter = doc.querySelector(`[data-obj="${reach.dataset.obj}"]`)?.dataset.state;
+    const el = doc.querySelector(`[data-obj="${reach.dataset.obj}"]`);
+    const answers = {
+      surface: after.card === 1 || after.plate === 1 || after.game === 1 || after.list === 1,
+      left: navs.length > navsBefore,
+      changed: stateBefore !== undefined && stateAfter !== stateBefore,
+      /* a pressed model demonstrates: the wheel takes a courtesy turn, the basins ripple. That is an
+         answer with no surface and no stop of its own, so it is measured as the envelope it opens. */
+      demoed: reach.dataset.demo !== undefined && !!el && el.__demoAt !== undefined,
+    };
+    ok(`${file}: pressing the bar is answered -- a surface, the door it names, or the thing it uses`,
+       answers.surface || answers.left || answers.changed || answers.demoed,
+       `${reach.dataset.obj}: ${JSON.stringify(answers)} ${JSON.stringify(after)}`);
   } else {
     ok(`${file}: the bar is hidden when nothing is in reach`, !bar || bar.hidden);
   }

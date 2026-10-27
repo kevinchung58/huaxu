@@ -1,6 +1,6 @@
 ---
 name: walk-input
-description: How a visitor presses things in a walk room, how the head turns, and how every surface is left again. Use whenever a tap, key, drag, reach, card, bar, stop, overlay or exit is added, moved, removed or re-tuned; whenever a gate or probe drives the lane with a finger, a key or the browser's own back gesture; and before claiming that a control "feels right". Owns the press model (a press is a control you can read), the quiet-versus-dead distinction, the real-time turn contract with its constants, the enter/exit history contract (Back folds before it flees), and the instruments that measure all of it.
+description: How a visitor presses things in a walk room, how the head turns, and how every surface is left again. Use whenever a tap, key, drag, reach, card, bar, stop, overlay or exit is added, moved, removed or re-tuned; whenever a gate or probe drives the lane with a finger, a key or the browser's own back gesture; and before claiming that a control "feels right". Owns the press model (a press is a control you can read), the prune rule (a prop is a thing you can press only when the press does something), the quiet-versus-dead distinction, the real-time turn contract with its constants, the enter/exit history contract (Back folds before it flees), and the instruments that measure all of it.
 ---
 
 # Walk input
@@ -44,30 +44,83 @@ Check it with `.verify/_popup-audit.mjs` (`ROOMS= STOP= GRID= YAW=`). It reports
 headings. A pass is `0/N taps opened a card` **and** `bar yaw … names "<title>" -> CARD "<title>"`.
 An audit that only proves the first half has proved that nothing can be pressed.
 
-## 2. Quiet is not dead
+## 2. Only a thing that does something is a thing you press
 
-`data-quiet="1"` means **not announced and not written about** — no reach prompt, no card. It does
-not mean "does nothing".
+The round-72 answer to "many unnecessary objects pop a window" still left 107 pressable props on eight
+pages, because a press that opened *nothing* was still a press: it opened the card. The owner's ruling
+ended that: 「我說的就是全部拿掉多餘的。你只要真的有意義的物件才留著，這裡面很多都是真的會導致操作很煩。」
 
-`act(m)` therefore runs every real verb first — `data-leave`, `data-ride`, `data-game`, `data-demo`,
-`data-story`, `data-frame`, `vending`, `states` — and only then refuses the card:
+**The test, in the generator, in one function.** `is_target(o)` in `_gen_html.py` returns True only when
+the press *does* one of these:
+
+- it **leaves** (`leave`) or carries you to another room;
+- it **shows photographs** (`frame is not None` — prints, posters, the shutter-hung photographs);
+- it **rides** (`ride`), **plays** (`game`), or **demonstrates** (`"demo" in o` — the models that take a
+  courtesy turn or ripple when touched);
+- it is **the landmark the place is named for** (`landmark`);
+- it is **used**: a door that opens, the glass floor (`states` on `door`/`glassfloor`).
+
+Everything else is painting. Measured with `.verify/_census.mjs` on the eight walk pages: **245 press
+boxes, 107 pressable before the rule, 43 after** — street 6 · rooms 7 · fukuoka 7 · toronto 3 ·
+niagara 9 · goat 6 · journey 1 · cntower 4. What stopped being a button: shop bays, plinths, massing,
+the skyline / dome / track / tram / island / boat / pool / ship, the station front, the customs house,
+Osaka Shosen, the Dalian hall, the retro high-mart, vending, the hall, and 17 shutter / arcade / plaza /
+funhouse / kiosk fronts.
+
+**The card is deleted, not hidden.** `showCard()` is gone from `js/site.js`. A press is answered by one of
+four things — a surface (a print's reel, the written lane, a toy, the note), the door it names, the
+thing's own state (a lift opening, the glass floor), or a demo — and by nothing else. Anything else is a
+press that does nothing, which is the thing the owner asked to remove. Hiding the card behind a named
+bar is **not** a fix: the bar still asks a visitor to press a shopfront that has nothing to say.
+
+**The paragraph is not deleted; it is written down.** The details block in the lane is
+`<details class="walk-things" data-walk-things>`: every drawn thing in the order you walk past it, and a
+pressable row carries `<span class="thing-does">press E — <verb></span>` plus `li.is-pressable`. Each row
+has `id="thing-<obj>"`, which is what `revealThing()` opens, scrolls to and flashes (2400 ms) — landmarks
+open their own row that way instead of a surface. So a visitor can still read what a shopfront is and
+what is left out of it (`.verify/_r73probe.mjs`, `verify-walk`'s "the paragraph that used to be in that
+card is in the lane").
+
+**`data-states` ships only on things you use.** The generator gates it with `is_target(o)` too: the eight
+pages carry it on `rooms-cntower.html` alone (3 props: `lift-cn`, `glassfloor-cn`, `lift-skypod`).
+A state that changes a painting's colour is not a verb.
+
+## 3. Quiet is not dead
+
+`data-quiet="1"` means **not announced and not written about** — no reach prompt, no row in the lane.
+It does not mean "does nothing".
+
+Since round 73 there is nothing after the verbs, so the invariant is inverted and the guard can live
+where it is cheapest: **a thing with a verb is never quiet**, because the generator decides both at
+once. `is_target(o)` gives a press to anything with a verb, and `walk-object()` writes `data-quiet`
+only when `not is_target(o)`; `act(m)` therefore starts with `if (m.quiet) return;` and no verb can be
+swallowed by it.
 
 ```js
-if (m.states && m.states.length > 1) { setState(m, (m.st + 1) % m.states.length); draw(); }
-if (m.quiet) return;   // scenery has no record to show
-showCard(m);
+const act = (m) => {
+  if (!m) return;
+  if (m.quiet) return;                       // the generator guarantees a verb is never quiet
+  if (m.el.dataset.leave) { location.assign(m.el.dataset.leave); return; }   // leaves
+  if (m.el.dataset.ride && boardRide(m.el)) { tutorAnswered(); return; }     // rides
+  if (m.el.dataset.game && huaxuStalls.open(...)) { tutorAnswered(); return; }// plays
+  if (m.el.dataset.demo !== undefined) { ...demo envelope...; return; }      // demonstrates
+  if (m.el.dataset.story && openStoryRail(...)) { ...; return; }             // shows
+  if (m.el.dataset.frame !== undefined && openDistrictRail(...)) { ...; return; }
+  if (m.states && m.states.length > 1) { setState(...); say on the record line; return; }  // is used
+  if (m.landmark) { revealThing(m.el); tutorAnswered(); }                    // names the place
+};
 ```
 
-At the *top* of the function that guard took the toy away with the card. And a prop that carries one
-of those verbs must be a target at the source: `is_target()` in `_gen_html.py` returns True for
-`game`, `ride`, `story` and `"demo" in o`, not only for `kind in PLACE_KINDS` — a board with a game
-is a place, whatever it is made of.
+The goldfish stall is the case that proves the rule: it is `kind: "board"` (scenery by kind) and a toy
+by behaviour. Round 71 answered that by moving the guard down, which kept the toy and left a card at the
+bottom; round 73 answers it in `is_target`, the one place that knows what a thing *does*. If you ever
+find yourself moving this guard again, the bug is in the generator's predicate, not in `act`.
 
 **Rule.** When you remove an input route, enumerate every verb that only had that route. The way to
 enumerate them is to run the gates that press things, not to reason about it:
 `verify-games`, `verify-walk` (finger block), `_popup-audit`, `verify-story`, `verify-nowebgl`.
 
-## 3. Pay the visitor's own time
+## 4. Pay the visitor's own time
 
 The head turns in real milliseconds, never in frames.
 
@@ -92,16 +145,46 @@ Measured with `.verify/_turnprobe.mjs` (browser, real events): tap **2.97–2.98
 500 ms **43.4°**, 1000 ms **85.2°**, drag **0.065 °/px** at 60/200/400 px. Before round 71 the same
 probe read tap 7.4–9.2°, 200 ms 37.7°, 1 s 140.3°, drag 0.09 °/px.
 
+**A threshold in centimetres is a speed with a frame's length hidden inside it.** The corner assist in
+`moveStep` only helps when the press is nearly perpendicular to the face, and it asked for
+`|along| < 1.9` — 1.9 cm, which is exactly 115 cm/s at a 16.6 ms frame. But a step is not always a
+frame: `moveBody` walks any hop longer than 2.6 cm as micro-steps, so an ordinary 2.8 cm frame at full
+walking speed arrives at `moveStep` as two 1.4 cm hops, both under a fixed 1.9, and *every* frame spent
+against a long face was read as "straight into a corner". The assist then crept the body toward the
+room's centre at 115 cm/s while the visitor pressed on along the face. Measured in the Moji hall
+(`.verify/_aisleprobe.cjs`): walking east along the port table stalled at **x 368** and never reached
+the aisle; 2 of 6 entry positions stalled, which is why `verify-rooms-e2e` looked flaky. The cure is to
+say the same thing as a speed — `const deadAlong = 115 * dt` — which means the same at any frame length
+and any sub-sampling. After it: 6 of 6 reach the wall (554–566 cm) in ≤ 270 frames, and the gate is
+green. **When a solver constant is compared against a step, divide the intent by the step's own `dt`
+before comparing.**
+
 **Every instrument holds the same numbers.** A drag constant lives in three places or the aim lies:
 `js/site.js` `DRAG_DEG_PER_PX`, `.verify/_aim.mjs` (`DRAG_DEG_PER_PX`, `DEG_PER_KEY`), `_view.mjs`
 (`DRAG`), `verify-look.mjs` (`off / 0.065`). When a rate changes, `grep` for the old constant before
 running anything: `grep -rn "0\.09\|14\.4" .verify/`.
 
-## 4. Gates encode the contract, so a contract change edits the gate
+## 5. Gates encode the contract, so a contract change edits the gate
 
 - Keep the assertion, change the expectation. `verify-walk`'s finger block used to assert "a tap
   presses the thing you are standing in front of"; it now asserts the opposite, *plus* the bar, the
   pointer-click rule and the drag, and it grew from 201 to 205 assertions rather than shrinking.
+- **When the thing a gate stands in front of no longer exists, move the stand-in, not the assertion.**
+  Round 73 made shop bays painting, so every Tokyo assertion that opened one ("the shop at the posts",
+  "Esc folds what is open", "the keyboard's activation of that box", the guide's third step) opened
+  nothing and reported `#room-plate` as `class="modal"` — reach was nothing, so the press had no
+  target. The assertions were all still true; they now stand at the print hung on a shutter (west row,
+  x −295: `frame-sensoji` z 299, `frame-scramble` 1436, `frame-tower` 2601) and read its reel. A blind
+  turn-and-step cannot land on a prop that hangs at one depth, so `verify-walk` grew `walkToThing(id)`
+  — turn to the thing's own bearing, step in, repeat until `.walk-hit.is-reach` is it. Use that instead
+  of `hold("d", 988)` whenever the target is a specific prop.
+- **A press box's size is measured where a visitor meets it.** Facing a wall at 1.2 m nothing is on
+  screen, so `0 boxes` was the honest answer to "every visible press box is a fingertip"; the block now
+  turns back down the lane before counting. Ask what the visitor is looking at before asking how big
+  the boxes are.
+- `verify-overlay`'s bar assertion asks the same question the product does — **is the press answered?**
+  — and accepts exactly the four answers: a surface, the door the thing names, the thing's own state
+  changing, or a demo envelope (`el.__demoAt`). It no longer accepts "a card", because there is no card.
 - Durations tuned against an old rate must be **re-scaled**, not guessed: with the turn at 85 °/s
   instead of 120, every `hold("d", 700)` in `verify-walk` became `hold("d", 988)`
   (`× 120/85`) so the same 84° came back and the positional expectations downstream still described
@@ -125,7 +208,7 @@ running anything: `grep -rn "0\.09\|14\.4" .verify/`.
   lane's own `frameMs` (`max(6 × 400 ms, 4 × frameMs)`), and the refusal prints how long it was still.
   A gate that cannot tell "arrived" from "the machine is slow" is not evidence.
 
-## 5. Every way in needs the visitor's own way out
+## 6. Every way in needs the visitor's own way out
 
 The site's exits were all in-page controls (Esc, a close button, a door) and none of them was the
 gesture a phone actually has. Measured in a real browser with `.verify/_backprobe.mjs`:
@@ -159,10 +242,12 @@ phantom layer, focus returns, the reel folds, `research.html`'s publication card
 what it meant). jsdom cannot navigate, so "the Back finally leaves" is asserted in the browser probe
 and only "not swallowed by a phantom layer" in the gate — say which side holds which claim.
 
-## 6. Order of work for a change like this
+## 7. Order of work for a change like this
 
-1. Write or extend the probe **first** (`_popup-audit`, `_turnprobe`), and record the "before"
-   numbers in the round's notes. A UX complaint is a measurement request.
+1. Write or extend the probe **first** (`_popup-audit`, `_turnprobe`, `_census` for what is pressable
+   on each page, `_aisleprobe` for a solver stall), and record the "before" numbers in the round's
+   notes. A UX complaint is a measurement request: 「很多多餘的」 is a count, and 「操作很煩」 is a
+   route that does not arrive.
 2. Change `js/site.js`; `node --check js/site.js`; `python3 _gen_html.py` (the cache-buster and the
    emitted markup both come from there); re-run the probe for the "after" numbers.
 3. Update the instruments' constants, then the gates' expectations, then run the whole battery:
@@ -171,7 +256,7 @@ and only "not swallowed by a phantom layer" in the gate — say which side holds
    `_backprobe`.
 4. Only then write it down (this file), refresh `TODO.md`, and hand off.
 
-## 7. Refusals
+## 8. Refusals
 
 - Never re-open the picture as a press target "just for touch": that is the defect.
 - Never make the bar global (always visible, opening the nearest thing). It must be absent when
@@ -181,6 +266,12 @@ and only "not swallowed by a phantom layer" in the gate — say which side holds
   the keys, and the clamp stays.
 - Never report "the pop-up is gone" from a screenshot. The probe prints `0/N taps` and the bar's
   label; that pair is the claim.
+- Never answer "remove the superfluous" by hiding the card behind a control. A bar that offers to open
+  a shopfront which has nothing to say is the same defect with one more step: delete the verb, or give
+  the thing a real one.
+- Never delete the paragraph when you delete the card. The text moves to the written lane
+  (`walk-things`), in walking order, with the verb on the rows that have one — the site's content is
+  not expendable just because the surface was.
 - Never let a surface take the screen without pushing its history entry: a surface that skips
   `overlayEntered` is a surface where Back throws the visitor out of the place.
 - Never let Back *escape* the place while something is open to "keep the browser honest": Back is the

@@ -56,7 +56,7 @@ for (const file of PAGES) {
       liveIds: live.map((el) => el.dataset.obj),
       landmarkIds: landmarks.map((el) => el.dataset.obj),
       listRows: document.querySelectorAll("[data-walk-list] li, .walk-list li").length,
-      smallThings: /The small things/.test(document.body.textContent || ""),
+      smallThings: /The things here \(\d+\)/.test(document.body.textContent || ""),
     };
   });
   const problems = [];
@@ -70,7 +70,7 @@ for (const file of PAGES) {
   console.log(`   pressable: ${Object.entries(c.liveKinds).map(([k, n]) => `${k}×${n}`).join(", ")}`);
   if (c.landmarkIds.length) console.log(`   landmarks: ${c.landmarkIds.join(", ")}`);
   console.log(`   scenery:   ${Object.entries(c.quietKinds).map(([k, n]) => `${k}×${n}`).join(", ")}`);
-  console.log(`   the list has a "The small things" section: ${c.smallThings}`);
+  console.log(`   the lane lists the things here ("The things here (N)"): ${c.smallThings}`);
   await page.close();
 }
 await browser.close();

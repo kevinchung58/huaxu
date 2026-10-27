@@ -2748,6 +2748,45 @@ body.shell {
   visibility: hidden;
   transform: translateX(101%);
 }
+/* Round 73: the lane, written out, is where a thing's note is read. The list of things therefore
+   says which ones answer a press and what the press does -- that sentence is the whole of the
+   interface a visitor gets, so it has to be readable in one line. A row a landmark's press opened is
+   marked for a moment, which is the press's answer when no window appears. */
+.walk-things summary {
+  cursor: pointer;
+  padding: 0.35rem 0;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+.walk-things summary:hover,
+.walk-things summary:focus-visible { opacity: 1; }
+.walk-things ul { margin: 0 0 0.6rem; }
+.walk-things li { margin: 0 0 0.5rem; }
+.walk-things .thing-does {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.72em;
+  letter-spacing: 0.02em;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+.walk-things li.is-pressable b { font-weight: 700; }
+.walk-things li.is-called {
+  outline: 1px solid currentColor;
+  outline-offset: 0.35rem;
+  animation: walk-called 2.4s ease-out;
+}
+@keyframes walk-called {
+  0% { background: rgba(255, 214, 140, 0.35); }
+  100% { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .walk-things li.is-called { animation: none; }
+}
 .walk-list .block-title {
   color: var(--navy);
 }

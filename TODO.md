@@ -10,7 +10,18 @@
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、`rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支 / PR**：`arena/adedb8cc-huaxu` → `master`（本輪開 PR；合併要站主一句授權）。
 
-- **第 72 輪（本輪）—— 只有被點名的東西才准出現；每一個進得去的面，都要有站主本來就有的那個出口**：
+- **第 73 輪（本輪）—— 只剩真的有意義的物件；而「按著往前走卻被推回去」是解算器的死區寫成了公分**：
+  - 站主：「我說的就是全部拿掉多餘的。你只要真的有意義的物件才留著，這裡面很多都是真的會導致操作很煩。」**這一輪推翻第 72 輪的折衷**：把卡片藏在有名字的橫桿後面不算拿掉。
+  - **判準寫進產生器，一個函式**：`is_target(o)` 只給這幾種動詞——離開（`leave`）、給你看照片（`frame is not None`）、搭乘（`ride`）、玩（`game`）、示範（`"demo" in o`）、「這地方因它而命名」的地標（`landmark`）、**真的拿來用**（`states` 且 `kind` 是 `door`／`glassfloor`）。其餘都是畫。`.verify/_census.mjs` 量到：**245 個 hit box，改前 107 個可按，改後 43 個**（street 6 · rooms 7 · fukuoka 7 · toronto 3 · niagara 9 · goat 6 · journey 1 · cntower 4）。退出按鈕名單的：店面、基座、量體、天際線／圓頂／軌道／路面電車／島／船／池／船艦、站前、海關、大阪商船、大連會館、復古商場、販賣機、大廳，以及 17 面鐵捲門／拱廊／廣場／鬼屋／售亭立面。
+  - **卡片是刪掉，不是藏起來**：`js/site.js` 的 `showCard()` 已不存在。一次按壓只會被四種東西回答——表面（印刷的膠卷、文字廊、玩具、筆記）、它指名的門、它自己的狀態（升降梯開、玻璃地板亮）、示範——其餘什麼都沒有。閘門 `verify-overlay` 的橫桿斷言也改成問同一件事：**這一按有沒有被回答**（`surface`／`left`／`changed`／`demoed`）。
+  - **段落沒有刪，改成寫出來**：文字廊的 `<details class="walk-things" data-walk-things>` 依走過去的順序列出每一件被畫出來的東西；可按的列帶 `press E — <動詞>` 與 `li.is-pressable`，`id="thing-<obj>"` 是 `revealThing()` 打開、捲到、閃 2400 ms 的目標——**地標改開自己那一列，不再開表面**。原本「Asakusa Emaki… blank here」那種說明現在讀得到（`verify-walk` 的「the paragraph that used to be in that card is in the lane」）。
+  - **`data-states` 只出貨在真的拿來用的東西上**：產生器也用 `is_target(o)` 擋；八頁只剩 `rooms-cntower.html` 的 3 件（`lift-cn`、`glassfloor-cn`、`lift-skypod`）。十七個店面的開關狀態從此是畫。
+  - **閘門紅了十條，全部是「站的地方不見了」，不是產品壞了**：第 73 輪讓店面變成畫之後，每一條靠店面開卡的東京斷言都回報 `#room-plate class="modal"`——reach 是空的，所以那一按沒有目標。斷言本身仍然成立，改成站在**掛在鐵捲門上的印刷**（西側 x −295：`frame-sensoji` z 299、`frame-scramble` 1436、`frame-tower` 2601），讀它的膠卷。盲目的「轉 988 ms 再走 1500 ms」到不了一件掛在單一深度的東西，所以 `verify-walk` 長出 `walkToThing(id)`：轉到那件東西自己的方位、前進一步、直到 `.walk-hit.is-reach` 就是它。**改後 210/210 全綠**（原 205 條＋新的 5 條）。
+  - **順手抓到的真產品錯：楔角死區寫成公分，於是「按著沿著牆走」會被推回房間中央。** `moveStep` 的 `|along| < 1.9` 是 1.9 公分，正好是 115 cm/s × 16.6 ms；但 `moveBody` 會把超過 2.6 cm 的一步拆成 micro-step，所以全速 2.8 cm 的一幀到了 `moveStep` 是兩個 1.4 cm 的 hop，**兩個都小於 1.9**，於是每一幀沿著長面走都被判成「直直撞進角落」，assist 用 115 cm/s 把身體往房間中央蠕行。量到的（`.verify/_aisleprobe.cjs`，門司港大廳）：沿著港灣桌面向東走**卡在 x 368**、走不到側廊；6 個進入位置有 2 個卡住——這就是 `verify-rooms-e2e` 看起來「時好時壞」的原因（**在 `51b0197` 上也是紅的，不是本輪修剪造成的**）。修法是把同一件事說成速度：`const deadAlong = 115 * dt;`。改後 6/6 都走到牆邊（554–566 cm，≤ 270 幀），`verify-rooms-e2e` 回到 **72/72（0 failures）**。
+  - **站到剛打開的印刷前面**：`atFrame()` 的橫向比例 0.45 是為了 x −295 的印刷留了 202 cm，而單手可及的距離是 190 cm——你剛打開的東西按不到，膠卷一收，腳下的橫桿就不見了。改成 0.58（離牆約 1.7 m，仍在伸手可及內）。
+  - **量到的（第 73 輪）**：walk **210/210**、overlay **95/95**（比第 72 輪少 3 條：修剪後有 3 頁在起點身前沒東西，`else` 分支只斷言一次）、exit **82/82**、rooms-e2e **72/72**、feel **12/12**、games 23/23、body 73/73、nowebgl 35/35、story 27/27、rail 4/4、shapes 248、skills **80/80**、mirror PASS（73 % vs 1 %）、island 全部 47 個 stop 都看得到東西、wheel PASS、hotel PASS、`audit-all` 26/26 量到（平的 2：`hall-sl`、`skyline-cn`，與第 72 輪同一組）、shader-lits PASS；`_wedge2` 5 輪 0 freeze。
+
+- **第 72 輪 —— 只有被點名的東西才准出現；每一個進得去的面，都要有站主本來就有的那個出口**：
   - 站主兩句話：「甚至其他的東西 有很重要的你在跳介面。我發現很多東西 因為選取會跳這種介面 你全面審查清楚 有必要的在跳。」＋「還有你任何的進出環境 請全面你E2E進去用發現問題並系統性解決問題。」
   - **(a) 全面審查：整站已經沒有任何「自己跳出來」的表面。** `.verify/_albumprobe.mjs` 逐頁探 `research.html` 的 `#featured-modal`、`thinking.html` 的 `.dot-game-panel`、`#ig-plate`：三者到頁都是關的，`#ig-plate` 已經不在任何出貨頁面裡。剩下最後一個會自己出現的是**街區橫幅**（`data-walk-banner`）：每到一個 seam、每次用站點列跳站就 `is-on` 3.4 秒（`_stopprobe.mjs` 在 niagara stop 5 量到）。
   - **橫幅的判斷：不需要。** 站點列的 `is-here`、街區抽屜自己的卡、進度條的點已經各自說同一件事，而它在選取時跳出來正好是站主說的干擾，所以整組拿掉：`js/site.js` 的 `bannerEl`／`showBanner`／`bannerTimer`／`zoneHere`／`zoneOf`／`ZONES`、`_gen_html.py` 的 `.walk-banner` 標記、`css/site.css` 的 ~40 行（原位改成「不要加回來」的中文註解）。`data-lane-zones` 仍出貨但已無人讀。
@@ -285,8 +296,8 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 
 - ~~**「3D 畫面 vs 2D 模型」的鏡射要修哪一邊**~~ **站主已裁決（第 70 輪）：翻 3D（A 案）**，已在同輪做完並驗證（見 §1）。理由保留：B 案會讓畫面對不上真實地理的左右，A 案只是把每張影格重拍一次。
 
-- **`#walk-card` 還要不要存在**（第 72 輪的判讀）。站主說「全部拿掉這種」。目前的做法是：**沒有任何東西會自己跳出來**（橫幅已整組刪除），卡片只在訪客**按了寫著它名字的那根橫桿**或按 E 時才出現；畫面本身怎麼點都不開。若站主的本意是連「點名的卡片」也不要，卡片上的說明文字要另找地方放（`data-hint` 最長 792 字，現在只有這張卡在顯示），這一步代理不自己決定。
-- **瀑布的圈要不要更亮／卡片文字要不要更短**（影格 `.preview/r65e/`、`.preview/r65b/falls2/`）。
+- ~~**`#walk-card` 還要不要存在**~~ **站主已裁決（第 73 輪：「全部拿掉多餘的」）**：卡片刪掉了，不是藏起來。`showCard()` 不在 `js/site.js` 裡，一次按壓只會被四種東西回答（表面／它指名的門／它自己的狀態／示範）。每件東西的說明（`data-hint`）現在寫在文字廊的 `walk-things` 裡，依走過的順序列出，可按的那幾列帶著動詞。
+- **瀑布的圈要不要更亮**（影格 `.preview/r65e/`、`.preview/r65b/falls2/`）；文字現在寫在文字廊（第 73 輪起沒有卡片），要不要縮短是站主的判斷，不是版面問題。
 - **夜景 fold 0.62 的上限**（全站規則；`verify-walk` 有「night fold keeps a readable floor」的斷言）。
 - **站點 6 的 A 字架要不要進畫面**（先量那條直線，不許先改後說）。
 - **Goat 的瀑布與 Toronto 的 falls 要不要也做地標盤**（見 P6.5）。
@@ -314,13 +325,14 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 ### 5.3 幾何與碰撞解
 
 - lane 牆 ±700；可行走半寬 676（parkway）／996（strip）／1726（plaza）；`PLAYER_RADIUS 24`。
-- `moveStep` 的 slide 分支是 `blockedX || blockedD`；楔角死區 `|along| < 1.9` → `creep = 115 × dt`，四步 `clear(sgn)` 前瞻（第 68 輪起：步伐被 clamp 吃掉就不算暢通）。
+- `moveStep` 的 slide 分支是 `blockedX || blockedD`；楔角死區是**速度**：`|along| < deadAlong`，`deadAlong = 115 × dt`（第 73 輪起；原本寫成固定 1.9 cm，而 1.9 cm 正是 115 cm/s × 16.6 ms——micro-step 讓全速的沿牆走落進死區，身體被蠕行回房間中央）。蠕行 `creep = 115 × dt`，四步 `clear(sgn)` 前瞻（第 68 輪起：步伐被 clamp 吃掉就不算暢通）。
 - **第 68 輪三個成因的實測數字**（`_wedge2`，`js/site.js` 的 `moveStep` 內部）：
   - 蠕行 0.955 cm（115 × 0.0083）< `buzz` 的 1.2 cm → 8 個 freeze-with-exit 一次跑完（crate-nakamise-3 ×2、ladder、rack、mailbox、shopbay-e4 ×2、frame-poster-wires），每個都是 `clear:[1,0]`、`col:false`、`ok:false`。
   - `clear()` 在 x = −431（lane 牆）回報 `[1,1]`，蠕行 0.507 cm 被 clamp 抵銷 → move 0。
   - `pushAt` 推離後候選距離 24.0009（R = 24）、`h2.p` 0.07、`col:true` → move 0（浮點在嚴格 `<` 上翻面）。
   - 修好後：`_wedge` 寬掃描 5 輪 0 freeze（19,240–20,040 幀／輪）；`verify-collision` 7 頁 28/28。
 - 停止點（HTML z）：61 / 1360 / 2842 / 4379 / 4814 / 6177 / 7424（fun row x 300, yaw 90）/ 8584（SkyWheel x 830, yaw 78）/ 10092。
+- **第 73 輪的碰撞觀測**：門司港大廳沿著港灣桌面向東走，改前**卡在 x 368**（6 個進入位置有 2 個卡住），改後 6/6 走到牆邊（554–566 cm，≤ 270 幀）。原因見上：死區是公分不是速度。
 - **自動走的實測**：空線 1,332 cm 用 8.5 s（≈157 cm/s）。**修好前**，直線切過 `planter-nakamise-1`（x 278／z 1010／104×46 cm）時，身體在 x 206↔343、z≈962 之間被推來推去，40–90 s 一公分都沒靠近；**修好後**四種起點都 6–8 s 到達。判準是「這一步有沒有讓到終點的距離縮短一半以上」，不是「身體有沒有動」。
 
 ### 5.4 瀑布（第 69 輪量到的；在做任何「霧／水幕」的改動前先讀這一節）
@@ -371,6 +383,8 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 **第 71 輪重跑**：walk **205/205**、skills **80/80**（16 個 skill，新 `walk-input`）、games 23/23、body 73/73、nowebgl 35/35、feel 12/12、story 27/27、rail 4/4、chain 0、shapes 248、geometry OK、clash 0、mirror PASS（73 % vs 1 %）、look 五桌全量到（lake 467×276、falls 228×261、market 164×102、city 260×230、goat 471×198）、wheel 14 艙 PASS、hotel PASS（sd 14.4／29.4／16.0）、island 46/46、three PASS、shader-lits PASS、`audit-all` 26/26 量到（平的 2：`hall-sl`、`skyline-cn`）、**`verify-collision` 28/28（7 頁，exit 0）**。
 **第 72 輪重跑**：walk **205/205**、overlay **98/98**、exit **82/82**、rooms-e2e **72/72**、feel **12/12**、games 23/23、body 73/73、nowebgl 35/35、story 27/27、rail 4/4、shapes 248、skills **80/80**、mirror PASS（73 % vs 1 %）、island 全部 47 個 stop 都看得到東西（empty ≤ 60 %）、three PASS（14,924 world + 1,048 water）、shader-lits PASS、look 五桌全量到（lake 467×276、falls 227×261、market 164×102、city 261×231、goat 471×198）、wheel 14 艙 PASS（連兩次）、hotel PASS（sd 14.4／29.4／16.0）、`audit-all` 26/26（平的 2：`hall-sl`、`skyline-cn`）、**`verify-collision` 28/28（exit 0）**。
 
+**第 73 輪重跑**：walk **210/210**、overlay **95/95**、exit **82/82**、rooms-e2e **72/72**（0 failures）、feel **12/12**、games 23/23、body 73/73、nowebgl 35/35、story 27/27、rail 4/4、shapes 248、skills **80/80**、mirror PASS（73 % vs 1 %）、island 全部 47 個 stop 都看得到東西、wheel PASS、hotel PASS、`audit-all` 26/26 量到（平的 2：`hall-sl`、`skyline-cn`）、shader-lits PASS、`_wedge2` 5 輪 0 freeze。
+
 **沒有任何一個閘門是紅的了。**
 
 **第 72 輪之前一直是紅的、本輪修掉的**：`verify-rooms-e2e` 53 PASS／18 FAIL（`cc24606` 上 51／20）——第 64 輪的平移契約，改成「先轉到方位再走」之後 72/72。
@@ -390,4 +404,4 @@ tracked 約 17 MB：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、`rooms-cnt
 - **`verify-collision` 在這個沙盒要 ~50 分鐘**（第 71 輪實測；歷史紀錄 12–17 分鐘）。它每頁印四行，但**輸出要導到檔案才看得到進度**：`… > /tmp/collision.log 2>&1` 再 `tail`；接 `| tail -40` 會讓它 50 分鐘一片空白、看起來像卡住。
 - collisions 閘門的路徑**每次不同**（站位相依＋idle pulse 的幀）：單次綠燈只證明「這一條路走得通」，移動類驗收要連跑。
 
-> 最後更新：2026-10-24 · 站台零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 最後更新：2026-10-27 · 站台零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。

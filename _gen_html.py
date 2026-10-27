@@ -6869,28 +6869,42 @@ PLACE_KINDS = {
 def is_target(o):
     """True when a prop is a thing a visitor presses, and false when it is only scenery.
 
-    A prop earns a target by being a place in its own right, by carrying `states` (pressing it
-    changes the room), by carrying `leave` (it is the way out), or by the record saying so with
-    `"place": true` -- which is how a board that is really a place (the wheel's loading apron,
-    the curtain across the Rainbow) is kept in the set without making every board a target.
+    Round 73, the owner's second ruling on the same subject: 「全部拿掉多餘的。你只要真的有意義的物件才
+    留著，這裡面很多都是真的會導致操作很煩。」 A thing earns a press only by *doing* something that
+    takes the visitor out of the thing itself:
+
+        leave          it goes somewhere          (a door, a curtain, the way out)
+        story, frame   it shows photographs       (the reel, a picture hung on a wall)
+        ride           it carries you             (the Falls Incline)
+        game, demo     it plays                   (the goldfish stall, the bridge, the basins)
+        landmark       it is what the place is named for, and its record is the content
+
+    Two things are pressed because they are *used* rather than looked at, and their state is what
+    standing there is for: a door you open, and the LookOut's glass floor you step onto
+    (`states` on kind `door` or `glassfloor`). Everything else that changes only its own paint --
+    the seventeen shutters, arcade fronts, plaza fronts, funhouse and ticket kiosk -- is the
+    painting: pressing one used to open a paragraph about a shutter, which is precisely the
+    interface the owner called superfluous.
+
+    What this replaced: `kind in PLACE_KINDS` (forty kinds, so every shop bay, every plinth, every
+    "stand" for a model, every massing block, the model towers, the ferry and the vending machines
+    were all buttons) plus `o.get("place")`. Together they made **107 of the site's 245 props**
+    pressable, and 53 of those did nothing but show a card. The rule above leaves **40**, and every
+    one of them is a verb.
+
+    The 71-round lesson survives in the `game`/`ride`/`demo` line: a prop that *does* something is a
+    target whatever it is made of (the goldfish stall is `kind: "board"`, which is scenery, and the
+    tap that used to reach it was removed), so behaviour outranks material here and nowhere else.
     """
-    if o.get("states") or o.get("leave") or o.get("place") or o.get("landmark"):
+    if o.get("leave") or o.get("story") or o.get("frame") is not None:
         return True
-    # A prop that *does* something when pressed is a target by that fact alone, whatever it is made
-    # of: the goldfish stall (a game), the Falls Incline (a ride), the model bridge and the two basins
-    # (demonstrations), a wall that opens a story. Round 71 found this the hard way: the stall's kind
-    # is `board`, which is scenery, so it shipped `data-quiet="1" tabindex="-1"` -- unannounced and
-    # untabbable -- and the only route to the toy had been the tap on the picture that round 71
-    # removed. A gate that presses the stall caught it. `"demo" in o`, not `o.get("demo")`: the ripple
-    # and the opening bridge both author a demo, and one of them could legitimately be an empty word.
-    if o.get("game") or o.get("ride") or o.get("story") or ("demo" in o):
+    if o.get("game") or o.get("ride") or ("demo" in o):
         return True
-    # A frame is a story: it is one of the reel's pictures, hung on a wall, and the reel is what
-    # the lane is for. Quieting it would take the site's own story off the wall and put it in a
-    # drawer nobody opens.
-    if o.get("frame") is not None:
+    if o.get("landmark"):
         return True
-    return o.get("kind") in PLACE_KINDS
+    if o.get("states") and o.get("kind") in ("door", "glassfloor"):
+        return True
+    return False
 
 
 def walk_object(o, lane_half=10 ** 6):
@@ -6951,7 +6965,10 @@ def walk_object(o, lane_half=10 ** 6):
     # prop can be done-to only as far as the district said, and the count of stops is the count of
     # presses before it comes round again.
     states = ""
-    if o.get("states"):
+    # Round 73: a thing that only changes its own paint ships no interaction contract at all, so the
+    # frontages stop carrying twenty lines of JSON nobody can reach. `states` in the document means
+    # "this is a thing you use", and after `is_target` that is a door or the glass floor.
+    if o.get("states") and is_target(o):
         # The index ships in the document, not only in memory: what stop a thing is at is part of the
         # page's state, and a reader who never presses anything still gets told where it starts.
         states = (f' data-states="{escape(json.dumps(o["states"], ensure_ascii=False))}"'
@@ -7055,16 +7072,33 @@ def walk_html(d, drawer):
     # do not stop the walk -- so their written notes move here, into the lane written out. Nothing is
     # lost by quieting them: the prose was always the point, and a card in the middle of the
     # picture was only ever a way of reading it.
-    small = [o for o in placed if not is_target(o)]
+    # Round 73: this is now the only place a thing's note is read, so it lists *every* drawn thing, in
+    # the order you walk past it, and says which ones answer a press and what the press does. The card
+    # that used to carry these paragraphs in the middle of the picture is no longer reachable from a
+    # prop at all; a landmark's "record" is the row this list opens on.
+    def verb_of(o):
+        if o.get("leave"): return "the way out"
+        if o.get("story") or o.get("frame") is not None: return "its photographs"
+        if o.get("landmark"): return "its own record"
+        if o.get("ride"): return "a ride"
+        if o.get("game"): return "a game"
+        if "demo" in o: return "a demonstration"
+        if o.get("states"): return "the doors"
+        return ""
     small_things = ""
-    if small:
-        rows = "".join(
-            f'<li><b>{escape(o["title"])}</b> <span class="when">{escape(o["hint"])}</span></li>'
-            for o in small)
+    if placed:
+        rows = []
+        for o in sorted(placed, key=lambda q: q["z"]):
+            verb = verb_of(o)
+            does = f' <span class="thing-does">press E — {escape(verb)}</span>' if verb else ""
+            cls = ' class="is-pressable"' if verb else ""
+            rows.append(f'<li id="thing-{escape(o["id"])}"{cls}>'
+                        f'<b>{escape(o["title"])}</b>{does} '
+                        f'<span class="when">{escape(o["hint"])}</span></li>')
         small_things = f"""
-    <details class="walk-small">
-      <summary>The small things ({len(small)})</summary>
-      <ul>{rows}</ul>
+    <details class="walk-things" data-walk-things>
+      <summary>The things here ({len(placed)})</summary>
+      <ul>{"".join(rows)}</ul>
     </details>"""
     # What a screen reader is told the space is, in the same breath as the controls. The room's own
     # cladding is what you are walking through and the sightline is only where it ends, so the space is
