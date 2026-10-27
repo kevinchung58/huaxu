@@ -354,7 +354,7 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 **量具（第 69k 輪）**：`.verify/_aim.mjs` 是到達與瞄準的唯一實作；`_map.mjs`（prim 地圖）、`_shot_at.mjs`（帶仰角取景）新增；`audit-all.mjs` 重寫（每件取最大視角，26/26 量到）並**標記為診斷**（`STRICT=1` 才是閘門，因為 `boat-lake`/`tram-t`/`skyline-cn` 還平，見 §3 P6-5）。
 
-**第 71 輪重跑**：walk **205/205**、skills **80/80**（16 個 skill，新 `walk-input`）、games 23/23、body 73/73、nowebgl 35/35、feel 12/12、story 27/27、rail 4/4、chain 0、shapes 248、geometry OK、clash 0、mirror PASS（73 % vs 1 %）、look 五桌全量到（lake 467×276、falls 228×261、market 164×102、city 260×230、goat 471×198）、wheel 14 艙 PASS、hotel PASS（sd 14.4／29.4／16.0）、island 46/46、three PASS、shader-lits PASS、`audit-all` 26/26 量到（平的 2：`hall-sl`、`skyline-cn`）。
+**第 71 輪重跑**：walk **205/205**、skills **80/80**（16 個 skill，新 `walk-input`）、games 23/23、body 73/73、nowebgl 35/35、feel 12/12、story 27/27、rail 4/4、chain 0、shapes 248、geometry OK、clash 0、mirror PASS（73 % vs 1 %）、look 五桌全量到（lake 467×276、falls 228×261、market 164×102、city 260×230、goat 471×198）、wheel 14 艙 PASS、hotel PASS（sd 14.4／29.4／16.0）、island 46/46、three PASS、shader-lits PASS、`audit-all` 26/26 量到（平的 2：`hall-sl`、`skyline-cn`）、**`verify-collision` 28/28（7 頁，exit 0）**。
 **紅的（不是本輪造成，§3 P6-9）**：`verify-rooms-e2e` 53 PASS／18 FAIL；同一批斷言在 `cc24606` 上是 51／20。它寫的是第 64 輪的平移契約。**不要把這個算進「全綠」。**
 **量具**：新增 `.verify/_popup-audit.mjs`（哪個手勢開卡＋橫桿開什麼）、`.verify/_turnprobe.mjs`（輕點／按住／拖曳幾度）；`_aim.mjs`、`verify-look`、`_view.mjs`、`_keys.mjs`、`_tapdiag.mjs` 的拖曳常數全部同步成 0.065。
 
@@ -369,6 +369,7 @@ tracked 約 17 MB：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、`rooms-cnt
 - SkyWheel 的輪圈從廣場地板看永遠在畫面外（幾何如此：輪圈在頭上 71°），站點 6 只看得到腿與排隊區。
 - `verify-feel` 的「慢幀仍在走」需要機器空閒才會過（背景有別的 Chromium 就掉到 70 cm/s）——量尺要獨佔機器。
 - 慢幀的根因是**瀏覽器軟體光柵化**，不是 JS → 真正的槓桿是少畫像素（P4）。
+- **`verify-collision` 在這個沙盒要 ~50 分鐘**（第 71 輪實測；歷史紀錄 12–17 分鐘）。它每頁印四行，但**輸出要導到檔案才看得到進度**：`… > /tmp/collision.log 2>&1` 再 `tail`；接 `| tail -40` 會讓它 50 分鐘一片空白、看起來像卡住。
 - collisions 閘門的路徑**每次不同**（站位相依＋idle pulse 的幀）：單次綠燈只證明「這一條路走得通」，移動類驗收要連跑。
 
 > 最後更新：2026-10-24 · 站台零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
