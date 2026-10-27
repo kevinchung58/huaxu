@@ -2888,44 +2888,8 @@ body.shell {
    keeps every word it owns. The banner rides the same display type the plates use; the strip is
    the lane's own plan view, which is honest: there is no map data, so it shows the one axis the
    place has. */
-.walk-banner {
-  position: absolute; left: clamp(16px, 6vw, 74px); bottom: clamp(58px, 11vh, 110px);
-  z-index: 3; pointer-events: none; opacity: 0; transform: translateY(10px);
-  border-left: 3px solid rgba(255, 217, 160, 0.75); padding: 6px 14px 8px;
-  background: linear-gradient(180deg, rgba(10, 15, 28, 0.42), rgba(10, 15, 28, 0.0));
-}
-.walk-banner.is-on { animation: walk-banner-cue 3.4s ease both; }
-.walk-banner-name {
-  display: block; font-size: clamp(19px, 3vw, 30px); letter-spacing: 0.09em;
-  text-transform: uppercase; color: #e9e3d3; text-shadow: 0 2px 10px rgba(4, 7, 14, 0.8);
-}
-.walk-banner-note {
-  display: block; margin-top: 2px; font-size: clamp(11px, 1.35vw, 13.5px);
-  letter-spacing: 0.05em; color: rgba(214, 205, 186, 0.86);
-}
-@keyframes walk-banner-cue {
-  0% { opacity: 0; transform: translateY(14px); }
-  9%, 78% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-6px); }
-}
-.walk-strip {
-  position: relative; display: block; flex: 0 0 clamp(120px, 26vw, 260px);
-  height: 5px; margin: 0 clamp(8px, 2vw, 22px); align-self: center;
-  background: rgba(23, 33, 54, 0.72); border: 1px solid rgba(122, 141, 176, 0.28);
-  border-radius: 3px; pointer-events: none;
-}
-.walk-strip-fill {
-  position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 3px;
-  background: rgba(63, 110, 168, 0.35);
-}
-.walk-strip-tick {
-  position: absolute; top: -3px; bottom: -3px; width: 1px;
-  background: rgba(214, 205, 186, 0.5);
-}
-.walk-strip-you {
-  position: absolute; top: 50%; left: 0; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px;
-  border-radius: 50%; background: #ffd9a0; box-shadow: 0 0 6px rgba(255, 217, 160, 0.6);
-}
-@media (prefers-reduced-motion: reduce) {
-  .walk-banner.is-on { animation-duration: 0.01s; transition: opacity 0.01s; }
+/* Round 72: the district banner is gone (js/site.js). It was the one surface that appeared without
+   being asked for — on every seam crossing and after every rail jump. Do not reintroduce a timed
+   overlay here; the owner's rule is that an interface appears only when a control named it. */
+
 }

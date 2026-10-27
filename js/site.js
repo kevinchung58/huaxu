@@ -128,10 +128,13 @@
       }
       modal.classList.add("is-open");
       document.body.style.overflow = "hidden";
+      overlayEntered();          // round 72: Back folds this before it leaves the page
     };
     const close = () => {
+      const wasOpen = modal.classList.contains("is-open");
       modal.classList.remove("is-open");
       document.body.style.overflow = "";
+      if (wasOpen) overlayLeft();
     };
     document.querySelectorAll("[data-featured]").forEach((btn) => btn.addEventListener("click", () => open(btn)));
     modal.querySelectorAll("[data-close]").forEach((el) => el.addEventListener("click", close));
@@ -365,6 +368,65 @@ function trapTab(root, event) {
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
 }
 
+/* ---- The exit gesture the visitor already has (round 72) ----
+
+   Every way out of a surface on this site is an in-page control: Esc, a close button, the curtain.
+   A phone has no Esc and its visitor's habit is the system back gesture, so leaving that gesture
+   alone made Back mean the one thing it must never mean while something is open: *leave the place*.
+   Measured in a real browser (`.verify/_backprobe.mjs`): on rooms-toronto.html, press i, press Back,
+   and the visitor is thrown back to street.html with the card folded and their position in the room
+   gone. On a phone that is the whole of the site's exit contract failing, not a detail.
+
+   So every surface that takes the screen (a card, the written lane, a story rail, the gallery plate,
+   the dot game, the featured-publication modal) reports itself here. Opening one pushes one history
+   entry; closing it pops the same entry. A Back that arrives while something is open folds that
+   surface the way Esc would -- by dispatching the same Esc at it, so there is one fold path and not
+   a second implementation that can drift -- and only a Back with nothing open leaves the place.
+
+   The counters are `let` at module scope and the functions are declarations: the page's own IIFEs
+   register listeners during the first run of this file and only call these later, on interaction. */
+let overlayDepth = 0;        // surfaces this page has open and has a history entry for
+let ownPop = 0;              // pops this page caused itself (the popstate after our own close)
+let foldingFromHistory = false;
+
+function overlayEntered() {
+  overlayDepth++;
+  try { history.pushState({ huaxuOverlay: overlayDepth }, ""); }
+  catch (_) { overlayDepth = Math.max(0, overlayDepth - 1); }   // a file:// page may refuse
+}
+
+function overlayLeft() {
+  if (foldingFromHistory || overlayDepth <= 0) return;
+  overlayDepth--;
+  ownPop++;
+  try { history.back(); } catch (_) { ownPop = Math.max(0, ownPop - 1); }
+}
+
+/* What counts as "in the way of the picture", in the order they stack. Kept as one list because a
+   surface that is missing here is a surface where Back still throws the visitor out. */
+const OVERLAY_SURFACE = [
+  "#room-plate.is-open",
+  "[data-walk-game]:not([hidden])",
+  "#ig-plate.is-open",
+  "#featured-modal.is-open",
+  "[data-dot-game]:not([hidden])",
+  "[data-walk-card]:not([hidden])",
+  "[data-walk-listpanel]:not(.is-closed)",
+].join(", ");
+
+window.addEventListener("popstate", () => {
+  if (ownPop > 0) { ownPop--; return; }              // our own closes popping their entries
+  if (overlayDepth <= 0) return;                     // nothing open: this Back is the exit, and it should leave
+  overlayDepth--;
+  const top = document.querySelector(OVERLAY_SURFACE);
+  foldingFromHistory = true;
+  try {
+    if (top) top.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+  } finally {
+    foldingFromHistory = false;
+  }
+});
+
 /* Enters an overlay: locks the page, isolates everything outside it, and moves
    focus in. The restore target is passed in by the caller rather than inferred
    from document.activeElement, which is not the clicked control in every
@@ -375,6 +437,7 @@ function enterOverlay(root, focusSel, trigger) {
   inertOutside(root, true);
   const target = focusSel ? root.querySelector(focusSel) : null;
   (target || root).focus();
+  overlayEntered();
   return restore;
 }
 
@@ -382,6 +445,7 @@ function leaveOverlay(root, trigger) {
   inertOutside(root, false);
   document.body.style.overflow = "";
   if (trigger && typeof trigger.focus === "function") trigger.focus();
+  overlayLeft();
 }
 
 /* ---- Dot-trace game: thinking page nine-panel grid (owner decision 2026-09) ---- */
@@ -810,11 +874,9 @@ function leaveOverlay(root, trigger) {
     }
     return h;
   };
-  const ZONES = (() => {
-    try { const a = JSON.parse(layer.getAttribute("data-lane-zones") || "[]");
-          return Array.isArray(a) ? a.filter((z) => Array.isArray(z) && z.length >= 2) : []; }
-    catch (_) { return []; }
-  })();
+  /* Round 72: `data-lane-zones` is no longer read. It shipped a banner that opened by itself on each
+     seam (see the note further down); the seams stay in the page as the record's own data, and the
+     rail's `is-here` is what tells a visitor where they are. */
   /* The funicular ride (round 52). GTA's F-key does one thing that matters: for a few seconds the
      vehicle carries you and the world carries on around it. Here the world is the real Falls
      Incline — 59.8 m of double track at 30 degrees, two 40-passenger cars counterbalanced so one
@@ -823,27 +885,15 @@ function leaveOverlay(root, trigger) {
   const RIDE_T = 3.1;
   const sm01 = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
   let ride = null;
-  const bannerEl = layer.querySelector("[data-walk-banner]");
   const stripEl = layer.querySelector("[data-walk-strip]");
-  let bannerTimer = 0;
-  const showBanner = (name, note) => {
-    if (!bannerEl || !name) return;
-    bannerEl.querySelector(".walk-banner-name").textContent = name;
-    const n = bannerEl.querySelector(".walk-banner-note");
-    if (n) n.textContent = note || "";
-    // restart the animation even when a ride crosses two seams at once
-    bannerEl.classList.remove("is-on");
-    void bannerEl.offsetWidth;
-    bannerEl.classList.add("is-on");
-    clearTimeout(bannerTimer);
-    bannerTimer = setTimeout(() => bannerEl.classList.remove("is-on"), 3400);
-  };
-  let zoneHere = -2;   // -2 before the first reading, which announces where you started, as those games do at load
-  const zoneOf = (z) => {
-    let i = -1;
-    for (let j = 0; j < ZONES.length; j++) if (z >= ZONES[j][0]) i = j;
-    return i;
-  };
+  /* Round 72, the owner's ruling: 「很多東西因為選取會跳這種介面…有必要的在跳」.
+
+     There used to be a district banner here. It appeared by itself whenever the body crossed a zone
+     seam, and again after every rail jump — so *selecting a stop* made an interface appear, which is
+     the complaint word for word. The information it carried is not lost: the stop rail marks where
+     you are (`is-here`), the drawer names the district in its own card, and `data-lane-zones` still
+     ships in the page for anything that wants to read the seams. What is gone is a surface that
+     appeared without being asked for. */
   // How far the walker may go. The default is the end wall minus a body; the far plane is a view,
   // not a hole out of the world. A place whose far end is genuinely open authors its own walk limit.
   const MAX_D = attr("laneMaxD", Z_FAR - 47);
@@ -8067,24 +8117,14 @@ function leaveOverlay(root, trigger) {
       if (d < far) { far = d; best = i; }
     });
     here = best; hereFar = far;
-    /* The district seam (round 52): crossing a zone line speaks a banner the size of the crossing,
-       then lets go. It is its own channel on purpose — the record line carries what you *reach*,
-       this carries where you *are*, and neither waits for the other. */
-    {
-      const zi = zoneOf(depth);
-      if (zi !== zoneHere) {
-        const moved = zoneHere !== -2;
-        zoneHere = zi;
-        if (ZONES[zi]) showBanner(ZONES[zi][1], ZONES[zi][2] || "");
-        if (moved && navigator.vibrate) { try { navigator.vibrate(18); } catch (_) {} }
-      }
-      if (stripEl) {
-        const f = Math.max(0, Math.min(1, depth / MAX_D));
-        const dot = stripEl.querySelector(".walk-strip-you");
-        if (dot) dot.style.left = `${(f * 100).toFixed(2)}%`;
-        const fill = stripEl.querySelector(".walk-strip-fill");
-        if (fill) fill.style.width = `${(f * 100).toFixed(2)}%`;
-      }
+    /* The progress strip is the one thing a seam still moves: where you are on this lane, drawn
+       as a dot. It is a mark inside a control the visitor already has, not an interface. */
+    if (stripEl) {
+      const f = Math.max(0, Math.min(1, depth / MAX_D));
+      const dot = stripEl.querySelector(".walk-strip-you");
+      if (dot) dot.style.left = `${(f * 100).toFixed(2)}%`;
+      const fill = stripEl.querySelector(".walk-strip-fill");
+      if (fill) fill.style.width = `${(f * 100).toFixed(2)}%`;
     }
     if (best === hereShown) return;
     hereShown = best;
@@ -8752,8 +8792,10 @@ function leaveOverlay(root, trigger) {
      stashed under it, and a space you have to be granted entry to is still a webpage. */
   const toggleList = (open) => {
     if (!listPanel) return;
-    const want = open === undefined ? listPanel.classList.contains("is-closed") : !!open;
+    const wasOpen = !listPanel.classList.contains("is-closed");
+    const want = open === undefined ? !wasOpen : !!open;
     listPanel.classList.toggle("is-closed", !want);
+    if (want !== wasOpen) { if (want) overlayEntered(); else overlayLeft(); }
     if (listBtn) listBtn.setAttribute("aria-expanded", want ? "true" : "false");
     if (want) {
       const first = listPanel.querySelector("button, a");
@@ -8784,13 +8826,16 @@ function leaveOverlay(root, trigger) {
   const asideEl = card && card.querySelector("[data-walk-aside]");
   const hideCard = () => {
     if (!card) return;
+    const wasOpen = !card.hidden;
     card.hidden = true;
     if (card.dataset.mode !== "prop") card.dataset.mode = "prop";
     if (asideEl) asideEl.hidden = true;
     if (infoBtn) infoBtn.setAttribute("aria-expanded", "false");
+    if (wasOpen) overlayLeft();
   };
   const showCard = (m) => {
     if (!card) return;
+    const wasOpen = !card.hidden;
     tutorCardOpened();          // the guide's third step completes on a card actually opening
     const where = card.querySelector("[data-walk-where]");
     const title = card.querySelector("[data-walk-title]");
@@ -8803,6 +8848,7 @@ function leaveOverlay(root, trigger) {
     if (hint) hint.textContent = st ? st.say : (m.el.dataset.hint || "");
     if (liveEl) liveEl.textContent = statusEl ? statusEl.textContent : "";
     card.hidden = false;
+    if (!wasOpen) overlayEntered();
     if (infoBtn) infoBtn.setAttribute("aria-expanded", "false");
     const btn = card.querySelector("[data-walk-card-close]");
     if (btn) btn.focus({ preventScroll: true });
@@ -8874,7 +8920,9 @@ function leaveOverlay(root, trigger) {
       : "Nothing here is labelled and nothing is named: the shutters carry no shop, the board is blank, "
         + "because a name would be a claim about a place that is drawn rather than found.";
     if (liveEl) liveEl.textContent = statusEl ? statusEl.textContent : "";
+    const wasOpen = !card.hidden;
     card.hidden = false;
+    if (!wasOpen) overlayEntered();
     if (infoBtn) infoBtn.setAttribute("aria-expanded", "true");
     const btn = card.querySelector("[data-walk-card-close]");
     if (btn) btn.focus({ preventScroll: true });
@@ -9177,6 +9225,12 @@ function leaveOverlay(root, trigger) {
     // the press is over: bank how long it lasted, so a tap no frame saw can still be paid out
     const tap = tapState.get(k);
     if (tap && tap.start) { tap.ms += performance.now() - tap.start; tap.start = 0; }
+    /* Round 72: the nudge is paid inside a frame, so the release has to ask for one. On a slow
+       machine the frame that saw the key down ends before the key comes up, and the lane then rests
+       (it runs on a timer when nothing is held) -- so a 40 ms tap of the turn key measured 0.4 deg,
+       the share that one frame happened to catch, and the other 3 degrees were owed to a frame that
+       was never scheduled. `verify-feel` caught it; this line is the fix. */
+    if (tap) loop();
   });
   const releaseInput = () => {
     keys.clear(); stick = null; vx = 0; vd = 0; gliding = null; last = 0;

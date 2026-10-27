@@ -10,7 +10,19 @@
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、`rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支 / PR**：`arena/adedb8cc-huaxu` → `master`（本輪開 PR；合併要站主一句授權）。
 
-- **第 71 輪（本輪）—— 手：一個 tap 不再按任何東西，而頭轉得太快是「用幀付帳」**：站主給了 `.walk-card` 的截圖說「你幫我全部拿掉這種。因為我看很多不必要的物件都會跳這種視窗。這很干擾操作體驗。你順便全部處理好。」＋「現在移動左右邊轉向很大。可以全面調整好嗎」。
+- **第 72 輪（本輪）—— 只有被點名的東西才准出現；每一個進得去的面，都要有站主本來就有的那個出口**：
+  - 站主兩句話：「甚至其他的東西 有很重要的你在跳介面。我發現很多東西 因為選取會跳這種介面 你全面審查清楚 有必要的在跳。」＋「還有你任何的進出環境 請全面你E2E進去用發現問題並系統性解決問題。」
+  - **(a) 全面審查：整站已經沒有任何「自己跳出來」的表面。** `.verify/_albumprobe.mjs` 逐頁探 `research.html` 的 `#featured-modal`、`thinking.html` 的 `.dot-game-panel`、`#ig-plate`：三者到頁都是關的，`#ig-plate` 已經不在任何出貨頁面裡。剩下最後一個會自己出現的是**街區橫幅**（`data-walk-banner`）：每到一個 seam、每次用站點列跳站就 `is-on` 3.4 秒（`_stopprobe.mjs` 在 niagara stop 5 量到）。
+  - **橫幅的判斷：不需要。** 站點列的 `is-here`、街區抽屜自己的卡、進度條的點已經各自說同一件事，而它在選取時跳出來正好是站主說的干擾，所以整組拿掉：`js/site.js` 的 `bannerEl`／`showBanner`／`bannerTimer`／`zoneHere`／`zoneOf`／`ZONES`、`_gen_html.py` 的 `.walk-banner` 標記、`css/site.css` 的 ~40 行（原位改成「不要加回來」的中文註解）。`data-lane-zones` 仍出貨但已無人讀。
+  - **新閘門 `verify-overlay.mjs`（jsdom，8 頁，98 條）**：沒有任何一頁出貨橫幅或它的 CSS；沒有任何計時器會揭開表面（`.is-on` 同時被回到頂端與相簿 chips 用，所以只認 `data-walk-banner|walk-banner|showBanner|bannerTimer`）；到頁只有 `[data-walk-tutor]`；tap／拖曳不開；**每一個 `.walk-hit` 的指標點擊都不開**；每一個 `[data-walk-stop]` 都不開表面；`i` 只有卡、`l` 只有清單、Esc 只收不合；橫桿的文字＝`reach.dataset.title`，按下去一定開一個表面。
+  - **(b) 進出環境：先在真瀏覽器走一遍，再修「類別」，不是修那一頁。** `.verify/_backprobe.mjs` 量到的：`rooms-toronto.html` 按 `i` 開卡、按**瀏覽器上一頁** → 人被丟回 `street.html`，卡片不見、在房間裡的位置也沒了。手機沒有 Esc，上一頁就是它唯一的出口手勢——這不是細節，是整個出口契約失效。
+  - **修法（一個咽喉）**：`js/site.js` 新增 `overlayEntered()`／`overlayLeft()`／`popstate`：任何佔住畫面的表面開時 push 一筆 history、關時 pop 同一筆；開著東西時來的 Back **用頁面本來就會回應的 Esc** 去收那一層（`overlayDepth`／`ownPop`／`foldingFromHistory` 三個計數器防止迴圈），只有「什麼都沒開」的 Back 才離開。接上的是 `enterOverlay`/`leaveOverlay`（故事盤、相簿盤、點點遊戲）、`showCard`/`hideCard`、`showSpace`、`toggleList`、`research.html` 的出版卡。
+  - **選擇器要照出貨的標記讀，不要憑記憶**：第一版寫 `.walk-listpanel`（class 其實是 `walk-list`）、`.dot-game-panel:not([hidden])`（點點遊戲藏的是 `[data-dot-game]` 外框，面板本身從來不 hidden）——所以「清單按 Back 不收」多活了一輪。
+  - **新閘門 `verify-exit.mjs`（jsdom，82 條）**：8 個走路頁的 chrome 連結全部指到存在的檔案；Back 在 8 頁都能收卡片且不導航；兩層表面要兩次 Back；自己按關閉不留幽靈條目；焦點回到開它的東西；故事盤會收；`research.html` 的出版卡會收；Esc 仍是「有東西先收、沒東西才出門」。jsdom 不能導航，所以「最後一次 Back 真的離開」由瀏覽器探針斷言（`BACK CONTRACT OK`：卡片收、房間留、第二次 Back 離開、清單收、Esc 沒東西時是門）。
+  - **`verify-rooms-e2e` 從 53 PASS／18 FAIL 修成 72/72 綠**：它寫的還是第 64 輪「A／D 平移」的契約（`sidleToReach` 按住 A 側滑到門邊），第 65 輪改成轉頭之後那等於原地旋轉再撞牆，於是每一個門、每一張印刷、每一條走道都回報隔壁店面。改成訪客的做法：`walkToReach` 先轉到目標自己的方位再走進去、`walkUntilBlocked` 按住 W 直到身體停下。**紅不是本輪造成的**（第 71 輪的 A/B 已證明），本輪把它修掉。
+  - **順手抓到的產品錯：一次輕點轉頭被吞掉。** 轉向是在 `tick` 裡付的，而沒按鍵的 lane 靠計時器休息；慢機器「看見按鍵的那一幀」可能在放手前就結束，剩下的 3° 欠給一個沒人排的幀 ⇒ 40 ms 輕點只轉 **0.4°**（`verify-feel` 12/12 → 11/12，全站只有這一條發現）。修法：keyup 收尾 `if (tap) loop();`，每一次放手都有自己的幀可以落地；修後 12/12。
+  - **本輪閘門**：walk **205/205**、overlay **98/98**、exit **82/82**、rooms-e2e **72/72**、feel **12/12**、games 23/23、body 73/73、nowebgl 35/35、story 27/27、rail 4/4、shapes 248、skills **80/80**；其餘見 §5.5。
+- **第 71 輪 —— 手：一個 tap 不再按任何東西，而頭轉得太快是「用幀付帳」**：站主給了 `.walk-card` 的截圖說「你幫我全部拿掉這種。因為我看很多不必要的物件都會跳這種視窗。這很干擾操作體驗。你順便全部處理好。」＋「現在移動左右邊轉向很大。可以全面調整好嗎」。
   - **先量，再改**。新量具 `.verify/_popup-audit.mjs`：把訪客會按的鍵（Space／Enter／e／i）、會握的鍵（d／a／w）與 GRID×GRID 個 tap 依序做一遍，印出每一個開了卡片的動作，以及當下 `reach`、焦點、指標底下的東西。**`rooms-cntower.html` stop 3 的基線是 25 個 tap 全部開卡**（其中 16 個落在空白畫布），每一個非拖曳的點擊都開——**整張畫面是一個按鈕**。這就是站主說的「很多不必要的物件」。
   - **修法（產品）**：畫面從此只看不按。`up()` 只剩一個分支：有卡片就收起來，其他什麼都不做。手指的動詞改成一根**有名字的橫桿** `<button class="walk-open" data-walk-open hidden>`（`.walk-bottom` 的第一個子元素）：只有「身前有東西」時出現，文字就是該物件的 `data-title`，CSS 加前綴 `Open · `，按下去 `act(reach)`。**屬性按鈕只認鍵盤**：`event.detail === 0` 是 DOM 自己分「鍵盤合成點擊」與「真的指標點擊」的欄位，指標點擊只把焦點交回畫面。`e`／`Enter`（畫面有焦點時）仍是同一條路。
   - **量到的（修後）**：`0/16`、`0/25` 個 tap 開卡；`e`／`Enter`／`i` 仍會開；橫桿在四個方位**只開它寫的那一個**（`names "An open shop under an indigo awning" -> CARD "An open shop under an indigo awning"`）。
@@ -19,7 +31,7 @@
   - **量到的（`.verify/_turnprobe.mjs`，真瀏覽器真事件）**：輕點 **2.97–2.98°**（改前 7.4–9.2°）、按 200 ms **17.7–18.4°**（37.7）、500 ms **43.5°**、1 s **85.2°**（140.3）、拖曳 **0.065 °/px**（0.09）。九次輕點三次 d／三次 a／三次 → 全部 2.97–2.98°，方向也對。
   - **兩個單位／狀態的坑，都寫進 skill 了**：①`tap.held` 曾是**秒**而 `tap.ms` 是**毫秒**，所以 `owed` 永遠是正數、每個 tap 都付滿上限；②「補足短按」的下限沒有「只付一次」的守衛，於是每一幀之後又付一次，3° 的 nudge 量成 8.9°。
   - **閘門更新（修改意圖，不刪斷言）**：`verify-walk` 的手指段整段重寫成新契約（tap 什麼都不開、橫桿開它寫的那一個、指標點擊屬性框不開、鍵盤啟動同一框會開、拖曳轉頭不開、右鍵不轉不開），**201 → 205 條仍然全綠**；因為轉速 120→85，閘門裡六處 `hold("a|d", 700)` 依 `×120/85` 改成 988 ms（`arrowright` 800→1129、`a` 550→777），否則下游八條與轉向無關的斷言（reach、rail、焦點）會一起紅。`.verify/_aim.mjs`（`DRAG_DEG_PER_PX 0.065`、`DEG_PER_KEY 2.975`）、`verify-look`、`_view.mjs`、`_keys.mjs`、`_tapdiag.mjs` 全部同步。
-  - **順帶發現（不是本輪造成的）**：`verify-rooms-e2e` 現在 53 PASS／18 FAIL，但**在上一顆 commit（`cc24606`）也是紅的**（51／20）——它寫的還是第 64 輪「A／D 平移」的契約（第 65 輪改成轉頭），而且「門進入 reach」那幾條量到隔壁店面。列進 §3 P6-9，**不要把它算進「全綠」**。
+  - **順帶發現（不是本輪造成的）**：`verify-rooms-e2e` 現在 53 PASS／18 FAIL，但**在上一顆 commit（`cc24606`）也是紅的**（51／20）——它寫的還是第 64 輪「A／D 平移」的契約（第 65 輪改成轉頭），而且「門進入 reach」那幾條量到隔壁店面。**第 72 輪已把這支閘門修成 72／72**（見上）。
   - **本輪閘門**：walk **205/205**、games **23/23**、body 73/73、nowebgl 35/35、feel 12/12、story 27/27、rail 4/4、chain 0、shapes 248、geometry OK、clash 0、skills **80/80**、mirror PASS（73 % vs 1 %）、look 五桌全量到、wheel 14 艙 PASS、hotel PASS、island 46/46、three PASS、shader-lits PASS、`audit-all` 26/26（平的 2：`hall-sl`、`skyline-cn`）。
 - **第 70 輪 —— 兩個「沒收尾」其實都不是場景的問題，是量具的問題**：
   - **`verify-tables` 不再是未知**：`LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-tables.mjs` 跑完 **exit 0**（`/tmp/gt.log`，37 行）。它逐站逐角度印出「幾個 prop 在框內、各佔多少」：lake `4/9` 只在 −90°；falls `0/4` 從 −90° 到 +30°、60/90° 只有 `falls-n 0.35/0.36`；market `2/7`（`plinth-market`、`tree-m1`）；city `7–8/9`，七個角度都在框內，少的只有 `track-c` 與 `tree-c2`。
@@ -265,14 +277,14 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 7. **Goat Island 三件沒收尾的**（第 69m 輪量的，見 §1）：①鋪面偏亮（143.7 vs 記錄值 121，共用繪法，要動先確認別的頁）；②林線那帶偏暗（`canopy` 斑塊）；③近水面仍偏平（加了 `foam` 水流線，要真的流得改 shader）。
 8. **`[data-obj]` 矩形沒有坐在它自己的 paint 上（新，第 70 輪）**：stop 4 讀 `skyline-cn` 的矩形，yaw 0 在 `[582,191,312,552]`、yaw 30 在 `[163,172,305,566]`，同一張影格裡四棟塔分别在 `≈[130,160]–[420,690]` 與 `≈[548,170]–[860,700]`；把矩形畫上去（`.verify/_mark.mjs`）框住的是空牆。偏差 yaw 0 約 **+450 px**、yaw 30 約 **−400 px**——**方向隨轉頭反向**，所以不是固定位移。影響：(a) 訪客看到的是模型、按到的是牆；(b) `audit-all` 的 sd 與 `verify-tables` 的 framed 比例都走這些矩形，數字不可信。*驗收*：yaw 0/30/60 三張影格上，矩形邊界與 paint 邊界相差 < 12 px；並有一個 gate（`verify-box.mjs`）在 CI 會紅。**`_probe-box.mjs` 是量這個的工具。**
 
-9. **`verify-rooms-e2e` 是第 64 輪的契約（第 71 輪發現，紅的）**：它斷言「A 停在與相機前向垂直的軸上」＝A／D 平移，而第 65 輪已改成轉頭；`street: The Toronto door comes into reach` 量到的是隔壁 `shop-l1`。**先做 A/B 再修**：本輪在分支上是 53 PASS／18 FAIL，把 `js/site.js` 換回上一顆 commit 是 51／20，所以它不是本輪造成的。*驗收*：把它的移動段改成「先轉到方位再走」（同 `verify-walk` 的 `projection()` 寫法），reach 段改成走橫桿／`e`，紅的 18 條逐條說明是閘門錯還是場景錯。
-10. **`audit-all` 的 `skyline-cn` 仍被判平（sd 19.2 < 20）**：它是四棟塔的**小模型**（`kind: skyline`，100×162×90 cm，塔分佈在 dx −30…+32），方框裡有三成是塔之間的空隙，所以「框內 sd」先天偏低。這是 **P6-8 量具問題的同一類**，不是模型的問題；改判準（框內只算塔的連通塊，或改用 `_probe-box` 的 paint 邊界）之前不要動那座模型。
+9. **`audit-all` 的 `skyline-cn` 仍被判平（sd 19.2 < 20）**：它是四棟塔的**小模型**（`kind: skyline`，100×162×90 cm，塔分佈在 dx −30…+32），方框裡有三成是塔之間的空隙，所以「框內 sd」先天偏低。這是 **P6-8 量具問題的同一類**，不是模型的問題；改判準（框內只算塔的連通塊，或改用 `_probe-box` 的 paint 邊界）之前不要動那座模型。
 
 
 ## 4. 需要站主決定（代理不能替他決定）
 
 - ~~**「3D 畫面 vs 2D 模型」的鏡射要修哪一邊**~~ **站主已裁決（第 70 輪）：翻 3D（A 案）**，已在同輪做完並驗證（見 §1）。理由保留：B 案會讓畫面對不上真實地理的左右，A 案只是把每張影格重拍一次。
 
+- **`#walk-card` 還要不要存在**（第 72 輪的判讀）。站主說「全部拿掉這種」。目前的做法是：**沒有任何東西會自己跳出來**（橫幅已整組刪除），卡片只在訪客**按了寫著它名字的那根橫桿**或按 E 時才出現；畫面本身怎麼點都不開。若站主的本意是連「點名的卡片」也不要，卡片上的說明文字要另找地方放（`data-hint` 最長 792 字，現在只有這張卡在顯示），這一步代理不自己決定。
 - **瀑布的圈要不要更亮／卡片文字要不要更短**（影格 `.preview/r65e/`、`.preview/r65b/falls2/`）。
 - **夜景 fold 0.62 的上限**（全站規則；`verify-walk` 有「night fold keeps a readable floor」的斷言）。
 - **站點 6 的 A 字架要不要進畫面**（先量那條直線，不許先改後說）。
@@ -288,6 +300,7 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 
 W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E 只給動詞（Q 已移除）。
 `SPEED 165 cm/s`、`RUN ×1.25`、`TURN_RATE 85°/s`（第 71 輪；原 120）、按住鍵上限 2 s、governor 下限 0.26、`?render=full`。
+**第 72 輪補**：放手要**自己排一幀**才付得出來（`keyup` 最後 `if (tap) loop();`）。沒按鍵時 lane 靠計時器休息，慢機器上「看見按鍵的那一幀」可能在放手前就結束，剩下的 nudge 欠給一個沒人排的幀：40 ms 輕點只轉 **0.4°**，`verify-feel` 是唯一發現的那一條。
 **短按不會被吃掉**：`tapState` 記住每個鍵真實按住的時間。走路鍵沒被任何一幀看見就補一次，上限 120 ms；**轉向鍵用訪客自己的毫秒付**（見下一段的常數），放手時只補「還欠的」那一段，而且那筆 nudge 只付一次（`tap.ms > 0` 的守衛）。
 實測（idle、1024×768 SwiftShader）：W 149 cm/s、S 156 cm/s、D/A 96.3 / 89.2 °/s、latency 49–166 ms。
 
@@ -350,12 +363,14 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 - **燈的參數語意**（`scaledEffectTint`）：hex tint → 不透明度＝燈的強度；`rgba(r,g,b,a)` tint → 不透明度＝`a × 強度`。`r` 是**光暈半徑（cm）**，不是照明範圍：hub street 的燈籠是 `r:30` 配 22 cm 燈體，寫 260 會在畫面上變成探照燈。要有燈體就用 `"body":"lantern"`（自帶吊線、光錐、地面光池），要一顆會發亮的點就用 `"bulb":true`。
 - **自發光平面**：`q.nolite = true` 讓那塊 quad 不吃夜色 murk（`darkness = 0`）也不吃太陽——這是全站「亮著的窗」的既有慣用法（`js/site.js` 40 餘處）。燈籠的紙、亮窗、招牌背光都該用它；牆面不該用。
 
-### 5.5 閘門現況（2026-10-27，第 71 輪）
+### 5.5 閘門現況（2026-10-27，第 72 輪）
 
 **量具（第 69k 輪）**：`.verify/_aim.mjs` 是到達與瞄準的唯一實作；`_map.mjs`（prim 地圖）、`_shot_at.mjs`（帶仰角取景）新增；`audit-all.mjs` 重寫（每件取最大視角，26/26 量到）並**標記為診斷**（`STRICT=1` 才是閘門，因為 `boat-lake`/`tram-t`/`skyline-cn` 還平，見 §3 P6-5）。
 
 **第 71 輪重跑**：walk **205/205**、skills **80/80**（16 個 skill，新 `walk-input`）、games 23/23、body 73/73、nowebgl 35/35、feel 12/12、story 27/27、rail 4/4、chain 0、shapes 248、geometry OK、clash 0、mirror PASS（73 % vs 1 %）、look 五桌全量到（lake 467×276、falls 228×261、market 164×102、city 260×230、goat 471×198）、wheel 14 艙 PASS、hotel PASS（sd 14.4／29.4／16.0）、island 46/46、three PASS、shader-lits PASS、`audit-all` 26/26 量到（平的 2：`hall-sl`、`skyline-cn`）、**`verify-collision` 28/28（7 頁，exit 0）**。
-**紅的（不是本輪造成，§3 P6-9）**：`verify-rooms-e2e` 53 PASS／18 FAIL；同一批斷言在 `cc24606` 上是 51／20。它寫的是第 64 輪的平移契約。**不要把這個算進「全綠」。**
+**第 72 輪重跑**：walk **205/205**、overlay **98/98**、exit **82/82**、rooms-e2e **72/72**、feel **12/12**、games 23/23、body 73/73、nowebgl 35/35、story 27/27、rail 4/4、shapes 248、skills **80/80**、mirror PASS（73 % vs 1 %）、island 全部 41 個 stop 都看得到東西（empty ≤ 60 %）、three PASS（14,924 world + 1,048 water）、shader-lits PASS、look 五桌全量到（lake 467×276、falls 228×261、market 164×102、city 260×230、goat 471×198）、wheel 14 艙 PASS、hotel PASS（sd 14.4／29.4／16.0）、`audit-all` 26/26（平的 2：`hall-sl`、`skyline-cn`）、`verify-collision` 本輪重跑中（背景，~52 分鐘，跑完再填）。
+
+**第 72 輪之前一直是紅的、本輪修掉的**：`verify-rooms-e2e` 53 PASS／18 FAIL（`cc24606` 上 51／20）——第 64 輪的平移契約，改成「先轉到方位再走」之後 72/72。
 **量具**：新增 `.verify/_popup-audit.mjs`（哪個手勢開卡＋橫桿開什麼）、`.verify/_turnprobe.mjs`（輕點／按住／拖曳幾度）；`_aim.mjs`、`verify-look`、`_view.mjs`、`_keys.mjs`、`_tapdiag.mjs` 的拖曳常數全部同步成 0.065。
 
 ### 5.6 倉庫大小

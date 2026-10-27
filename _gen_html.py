@@ -7099,9 +7099,10 @@ def walk_html(d, drawer):
     paveds = [[round(a * Z_SCALE), round(b * Z_SCALE), c] for a, b, c in lane["wsp"]] if lane.get("wsp") else []
     ws_attr += f' data-lane-wsp=\'{json.dumps(paveds, separators=(",", ":"))}\'' if paveds else ""
     banner_html = """
-    <div class="walk-banner" data-walk-banner aria-hidden="true">
-      <b class="walk-banner-name"></b><span class="walk-banner-note"></span>
-    </div>""" if lane.get("zones") else ""
+    <!-- Round 72: the district banner that used to live here is gone. It appeared by itself on every
+         seam crossing and after every rail jump, and the owner's complaint was exactly that a
+         selection made an interface appear. The seams are still authored (`data-lane-zones`) and the
+         rail still marks where you are; nothing pops. -->""" if lane.get("zones") else ""
     strip_html = ""
     if lane.get("zones"):
         ticks = "".join(

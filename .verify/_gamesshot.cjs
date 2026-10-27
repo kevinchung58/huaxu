@@ -199,10 +199,10 @@ const stats = async (png, clip) => {
     const deck = await page.evaluate(() => ({
       h: document.querySelector("[data-walk]").__walk.height,
       x: document.querySelector("[data-walk]").__walk.x,
-      banner: (document.querySelector("[data-walk-banner]") || {}).className + "|" +
-              (document.querySelector(".walk-banner-name") || {}).textContent,
+      // Round 72: the district banner is gone, so the deck stop is proved by the body itself.
+      banner: "no banner since round 72",
     }));
-    const named = /Niagara Parkway/.test(deck.banner);
+    const named = Math.abs(deck.h - 1680) < 40;   // the deck's authored eye height, not a banner
     const dshot = await page.screenshot({ path: ".preview/round52-clifton/deck-stop.png", type: "png" });
     const ds = await stats(dshot, [0.0, 0.2, 1.0, 0.8]);
     if (!(deck.h > 400 && named)) fails++;

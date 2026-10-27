@@ -1,6 +1,6 @@
 ---
 name: walk-input
-description: How a visitor presses things in a walk room, and how the head turns. Use whenever a tap, key, drag, reach, card, bar or stop is added, moved, removed or re-tuned; whenever a gate or probe drives the lane with a finger or a key; and before claiming that a control "feels right". Owns the press model (a press is a control you can read), the quiet-versus-dead distinction, the real-time turn contract with its constants, and the instruments that measure both.
+description: How a visitor presses things in a walk room, how the head turns, and how every surface is left again. Use whenever a tap, key, drag, reach, card, bar, stop, overlay or exit is added, moved, removed or re-tuned; whenever a gate or probe drives the lane with a finger, a key or the browser's own back gesture; and before claiming that a control "feels right". Owns the press model (a press is a control you can read), the quiet-versus-dead distinction, the real-time turn contract with its constants, the enter/exit history contract (Back folds before it flees), and the instruments that measure all of it.
 ---
 
 # Walk input
@@ -81,6 +81,12 @@ The head turns in real milliseconds, never in frames.
   and `tap.ms`/`tap.held` are zeroed when the payment lands.
 - Walk keys keep their own cap (120 ms), because a step should carry you somewhere and a turn should
   be a nudge you can correct.
+- **A release has to ask for the frame that pays it.** The nudge is paid inside `tick`, and a lane
+  with nothing held rests on a timer, so on a software rasteriser the one frame that saw the key down
+  can end before the key comes up and the other 3° are owed to a frame nobody schedules. Measured:
+  a 40 ms tap of `ArrowRight` turned **0.4°**, and `verify-feel`'s "a tap of the turn key is never
+  swallowed between two frames" was the only thing that noticed. The keyup handler therefore ends
+  with `if (tap) loop();`, and every release has a frame to land in.
 
 Measured with `.verify/_turnprobe.mjs` (browser, real events): tap **2.97–2.98°**, 200 ms **17.7–18.4°**,
 500 ms **43.4°**, 1000 ms **85.2°**, drag **0.065 °/px** at 60/200/400 px. Before round 71 the same
@@ -101,26 +107,65 @@ running anything: `grep -rn "0\.09\|14\.4" .verify/`.
   (`× 120/85`) so the same 84° came back and the positional expectations downstream still described
   the same visitor. Without that, eight unrelated assertions failed — reach, rail, focus — none of
   which were about turning.
-- A gate that is red before your change is a **finding**, not noise. `verify-rooms-e2e` fails 18–20
-  assertions both at the branch tip and at the previous commit: it still encodes the round-64
-  contract where A/D *strafed* (round 65 made them turn). Say so in `TODO.md` with the A/B numbers;
-  do not blame the round you are in.
+- A gate that is red before your change is a **finding**, not noise — and "it was already red" is
+  not a licence to leave it red. `verify-rooms-e2e` failed 18–20 assertions at the previous commits
+  because it still encoded the round-64 contract where A/D *strafed* (round 65 made them turn):
+  `sidleToReach` held A and slid sideways at a door, and after round 65 that spun the walker on the
+  spot and walked it into the wall, so every door, print and aisle reported the neighbouring shop as
+  the thing in reach. Repaired in round 72 by walking the way a visitor does — `walkToReach` turns to
+  the target's own bearing and walks in, `walkUntilBlocked` holds W until the body stops — after
+  which it is **72/72**. A gate's *expectation* may be old; its *assertion* is usually still true.
 - The software rasteriser eats frames (one frame ≈ 0.25–0.67 s). A "tap" can therefore span a frame
   and measure 5–6° even when the model is exact. Judge the sub-frame case and the median, and never
   tune a constant to that artefact.
 
-## 5. Order of work for a change like this
+## 5. Every way in needs the visitor's own way out
+
+The site's exits were all in-page controls (Esc, a close button, a door) and none of them was the
+gesture a phone actually has. Measured in a real browser with `.verify/_backprobe.mjs`:
+
+- `rooms-toronto.html`, press `i` (the card opens), press Back → the visitor is on `street.html`, the
+  card is gone and their position in the room is lost. On a phone that is the whole exit contract
+  failing, not a detail.
+- The cure is one chokepoint pair in `js/site.js`: `overlayEntered()` pushes one history entry when a
+  surface opens, `overlayLeft()` pops the same entry when it closes, and a `popstate` that arrives
+  while something is open folds that surface by dispatching the **same Esc the page already answers**
+  (`overlayDepth`, `ownPop`, `foldingFromHistory` are the three counters that keep it from looping).
+  Only a Back with nothing open leaves the place.
+- Every surface has to report itself or the bug survives on that surface: `enterOverlay`/`leaveOverlay`
+  (the story reel, the gallery plate, the dot game), `showCard`/`hideCard`, `showSpace`, `toggleList`
+  and the featured-publication modal each call the pair. `OVERLAY_SURFACE` is the ordered selector list
+  the fold dispatches at.
+- **Selectors must be read off the shipped markup, not remembered.** The first version listed
+  `.walk-listpanel` and `.dot-game-panel:not([hidden])`; the panel's class is `walk-list`, the dot
+  game hides its `[data-dot-game]` *wrapper*, and the panel is never hidden at all — so the list
+  survived Back and the dot-game selector matched on a page where nothing was open. The gate caught
+  the first (`the written lane folds on Back`) and the second only after the class names were checked
+  against `_gen_html.py`.
+- Esc is unchanged and must stay so: it folds what is open, and with nothing open it is the room's
+  door. `verify-walk`, `verify-overlay` and `verify-exit` all assert both halves.
+
+Instruments: `.verify/_backprobe.mjs` (real browser, prints `BACK CONTRACT OK` and four verdicts:
+card folds / second Back leaves / the written lane folds / Esc with nothing open is the door) and
+`.verify/verify-exit.mjs` (jsdom, **82** assertions: every chrome link resolves, Back folds the card
+on all 8 walk pages without navigating, two surfaces take two Backs, a self-closed surface leaves no
+phantom layer, focus returns, the reel folds, `research.html`'s publication card folds, and Esc means
+what it meant). jsdom cannot navigate, so "the Back finally leaves" is asserted in the browser probe
+and only "not swallowed by a phantom layer" in the gate — say which side holds which claim.
+
+## 6. Order of work for a change like this
 
 1. Write or extend the probe **first** (`_popup-audit`, `_turnprobe`), and record the "before"
    numbers in the round's notes. A UX complaint is a measurement request.
 2. Change `js/site.js`; `node --check js/site.js`; `python3 _gen_html.py` (the cache-buster and the
    emitted markup both come from there); re-run the probe for the "after" numbers.
 3. Update the instruments' constants, then the gates' expectations, then run the whole battery:
-   `verify-walk`, `verify-games`, `verify-nowebgl`, `verify-body`, `verify-feel`, `verify-story`,
-   `_popup-audit`, `_turnprobe`.
+   `verify-walk`, `verify-overlay`, `verify-exit`, `verify-rooms-e2e`, `verify-games`,
+   `verify-nowebgl`, `verify-body`, `verify-feel`, `verify-story`, `_popup-audit`, `_turnprobe`,
+   `_backprobe`.
 4. Only then write it down (this file), refresh `TODO.md`, and hand off.
 
-## 6. Refusals
+## 7. Refusals
 
 - Never re-open the picture as a press target "just for touch": that is the defect.
 - Never make the bar global (always visible, opening the nearest thing). It must be absent when
@@ -130,3 +175,7 @@ running anything: `grep -rn "0\.09\|14\.4" .verify/`.
   the keys, and the clamp stays.
 - Never report "the pop-up is gone" from a screenshot. The probe prints `0/N taps` and the bar's
   label; that pair is the claim.
+- Never let a surface take the screen without pushing its history entry: a surface that skips
+  `overlayEntered` is a surface where Back throws the visitor out of the place.
+- Never let Back *escape* the place while something is open to "keep the browser honest": Back is the
+  exit of the surface first and of the place second, in that order.
