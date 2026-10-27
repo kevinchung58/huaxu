@@ -616,7 +616,11 @@ export function buildLaneGeometry(THREE, quads, state = {}) {
       uvForPoint = (i) => [texcoords[i][0] / 128, texcoords[i][1] / 128];
     } else if (textureKind === "image") {
       const iw = Math.max(1, Number(image.naturalWidth) || 1), ih = Math.max(1, Number(image.naturalHeight) || 1);
-      uvForPoint = (i) => [texcoords[i][0] / iw, -texcoords[i][1] / ih];
+      /* Round 70: `u` runs backwards here because the frustum is mirrored (see makePerspective below).
+         The mirror is what stops the world being painted left-right wrong; a photography hung on a
+         wall, though, would arrive flipped, and a flipped photograph is a defect the mirror did not
+         set out to fix. One minus u puts the picture back the way it was taken. */
+      uvForPoint = (i) => [1 - texcoords[i][0] / iw, -texcoords[i][1] / ih];
     } else if (textureKind === "soft") {
       /* Round 58: a soft quad is a puff, and a puff's radial falloff belongs to the puff.
          This used to project each corner to the screen and divide by a radius in *pixels*, so a
@@ -1548,7 +1552,27 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   renderer.setClearColor(0x141e36, 1);
   backdrop = backdrop || {};
   const scene = new THREE.Scene();
-  scene.background = makeSkyTexture(THREE, backdrop, api.dayPage, api.day);
+  /* Round 70: the sky is our own inverted sphere, not `scene.background`.
+
+     The reason is the frustum: the picture used to be the 2D model's left-right mirror, and the fix
+     swaps the projection's left and right. That swap reverses the winding of every triangle on
+     screen. The world is all `DoubleSide` and does not care, but `scene.background` is rendered by
+     three's own background pass with a `BackSide` box — which, culled inside out, disappears and
+     leaves the clear colour (measured: Niagara stop 2 went from an authored blue sky to near-black
+     after the flip, while the wheel in front of it drew correctly). A sphere with `DoubleSide` and
+     the same authored sky texture cannot be culled whatever the handedness of the projection is,
+     and it carries the texture the sky record already produced, so the sky is the same sky. */
+  const skyFirst = makeSkyTexture(THREE, backdrop, api.dayPage, api.day);
+  const skyMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, depthWrite: false,
+    depthTest: false, fog: false, toneMapped: false });
+  // `makeSkyTexture` answers with a plain colour when the record authors no sky at all; a colour is
+  // not a map, and a sphere with an unusable map is a white ball around the room.
+  if (skyFirst && skyFirst.isTexture) skyMaterial.map = skyFirst; else skyMaterial.color.set(skyFirst || FALLBACK_COLOR);
+  const skyDome = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), skyMaterial);
+  skyDome.name = "authored sky";
+  skyDome.frustumCulled = false;
+  skyDome.renderOrder = -1000;      // painted first, and every surface in the hall covers it
+  scene.add(skyDome);
   // The environment is the same authored sky the backdrop is painted from — one elevation table,
   // sampled once, turned into a prefiltered radiance map by PMREM. Reflections and the visible sky
   // cannot disagree, because they read the same record (the one-world-query rule, pointed at light).
@@ -1899,7 +1923,18 @@ function buildRenderer(THREE, canvas, backdrop, api) {
       state.camera.eye - Math.sin(pitch),
       state.camera.z + Math.cos(yaw) * Math.cos(pitch),
     );
-    camera.projectionMatrix.makePerspective(-w * 0.5 * near / focal, w * 0.5 * near / focal,
+    /* Round 70: the picture is the model's left-right mirror unless this frustum is flipped, so it
+       is flipped. `lookAt` with up = +Y looking down +Z gives the camera a right axis of -X
+       (x = up x z), while the lane's own painter puts +X on the right of the screen
+       (`camPt` -> `W/2 + focal*dx/az`, and `box()`/the hit rectangles use exactly that). Measured on
+       `skyline-cn` at Toronto's city stop: every `[data-obj]` rectangle satisfied
+       `x_rect = 1024 - x_paint`, which is the mirror, and it put the click boxes, the reach test that
+       decides what pressing E opens, and `_map.mjs`'s left and right all on the opposite side of
+       what the visitor was looking at. Swapping left and right here is the whole repair: the world
+       keeps its authored geography, the camera stops mirroring it, and the 3D picture and the 2D
+       model finally agree about which way round the place is. Nothing in the record carries lettering
+       (the one `pic` path is unused), so there is no text to un-mirror. */
+    camera.projectionMatrix.makePerspective(w * 0.5 * near / focal, -w * 0.5 * near / focal,
       h * 0.5 * near / focal, -h * 0.5 * near / focal, near, camera.far);
     camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
 
@@ -1938,10 +1973,15 @@ function buildRenderer(THREE, canvas, backdrop, api) {
       sceneEffects.update({ ...state, day, dayPage, time });
     }
 
+    // The sky rides the eye: a dome that stayed at the world origin would be walked through.
+    skyDome.position.set(state.camera.x, state.camera.eye, state.camera.z);
+    skyDome.scale.setScalar(Math.min(60000, camera.far * 0.5));
     if (Math.abs(day - Number(lastSky.split("|")[0])) > 0.004 || lastSky.endsWith(`|${Boolean(state.dayPage)}`) === false) {
       const texture = makeSkyTexture(THREE, backdrop, Boolean(state.dayPage), day);
-      if (scene.background && scene.background.isTexture) scene.background.dispose();
-      scene.background = texture;
+      if (skyMaterial.map && skyMaterial.map.isTexture) skyMaterial.map.dispose();
+      if (texture && texture.isTexture) skyMaterial.map = texture;
+      else { skyMaterial.map = null; skyMaterial.color.set(texture || FALLBACK_COLOR); }
+      skyMaterial.needsUpdate = true;
       const stops = backdropSkyStops(backdrop, Boolean(state.dayPage), day);
       const horizon = skyColorAt(stops, 0, Boolean(state.dayPage), day);
       scene.fog.color.set(horizon);
@@ -1963,7 +2003,9 @@ function buildRenderer(THREE, canvas, backdrop, api) {
       for (const texture of laneTextures.values()) texture.texture.dispose();
       if (laneSoftTexture) laneSoftTexture.dispose();
       if (sceneEffects) sceneEffects.dispose();
-      if (scene.background && scene.background.isTexture) scene.background.dispose();
+      if (skyMaterial.map && skyMaterial.map.isTexture) skyMaterial.map.dispose();
+      skyMaterial.dispose();
+      skyDome.geometry.dispose();
       renderer.dispose();
       for (const texture of textures.values()) texture.dispose();
       for (const material of materials) material.dispose();

@@ -29,6 +29,12 @@ const OUT = process.env.OUT || "";
 if (OUT) fs.mkdirSync(OUT, { recursive: true });
 const YAWS = (process.env.YAWS || "-150,-105,-60,-15,30,75,120,165").split(",").map(Number);
 const MIN_SD = Number(process.env.MIN_SD || 20);
+/* The documented acceptance (TODO section 3) judges a prop on the view that shows it LARGEST, and only
+   when that view is big enough to judge: 120 x 120 px. Below that a tree 20 m off is a few dozen
+   pixels and no honest statistic can be taken from it, so it is reported as "too small to judge"
+   rather than as flat. Round 70: the code was judging the MEDIAN view instead, which failed every
+   small prop in the room and put twenty of twenty-six on a list of defects. */
+const AREA_MIN = Number(process.env.AREA_MIN || 14400);   // 120 x 120 px
 const VW = 1024, VH = 768;
 
 const html = fs.readFileSync(ROOMS, "utf8");
@@ -116,21 +122,25 @@ for (const stop of STOPS) {
 }
 
 const rows = Object.entries(best).sort((a, b) => a[1].sd - b[1].sd);
-console.log(`\n${"prop".padEnd(16)} ${"view".padEnd(10)} ${"px".padStart(7)} ${"mean".padStart(6)} ${"sd".padStart(6)} ${"best".padStart(6)} ${"col".padStart(5)} ${"views>20".padStart(9)}`);
+console.log(`\n${"prop".padEnd(16)} ${"view".padEnd(10)} ${"px".padStart(7)} ${"mean".padStart(6)} ${"sd".padStart(6)} ${"best".padStart(6)} ${"col".padStart(5)} ${"views>20".padStart(9)}  note`);
 for (const [id, r] of rows) {
   const v = views[id];
   const med = [...v.sds].sort((a, b) => a - b)[Math.floor(v.sds.length / 2)];
   console.log(`${id.padEnd(16)} ${`${r.stop}:${r.yaw}`.padEnd(10)} ${String(r.area).padStart(7)} ` +
               `${String(r.mean).padStart(6)} ${String(r.sd).padStart(6)} ${String(Math.round(med * 10) / 10).padStart(6)} ` +
-              `${String(r.colours).padStart(5)} ${`${v.over}/${v.n}`.padStart(9)}`);
+              `${String(r.colours).padStart(5)} ${`${v.over}/${v.n}`.padStart(9)}` +
+              `${r.area < AREA_MIN ? "  too small to judge" : ""}`);
 }
 const missing = IDS.filter((id) => !best[id]);
-console.log(`\nprops ${IDS.length}, measured ${IDS.length - missing.length}, flat (sd<${MIN_SD}) ${rows.filter(([, r]) => r.sd < MIN_SD).length}`);
+const flat = rows.filter(([, r]) => r.area >= AREA_MIN && r.sd < MIN_SD).map(([id]) => id);
+const small = rows.filter(([, r]) => r.area < AREA_MIN).map(([id]) => id);
+console.log(`\nprops ${IDS.length}, measured ${IDS.length - missing.length}, ` +
+            `flat (sd<${MIN_SD} on >= ${AREA_MIN} px) ${flat.length}, too small to judge ${small.length}`);
 if (missing.length) console.log(`NEVER ON SCREEN: ${missing.join(", ")}`);
-const flat = rows.filter(([id, r]) => r.sd < MIN_SD || views[id].over * 2 < views[id].n).map(([id]) => id);
 if (missing.length || flat.length) {
   const strict = process.env.STRICT === "1";
-  console.log(`${strict ? "FAIL" : "REPORT (not a gate)"}: ${flat.length} flat (${flat.join(", ")}), ${missing.length} unseen`);
+  console.log(`${strict ? "FAIL" : "REPORT (not a gate)"}: ${flat.length} flat (${flat.join(", ")}), ${missing.length} unseen` +
+              (small.length ? `; too small to judge: ${small.join(", ")}` : ""));
   await browser.close();
   process.exit(strict ? 1 : 0);
 }

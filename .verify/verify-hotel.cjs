@@ -24,11 +24,17 @@ const MIN_SD = Number(process.env.MIN_SD || 12);
 const MIN_COLOURS = Number(process.env.MIN_COLOURS || 24);
 const OUT = process.env.OUT || ".preview/hotel-gate";
 /* Boxes over the tower heads, in the 1024x768 frame. They are a composition of one view, so the gate
-   checks the heading it reached before it trusts them (below). */
+   checks the heading it reached before it trusts them (below).
+
+   Round 70 re-derived them: the picture used to be the model's left-right mirror, and the fix swapped
+   the projection's left and right, so every box authored against the old frame now sits on the other
+   side of the screen -- on the umbrella and the lamp post, which is why two of the three "failed".
+   The tower is the same tower; its mirror about the frame centre is where it paints now
+   (1024 - 470 - 70 = 484, 1024 - 345 - 45 = 634). */
 const BOXES = [
-  { name: "tower A (282 m, 60 m tall)", x: 205, y: 95, w: 45, h: 200 },
-  { name: "tower B (306 m, 99 m tall)", x: 345, y: 150, w: 45, h: 140 },
-  { name: "tower C (far, 111 m)", x: 470, y: 230, w: 70, h: 70 },
+  { name: "tower A (282 m, 60 m tall)", x: 484, y: 232, w: 58, h: 68 },
+  { name: "tower B (306 m, 99 m tall)", x: 634, y: 108, w: 52, h: 240 },
+  { name: "tower C (far, 111 m)", x: 726, y: 104, w: 92, h: 212 },
 ];
 
 (async () => {

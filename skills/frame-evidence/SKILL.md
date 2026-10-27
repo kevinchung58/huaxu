@@ -192,7 +192,35 @@ A rectangle can also be honest and still uninformative: `tram-t`'s is the whole 
 the record's `w` is the line, not the car), and `boat-lake`'s is clipped to 1x1 in most views. A prop
 that moves, or whose record describes its path, is not measured by its hit box.
 
+## 10. A mirrored picture is not a cosmetic bug
+
+Round 70 found the 3D picture was the 2D model's **left-right mirror**, and the tell was that every
+`[data-obj]` rectangle satisfied `x_rect = W - x_paint`. That single relation is worth memorising,
+because it separates a mirror from an offset without any further measurement:
+
+| relation | what it means |
+|---|---|
+| `x_rect = x_paint + d` (constant d) | a stale read, or a projection constant that drifted |
+| `x_rect = W - x_paint` | the two paths disagree about handedness: a mirror |
+| `x_rect` tracks the heading but not the paint | the box is live and the projection is wrong (same as above) |
+| `x_rect` clip-fitted to `1x1` | the prop is off screen and the box is lying about it |
+
+Check it before you rewrite any prop. Then decide which side to fix **by asking what the visitor is
+supposed to see**, not by which side is easier:
+
+- the *record* carries the geography (a label says "the station, on your left" because the model puts
+  it at negative x). If the picture contradicts the label, the **picture** is wrong. Fixing the model
+  instead would make the picture agree with itself and disagree with the record — the worse failure,
+  because nobody can see it in a frame.
+- a mirror is invisible inside one frame. It only shows up when a frame is compared against a claim
+  about left and right, which is why it survived many rounds of "the scene looks flat/wrong" reviews.
+
+And after the flip, re-check everything the mirror was silently protecting: photographs hung on walls
+(un-mirror their uv), compositions that put a subject at a screen edge, and every gate that quoted a
+left or right. The flip itself is two lines; the proof is the frames.
+
 ## Procedure
+
 
 1. State the claim in one sentence and the page/stop/view it is about.
 2. `arrive()` → `aim()` → `park()` → shoot. Refusals are the tool working.
@@ -200,3 +228,23 @@ that moves, or whose record describes its path, is not measured by its hit box.
 4. Crop, look, and write the verdict in numbers plus one sentence of judgement.
 5. If the claim survives, it goes to TODO with the numbers and the frame path. If it does not, the
    retraction goes there instead — with the number that killed it.
+
+### When you flip handedness, re-derive every box that was measured on the old frames
+
+The flip itself is two lines. The damage is in the constants that were *authored against frames*:
+
+- `verify-hotel.cjs`'s three tower boxes were measured on a mirrored frame; after the flip two of three
+  "failed" on the umbrella and a lamp post. They were never wrong about the towers -- they were boxes
+  for the other side of the screen. `1024 - x - w` fixed all three.
+- a gate that counts run has to be re-derived the same way. `verify-wheel`'s cabin counter went from 14
+  to 10 to 11 in three runs of an unchanged scene: the count is a property of the detector against
+  that frame, not of the wheel, so read the reported number as a floor for the day, never as a fact.
+- and the first thing that broke was invisible until the frame was looked at: `scene.background`
+  disappeared, because three paints it with a `BackSide` box and the swapped frustum reversed the
+  winding and culled it. Only the *sky* went black; every `DoubleSide` surface was fine. That is the
+  general lesson -- a handedness change is a winding change, so the surfaces that vanish are the ones
+  that were single-sided, and there is exactly one of those in this renderer.
+
+A mirror gate that reads the paint (largest warm cluster vs the hit box, and its mirror) is stronger
+than one that reads the box: `verify-mirror.mjs` passes 74 % vs 1 % with the fix and 1 % vs 71 %
+without it, on the same frame, with no threshold tuned between the runs.
