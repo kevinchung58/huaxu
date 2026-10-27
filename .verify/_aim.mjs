@@ -91,7 +91,8 @@ export async function openPage(browser, { rooms, hour = "day", base = "http://12
 
 export const state = (page) => page.evaluate(() => {
   const w = document.querySelector("[data-walk]")?.__walk;
-  return w ? { x: w.x, z: w.depth, yaw: w.yaw, pitch: w.pitch, quads: w.quads } : null;
+  return w ? { x: w.x, z: w.depth, yaw: w.yaw, pitch: w.pitch, quads: w.quads,
+               frameMs: w.frameMs || 0 } : null;
 });
 
 /* The stop's authored position: `--z`/`--x` on the button, read from computed style because that is
@@ -114,7 +115,7 @@ export async function arrive(page, stop, { tol = 6, arriveMs = 300000, settleSam
   if (target.z === null) return { arrived: false, blocked: false, target, at: await state(page), why: `stop ${stop} has no --z` };
   await page.evaluate((i) => document.querySelectorAll("[data-walk-stop]")[i].click(), stop);
   const t0 = Date.now();
-  let at = await state(page), still = 0, prev = at;
+  let at = await state(page), prev = at, stillSince = Date.now();
   while (Date.now() - t0 < arriveMs) {
     await sleep(300);
     at = await state(page);
@@ -122,22 +123,32 @@ export async function arrive(page, stop, { tol = 6, arriveMs = 300000, settleSam
     const zOk = Math.abs(at.z - target.z) <= tol;
     const xOk = target.x === null || Math.abs(at.x - target.x) <= tol;
     const moving = prev && (Math.abs(at.z - prev.z) > 0.5 || Math.abs(at.x - prev.x) > 0.5);
-    still = moving ? 0 : still + 1;
+    if (moving) stillSince = Date.now();
     prev = at;
-    if (zOk && xOk) {
-      // Within tolerance once is not arrival if it is drifting through; require it to hold.
-      if (still >= 1) {
-        const short = Math.round(at.z - target.z);
-        return { arrived: true, blocked: false, target, at, short,
-                 waited: Math.round((Date.now() - t0) / 1000) };
-      }
+    /* Round 72: "still" is measured in time, not in samples, and against the lane's own frame.
+       On a loaded machine one frame costs 1.5 s; six 300 ms samples then all land inside a single
+       frame that is still moving, and the gate called a rail glide that had 27 m to go "settled"
+       (verify-wheel, measured: body at 149 cm, stop at 2842). A frame's worth of silence is not a
+       body at rest. */
+    const frameMs = at.frameMs || 0;
+    const stillMs = Date.now() - stillSince;
+    /* A rail glide on this scene advances in bursts: it can sit still for ~2 s between bursts while a
+       texture decodes, and a 2.4 s window called that "settled" (verify-wheel, measured twice). Six
+       seconds is longer than any measured pause and still fails a genuine stall quickly enough. */
+    const atRest = stillMs >= Math.max(settleSamples * 1000, frameMs * 6);
+    if (zOk && xOk && atRest) {
+      const short = Math.round(at.z - target.z);
+      return { arrived: true, blocked: false, target, at, short, stillMs,
+               waited: Math.round((Date.now() - t0) / 1000) };
     }
-    if (still >= settleSamples && !zOk) {
+    if (atRest && !zOk) {
       /* Stopped, still short: something is in the way. Report it as a fact, not as a failure of
          the instrument -- the frame may still be the right one, but the caller must say so. */
       const short = Math.round(at.z - target.z);
       return { arrived: false, blocked: true, target, at, short,
-               why: `body settled ${short >= 0 ? "+" : ""}${short} cm from --z (${Math.round(at.z)} vs ${target.z})`,
+               why: `body settled ${short >= 0 ? "+" : ""}${short} cm from --z `
+                    + `(${Math.round(at.z)} vs ${target.z}) after ${Math.round(stillMs / 100) / 10} s still, `
+                    + `frame ${Math.round(frameMs)} ms`,
                waited: Math.round((Date.now() - t0) / 1000) };
     }
   }

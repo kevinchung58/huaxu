@@ -20,6 +20,7 @@
   - **選擇器要照出貨的標記讀，不要憑記憶**：第一版寫 `.walk-listpanel`（class 其實是 `walk-list`）、`.dot-game-panel:not([hidden])`（點點遊戲藏的是 `[data-dot-game]` 外框，面板本身從來不 hidden）——所以「清單按 Back 不收」多活了一輪。
   - **新閘門 `verify-exit.mjs`（jsdom，82 條）**：8 個走路頁的 chrome 連結全部指到存在的檔案；Back 在 8 頁都能收卡片且不導航；兩層表面要兩次 Back；自己按關閉不留幽靈條目；焦點回到開它的東西；故事盤會收；`research.html` 的出版卡會收；Esc 仍是「有東西先收、沒東西才出門」。jsdom 不能導航，所以「最後一次 Back 真的離開」由瀏覽器探針斷言（`BACK CONTRACT OK`：卡片收、房間留、第二次 Back 離開、清單收、Esc 沒東西時是門）。
   - **`verify-rooms-e2e` 從 53 PASS／18 FAIL 修成 72/72 綠**：它寫的還是第 64 輪「A／D 平移」的契約（`sidleToReach` 按住 A 側滑到門邊），第 65 輪改成轉頭之後那等於原地旋轉再撞牆，於是每一個門、每一張印刷、每一條走道都回報隔壁店面。改成訪客的做法：`walkToReach` 先轉到目標自己的方位再走進去、`walkUntilBlocked` 按住 W 直到身體停下。**紅不是本輪造成的**（第 71 輪的 A/B 已證明），本輪把它修掉。
+  - **量具錯②：`_aim.mjs` 的「停了」比一幀還短，也比 glide 的一次停頓還短。** `arrive()` 用「6 次 300 ms 取樣沒動」判抵達＝1.8 秒，而機器一忙一幀就是 1.5 秒——那 27 m 的 rail glide 還在走，卻被判成「停在 149 cm」。`verify-wheel` 因此紅了一輪，看起來像軌道壞了。改成用時間對照 lane 自己的 `frameMs`（`max(6×1000 ms, 6×frameMs)`＝至少 6 秒），拒絕時把「停了多久、一幀多久」一起印出來。niagara 的 rail glide 是**一陣一陣**走的（會停 ~2 秒等貼圖），6 秒是量出來的下限；`verify-wheel` 之後連兩次 PASS。
   - **順手抓到的產品錯：一次輕點轉頭被吞掉。** 轉向是在 `tick` 裡付的，而沒按鍵的 lane 靠計時器休息；慢機器「看見按鍵的那一幀」可能在放手前就結束，剩下的 3° 欠給一個沒人排的幀 ⇒ 40 ms 輕點只轉 **0.4°**（`verify-feel` 12/12 → 11/12，全站只有這一條發現）。修法：keyup 收尾 `if (tap) loop();`，每一次放手都有自己的幀可以落地；修後 12/12。
   - **本輪閘門**：walk **205/205**、overlay **98/98**、exit **82/82**、rooms-e2e **72/72**、feel **12/12**、games 23/23、body 73/73、nowebgl 35/35、story 27/27、rail 4/4、shapes 248、skills **80/80**；其餘見 §5.5。
 - **第 71 輪 —— 手：一個 tap 不再按任何東西，而頭轉得太快是「用幀付帳」**：站主給了 `.walk-card` 的截圖說「你幫我全部拿掉這種。因為我看很多不必要的物件都會跳這種視窗。這很干擾操作體驗。你順便全部處理好。」＋「現在移動左右邊轉向很大。可以全面調整好嗎」。
@@ -368,7 +369,9 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 **量具（第 69k 輪）**：`.verify/_aim.mjs` 是到達與瞄準的唯一實作；`_map.mjs`（prim 地圖）、`_shot_at.mjs`（帶仰角取景）新增；`audit-all.mjs` 重寫（每件取最大視角，26/26 量到）並**標記為診斷**（`STRICT=1` 才是閘門，因為 `boat-lake`/`tram-t`/`skyline-cn` 還平，見 §3 P6-5）。
 
 **第 71 輪重跑**：walk **205/205**、skills **80/80**（16 個 skill，新 `walk-input`）、games 23/23、body 73/73、nowebgl 35/35、feel 12/12、story 27/27、rail 4/4、chain 0、shapes 248、geometry OK、clash 0、mirror PASS（73 % vs 1 %）、look 五桌全量到（lake 467×276、falls 228×261、market 164×102、city 260×230、goat 471×198）、wheel 14 艙 PASS、hotel PASS（sd 14.4／29.4／16.0）、island 46/46、three PASS、shader-lits PASS、`audit-all` 26/26 量到（平的 2：`hall-sl`、`skyline-cn`）、**`verify-collision` 28/28（7 頁，exit 0）**。
-**第 72 輪重跑**：walk **205/205**、overlay **98/98**、exit **82/82**、rooms-e2e **72/72**、feel **12/12**、games 23/23、body 73/73、nowebgl 35/35、story 27/27、rail 4/4、shapes 248、skills **80/80**、mirror PASS（73 % vs 1 %）、island 全部 41 個 stop 都看得到東西（empty ≤ 60 %）、three PASS（14,924 world + 1,048 water）、shader-lits PASS、look 五桌全量到（lake 467×276、falls 228×261、market 164×102、city 260×230、goat 471×198）、wheel 14 艙 PASS、hotel PASS（sd 14.4／29.4／16.0）、`audit-all` 26/26（平的 2：`hall-sl`、`skyline-cn`）、`verify-collision` 本輪重跑中（背景，~52 分鐘，跑完再填）。
+**第 72 輪重跑**：walk **205/205**、overlay **98/98**、exit **82/82**、rooms-e2e **72/72**、feel **12/12**、games 23/23、body 73/73、nowebgl 35/35、story 27/27、rail 4/4、shapes 248、skills **80/80**、mirror PASS（73 % vs 1 %）、island 全部 47 個 stop 都看得到東西（empty ≤ 60 %）、three PASS（14,924 world + 1,048 water）、shader-lits PASS、look 五桌全量到（lake 467×276、falls 227×261、market 164×102、city 261×231、goat 471×198）、wheel 14 艙 PASS（連兩次）、hotel PASS（sd 14.4／29.4／16.0）、`audit-all` 26/26（平的 2：`hall-sl`、`skyline-cn`）、**`verify-collision` 28/28（exit 0）**。
+
+**沒有任何一個閘門是紅的了。**
 
 **第 72 輪之前一直是紅的、本輪修掉的**：`verify-rooms-e2e` 53 PASS／18 FAIL（`cc24606` 上 51／20）——第 64 輪的平移契約，改成「先轉到方位再走」之後 72/72。
 **量具**：新增 `.verify/_popup-audit.mjs`（哪個手勢開卡＋橫桿開什麼）、`.verify/_turnprobe.mjs`（輕點／按住／拖曳幾度）；`_aim.mjs`、`verify-look`、`_view.mjs`、`_keys.mjs`、`_tapdiag.mjs` 的拖曳常數全部同步成 0.065。

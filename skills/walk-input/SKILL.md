@@ -118,6 +118,12 @@ running anything: `grep -rn "0\.09\|14\.4" .verify/`.
 - The software rasteriser eats frames (one frame ≈ 0.25–0.67 s). A "tap" can therefore span a frame
   and measure 5–6° even when the model is exact. Judge the sub-frame case and the median, and never
   tune a constant to that artefact.
+- **An instrument's "it has stopped" must be longer than a frame.** `_aim.mjs`'s `arrive()` called a
+  rail glide finished after six 300 ms samples with no movement — 1.8 s, which on a loaded machine is
+  *one* frame, still travelling. `verify-wheel` then failed with `body settled -2693 cm from --z
+  (149 vs 2842)` and looked exactly like a broken rail. Stillness is now measured in time against the
+  lane's own `frameMs` (`max(6 × 400 ms, 4 × frameMs)`), and the refusal prints how long it was still.
+  A gate that cannot tell "arrived" from "the machine is slow" is not evidence.
 
 ## 5. Every way in needs the visitor's own way out
 
