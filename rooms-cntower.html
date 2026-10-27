@@ -26,7 +26,7 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","@id":"https://kevinchung58.github.io/huaxu/rooms-cntower.html","url":"https://kevinchung58.github.io/huaxu/rooms-cntower.html","isPartOf":{"@type":"WebSite","name":"Hua-Xu Zhong","url":"https://kevinchung58.github.io/huaxu/index.html"}}</script>
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
   <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
-  <link rel="stylesheet" href="css/site.css?v=974843a47c" />
+  <link rel="stylesheet" href="css/site.css?v=b92be45523" />
 </head>
 <body class="shell">
 <div class="walk" id="walk-cntower" data-walk="The tower" data-walk-id="cntower"
@@ -81,6 +81,11 @@
       </div>
     </div>
     <div class="walk-bottom">
+      <!-- Round 71, the owner's ruling: a tap on the picture presses nothing. The finger's verb is
+           this bar, which appears only while something is in front of you and carries that thing's
+           own name, so a press is always a press on a control the visitor can see and read. -->
+      <button type="button" class="walk-open" data-walk-open hidden
+        aria-label="Open what is in front of you"></button>
       <div class="walk-tools">
         <span class="walk-fov"><button type="button" class="walk-icon" data-walk-fov="-1"
           aria-label="Wider view"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg></button
@@ -107,9 +112,10 @@
       <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
         <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open a thing ·
         <kbd>L</kbd> the list · <kbd>I</kbd> this note · <kbd>Esc</kbd> close, then leave</p>
-      <p class="walk-note">With a finger: drag to turn, tap the wall in front of you to open it, tap
-        again to put it down. Three ways out — the arrow in the corner, the curtain at the mouth of the
-        lane, and a second <kbd>Esc</kbd> once nothing is open any more.</p>
+      <p class="walk-note">With a finger: drag to turn; when something is in front of you, its name
+        appears in the bar at the foot of the picture, and tapping that bar opens it. A tap on the
+        picture itself only puts down what is open. Three ways out — the arrow in the corner, the
+        curtain at the mouth of the lane, and a second <kbd>Esc</kbd> once nothing is open any more.</p>
       <p class="walk-note">The tower is drawn, not surveyed: the distances are the artist's, and a
         frame is a depiction of a place rather than a record of standing in it.</p>
     </div>
@@ -155,8 +161,8 @@
   </div>
 </div>
 
-<script src="js/site.js?v=974843a47c"></script>
-<script src="js/games.js?v=974843a47c" defer></script>
-<script type="module" src="js/scene3d.js?v=974843a47c"></script>
+<script src="js/site.js?v=b92be45523"></script>
+<script src="js/games.js?v=b92be45523" defer></script>
+<script type="module" src="js/scene3d.js?v=b92be45523"></script>
 </body>
 </html>

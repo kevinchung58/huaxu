@@ -19,7 +19,7 @@ const TABLES = {
      Round 69j replaced two things here: the id lists had drifted (planter-i1/i2, stall-m1..m3 and
      crate-m1/m2 are not on any page in this build), and the aim was a count of key presses -- which
      on a clamped 120 ms frame is a 14.4-degree step, i.e. the same defect that made round 69h's
-     frames mislabelled. The heading now comes from a measured drag (0.09 deg per pixel, site.js),
+     frames mislabelled. The heading now comes from a measured drag (0.065 deg per pixel, site.js),
      so the view is the same on a fast machine and a software rasteriser. The stop/heading pairs are
      the ones that put each diorama largest on screen (measured across all five stops and both
      directions: lake 115,460 px2 at stop 0/-19, falls 45,144 at 0/-4, market 20,790 at 3/-12,
@@ -52,7 +52,7 @@ for (const [name, t] of Object.entries(TABLES)) {
       const now = await state();
       const off = ((t.yaw - now + 540) % 360) - 180;
       if (Math.abs(off) <= 0.8) break;
-      const px = Math.max(-430, Math.min(430, Math.round(off / 0.09)));
+      const px = Math.max(-430, Math.min(430, Math.round(off / 0.065)));   // round 71 drag constant
       if (Math.abs(px) < 9) break;
       await page.mouse.move(512, 384);
       await page.mouse.down();

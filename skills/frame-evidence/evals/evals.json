@@ -6,7 +6,7 @@
       "prompt": "Take a screenshot of stop 6 on rooms-niagara.html facing yaw 90 and tell me whether the shopfronts look right.",
       "expect": [
         "waits for the stop's own --z/--x and reports the signed shortfall rather than a fixed sleep",
-        "aims by drag at 0.09 deg/px, reads the heading back, and refuses if it missed",
+        "aims by drag at 0.065 deg/px, reads the heading back, and refuses if it missed",
         "states the renderer and the frame path with the heading that was actually reached"
       ]
     },

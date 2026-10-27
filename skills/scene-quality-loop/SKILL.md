@@ -31,7 +31,8 @@ Use the repository's current `.verify/browser-shot.mjs` for actual browser movem
 
 **Every frame in this loop comes through `frame-evidence`** (round 69k). In practice: arrival is the
 stop's own `--z`/`--x` read back from the body, never a fixed sleep — a loose band called arrival
-2 m early and a stillness test fired before the glide began. Aim is a drag at 0.09 °/px read back,
+2 m early and a stillness test fired before the glide began. Aim is a drag at 0.065 °/px (round 71;
+0.09 before that) read back,
 never a key hold (a press turns at least 14.4°); pitch is a separate constant, 0.065 °/px with the
 opposite sign, and the lane clamps it to ±24°. Distances are centimetres — print metres too, because
 `19416` was once written down as 19.4 km and a whole diagnosis was built on it. A frame whose

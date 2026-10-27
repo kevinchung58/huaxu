@@ -132,9 +132,13 @@ for (const key of KEYS) {
 
 /* The other half of the owner's complaint: what a tap does.
 
-   A tap on the scenery must not open a card (scenery is not a verb), and the landmark — the
-   waterfall — must be findable and openable. This taps the boxes by their own positions, the
-   way a finger does, and reports what answered. */
+   Round 71 changed the answer, so this measures the new one. The owner: "many unnecessary objects
+   pop this window; it disrupts operating the scene". A tap on the picture now presses nothing at
+   all -- it only folds what is open -- and the finger's one press is the bar at the foot of the
+   picture, which appears only while something is in reach and carries that thing's own name. So a
+   tap is reported as "opens nothing", and the bar is pressed afterwards to show that the thing the
+   tap refused is still reachable. The waterfall has to stay findable and openable: it is the thing
+   the owner could not click in round 65, and the bar is what answers it now. */
 if (TAP) {
   /* A tap is a finger on the screen, so the box has to be *in the picture* for the tap to mean
      anything. The probe therefore looks around -- small turns, the way a visitor does -- until the
@@ -145,7 +149,7 @@ if (TAP) {
       const r = el.getBoundingClientRect();
       if (!(r.width > 0 && r.height > 0)) return;
       if (!(r.left > 0 && r.top > 0 && r.right < innerWidth && r.bottom < innerHeight)) return;
-      out.push({ obj: el.dataset.obj, kind: el.dataset.kind, quiet: el.dataset.quiet === "1",
+      out.push({ obj: el.dataset.obj, title: el.dataset.title || "", kind: el.dataset.kind, quiet: el.dataset.quiet === "1",
                  landmark: el.dataset.landmark === "1", leave: el.dataset.leave || "",
                  x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2),
                  w: Math.round(r.width), h: Math.round(r.height) });
@@ -174,7 +178,38 @@ if (TAP) {
                title: card.hidden ? "" : (document.querySelector("[data-walk-title]")?.textContent || ""),
                status: document.querySelector("[data-walk-status]")?.textContent?.trim() || "" };
     });
-    console.log(`tap ${label.padEnd(9)} ${t.obj} (${t.w}x${t.h}) -> card=${after.cardOpen} ${JSON.stringify(after.title)} | ${after.status}`);
+    const bar = await page.evaluate(() => {
+      const b = document.querySelector("[data-walk-open]");
+      return b && !b.hidden ? b.textContent.trim() : null;
+    });
+    console.log(`tap ${label.padEnd(9)} ${t.obj} (${t.w}x${t.h}) -> card=${after.cardOpen} ${JSON.stringify(after.title)} `
+      + `| bar=${JSON.stringify(bar)} | ${after.status}`);
+    if (after.cardOpen) {
+      await page.evaluate(() => document.querySelector("[data-walk-card-close]")?.click());
+      await sleep(160);
+    }
+    /* The bar is the finger's verb now: it must carry this thing's name before it is pressed, and
+       pressing it must open exactly that. A bar that is missing, or that names something else, is
+       the waterfall becoming unclickable again by a different route. */
+    await pressBar(label, t);
+  };
+  const pressBar = async (label, t) => {
+    const label0 = await page.evaluate(() => {
+      const b = document.querySelector("[data-walk-open]");
+      return b && !b.hidden ? b.textContent.trim() : null;
+    });
+    if (!label0) { console.log(`bar ${label.padEnd(9)} nothing in reach, so no bar`); return; }
+    await page.evaluate(() => document.querySelector("[data-walk-open]").click());
+    await sleep(340);
+    const after = await page.evaluate(() => {
+      const card = document.querySelector("[data-walk-card]");
+      return { cardOpen: !card.hidden,
+               title: card.hidden ? "" : (document.querySelector("[data-walk-title]")?.textContent || "") };
+    });
+    const want = (t && t.title) || "";
+    const ok = after.cardOpen && (!want || after.title.trim() === want.trim());
+    console.log(`bar ${label.padEnd(9)} names ${JSON.stringify(label0)} -> card=${after.cardOpen} `
+      + `${JSON.stringify(after.title)}${ok ? "" : ` (expected ${JSON.stringify(want)})`}`);
     if (after.cardOpen) {
       await page.evaluate(() => document.querySelector("[data-walk-card-close]")?.click());
       await sleep(160);

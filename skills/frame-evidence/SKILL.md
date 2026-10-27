@@ -43,7 +43,9 @@ another wait loop.
 
 - A key hold cannot land a heading: turning integrates per frame with `dt` clamped to 0.12 s at
   120 °/s, so the **smallest** turn one press can make is 14.4° (measured, round 69i).
-- A drag sets the heading from distance, so it goes where it is put: **0.09 °/px** horizontally.
+- A drag sets the heading from distance, so it goes where it is put: **0.065 °/px** horizontally
+  (0.09 before round 71 — the constant lives in `js/site.js` and in `.verify/_aim.mjs`, and the two
+  are only equal when someone keeps them equal).
 - Vertical is a different constant and the opposite sign: **0.065 °/px, drag down looks up**
   (measured 8.00 → 1.50 over 100 px down; 40 px up = +2.6°). `pitch` is positive DOWN.
 - The lane clamps pitch to ±24°, so a heading of −28° is unreachable; asking for it must be refused

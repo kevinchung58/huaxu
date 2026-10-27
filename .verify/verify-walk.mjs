@@ -486,12 +486,13 @@ ok("the plaza is walked into, and the gate stands past the clamp: a street that 
 // The scramble plate, from the stop between the shuttered rows, 44 cm ahead of it at the post line.
 click(stopAt(1392));
 await settle(1392);
-await hold("a", 700);                                     // turn left: A turns the head, as the
+await hold("a", 988);                                      // turn left: A turns the head, as the
+// (round 71: 85 deg/s, so 120/85 x the old hold turns the same 84 degrees)
 await hold("w", 1400);                                    // arrows do, so the lane is walked into
 await sleep(120);
 ok("the wall prop nearer you wins: the reach is nearest-first, not list-order",
    /The scramble at Shibuya|A shop on the west row/.test(status()), status());
-await hold("d", 700);                                     // and the head comes back down the lane
+await hold("d", 988);                                      // and the head comes back down the lane
 await sleep(120);
 ok("standing at the frame's own depth brings it into reach",
    /The scramble at Shibuya/.test(status()), status());
@@ -570,7 +571,7 @@ ok("closing hands focus back to the thing on the wall that opened it",
 // between the shuttered rows, step across to the east row's posts.
 click(stopAt(1392));
 await settle(1392);
-await hold("d", 700);                                  // turn right, to face the east row
+await hold("d", 988);                                  // turn right, to face the east row
 await hold("w", 1500);                                  // and walk into the lane's east side
 await sleep(120);
 ok("between the rows, the shop at the posts is what you are standing in front of",
@@ -586,7 +587,7 @@ await sleep(40);
 ok("the card closes again", card.hidden);
 // and the head comes back down the lane, so the press boxes below are the ones a visitor
 // walking forward would meet -- not the two that happen to be east of where the card was read
-await hold("a", 700);
+await hold("a", 988);
 await sleep(120);
 
 /* The states contract, tested where the states are (round 32). Nakamise after closing has nothing a
@@ -672,35 +673,70 @@ ok("and the one control that must never be hunted for is louder than the tools",
    q("[data-walk-exit]").classList.contains("walk-exit")
      && /\.walk-exit \{[^}]*min-width: 2\.7rem/.test(css) && !/class="walk-icon"[^>]*href="index/.test(html));
 
-/* The finger's verb. `E` is a keyboard and a phone has none, so a tap that never became a look has to
-   press what is in front of you; and a look that *was* a drag must not press anything at all. */
+/* The finger's verb (round 71). `E` is a keyboard and a phone has none, so the picture still has to
+   answer a finger -- but the owner's ruling is that the answer is not a card for whatever happens to
+   be within reach: "many unnecessary objects pop this window; it disrupts operating the scene". The
+   measurement that forced the change was `.verify/_popup-audit.mjs` on rooms-cntower: 25 taps out of
+   25 on empty canvas opened a card, because the whole picture was a button.
+
+   What is true now, and what this block holds the lane to:
+     - a tap on the picture presses nothing at all; it only folds what is already open;
+     - the press lives in one control, `[data-walk-open]`, which carries the name of the thing it will
+       open and is absent when nothing is in reach;
+     - a prop's own box answers the keyboard only, never a pointer;
+     - a drag turns the head and opens nothing. */
 const stage = q("[data-walk-view]");
 const ptr = (type, dx = 0, dy = 0) => stage.dispatchEvent(
   new w.PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, clientX: 500 + dx, clientY: 400 + dy }));
 const closePlate = async () => { if (!card.hidden) click(q("[data-walk-card-close]")); await sleep(40); };
+const openBar = q("[data-walk-open]");
 await closePlate();
 ok("nothing is open before the finger tries", card.hidden);
+ok("the finger's one press is a bar that names the thing it would open",
+   !!openBar && openBar.classList.contains("walk-open") && !openBar.hidden
+     && qa(".walk-hit.is-reach").length === 1
+     && openBar.textContent.trim() === (qa(".walk-hit.is-reach")[0].dataset.title || "").trim()
+     && /\.walk-open::before \{\n  content: "Open \\00B7 "/.test(css),
+   `${openBar ? JSON.stringify(openBar.textContent) : "missing"} / ${title0()}`);
 ptr("pointerdown");
 ptr("pointerup");
-await sleep(50);
-ok("a tap on the scene presses the thing you are standing in front of",
-   !card.hidden && qa(".walk-hit.is-reach").length === 1, `${title0()} / ${q("[data-walk-title]").textContent}`);
+await sleep(60);
+ok("a tap on the picture opens nothing, however much is in reach", card.hidden);
+const barTitle = openBar.textContent.trim();
+click(openBar);
+await sleep(60);
+ok("pressing the bar opens exactly the thing it named",
+   !card.hidden && q("[data-walk-title]").textContent.trim() === barTitle, q("[data-walk-title]").textContent);
+ptr("pointerdown");
+ptr("pointerup");
+await sleep(60);
+ok("and a tap on the picture puts it down again, so the fold has one place", card.hidden);
+ptr("pointerdown");
+ptr("pointerup");
+await sleep(60);
+ok("a second tap is still only a look: the plate stays down", card.hidden);
+/* A pointer click on a prop's own box is a pointer click: `detail` is the browser's own count of
+   clicks, and the boxes answer only a click with no pointer behind it (the one a keyboard's Enter
+   makes). Without the distinction a stray click on any shopfront the visitor happened to be facing
+   opened a card -- the same complaint from the other side. */
+const faceBox = qa(".walk-hit").find((el) => el.dataset.title && !el.disabled);
+const boxClick = (detail) => faceBox.dispatchEvent(
+  new w.MouseEvent("click", { bubbles: true, cancelable: true, detail, button: 0 }));
+boxClick(1);
+await sleep(60);
+ok("a pointer click on a prop's box presses nothing", card.hidden, faceBox && faceBox.dataset.obj);
+boxClick(0);
+await sleep(60);
+ok("the keyboard's activation of that same box still opens it",
+   !card.hidden && q("[data-walk-title]").textContent.trim() === (faceBox.dataset.title || "").trim());
 await closePlate();
 const yawBefore = body().yaw;
 ptr("pointerdown");
-ptr("pointermove", 60, 0);
+ptr("pointermove", 200, 0);
 ptr("pointerup");
-await sleep(50);
+await sleep(60);
 ok("a drag turns the head and presses nothing",
-   card.hidden && Math.abs(body().yaw - yawBefore) > 3, `Δyaw ${(body().yaw - yawBefore).toFixed(1)}°`);
-ptr("pointerdown");
-ptr("pointerup");
-await sleep(50);
-ok("and the tap the drag refused now opens the plate", !card.hidden);
-ptr("pointerdown");
-ptr("pointerup");
-await sleep(50);
-ok("tapping the scene again puts the plate back down, so the finger has both directions", card.hidden);
+   card.hidden && Math.abs(body().yaw - yawBefore) > 8, `Δyaw ${(body().yaw - yawBefore).toFixed(1)}°`);
 ptr("pointerdown");
 ptr("pointercancel");
 await sleep(50);
@@ -731,6 +767,7 @@ stage.dispatchEvent(auxLeft);
 ok("the middle button's scroll widget is refused over the scene, and no other click is",
    middle.defaultPrevented && !auxLeft.defaultPrevented);
 await closePlate();                 // the context-menu probe's pointerup is a tap in jsdom; fold it before walking
+await sleep(40);
 ok("the context-menu probe's synthetic tap is folded before testing movement", card.hidden);
 
 ok("the chrome's press areas are bigger than its glyphs, since the glyphs are the drawing",
@@ -802,7 +839,7 @@ const projection = (from, to, heading) => {
   return { forward: dx * Math.sin(a) + dz * Math.cos(a),
            side: dx * Math.cos(a) - dz * Math.sin(a) };
 };
-await hold("arrowright", 800);
+await hold("arrowright", 1129);
 const turnedYaw = body().yaw;
 const w0 = { x: body().x, depth: body().depth };
 await hold("w", 650);
@@ -814,7 +851,7 @@ ok("W follows the view after a turn, rather than the lane's fixed depth axis",
 await sleep(650);                         // let the previous velocity ease out before changing verbs
 const a0 = { x: body().x, depth: body().depth };
 const yawBeforeA = body().yaw;
-await hold("a", 550);
+await hold("a", 777);
 const a1 = { x: body().x, depth: body().depth };
 const aVector = projection(a0, a1, yawBeforeA);
 const dyawA = ((body().yaw - yawBeforeA + 540) % 360) - 180;
@@ -1217,7 +1254,7 @@ ok("the 2D lane painter is deleted, not dormant", !/data-walk-canvas|canvas2d/.t
   const garrived = await gsettle(gz);
   ok("the rail carries the visitor to the stop it names — round the planter in its way, before any key is pressed",
      garrived, `at ${gbody().depth.toFixed(0)} of ${gz} — every 2 s: ${(gsettle.trace || []).join(" ")}`);
-  await ghold("d", 700); await ghold("w", 1500);
+  await ghold("d", 988); await ghold("w", 1500);
   await sleep(120);
   gkey("e"); await sleep(80);
   ok("opening a card finishes the teaching: last step, a way out where Skip was",

@@ -99,12 +99,12 @@ for (const view of VIEWS) {
      A key cannot aim a camera to a degree on a slow frame; a drag can.
 
      So the aim is the gesture a visitor with a mouse or a thumb actually uses: pointer down, move,
-     up. That path sets the heading from the drag distance (0.09 deg per pixel, site.js) instead of
+     up. That path sets the heading from the drag distance (0.065 deg per pixel, site.js) instead of
      integrating it over frames, so one drag lands wherever it is aimed. Drags travel at least 9 px
      because a pointerup that moved less than 8 px is a *tap* in the lane's own rule, and a tap
      presses whatever is under the pointer. Residual under 0.8 deg is left alone: it is under a
      pixel at this focal length, and inside the tolerance the stops are read back with. */
-  const DRAG = 0.09, cx = Math.round(VW / 2), cy = Math.round(VH / 2);
+  const DRAG = 0.065, cx = Math.round(VW / 2), cy = Math.round(VH / 2);
   const dragBy = async (px) => {
     await page.mouse.move(cx, cy);
     await page.mouse.down();

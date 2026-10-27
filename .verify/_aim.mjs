@@ -21,7 +21,7 @@
    AIM is a drag, never a key hold, and the heading is read back afterwards.
      - Turning integrates per frame with dt clamped to 0.12 s at 120 deg/s, so the smallest turn a
        key press can make is 14.4 degrees (measured, round 69i). No key can land a heading.
-     - A drag sets the heading from distance at 0.09 deg/px, so one drag goes where it is put.
+     - A drag sets the heading from distance at 0.065 deg/px, so one drag goes where it is put.
      - The residual is then read from the body's own yaw, not from the intent, and a miss over
        1.2 degrees is a refusal (`aimed: false`), not a frame with a hopeful name.
      - A pointerup that travels under 8 px is a *tap* in the lane's own rule and presses whatever
@@ -45,9 +45,13 @@ const require = createRequire(import.meta.url);
 const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium").default || require("@sparticuz/chromium");
 
-export const DRAG_DEG_PER_PX = 0.09;   // js/site.js: the lane's own drag constant
+export const DRAG_DEG_PER_PX = 0.065;  // js/site.js: the lane's own drag constant (round 71)
 export const TAP_PX = 8;               // js/site.js: a move under this is a tap, not a drag
-export const DEG_PER_KEY = 14.4;       // 120 deg/s x the 0.12 s dt clamp: a key's smallest turn
+/* Round 71: the head turns in real time now -- 85 deg/s of the key's own milliseconds -- so the
+   smallest turn a key press can produce is one nudge, TURN_TAP_MS x TURN_RATE = 2.98 deg,
+   whatever the frame rate. Aiming by key is therefore error-prone and every instrument aims by
+   drag; the number is kept so a caller that does use a key can size the correction. */
+export const DEG_PER_KEY = 2.975;
 /* Vertical is not the horizontal constant, and it runs the other way. Measured at stop 7 (niagara,
    day): a 100 px drag DOWN moved pitch 8.00 -> 1.50 (-6.5 deg, 0.065 deg/px), a 100 px drag UP took
    it back to 8.00, and 40 px up moved it +2.6. Round 69k's first `_shot_at` run assumed 0.09 and

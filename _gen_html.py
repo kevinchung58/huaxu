@@ -6876,6 +6876,15 @@ def is_target(o):
     """
     if o.get("states") or o.get("leave") or o.get("place") or o.get("landmark"):
         return True
+    # A prop that *does* something when pressed is a target by that fact alone, whatever it is made
+    # of: the goldfish stall (a game), the Falls Incline (a ride), the model bridge and the two basins
+    # (demonstrations), a wall that opens a story. Round 71 found this the hard way: the stall's kind
+    # is `board`, which is scenery, so it shipped `data-quiet="1" tabindex="-1"` -- unannounced and
+    # untabbable -- and the only route to the toy had been the tap on the picture that round 71
+    # removed. A gate that presses the stall caught it. `"demo" in o`, not `o.get("demo")`: the ripple
+    # and the opening bridge both author a demo, and one of them could legitimately be an empty word.
+    if o.get("game") or o.get("ride") or o.get("story") or ("demo" in o):
+        return True
     # A frame is a story: it is one of the reel's pictures, hung on a wall, and the reel is what
     # the lane is for. Quieting it would take the site's own story off the wall and put it in a
     # drawer nobody opens.
@@ -7223,6 +7232,11 @@ def walk_html(d, drawer):
       </div>
     </div>
     <div class="walk-bottom">
+      <!-- Round 71, the owner's ruling: a tap on the picture presses nothing. The finger's verb is
+           this bar, which appears only while something is in front of you and carries that thing's
+           own name, so a press is always a press on a control the visitor can see and read. -->
+      <button type="button" class="walk-open" data-walk-open hidden
+        aria-label="Open what is in front of you"></button>
       <div class="walk-tools">
         <span class="walk-fov"><button type="button" class="walk-icon" data-walk-fov="-1"
           aria-label="Wider view">{ICON_FOV_OUT}</button
@@ -7249,9 +7263,10 @@ def walk_html(d, drawer):
       <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
         <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open a thing ·
         <kbd>L</kbd> the list · <kbd>I</kbd> this note · <kbd>Esc</kbd> close, then leave</p>
-      <p class="walk-note">With a finger: drag to turn, tap the wall in front of you to open it, tap
-        again to put it down. Three ways out — the arrow in the corner, the curtain at the mouth of the
-        lane, and a second <kbd>Esc</kbd> once nothing is open any more.</p>
+      <p class="walk-note">With a finger: drag to turn; when something is in front of you, its name
+        appears in the bar at the foot of the picture, and tapping that bar opens it. A tap on the
+        picture itself only puts down what is open. Three ways out — the arrow in the corner, the
+        curtain at the mouth of the lane, and a second <kbd>Esc</kbd> once nothing is open any more.</p>
       <p class="walk-note">{label} is drawn, not surveyed: the distances are the artist's, and a
         frame is a depiction of a place rather than a record of standing in it.</p>
     </div>

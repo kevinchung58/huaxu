@@ -47,6 +47,13 @@ a gate that framed two of seven ids, a stop photographed from wherever the glide
 ray hit printed in centimetres that a round of TODO read as kilometres. Route any claim about a
 rendered frame through it (round 69k).
 
+`walk-input` is the seventeenth-track skill and the one that owns the hand: how a visitor presses
+something in a room and how far the head turns when they do. It exists because the picture used to be
+one big button (`.verify/_popup-audit.mjs` measured 25 taps out of 25 opening a card), because removing
+that button took the goldfish stall's only route with it, and because the turn was paid in frames
+instead of the visitor's own milliseconds (8–9° for a tap). Route every change to a tap, key, drag,
+reach, card, bar or stop through it (round 71).
+
 ---
 
 ## 1. Grill first, build second

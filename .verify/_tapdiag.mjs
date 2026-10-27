@@ -62,6 +62,21 @@ if (target) {
   await sleep(400);
 }
 console.log("after tap   ", JSON.stringify(await yaw()));
+/* Round 71: a tap on the picture presses nothing, so the thing under the finger has to be opened
+   from the bar that names it. Both readings are printed: the tap that must not open, and the bar
+   that must. */
+const bar = await page.evaluate(() => {
+  const b = document.querySelector("[data-walk-open]");
+  return b && !b.hidden ? b.textContent.trim() : null;
+});
+console.log("bar in reach", JSON.stringify(bar));
+if (bar) {
+  await page.evaluate(() => document.querySelector("[data-walk-open]").click());
+  await sleep(400);
+  console.log("after bar   ", JSON.stringify(await yaw()));
+  await page.evaluate(() => document.querySelector("[data-walk-card-close]")?.click());
+  await sleep(200);
+}
 await turn(400);
 console.log("after turn 2", JSON.stringify(await yaw()));
 

@@ -2532,6 +2532,47 @@ body.shell {
   gap: 0.5rem;
   align-items: center;
 }
+/* Round 71: the reach bar. It is the only thing on the picture a tap can press, it appears only
+   while something is in front of you, and it carries that thing's name -- so a press is always on a
+   control the visitor can read. It sits above the tools and never over the middle of the scene:
+   the lane's rule is that nothing is written over the space. */
+.walk-open {
+  position: absolute;
+  left: 50%;
+  bottom: 3.9rem;
+  transform: translateX(-50%);
+  max-width: min(26rem, calc(100vw - 2rem));
+  padding: 0.42rem 0.95rem 0.46rem;
+  border: 1px solid rgba(242, 200, 142, 0.44);
+  border-radius: 999px;
+  background: rgba(11, 20, 48, 0.84);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.84rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.walk-open[hidden] { display: none; }
+.walk-open::before {
+  content: "Open \00B7 ";
+  color: var(--accent-bright);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.walk-open:hover,
+.walk-open:focus-visible {
+  background: rgba(11, 20, 48, 0.96);
+  border-color: var(--accent-bright);
+}
+@media (pointer: coarse) {
+  .walk-open { bottom: 8.4rem; }   /* clear of the stick */
+}
+
 .walk-fov {
   display: inline-flex;
   gap: 2px;

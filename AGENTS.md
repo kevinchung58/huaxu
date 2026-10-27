@@ -137,7 +137,9 @@ no package manifest, CDN, or additional runtime dependency is implied.
   read `skills/scene-quality-loop/SKILL.md`; before any PR is opened or updated, read
   `skills/pr-handoff/SKILL.md` and update `TODO.md` with a complete, prioritized plan for the next
   round. Before drawing a conclusion from a screenshot, a ray, a pixel statistic or a stop position,
-  read `skills/frame-evidence/SKILL.md`; every number quoted from a frame comes through it. **Any
+  read `skills/frame-evidence/SKILL.md`; every number quoted from a frame comes through it. Before
+  touching a tap, key, drag, reach, card or bar, read `skills/walk-input/SKILL.md`; it owns the press
+  model and the turn constants, and its probes (`_popup-audit`, `_turnprobe`) are the evidence. **Any
   round that discovers a defect class, a measured constant, or a new instrument must write or amend a
   skill in the same round** — read `skills/skill-authoring/SKILL.md`, add the `skills/README.md` row
   and the `SKILLS.md` routing sentence, and run `node .verify/verify-skills.mjs`. The agent's skills
@@ -445,6 +447,7 @@ change and gets committed with the work that motivated it.
 | **lane-prop** | `skills/lane-prop/SKILL.md` | One object, light, state or stop inside an existing district: the `SHAPE`/`OBJ_SIZE` registers, the id-prefix naming rule, `Z_SCALE`, `glow`/`of:`, `states`/`leave`, and the measurement that closes it. |
 | **street-commons** | `skills/street-commons/SKILL.md` | The street the rooms stand on: a second street or a new region along the hub, seaside/promenade/harbour/riverbank work, a commercial strip, **and anything that asks for daylight ("有太陽", 海邊, 港, 沿岸, 運河, 商店街)**. Carries the palette-and-sun constraint that makes a sunlit street a stylesheet decision rather than a scene one, and the arithmetic of opening one side of a lane. |
 | **landmark-space** | `skills/landmark-space/SKILL.md` | One landmark object becomes its own walkable space (CN Tower as a room, not a miniature), and the owner's link contract: press the prop, the IG-story plate opens first, an enter-the-space action beside it. Use when a prop should own a district, when the subject is one tall or huge object, or for the beauty gate on any 3D space. |
+| **walk-input** | `skills/walk-input/SKILL.md` | Any change to a tap, key, drag, reach, card, bar or stop, and before claiming a control "feels right": the press model (the picture is look-only, the bar is the verb), quiet-versus-dead, the real-time turn contract (85 deg/s, 3 deg a tap, 0.065 deg/px) and the probes (`_popup-audit`, `_turnprobe`) that measure both. |
 | **grounded-scene** | `skills/grounded-scene/SKILL.md` | Any experience scene (體驗場景) that recreates a real place and must feel nearly the same as being there — the owner's round-20 rule. Carries the ladder of evidence (owner's photos → official material → satellite/map → Street View/panoramas → photographs), the measurement table, the fidelity contract (details shrink; sequence, scale, sightlines and distinctive geometry must not), and the fidelity gate. Runs under `district-author`/`landmark-space`, never instead of them. |
 
 **`.claude/skills/` — third-party skills, local-only, gitignored** (not tracked in this repo; the

@@ -852,11 +852,20 @@ function leaveOverlay(root, trigger) {
   const HIT = 44;
   // A slower, eased walk and a limited turn rate are deliberate comfort choices. Camera roll is
   // removed, and the remaining head bob is sub-centimetre so motion never fights the place being read.
-  // Round 65: the head turns at 120 degrees a second, not 75. At 75 a right angle took a second
-  // and a quarter -- a quarter turn every time the visitor looked at the next thing -- and a
-  // lane you have to wait out is a lane that feels broken. The drag still turns as fast as the
-  // hand moves; this is the keyboard.
-  const SPEED = 165, RUN = 1.25, TURN_RATE = 120;   // release decay tau is 90 ms, in stepMotion
+  /* Round 71, the owner's correction: "moving left and right turns too far". Measured on the build
+     before this change (`.verify/_turnprobe.mjs`, rooms-toronto, day): a TAP of D / A / the right
+     arrow turned the head 7.4-9.2 degrees, a 200 ms press 37.7, a second 140.3, and a drag exactly
+     0.09 deg/px. None of those is a look -- they are swings -- and the cause of the smallest one is
+     that a tap was paid a whole 120 ms of turn because that is the frame clamp.
+
+     So the two are separated, because they answer different questions:
+       `TURN_RATE`  what a HELD key is worth, per second, to a visitor who is looking around;
+       `TURN_TAP`   what a press too short for a frame is worth, and it is a nudge, not a step.
+     Round 65 raised the held rate from 75 to 120 for the opposite complaint ("a right angle took a
+     second and a quarter"); 85 keeps most of that gain and costs the overshoot. */
+  const SPEED = 165, RUN = 1.25, TURN_RATE = 85;    // release decay tau is 90 ms, in stepMotion
+  const TURN_TAP_MS = 35;            // ms of turn a tap is worth: 85 deg/s x 0.035 = 3.0 degrees
+  const DRAG_DEG_PER_PX = 0.065;     // a drag sets the heading from distance; 100 px = 6.5 degrees
   const GRAV = 2400, JUMP = 420, GLIDE_SPEED = 165;
   let zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
   let vx = 0, vd = 0, phase = 0, bob = 0, raf = 0, last = 0, here = -1, reach = null;
@@ -8108,6 +8117,14 @@ function leaveOverlay(root, trigger) {
     "portal", "deckwall", "glassfloor", "plinth", "hall", "hallbase", "hallplaster", "figure", "art",
     "academic", "identity", "poster", "vending"]);
   const FAR_REACH = 8000;          // cm: how far a thing you can only look at still answers
+  /* Round 71: the finger's verb had no handle. A tap anywhere on the picture opened the card of
+     whatever was in reach, and measured in `.verify/_popup-audit.mjs` that was 25 taps out of 25 on
+     an empty canvas -- the whole screen was a button, and every prop the visitor walked past could
+     interrupt them. The owner's words: "many unnecessary objects pop this window; it disrupts
+     operating the scene". So the scene is look-only for a tap now, and this bar is the verb: it
+     appears only while something is in reach, it carries that thing's own name, and nothing else on
+     the screen presses anything. */
+  const openBtn = layer.querySelector("[data-walk-open]");
   /* A landmark answers from anywhere the lane can see it. The Horseshoe's brink is three hundred
      and seventy metres from the promenade and the mark is a fixed disc on the picture, so a
      reach that stopped at eighty metres would put a mark on the screen that the lane never
@@ -8151,12 +8168,22 @@ function leaveOverlay(root, trigger) {
     if (best && best.el === (reach && reach.el)) { reach = best; return; }
     if (reach) reach.el.classList.remove("is-reach");
     reach = best;
-    if (!best) { layer.classList.remove("has-reach"); sayPlace(); return; }
+    if (!best) {
+      layer.classList.remove("has-reach");
+      if (openBtn) { openBtn.hidden = true; openBtn.setAttribute("aria-label", "Open what is in front of you"); }
+      sayPlace();
+      return;
+    }
     best.el.classList.add("is-reach");
     // One non-verbal signal for the whole display: the note button carries a dot while there is
     // something to read about what is in front of you.
     layer.classList.add("has-reach");
     const title = best.el.dataset.title || "";
+    if (openBtn) {
+      openBtn.hidden = false;
+      openBtn.textContent = title;
+      openBtn.setAttribute("aria-label", `Open ${title}`);
+    }
     /* A landmark is measured across the gorge, not along the lane: the falls are three hundred
        and seventy metres away in a straight line and a hundred and eighty along the promenade,
        and "183 metres ahead" would be a number about the pavement rather than about the water. */
@@ -8428,8 +8455,6 @@ function leaveOverlay(root, trigger) {
          under them instead -- which is why the movement read as broken rather than as unusual.
          The stick on a touch screen still strafes (it has to: there is no A and D on a phone), and
          the strafe is gone from the keyboard, where it was never what anybody wanted. */
-      const turn = (keys.has("arrowright") || keys.has("d") ? 1 : 0) - (keys.has("arrowleft") || keys.has("a") ? 1 : 0);
-      if (turn) yaw = wrapYaw(yaw + turn * TURN_RATE * dt);
       let mx = stick ? stick.x : 0, md = stick ? -stick.y : 0;
       if (keys.has("w") || keys.has("arrowup")) md += 1;
       if (keys.has("s") || keys.has("arrowdown")) md -= 1;
@@ -8580,6 +8605,34 @@ function leaveOverlay(root, trigger) {
        direction the visitor pressed -- a hundred and twenty milliseconds of motion, which is one
        slow frame's worth. A press a frame did see is left to the held path above, so a long hold
        is never counted twice and the walk never gains a step it was not given. */
+    /* Round 71: the head turns in the visitor's own time, not in the frame's.
+
+       The turn used to be integrated inside the motion step, with the frame's dt -- and a frame on a
+       software rasteriser is 47 ms, so a tap the visitor held for 12 ms was paid 47 ms of turn. The
+       same flick therefore turned four times as far on a slow machine as on a fast one, and on the
+       build before this change it measured 8-9 degrees for a tap. What the visitor pressed is the
+       key, for as long as it was down; that is what gets paid: the frame's share, but never more
+       than the key has actually been held, and a press shorter than a nudge is topped up to
+       TURN_TAP_MS. A tap on a 60 Hz machine is ~3 degrees and the same tap on a 21 Hz machine is the
+       same 3 degrees. */
+    const turnDir = (keys.has("d") || keys.has("arrowright") ? 1 : 0)
+                  - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
+    if (turnDir && !gliding) {
+      const nowMs = performance.now();
+      let paidMs = 0;
+      for (const k of ["a", "arrowleft", "d", "arrowright"]) {
+        const tap = tapState.get(k);
+        if (!tap || !tap.start) continue;
+        paidMs = Math.max(paidMs, Math.min(elapsed * 1000, nowMs - tap.start));
+      }
+      if (paidMs > 0) {
+        yaw = wrapYaw(yaw + turnDir * TURN_RATE * (paidMs / 1000));
+        for (const k of ["a", "arrowleft", "d", "arrowright"]) {
+          const tap = tapState.get(k);
+          if (tap && tap.start) tap.held += paidMs;   // ms, banked, so a release owes only the rest
+        }
+      }
+    }
     let tapTurn = 0, tapWalk = 0;
     tapState.forEach((tap, k) => {
       if (tap.start) {
@@ -8587,11 +8640,24 @@ function leaveOverlay(root, trigger) {
         // the tap does not owe. A frame that saw the key for a thousandth of a second gave the
         // visitor a thousandth of a second of turn, and a tap that is owed a response has to be
         // paid the difference -- not suppressed by the fact that a frame looked at it.
-        tap.held += elapsed;
+        const isTurn = k === "a" || k === "arrowleft" || k === "d" || k === "arrowright";
+        if (!isTurn) tap.held += elapsed * 1000;   // ms; a turn's frame share is paid above
         tap.ms = 0;
         return;
       }
-      const owed = Math.min(tap.ms, 120) - tap.held;
+      /* A tap that turns and a tap that walks are not the same size of gesture: a step should carry
+         you somewhere, and a turn should be a nudge you can correct. A turn key is worth
+         TURN_TAP_MS whatever the press lasted -- shorter presses are topped up to the nudge, longer
+         ones have already been paid frame by frame above. (`held` is milliseconds, like `ms`: it
+         used to be seconds against a millisecond value, so the subtraction was a no-op and every
+         tap paid its full cap.) */
+      const isTurn = k === "a" || k === "arrowleft" || k === "d" || k === "arrowright";
+      /* The nudge is owed ONCE, on the frame that first sees the release (`tap.ms` is cleared below);
+         without that guard the floor paid itself again on every later frame, and a tap of D measured
+         8.9 degrees instead of 3.0. A press long enough to have been paid frame by frame owes the
+         difference between its real length and what has already been paid, which is usually nothing. */
+      const cap = isTurn ? (tap.ms > 0 ? Math.max(tap.ms, TURN_TAP_MS) : 0) : Math.min(tap.ms, 120);
+      const owed = cap - tap.held;
       if (owed > 0) {
         const t = owed / 1000;
         if (k === "a" || k === "arrowleft") tapTurn -= t;
@@ -8601,7 +8667,7 @@ function leaveOverlay(root, trigger) {
       }
       tap.ms = 0; tap.held = 0;
     });
-    if (tapTurn) yaw = wrapYaw(yaw + tapTurn * TURN_RATE);
+    if (tapTurn) yaw = wrapYaw(yaw + tapTurn * TURN_RATE);   // tapTurn is in seconds
     if (tapWalk) {
       const th = a(), sy = Math.sin(th), cy = Math.cos(th);
       moveBody(x + sy * SPEED * tapWalk, depth + cy * SPEED * tapWalk);
@@ -8761,7 +8827,7 @@ function leaveOverlay(root, trigger) {
   const TUT = [
     "Turn first: the lane continues behind you. Arrow keys or A / D, or drag the view.",
     "Now walk in: hold W; Shift lets it run. The walls hold you — nothing here is a picture to walk through.",
-    "Stand in front of anything worth reading and press E, or tap it: every record lives behind a button, never painted on the scene.",
+    "Stand in front of anything worth reading and press E, or press the bar that names it at the foot of the picture: every record lives behind a button, never painted on the scene.",
     "Those ticks above are the rail. Press one and the lane carries you to where the view is worth stopping for; Esc walks you back out.",
   ];
   let tutStep = -1, tutYaw = 0, tutX = 0, tutD = 0;
@@ -8881,6 +8947,11 @@ function leaveOverlay(root, trigger) {
     // A thing with stops is opened by being *used*: the shutter goes up, the flap swings, and the card
     // says what the lane looks like now. Pressing it again takes it to the next stop.
     if (m.states && m.states.length > 1) { setState(m, (m.st + 1) % m.states.length); draw(); }
+    /* Scenery never shows a record (round 71). The guard sits *here*, after every real verb, and not
+       at the top of the function: `quiet` means "not announced and not written about", not "does
+       nothing" -- the goldfish stall is scenery by kind and a playable toy by behaviour, and a guard
+       at the top took the toy away with the card. */
+    if (m.quiet) return;
     showCard(m);
   };
   const nearestOf = (el) => meta.find((m) => m.el === el);
@@ -8914,12 +8985,21 @@ function leaveOverlay(root, trigger) {
     zoom = clamp(zoom + Number(btn.dataset.walkFov) * 0.08, 0.72, 1.34);
     draw();
   }));
+  // The bar is only visible while something is in reach, so there is nothing to do if there is not:
+  // a hidden control cannot be clicked, and `act` refuses an empty reach on its own.
+  if (openBtn) openBtn.addEventListener("click", () => { if (reach) act(reach); });
   if (card) {
     const btn = card.querySelector("[data-walk-card-close]");
     if (btn) btn.addEventListener("click", () => { hideCard(); view.focus({ preventScroll: true }); });
   }
+  /* A prop's button is still a button: Tab to it and press Enter, and it opens, which is the one
+     route a keyboard-only visitor has to a record. A *pointer* click on it does not -- that is the
+     visitor clicking the picture to focus the page or to look at something, and round 71 measured
+     that every such click opened a card. `detail === 0` is the discriminator the DOM gives for a
+     click synthesised by the keyboard (Enter/Space on a focused control) as against a real one. */
   objs.forEach((el) => el.addEventListener("click", (event) => {
     event.preventDefault();
+    if (event.detail !== 0) { view.focus({ preventScroll: true }); return; }
     act(nearestOf(el));
   }));
   rows.forEach((row) => {
@@ -8954,7 +9034,7 @@ function leaveOverlay(root, trigger) {
     if (!down || event.pointerId !== down.id) return;
     const dx = event.clientX - down.x, dy = event.clientY - down.y;
     down.moved = Math.max(down.moved, Math.abs(dx) + Math.abs(dy));
-    yaw = wrapYaw(down.yaw + dx * 0.09);                // turn through the room without Pointer Lock
+    yaw = wrapYaw(down.yaw + dx * DRAG_DEG_PER_PX);     // turn through the room without Pointer Lock
     pitch = clamp(down.pitch - dy * 0.065, -MAX_PITCH, MAX_PITCH);
     gliding = null;
     /* A pointer reports at 60–240 Hz; this renderer draws one frame at a time and, on a software
@@ -8977,13 +9057,16 @@ function leaveOverlay(root, trigger) {
      should be able to put it down. */
   const up = () => {
     const tap = !!down && down.moved < 8;
-    const onObj = !!down && !!down.obj;
     release();
     wasDrag = !tap;
     if (!tap) return;
-    if (onObj) return;              // the thing's own button gets the click, and it is the press
+    /* Round 71, the owner's ruling: a tap does not open a card. It used to press whatever was in
+       reach, wherever on the picture the finger landed, and the measurement was 25 taps out of 25
+       on empty canvas opening a card -- so looking around kept interrupting the visitor with a
+       window about a prop they had walked past. The finger still has one verb here, and it is the
+       gentlest one: a tap puts down what is open. Everything else is a named control -- the reach
+       bar (`[data-walk-open]`), a prop's own button, or E. */
     if (card && !card.hidden) { hideCard(); return; }
-    if (reach) act(reach);
   };
   view.addEventListener("pointerup", up);
   view.addEventListener("pointercancel", release);

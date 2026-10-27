@@ -17,6 +17,7 @@ These skills are tracked with the project so future Agent Mode sessions can load
 | Japan place | `japan-place/SKILL.md` | Project-authored from the Tokyo (Nakamise, Hozomon, pagoda) and Moji rounds. | Japanese place vocabulary, real centimetres, night, prohibitions, the sakura-crossing study. |
 | Street commons | `street-commons/SKILL.md` | Project-authored from the hub street rounds. | The hub street's layout system, regions, promenades and daylight. |
 | Place intake | `place-intake/SKILL.md` | Project-authored from the owner's photograph-led rounds. | Turn supplied photographs into the record of a walkable room. |
+| Walk input | `walk-input/SKILL.md` (with `evals/evals.json`) | Project-authored, round 71, from the 25/25 tap audit, the stall that lost its only route, and a turn paid in frames instead of the visitor's own milliseconds. | How a press works in a walk room and how the head turns: the bar, `detail === 0`, quiet-versus-dead, the 85 deg/s / 3 deg / 0.065 deg-per-px constants, and the probes that measure them. |
 | PR handoff | `pr-handoff/SKILL.md` | Project-authored, mandatory before every PR operation. | The PR/TODO contract: `TODO.md` refreshed before every creation or update. |
 | Skill authoring | `skill-authoring/SKILL.md` | Project-authored, round 69l, from `skills/` holding fifteen skills while `skills/README.md` registered four. | When a lesson becomes a skill, how to write one, and keeping this register honest. |
 
