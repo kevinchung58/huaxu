@@ -21,7 +21,6 @@ const out = await page.evaluate(() => {
     top: rules.length, total: flat.length,
     authors: !!sheet.cssRules && [...sheet.cssSheets ? [] : []].length,
     hasAuthors: flat.some((s) => s && s.includes(".authors")),
-    hasTitleBtn: flat.some((s) => s && s.includes(".title-btn")),
     hasWallTile: flat.some((s) => s && s.includes(".ig-tile")),
     hasHidden: flat.some((s) => s && s.includes(".walk-tutor-act[hidden]")),
     bodyFont: getComputedStyle(document.body).fontFamily.slice(0, 40),
