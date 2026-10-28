@@ -15,7 +15,7 @@
   - **最貴的垃圾不是死程式碼，是死旋鈕。** 產生器把 `data-lane-day-start` 寫進頁面，`js/site.js` 把它解析成 `DAY_AT`，而 `DAY_AT` 進到一個**沒有人讀的常數**——所以 `_walkshot`／`_lumacheck` 每次「把 start 改成 0.9 拍黃昏」，拍到的都是**正午**。同一個探針接上之後量到：street「夜」**luma 141 → 80**（`rooms` 沒有 day flag，46.9，作為對照沒有變）。`data-lane-day-cycle="900"` 是同一族的東西（一個網站已經沒有的頁面時鐘），連同 `DAYLEN`／`DAY_LEN`／`tileCm` 一起刪。修法是把 start 接上：`hourChosen`（localStorage 有任何小時值）為真時不動，否則 `hourPhaseSet = clamp(DAY_AT, 0, 1)`——**站主選過的時間永遠贏過頁面的預設**。
   - **十支閘門從來不在清單上。** `TODO.md` §2.3 的「一次跑完」少了 `verify-ux`、`verify-overlay`、`verify-exit`、`verify-island`、`verify-mirror`、`verify-motion`、`verify-rooms-e2e`、`verify-skills`、`verify-wheel`、`verify-hotel`——`verify-island`（沒有一站站在空無一物前面）第 69m 輪抓過真缺陷，之後只被手動跑過一次。**沒在清單上的閘門不會紅，因為沒有人跑它。** 清單整個重寫：25 支分成「不開瀏覽器」與「真瀏覽器、順序跑」兩段，每支後面寫它現在的數字。
   - **`verify-island` 補跑：43 站全部看得到東西，每一站 empty 0 %**（門檻 60 %）。它回報 rooms.html 第 3 站「停在目標前 152 cm」——查下去是**量具**的問題不是產品：`_aim.mjs` 的抵達判準是「6 秒沒動」，而被搶幀的滑行會在原地停超過 6 秒。`_stops` 同一顆按鈕量到 **0 cm**。修法：`_aim.arrive()` 改問車道自己的答案（`__walk.glide` 是不是 null），「靜止」不再是抵達的證據。`_stops` 全八頁重跑 **57/57 站、誤差 0–1 cm**。
-  - **九個 `.verify/` 檔沒有任何東西引用**：`_barshot`、`_dbg2`、`_dbg3`、`_dbg_goat`、`_overlay-audit`、`_proj`、`_r74shot`、`_stopprobe2`、`_turnprobe-jsdom`——單輪的臨時探針，刪（git 歷史留著）。**`verify-island` 是同一種「零引用」但不該刪**：它是能紅的閘門，所以進清單。
+  - **十個 `.verify/` 檔沒有任何東西引用**：`_barshot`、`_dbg2`、`_dbg3`、`_dbg_goat`、`_mirror-cmp`、`_overlay-audit`、`_proj`、`_r74shot`、`_stopprobe2`、`_turnprobe-jsdom`——單輪的臨時探針，刪（git 歷史留著）。**`verify-island` 是同一種「零引用」但不該刪**：它是能紅的閘門，所以進清單。
   - **產生器裡的死名字**：`NIA_TRAIL`（九個 OSM 節點，`NIA_RIM_N` 是用公尺偏移另外寫的，不是從它算的）、`_ring_m()`、`PRESS_VERBS`（動詞次序寫在 `press_verb()` 裡，這個 tuple 只是它的影子）。三個都刪，產生器輸出**除了快取雜湊以外一個位元組都沒變**。
   - **第 72 輪留下的半個承諾**：`data-lane-zones` 當時以「也許有人要讀巷道的分界」為理由留著，四輪下來沒有人讀。刪掉；分界本來就畫在站點列的刻度上，區域名稱在刻度的 `title` 裡——訪客拿得到的東西沒有少。
   - **掃過而乾淨的四項**（寫下來，下一輪不用再掃）：66 張圖全部有引用；256 個 CSS class 選擇器、28 個自訂屬性、95 個出貨的 `data-*`，除上面兩個以外全部有讀者（`data-axle`、`data-dia`、`data-phase0`、`data-view-h` 這些是 `dataset[\`view${key}\`]`、`m.axle` 這種**間接**讀法，靜態 grep 會把它們誤判成死——每一條都回程式碼確認過）。
@@ -268,7 +268,7 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
 - **診斷**：`_stuck.mjs` / `_stuck2.mjs`（卡住）、`_tapdiag.mjs`（點擊診斷）、`_wallgap.mjs`（畫牆與可行走空間）、`_csscheck.mjs`（樣式表解析與套用）、`wall-probe.cjs`（受困／滑動／擱淺普查）、`verify-rooms-e2e.cjs`（jsdom 啟動樣板，碰撞閘門共用同一份 boot）。
 - **表面與抵達（第 75–76 輪）**：`_surface.mjs`（每一個開啟的表面：cover／content／fill／字的 measure）、`_stops.mjs`（點每一顆停止點，等 `__walk.glide` 收工，印出 cm 誤差；**不要**用「看起來停了」判斷）、`_reach.mjs`（走過去，每一個可按的東西按得到嗎）、`_deadui.mjs`（每一個控制元件按下去有沒有變化；jsdom 不能導航，所以導覽型的「沒變化」是它的盲點，原始碼裡有寫）、`_uxwalk.mjs`（訪客走查，逐行寫進 `.preview/ux74/presses.txt`）。
 - **量具的抵達判準（第 76 輪修）**：`_aim.mjs` 的 `arrive()` 原本是「6 秒沒動就是到了」。被搶幀的滑行會在原地停超過 6 秒，於是 `verify-island` 把 rooms.html 第 3 站報成「停在目標前 152 cm」，而 `_stops` 同一顆按鈕量到 0 cm。現在它問車道自己的 `__walk.glide`。**任何新的抵達判斷都先看 `glide`。**
-- **刪掉就不要留名字**：第 76 輪刪了九個零引用的探針（`_barshot`、`_dbg2/3`、`_dbg_goat`、`_overlay-audit`、`_proj`、`_r74shot`、`_stopprobe2`、`_turnprobe-jsdom`）。方法寫在 `skills/dead-ballast`：五種垃圾怎麼找、三種判決（刪／接上／寫進清單）、以及怎麼證明移除是隱形的。
+- **刪掉就不要留名字**：第 76 輪刪了十個零引用的探針（`_barshot`、`_dbg2/3`、`_dbg_goat`、`_mirror-cmp`、`_overlay-audit`、`_proj`、`_r74shot`、`_stopprobe2`、`_turnprobe-jsdom`）。方法寫在 `skills/dead-ballast`：五種垃圾怎麼找、三種判決（刪／接上／寫進清單）、以及怎麼證明移除是隱形的。
 
 ### 2.5 記憶的規則
 
@@ -437,19 +437,15 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 - **燈的參數語意**（`scaledEffectTint`）：hex tint → 不透明度＝燈的強度；`rgba(r,g,b,a)` tint → 不透明度＝`a × 強度`。`r` 是**光暈半徑（cm）**，不是照明範圍：hub street 的燈籠是 `r:30` 配 22 cm 燈體，寫 260 會在畫面上變成探照燈。要有燈體就用 `"body":"lantern"`（自帶吊線、光錐、地面光池），要一顆會發亮的點就用 `"bulb":true`。
 - **自發光平面**：`q.nolite = true` 讓那塊 quad 不吃夜色 murk（`darkness = 0`）也不吃太陽——這是全站「亮著的窗」的既有慣用法（`js/site.js` 40 餘處）。燈籠的紙、亮窗、招牌背光都該用它；牆面不該用。
 
-### 5.5 閘門現況（2026-10-27，第 72 輪）
+### 5.5 閘門現況
 
-**量具（第 69k 輪）**：`.verify/_aim.mjs` 是到達與瞄準的唯一實作；`_map.mjs`（prim 地圖）、`_shot_at.mjs`（帶仰角取景）新增；`audit-all.mjs` 重寫（每件取最大視角，26/26 量到）並**標記為診斷**（`STRICT=1` 才是閘門，因為 `boat-lake`/`tram-t`/`skyline-cn` 還平，見 §3 P6-5）。
+**現在只有一個地方記這件事：§2.3 的清單**（25 支，分「不開瀏覽器」與「真瀏覽器、順序跑」兩段，每支後面是它這一輪量到的數字）。逐輪的流水帳已刪：它跟 §1 的回合記錄重複，而且停在第 73 輪，會讓人以為那是最新的。
 
-**第 71 輪重跑**：walk **205/205**、skills **80/80**（16 個 skill，新 `walk-input`）、games 23/23、body 73/73、nowebgl 35/35、feel 12/12、story 27/27、rail 4/4、chain 0、shapes 248、geometry OK、clash 0、mirror PASS（73 % vs 1 %）、look 五桌全量到（lake 467×276、falls 228×261、market 164×102、city 260×230、goat 471×198）、wheel 14 艙 PASS、hotel PASS（sd 14.4／29.4／16.0）、island 46/46、three PASS、shader-lits PASS、`audit-all` 26/26 量到（平的 2：`hall-sl`、`skyline-cn`）、**`verify-collision` 28/28（7 頁，exit 0）**。
-**第 72 輪重跑**：walk **205/205**、overlay **98/98**、exit **82/82**、rooms-e2e **72/72**、feel **12/12**、games 23/23、body 73/73、nowebgl 35/35、story 27/27、rail 4/4、shapes 248、skills **80/80**、mirror PASS（73 % vs 1 %）、island 全部 47 個 stop 都看得到東西（empty ≤ 60 %）、three PASS（14,924 world + 1,048 water）、shader-lits PASS、look 五桌全量到（lake 467×276、falls 227×261、market 164×102、city 261×231、goat 471×198）、wheel 14 艙 PASS（連兩次）、hotel PASS（sd 14.4／29.4／16.0）、`audit-all` 26/26（平的 2：`hall-sl`、`skyline-cn`）、**`verify-collision` 28/28（exit 0）**。
+留下三件跨輪仍然成立的事實：
 
-**第 73 輪重跑**：walk **210/210**、overlay **95/95**、exit **82/82**、rooms-e2e **72/72**（0 failures）、feel **12/12**、games 23/23、body 73/73、nowebgl 35/35、story 27/27、rail 4/4、shapes 248、skills **80/80**、mirror PASS（73 % vs 1 %）、island 全部 47 個 stop 都看得到東西、wheel PASS、hotel PASS、`audit-all` 26/26 量到（平的 2：`hall-sl`、`skyline-cn`）、shader-lits PASS、`_wedge2` 5 輪 0 freeze、**`verify-collision` 28/28（7 頁，exit 0）**。
-
-**沒有任何一個閘門是紅的了。**
-
-**第 72 輪之前一直是紅的、本輪修掉的**：`verify-rooms-e2e` 53 PASS／18 FAIL（`cc24606` 上 51／20）——第 64 輪的平移契約，改成「先轉到方位再走」之後 72/72。
-**量具**：新增 `.verify/_popup-audit.mjs`（哪個手勢開卡＋橫桿開什麼）、`.verify/_turnprobe.mjs`（輕點／按住／拖曳幾度）；`_aim.mjs`、`verify-look`、`_view.mjs`、`_keys.mjs`、`_tapdiag.mjs` 的拖曳常數全部同步成 0.065。
+- **`verify-rooms-e2e` 曾經一直是紅的**（53 PASS／18 FAIL，`cc24606` 上 51／20）：它寫死第 64 輪「A／D 平移」的契約，改成「先轉到方位再走」之後 72/72。閘門紅不等於產品壞，先問它寫的是哪一輪的契約。
+- **`audit-all.mjs` 是診斷，不是閘門**（`STRICT=1` 才是閘門）：`boat-lake`／`tram-t` 這種「量具框到的是路徑不是車」的物件會讓它永遠不過。
+- **拖曳常數只有一個**：0.065 deg/px，`_aim.mjs`、`verify-look`、`_view.mjs`、`_keys.mjs`、`_tapdiag.mjs` 全部照它；第 76 輪再加一條，任何「等滑行結束」的等待都要問 `__walk.glide`，不要用固定秒數。
 
 ### 5.6 倉庫大小
 

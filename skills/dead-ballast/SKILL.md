@@ -119,7 +119,7 @@ The sweep is the second half of the rule. The first half is not adding dead thin
 ## Procedure
 
 1. Take the five censuses in §1. Print the counts, not the impression. Round 76's: 92 files in
-   `.verify/` before the sweep and 83 after, 256 CSS class selectors, 28 custom properties, 66 images,
+   `.verify/` before the sweep and 82 after, 256 CSS class selectors, 28 custom properties, 66 images,
    95 `data-*` attributes emitted, 1,137 declarations in `site.js`, 25 gates of which 10 were missing
    from the checklist.
 2. For each candidate, find its references across every tracked text file and write down the number.
