@@ -122,7 +122,7 @@ for (const rooms of PAGES) {
           : after.game ? "TOY" : after.quads !== before.quads ? "SCENE"
           : after.record && after.record !== before.record ? "WORDS" : "?!";
         push({ rooms, si, heading: h, obj: before.reach, verb: before.verb, title: before.reachTitle,
-          answer, covers: Math.max(after.plate, after.card, after.list, after.game),
+          answer, covers: answer === "LEFT" ? 0 : Math.max(after.plate, after.card, after.list, after.game),
           quads: `${before.quads}->${after.quads}`,
           record: answer === "LEFT" ? `left for ${page.url().replace(/^.*\//, "")}` : after.record,
           ms: Date.now() - t0,
