@@ -75,6 +75,17 @@ no package manifest, CDN, or additional runtime dependency is implied.
   failure survives a correct harness, believe it about the product.** Never re-baseline an assertion
   to the flaky result — 192/192 was the flake being lucky.
 
+- **A mention is not a user, and a gate is not a judge.** Round 76 kept a dead `.plate-navy` family
+  because a comment called it "a documented fallback" and kept the plan-view strip because a comment
+  promised it marked the seams; the owner's ruling is 「不是提到就不是垃圾」 — being named in a gate, a
+  doc, a comment or a checklist does not make a thing live, and "I cannot be this conservative" is a
+  direct instruction. Round 77 also found the opposite trap: `verify-walk` held four assertions about
+  the album's full-screen viewer by reading the *stylesheet*, so they passed for five rounds and made
+  259 dead lines look tested — deleting them turned the gate red, which reads as "you broke
+  something". **Ask the DOM**: `.verify/verify-csslive.mjs` classifies every selector as LIVE /
+  RUNTIME / DORMANT / DEAD (546 / 0 dead as of round 77) and the only one you may delete is DEAD;
+  a DORMANT path must say which data it is waiting for, out loud, in `TODO.md`.
+
 - **The unit rule, all of it:** only the depth axis converts — record `z` and `d` cross into walk
   space ×2.9 (`Z_SCALE`), while `x`, `y`, `w`, `h`, stop `--x` and every dataset passthrough field
   (ride/deck/dia/axle/period, stop view `h`) are scene centimetres as authored, unscaled, the same
