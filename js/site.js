@@ -142,204 +142,13 @@
       if (event.key === "Escape") close();
     });
   }
-
-  /* ---------- Activities: the photo plate ----------
-     Selecting a tile of the contact sheet steps into the same photograph on a dark
-     plate, with the rest of the roll on either side of it by swipe, arrow keys, or the
-     arrows. Three absences are accounted for, because this page is read on a lecture-hall
-     laptop, a phone, and sometimes with scripting off:
-       - no document.startViewTransition -> the plate opens with no morph;
-       - no scripting -> every tile is a plain link to the full-resolution file;
-       - prefers-reduced-motion -> no morph, and the roll jumps rather than easing.
-     Only one element may hold a given view-transition-name, so the name is put on the
-     image being enlarged, on the box it is arriving from and the box it arrives in, and
-     cleared once the transition settles. Entering the plate reuses the same overlay
-     conventions as the trace game below. */
-  /* One roll per page, however many blocks hang tiles. The plate is addressed by index, so the
-     tiles are flattened across every grid in the order they appear and the frames are emitted in
-     that same order; a per-block roll would mean a per-block plate, and then "the album" would
-     quietly mean "whichever block you happened to open first". */
-  const grids = Array.from(document.querySelectorAll("[data-ig-grid]"));
-  const plate = document.getElementById("ig-plate");
-
-  /* The archive sheet leans toward the pointer: enough rotation to read as an object
-     standing in a room, little enough that a caption is never tilted while being read.
-     Touch is excluded (there is no hover to answer), and so is reduced motion. */
-  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    grids.forEach((grid) => {
-      const wall = grid.closest("[data-ig-wall]") || grid.parentElement;
-      if (!wall) return;
-      let box = null;
-      wall.addEventListener("pointerenter", () => { box = wall.getBoundingClientRect(); });
-      wall.addEventListener("pointermove", (event) => {
-        if (event.pointerType === "touch") return;
-        if (!box) box = wall.getBoundingClientRect();
-        if (!box.width || !box.height) return;
-        const x = (event.clientX - box.left) / box.width - 0.5;
-        const y = (event.clientY - box.top) / box.height - 0.5;
-        // Signs chosen against the CSS rotation matrices, not by eye: rotateY(+) turns a
-        // surface normal toward +X, rotateX(+) toward -Y, so a positive angle on both makes
-        // the sheet face the pointer. Swapping either reads as the sheet dodging the cursor.
-        grid.style.setProperty("--ty", `${(x * 8).toFixed(2)}deg`);
-        grid.style.setProperty("--tx", `${(-y * 6).toFixed(2)}deg`);
-      });
-      const level = () => {
-        grid.style.setProperty("--ty", "0deg");
-        grid.style.setProperty("--tx", "0deg");
-      };
-      wall.addEventListener("pointerleave", level);
-    });
-  }
-  if (grids.length && plate) {
-    const tiles = grids.flatMap((grid) => Array.from(grid.querySelectorAll("[data-ig]")));
-    const reel = plate.querySelector("[data-ig-reel]");
-    const frames = reel ? Array.from(reel.children) : [];
-    const count = plate.querySelector("[data-ig-count]");
-    const prev = plate.querySelector("[data-ig-prev]");
-    const next = plate.querySelector("[data-ig-next]");
-    const many = frames.length > 1;
-    const ease = !matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let opener = null;                  // the tile to hand focus back to
-    const named = [];
-
-    const clamp = (i) => Math.max(0, Math.min(frames.length - 1, i));
-    const at = () => clamp(Math.round(reel.scrollLeft / (reel.clientWidth || 1)));
-    const name = (el) => {
-      named.forEach((node) => { node.style.viewTransitionName = ""; });
-      named.length = 0;
-      if (el) {
-        el.style.viewTransitionName = "ig-photo";
-        named.push(el);
-      }
-    };
-    /* Angles on the roll: the frame you are on faces you, its neighbours turn away and
-       recede, so moving along the archive is turning along a wall rather than paging a
-       carousel. Written on every scroll because a touch drag is not owned by the script;
-       frames more than one and a half positions away are cleared instead of animated, so
-       the cost is per-screenful, not per-archive. */
-    const depth = ease;
-    const setDepth = () => {
-      if (!depth || !reel || !reel.clientWidth) return;
-      const shown = reel.scrollLeft / reel.clientWidth;
-      frames.forEach((frame, i) => {
-        const d = i - shown;
-        if (d < -1.6 || d > 1.6) {
-          if (frame.style.transform) {
-            frame.style.transform = "";
-            frame.style.opacity = "";
-          }
-          return;
-        }
-        const off = Math.abs(d);
-        frame.style.transform = `perspective(1100px) translateZ(${(-off * 150).toFixed(1)}px) rotateY(${(-d * 30).toFixed(1)}deg)`;
-        frame.style.opacity = (1 - off * 0.42).toFixed(2);
-      });
-    };
-    const paint = () => {
-      const i = at();
-      if (count) count.textContent = `${i + 1} / ${frames.length}`;
-      if (prev) prev.disabled = !many || i === 0;
-      if (next) next.disabled = !many || i === frames.length - 1;
-      setDepth();
-    };
-    const glide = (i, behavior) => {
-      const left = (reel.clientWidth || 0) * clamp(i);
-      if (reel.scrollTo) reel.scrollTo({ left, behavior: behavior || (ease ? "smooth" : "auto") });
-      else reel.scrollLeft = left;
-      paint();
-    };
-    const morph = (apply) => {
-      if (!ease || !document.startViewTransition) {
-        apply();
-        paint();
-        name(null);        // nothing to hand to a transition, so leave no stray style
-        return;
-      }
-      const done = () => { paint(); name(null); };
-      document.startViewTransition(apply).finished.then(done, done);
-    };
-
-    tiles.forEach((tile, i) => {
-      tile.addEventListener("click", (e) => {
-        if (!frames[i]) return;         // never swallow the link without a plate to show
-        e.preventDefault();
-        name(tile.querySelector("img"));
-        morph(() => {
-          name(frames[i].querySelector("img"));
-          plate.classList.add("is-open");
-          opener = enterOverlay(plate, ".modal-close", tile);
-          // "instant", not "auto": auto would inherit scroll-behavior:smooth and slide
-          // the roll into place under the morph, which is the one motion we cannot afford.
-          glide(i, "instant");
-        });
-      });
-    });
-    const close = () => {
-      const i = at();
-      name(frames[i] ? frames[i].querySelector("img") : null);
-      morph(() => {
-        name(opener ? opener.querySelector("img") : null);
-        plate.classList.remove("is-open");
-        leaveOverlay(plate, opener);
-      });
-    };
-    Array.from(plate.querySelectorAll("[data-ig-close]")).forEach((el) => el.addEventListener("click", close));
-    if (prev) prev.addEventListener("click", () => glide(at() - 1));
-    if (next) next.addEventListener("click", () => glide(at() + 1));
-    if (reel) {
-      reel.addEventListener("scroll", paint, { passive: true });
-      reel.addEventListener("scrollend", paint);   // a swipe that stopped short snaps back
-
-      /* Drag the plate sideways. Touch already pans through the reel, so this only
-         exists for a mouse: pulling the photograph by hand is what makes the roll read
-         as an object rather than as a dialog with two buttons on it. Snapping is turned
-         off for the duration, because mandatory snap fights a drag frame by frame. */
-      let drag = null;
-      reel.addEventListener("pointerdown", (event) => {
-        if (!many || event.pointerType === "touch" || event.button !== 0) return;
-        drag = { x: event.clientX, left: reel.scrollLeft };
-        reel.style.scrollSnapType = "none";
-        if (reel.setPointerCapture) reel.setPointerCapture(event.pointerId);
-      });
-      reel.addEventListener("pointermove", (event) => {
-        if (!drag) return;
-        reel.scrollLeft = drag.left - (event.clientX - drag.x);
-      });
-      const settle = () => {
-        if (!drag) return;
-        drag = null;
-        reel.style.scrollSnapType = "";
-        glide(Math.round(reel.scrollLeft / (reel.clientWidth || 1)));
-      };
-      reel.addEventListener("pointerup", settle);
-      reel.addEventListener("pointercancel", settle);
-    }
-    plate.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        close();
-        return;
-      }
-      if (e.key === "Tab") {
-        trapTab(plate, e);
-        return;
-      }
-      if (!many) return;
-      const go = { ArrowLeft: at() - 1, ArrowRight: at() + 1, Home: 0, End: frames.length - 1 };
-      if (go[e.key] === undefined) return;
-      e.preventDefault();
-      glide(go[e.key]);
-    });
-    paint();
-  }
-
 })();
 
 /* ---- Shared overlay plumbing: one modal standard for the whole site ----
    inertOutside walks the overlay's ANCESTOR chain instead of sweeping
-   document.body.children, because an overlay can sit inside <main> (the gallery
-   photo plate is a body child; the dot game lives inside the page body). A
-   body-level sweep of a nested overlay silently leaves the whole page exposed. */
+   document.body.children, because an overlay can sit inside <main> (the dot game
+   lives inside the page body). A body-level sweep of a nested overlay silently
+   leaves the whole page exposed. */
 function inertOutside(root, on) {
   const skip = new Set(["SCRIPT", "STYLE", "NOSCRIPT"]);
   let node = root;
@@ -407,7 +216,6 @@ function overlayLeft() {
 const OVERLAY_SURFACE = [
   "#room-plate.is-open",
   "[data-walk-game]:not([hidden])",
-  "#ig-plate.is-open",
   "#featured-modal.is-open",
   "[data-dot-game]:not([hidden])",
   "[data-walk-card]:not([hidden])",
@@ -885,14 +693,15 @@ function leaveOverlay(root, trigger) {
   const RIDE_T = 3.1;
   const sm01 = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
   let ride = null;
-  const stripEl = layer.querySelector("[data-walk-strip]");
   /* Round 72, the owner's ruling: 「很多東西因為選取會跳這種介面…有必要的在跳」.
 
      There used to be a district banner here. It appeared by itself whenever the body crossed a zone
      seam, and again after every rail jump — so *selecting a stop* made an interface appear, which is
      the complaint word for word. The information it carried is not lost: the stop rail marks where
-     you are (`is-here`), the drawer names the district in its own card, and the rail's strip marks the
-     seams. What is gone is a surface that appeared without being asked for. */
+     you are (`is-here`) and the drawer names the district in its own card. Round 77 took the strip
+     that this note used to cite as the third half: round 72 had cut its CSS in the same commit, so
+     for five rounds the page carried three spans nobody could see. What is gone is a surface that
+     appeared without being asked for, and the remains of one. */
   // How far the walker may go. The default is the end wall minus a body; the far plane is a view,
   // not a hole out of the world. A place whose far end is genuinely open authors its own walk limit.
   const MAX_D = attr("laneMaxD", Z_FAR - 47);
@@ -8130,15 +7939,6 @@ function leaveOverlay(root, trigger) {
       if (d < far) { far = d; best = i; }
     });
     here = best; hereFar = far;
-    /* The progress strip is the one thing a seam still moves: where you are on this lane, drawn
-       as a dot. It is a mark inside a control the visitor already has, not an interface. */
-    if (stripEl) {
-      const f = Math.max(0, Math.min(1, depth / MAX_D));
-      const dot = stripEl.querySelector(".walk-strip-you");
-      if (dot) dot.style.left = `${(f * 100).toFixed(2)}%`;
-      const fill = stripEl.querySelector(".walk-strip-fill");
-      if (fill) fill.style.width = `${(f * 100).toFixed(2)}%`;
-    }
     if (best === hereShown) return;
     hereShown = best;
     stops.forEach((el, i) => el.classList.toggle("is-here", i === here));

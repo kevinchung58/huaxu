@@ -195,12 +195,21 @@ async function walkToReach(env, objId, maxFrames = 600, rounds = 6) {
 
 /* Hold W until the body stops moving — the honest way to meet a wall, now that walking goes where the
    head points rather than down the lane's own axis. Returns the resting position. */
-async function walkUntilBlocked(env, maxFrames = 900) {
+/* Hold W until the body stops moving along the axis it is being pushed into.
+
+   Round 77: this used to watch `depth + x`. A body pushed at a wall at a heading a degree or two
+   off square keeps sliding *along* the wall, so the sum never settles, the loop ran its full 900
+   frames, and the caller's "you crossed the tunnel, you did not walk down it" drift bound measured
+   how long the harness had been holding W rather than how straight the crossing was. Pass the axis
+   the wall is on: x for a side wall, depth for an end wall. */
+async function walkUntilBlocked(env, maxFrames = 900, axis = null) {
   env.key("w");
-  let last = env.walk().depth + env.walk().x, still = 0;
+  const at = () => (axis === "x" ? env.walk().x : axis === "depth" ? env.walk().depth
+    : env.walk().depth + env.walk().x);
+  let last = at(), still = 0;
   for (let i = 0; i < maxFrames; i += 5) {
     await env.pump(5);
-    const now = env.walk().depth + env.walk().x;
+    const now = at();
     if (Math.abs(now - last) < 0.05) { if (++still >= 3) break; } else { still = 0; }
     last = now;
   }
@@ -353,12 +362,12 @@ async function main() {
      tunnel's side, and the promise is unchanged — the body stops at its own half-width, not at the
      wall's line, and it never passes through. */
   await turnToYaw(env, -90);                       // head pointed at the −x wall
-  const leftStop = await walkUntilBlocked(env);
+  const leftStop = await walkUntilBlocked(env, 900, "x");
   ok("walking into the narrow tunnel's left wall stops at the body's limit, never beyond it",
      leftStop.x >= -tunnelHalf - 0.01 && Math.abs(leftStop.x + tunnelHalf) < 1.1,
      `x=${leftStop.x.toFixed(2)} / limit=-${tunnelHalf}`);
   await turnToYaw(env, 90);                        // across to the other wall
-  const rightStop = await walkUntilBlocked(env);
+  const rightStop = await walkUntilBlocked(env, 900, "x");
   ok("and the opposite wall is reached without widening the 2.4 m tunnel",
      rightStop.x <= tunnelHalf + 0.01 && Math.abs(rightStop.x - tunnelHalf) < 1.1
        && Math.abs(rightStop.depth - leftStop.depth) < 400,

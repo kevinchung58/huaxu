@@ -353,8 +353,6 @@ main {
   padding-left: 0.85rem;
   border-left: 2px solid rgba(242, 200, 142, 0.45);
 }
-.hero-note a { color: var(--accent-bright); text-decoration: none; font-weight: 600; }
-.hero-note a:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 /* Stats as a ruled colophon line, not glass cards */
 .stats {
@@ -424,9 +422,6 @@ main {
 .btn-primary:hover { background: var(--accent-soft); box-shadow: 0 8px 22px rgba(194, 65, 12, 0.4); }
 .btn-ghost { border-color: rgba(226, 164, 92, 0.55); color: #fff; }
 .btn-ghost:hover { background: var(--accent-bright); border-color: var(--accent-bright); color: var(--navy-deep); }
-.section .btn-ghost,
-.section .btn-ghost:visited { border-color: var(--navy); color: var(--navy); }
-.section .btn-ghost:hover { background: var(--navy); color: var(--gold); }
 
 /* ============ Sections ============ */
 .section { padding: 4.25rem 0; }
@@ -460,7 +455,6 @@ main {
   justify-content: center;
   flex-shrink: 0;
 }
-.section.alt .icon-chip { background: #fff; }
 .icon-chip svg { width: 1.25rem; height: 1.25rem; }
 .head-row { display: flex; align-items: flex-start; gap: 0.9rem; }
 .head-row h3 { margin-bottom: 0.3rem; }
@@ -486,8 +480,6 @@ main {
 }
 .block-title + .when { margin: -0.55rem 0 1rem; }
 
-.grid-2 { display: grid; gap: 1.2rem; }
-@media (min-width: 760px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
 .grid-3 { display: grid; gap: 1.2rem; }
 @media (min-width: 980px) { .grid-3 { grid-template-columns: 1fr 1fr 1fr; } }
 
@@ -641,8 +633,7 @@ main {
 }
 .about-copy { padding: 1.6rem 1.5rem 2rem; }
 @media (min-width: 700px) { .about-copy { padding: 2rem 2.2rem 2.3rem; } }
-.about-copy h2,
-.about-copy h3 { font-size: 1.5rem; margin-bottom: 1rem; }
+.about-copy h2 { font-size: 1.5rem; margin-bottom: 1rem; }
 .about-copy p { color: #3b3a33; text-align: justify; hyphens: auto; }
 .about-copy p + p { margin-top: 0.95rem; }
 .quote {
@@ -817,34 +808,6 @@ main {
   box-shadow: var(--shadow);
 }
 .media-fig img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.plate {
-  aspect-ratio: 4 / 3;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 0;
-  padding: 1.8rem 2rem;
-}
-.plate-navy { background: var(--navy); color: var(--gold); }
-.plate-paper { background: var(--gold); color: var(--navy); border: 1px solid var(--line); box-shadow: none; }
-.plate-num {
-  font-family: var(--display);
-  font-weight: 600;
-  font-size: clamp(2.4rem, 5vw, 3.4rem);
-  line-height: 1;
-  letter-spacing: 0.01em;
-}
-.plate-rule { width: 42px; height: 2px; background: var(--accent); margin: 0.9rem 0 0.8rem; }
-.plate-navy .plate-rule { background: var(--accent-bright); }
-.plate-name {
-  font-family: var(--sans);
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  opacity: 0.92;
-}
 .media-copy h3 { margin: 0 0 0.55rem; font-size: 1.22rem; color: var(--navy); }
 .media-copy > p:first-of-type { margin-top: 0; }
 .my-read {
@@ -925,7 +888,6 @@ main {
 .authors b { color: var(--ink); font-weight: 600; }
 .source { font-size: 0.9rem; margin-top: 0.25rem; color: #3b3a33; font-style: italic; }
 .meta-links { display: flex; gap: 0.9rem; margin-top: 0.7rem; flex-wrap: wrap; }
-.meta-links a,
 .meta-links button {
   font-family: var(--sans);
   font-size: 0.74rem;
@@ -1017,20 +979,10 @@ main {
   text-align: center;
 }
 
-/* ============ Activities: the photo plate ============ */
-/* The archive is a contact sheet: square-cropped tiles in a hairline gutter, so the
-   crop frames the photograph and no card or shadow is needed. Selecting a tile steps
-   into a dark plate showing the same image full width, with the rest of the roll on
-   either side of it. Named view transition moves the image between the two boxes, so
-   no geometry is computed in the script; see js/site.js. */
-/* The sheet is a plane in a room: the wrapper owns the perspective, the grid leans
-   toward the pointer, and a hovered tile lifts out of it. Both are driven by two custom
-   properties written from js/site.js, and both are absent by construction when the
-   reader asked for reduced motion. */
-.ig-wall {
-  perspective: 1400px;
-}
-
+/* ============ Activities: the photograph wall ============ */
+/* The archive is a contact sheet: cropped tiles in a hairline gutter, so the crop frames the
+   photograph and no card or shadow is needed. A tile is the photograph and the line that says what
+   it is — there is no second, larger surface to step into any more (round 77). */
 /* Field notes: one container, three cards, and the card itself is the door. A card is a link that
    steps you into its place — so it behaves like a door in the site's own vocabulary: paper on
    paper, a hairline that warms on hover, the arrow that slides, and no viewer behind it at all. */
@@ -1072,10 +1024,6 @@ main {
   object-fit: cover;
   display: block;
 }
-.place-card-media.dashed.empty {
-  aspect-ratio: 3 / 2;
-  padding: 1rem;
-}
 .place-card-body {
   display: flex;
   flex-direction: column;
@@ -1115,239 +1063,27 @@ main {
   }
 }
 .ig-grid {
-  transform-style: preserve-3d;
-  transform: rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg));
-  transition: transform 420ms var(--ease);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
   gap: 3px;
   margin: 1.3rem 0 0;
   background: var(--line);
   border: 1px solid var(--line-strong);
 }
-.ig-tile {
-  display: block;
-  position: relative;
-  background: var(--card);
-}
+.ig-tile { margin: 0; background: var(--card); }
 .ig-tile img {
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 4 / 3;
   object-fit: cover;
-  transition: transform 700ms var(--ease), opacity 300ms var(--ease);
 }
-.ig-tile:hover img,
-.ig-tile:focus-visible img {
-  transform: scale(1.045);
-  opacity: 0.94;
+.ig-tile figcaption {
+  padding: 0.6rem 0.7rem 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #3b3a33;
 }
-.ig-tile:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -3px;
-}
-.ig-tile {
-  transition: transform 320ms var(--ease), box-shadow 320ms var(--ease);
-}
-.ig-tile:hover,
-.ig-tile:focus-visible {
-  transform: translateZ(16px);
-  box-shadow: 0 1.1rem 1.6rem -0.9rem rgba(10, 17, 40, 0.4);
-  z-index: 1;
-}
-/* The wall is the photographs: no index chip, no caption line under a tile. A plate's claims are read
-   inside the plate, which is the only surface in this project you have to arrive at. */
-/* The plate's own ground. `is-open` lets the backdrop's field show through, but a caption's contrast is a
-   claim about the element it is written on rather than about a state, and a static reader (correctly) refuses
-   light text with no dark pair to sit on. One declaration, and it is the reason the pair is honest. */
-.ig-plate {
-  background: var(--navy-deep);
-}
-
-/* The album's viewer: full-screen, and deliberately *not* blurred. Instagram pads a story with a blurred
-   copy of the frame and shows a post on a plain dark field — two formats, two grounds — so the lane's rail
-   gets the blur (§24) and the archive gets the field. What is the same is the frame: no radius, no shadow,
-   no `pop`, no card that the screen is merely holding, and the photograph keeps its own ratio. */
-#ig-plate.is-open {
-  padding: 0;
-  align-items: stretch;
-}
-#ig-plate.is-open .modal-backdrop {
-  background: #05080f;
-  animation: none;
-}
-#ig-plate.is-open .ig-plate {
-  width: 100%;
-  max-width: none;
-  height: 100%;
-  min-height: 100dvh;
-  max-height: none;
-  display: grid;
-  grid-template-rows: 1fr auto;
-  gap: 0;
-  padding: max(2.6rem, env(safe-area-inset-top)) 0 max(1rem, env(safe-area-inset-bottom));
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
-  overflow: hidden;
-  animation: none;
-}
-#ig-plate.is-open .ig-reel {
-  align-self: center;
-  /* `min-height: 0` because a grid item refuses to shrink below its content by default, and a reel that
-     cannot shrink pushes its caption off the screen. The perspective stays on each frame's own transform:
-     a scroll container flattens inherited 3D, which is why it was written there in the first place. */
-  min-height: 0;
-  height: calc(100dvh - 9rem);
-}
-#ig-plate.is-open .ig-frame {
-  display: grid;
-  grid-template-rows: 1fr auto;
-  height: 100%;
-}
-#ig-plate.is-open .ig-frame img {
-  width: auto;
-  max-width: 100%;
-  height: 100%;
-  max-height: none;
-  object-fit: contain;
-  background: none;
-}
-#ig-plate.is-open .ig-frame figcaption {
-  padding: 0.9rem 1.1rem 0;
-  text-align: center;
-}
-#ig-plate.is-open .ig-count {
-  bottom: max(0.7rem, env(safe-area-inset-bottom));
-  color: rgba(233, 237, 248, 0.62);
-}
-#ig-plate.is-open .ig-btn {
-  background: rgba(5, 8, 15, 0.55);
-}
-@media (max-width: 34rem) {
-  /* On a phone the edge is the target, and the control disappears until it is asked for: a 2.4rem disc
-     floating over the middle of a photograph covers the thing it exists to reveal. */
-  #ig-plate.is-open .ig-btn {
-    top: 0;
-    bottom: 0;
-    width: 34%;
-    height: auto;
-    transform: none;
-    border-radius: 0;
-    background: none;
-    opacity: 0;
-  }
-  #ig-plate.is-open .ig-btn:focus-visible,
-  #ig-plate.is-open .ig-btn:hover {
-    opacity: 1;
-    background: rgba(5, 8, 15, 0.5);
-  }
-}
-
-/* The roll: one photograph per screen, snapping to center, so moving through the
-   archive is a swipe rather than a control to press. */
-.ig-reel {
-  display: flex;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
-  scrollbar-width: none;
-}
-.ig-reel::-webkit-scrollbar {
-  display: none;
-}
-.ig-reel:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-.ig-frame {
-  flex: 0 0 100%;
-  margin: 0;
-  scroll-snap-align: center;
-  scroll-snap-stop: always;
-  /* Perspective travels inside each frame's own transform: a scroll container flattens
-     its children, so a perspective inherited from the plate would be ignored here. */
-  transition: opacity 240ms var(--ease);
-}
-.ig-frame figcaption {
-  padding: 0.8rem 3.4rem 1rem 1rem;
-  color: #dfe5f3;
-  font-size: 0.9rem;
-  line-height: 1.55;
-}
-.ig-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 999px;
-  background: rgba(10, 17, 40, 0.72);
-  color: #fff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 180ms var(--ease);
-  z-index: 2;
-}
-.ig-btn:hover {
-  background: var(--accent);
-}
-.ig-btn svg {
-  width: 1.2rem;
-  height: 1.2rem;
-}
-.ig-btn.prev {
-  left: 0.7rem;
-}
-.ig-btn.next {
-  right: 0.7rem;
-}
-.ig-count {
-  position: absolute;
-  right: 1rem;
-  bottom: 0.9rem;
-  margin: 0;
-  color: #dfe5f3;
-  font-family: var(--sans);
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
-  font-variant-numeric: tabular-nums;
-  z-index: 2;
-}
-.ig-plate .ig-btn[hidden],
-.ig-count[hidden] {
-  display: none;
-}
-::view-transition-old(ig-photo),
-::view-transition-new(ig-photo) {
-  width: 100%;
-  height: 100%;
-  animation-duration: 400ms;
-  animation-timing-function: var(--ease);
-}
-@media (prefers-reduced-motion: reduce) {
-  .ig-reel {
-    scroll-behavior: auto;
-  }
-  .ig-wall {
-    perspective: none;
-  }
-  .ig-grid,
-  .ig-tile:hover,
-  .ig-tile:focus-visible {
-    transform: none;
-    box-shadow: none;
-  }
-  .ig-frame {
-    transform: none !important;
-    opacity: 1 !important;
-  }
-  .ig-tile img {
-    transition: none;
-  }
-}
-
+.ig-tile figcaption .when { display: block; margin-top: 0.2rem; }
 .dashed {
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -2968,21 +2704,4 @@ body.shell {
   font-size: 0.78rem;
   letter-spacing: 0.02em;
   color: var(--muted);
-}
-
-/* The cell is the grid child rather than the tile: the wall is grouped by place and the place's
-   own door is the one entrance (a plate adds no second link), so what the cell holds today is the
-   picture that opens the roll, and nothing else. */
-.ig-cell { display: flex; flex-direction: column; background: var(--card); }
-.ig-cell .ig-tile { flex: 1 1 auto; }
-
-/* Round 52, the open-world chrome: a district banner on the crossings and a survey strip where
-   those games keep a radar. Both are chrome, not captions — aria-hidden DOM, and the record line
-   keeps every word it owns. The banner rides the same display type the plates use; the strip is
-   the lane's own plan view, which is honest: there is no map data, so it shows the one axis the
-   place has. */
-/* Round 72: the district banner is gone (js/site.js). It was the one surface that appeared without
-   being asked for — on every seam crossing and after every rail jump. Do not reintroduce a timed
-   overlay here; the owner's rule is that an interface appears only when a control named it. */
-
 }

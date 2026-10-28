@@ -40,7 +40,10 @@ fails when a skill on disk is unregistered or unrouted, which is exactly the sta
 at round 69k (fifteen skills, four rows). Run it every round, not only the rounds that edit skills.
 
 `dead-ballast` owns the other half of `skill-authoring`: not whether a skill is registered, but
-whether anything in the repository still **does** something. It exists because the owner asked twice
+whether anything in the repository still **does** something. Round 77 sharpened its rule to the
+owner's words — 不是提到就不是垃圾 — **a mention is not a user**: being named in a gate, a doc, a
+comment or a fallback story does not make a thing live. Its instrument is `.verify/verify-csslive.mjs`
+(546 selectors, 0 dead), and its newest section is the one that decides dormant from dead. It exists because the owner asked twice
 (round 73 「全部拿掉多餘的」, round 76 「不該有的垃圾都刪掉」) and because the expensive ballast is silent —
 an attribute the generator emits that no code applies made every dusk frame in this repository a noon
 frame for an unknown number of rounds, and eight working gates (`verify-island`, `verify-ux`,

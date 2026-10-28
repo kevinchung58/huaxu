@@ -981,21 +981,25 @@ ok("the touch stick shares camera-relative forward with W",
    stickVector.forward > 12 && Math.abs(stickVector.side) < Math.abs(stickVector.forward) * 0.5,
    `forward=${stickVector.forward.toFixed(1)} cm, side=${stickVector.side.toFixed(1)} cm`);
 
-/* Two formats, two grounds — asserted so the difference stays a decision instead of drifting back into an
-   accident. The lane's rail is a story: 9:16, blurred with its own pixels. The album is a post viewer:
-   full-screen, plain field, nothing invented about the photograph's ratio. */
-ok("the album's viewer is the screen too, and it is not a card any more",
-   /#ig-plate\.is-open \.ig-plate \{[^}]*min-height: 100dvh[^}]*border-radius: 0[^}]*background: none[^}]*box-shadow: none[\s\S]{0,60}animation: none/.test(css));
-ok("its photographs are contained, never cropped to fill the frame",
-   /#ig-plate\.is-open \.ig-frame img \{[^}]*object-fit: contain/.test(css)
-     && !/#ig-plate\.is-open \.ig-frame img \{[^}]*object-fit: cover/.test(css));
-ok("and a story gets a blurred ground while a post gets a plain one — the difference is in the code",
+/* Round 77: the album's viewer is gone, and this is where its four assertions lived. They held the
+   shape of a full-screen plate that no page could ever emit — the wall has carried no photograph
+   since it was written, because a plate needs a caption and a date and none has been given. Holding
+   the CSS of an unreachable surface is how 230 dead lines survived five rounds of "dead code"
+   sweeps; the assertions now hold what ships. */
+const actHtml = fs.readFileSync("activities.html", "utf8");
+ok("the album has no viewer to open: no page, no script, no stylesheet names one",
+   !/id="ig-plate"/.test(fs.readdirSync(".").filter((f) => f.endsWith(".html"))
+     .map((f) => fs.readFileSync(f, "utf8")).join("\n"))
+     && !/data-ig\b/.test(js) && !/#ig-plate|\.ig-reel|\.ig-frame\b|\.ig-btn\b|\.ig-count/.test(css));
+ok("a photograph on the wall is a figure with its own caption, not a link to a second surface",
+   /figure class="ig-tile"/.test(gen) && /figcaption/.test(gen) && !/data-ig\b/.test(gen));
+ok("the wall's grid crops to a fixed ratio, so a mixed roll does not jog the page",
+   /\.ig-tile img \{[^}]*aspect-ratio: 4 \/ 3[^}]*object-fit: cover/.test(css));
+ok("a story still gets a blurred ground of its own pixels, and no viewer borrows it",
    /#room-plate\.is-rail \.modal-panel::before \{[\s\S]*filter: blur\(2\.6rem\)/.test(css)
-     && !/#ig-plate\.is-open \.ig-plate::before/.test(css));
-ok("on a phone the album's controls become the edges of the screen and hide themselves",
-   /@media \(max-width: 34rem\) \{[\s\S]*?#ig-plate\.is-open \.ig-btn \{\n    top: 0;[\s\S]*?width: 34%;[\s\S]*?opacity: 0/.test(css));
-ok("the plate still owns a dark ground, because that is what its caption is measured against",
-   /\.ig-plate \{\n  background: var\(--navy-deep\);\n\}/.test(css));
+     && !/#ig-plate/.test(css));
+ok("a block with nothing to hang says so in words, and draws no empty grid",
+   /Nothing in this block yet/.test(actHtml) && !/class="ig-grid"/.test(actHtml));
 
 /* ---- 3c. the note: the one button that opens words -------------------------------------------- */
 const infoBtn = q("[data-walk-info]");
@@ -1055,42 +1059,26 @@ ok("the fallback is styled to be readable without hover",
 ok("the 2D lane painter is deleted, not dormant", !/data-walk-canvas|canvas2d/.test(html + gen + js + css)
    && !/quads\.forEach\(emit\)/.test(js));
 
-/* ---- 5. the album on the reading surface ------------------------------------------------------ */
+/* ---- 5. the wall on the reading surface ------------------------------------------------------- */
 {
   const w2 = boot(act, "https://huaxu.test/activities.html");
   const d2 = w2.document;
-  d2.startViewTransition = (cb) => { if (cb) cb(); return { finished: new Promise(() => {}) }; };
   const q2 = (s) => d2.querySelector(s);
   const qa2 = (s) => Array.from(d2.querySelectorAll(s));
-  const click2 = (el) => el.dispatchEvent(new w2.MouseEvent("click", { bubbles: true, cancelable: true }));
-  const tiles = qa2("[data-ig]"), frames = qa2(".ig-frame"), plate2 = q2("#ig-plate");
-  if (tiles.length === 0) {
-    /* The wall is empty today — classroom's records are all held, and the Field notes plates live
-       on the place cards now — so the honest state is a reason where a viewer would be. These
-       asserts hold the empty state to the same standard: nothing is invented to fill it. */
-    ok("an empty wall prints its reason instead of a viewer",
-       plate2 === null && /Nothing in this block yet/.test(act)
-         && /0 shown · 3 held for want of a caption/.test(act),
-       "0 tiles");
-    ok("no viewer is emitted when there is nothing to view",
-       qa2(".modal").length === 0 && !q2("#room-plate"));
-  } else {
-    ok("the album is emitted, not only styled",
-       tiles.length >= 2 && !!plate2 && qa2("[data-ig-grid]").length >= 1);
-    ok("one viewer per page here: the album does not clone the lane's plate",
-       qa2(".modal").length === 1 && !q2("#room-plate"));
-    ok("the roll holds exactly what the wall shows",
-       tiles.length === frames.length, `${tiles.length}/${frames.length}`);
-    ok("a tile addresses its own plate, in the same order",
-       tiles.every((t, i) => t.getAttribute("href") === `#${frames[i].id}`));
-    ok("the wall is photographs: no caption, no index chip, not one character on a tile",
-       tiles.every((t) => !(t.textContent || "").trim() && !t.querySelector(".ig-cap, .ig-fig"))
-         && !/\.ig-cap|\.ig-fig/.test(css));
-    ok("and the claims a tile used to wear are now said where you have to arrive to read them",
-       tiles.every((t) => / · generated plate$/.test(t.getAttribute("aria-label") || ""))
-         && frames.every((f) => / · generated plate$/.test(f.querySelector("figcaption").textContent)));
-  }
-  ok("nothing is marked as seen: album, not story", !/is-viewed|data-viewed|has-viewed/.test(act + js + css));
+  /* Round 77: the wall has no viewer, no roll, no tile and no data-ig of any kind, and it has had no
+     photograph since it was written — a plate needs a caption and a date, and none has been given.
+     The empty state is the state this page ships, so it is the one worth holding to standard: it
+     prints the reason, it invents nothing, and it opens nothing. */
+  ok("an empty wall prints its reason instead of a viewer",
+     q2("#ig-plate") === null && qa2("[data-ig]").length === 0
+       && /Nothing in this block yet/.test(act)
+       && /0 shown · 3 held for want of a caption/.test(act),
+     `${qa2(".ig-tile").length} tiles`);
+  ok("no viewer is emitted when there is nothing to view, and no modal of any kind",
+     qa2(".modal").length === 0 && !q2("#room-plate") && !/id="ig-plate"/.test(act));
+  ok("the wall's markup is one grid or one sentence -- never an empty wrapper around nothing",
+     !/class="ig-wall"/.test(act) && !/data-ig-wall/.test(act));
+ok("nothing is marked as seen: album, not story", !/is-viewed|data-viewed|has-viewed/.test(act + js + css));
 }
 
 /* ---- 6. the cache-buster is the assets' own hash ----------------------------------------------- */

@@ -363,9 +363,10 @@ frame by `paint()`. Never crop a landscape file to look portrait, and never add 
 Anything the reader is already reading in the tree is hidden rather than deleted: the dialog's `h2` and
 hint become visually hidden, because a second copy of the caption painted over the photograph is a card's
 habit. Every plate in this site is full-screen now; what differs is the **ground** — a story (`#room-plate`
-in rail mode) fills the remainder with a blurred copy of the current frame, a post viewer (`#ig-plate`)
-uses a plain field, and a reel keeps its per-frame perspective with `min-height: 0` so the caption cannot
-be pushed off the screen. Keep a dark `background` on the plate element itself even when an open state
+in rail mode) fills the remainder with a blurred copy of the current frame. Round 77 deleted the other
+ground — the album's post viewer (`#ig-plate`, a plain field) — because no page could emit it; if a
+picture on a page ever needs the full screen again, it is a story plate or nothing, and the reason is
+written in `AGENTS.md` → "Interactive: the photograph wall". Keep a dark `background` on the plate element itself even when an open state
 paints over it: a caption's contrast is measured against the element it is written on, and a static reader
 will (correctly) flag light-on-paper the moment that declaration disappears.
 

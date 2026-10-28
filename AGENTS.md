@@ -337,25 +337,36 @@ lives in `js/site.js` (the `[data-dot-*]` block). Contract to keep intact, in th
   keep the detector at 0 findings. No test framework or package-manager runtime; the approved vendored
   Three.js exception is limited to walkable-scene pages.
 
-## Interactive: the photo plate
+## Interactive: the photograph wall (activities.html)
 
-The album on `activities.html` is a wall of plates you step into, not a static figure row — do
-not reduce it back to a thumbnail strip, and do not reinstate the `data-deck` markup that used to
-ship there: it had no CSS and no JS at all, which is how this section came to describe a feature
-that did not exist. Content comes from the image registry (`IMG_RULES` / `ALBUM` in
-`_gen_html.py`); all behavior lives in `js/site.js` (the `[data-ig-*]` block). Contract to keep
-intact:
+Round 77 deleted the album viewer that used to be described in this section: a full-screen plate with
+a roll, arrow buttons, a position count and a named view transition, 259 lines of CSS and 189 of
+`js/site.js`. It had never emitted a single element — a plate needs a caption and a date, and no
+classroom photograph has ever been given either — and four assertions in `verify-walk` passed for five
+rounds by reading the *stylesheet* instead of a page. What ships is the wall and nothing else, and the
+contract that remains is short:
 
-- Tiles are links to the full-resolution file, never buttons; `preventDefault()` runs only
-  when there is a plate to show, so the archive survives with scripting off.
-- The zoom is a named view transition: `view-transition-name` is set on the tile image, then
-  on the plate image, then cleared. Putting it on every tile in CSS collides and the morph
-  stops with no error.
-- A block with nothing to hang keeps its heading and its reason (`Nothing in this block yet`
-  plus the count of what is held), because an archive that silently omits a shelf is
-  indistinguishable from one that never had it. A `record` image is not shown until it has a
-  caption with a venue and a date — do not add a placeholder photograph or a "forthcoming"
-  promise to make a block look full.
+- **A tile is a `<figure class="ig-tile">`: the photograph, and the line that says what it is.** Its
+  `alt` carries the same words for a reader who never sees the picture. There is no link, no second
+  surface, no `data-ig`, and no `#ig-plate`; do not add a viewer back without photographs to view.
+- **A block with nothing to hang keeps its heading and its reason** (`Nothing in this block yet` plus
+  the count of what is held), because an archive that silently omits a shelf is indistinguishable from
+  one that never had it. A `record` image is not shown until it has a caption with a venue and a date —
+  do not add a placeholder photograph or a "forthcoming" promise to make a block look full. If you do
+  date one, `.verify/verify-csslive.mjs` flips the wall's five rules from DORMANT to LIVE; if it stays
+  DORMANT for another year, that is the answer to whether it should exist.
+- **Required assets fail the build.** A place card's cover (`IMG/{id}-cover.jpg`) and a principle row's
+  illustration are checked by the generator now; the "No cover yet" card and the typographic `.plate`
+  fallback are gone with the states they designed for.
+- **No watched state.** Nothing may be marked seen, nothing expires; a count is a position, not a
+  countdown.
+- Sizes come from the file: `poster_attrs()` reads the JPEG header so the grid cannot shift, and
+  `loading="lazy"` stays on the images.
+- `inertOutside` / `trapTab` / `enterOverlay` / `leaveOverlay` are the site's shared overlay plumbing;
+  the dot-trace game and the lane's card and story plate use them. Keep them shared.
+
+## Interactive: the lane's display and the story plate
+
 - **A state is geometry.** Props that can be used carry `states` in the district record and their light
   is addressed by `of: "<prop id>"`, so a stop changes a quad and a brightness, never only a caption;
   nothing in the space is animated by a clock of its own (`T` is sampled once per frame and read by the
@@ -369,23 +380,22 @@ intact:
   tap that did not become a drag is a press. These are not polish: an invisible overlay and a class deleted
   two rounds ago made the lane unclickable and the exit a description of an exit, and 130 jsdom assertions
   passed it — because jsdom has no hit-testing. Anything about landing a click is `.verify/browser-check.py`'s.
-- **A story is the screen, and one mouse button is a gesture.** Both plates are full-format
-  (`100dvh`, no radius, no shadow, no `pop`, media `contain`ed, duplicate headings visually hidden) and
-  the grounds differ on purpose: a story (`#room-plate.is-rail`) fills the remainder with a blurred copy
-  of its own frame, a post (`#ig-plate`) sits on a plain field. Do not "unify" the grounds, and do not
-  strip the plate's own dark `background` — a caption's contrast is measured against it. Every pointer gesture in the site ignores
-  `event.button !== 0`, `contextmenu` is refused only while a drag is live, and `auxclick` is blocked for
-  the middle button alone so the tiles keep working as links.
-- **One roll per page.** The plate is addressed by index, so the tiles are flattened across every
-  `[data-ig-grid]` in DOM order and the frames are emitted in that same order; `verify-walk.mjs`
-  asserts the two lists agree. `#room-plate` (the lane) and `#ig-plate` (the album) are different
-  viewers for different surfaces and must not be merged or duplicated.
+- **A story is the screen.** `#room-plate.is-rail` is full-format (`100dvh`, no radius, no shadow, no
+  `pop`, media `contain`ed, duplicate headings visually hidden) and it fills the remainder with a
+  blurred copy of its own frame — the one ground in the site that is made of the picture it shows. Do
+  not "unify" it with anything, and do not strip the panel's own dark `background`: a caption's
+  contrast is measured against it. Every pointer gesture in the site ignores `event.button !== 0`,
+  `contextmenu` is refused only while a drag is live, and `auxclick` is blocked for the middle button
+  alone.
 - **The head-up display wears no words.** Everything textual in the lane's chrome is folded into an
   icon button that opens `data-walk-card`; the status and record lines remain only as `.sr-only` live
   regions, the station rail is ticks whose heights come from each stop's authored `--p` depth, and even
   the view controls are glyphs of the site's own icon set rather than `−`/`+`. `verify-walk.mjs` asserts
   that no node in `.walk-hud` has text of its own — do not "improve" discoverability by putting a label
-  back on the space.
+  back on the space. Round 77 removed the plan-view strip (three spans, 15 lines of JS, two `zones`
+  tables) that used to sit in that chrome: round 72 had already cut its four CSS rules while its own
+  commit message cited the strip as the surviving indicator, so for five rounds it was DOM nobody could
+  see. A progress indicator is a design decision, not a repair — do not restore it by adding CSS.
 - **The space wears the atmosphere; the view only frames it.** Wall materials, ground markings and
   hanging lights are emitted as scene islands (`data-walk-surfaces`, `data-walk-marks`, the
   lantern entries in `data-walk-lights`) and painted from tiles the renderer draws in code. Every
@@ -395,18 +405,9 @@ intact:
   record's own `d` while their objects ran on to `walk_d`). Nothing may
   be lit by a source the data does not name, nothing may be dressed with a photograph of somebody's real
   street, and no surface carries invented lettering — the blank folding board is that assertion.
-- **No watched state.** `放進限時動態只是做相簿用`: this is an album, not a story. Nothing may be
-  marked seen, nothing expires, and `1 / n` is a position, not a countdown.
-- Sizes come from the file: `poster_attrs()` reads the JPEG header so neither the grid nor the
-  plate can shift, and `loading="lazy"` stays on the tiles.
-- `inertOutside` / `trapTab` / `enterOverlay` / `leaveOverlay` are the site's shared overlay
-  plumbing; the plate and the dot game both use them. Keep them shared.
-- Depth in the **Activities album and its story plate** remains CSS transforms only. Their tilt and
-  angled roll are `perspective()` plus `rotateY`/`translateZ`; this owner-approved Three.js decision
-  (2026-10-16) is scoped to walkable environments and does not redesign or WebGL-ify the album.
-  The album's flat-JPEG surfaces remain DOM content, not reconstructed 3D geometry.
-- The frames' perspective is written **inside each frame's own transform**: a scroll container
-  flattens its children, so a `perspective` inherited from the plate would be ignored.
+- **Depth in the lane stays WebGL, everything else stays DOM.** The Three.js decision (owner,
+  2026-10-16) is scoped to walkable environments; the page's own figures and the story plate's frames
+  remain CSS transforms, not reconstructed 3D geometry.
 
 ## Design system
 

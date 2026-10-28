@@ -462,13 +462,13 @@ def pub_card(p, n):
     title = escape(p["title"])
     if p.get("doi"):
         title_html = f'<a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{n}. {title}</a>'
-        doi_line = f'<p class="doi-line">DOI: <a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{escape(p["doi"])}</a></p>'
+        doi_line = f'<p>DOI: <a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{escape(p["doi"])}</a></p>'
     else:
         title_html = f"{n}. {title}"
         doi_line = ""
     links = ""
     if p.get("featured"):
-        links += f'<button class="text-link" type="button" {featured_attrs(p)}>{ico(ICON_PHOTO)}View figure</button>'
+        links += f'<button type="button" {featured_attrs(p)}>{ico(ICON_PHOTO)}View figure</button>'
     feat = " is-featured" if p.get("featured") else ""
     return f'''<article class="pub{feat} reveal" data-pub-type="{p["type"]}">
   <div class="badges">{badges}</div>
@@ -598,7 +598,7 @@ for p in featured:
     corr = '<span class="badge">Corresponding author</span>' if p.get("corresponding") else ""
     if p.get("doi"):
         title_html = f'<a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{escape(p["title"])}</a>'
-        doi_line = f'<p class="doi-line">DOI: <a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{escape(p["doi"])}</a></p>'
+        doi_line = f'<p>DOI: <a href="https://doi.org/{p["doi"]}" target="_blank" rel="noopener">{escape(p["doi"])}</a></p>'
     else:
         title_html = escape(p["title"])
         doi_line = ""
@@ -608,7 +608,7 @@ for p in featured:
   <p class="authors">{authors_html(p["authors"])}</p>
   <p class="source">{escape(p["source"])}</p>
   {doi_line}
-  <p class="meta-links"><button class="text-link" type="button" {featured_attrs(p)}>{ico(ICON_PHOTO)}View figure</button></p>
+  <p class="meta-links"><button type="button" {featured_attrs(p)}>{ico(ICON_PHOTO)}View figure</button></p>
 </article>''')
 
 def proj_card(p, status_label="Outcomes"):
@@ -734,7 +734,7 @@ teaching = page("Teaching · Hua-Xu Zhong", "teaching", f"""
       <p>I believe education is not the transfer of information. It is the transformation of the learner. Three ideas guide my teaching, and they connect in sequence: independent thinking opens a direction, creativity finds a way forward, and collaboration carries it further.</p>
       <p>This chain rests on literacy: AI literacy, information literacy, and computational thinking form the working grammar that inquiry runs on in the GAI era.</p>
     </article>
-    <div class="grid-3 principles">
+    <div class="grid-3">
 {principle_cards}
     </div>
     <article class="card philosophy spaced reveal">
@@ -787,9 +787,7 @@ conv_rows = "\n".join(
 # Each row: what the committee says ("said") and where it lands in my work ("read").
 # Rows render as alternating media rows. Visual direction (owner decision 2026-08):
 # all eight rows use generated illustrations (IMG/principle-2-*.jpg, one flat
-# editorial world). A typographic CSS-plate variant (.plate, .plate-navy,
-# .plate-paper) is kept in css/site.css as a fallback: drop an entry's "img"
-# key to render it as a plate again.
+# editorial world). The illustration is required: a row without one fails the build.
 PRINCIPLE_READS = [
     {
         "sec": "§2.1",
@@ -860,17 +858,13 @@ PRINCIPLE_READS = [
 principle_rows = []
 for i, r in enumerate(PRINCIPLE_READS):
     flip = " flip" if i % 2 else ""
-    if r.get("img"):
-        visual = (
-            f'<figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>'
-        )
-    else:
-        tone = " plate-paper" if i % 2 else " plate-navy"
-        visual = (
-            f'<div class="media-fig plate{tone}" aria-hidden="true">'
-            f'<span class="plate-num">{escape(r["sec"])}</span><span class="plate-rule"></span>'
-            f'<span class="plate-name">{escape(r["name"])}</span></div>'
-        )
+    # The illustration is required, not optional: the row is two columns and the picture is the
+    # other half of the argument. A record without one fails the build here rather than drawing a
+    # typographic substitute panel (round 77: that panel was never emitted, and no page has an
+    # `.media-fig` without an image in it).
+    visual = (
+        f'<figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>'
+    )
     principle_rows.append(
         f'''<div class="media-row reveal{flip}">
   {visual}
@@ -1003,7 +997,7 @@ gai_section = f"""    {titled("h2", "Four years, from where I was standing", ICO
       of them is being automated. Producing another version, another draft, another shape in a familiar
       style is now cheap and fast. Deciding what should exist, in what form, and for whom is not — and it
       is the half that becomes scarce exactly as the other half becomes free.</p>
-    <ol class="stance-list q-list reveal">
+    <ol class="stance-list reveal">
 {gai_prepare_html}
     </ol>
     <p class="when reveal">The argument is the one my thinking page already draws: the first row of dots
@@ -1048,7 +1042,7 @@ position = page("Position · Hua-Xu Zhong", "position", f"""
 {principle_rows_html}
     </div>
 {gai_section}{titled("h2", "Beyond the report: what I want to study", ICON_BULB, "block-title reveal spaced")}
-    <ol class="stance-list q-list reveal">
+    <ol class="stance-list reveal">
       <li><strong>Designing for inquiry.</strong> What does an LLM learning system look like when its first job is to protect a student's own thinking? I came to this question from my own view of LLMs, and from the problems I saw them create for feedback in learning. My earlier work on feedback and scaffolding is where I start. I have not built such a system yet; that is the direction.</li>
       <li><strong>Creativity as an outcome.</strong> The report asks AI to augment curiosity and creativity. I am asking how creativity can be taught, practiced, and assessed when AI can imitate its products.</li>
       <li><strong>Fair access to good AI.</strong> Access is uneven in two ways: strong models cost money, and the guidance to use them well costs more. I care about designs that support learning across that uneven ground.</li>
@@ -1228,8 +1222,8 @@ thinking = page("How I think · Hua-Xu Zhong", "thinking", f"""
 # labeled "My read" and each take was confirmed or rewritten with the owner;
 # the "Fair access" row carries no note, and the former closing "What I have
 # left off" paragraph was removed). Rows render with generated scene
-# illustrations (owner approved 2026-08); the CSS plate variant
-# (.plate) remains as fallback: drop a row's "img" key to render its § plate.
+# illustrations (owner approved 2026-08), and every row needs one: the § plate
+# variant is gone (round 77), so a row without an image fails the build.
 PRACTICE_ROWS = [
     {
         "sec": "§3.1.1-3.1.2",
@@ -1300,17 +1294,13 @@ PRACTICE_ROWS = [
 practice_rows = []
 for i, r in enumerate(PRACTICE_ROWS):
     flip = " flip" if i % 2 else ""
-    if r.get("img"):
-        visual = (
-            f'<figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>'
-        )
-    else:
-        tone = " plate-paper" if i % 2 else " plate-navy"
-        visual = (
-            f'<div class="media-fig plate{tone}" aria-hidden="true">'
-            f'<span class="plate-num">{escape(r["sec"])}</span><span class="plate-rule"></span>'
-            f'<span class="plate-name">{escape(r["name"])}</span></div>'
-        )
+    # The illustration is required, not optional: the row is two columns and the picture is the
+    # other half of the argument. A record without one fails the build here rather than drawing a
+    # typographic substitute panel (round 77: that panel was never emitted, and no page has an
+    # `.media-fig` without an image in it).
+    visual = (
+        f'<figure class="media-fig"><img src="{escape(r["img"])}" alt="{escape(r["alt"])}" loading="lazy" /></figure>'
+    )
     said = escape(r["said"])
     take = r["take"]
     if take:
@@ -1514,10 +1504,9 @@ def block_files(block, shown=True):
 
 
 def album_item(name, block):
-    """One raster, described once, then used by both the wall and the roll.
+    """One raster, described once, then written on the wall where it hangs.
 
-    The tile and its plate are the same record, so the caption is written here and appears in both.
-    The alternative is two texts that drift.
+    The caption is part of the same record as the picture, so it cannot drift from it.
     """
     stem = name.rsplit(".", 1)[0]
     meta = CAPTIONS.get(name, {})
@@ -1592,67 +1581,32 @@ def room_of_plate(src):
     return None
 
 
-def _plate_for(items):
-    """The roll: one plate, containing the same items the wall shows, in the same order.
+def _wall_tiles(items):
+    """The photographs on the wall, one figure each, in the album's order.
 
-    The order is the whole contract, because the roll is addressed by index: a tile and a frame that
-    disagree about position would send a visitor to the wrong photograph. So both are built in one
-    pass here, and `verify-walk.mjs` asserts the two counts agree rather than trusting the loop.
+    Round 77 deleted the roll these used to open: a tile no longer has a larger twin behind a
+    modal, because the modal had never been emitted — the wall has held no photograph since it was
+    written, and a viewer for nothing is not a feature. A tile is the picture and the line that
+    says what it is, read where it hangs.
     """
-    tiles, frames = [], []
+    tiles = []
     for it in items:
-        n = len(frames)
-        attrs = poster_attrs(it["src"])
-        ident = f"ig-{it['block']}-{n}"
         tag = "generated plate" if it["kind"] == "generated" else it["kind"]
         label = f"{it['title']} \u00b7 {BLOCK_LABEL[it['block']]} \u00b7 {tag}"
-        # The wall is the photographs and nothing else. What a plate may claim — its block, and that it
-        # is generated rather than taken — is said inside it, where you have to arrive to read it.
-        # A plate carries no door of its own: the wall is grouped by place, and the place's door is
-        # the one entrance (gallery_html). Fifteen scattered "walk in" links made the wall read as a
-        # pile of invitations instead of three places with their little areas inside.
         tiles.append(
-            f'<div class="ig-cell">'
-            f'<a class="ig-tile" href="#{ident}" data-ig '
-            f'aria-label="{escape(label)}: open in the roll">'
-            f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} loading="lazy" /></a>'
-            f'</div>')
-        frames.append(
-            f'<figure class="ig-frame" id="{ident}">'
-            f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {attrs} />'
-            f'<figcaption>{escape(it["title"])} - {escape(it["caption"])}'
+            f'<figure class="ig-tile">'
+            f'<img src="{escape(it["src"])}" alt="{escape(it["alt"])}" {poster_attrs(it["src"])} '
+            f'loading="lazy" />'
+            f'<figcaption>{escape(it["title"])} \u2014 {escape(it["caption"])}'
             f'<span class="when">{escape(label)}</span></figcaption></figure>')
-    if not frames:
-        return tiles, ""
-    nav = ""
-    if len(frames) > 1:
-        nav = (
-            '\n    <button class="ig-btn prev" type="button" data-ig-prev aria-label="Previous plate">'
-            f'{ICON_LEFT}</button>'
-            '\n    <button class="ig-btn next" type="button" data-ig-next aria-label="Next plate">'
-            f'{ICON_RIGHT}</button>')
-    plate = (
-        '<div class="modal" id="ig-plate" role="dialog" aria-modal="true" aria-label="The album, '
-        'plate by plate">'
-        '\n  <div class="modal-backdrop" data-ig-close></div>'
-        '\n  <div class="modal-panel ig-plate">'
-        '\n    <button class="modal-close" type="button" data-ig-close aria-label="Close the album">'
-        f'{ICON_X}</button>'
-        '\n    <div class="ig-reel" data-ig-reel>\n      ' + "\n      ".join(frames) +
-        '\n    </div>' + nav +
-        f'\n    <p class="ig-count" data-ig-count role="status">1 / {len(frames)}</p>'
-        '\n  </div>'
-        '\n</div>\n')
-    return tiles, plate
-
+    return tiles
 
 BLOCK_LABEL = {b["id"]: b["label"] for b in BLOCKS}
 # The album's order is the ROOMS table's: a room earlier in the table is read earlier on the wall,
 # and the plates that belong to no room keep their registry order after them. Decided here rather
 # than in the registry, because the registry is about what an image may claim and the table is about
-# where a room stands in the walk — and decided *before* the wall and the roll are built, because
-# the roll is addressed by index and a tile that disagrees with its frame sends a visitor to the
-# wrong plate.
+# where a room stands in the walk — and decided *before* the wall is built, because the wall's order
+# is the order a visitor reads it in.
 # The album wall carries only the blocks read as photographs here (classroom). Field notes is not a
 # plate wall any more: it is ONE container of three cards, each card a place, and the card itself is
 # the door into that room. The sub-area plates (the gate, the stall row, the lanterns) hang inside
@@ -1660,7 +1614,7 @@ BLOCK_LABEL = {b["id"]: b["label"] for b in BLOCKS}
 ALBUM_ITEMS = sorted(
     (it for b in ALBUM_BLOCKS for it in ALBUM[b["id"]] if b["id"] != "field-notes"),
     key=lambda it: ROOM_ORDER.get(room_of_plate(it["src"]), len(ROOMS)))
-album_tiles, gallery_plate = _plate_for(ALBUM_ITEMS)
+album_tiles = _wall_tiles(ALBUM_ITEMS)
 _tiles_by_block = {b["id"]: [] for b in ALBUM_BLOCKS}
 for it, tile in zip(ALBUM_ITEMS, album_tiles):
     _tiles_by_block[it["block"]].append(tile)
@@ -1687,13 +1641,14 @@ def _place_card(r):
     """One card in the Field notes container: the place's sheet, its name and note — and the card
     itself is the door. One container, three cards, one press to be inside the place."""
     rid, label, page = r[0], r[1], r[2]
+    # The cover is part of the card, not an ornament that may fail to appear: the card is a door and
+    # the sheet is its face. Round 77 removed the "No cover yet" state — it was never emitted, and a
+    # missing sheet is a build error, not a state to design for.
     src = f"IMG/{rid}-cover.jpg"
-    if (ROOT / src).exists():
-        media = (f'<span class="place-card-media"><img src="{src}" alt="" loading="lazy" '
-                 f'{poster_attrs(src)} /></span>')
-    else:
-        media = (f'<span class="place-card-media dashed empty">{chip(ICON_CAMERA)}'
-                 f'<span class="when">No cover yet</span></span>')
+    if not (ROOT / src).exists():
+        raise SystemExit(f"place card {rid}: missing {src}")
+    media = (f'<span class="place-card-media"><img src="{src}" alt="" loading="lazy" '
+             f'{poster_attrs(src)} /></span>')
     note = PLACE_GROUP_NOTES[rid]
     return (f'<a class="place-card reveal" data-place-card="{rid}" href="{page}" '
             f'aria-label="Walk into {escape(label)}: {escape(note)}">'
@@ -1742,15 +1697,17 @@ def gallery_html():
                        f'    <div class="place-cards" data-place-cards>\n      '
                        + "\n      ".join(cards) + '\n    </div>')
             continue
-        head = (f'<div class="block-head reveal"><h3>{escape(b["label"])}</h3>'
+        head = (f'<div class="reveal"><h3>{escape(b["label"])}</h3>'
                 f'<p class="when">{escape(b["purpose"])} <span class="badge">{escape(b["kind"])}'
                 f'</span> {escape(state)}</p></div>')
-        inner = (f'<div class="ig-grid" data-ig-grid>{" ".join(tiles)}</div>' if tiles else
+        # A block with nothing to show says so in its own words: an archive that quietly omits a
+        # shelf is indistinguishable from one that never had it (see ALBUM_BLOCKS).
+        inner = (f'<div class="ig-grid">{" ".join(tiles)}</div>' if tiles else
                  f'<div class="dashed empty">{chip(ICON_CAMERA)}<div><strong>Nothing in this block '
                  f'yet</strong><p class="when">{escape(b["note"])}</p></div></div>')
         out.append(f'    {head}\n'
                    f'    <p class="when reveal">{escape(b["note"])}</p>\n'
-                   f'    <div class="ig-wall" data-ig-wall>\n      {inner}\n    </div>')
+                   f'    {inner}')
     return "\n".join(out)
 
 
@@ -1771,8 +1728,7 @@ activities = page("Activities · Hua-Xu Zhong", "activities", f"""
     <div class="dashed empty reveal" style="margin-top:1rem">{chip(ICON_CHAT)}<div><strong>No talks listed yet</strong><p class="when">This page will not invent events. When you add a title, venue, and date, they will appear here as a single timeline.</p></div></div>
   </div>
 </section>
-""", extra=f"""
-{gallery_plate}""")
+""", extra="")
 
 journals = [
     "Educational Technology Research and Development (SSCI Q1)",
@@ -5358,13 +5314,11 @@ DISTRICTS = [
         # Round 52: the lane runs on past the Centre to the fun strip the place really has next
         # door — the Parkway, Clifton Hill, the SkyWheel — and every compression this measure makes
         # (500 m of street to 155 of lane, thirty of bluff to sixteen) is said in the pieces' own
-        # hints. zones/floors feed the district banner and the overlook's standing height.
+        # hints. floors feed the overlook's standing height; the seams that used to be listed here as
+        # `zones` named the plan-view strip, and went with it in round 77 (the strip had no CSS since
+        # round 72, so nothing had read them for five rounds).
         "lane": {"w": 1400, "d": 3600, "ceil": 400, "back": 200, "max_d": 10350, "open": True,
                  "open_back": True, "open_end": True,
-                 "zones": [[-10, "Table Rock", "the rail, the mist, the doors of the Centre"],
-                           [1483, "The Niagara Parkway", "between the Centre and the fun strip"],
-                           [2200, "Clifton Hill", "the Street of Fun — 175 feet of lights at the far end"],
-                           [3350, "The Rainbow Approach", "440 m of steel to the state line"]],
                  # half 15 m scene = the strip's plaza width, unscaled like every x in this lane
                  # Round 58: the SkyWheel's plaza. The strip proper is 15 m half wide; in front of
                  # the wheel it opens to 32 m so a visitor can walk to the ride's own apron. The
@@ -6396,9 +6350,7 @@ DISTRICTS = [
         # (z 155.99) with the floor's far edge 6.4 m ahead, the paving filled the lower frame and
         # the brink beyond it was a 20 px band. A floor ends where the walk ends.
         "lane": {"w": 1500, "d": 5483, "ceil": 420, "back": 220, "max_d": 15900, "open": True,
-                 "open_back": True, "open_end": True,
-                 "zones": [[-10, "The Goat Island walk", "timber, then the roar"],
-                           [2400, "Luna and the American Falls", "290 m over a ledge onto boulders"]]},
+                 "open_back": True, "open_end": True},
         "floor": "pavers",
         "day": {"start": 0.5, "gain": 1},
         # Round 58: the island had no world at all -- the lane and its props hung over the void, so
@@ -6647,7 +6599,7 @@ def rooms_plate_html(districts):
     for d in districts:
         for n, fr in enumerate(d.get("frames", [])):
             figures.append(
-                f'<figure class="story-frame" data-story-frame="{n}" data-room="{escape(d["id"])}">'
+                f'<figure class="story-frame" data-story-frame="{n}">'
                 f'<img src="{fr["src"]}" alt="{escape(fr["alt"])}" {poster_attrs(fr["src"])} />'
                 f'<figcaption>{escape(fr["title"])} — {escape(fr["caption"])}</figcaption></figure>')
     reel = ""
@@ -7171,10 +7123,6 @@ def walk_html(d, drawer):
     sight = d.get("sight_note", sight)
     # An open-world far end: the record authors how far the walker may keep going (walk units), and
     # the renderer lets the world continue past the last wall. Absent, the clamp is the wall itself.
-    # (Round 76: `data-lane-zones` is gone. Round 72 took the banner that read it off the page, kept
-    # the attribute "for anything that wants to read the seams", and nothing ever did — the seams are
-    # drawn by the rail's strip ticks, built straight from `lane["zones"]` below, which is where the
-    # district names actually reach a visitor.)
     # z is depth (record units, ×2.9); the standing height and the x-band of a floor are the
     # lane's own scene centimetres, the same axes `w` rides — they cross the page unscaled
     floors = [[round(a * Z_SCALE), round(b * Z_SCALE), h, x0, x1] for a, b, h, x0, x1 in lane["floors"]] \
@@ -7186,20 +7134,11 @@ def walk_html(d, drawer):
     # the renderer's `pavedAt`: a square's front row stands on its paving, not past it.
     paveds = [[round(a * Z_SCALE), round(b * Z_SCALE), c] for a, b, c in lane["wsp"]] if lane.get("wsp") else []
     ws_attr += f' data-lane-wsp=\'{json.dumps(paveds, separators=(",", ":"))}\'' if paveds else ""
-    banner_html = """
-    <!-- Round 72: the district banner that used to live here is gone. It appeared by itself on every
-         seam crossing and after every rail jump, and the owner's complaint was exactly that a
-         selection made an interface appear. The seams are still authored, and the rail's strip still
-         marks the boundaries and names them on their ticks; nothing pops. -->""" if lane.get("zones") else ""
-    strip_html = ""
-    if lane.get("zones"):
-        ticks = "".join(
-            f'<span class="walk-strip-tick" style="left:{round(z / lane["d"] * 100, 2)}%"'
-            f' title="{escape(name)}"></span>' for z, name, *_ in lane["zones"] if z >= 0)
-        strip_html = f"""
-      <div class="walk-strip" data-walk-strip aria-hidden="true">
-        <span class="walk-strip-fill"></span>{ticks}<span class="walk-strip-you"></span>
-      </div>"""
+    # Round 77: the plan-view strip and the banner comment that outlived it are gone together. Round 72
+    # removed the banner (a surface that appeared on every seam crossing) and cut the strip's four CSS
+    # rules in the same commit while its message said the strip survived — so for five rounds the page
+    # carried spans nothing could see, and a comment claiming they marked the seams. Nothing pops now:
+    # the district drawer names the district, and the lane is its own map.
     max_d_attr = f' data-lane-max-d="{lane["max_d"]}"' if lane.get("max_d") else ""
     # A street with nothing over it (Nakamise) says so, and the renderer draws no lid.
     max_d_attr += ' data-lane-open="1"' if lane.get("open") else ""
@@ -7292,7 +7231,7 @@ def walk_html(d, drawer):
     return f"""<div class="walk" id="walk-{did}" data-walk="{label}"
        data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
        data-lane-back="{lane["back"]}"{max_d_attr}{day_attr}{floor_attr}{floors_attr}{ws_attr}
-       data-eye="{EYE}">{banner_html}
+       data-eye="{EYE}">
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="{label}, a lane you walk in person.{clad}{sight} Drag, arrow keys or A/D to turn,
        W A S D to walk, Shift to run, Space to jump, E while standing still to open what you are
@@ -7333,7 +7272,7 @@ def walk_html(d, drawer):
           aria-label="Wider view">{ICON_FOV_OUT}</button
         ><button type="button" class="walk-icon" data-walk-fov="1"
           aria-label="Narrower view">{ICON_FOV_IN}</button></span>
-        <button type="button" class="walk-icon walk-jump" data-walk-jump aria-label="Jump">{ICON_UP}</button>
+        <button type="button" class="walk-icon" data-walk-jump aria-label="Jump">{ICON_UP}</button>
         <button type="button" class="walk-icon walk-tutor-replay" data-walk-tutor-replay
           aria-label="Walk me through the keys again">{ICON_BULB}</button>
         {hour_html}
@@ -7350,7 +7289,7 @@ def walk_html(d, drawer):
     <h2 data-walk-title></h2>
     <p data-walk-hint></p>
     <p class="when" data-walk-live></p>
-    <div class="walk-aside" data-walk-aside hidden>
+    <div data-walk-aside hidden>
       <p class="walk-keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk ·
         <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · drag to turn · <kbd>E</kbd> open a thing ·
         <kbd>L</kbd> the list · <kbd>I</kbd> this note · <kbd>Esc</kbd> close, then leave</p>
@@ -7363,7 +7302,6 @@ def walk_html(d, drawer):
     </div>
     <button type="button" class="modal-close" data-walk-card-close aria-label="Close">{ICON_X}</button>
   </div>
-  {strip_html}
   <aside class="walk-list" id="walk-list-{did}" data-walk-listpanel aria-label="{label}, written out">
     <button type="button" class="walk-drawer-close" data-walk-list-close aria-label="Close the list">
       {ICON_X}</button>

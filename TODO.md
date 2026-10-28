@@ -10,7 +10,19 @@
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、`rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支 / PR**：`arena/adedb8cc-huaxu` → `master`（本輪開 PR；合併要站主一句授權）。
 
-- **第 76 輪（本輪）—— 掃一遍「什麼都不做」的東西，刪掉，並證明刪掉的眼睛看不出來**：
+- **第 77 輪（本輪）—— 「不是提到就不是垃圾」：把「有人在提它」和「有人在用它」分開，只留真的會被用的**：
+  - 站主：「那個喔！不是提到就不是垃圾。你不能這樣保守，你必須垃圾真的就刪掉。該維持的都弄好。繼續」第 76 輪用「它有被寫在註解裡／有被閘門讀」當作留下的理由，這一輪把那個理由本身當成要刪的東西。
+  - **新的量具 `verify-csslive.mjs`（是閘門，不是探針）**：把 `css/site.css` 的每一條選擇器連行號解析出來（615 條），用 jsdom 問 19 個頁面有沒有東西匹配，再把沒匹配的分成 **LIVE／RUNTIME（腳本會加）／DORMANT（產生器寫得出來，只是今天沒有那種資料）／DEAD**。`_gen_html.py` 的**註解與 docstring 先剝掉**才去比對——上一輪的兩個誤判就是從那裡來的（一句「.plate-navy 是 fallback」＋一個檔名 `grid-2-grouping.jpg`）。結果：**36 條對不到 → 12 條 → DEAD 0**。反測：故意塞一條 `.zzz-dead-test{…}` 進去，它會紅。
+  - **相簿閱覽器整個刪掉（CSS 259 行、JS 189 行、產生器 ~55 行）**。它是為一卷「有日期的課堂照片」寫的，而**一面牆從寫好到現在沒有掛過一張照片**（一張 plate 需要 caption 加日期，兩者都沒有人給），所以 `#ig-plate`、`.ig-reel`、`.ig-frame`、`.ig-btn`、`.ig-count`、`.ig-cell`、`data-ig*` **一次都沒有出現在任何一頁**。留著它的代價是：`verify-walk` 有四條斷言在檢查它的**形狀**（讀樣式表，不是讀頁面），五輪都綠，於是它看起來「有測試」。現在牆只剩 **5 條規則**：`figure.ig-tile` ＋ 圖 ＋ 自己的說明行（`alt` 同樣的字），有照片就掛，沒有就說「Nothing in this block yet」。`verify-walk` 212/212。
+  - **進度條（`walk-strip`）是第 72 輪的自己打自己。** 第 72 輪的 commit message 寫「站點列的 `is-here`、街區抽屜的卡、**進度條的點**已經各自說同一件事」，同一支 commit 卻把進度條的四條 CSS 一起砍了——所以五輪以來頁面上是三個看不見的 span，而第 76 輪還寫了一句註解保證它「在刻度上標出分界並寫出名字」。標記、刻度、15 行 JS、兩張 `zones` 表、每頁一行 HTML 註解，全部刪。**要恢復它是一個設計決定，不是修 bug**：它會讓控制列多出 120–260 px。
+  - **七條對不到任何頁面的規則**：`.hero-note a`（hero note 是一句話，沒有連結）、`.section .btn-ghost`×3（`btn-ghost` 只在 hero 和點點遊戲裡）、`.section.alt .icon-chip`、`.grid-2`（整站沒有兩欄格線）、`.about-copy h3`、`.meta-links a`（那裡只有 button）、`.place-card-media.dashed.empty`。最後一條連同產生器的分支一起刪：**封面是卡片的臉，缺了是建置錯誤，不是一個要設計的狀態**——`IMG/{id}-cover.jpg` 不存在時產生器直接停。同理，`PRINCIPLE_READS`／`PRACTICE_ROWS` 的 `.plate` fallback 分支也刪，插圖改成必要欄位。
+  - **七個什麼都不做的 class**：`block-head`、`doi-line`、`principles`、`q-list`、`text-link` 這五個底下早就有一條真的規則（`reveal`／`p`／`grid-3`／`stance-list`／`.meta-links button`）在做事，刪字；`walk-aside`、`walk-jump` 看起來活著是因為腳本會問它們——**腳本問的是 `data-walk-aside`／`data-walk-jump`，不是 class**。另外 `data-room="…"` 每張 story frame 都寫、沒有任何程式讀（`data-room-title/where/hint/close` 才是活的），刪。
+  - **CSS 裡第 72 輪留下的孤兒 `}`**（刪規則時留下的收尾括號）與兩段已經在講「這個東西不在了」的註解，一起清掉。
+  - **`verify-walk` 的四條「相簿閱覽器」斷言換成四條關於牆的**（牆不可開、tile 是 figure＋caption、格線固定比例、空區塊用文字說明而不是空格子）；`.verify/_albumprobe.mjs` 隨閱覽器刪（83 → 82 支）；`_csscheck` 的兩條 ig 斷言改指向還在的規則。
+  - **一個被自己的刪除照出來的量具 bug**：`verify-rooms-e2e` 的 `walkUntilBlocked` 看的是 `depth + x`，而貼著牆的斜走會讓和持續變化，於是它跑滿 900 幀、把「沿隧道滑了多遠」當成「橫越得直不直」。刪掉進度條的兩次 style 寫入讓頁面變快之後，漂移從 358 變成 **470 cm**（門檻 400）——紅的不是物理，是量具。改成指定被推的那一軸（`axis="x"`），量到 **42.6 cm**，rooms-e2e 回到 **72/72、0 failures**。
+  - **量到的（第 77 輪）**：walk **212/212**、ux **69/69**、overlay **95/95**、exit **82/82**、games **23/23**、body **73/73**、story **27/27**、feel **12/12**、nowebgl **35/35**、skills **90/90**、rooms-e2e **72/72（0 failures）**、csslive **546 條：400／123／5／0 DEAD**、chain 全綠、shapes **248**、geometry／clash／tables／objects／motion 全綠、mirror PASS（**72 % vs 1 %**）、island **47/47（每站 0 % empty）**、look **5/5**、wheel PASS（best of 14/11/**15**）、hotel PASS、rail **4/4**、`verify-three`（14,924 world ＋ 1,048 water triangles）。產生器冪等（19 頁 md5 相同）。
+  - **這一輪沒跑的**：`verify-collision`（約 50 分鐘；本輪沒有動任何移動／碰撞碼，rooms-e2e 的碰撞段有跑）、`_stops`／`_lumacheck`／`_reach`（沒有動到滑行與亮度）。**Terrapin Point 的預設視角**（第 76 輪留下的、要站主決定的那一條）仍然沒動。
+- **第 76 輪 —— 掃一遍「什麼都不做」的東西，刪掉，並證明刪掉的眼睛看不出來**：
   - 站主：「繼續都弄好 建議順便處理 不該有的垃圾都刪掉。」第 73 輪的口號是「只留有意義的物件」，這一輪問的是同一句話的下一層：**repo 裡有哪些東西存在、看起來可以調，但其實沒有任何程式讀它。**
   - **最貴的垃圾不是死程式碼，是死旋鈕。** 產生器把 `data-lane-day-start` 寫進頁面，`js/site.js` 把它解析成 `DAY_AT`，而 `DAY_AT` 進到一個**沒有人讀的常數**——所以 `_walkshot`／`_lumacheck` 每次「把 start 改成 0.9 拍黃昏」，拍到的都是**正午**。同一個探針接上之後量到：street「夜」**luma 141 → 80**（`rooms` 沒有 day flag，46.9，作為對照沒有變）。`data-lane-day-cycle="900"` 是同一族的東西（一個網站已經沒有的頁面時鐘），連同 `DAYLEN`／`DAY_LEN`／`tileCm` 一起刪。修法是把 start 接上：`hourChosen`（localStorage 有任何小時值）為真時不動，否則 `hourPhaseSet = clamp(DAY_AT, 0, 1)`——**站主選過的時間永遠贏過頁面的預設**。
   - **十支閘門從來不在清單上。** `TODO.md` §2.3 的「一次跑完」少了 `verify-ux`、`verify-overlay`、`verify-exit`、`verify-island`、`verify-mirror`、`verify-motion`、`verify-rooms-e2e`、`verify-skills`、`verify-wheel`、`verify-hotel`——`verify-island`（沒有一站站在空無一物前面）第 69m 輪抓過真缺陷，之後只被手動跑過一次。**沒在清單上的閘門不會紅，因為沒有人跑它。** 清單整個重寫：25 支分成「不開瀏覽器」與「真瀏覽器、順序跑」兩段，每支後面寫它現在的數字。
@@ -60,7 +72,7 @@
 
 - **第 72 輪 —— 只有被點名的東西才准出現；每一個進得去的面，都要有站主本來就有的那個出口**：
   - 站主兩句話：「甚至其他的東西 有很重要的你在跳介面。我發現很多東西 因為選取會跳這種介面 你全面審查清楚 有必要的在跳。」＋「還有你任何的進出環境 請全面你E2E進去用發現問題並系統性解決問題。」
-  - **(a) 全面審查：整站已經沒有任何「自己跳出來」的表面。** `.verify/_albumprobe.mjs` 逐頁探 `research.html` 的 `#featured-modal`、`thinking.html` 的 `.dot-game-panel`、`#ig-plate`：三者到頁都是關的，`#ig-plate` 已經不在任何出貨頁面裡。剩下最後一個會自己出現的是**街區橫幅**（`data-walk-banner`）：每到一個 seam、每次用站點列跳站就 `is-on` 3.4 秒（`_stopprobe.mjs` 在 niagara stop 5 量到）。
+  - **(a) 全面審查：整站已經沒有任何「自己跳出來」的表面。** `.verify/_albumprobe.mjs`（第 77 輪隨閱覽器刪除）逐頁探 `research.html` 的 `#featured-modal`、`thinking.html` 的 `.dot-game-panel`、`#ig-plate`：三者到頁都是關的，`#ig-plate` 已經不在任何出貨頁面裡。剩下最後一個會自己出現的是**街區橫幅**（`data-walk-banner`）：每到一個 seam、每次用站點列跳站就 `is-on` 3.4 秒（`_stopprobe.mjs` 在 niagara stop 5 量到）。
   - **橫幅的判斷：不需要。** 站點列的 `is-here`、街區抽屜自己的卡、進度條的點已經各自說同一件事，而它在選取時跳出來正好是站主說的干擾，所以整組拿掉：`js/site.js` 的 `bannerEl`／`showBanner`／`bannerTimer`／`zoneHere`／`zoneOf`／`ZONES`、`_gen_html.py` 的 `.walk-banner` 標記、`css/site.css` 的 ~40 行（原位改成「不要加回來」的中文註解）。`data-lane-zones` 當時仍出貨但已無人讀（第 76 輪刪掉）。
   - **新閘門 `verify-overlay.mjs`（jsdom，8 頁，98 條）**：沒有任何一頁出貨橫幅或它的 CSS；沒有任何計時器會揭開表面（`.is-on` 同時被回到頂端與相簿 chips 用，所以只認 `data-walk-banner|walk-banner|showBanner|bannerTimer`）；到頁只有 `[data-walk-tutor]`；tap／拖曳不開；**每一個 `.walk-hit` 的指標點擊都不開**；每一個 `[data-walk-stop]` 都不開表面；`i` 只有卡、`l` 只有清單、Esc 只收不合；橫桿的文字＝`reach.dataset.title`，按下去一定開一個表面。
   - **(b) 進出環境：先在真瀏覽器走一遍，再修「類別」，不是修那一頁。** `.verify/_backprobe.mjs` 量到的：`rooms-toronto.html` 按 `i` 開卡、按**瀏覽器上一頁** → 人被丟回 `street.html`，卡片不見、在房間裡的位置也沒了。手機沒有 Esc，上一頁就是它唯一的出口手勢——這不是細節，是整個出口契約失效。
@@ -184,7 +196,7 @@
     1. **楔角蠕行被反向門檻否決**：`buzz` 只用「上一個被接受滑動的方向」記帳，卻活得比那個面久；繞過箱角後新面的唯一暢通蠕行是 `115 cm/s × 8.3 ms = 0.955 cm`，永遠付不起 1.2 cm 的反向價 → 站在角上不動。修法：蠕行方向由 `cornerAssist`（自己的記憶＋四步淨空測試）決定，不受 `buzz` 管。
     2. **`clear()` 把步伐 clamp 在 lane 牆上還回報暢通**：貼牆轉角因此永遠選牆那一側，clamp 吃掉整步，人就站著（`clear:[1,1]`、0.507 cm 自我抵銷）。修法：步伐必須**真的走得出去**（clamp 會改變座標就回 0）。
     3. **push-out 剛好落在碰撞面上**（`pen = R − dist`），而接受判定是嚴格 `<`：浮點決定那一幀，候選 24.0009 vs R 24 被算成碰撞。修法：推離後留 0.01 cm 餘隙。
-  - **P1b**：刪掉 8 段真正孤兒的 CSS（`title-btn`、`open-fig`、`.modal-close.on-photo`、`.ig-reel.is-pannable`、`.district-pick`＋其 media query、`.slot.is-drawn`、`.ig-room`），並把 `.ig-cell` 的過時註解改成實況。判準：**HTML／generator／js 三處都沒有**才算孤兒（`.ig-tile`、`.ig-cell` 這些只活在 generator 裡的是「圖一來就要用」的契約，不能刪）。
+  - **P1b**：刪掉 8 段真正孤兒的 CSS（`title-btn`、`open-fig`、`.modal-close.on-photo`、`.ig-reel.is-pannable`、`.district-pick`＋其 media query、`.slot.is-drawn`、`.ig-room`），並把 `.ig-cell` 的過時註解改成實況。判準：**HTML／generator／js 三處都沒有**才算孤兒（當時的例外是 `.ig-tile`、`.ig-cell`「只活在 generator 裡＝圖一來就要用」——**第 77 輪推翻了這半條**：`.ig-cell` 只是一個沒有規則的包裝，刪；`.ig-tile` 留，但它等的是站主的日期，不是一個已經準備好的功能）。
   - **P1c**：刪 6 支被取代的探針（`audit-merge`、`audit-views`、`_cycle`、`_feel7`、`_feel8`、`_night3`）；`.verify` 51 → 45 支。live-browser 量具（`wall-live`、`wall-pierce-live`、`walk-feel`、`browser-check.py`…）留在 2.4，不再只是「檔案裡有」。
   - **AGENTS 新規則**：「動得動的閘門跑一次只量到一條路」——碰撞閘門的路徑取決於前面撞擊留下的站位與 idle pulse 插進來的幀，驗收是**連跑 20 次**加寬掃描量具 `_wedge.cjs`，不是一次綠燈。
 
@@ -224,7 +236,8 @@ node .verify/verify-tables.mjs
 node .verify/verify-chain.mjs
 node .verify/verify-games.mjs                  # 23/23
 node .verify/shader-lits.mjs                   # 6 個 shader program 完整
-node .verify/verify-walk.mjs                   # 211/211（含「rail 帶你到停止點」）
+node .verify/verify-walk.mjs                   # 212/212（含「rail 帶你到停止點」）
+node .verify/verify-csslive.mjs                # 546 條選擇器：LIVE 400／RUNTIME 123／DORMANT 5（相片牆，等站主給日期）／DEAD 0
 node .verify/verify-ux.mjs                     # 69/69（按壓的動詞表、文字只給 read）
 node .verify/verify-overlay.mjs                # 95/95（什麼可以蓋在走頁上、由哪個手勢）
 node .verify/verify-exit.mjs                   # 82/82（每一種進去都有訪客認得的出口）
@@ -242,7 +255,7 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-nowebgl.mjs     # 35/35
 LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-island.cjs      # 沒有一站站在空無一物前面（47 站，每站 empty 0 %）
 LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-mirror.mjs      # 看到的就是按到的
 LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-motion.mjs
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-wheel.cjs       # 三張取最大（16 車廂；單張量到 9 是抽樣誤差）
+LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-wheel.cjs       # 三張取最大（15 車廂；單張量到 9 是抽樣誤差）
 LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-hotel.cjs
 LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-rail.mjs        # 4/4（四個起點到同一顆停止點）
 LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-objects.mjs
@@ -268,12 +281,13 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
 - **診斷**：`_stuck.mjs` / `_stuck2.mjs`（卡住）、`_tapdiag.mjs`（點擊診斷）、`_wallgap.mjs`（畫牆與可行走空間）、`_csscheck.mjs`（樣式表解析與套用）、`wall-probe.cjs`（受困／滑動／擱淺普查）、`verify-rooms-e2e.cjs`（jsdom 啟動樣板，碰撞閘門共用同一份 boot）。
 - **表面與抵達（第 75–76 輪）**：`_surface.mjs`（每一個開啟的表面：cover／content／fill／字的 measure）、`_stops.mjs`（點每一顆停止點，等 `__walk.glide` 收工，印出 cm 誤差；**不要**用「看起來停了」判斷）、`_reach.mjs`（走過去，每一個可按的東西按得到嗎）、`_deadui.mjs`（每一個控制元件按下去有沒有變化；jsdom 不能導航，所以導覽型的「沒變化」是它的盲點，原始碼裡有寫）、`_uxwalk.mjs`（訪客走查，逐行寫進 `.preview/ux74/presses.txt`）。
 - **量具的抵達判準（第 76 輪修）**：`_aim.mjs` 的 `arrive()` 原本是「6 秒沒動就是到了」。被搶幀的滑行會在原地停超過 6 秒，於是 `verify-island` 把 rooms.html 第 3 站報成「停在目標前 152 cm」，而 `_stops` 同一顆按鈕量到 0 cm。現在它問車道自己的 `__walk.glide`。**任何新的抵達判斷都先看 `glide`。**
-- **刪掉就不要留名字**：第 76 輪刪了十個零引用的探針（`_barshot`、`_dbg2/3`、`_dbg_goat`、`_mirror-cmp`、`_overlay-audit`、`_proj`、`_r74shot`、`_stopprobe2`、`_turnprobe-jsdom`）。方法寫在 `skills/dead-ballast`：五種垃圾怎麼找、三種判決（刪／接上／寫進清單）、以及怎麼證明移除是隱形的。
+- **刪掉就不要留名字**：第 76 輪刪了十個零引用的探針（`_barshot`、`_dbg2/3`、`_dbg_goat`、`_mirror-cmp`、`_overlay-audit`、`_proj`、`_r74shot`、`_stopprobe2`、`_turnprobe-jsdom`），第 77 輪刪了 `_albumprobe`（它的題目是相簿閱覽器，閱覽器沒了）。方法寫在 `skills/dead-ballast`：七種垃圾怎麼找、四種判決（刪／接上／寫進清單／登記為 dormant）、以及怎麼證明移除是隱形的。
+- **CSS 的照妖鏡（第 77 輪）**：`verify-csslive.mjs` 是**閘門**（進 §2.3），不是探針——它每次都要跑。它把 `css/site.css` 的每一條選擇器連行號解析出來，問 19 個頁面的 jsdom 有沒有東西匹配，再把沒匹配的分成三類。**加一條樣式規則的人，這支就會替他回答那條規則什麼時候有人用。**
 
 ### 2.5 記憶的規則
 
 - **做完就刪敘述**：完成的項目從本檔移除，只留「現在在哪裡」與「量到的事實」。
-- **不要用 grep 當證明**：class 名可能是 generator 產生的（`class="ig-tile"`、`id="ig-plate"` 住在 `_gen_html.py` 裡，頁面上不一定看得到）。**閘門才是判官**：要刪一條規則，先刪、再跑閘門；閘門不叫，就把它當成契約留著。
+- **不要用 grep 當證明，也不要用閘門當判官。** class 名可能只住在 `_gen_html.py` 裡（頁面上不一定看得到），所以 grep 會兩邊都騙：一句註解能讓死掉的 `.plate-navy` 看起來活著，一個檔名 `grid-2-grouping.jpg` 能讓死掉的 `.grid-2` 看起來在用。反過來也一樣：**閘門會把到不了的東西寫成真理**——`verify-walk` 有五輪拿「樣式表裡有沒有這段」當作相簿閱覽器存在的證據，於是刪掉它時閘門變紅，看起來像是刪錯了。判官是 `.verify/verify-csslive.mjs`：它問 DOM，然後把剩下的分成 LIVE／RUNTIME／DORMANT／DEAD（DORMANT 的判準見 `skills/dead-ballast` §3a）。**只有 DEAD 才刪，DORMANT 要說出它等的是什麼資料。**
 - **閘門的綠燈是一次抽樣**：碰撞閘門的路徑每次不同（前面撞擊留下的站位＋idle pulse 的幀），所以移動類的驗收是連跑，不是一次。
 
 ## 3. 下一輪計畫（依優先序；每項都有驗收證據）
@@ -439,7 +453,7 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 ### 5.5 閘門現況
 
-**現在只有一個地方記這件事：§2.3 的清單**（25 支，分「不開瀏覽器」與「真瀏覽器、順序跑」兩段，每支後面是它這一輪量到的數字）。逐輪的流水帳已刪：它跟 §1 的回合記錄重複，而且停在第 73 輪，會讓人以為那是最新的。
+**現在只有一個地方記這件事：§2.3 的清單**（26 支檔案，分「不開瀏覽器」與「真瀏覽器、順序跑」兩段，每支後面是它這一輪量到的數字）。第 77 輪加了 `verify-csslive.mjs`：它不是探針，是每次都要跑的閘門——一條樣式規則有沒有東西可以套，只有 DOM 知道。逐輪的流水帳已刪：它跟 §1 的回合記錄重複，而且停在第 73 輪，會讓人以為那是最新的。
 
 留下三件跨輪仍然成立的事實：
 
@@ -449,7 +463,7 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 ### 5.6 倉庫大小
 
-tracked 約 17 MB：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、`rooms-cntower.html` 722 KB、`js/site.js` 561 KB（9,144 行）、`_gen_html.py` 483 KB、`css/site.css` 2,890 行、`TODO-archive.md` 368 KB。`.verify` 45 支。
+tracked 227 支檔案（`.git` 12 MB）：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、`js/site.js` 592 KB（9,479 行）、`_gen_html.py` 534 KB（7,484 行）、`TODO-archive.md` 375 KB、`css/site.css` 85 KB（2,708 行；第 77 輪刪掉 259 行）。`.verify` 82 支。
 `image-search/`（1.2 MB，3 張 CN Tower 參考照，**來源未追溯 → 永不入庫**）只留在磁碟。
 
 ## 6. 已知限制（不要假裝解決了）
