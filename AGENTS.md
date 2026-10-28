@@ -231,15 +231,30 @@ Files you MAY edit directly:
 
 | Path | Purpose |
 |---|---|
-| `_gen_html.py` | Generator: nav, page templates, publications, gallery data. Run it after editing. |
+| `_gen_html.py` | Generator entry point: assembles the page bodies and writes every file. Run it after editing anything in `gen/`. |
+| `gen/` | The generator's parts (round 78, a pure move): `site.py` (nav, footer, icons, `page()`), `content.py` (publications, projects, pillars, courses, the report's rows), `media.py` (the image registry and the wall), `world.py` (the surveyed worlds), `districts.py` (the district records), `render.py` (the lane's markup). Edit these, not the emitted HTML. |
 | `index/about/research/teaching/activities/service/links/404.html` | Generated output. Do not hand-edit. |
 | `css/site.css` | Single stylesheet, versioned via `?v=` query string |
-| `js/site.js` | Single script file — nav, reveals, the photo plate, and the dot-trace game (see below) |
+| `js/site.js` | The lane, the page chrome and the dot-trace game, in one closure (see §Layout note below) |
 | `IMG/` | Portrait and gallery photos |
 | `SPEC-gallery-3d.md` | **Not built.** The owner-facing proposal for a walkable Activities archive, written from a first-hand read of his reference site; read it before any 3D work or any change to the dependency rule |
 | `.nojekyll` | Keeps GitHub Pages from running Jekyll — do not delete |
 | `TODO.md` | The working plan for the next round: what is next, how we work, and the measured facts. Rewritten each round; a finished item is deleted rather than narrated. Update it before every PR operation. |
 | `TODO-archive.md` | The earlier rounds' full log, kept for provenance. Read-only: if a fact is still relevant, move it into `TODO.md` instead of editing the archive. |
+
+Route a layout change through `skills/pure-move-split` (round 78).
+
+**Why the generator is split and the script is not (round 78, measured).** `_gen_html.py` was one
+7,484-line file whose ordering was load-bearing: page bodies, the loops that fill them and the
+records they read were interleaved, so a split had to be a *move* with a proof, not a refactor. It is
+now an entry point plus six modules, and the proof is that all 19 emitted pages are byte-identical
+before and after. `js/site.js` is a different shape: four top-level units (page chrome 145 lines,
+shared overlay plumbing ~115, the dot-trace game 207, and **the lane, 8,989 lines with 288
+declarations sharing one closure**). Splitting the closure at file boundaries is not a move — every
+name it shares would have to become an explicit interface, and the fastest gate in this repository
+(`verify-walk`, 212 assertions) works by `w.eval`-ing that one script into jsdom, which ES modules
+cannot do. So the script stays one file until a round is prepared to give the lane an interface and
+pay for a slower gate; do not "fix" it with a cosmetic split that leaves a 9,000-line file behind.
 
 Reference photographs (`image-search/`) are deliberately **not tracked**: their sources are
 untraceable, so they stay on the working disk for human comparison only. The same rule covers any

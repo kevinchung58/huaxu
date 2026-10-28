@@ -11,7 +11,8 @@ const rooms = fs.readFileSync("rooms.html", "utf8");
 const act = fs.readFileSync("activities.html", "utf8");
 const css = fs.readFileSync("css/site.css", "utf8");
 const js = fs.readFileSync("js/site.js", "utf8");
-const gen = fs.readFileSync("_gen_html.py", "utf8");
+import { genSource } from "../bin/gen-source.mjs";
+const gen = genSource(".");
 const html = rooms;
 
 const ctx = {

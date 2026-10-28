@@ -9,14 +9,16 @@
      LIVE      a page has an element this selector matches right now (a pseudo-element's host
                counts: `::after` is not in jsdom's tree, but a rule for it is live iff its element is)
      RUNTIME   no page has it — the script makes the class, the attribute, the child tag
-     DORMANT   neither, but _gen_html.py writes the class for other data (the build's own markup is
+     DORMANT   neither, but the generator writes the class for other data (its own markup is
                the user: the photograph wall's tiles live here, because no photograph has a date yet)
      DEAD      nothing in the pages, the script, or the generator — and this exits non-zero
 
-   Comments and docstrings are stripped from _gen_html.py first, because that is exactly where the
-   last two false positives came from. */
+   Comments and docstrings are stripped from the generator first, because that is exactly where the
+   last two false positives came from. Since round 78 the generator is `_gen_html.py` plus `gen/*.py`,
+   and reading only the entry point would have hidden 90 % of it. */
 import fs from "node:fs";
 import { JSDOM } from "jsdom";
+import { genSource } from "../bin/gen-source.mjs";
 
 const css = fs.readFileSync("css/site.css", "utf8");
 const js = fs.readdirSync("js").filter((f) => f.endsWith(".js"))
@@ -24,7 +26,7 @@ const js = fs.readdirSync("js").filter((f) => f.endsWith(".js"))
 
 /* the generator, with its prose removed: `#` to end of line and triple-quoted docstrings. The f-string
    templates that emit markup are single-quoted, so they survive — which is the whole point. */
-const gen = fs.readFileSync("_gen_html.py", "utf8")
+const gen = genSource(".")
   .replace(/"""[\s\S]*?"""/g, '""')
   .replace(/#[^\n]*/g, "");
 

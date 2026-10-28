@@ -4,13 +4,23 @@
 > **規則：完成的項目直接刪掉，不留敘述。** 方法與永遠成立的約束留在第 2 節；量出來的事實留在第 5 節。
 > 舊的 66 輪流水帳在 `TODO-archive.md`（git 追蹤、唯讀）；要找「那時候為什麼這樣做」再去查它。
 
-## 1. 現在在哪裡（2026-10-28）
+## 1. 現在在哪裡（2026-10-29）
 
-- **站台**：靜態學術網站（Hua-Xu Zhong）。零依賴、零 build step；所有 `*.html` 只由 `_gen_html.py` 產生；runtime 只有 vendored 的 Three.js 0.186.1。
+- **站台**：靜態學術網站（Hua-Xu Zhong）。零依賴、零 build step；所有 `*.html` 只由 `python3 _gen_html.py` 產生（第 78 輪起本體在 `gen/` 六個模組，入口 721 行）；runtime 只有 vendored 的 Three.js 0.186.1。
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、`rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支 / PR**：`arena/adedb8cc-huaxu` → `master`（本輪開 PR；合併要站主一句授權）。
 
-- **第 77 輪（本輪）—— 「不是提到就不是垃圾」：把「有人在提它」和「有人在用它」分開，只留真的會被用的**：
+- **第 78 輪（本輪）—— 站主問 React，答案是「問題在兩個檔案，不在沒有框架」；產生器拆完，腳本不拆（並說清楚為什麼）**：
+  - 站主：「你這邊是不是這東西用 react 做對你來說比較好處理。但礙於我們用 GitHub page 目前就只能這樣？」→「該做你都去做」。**GitHub Pages 不是限制**：它只是靜態檔案伺服器，React 打好包一樣能放。真正的限制是這個 repo 自己定的（零 build step、零 committed 依賴、只 vendored Three.js 0.186.1）。而且站主感覺到的痛是真的、只是名稱不對——痛的是**兩個檔**：`_gen_html.py` 7,484 行、`js/site.js` 9,479 行。3D 巷道（每一幀都是命令式程式）換 React 一點好處都沒有；產生器與介面外殼有，但那是檔案大小的問題，不是框架的問題。**所以：保持靜態，拆檔案。**
+  - **產生器拆完了，而且是一個「純搬移」**：`_gen_html.py` **7,484 行 → 入口 721 行 ＋ `gen/` 六個模組**（`site.py` 354（頁殼、導覽、圖示、`page()`／`shell_page()`）、`content.py` 491（論文、計畫、pillars、課程、報告逐條）、`media.py` 365（圖片登錄表與相簿牆）、`world.py` 2,080（尼加拉、山羊島、多倫多、隧道）、`districts.py` 2,657（區塊紀錄）、`render.py` 855（巷道標記、抽屜、影格盤））。**證明不是靠 review，是靠 md5：拆前 19 頁的 md5 存成 `/tmp/base_html.md5`，拆後 `md5sum -c` 全過，再跑一次也一樣（冪等）。**
+  - **拆法是「名稱歸屬」，不是行號**：行號一改就動，名字不會。每個頂層敘述歸給「定義它的名字」所屬的模組；沒人認領的留在入口、順序不動。四個坑全部踩過並寫進 skill：**tuple 目標**（`A, B, C = f()` 沒有 `ast.Name` 目標 → 誰都不認領 → 掉進入口 → 所有 import A 的模組在 import 時就死）、**註解開頭要自己一個換行**（黏上去會變成下一行縮排裡的註解 → `IndentationError`）、**`__file__` 路徑**（檔案下沉一層，`ROOT` 與所有路徑靜默指進套件裡 → `gen/css/site.css` 找不到）、**搬過去的多餘 import**。
+  - **拆分會讓閘門瞎掉，這是每次都會忘的部分**：三支閘門把產生器當**文字**讀（`verify-csslive`、`verify-walk`、`bin/verify-three`），而產生器自己有一支「重複 key 掃描」只 parse `_gen_html.py` 一個檔。它們**不會紅**，只會安靜地只看見 10 % 的程式。→ 新增 `bin/gen-source.mjs`（入口＋`gen/*.py` 串成一份，排序固定）給三支閘門用；重複 key 掃描改成掃全部（`_gen_files()`），**反測：在 `gen/content.py` 塞一個重複的 `"id"`，建置在 `line 53: 'id'` 停下**。
+  - **新閘門 `verify-gen`（5 條，秒級）**：①每個 `gen/*.py` 都從入口的 import 圖走得到（沒有孤兒模組）②沒有任何頂層名字被兩個檔案定義（後者靜默勝出，和重複 dict key 同一類）③跨模組 import 的名字在對方頂層真的存在 ④`genSource()` 覆蓋全部檔案、且看得到只有模組才有的字串（`def walk_html`、`DISTRICTS = `、`def gallery_html`、`def page(`）⑤產生器冪等（連跑兩次 19 頁 md5 相同）。**反測**：塞一個同名 `css_sig` 進兩個模組會紅、塞一個沒人 import 的 `gen/_orphan.py` 會紅。→ **26 → 27 支閘門**。
+  - **`js/site.js` 沒有拆，而且不該用「拆檔」的名義拆**：它是四個頂層單元——頁面 chrome 145 行、共用 overlay 管線 ~115 行、點點遊戲 207 行、**巷道 8,989 行（288 個宣告共用同一個 closure）**。把 closure 照檔切開不是搬移，是**把 288 個共用名字改成介面**（重寫，風險不同）；而且本站最快的閘門 `verify-walk`（212 條）是把那一支腳本 `w.eval` 進 jsdom 跑的，**ES module 做不到**，所以拆它同時要付「介面」與「閘門改成真瀏覽器」兩筆錢。留給專門的一輪，規格寫在 P3。**不做美工拆法**（把 500 行搬去 `helpers.js`、留下 9,000 行檔案），那兩筆錢一筆都沒付。
+  - **新 skill `pure-move-split`（第 19 個）**：純搬移怎麼做、怎麼證明、拆完哪些閘門會瞎、哪個檔案不能拆。附上可重複使用的 `scripts/split_by_ownership.py`（AST＋symtable，名稱歸屬、tuple 目標、註解換行、import 修剪都在裡面）與本 repo 的 `scripts/spec-gen.py`；**用工具重建一次 `gen/` 與 `_gen_html.py`，`diff` 逐檔相同**——工具不是文件，是這一輪真的用過的那一支。`verify-skills` **95/95（19 個 skill）**。
+  - **量到的（第 78 輪，拆後重跑）**：19 頁 md5 與拆前逐一相同、冪等；walk **212/212**、ux **69/69**、overlay **95/95**、exit **82/82**、body **73/73**、story **27/27**、feel **12/12**、nowebgl **35/35**、rail **4/4**、games **23/23**、shapes **248**、geometry／clash／tables／objects／motion／chain 全綠、csslive **546 條：400／123／5／0 DEAD**、skills **95/95**、rooms-e2e **72/72（0 failures）**、mirror PASS、look 5/5、island **47/47**、hotel PASS、wheel PASS、`verify-three`（14,924 world ＋ 1,048 water triangles）、`shader-lits` 6 個 program 完整、`verify-gen` **5/5**。
+  - **這一輪沒跑的**：`verify-collision`（約 50 分鐘；沒有動任何移動／碰撞碼，rooms-e2e 的碰撞段有跑）。**Terrapin Point 的預設視角**（第 76 輪留下的、要站主決定的那一條）仍然沒動。
+- **第 77 輪（上一輪）—— 「不是提到就不是垃圾」：把「有人在提它」和「有人在用它」分開，只留真的會被用的**：
   - 站主：「那個喔！不是提到就不是垃圾。你不能這樣保守，你必須垃圾真的就刪掉。該維持的都弄好。繼續」第 76 輪用「它有被寫在註解裡／有被閘門讀」當作留下的理由，這一輪把那個理由本身當成要刪的東西。
   - **新的量具 `verify-csslive.mjs`（是閘門，不是探針）**：把 `css/site.css` 的每一條選擇器連行號解析出來（615 條），用 jsdom 問 19 個頁面有沒有東西匹配，再把沒匹配的分成 **LIVE／RUNTIME（腳本會加）／DORMANT（產生器寫得出來，只是今天沒有那種資料）／DEAD**。`_gen_html.py` 的**註解與 docstring 先剝掉**才去比對——上一輪的兩個誤判就是從那裡來的（一句「.plate-navy 是 fallback」＋一個檔名 `grid-2-grouping.jpg`）。結果：**36 條對不到 → 12 條 → DEAD 0**。反測：故意塞一條 `.zzz-dead-test{…}` 進去，它會紅。
   - **相簿閱覽器整個刪掉（CSS 259 行、JS 189 行、產生器 ~55 行）**。它是為一卷「有日期的課堂照片」寫的，而**一面牆從寫好到現在沒有掛過一張照片**（一張 plate 需要 caption 加日期，兩者都沒有人給），所以 `#ig-plate`、`.ig-reel`、`.ig-frame`、`.ig-btn`、`.ig-count`、`.ig-cell`、`data-ig*` **一次都沒有出現在任何一頁**。留著它的代價是：`verify-walk` 有四條斷言在檢查它的**形狀**（讀樣式表，不是讀頁面），五輪都綠，於是它看起來「有測試」。現在牆只剩 **5 條規則**：`figure.ig-tile` ＋ 圖 ＋ 自己的說明行（`alt` 同樣的字），有照片就掛，沒有就說「Nothing in this block yet」。`verify-walk` 212/212。
@@ -244,7 +254,8 @@ node .verify/verify-exit.mjs                   # 82/82（每一種進去都有�
 node .verify/verify-rooms-e2e.cjs              # 72/72（0 failures）
 node .verify/verify-body.mjs                   # 73/73
 node .verify/verify-story.mjs                  # 27/27（需 LD_LIBRARY_PATH）
-node .verify/verify-skills.mjs                 # 90/90（18 個 skill 都註冊、都有路由）
+node .verify/verify-skills.mjs                 # 95/95（19 個 skill 都註冊、都有路由）
+node .verify/verify-gen.mjs                    # 5/5（拆分後的產生器：無孤兒模組、名字不重複、閘門讀得到全部、冪等）
 node_modules/.bin/impeccable detect --json .   # []
 git diff --check && python3 -m py_compile _gen_html.py bin/toronto_massing.py
 md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff /tmp/a /tmp/b   # 冪等
@@ -324,13 +335,13 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
 - **還沒做（下一輪的第一件事，而且它不再是「搬 island」）**：剩下的大塊**不是資料，是可互動的 UI**——niagara 93.9 KB 裡絕大多數是 `<button class="walk-hit" data-…>`，每一顆都是可以按的元素，不是 JSON。要再縮，唯一的辦法是**把 prop 也寫成資料、由 runtime 產生按鈕**（generator → `js/places/<place>.props.js` → `js/site.js` 建 DOM）。代價與風險要寫在前面：約 40 個 `data-*` 屬性與 `dataset` 的大小寫規則（`data-rideX` → `dataset.ridex`，見 AGENTS 單位規則）、`verify-chain` 直接讀 HTML 字串裡的 `data-leave`／`data-story`、`verify-walk` 讀 `.walk-hit` 的 DOM 與「nothing writes prose into the scene」、以及沒有 JS 時整條 lane 本來就已经不能走（不是新問題）。**先寫一支量具量「按鈕 markup 佔幾 KB」再動手**，不要憑印象。
 - **不要重做**：把資料改成 `fetch`／`await`。`js/site.js` 在載入時同步組出世界，async 會讓「先畫出一個沒有世界的 lane」變成可能；普通 `<script>` 在它之前跑，是這條規則的實作。
 
-### P3 — 拆掉兩個巨型檔（純搬移，零行為變更）
+### P3 — 拆掉兩個巨型檔（第 78 輪做了一半；另一半留著，理由在下面）
 
 - **先記一件 69g 量到、但不屬於拆檔的事**：`world_quads_between` 每塊 quad 一個平面法線，遠岸因此有 ~20 px 的橫向明暗階梯（貼圖無關，三種設定 sd 都 5.1–5.5）。法線策略與 `flatShading` 屬於渲染層，改它要全站量過；記在這裡免得下一輪又從貼圖開始找。
 
-- `js/site.js` 9,144 行 / 561 KB → `js/lane/*.js`（motion / reach / input / card / story / games）。
-- `_gen_html.py` 6,821 行 / 483 KB → `tools/places/*.py` + 共用的 `tools/scene/*.py`。
-- **驗收**：全閘門全綠 + `_pix.mjs` 逐像素相同。
+- **✅ 產生器拆完了（第 78 輪）**：`_gen_html.py` 7,484 行 → 入口 **721 行**＋`gen/` 六個模組（`site.py` 354（頁殼、導覽、圖示、`page()`）、`content.py` 491（論文、計畫、pillars、課程、報告逐條）、`media.py` 365（圖片登錄表與牆）、`world.py` 2,080（三個測繪世界）、`districts.py` 2,657（區塊紀錄）、`render.py` 855（巷道標記））。**驗收：19 頁 md5 逐一相同（拆前 / 拆後 / 再跑一次都一樣）**，全閘門綠。拆分**靠的是名稱歸屬**，不是行號——行號在動，名稱不會；三支讀 `_gen_html.py` 當文字的閘門改讀 `bin/gen-source.mjs`（入口＋`gen/*.py` 串起來），重複 key 掃描也改成掃全部模組（塞一個重複 `"id"` 進 `gen/content.py` 會讓它停）。
+- **`js/site.js` 沒拆，而且不該用「拆檔」的名義拆**：它是四個頂層單元——頁面 chrome 145 行、共用的 overlay 管線 ~115 行、點點遊戲 207 行、**巷道 8,989 行（288 個宣告共用同一個 closure）**。把 closure 照檔切開不是搬移，是**把 288 個共用名字改成介面**；而且本站最快的閘門（`verify-walk` 212 條）是把那一支腳本 `w.eval` 進 jsdom 跑的，ES module 做不到。所以要拆就得**同時**付「給巷道介面」與「閘門變慢」兩筆錢。這件事留給專門的一輪，規格寫在下面，不要用留下一個 9,000 行檔案的美工拆法交差。
+  - 下一輪（若要做）的範圍與驗收：把巷道切成 `js/lane/{fields,props,reach,rail,story,px}.js`（原生 ES module），每個檔只匯出它真正的介面；**閘門改成 puppeteer 開真頁面跑同一批斷言**（212 條要一條一條搬，不是重寫），並用 `.preview` 的影格逐像素比對。沒過這三關就不算拆完。
 
 ### P4 — 距離剔除
 
@@ -463,7 +474,7 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 ### 5.6 倉庫大小
 
-tracked 227 支檔案（`.git` 12 MB）：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、`js/site.js` 592 KB（9,479 行）、`_gen_html.py` 534 KB（7,484 行）、`TODO-archive.md` 375 KB、`css/site.css` 85 KB（2,708 行；第 77 輪刪掉 259 行）。`.verify` 82 支。
+tracked 支檔案（`.git` 12 MB）：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、`js/site.js` 592 KB（9,479 行，**一個 closure**，第 78 輪決定不拆）、產生器 552 KB／**7,524 行＝入口 721 ＋ `gen/` 六個模組 6,803**（第 78 輪拆完；原本是單檔 7,484 行）、`TODO-archive.md` 375 KB、`css/site.css` 85 KB（2,707 行）。`.verify` **83 支**，閘門 **27 支**。
 `image-search/`（1.2 MB，3 張 CN Tower 參考照，**來源未追溯 → 永不入庫**）只留在磁碟。
 
 ## 6. 已知限制（不要假裝解決了）

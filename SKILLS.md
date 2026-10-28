@@ -51,6 +51,15 @@ frame for an unknown number of rounds, and eight working gates (`verify-island`,
 §2.3, which is the same as not having them. Route any round that removes things, or any round that ends
 with time left, through it; route a new attribute, probe or gate through it before adding it (round 76).
 
+`pure-move-split` owns the layout itself: when a file grows past the point where a round can hold it
+in one head, how to split it **by name ownership** rather than by line number, how to prove the move
+with a byte-identical output, and the part that is always forgotten — every gate that read the old
+file as text keeps passing while seeing a tenth of the code, so they are re-pointed in the same
+commit (`bin/gen-source.mjs`). It also records the file that was **not** split, `js/site.js`, and
+why: 8,989 of its lines share one closure, and the fastest gate here evaluates that script as one
+string. Route any round that proposes "modularise this", or a framework as the fix for file size,
+through it first (round 78).
+
 `frame-evidence` is the sixteenth-track skill and the one that keeps the other fifteen honest: it
 owns arrival, aim, units, refusal, and the difference between "measured" and "believed". Every
 number quoted by `scene-quality-loop`, `pua`, or a PR body is supposed to come through it. It exists
