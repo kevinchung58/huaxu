@@ -874,9 +874,9 @@ function leaveOverlay(root, trigger) {
     }
     return h;
   };
-  /* Round 72: `data-lane-zones` is no longer read. It shipped a banner that opened by itself on each
-     seam (see the note further down); the seams stay in the page as the record's own data, and the
-     rail's `is-here` is what tells a visitor where they are. */
+  /* Round 72 took the banner that read the lane's zone seams; round 76 took `data-lane-zones` itself,
+     which had been left in the page for a reader that never came. The seams still reach a visitor as
+     the rail's strip ticks, and the rail's `is-here` says where they are. */
   /* The funicular ride (round 52). GTA's F-key does one thing that matters: for a few seconds the
      vehicle carries you and the world carries on around it. Here the world is the real Falls
      Incline — 59.8 m of double track at 30 degrees, two 40-passenger cars counterbalanced so one
@@ -891,9 +891,8 @@ function leaveOverlay(root, trigger) {
      There used to be a district banner here. It appeared by itself whenever the body crossed a zone
      seam, and again after every rail jump — so *selecting a stop* made an interface appear, which is
      the complaint word for word. The information it carried is not lost: the stop rail marks where
-     you are (`is-here`), the drawer names the district in its own card, and `data-lane-zones` still
-     ships in the page for anything that wants to read the seams. What is gone is a surface that
-     appeared without being asked for. */
+     you are (`is-here`), the drawer names the district in its own card, and the rail's strip marks the
+     seams. What is gone is a surface that appeared without being asked for. */
   // How far the walker may go. The default is the end wall minus a body; the far plane is a view,
   // not a hole out of the world. A place whose far end is genuinely open authors its own walk limit.
   const MAX_D = attr("laneMaxD", Z_FAR - 47);
@@ -2958,9 +2957,6 @@ function leaveOverlay(root, trigger) {
      Its cycle is fifteen minutes. Ours is four: a visitor to a web page does not stay fifteen
      minutes, and a cycle nobody sees is decoration rather than day. The walk opens in the late
      afternoon so the lamps come up while you are standing there instead of after you have gone. */
-  const DAYLEN = 240;                                  // seconds for one full day (kept for held
-                                                         // places' internal breath; the visitor's clock
-                                                         // no longer runs on it — see below)
   /* The hour is the visitor's, not the browser's clock (round 49, at the owner's insistence: the
      fifteen-minute hall had people walking into a blackout they never asked for). A lane opens in
      full day and stays there until the sun/moon button says otherwise; the choice rides
@@ -2972,26 +2968,40 @@ function leaveOverlay(root, trigger) {
   const HOUR_NIGHT = 0.92;
   let hourPref = "day";
   let hourPhaseSet = 0.5;
-  try { if (window.localStorage.getItem(HOUR_KEY) === "night") { hourPref = "night"; hourPhaseSet = HOUR_NIGHT; } }
-  catch (e) { /* private mode: the choice lives this visit only */ }
+  /* Round 76: whether the visitor has chosen at all. A page's own opening hour (`data-lane-day-start`)
+     may only apply when they have not -- otherwise the sun/moon button would be overruled by the
+     record every time the page loaded. */
+  let hourChosen = false;
+  try {
+    const stored = window.localStorage.getItem(HOUR_KEY);
+    if (stored) hourChosen = true;
+    if (stored === "night") { hourPref = "night"; hourPhaseSet = HOUR_NIGHT; }
+  } catch (e) { /* private mode: the choice lives this visit only */ }
   const dayPhase = () => hourPhaseSet;                  // the station clock reads the hour the visitor
                                                          // chose, so the hands and the light agree
   const NIGHT = () => 1 - sunNow();
   /* A lane whose place is a day.
 
-     The street is walked in sunlight, and a cycle of four minutes hands a visitor dusk before they
-     have looked around once. So a record may say "this place is a day" and the page then runs its own
-     clock: a longer cycle (fifteen minutes, which is what the reference hall uses and the least a
-     visitor will actually stand in) starting a little before noon, so the light is already high when
-     they arrive and drifts slowly down. Night still happens; it is just no longer the first thing
-     that happens.
-
-     The numbers are authored in the record and stamped on the layer with everything else the
-     renderer reads (`data-lane-day-*`), because a place's own day belongs to the place. */
+     There is no running clock anywhere in this lane (round 49: a visitor walked into a blackout they
+     never asked for, and the hour has been theirs since). What a day page has instead is the hour it
+     *opens* at, authored in the record and stamped on the layer with everything else the renderer
+     reads (`data-lane-day-start`), because a place's own day belongs to the place: the street opens
+     at noon and stays there until the visitor says otherwise. No cycle, no drift -- a page that
+     changed the light on its own would be the blackout with a slower fuse. */
   const DAYPAGE = attr("laneDay", 0) ? true : false;
-  const DAY_LEN = attr("laneDayCycle", 900);
-  const DAY_AT = attr("laneDayStart", 0.45);           // where the page opens in its own cycle
+  /* Round 76 -- `data-lane-day-cycle` and `data-lane-day-start` were stamped on four pages and read
+     into two constants that nothing used, so `_walkshot.mjs` and `_lumacheck.mjs` rewrote the start
+     to 0.9 to photograph dusk and got noon: the knob they were turning had no wire on it. The cycle
+     belongs to a clock this site no longer runs (the hour is the visitor's, see above), so it is gone
+     from the markup; the start now *is* the opening phase, for a page that opens at its own hour and
+     a visitor who has not chosen one. 0.5 is noon, which is what every page opened at before. */
+  /* Read by hand, not through `attr()`: that helper falls back on a falsy parse, so a page authored to
+     open at phase 0 (midnight) would silently open at 0.5 instead — the same class of defect as the
+     unwired knob this constant used to be. */
+  const dayAtAttr = parseFloat(layer.dataset.laneDayStart);
+  const DAY_AT = Number.isFinite(dayAtAttr) ? dayAtAttr : 0.5;
   const DAY_GAIN = attr("laneDayGain", 1);
+  if (DAYPAGE && !hourChosen) hourPhaseSet = clamp(DAY_AT, 0, 1);
   // A place held at one hour of the night (`data-lane-night`, a phase): the LookOut's window shows a
   // night that does not move, so its lamps and air stop following the hall's clock (round 33).
   const HELD = attr("laneNight", 0);
@@ -5897,7 +5907,6 @@ function leaveOverlay(root, trigger) {
            curtain of water hangs in when you are standing twenty metres back from it. (The
            pattern tiles themselves are 128 units wide and `DPM` 2 makes a brick 64 cm — that is
            why the paving uses its own scale; the water's UVs are divided out here directly.) */
-        const tileCm = 320;
         const Pt = (a, y, t) => along ? [m.x + away * t, y, m.z + a]
                                       : [m.x + a, y, m.z + away * t];
         /* The sheet moves without the visitor moving. The strands travel down a tile every 1.7 s

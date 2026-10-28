@@ -24,17 +24,37 @@ const TABLES = {
      the ones that put each diorama largest on screen (measured across all five stops and both
      directions: lake 115,460 px2 at stop 0/-19, falls 45,144 at 0/-4, market 20,790 at 3/-12,
      city 192,800 at 4/-9). */
-  lake:   { rooms: "rooms-toronto.html", stop: 0, yaw: -19, ids: ["plinth-lake","pool-lake","boat-lake","tree-i1","tree-i2","tree-s1","tree-s2"] },
-  falls:  { rooms: "rooms-toronto.html", stop: 0, yaw: -4,  ids: ["plinth-falls","falls-n","tree-f1","tree-f2"] },
-  market: { rooms: "rooms-toronto.html", stop: 3, yaw: -12, ids: ["plinth-market","tree-m1"] },
-  city:   { rooms: "rooms-toronto.html", stop: 4, yaw: -9,  ids: ["plinth-sky","tower-cn","skyline-cn","dome-rc","track-c","tram-t","tree-c1","tree-c2","tree-c3"] },
+  /* Round 76 re-derived the headings, and the reason is a defect this table had been hiding: round 70
+     flipped the camera (the picture was the model's left-right mirror), and a heading measured before
+     the flip points at the other side of the room after it. `market` still said -12, and at -12 the
+     plinth is off-frame — the gate reported "market: nothing on screen" and had done so since the
+     flip, because nobody re-ran it (rounds 71-75 all skipped this file). Swept all 36 headings from
+     -180 to 180 on each stand (round 76, union of the table's own boxes, clipped to the viewport):
+     lake 127,485 px2 at -20; falls 85,404 at +50; market 122,679 at +36 (0 at -12, i.e. hidden);
+     city 637,264 at -30 with 5 of 9 objects on screen (at -9 only 2 were). `goat` stays at -30: the
+     180 deg heading puts more of the falls' area on screen, but only 2 of the 4 objects, and this
+     table's point is both falls on one frame. */
+  lake:   { rooms: "rooms-toronto.html", stop: 0, yaw: -20, ids: ["plinth-lake","pool-lake","boat-lake","tree-i1","tree-i2","tree-s1","tree-s2"] },
+  falls:  { rooms: "rooms-toronto.html", stop: 0, yaw: 50,  ids: ["plinth-falls","falls-n","tree-f1","tree-f2"] },
+  market: { rooms: "rooms-toronto.html", stop: 3, yaw: 36, ids: ["plinth-market","tree-m1"] },
+  city:   { rooms: "rooms-toronto.html", stop: 4, yaw: -30, ids: ["plinth-sky","tower-cn","skyline-cn","dome-rc","track-c","tram-t","tree-c1","tree-c2","tree-c3"] },
   /* Goat Island (round 69m). The two falls are one place from one spot: Terrapin Point looks
      north-west over the American Falls and north over the Horseshoe's own crest. Measured over all
      four stops and twelve headings (`_probe_goat.mjs`), stop 2 at yaw -30 is where both are large
      on the same frame — the American Falls 357,408 px2 and the Horseshoe 415,484 px2. A plate that
      measured them from two different stands would be a picture of two views, not of the place. */
-  goat:   { rooms: "rooms-goat.html", stop: 2, yaw: -30,
-            ids: ["falls-american","falls-horseshoe","pool-lower","terrapin"] },
+  /* Round 76: `goat` used to be stop 2 / yaw -30 with four ids, and it cannot be measured that way any
+     more. Two reasons, both measured: (1) a falls' `[data-obj]` box is the press target, not the
+     curtain — at stop 1 the American Falls fills the frame while its box is 92x92 px in the middle of
+     it, so a crop to the boxes measures a 92 px square of the falls; (2) at Terrapin Point the
+     Horseshoe's centre projects off-frame (x 2171 at yaw 88), while its paint is a thin band on the
+     horizon -- so the union of boxes is either empty or the whole viewport. A rectangle chosen by
+     looking at the frame is the unit frame-evidence §9 asks for. The stand is stop 1, the rail at the
+     American Falls, yaw -75 (the stop's own view): the curtain runs the full width from y 270 to 760
+     (`.preview/r76/goat-stop1.png`). */
+  goat:   { rooms: "rooms-goat.html", stop: 1, yaw: -75,
+            rect: { x: 0, y: 270, w: 1024, h: 470 },
+            ids: ["falls-american"] },
 };
 const page = await browser.newPage();
 let failed = 0;
@@ -42,7 +62,17 @@ for (const [name, t] of Object.entries(TABLES)) {
   await page.goto(`http://127.0.0.1:8080/${t.rooms}`, { waitUntil: "networkidle0" });
   await sleep(1500);
   await page.evaluate((s) => document.querySelectorAll("[data-walk-stop]")[s].click(), t.stop);
-  await sleep(2600);
+  /* Round 76: this used to be `await sleep(2600)`. A glide is not a duration -- round 75 made a stop
+     glide take 1.4 s *of simulated time*, and on a page whose frames cost 200 ms that is five seconds
+     of wall clock. `goat` was measured at z 5542 with 6.8 m still to go, so its four objects were off
+     frame and the gate said "nothing on screen" -- a fixed sleep, the same defect frame-evidence §1
+     exists for. Wait on the lane's own `glide`, then give the scene a frame to settle. */
+  for (let i = 0; i < 300; i++) {
+    const gliding = await page.evaluate(() => !!document.querySelector("[data-walk]")?.__walk?.glide);
+    if (!gliding) break;
+    await sleep(100);
+  }
+  await sleep(700);
   {   // aim by dragging, then read the head back and say so if it did not arrive
     const state = () => page.evaluate(() => {
       const w = document.querySelector("[data-walk]")?.__walk;
@@ -68,7 +98,7 @@ for (const [name, t] of Object.entries(TABLES)) {
   }
   await page.mouse.move(2, 2);
   await sleep(1200);
-  const box = await page.evaluate((ids) => {
+  const box = t.rect ? { ...t.rect, n: 1 } : await page.evaluate((ids) => {
     let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9,n=0;
     window.__missing = [];
     for (const id of ids) {

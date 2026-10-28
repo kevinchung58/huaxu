@@ -39,6 +39,15 @@ places it must be registered. `.verify/verify-skills.mjs` is its gate — it can
 fails when a skill on disk is unregistered or unrouted, which is exactly the state `skills/` was in
 at round 69k (fifteen skills, four rows). Run it every round, not only the rounds that edit skills.
 
+`dead-ballast` owns the other half of `skill-authoring`: not whether a skill is registered, but
+whether anything in the repository still **does** something. It exists because the owner asked twice
+(round 73 「全部拿掉多餘的」, round 76 「不該有的垃圾都刪掉」) and because the expensive ballast is silent —
+an attribute the generator emits that no code applies made every dusk frame in this repository a noon
+frame for an unknown number of rounds, and eight working gates (`verify-island`, `verify-ux`,
+`verify-overlay`, `verify-mirror`, `verify-rooms-e2e`, …) were absent from the run block in `TODO.md`
+§2.3, which is the same as not having them. Route any round that removes things, or any round that ends
+with time left, through it; route a new attribute, probe or gate through it before adding it (round 76).
+
 `frame-evidence` is the sixteenth-track skill and the one that keeps the other fifteen honest: it
 owns arrival, aim, units, refusal, and the difference between "measured" and "believed". Every
 number quoted by `scene-quality-loop`, `pua`, or a PR body is supposed to come through it. It exists

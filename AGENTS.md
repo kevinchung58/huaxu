@@ -65,9 +65,10 @@ no package manifest, CDN, or additional runtime dependency is implied.
 - **A gate that fails half the time is reporting a defect, not noise.** Round 68 read `verify-walk`'s
   intermittent failure as flakiness and called 192/192 a pass. Round 69 closed the second window
   (two JSDOM lanes in one process halve each other's frame rate), and the failure stayed: the gate's
-  guide was tapping a rail stop and the body never arrived. `.verify/_rail.mjs` published the glide's
-  own state and showed it — x thrown between 206 and 343 at z 962, never closer to the stop, because
-  a push-out counts as movement, so the detour never fired, and then because the detour kept aiming
+  guide was tapping a rail stop and the body never arrived. The glide probe (now
+  `.verify/verify-rail.mjs`, which is that probe with assertions) published the glide's own state and
+  showed it — x thrown between 206 and 343 at z 962, never closer to the stop, because a push-out
+  counts as movement, so the detour never fired, and then because the detour kept aiming
   at the stop while it moved sideways, so every step was a diagonal back into the bay it was trying
   to avoid. A visitor who taps a stop chip was juddering in front of a planter. **An intermittent
   gate is a measurement with a hole in it: fix the hole (budget, lifecycle, contention) and, if the

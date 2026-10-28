@@ -91,8 +91,13 @@ export async function openPage(browser, { rooms, hour = "day", base = "http://12
 
 export const state = (page) => page.evaluate(() => {
   const w = document.querySelector("[data-walk]")?.__walk;
+  /* `glide` is the lane's own answer to "am I still going somewhere" (round 75 exposed it for
+     `_stops` and `_reach`). Round 76 added it here too: this file's arrival test used to be "still
+     for six seconds", and on a loaded machine a glide starved of frames sits still for longer than
+     that -- `verify-island` reported rooms.html stop 3 as blocked 152 cm short while the glide was
+     still running, and `_stops` measured the same click at 0 cm. The lane knows; ask the lane. */
   return w ? { x: w.x, z: w.depth, yaw: w.yaw, pitch: w.pitch, quads: w.quads,
-               frameMs: w.frameMs || 0 } : null;
+               frameMs: w.frameMs || 0, glide: w.glide } : null;
 });
 
 /* The stop's authored position: `--z`/`--x` on the button, read from computed style because that is
@@ -132,10 +137,12 @@ export async function arrive(page, stop, { tol = 6, arriveMs = 300000, settleSam
        body at rest. */
     const frameMs = at.frameMs || 0;
     const stillMs = Date.now() - stillSince;
+    /* A glide in progress is not an arrival, however still the body looks: ask the lane. */
+    const gliding = at.glide !== null && at.glide !== undefined;
     /* A rail glide on this scene advances in bursts: it can sit still for ~2 s between bursts while a
        texture decodes, and a 2.4 s window called that "settled" (verify-wheel, measured twice). Six
        seconds is longer than any measured pause and still fails a genuine stall quickly enough. */
-    const atRest = stillMs >= Math.max(settleSamples * 1000, frameMs * 6);
+    const atRest = stillMs >= Math.max(settleSamples * 1000, frameMs * 6) && !gliding;
     if (zOk && xOk && atRest) {
       const short = Math.round(at.z - target.z);
       return { arrived: true, blocked: false, target, at, short, stillMs,

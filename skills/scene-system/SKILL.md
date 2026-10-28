@@ -163,7 +163,7 @@ The capture and visual-signoff procedure is `skills/scene-quality-loop/SKILL.md`
 | silhouette floating | monochrome quad without a dark anchor | anchor against gorge/sky |
 | nothing painted | quad `add()`ed after the emit pass | painters run in the draw list |
 | subject below the floor | the lane box clips props at y<0, and the lip occludes the basin from a lip-height eye | the painter carries what the eye can see; what the lip hides stays off-frame, and the caveat says so |
-| a pale polygon in the ground — sky through it | a pattern fill not covering its own clip (a sliver cell's thin first triangle) | fill the clip's preimage box; diagnose with a flat-fill A/B and `.preview/shot1dbg.mjs`, not by guessing data holes |
+| a pale polygon in the ground — sky through it | a pattern fill not covering its own clip (a sliver cell's thin first triangle) | fill the clip's preimage box; diagnose with a flat-fill A/B — paint the clip's box a flat colour, shoot the same stop with `.verify/_walkshot.mjs`, diff the pair with `.verify/_pix.mjs` — not by guessing data holes |
 | a band of sky just under the horizon | ring cells skipped by their centre | skip only cells wholly inside the finer ring |
 | spray reads as smoke | the haze/night wash laid over a nearly clear round darkens the sky behind it | bake the night into the round's colour; no wash on translucent quads |
 | rippling arcs in a far texture | a hidden lattice in the tile | scatter with a seeded generator |

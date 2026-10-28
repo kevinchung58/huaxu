@@ -10,7 +10,25 @@
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、`rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支 / PR**：`arena/adedb8cc-huaxu` → `master`（本輪開 PR；合併要站主一句授權）。
 
-- **第 75 輪（本輪）—— 「其他東西」檢查完了：表面、書籤、門、量具，四種都沒有在做事**：
+- **第 76 輪（本輪）—— 掃一遍「什麼都不做」的東西，刪掉，並證明刪掉的眼睛看不出來**：
+  - 站主：「繼續都弄好 建議順便處理 不該有的垃圾都刪掉。」第 73 輪的口號是「只留有意義的物件」，這一輪問的是同一句話的下一層：**repo 裡有哪些東西存在、看起來可以調，但其實沒有任何程式讀它。**
+  - **最貴的垃圾不是死程式碼，是死旋鈕。** 產生器把 `data-lane-day-start` 寫進頁面，`js/site.js` 把它解析成 `DAY_AT`，而 `DAY_AT` 進到一個**沒有人讀的常數**——所以 `_walkshot`／`_lumacheck` 每次「把 start 改成 0.9 拍黃昏」，拍到的都是**正午**。同一個探針接上之後量到：street「夜」**luma 141 → 80**（`rooms` 沒有 day flag，46.9，作為對照沒有變）。`data-lane-day-cycle="900"` 是同一族的東西（一個網站已經沒有的頁面時鐘），連同 `DAYLEN`／`DAY_LEN`／`tileCm` 一起刪。修法是把 start 接上：`hourChosen`（localStorage 有任何小時值）為真時不動，否則 `hourPhaseSet = clamp(DAY_AT, 0, 1)`——**站主選過的時間永遠贏過頁面的預設**。
+  - **十支閘門從來不在清單上。** `TODO.md` §2.3 的「一次跑完」少了 `verify-ux`、`verify-overlay`、`verify-exit`、`verify-island`、`verify-mirror`、`verify-motion`、`verify-rooms-e2e`、`verify-skills`、`verify-wheel`、`verify-hotel`——`verify-island`（沒有一站站在空無一物前面）第 69m 輪抓過真缺陷，之後只被手動跑過一次。**沒在清單上的閘門不會紅，因為沒有人跑它。** 清單整個重寫：25 支分成「不開瀏覽器」與「真瀏覽器、順序跑」兩段，每支後面寫它現在的數字。
+  - **`verify-island` 補跑：43 站全部看得到東西，每一站 empty 0 %**（門檻 60 %）。它回報 rooms.html 第 3 站「停在目標前 152 cm」——查下去是**量具**的問題不是產品：`_aim.mjs` 的抵達判準是「6 秒沒動」，而被搶幀的滑行會在原地停超過 6 秒。`_stops` 同一顆按鈕量到 **0 cm**。修法：`_aim.arrive()` 改問車道自己的答案（`__walk.glide` 是不是 null），「靜止」不再是抵達的證據。`_stops` 全八頁重跑 **57/57 站、誤差 0–1 cm**。
+  - **九個 `.verify/` 檔沒有任何東西引用**：`_barshot`、`_dbg2`、`_dbg3`、`_dbg_goat`、`_overlay-audit`、`_proj`、`_r74shot`、`_stopprobe2`、`_turnprobe-jsdom`——單輪的臨時探針，刪（git 歷史留著）。**`verify-island` 是同一種「零引用」但不該刪**：它是能紅的閘門，所以進清單。
+  - **產生器裡的死名字**：`NIA_TRAIL`（九個 OSM 節點，`NIA_RIM_N` 是用公尺偏移另外寫的，不是從它算的）、`_ring_m()`、`PRESS_VERBS`（動詞次序寫在 `press_verb()` 裡，這個 tuple 只是它的影子）。三個都刪，產生器輸出**除了快取雜湊以外一個位元組都沒變**。
+  - **第 72 輪留下的半個承諾**：`data-lane-zones` 當時以「也許有人要讀巷道的分界」為理由留著，四輪下來沒有人讀。刪掉；分界本來就畫在站點列的刻度上，區域名稱在刻度的 `title` 裡——訪客拿得到的東西沒有少。
+  - **掃過而乾淨的四項**（寫下來，下一輪不用再掃）：66 張圖全部有引用；256 個 CSS class 選擇器、28 個自訂屬性、95 個出貨的 `data-*`，除上面兩個以外全部有讀者（`data-axle`、`data-dia`、`data-phase0`、`data-view-h` 這些是 `dataset[\`view${key}\`]`、`m.axle` 這種**間接**讀法，靜態 grep 會把它們誤判成死——每一條都回程式碼確認過）。
+  - **文件指到不存在的檔案**：`AGENTS.md` 的 `.verify/_rail.mjs`（現在叫 `verify-rail.mjs`）、`scene-system` 的 `.preview/shot1dbg.mjs`（`.preview/` 是 ignore 的輸出目錄，那個檔案不存在）→ 改成「用 `_walkshot` 拍平塗 A/B、`_pix` 比對」。其餘「第 54 輪退休」的句子是**歷史，保留**（它們明說那個工具已經不在）。
+  - **新 skill `dead-ballast`（第 18 個）**：五種垃圾的找法、三種判決（刪／接上／寫進清單）、以及「證明移除是隱形的」那一步。`frame-evidence` 加了 §6d「頁面交出來的值不等於程式套用的值」——那一節的證據就是本輪的黃昏變正午。`verify-skills` **90/90**。
+  - **量具自己也會說謊——這一輪抓到三支，全部是同一類：它們在量一個「時刻」，而不是一個事實**：
+    - **`_aim.arrive()`** 用「6 秒沒動」判斷抵達。被搶幀的滑行會停超過 6 秒，所以 `verify-island` 把 rooms.html 第 3 站報成「停在目標前 152 cm」；`_stops` 同一顆按鈕量到 **0 cm**。改成問車道自己的 `__walk.glide`，island 從 **43 站（1 站被跳過）** 變成 **47 站全過**。
+    - **`verify-look` 的兩張表是第 70 輪翻轉相機之前的量測**：`market` 表寫 yaw −12，而 −12 在今天是把市場模型轉到畫面外（`.preview` 的影格裡它落在 x 1040），所以它每次都回報「nothing on screen」。**第 71–75 輪沒有一輪重跑過這支**，所以它從翻轉那天起就一直是紅的，只是沒有人看見。重掃 −180…180 共 36 個方位後重寫：lake −20（127,485 px²）、falls +50（85,404）、market **+36**（122,679；−12 是 0）、city −30（637,264，9 件裡 5 件在畫面上；−9 只有 2 件）。
+    - **同一支的另一個「時刻」問題**：它在按完停止點之後 `sleep(2600)`。滑行走的是「模擬時間」，一頁一幀 200 ms 時 1.4 秒的滑行是五秒的牆上時間——`goat` 在 z 5542 就被量了（還有 6.8 公尺沒走完），四個物件當然都框外。改成等 `__walk.glide` 收工。**結果 5/5 全部量到**（goat 用「看著影格選的矩形」量：瀑布的 `[data-obj]` 是 44 px 的按壓目標、不是水幕本身，92×92 的框框量不動 1024 px 寬的瀑布）。
+    - **`verify-wheel` 在一顆會轉的輪子上取單一影格**：那顆輪子 40 秒轉一圈，所以「當下看得到幾顆車廂」是時間的函數。同一顆輪子、同一個方位，連拍三張（間隔 7 秒）量到 **16／14／13**，而單張量到 **9**——門檻是 10，於是它紅在一個沒問題的場景上。改成三張取最大，門檻不動（**不是**把 10 改成 8）。
+  - **找到但這一輪不動的（要站主一句話）**：**Terrapin Point（rooms-goat 第 3 站）的預設視角是往下看**。站點自己寫 `pitch 14`（本專案 pitch 正值＝往下），`_ray` 量到畫面中央 (480,430) 第一個命中的是 **528 cm 外、92 cm 高的石牆**，所以整張影格的中央三分之一是護牆，瀑布只剩頂端一條（`.preview/r76/goat-stop3.png`）。修法是把這一站的 pitch 從 14 改成大約 0～2（看向馬蹄的 Crest），但那是**看畫面的判斷**，依規矩留給站主。
+  - **量到的（第 76 輪）**：walk **211/211**、ux **69/69**、overlay **95/95**、exit **82/82**、games **23/23**、body **73/73**、story **27/27**、feel **12/12**、nowebgl **35/35**、skills **90/90**、rooms-e2e **72/72（0 failures）**、shapes **248**、geometry／clash／chain／tables／objects／shader-lits 全綠、**collision 28/28（7 頁，exit 0）**、**island 47/47（每一站 0 % empty）**、**look 5/5**、**wheel PASS（16 車廂）**、hotel PASS、mirror PASS（73 % vs 1 %）、rail **4/4**、`verify-three`（14,924 world ＋ 1,048 water triangles）、`_stops` **57/57（0–1 cm）**、`_lumacheck` 141（正午）／80（0.98）／**79（start=0）**／46.9（無 day flag）。產生器冪等（第二次與第三次 md5 相同）。
+- **第 75 輪（上一輪）—— 「其他東西」檢查完了：表面、書籤、門、量具，四種都沒有在做事**：
   - 站主：「你檢查其他的 該弄掉就動掉 請全部弄好。」第 74 輪定的是「哪個物件可以開表面」，這一輪問下一層：**表面開了之後，它裡面有沒有東西**。四個缺陷全部是既有的閘門看不到的，因為每一條閘門問的都是「有沒有東西打開」。
   - **① 佔滿螢幕只為了給你看五分之一的圖。** 在 `rooms-toronto.html` 按一張印刷，故事盤蓋住 **100 % 的視窗**，圖只有 **364×199 px**（新量具 `.verify/_surface.mjs`：cover 100 %、**fill 9 %**）。成因是盤面的欄寬照抄了手機的 9:16 故事畫布，而這份紀錄裡的圖幾乎全是橫的：`object-fit: contain` 就照那個寬度縮，剩下的都是它自己的模糊。**修法不是把表面縮小，是讓圖的框就是圖**：`paint()` 用檔案自己的 `naturalWidth/Height` 蓋 `--ar`，`sizeReel()` 用格子剩下的高度蓋 `--reel-w`；量到的修後是 **992×541、fill 68 %**，直幅的印刷則是 **479×642**（原本 406 px 的圖放在 992 px 的模糊裡）。**文字另外有自己的 measure**（`--measure: 30rem`，69–72 字），因為 992 px 的一行標題是 132 字。
   - **② 書籤沒有把你帶到它寫的地方。** 按 Goat Island 的「Terrapin Point」開始一段 **94 秒**的滑行（15599 cm ÷ 165 cm/s），而機器一忙滑行還會被取消：新量具 `.verify/_stops.mjs` 量到 Goat 前三站 30 秒後還在走、停在**目標前 26–40 公尺**。修法：速度跟著距離走（`GLIDE_T 1.4 s`、上限 `7000 cm/s`），而且**硬滑行**（站點、印刷自己的靠近）在解算器繞不過去時**直接完成**而不是放棄。修後 **10/10 站誤差 0 cm**。
@@ -43,7 +61,7 @@
 - **第 72 輪 —— 只有被點名的東西才准出現；每一個進得去的面，都要有站主本來就有的那個出口**：
   - 站主兩句話：「甚至其他的東西 有很重要的你在跳介面。我發現很多東西 因為選取會跳這種介面 你全面審查清楚 有必要的在跳。」＋「還有你任何的進出環境 請全面你E2E進去用發現問題並系統性解決問題。」
   - **(a) 全面審查：整站已經沒有任何「自己跳出來」的表面。** `.verify/_albumprobe.mjs` 逐頁探 `research.html` 的 `#featured-modal`、`thinking.html` 的 `.dot-game-panel`、`#ig-plate`：三者到頁都是關的，`#ig-plate` 已經不在任何出貨頁面裡。剩下最後一個會自己出現的是**街區橫幅**（`data-walk-banner`）：每到一個 seam、每次用站點列跳站就 `is-on` 3.4 秒（`_stopprobe.mjs` 在 niagara stop 5 量到）。
-  - **橫幅的判斷：不需要。** 站點列的 `is-here`、街區抽屜自己的卡、進度條的點已經各自說同一件事，而它在選取時跳出來正好是站主說的干擾，所以整組拿掉：`js/site.js` 的 `bannerEl`／`showBanner`／`bannerTimer`／`zoneHere`／`zoneOf`／`ZONES`、`_gen_html.py` 的 `.walk-banner` 標記、`css/site.css` 的 ~40 行（原位改成「不要加回來」的中文註解）。`data-lane-zones` 仍出貨但已無人讀。
+  - **橫幅的判斷：不需要。** 站點列的 `is-here`、街區抽屜自己的卡、進度條的點已經各自說同一件事，而它在選取時跳出來正好是站主說的干擾，所以整組拿掉：`js/site.js` 的 `bannerEl`／`showBanner`／`bannerTimer`／`zoneHere`／`zoneOf`／`ZONES`、`_gen_html.py` 的 `.walk-banner` 標記、`css/site.css` 的 ~40 行（原位改成「不要加回來」的中文註解）。`data-lane-zones` 當時仍出貨但已無人讀（第 76 輪刪掉）。
   - **新閘門 `verify-overlay.mjs`（jsdom，8 頁，98 條）**：沒有任何一頁出貨橫幅或它的 CSS；沒有任何計時器會揭開表面（`.is-on` 同時被回到頂端與相簿 chips 用，所以只認 `data-walk-banner|walk-banner|showBanner|bannerTimer`）；到頁只有 `[data-walk-tutor]`；tap／拖曳不開；**每一個 `.walk-hit` 的指標點擊都不開**；每一個 `[data-walk-stop]` 都不開表面；`i` 只有卡、`l` 只有清單、Esc 只收不合；橫桿的文字＝`reach.dataset.title`，按下去一定開一個表面。
   - **(b) 進出環境：先在真瀏覽器走一遍，再修「類別」，不是修那一頁。** `.verify/_backprobe.mjs` 量到的：`rooms-toronto.html` 按 `i` 開卡、按**瀏覽器上一頁** → 人被丟回 `street.html`，卡片不見、在房間裡的位置也沒了。手機沒有 Esc，上一頁就是它唯一的出口手勢——這不是細節，是整個出口契約失效。
   - **修法（一個咽喉）**：`js/site.js` 新增 `overlayEntered()`／`overlayLeft()`／`popstate`：任何佔住畫面的表面開時 push 一筆 history、關時 pop 同一筆；開著東西時來的 Back **用頁面本來就會回應的 Esc** 去收那一層（`overlayDepth`／`ownPop`／`foldingFromHistory` 三個計數器防止迴圈），只有「什麼都沒開」的 Back 才離開。接上的是 `enterOverlay`/`leaveOverlay`（故事盤、相簿盤、點點遊戲）、`showCard`/`hideCard`、`showSpace`、`toggleList`、`research.html` 的出版卡。
@@ -190,35 +208,54 @@
 - 場景來歷要能追溯：`grounded-scene`、`real-place-builder`、`japan-place`、`district-author`、`street-commons`、`lane-prop`、`landmark-space`；收尾用 `scene-quality-loop`。
 - 報告要證據優先（`skills/pua`）；改動要小而準（`skills/karpathy-guidelines`）。
 
-### 2.3 閘門（一次跑完）
+### 2.3 閘門（一次跑完；**這份清單就是「有沒有跑」的判準**）
 
 Puppeteer 需要 `LD_LIBRARY_PATH=/tmp/al2023/lib`；HTTP 型閘門要先 `sh bin/preview`（0.0.0.0:8080）；**collision 與 feel 兩支要獨佔機器**（背景有別的 Chromium 就會掉幀，量出來的速度會失真）。
 
+**第 76 輪的教訓**：這份清單原本少列了 10 支**能跑、會紅、抓得到真缺陷**的閘門（`verify-ux`、`verify-overlay`、`verify-exit`、`verify-island`、`verify-mirror`、`verify-motion`、`verify-rooms-e2e`、`verify-skills`、`verify-wheel`、`verify-hotel`）——`verify-island` 第 69m 輪抓過「Goat Island 站在空無一物前面」，但只在那一輪被手動跑過。**不在清單上的閘門等於不存在**：它不會紅，因為沒有人跑它。
+
 ```sh
 sh bin/restore-env && sh bin/preview          # 環境 + 伺服器（0.0.0.0:8080）
+# ── 不開瀏覽器（秒級）──
 node .verify/verify-shapes.mjs                 # 248 個 prop 都有形
 node .verify/verify-geometry.mjs
 node .verify/verify-clash.mjs
-node .verify/verify-walk.mjs                   # 193/193（含「rail 帶你到停止點」）
-node .verify/verify-rail.mjs                   # 4/4（四個起點都要到同一顆停止點；舊版 1/4）
-node .verify/verify-collision.cjs              # 28/28（7 頁）
-node .verify/verify-feel.mjs                   # 12/12
-node .verify/verify-body.mjs                   # 73/73
-node .verify/verify-objects.mjs
-node .verify/verify-story.mjs                  # 27/27
 node .verify/verify-tables.mjs
-node .verify/verify-games.mjs                  # 23/23
-node .verify/verify-look.mjs
 node .verify/verify-chain.mjs
-node .verify/verify-nowebgl.mjs                # 35/35
-node bin/verify-three.mjs                      # 12,826 world + 864 water
-node .verify/shader-lits.mjs                   # 6 個 shader program 完整、沒有被 backtick 截斷
+node .verify/verify-games.mjs                  # 23/23
+node .verify/shader-lits.mjs                   # 6 個 shader program 完整
+node .verify/verify-walk.mjs                   # 211/211（含「rail 帶你到停止點」）
+node .verify/verify-ux.mjs                     # 69/69（按壓的動詞表、文字只給 read）
+node .verify/verify-overlay.mjs                # 95/95（什麼可以蓋在走頁上、由哪個手勢）
+node .verify/verify-exit.mjs                   # 82/82（每一種進去都有訪客認得的出口）
+node .verify/verify-rooms-e2e.cjs              # 72/72（0 failures）
+node .verify/verify-body.mjs                   # 73/73
+node .verify/verify-story.mjs                  # 27/27（需 LD_LIBRARY_PATH）
+node .verify/verify-skills.mjs                 # 90/90（18 個 skill 都註冊、都有路由）
 node_modules/.bin/impeccable detect --json .   # []
+git diff --check && python3 -m py_compile _gen_html.py bin/toronto_massing.py
 md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff /tmp/a /tmp/b   # 冪等
+# ── 真瀏覽器，順序跑（獨佔）──
+LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-feel.mjs        # 12/12（獨佔）
+LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-look.mjs          # 5 張桌子都量到
+LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-nowebgl.mjs     # 35/35
+LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-island.cjs      # 沒有一站站在空無一物前面（47 站，每站 empty 0 %）
+LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-mirror.mjs      # 看到的就是按到的
+LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-motion.mjs
+LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-wheel.cjs       # 三張取最大（16 車廂；單張量到 9 是抽樣誤差）
+LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-hotel.cjs
+LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-rail.mjs        # 4/4（四個起點到同一顆停止點）
+LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-objects.mjs
+LD_LIBRARY_PATH=/tmp/al2023/lib node bin/verify-three.mjs           # 12,826 world + 864 water
+LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 頁，約 50 分鐘；動到移動／碰撞碼才必跑）
 ```
 
 **動到移動／碰撞碼時多跑兩件事**（第 68 輪的規則）：`ROUNDS=20` 的 rooms 單頁連跑，以及寬掃描量具
 （見 2.4）。一次綠燈是一次抽樣，不是驗收。
+
+**量具自己也要驗**：`.verify/_stops.mjs`（每一站抵達誤差，等 `__walk.glide` 收工，不是等「看起來停了」）、
+`.verify/_reach.mjs`（走過去按得到嗎）、`.verify/_surface.mjs`（表面佔多少、圖佔多少）、`_deadui.mjs`（每個
+控制元件按下去有沒有變化）、`.verify/_walkshot.mjs`（走一段再拍）。第 76 輪量到 `_stops` **57/57 站 0–1 cm**。
 
 ### 2.4 量具（`.verify/_*.mjs|cjs`；只留真的會再用的，其餘刪，git 歷史留著）
 
@@ -229,6 +266,9 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 - **水與霧（第 69 輪）**：`_plume.mjs`（把 `js/scene3d.js` **在記憶體裡**補上 `window.__threeScene`，回報霧的 billboard 數／alpha／包圍盒；`MIST=red` 把霧染紅證明幾何在哪、`MIST=off` 關掉它）、`_water.mjs`（40 px 一條帶的平均／sd／p05-p95／rgb，以及開霧前後每帶的 Δluma；`STOP/YAW/HOUR/SCENE/OUT`，`SCENE=` 可以拿舊版 `scene3d.js` 做 A/B）、`_ray.mjs`（在活的場景裡對某個像素射線，回報前三個命中的 mesh 名與世界座標——「畫面那條黑的是什麼」用這個問，不要猜）、`_fps.mjs`（同一台 headless 上的 fps，用來判斷多出來的幾何有沒有代價）。**三支瀏覽器量具遇到 pageerror 一律 exit 2、不印數字**：空白背景配上 HUD 也會量出一張表，那張表不是場景。
 - **自動走（第 69 輪）**：`verify-rail.mjs`（閘門：四個起點點同一顆停止點，每個都要在 30 s 內到，失敗會印出最後八幀的「身體 ↔ 目標」與是否在繞路；舊版 `site.js` 跑 1/4，修好後 4/4。它把 `js/site.js` 在記憶體裡補一行 trace，anchor 命中數不對就拋錯）
 - **診斷**：`_stuck.mjs` / `_stuck2.mjs`（卡住）、`_tapdiag.mjs`（點擊診斷）、`_wallgap.mjs`（畫牆與可行走空間）、`_csscheck.mjs`（樣式表解析與套用）、`wall-probe.cjs`（受困／滑動／擱淺普查）、`verify-rooms-e2e.cjs`（jsdom 啟動樣板，碰撞閘門共用同一份 boot）。
+- **表面與抵達（第 75–76 輪）**：`_surface.mjs`（每一個開啟的表面：cover／content／fill／字的 measure）、`_stops.mjs`（點每一顆停止點，等 `__walk.glide` 收工，印出 cm 誤差；**不要**用「看起來停了」判斷）、`_reach.mjs`（走過去，每一個可按的東西按得到嗎）、`_deadui.mjs`（每一個控制元件按下去有沒有變化；jsdom 不能導航，所以導覽型的「沒變化」是它的盲點，原始碼裡有寫）、`_uxwalk.mjs`（訪客走查，逐行寫進 `.preview/ux74/presses.txt`）。
+- **量具的抵達判準（第 76 輪修）**：`_aim.mjs` 的 `arrive()` 原本是「6 秒沒動就是到了」。被搶幀的滑行會在原地停超過 6 秒，於是 `verify-island` 把 rooms.html 第 3 站報成「停在目標前 152 cm」，而 `_stops` 同一顆按鈕量到 0 cm。現在它問車道自己的 `__walk.glide`。**任何新的抵達判斷都先看 `glide`。**
+- **刪掉就不要留名字**：第 76 輪刪了九個零引用的探針（`_barshot`、`_dbg2/3`、`_dbg_goat`、`_overlay-audit`、`_proj`、`_r74shot`、`_stopprobe2`、`_turnprobe-jsdom`）。方法寫在 `skills/dead-ballast`：五種垃圾怎麼找、三種判決（刪／接上／寫進清單）、以及怎麼證明移除是隱形的。
 
 ### 2.5 記憶的規則
 
@@ -298,6 +338,7 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 - **東京廣場地坪的「暗帶」＝訪客腳下影子**（不必修）：沿 x 剖面 32→21 平滑、關掉 `3D walker ground shadow` 整條一起移動。
 
 還開著：
+0. **Goat Island 的 Terrapin Point 預設視角是往下看（第 76 輪量到，等站主一句話）**：第 3 站 authored view `yaw 88 / pitch 14`，而本專案的 pitch 正值＝往下，於是畫面中央 (480,430) 第一個命中的是 **528 cm 外、92 cm 高的石牆**，整張影格中間三分之一是護牆、馬蹄只剩頂端一條（`.preview/r76/goat-stop3.png`）。同時量到 `falls-horseshoe` 的按壓框投影在 **x 2171**（畫面外），所以這一站「看得到／按得到」對不上。建議 `pitch 14 → 0~2` 並重拍；**看畫面的事留給站主**。驗收：重拍影格＋`_ray` 中央像素命中瀑布、不再命中 528 cm 的石牆。
 1. ~~**`hotelw` 旅館塔近看**~~ **已結案（第 69m 輪，第二趟）**：塔**一直都在視野裡，只是從來沒進過框**——`_map` 在 fun row（stop 6，yaw 90）量到 `hotelw` 在 **324–333 m**，而作者寫的 `pitch -2` 讓畫面頂邊剛好切在屋頂線上（`.preview/nia69mq/stop6-yaw90-p6` 與 p0 兩張都是）。**`pitch -2 → -8`** 之後，最近那棟塔在店面正上方站出 **110×220 px**（`_box`：mean 107.3、sd 37.2、134 色），七公尺外的店面一格沒動。影格 `.preview/nia69ms/stop6-yaw90-p-8`。
 2. ~~SkyWheel 吊艙~~ **已結案（第 69l 輪）**：從 stop 2 yaw 26 / pitch −21.5 看得到整輪，`verify-wheel.cjs` 量到 14 個艙、閘門會紅也會綠。輪下的 stop 6/7/8 看不到輪是**構圖**（輪面在 x–y 平面、pitch 夾 ±24°），不是缺陷；不要為此轉動地標。
 3. **其他頁面的地標盤**：~~Goat 的兩道瀑布~~ —— 第 69m 輪把兩道瀑布都做成世界幾何（Horseshoe 的崖線＋水幕＋弧線對面那一半；美國瀑布的崖線＋水幕），見 §1；Toronto 的 `falls` 模型（現在只有 `look` 的數值，沒有專屬量具）仍在。

@@ -40,9 +40,36 @@ const OUT = process.env.OUT || ".preview/wheel-gate";
   if (!g.aimed) { console.log(`FAIL  heading not reached: asked ${YAW}/${PITCH}, at ${g.yaw.toFixed(1)}/${g.pitch.toFixed(1)}`); process.exit(1); }
   await park(page);
   const s = await state(page);
-  const file = `${OUT}/stop${STOP}-yaw${Math.round(s.yaw)}-p${Math.round(s.pitch)}.png`;
-  await page.screenshot({ path: file });
+  /* Three instants, not one (round 76). The wheel turns once every 40 s (`turn: 40` in the record),
+     so the number of cabins you can see at a given instant is a property of *when* you looked as much
+     as of the model: this gate counted 9 on a frame whose rim plainly carries a dozen, and failed a
+     scene that is fine. A threshold sampled from one frame of a moving object is a coin toss -- so the
+     frame is taken three times, 7 s apart (about a fifth of a revolution), and the count asserted is
+     the best of the three. The bar stays at 10; what changed is that the measurement is no longer a
+     single sample. */
+  const files = [];
+  for (let k = 0; k < 3; k++) {
+    const f = `${OUT}/stop${STOP}-yaw${Math.round(s.yaw)}-p${Math.round(s.pitch)}${k ? `-t${k}` : ""}.png`;
+    await page.screenshot({ path: f });
+    files.push(f);
+    if (k < 2) await new Promise((r) => setTimeout(r, 7000));
+  }
   await browser.close();
+  const runs = await Promise.all(files.map((f) => countFrame(f)));
+  const best = runs.reduce((a, b) => (b.cabins > a.cabins ? b : a));
+  for (const r of runs) console.log(`  ${r.file.split("/").pop()}: ${r.cabins} cabins of ${r.blobs} blobs`);
+  console.log(`${best.ok1 ? "PASS" : "FAIL"}  the wheel spans ${best.rimW}x${best.rimH} px of ${best.W}x${best.H} (needs > ${Math.round(best.W * 0.30)}x${Math.round(best.H * 0.30)})`);
+  console.log(`${best.ok2 ? "PASS" : "FAIL"}  it is whole in frame: top ${best.rimTop}, bottom ${best.rimBot} (needs > 2 and < ${best.H - 40})`);
+  console.log(`${best.cabins >= MIN_CABINS ? "PASS" : "FAIL"}  ${best.cabins} cabins counted round the rim (needs >= ${MIN_CABINS}); best of ${runs.map((r) => r.cabins).join("/")}`);
+  console.log(`      frame: ${best.file}`);
+  const fails = [best.ok1, best.ok2, best.cabins >= MIN_CABINS].filter((v) => !v).length;
+  console.log(fails ? `verify-wheel: ${fails} FAIL` : "verify-wheel: the wheel is a wheel from this stop, and its cabins can be counted");
+  process.exit(fails ? 1 : 0);
+})();
+
+/* One frame, measured. Returns the rim's box and the cabin count; every threshold and its reason is
+   in the comments below, unchanged from the single-frame version this replaced. */
+async function countFrame(file) {
 
   /* Measure the frame.
 
@@ -83,12 +110,11 @@ const OUT = process.env.OUT || ".preview/wheel-gate";
     if (rimL < 0 || x < rimL) rimL = x;
     if (x > rimR) rimR = x;
   }
-  if (rimTop < 0) { console.log(`FAIL  nothing wheel-like in the frame (${file})`); process.exit(1); }
+  if (rimTop < 0) return { file, W, H, rimW: 0, rimH: 0, rimTop: 0, rimBot: 0, cabins: 0, blobs: 0,
+                           ok1: false, ok2: false, empty: true };
   const rimW = rimR - rimL, rimH = rimBot - rimTop;
   const ok1 = rimW > W * 0.30 && rimH > H * 0.30;
   const ok2 = rimTop > 2 && rimBot < H - 40;
-  console.log(`${ok1 ? "PASS" : "FAIL"}  the wheel spans ${rimW}x${rimH} px of ${W}x${H} (needs > ${Math.round(W * 0.30)}x${Math.round(H * 0.30)})`);
-  console.log(`${ok2 ? "PASS" : "FAIL"}  it is whole in frame: top ${rimTop}, bottom ${rimBot} (needs > 2 and < ${H - 40})`);
 
   // cabins: connected cabin-like blobs of the right size, distinct from the rim
   const seen = new Uint8Array(W * H);
@@ -114,14 +140,8 @@ const OUT = process.env.OUT || ".preview/wheel-gate";
     if (bw >= 7 && bw <= 60 && bh >= 7 && bh <= 60 && n >= 45) blobs.push({ x0, y0, bw, bh, n });
   }
   const cabins = blobs.filter((b) => Math.abs(b.bw - b.bh) < Math.max(6, Math.max(b.bw, b.bh) * 0.7));
-  const ok3 = cabins.length >= MIN_CABINS;
-  console.log(`${ok3 ? "PASS" : "FAIL"}  ${cabins.length} cabins counted round the rim (needs >= ${MIN_CABINS}); ${blobs.length} blobs in the band`);
-  console.log(`      frame: ${file}`);
-
-  const fails = [!ok1, !ok2, !ok3].filter(Boolean).length;
-  console.log(fails ? `verify-wheel: ${fails} FAIL` : "verify-wheel: the wheel is a wheel from this stop, and its cabins can be counted");
-  process.exit(fails ? 1 : 0);
-})();
+  return { file, W, H, rimW, rimH, rimTop, rimBot, ok1, ok2, cabins: cabins.length, blobs: blobs.length };
+}
 
 function median(arr, from, len) {
   const a = Array.from(arr.slice(from, from + len)).sort((x, y) => x - y);

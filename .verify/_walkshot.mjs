@@ -16,7 +16,11 @@ if (start) {
   page.on("request", async (req) => {
     if (!req.url().endsWith(target)) return req.continue();
     const res = await fetch(req.url());
-    const body = (await res.text()).replace('data-lane-day-start="0.45"', `data-lane-day-start="${start}"`);
+    /* Round 76: this used to replace the literal `data-lane-day-start="0.45"`. Half the pages ship
+       `0.5`, and until round 76 site.js read the value into a constant it never used -- so every
+       "dusk" frame this probe has taken was a noon frame. The regex rewrites whatever the page ships,
+       and the value is now the opening phase for a visitor who has not chosen an hour. */
+    const body = (await res.text()).replace(/(data-lane-day-start="[\d.]+")/, `data-lane-day-start="${start}"`);
     req.respond({ status: 200, contentType: "text/html", body });
   });
 }

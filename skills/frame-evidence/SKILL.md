@@ -113,6 +113,30 @@ sample side by side, and pick the axis where they differ most. A detector that i
 strict direction fails good work; wrong in the loose direction passes bad work. Print the count and
 the sizes it found — "14 blobs of 10–20 px" is checkable against the focal length; "PASS" is not.
 
+## 6d. A value the page hands out is not a value the code applies
+
+Round 76 found that every "dusk" frame this repository had ever taken was a **noon** frame. The
+generator emitted `data-lane-day-start`, `site.js` parsed it into `DAY_AT`, `DAY_AT` went into a
+constant nothing read, and `_walkshot.mjs` / `_lumacheck.mjs` overrode the literal
+`data-lane-day-start="0.45"` to ask for 0.9. The probe did exactly what it was told; the page did not.
+`_lumacheck` measured the street at luma **141** for "night" and the number looked plausible enough
+that no round questioned it. Wired, the same probe reads **80**.
+
+So a probe that overrides an authored value must prove the value arrives:
+
+1. After setting it, **read the effect back in the page** — not the attribute you just wrote, the
+   thing it is supposed to move (`window.__walk`, a computed style, a material's colour, a light's
+   intensity).
+2. If there is nothing to read back, the value has no reader, and the frame you are about to quote is
+   a frame of the default. Fix the wiring or say in the report which value was actually rendered.
+3. Override the page's value **by pattern**, not by literal: a literal `"0.45"` stops matching the day
+   a page ships `0.5`, and then the probe silently photographs the default while reporting the
+   override.
+
+The general form: a frame is evidence of *the page as served plus every value that reached the
+renderer*. An override that did not reach the renderer is not part of the frame, and a number derived
+from that frame is a number about something else.
+
 ## 6c. Project the geometry before you press the shutter
 
 Round 69m re-aimed one stop three times (yaw 75, 66, 62) and the falls were not in frame any of
@@ -241,6 +265,16 @@ The flip itself is two lines. The damage is in the constants that were *authored
 - a gate that counts run has to be re-derived the same way. `verify-wheel`'s cabin counter went from 14
   to 10 to 11 in three runs of an unchanged scene: the count is a property of the detector against
   that frame, not of the wheel, so read the reported number as a floor for the day, never as a fact.
+  (Round 76 found the rest of that story: the wheel turns once every 40 s, so one frame is one sample
+  of a moving object. Three frames 7 s apart on the *unchanged* scene counted **16 / 14 / 13** cabins
+  while a single frame counted **9** and failed the gate. The threshold did not move; the sampling
+  did. Ask of any count: is this thing moving?)
+- **headings are numbers authored against frames too, and they were all missed.** `verify-look`'s table
+  of five stands was written in round 69j; round 70 flipped the camera, and every heading in it now
+  pointed at the other side of the room. `market` said `-12`, where the market model projects off-frame
+  (`x 1040`): the gate had been reporting "nothing on screen" for five rounds, and no round ran it. If
+  a flip invalidates the boxes, it invalidates every authored bearing, `pitch` and crop in every probe
+  — re-derive them in the same round, or write down that you did not.
 - and the first thing that broke was invisible until the frame was looked at: `scene.background`
   disappeared, because three paints it with a `BackSide` box and the swapped frustum reversed the
   winding and culled it. Only the *sky* went black; every `DoubleSide` surface was fine. That is the

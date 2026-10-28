@@ -2563,10 +2563,9 @@ NIA_CA_UPPER = [nia(la, lo) for la, lo in (
     (43.0756860, -79.0782527), (43.0739517, -79.0766558), (43.0730072, -79.0749109),
     (43.0713689, -79.0722391), (43.0706873, -79.0712619), (43.0702129, -79.069562),
     (43.0698013, -79.0676319))]
-NIA_TRAIL = [nia(la, lo) for la, lo in (                 # the Recreation Trail, north to south
-    (43.0801663, -79.0783193), (43.0798741, -79.0783083), (43.0795756, -79.0782919),
-    (43.0791767, -79.0782410), (43.0791448, -79.0782451), (43.0788872, -79.0781453),
-    (43.0787518, -79.0783178), (43.0787002, -79.0785253), (43.0786750, -79.0785684))]
+# (The Recreation Trail's nine surveyed nodes stood here until round 76. Nothing read them: NIA_RIM_N
+# below is authored as offsets in metres, not derived from a line, so the nodes were provenance for a
+# decoration. They are recoverable from the commit that carried this file, `git show c46a116:_gen_html.py`.)
 # Table Rock Centre (OSM way 420548287), its footprint kept to two metres.
 NIA_TABLEROCK = dp_simplify([nia(la, lo) for la, lo in (
     (43.0794969, -79.0798608), (43.0794258, -79.0797307), (43.0794073, -79.079375),
@@ -2585,10 +2584,6 @@ NIA_SKYLON = nia(43.0851385, -79.0796926)              # Skylon Tower (OSM way 2
 NIA_RAINBOW = (nia(43.0915407, -79.0698017), nia(43.0901556, -79.0677042))   # OSM way 162149070
 NIA_PROSPECT = nia(43.0859538, -79.0700909)            # the American Falls' north corner
 NIA_US_RIM_N = nia(43.0886329, -79.0661756)            # the US rim at the bridge (OSM relation 14629795)
-
-
-def _ring_m(points, close=True):
-    return points + ([points[0]] if close else [])
 
 
 # Goat Island's shore on the upper river, from Terrapin Point east (the same OSM way, unsimplified).
@@ -5401,7 +5396,7 @@ DISTRICTS = [
                  "wsp": [[2600, 3300, 3300]],
                  "floors": [[1500, 2200, 553, 340, 660]]},
         "floor": "pavers",
-        "day": {"cycle": 900, "start": 0.5, "gain": 1},
+        "day": {"start": 0.5, "gain": 1},
         "purpose": "Table Rock at Niagara Falls: the trail's last stretch to the brink, the gorge, both falls and the islands where they stand",
         "status": "open",
         "kind": "personal",
@@ -6139,7 +6134,7 @@ DISTRICTS = [
         "lane": {"w": 240, "d": 1931, "ceil": 260, "back": 160, "max_d": 6200, "vault": 60,
                  "lid": "tunnelc", "under": True, "open_end": True, "wallmat": "tunnelc"},
         "floor": "tunnel",
-        "day": {"cycle": 900, "start": 0.5, "gain": 1},
+        "day": {"start": 0.5, "gain": 1},
         "purpose": "Journey Behind the Falls: the elevator's 38 m, the 1944 tunnel, the branch to the portals, the deck on the cliff",
         "status": "open",
         "kind": "personal",
@@ -6405,7 +6400,7 @@ DISTRICTS = [
                  "zones": [[-10, "The Goat Island walk", "timber, then the roar"],
                            [2400, "Luna and the American Falls", "290 m over a ledge onto boulders"]]},
         "floor": "pavers",
-        "day": {"cycle": 900, "start": 0.5, "gain": 1},
+        "day": {"start": 0.5, "gain": 1},
         # Round 58: the island had no world at all -- the lane and its props hung over the void, so
         # beyond the walk there was fog where 670 metres of falling water should be. The falls this
         # page is named for are the *same* surveyed curtains the Canadian page stands at (one
@@ -6934,9 +6929,6 @@ def is_target(o):
 # content is what is written about it. That is why the card may exist again: `showCard` opens it from
 # this one verb and from nowhere else, and `.verify/verify-ux.mjs` fails the build if any other verb
 # so much as touches it.
-PRESS_VERBS = ("leave", "photos", "ride", "play", "try", "use", "read")
-
-
 def press_verb(o):
     """What a press on this prop will do, in the one word the visitor is shown beforehand."""
     if o.get("leave"):
@@ -7179,15 +7171,15 @@ def walk_html(d, drawer):
     sight = d.get("sight_note", sight)
     # An open-world far end: the record authors how far the walker may keep going (walk units), and
     # the renderer lets the world continue past the last wall. Absent, the clamp is the wall itself.
-    # zone bounds and floors are authored in the record's old units and shipped in the scene's —
-    # the same 2.9 every object z crosses on its way into the page
-    zones = [[round(z * Z_SCALE), n, *rest] for z, n, *rest in lane["zones"]] if lane.get("zones") else []
+    # (Round 76: `data-lane-zones` is gone. Round 72 took the banner that read it off the page, kept
+    # the attribute "for anything that wants to read the seams", and nothing ever did — the seams are
+    # drawn by the rail's strip ticks, built straight from `lane["zones"]` below, which is where the
+    # district names actually reach a visitor.)
     # z is depth (record units, ×2.9); the standing height and the x-band of a floor are the
     # lane's own scene centimetres, the same axes `w` rides — they cross the page unscaled
     floors = [[round(a * Z_SCALE), round(b * Z_SCALE), h, x0, x1] for a, b, h, x0, x1 in lane["floors"]] \
         if lane.get("floors") else []
     widths = [[round(a * Z_SCALE), round(b * Z_SCALE), c] for a, b, c in lane["ws"]] if lane.get("ws") else []
-    zones_attr = f' data-lane-zones=\'{json.dumps(zones, separators=(",", ":"))}\'' if zones else ""
     floors_attr = f' data-lane-floors=\'{json.dumps(floors, separators=(",", ":"))}\'' if floors else ""
     ws_attr = f' data-lane-ws=\'{json.dumps(widths, separators=(",", ":"))}\'' if widths else ""
     # Round 61: the paving's own width, where the street's is wider than the walk. See the note in
@@ -7197,8 +7189,8 @@ def walk_html(d, drawer):
     banner_html = """
     <!-- Round 72: the district banner that used to live here is gone. It appeared by itself on every
          seam crossing and after every rail jump, and the owner's complaint was exactly that a
-         selection made an interface appear. The seams are still authored (`data-lane-zones`) and the
-         rail still marks where you are; nothing pops. -->""" if lane.get("zones") else ""
+         selection made an interface appear. The seams are still authored, and the rail's strip still
+         marks the boundaries and names them on their ticks; nothing pops. -->""" if lane.get("zones") else ""
     strip_html = ""
     if lane.get("zones"):
         ticks = "".join(
@@ -7229,12 +7221,11 @@ def walk_html(d, drawer):
         exit_html = ('<span class="walk-icon walk-exit is-entrance" aria-hidden="true"'
                      ' title="This lane is left through its own doors">{ICON_EXIT}</span>')
     floor_attr = f' data-floor="{d["floor"]}"' if d.get("floor") else ""
-    # A place whose subject is the day: `"day": True` on the record, or a dict to author the cycle,
-    # where it opens in that cycle, and how strong the sun is (`{"cycle": 900, "start": 0.45,
-    # "gain": 1}`). The renderer reads all four off the layer, like the lane box and the eye — the
-    # day of a place belongs to the place, and the two rooms whose subject is dusk simply do not say
-    # it. `cycle` is seconds: four minutes hands a visitor dusk before they have looked around once,
-    # so a day page runs the hall's own fifteen.
+    # A place whose subject is the day: `"day": True` on the record, or a dict to author the hour it
+    # opens at and how strong the sun is (`{"start": 0.45, "gain": 1}`). The renderer reads both off
+    # the layer, like the lane box and the eye — the day of a place belongs to the place, and the two
+    # rooms whose subject is dusk simply do not say it. (Until round 76 this dict also carried
+    # `cycle`, in seconds, for a page clock the site no longer runs: the hour is the visitor's.)
     day = d.get("day")
     day_attr = ""
     # A place held at one hour of the night (`"night": 0.92`, the cycle's phase): the clock stops
@@ -7292,12 +7283,15 @@ def walk_html(d, drawer):
             'a9.753 9.753 0 009.002-5.998z" /></svg></button>')
     if day:
         opts = day if isinstance(day, dict) else {}
-        day_attr = (f' data-lane-day="1" data-lane-day-cycle="{opts.get("cycle", 900)}"'
-                    f' data-lane-day-start="{opts.get("start", 0.45)}"'
+        # Round 76: `data-lane-day-cycle` is gone -- the site has no page clock for it to set (the hour
+        # is the visitor's), and an attribute nothing reads is a knob that looks adjustable and is not.
+        # `start` stays and now means what it says: the phase the page opens at, for a visitor who has
+        # not chosen an hour.
+        day_attr = (f' data-lane-day="1" data-lane-day-start="{opts.get("start", 0.5)}"'
                     f' data-lane-day-gain="{opts.get("gain", 1)}"')
     return f"""<div class="walk" id="walk-{did}" data-walk="{label}"
        data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
-       data-lane-back="{lane["back"]}"{max_d_attr}{day_attr}{floor_attr}{zones_attr}{floors_attr}{ws_attr}
+       data-lane-back="{lane["back"]}"{max_d_attr}{day_attr}{floor_attr}{floors_attr}{ws_attr}
        data-eye="{EYE}">{banner_html}
   <div class="walk-view" tabindex="0" data-walk-view role="application"
        aria-label="{label}, a lane you walk in person.{clad}{sight} Drag, arrow keys or A/D to turn,
