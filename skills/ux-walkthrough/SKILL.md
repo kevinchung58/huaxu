@@ -102,6 +102,22 @@ interface adds on top. Two measured examples, both fixed:
 The lever that follows: **when a press feels like too much, the answer is usually fewer words or a
 smaller surface — never another layer of interface.**
 
+## 4b. A declaration that drops is not an error — it is a colour that never applied
+
+Found on this round's own head, both by looking at one frame of the card:
+
+- `css/site.css` said `color: var(--paper)` in five places on dark plates, and `--paper` was **never
+  defined**. The card's prose only looked right because it inherited a light HUD colour two levels up.
+- `.modal-close` says `color: var(--navy)`, because every other surface it closes is paper. On this
+  card — `rgba(11, 20, 48, 0.94)` — that made the X **navy on navy**: present in the DOM, in the tab
+  order, focusable, and invisible. The only way out of the only text surface on the site was the one
+  thing on it a visitor could not see. One screenshot showed it: a gold focus ring around nothing.
+- A third property, `var(--amber)`, was also undefined (the stall's close button had no hover state).
+
+So the pass has two checks a DOM assertion cannot make: **does every custom property resolve**, and
+**is every control on a surface painted in a colour that surface cannot swallow**. Both are now in
+`verify-ux.mjs` (three assertions, 66 → 69), and both fail on purpose when the fix is reverted.
+
 ## 5. How to run the pass (this is the E2E the owner asks for)
 
 1. **Boot the real pages, in a real browser**, from a live preview (`sh bin/preview`), not from a
@@ -128,8 +144,12 @@ smaller surface — never another layer of interface.**
   for reading (the written lane), or change the thing so it does not need explaining.
 - Never call a press "answered" because the record line changed. Measure the scene: quads, state, body,
   height. A sentence is not a change.
-- Never judge an experience from a screenshot, and never from a probe sharing the machine with a
-  renderer — the frame timings lie, the counts do not.
+- Never judge an experience from a screenshot — *except* for what only a screenshot shows: a control
+  painted in its own background, a card that covers the thing it describes, a ring around nothing. The
+  counts and the frame answer different questions; this round needed both, and the invisible X was
+  only ever visible in the picture.
+- Never trust `var(--something)` to exist because the page looks right. An undefined property drops
+  the whole declaration in silence, and inheritance supplies whatever the ancestor happened to be.
 - Never delete the prose when you delete the pop-up. It moves to the written lane; the writing on this
   site is the content, not the chrome.
 

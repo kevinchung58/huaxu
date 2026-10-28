@@ -23,7 +23,9 @@
      5. a `read` press that opens nothing is a dead press, not a quiet one;
      6. no press opens two surfaces at once, and the card carries that thing's own record;
      7. the bar offers the verb before the press (`data-verb` on the bar, `attr()` in the CSS), and the
-        card the visitor asks for with `I` is a different mode from the one a press opens.
+        card the visitor asks for with `I` is a different mode from the one a press opens;
+     8. the one text surface is readable and its exit is visible (custom properties resolve, and the
+        close control is not the card's own colour).
 
    jsdom, no browser; the boot is verify-overlay's. Run from the repo root:
    `node .verify/verify-ux.mjs`.
@@ -87,8 +89,9 @@ function boot(markup, url) {
   return { w, navs };
 }
 
-const css = fs.readFileSync("css/site.css", "utf8");
+const sheet = fs.readFileSync("css/site.css", "utf8");
 const js = fs.readFileSync("js/site.js", "utf8");
+const css = sheet;   // the pre-round-74 assertions below read `css`; one read of the file, two names
 
 /* ---- 0. the one text surface is named, and the bar promises the verb -------------------------- */
 ok("the bar's prefix is the verb, not a fixed word", /\.walk-open::before \{[^}]*content: attr\(data-verb\)/.test(css)
@@ -216,6 +219,31 @@ for (const file of PAGES) {
 ok("text is the exception on the whole site, not the rule",
    totals.byVerb.read / totals.pressable < 0.25,
    `${totals.pressable} pressable of ${totals.boxes} boxes: ${JSON.stringify(totals.byVerb)}`);
+
+/* ---------------------------------------------------------------------------------------------
+   The other half of "the exit is visible": the only text surface on the site has to be readable and
+   closeable. Both failures found here on the round-74 head were silent ones -- a declaration that
+   drops is not an error, it is a colour that never applied.
+
+   `.walk-card` is `rgba(11, 20, 48, 0.94)` and its text said `color: var(--paper)`, a custom property
+   that was used five times and defined nowhere; it only looked right because an ancestor HUD set a
+   light colour. `.modal-close` says `color: var(--navy)` because every other surface it closes is
+   paper -- so the X on the card was navy on navy, focusable, in the tab order, and invisible.
+   --------------------------------------------------------------------------------------------- */
+const defined = new Set([...sheet.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+const used = [...sheet.matchAll(/var\(\s*(--[a-z0-9-]+)\s*([,)])/g)];
+const undefinedVars = [...new Set(used.filter((m) => m[2] === ")" && !defined.has(m[1])).map((m) => m[1]))];
+ok("every custom property is defined or has a fallback", undefinedVars.length === 0,
+   undefinedVars.length ? `undefined: ${undefinedVars.join(", ")}` : `${defined.size} defined`);
+
+const cardRule = sheet.match(/\.walk-card\s*\{[^}]*\}/);
+const closeOnCard = sheet.match(/\.walk-card[^{]*\.modal-close[^{]*\{[^}]*\}/);
+ok("the card's close control is not painted in the card's own fill",
+   Boolean(closeOnCard) && /color:\s*var\(--paper\)/.test(closeOnCard[0]),
+   closeOnCard ? closeOnCard[0].replace(/\s+/g, " ").trim() : "no .walk-card .modal-close rule");
+ok("the card declares a text colour its own fill cannot swallow",
+   Boolean(cardRule) && /color:\s*var\(--paper\)/.test(cardRule[0]),
+   cardRule ? "rgba(11, 20, 48, 0.94) on --paper #fdf6ec" : "no .walk-card rule");
 
 const fails = out.filter((l) => l.startsWith("FAIL"));
 console.log(out.join("\n"));

@@ -21,6 +21,11 @@
   --line-strong: #c9bda2;
   --card: #fffdf8;
   --gold: #fdf6ec;
+  /* Round 74: five declarations on the dark surfaces below said `color: var(--paper)` and this name
+     was never defined, so every one of them dropped the declaration and inherited whatever the
+     ancestor happened to be -- the card's prose only looked right because it inherited a light HUD
+     colour two levels up. Same value as --gold, which is what "paper" means on a navy plate here. */
+  --paper: #fdf6ec;
   --shadow: 0 6px 20px rgba(16, 27, 57, 0.07), 0 1px 3px rgba(16, 27, 57, 0.05);
   --shadow-lg: 0 18px 40px rgba(16, 27, 57, 0.16), 0 4px 10px rgba(16, 27, 57, 0.07);
   --radius: 0.5rem;
@@ -2289,7 +2294,9 @@ body.shell {
   cursor: pointer;
 }
 .walk-game-close:hover {
-  border-color: var(--amber);
+  /* round 74: `--amber` was never defined either, so the stall's close button had no hover state
+     at all. `--accent-bright` is the amber this stylesheet actually ships. */
+  border-color: var(--accent-bright);
 }
 .walk-game-canvas {
   display: block;
@@ -2693,6 +2700,15 @@ body.shell {
 }
 .walk-card .eyebrow {
   color: var(--accent-bright);
+}
+/* Round 74, and it was found by looking at the card rather than at the gate: `.modal-close` is
+   `color: var(--navy)` because every other surface it closes is paper. The card is
+   `rgba(11, 20, 48, 0.94)` -- navy on navy, so the X was in the DOM, in the tab order, focusable,
+   and invisible (`.preview/r74/rooms-goat-stop0-read-after.png` shows the gold focus ring around
+   nothing). The one control that gets you out of the only text surface on the site was the one
+   thing on it you could not see. */
+.walk-card .modal-close {
+  color: var(--paper);
 }
 .walk-list {
   transition: transform 320ms var(--ease), visibility 320ms var(--ease);
