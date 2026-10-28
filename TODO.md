@@ -4,13 +4,22 @@
 > **規則：完成的項目直接刪掉，不留敘述。** 方法與永遠成立的約束留在第 2 節；量出來的事實留在第 5 節。
 > 舊的 66 輪流水帳在 `TODO-archive.md`（git 追蹤、唯讀）；要找「那時候為什麼這樣做」再去查它。
 
-## 1. 現在在哪裡（2026-10-27）
+## 1. 現在在哪裡（2026-10-28）
 
 - **站台**：靜態學術網站（Hua-Xu Zhong）。零依賴、零 build step；所有 `*.html` 只由 `_gen_html.py` 產生；runtime 只有 vendored 的 Three.js 0.186.1。
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、`rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支 / PR**：`arena/adedb8cc-huaxu` → `master`（本輪開 PR；合併要站主一句授權）。
 
-- **第 73 輪（本輪）—— 只剩真的有意義的物件；而「按著往前走卻被推回去」是解算器的死區寫成了公分**：
+- **第 74 輪（本輪）—— 一次按壓要用「看得見的變化」回答；文字只留給真的只能用文字介紹的物件**：
+  - 站主：「只留該需要用文字彈出介面介紹的物件。其他就像你說的可以用 E 去互動看有沒有變化。你如果全部都做出彈出介面，這很傷使用者體驗。」第 73 輪把卡片整組刪掉是對的方向，但**把說明也一起刪掉了**——地標（馬蹄瀑布這種三百七十公尺外、按了什麼都不會動的東西）因此變成按了沒反應。這一輪把「回答」分成兩層，並把判斷寫進產生器。
+  - **動詞表在產生器裡，一個函式**：`press_verb(o)` 依序給 `leave`（門）→ `photos`（`frame is not None`）→ `ride` → `play`（`game`）→ `try`（`"demo" in o`）→ `use`（`states` 且是 `door`／`glassfloor`）→ `read`（**只有 `landmark`**）。先後次序就是規則：**有東西可看的東西，永遠不會要求被閱讀**。動詞以 `data-verb` 出貨到每一個可按的 prop；`js/site.js` 的 `VERB_WORD` 是它的另一半（`leave` "Walk through"、`photos` "Photographs"、`ride` "Ride"、`play` "Play"、`try` "Try"、`use` "Use"、`read` "Read"），橫桿與伸手提示都從這一張表講話。
+  - **橫桿在按之前就說明它會做什麼**：`data-verb` 換掉了第 73 輪的固定前綴 `Open · `，於是 `Read · The Horseshoe`、`Walk through · Kaminarimon`、`Photographs · …` 是三種不同的承諾，訪客在花掉那一按之前就知道會得到什麼；伸手提示同樣是動詞開頭（"Press E to see the photographs."）。
+  - **文字表面只剩一個，而且只有 `read` 進得去**：`revealThing()`（第 73 輪把地標捲到文字廊的那一列、閃 2400 ms）整個刪掉，連 CSS 的 `li.is-called` 與 keyframes 一起；改成 `showWords(m)`——`card.dataset.mode = "words"`、寬 30rem、標題與提示就是物件自己的 `data-title`／`data-hint`。它只從 `act()` 的 landmark 分支呼叫，**其餘七個動詞一律不開任何文字表面**。地標的提示長度因此有上限（100–290 字），792 字的長文留在文字廊。
+  - **量到的（`.verify/verify-ux.mjs`，新閘門，8 頁）：248 個 hit box，43 個可按——leave 13 · photos 11 · read 6 · try 5 · play 3 · use 3 · ride 2**；`read` 6／43（14 %），正好是地標集合。它逐頁 boot `js/games.js` **再** `js/site.js`，對每一個可按的東西按 `detail: 0` 的鍵盤點擊，折疊夾在中間的表面，然後斷言：每個可按的東西都有動詞、佈景沒有動詞、`read` 集合≟ 地標集合、每一按都被它承諾的動詞回答、文字只為 `read` 開、不同時開兩個表面、橫桿的承諾在按之前就寫好。**66/66，exit 0。**
+  - **抓到的真產品錯：纜車（Falls Incline）從來沒有動過。** `moveStep` 的走路分支第一行是 `if (ride) return;`，而 `if (ride) rideStep();` 在**同一個函式的最下面**——所以按下 `incline-upper-door` 之後，頁面宣布「You ride the Falls Incline…」、把按鍵收走，然後身體在高度 0 停留 2.4 秒（`.verify/_rideprobe.mjs` 每 200 ms 印一次 `__walk.height`）。**十幾輪的閘門都沒抓到，因為每一條都在斷言 record 那一行字變了。** 修法：`if (!ride) { …走路與慣性… }` 然後無條件 `if (ride) rideStep();`；修後同一個探針 0 → 4.8 → 23.7 → 53.1 → 91.9 → 142.8 → 198.2 → 258.9（200 ms 一步）。這正是站主說的「看有沒有變化」——一句話不是變化。
+  - **量具本身也修了三個毛病（不然它會把門說成崩潰、把布景說成場景）**：①`fold()` 原本用 Esc 收，而 Esc 在什麼都沒開時**就是門**，所以每次折疊都在離開房間，puppeteer 回報 "execution context destroyed"，看起來像當機；改成各自按自己的關閉鈕。②門按下去本來就會換頁，舊 document 在那之後還能讀一下，於是它會拿到**下一個房間**的 quads 並把門記成 `SCENE`——改用 `page.url()` 判定 `LEFT`，並在之後重開同一頁、同一個 stop。③每一行按下去就寫進 `.preview/ux74/presses.txt`，四十分鐘的走查不會在最後一刻把證據一起帶走。
+  - **量到的（第 74 輪）**：**verify-ux 66/66（新）**、walk **210/210**（第 73 輪的兩條斷言寫的是 "Open · " 與 "open the frame"，改成讀動詞）、overlay **95/95**、exit **82/82**、games 23/23、body 73/73、rooms-e2e **72/72（0 failures）**、skills **85/85**（新增 `skills/ux-walkthrough`）。`_uxwalk` 走查（Toronto 起點）：`falls-n:photos` → PHOTOS、`door-back:leave` → LEFT（activities.html），沒有任何 TEXT。
+- - **第 73 輪 —— 只剩真的有意義的物件；而「按著往前走卻被推回去」是解算器的死區寫成了公分**：
   - 站主：「我說的就是全部拿掉多餘的。你只要真的有意義的物件才留著，這裡面很多都是真的會導致操作很煩。」**這一輪推翻第 72 輪的折衷**：把卡片藏在有名字的橫桿後面不算拿掉。
   - **判準寫進產生器，一個函式**：`is_target(o)` 只給這幾種動詞——離開（`leave`）、給你看照片（`frame is not None`）、搭乘（`ride`）、玩（`game`）、示範（`"demo" in o`）、「這地方因它而命名」的地標（`landmark`）、**真的拿來用**（`states` 且 `kind` 是 `door`／`glassfloor`）。其餘都是畫。`.verify/_census.mjs` 量到：**245 個 hit box，改前 107 個可按，改後 43 個**（street 6 · rooms 7 · fukuoka 7 · toronto 3 · niagara 9 · goat 6 · journey 1 · cntower 4）。退出按鈕名單的：店面、基座、量體、天際線／圓頂／軌道／路面電車／島／船／池／船艦、站前、海關、大阪商船、大連會館、復古商場、販賣機、大廳，以及 17 面鐵捲門／拱廊／廣場／鬼屋／售亭立面。
   - **卡片是刪掉，不是藏起來**：`js/site.js` 的 `showCard()` 已不存在。一次按壓只會被四種東西回答——表面（印刷的膠卷、文字廊、玩具、筆記）、它指名的門、它自己的狀態（升降梯開、玻璃地板亮）、示範——其餘什麼都沒有。閘門 `verify-overlay` 的橫桿斷言也改成問同一件事：**這一按有沒有被回答**（`surface`／`left`／`changed`／`demoed`）。
@@ -296,7 +305,7 @@ md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff
 
 - ~~**「3D 畫面 vs 2D 模型」的鏡射要修哪一邊**~~ **站主已裁決（第 70 輪）：翻 3D（A 案）**，已在同輪做完並驗證（見 §1）。理由保留：B 案會讓畫面對不上真實地理的左右，A 案只是把每張影格重拍一次。
 
-- ~~**`#walk-card` 還要不要存在**~~ **站主已裁決（第 73 輪：「全部拿掉多餘的」）**：卡片刪掉了，不是藏起來。`showCard()` 不在 `js/site.js` 裡，一次按壓只會被四種東西回答（表面／它指名的門／它自己的狀態／示範）。每件東西的說明（`data-hint`）現在寫在文字廊的 `walk-things` 裡，依走過的順序列出，可按的那幾列帶著動詞。
+- ~~**`#walk-card` 還要不要存在**~~ **站主已裁決（第 73 輪：「全部拿掉多餘的」，第 74 輪補完）**：第 73 輪把 `showCard()` 整個刪掉是對的方向，但把地標的說明也一起刪了；第 74 輪的裁決是「只留該需要用文字彈出介面介紹的物件」。所以文字表面只剩**一個**：`showWords()`，`card.dataset.mode = "words"`，**只有 `read`（地標）進得去**，其餘六個動詞一律用場景回答（門走掉、影片開膠卷、載具開動、玩具開玩、示範、狀態改變）。每件東西的 `data-hint` 也仍寫在文字廊的 `walk-things` 裡，可按的那幾列帶著動詞。
 - **瀑布的圈要不要更亮**（影格 `.preview/r65e/`、`.preview/r65b/falls2/`）；文字現在寫在文字廊（第 73 輪起沒有卡片），要不要縮短是站主的判斷，不是版面問題。
 - **夜景 fold 0.62 的上限**（全站規則；`verify-walk` 有「night fold keeps a readable floor」的斷言）。
 - **站點 6 的 A 字架要不要進畫面**（先量那條直線，不許先改後說）。

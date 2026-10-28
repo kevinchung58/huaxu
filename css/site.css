@@ -2557,8 +2557,12 @@ body.shell {
   backdrop-filter: blur(6px);
 }
 .walk-open[hidden] { display: none; }
+/* Round 74: the bar says what the press will DO, not just what it is standing in front of --
+   "Read · The Horseshoe" and "Walk through · Kaminarimon" are different promises, and the visitor is
+   entitled to know which one is being offered before spending the press. The word comes from the
+   generator's `data-verb` through `js/site.js`'s VERB_WORD table. */
 .walk-open::before {
-  content: "Open \00B7 ";
+  content: attr(data-verb);
   color: var(--accent-bright);
   font-size: 0.68rem;
   letter-spacing: 0.12em;
@@ -2775,18 +2779,8 @@ body.shell {
   white-space: nowrap;
 }
 .walk-things li.is-pressable b { font-weight: 700; }
-.walk-things li.is-called {
-  outline: 1px solid currentColor;
-  outline-offset: 0.35rem;
-  animation: walk-called 2.4s ease-out;
-}
-@keyframes walk-called {
-  0% { background: rgba(255, 214, 140, 0.35); }
-  100% { background: transparent; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .walk-things li.is-called { animation: none; }
-}
+/* Round 74: the row-flash (`li.is-called`) went with `revealThing`. A landmark's press opens its
+   record in a card now, so nothing needs to scroll a 100-row list to a paragraph and light it up. */
 .walk-list .block-title {
   color: var(--navy);
 }

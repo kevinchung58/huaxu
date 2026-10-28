@@ -8219,10 +8219,15 @@ function leaveOverlay(root, trigger) {
     // something to read about what is in front of you.
     layer.classList.add("has-reach");
     const title = best.el.dataset.title || "";
+    const verb = verbOf(best.el);
     if (openBtn) {
       openBtn.hidden = false;
       openBtn.textContent = title;
-      openBtn.setAttribute("aria-label", `Open ${title}`);
+      // The bar says what the press does *and* what it is: 「Read · The Horseshoe」 is a promise the
+      // visitor can decline, and it is the one place the two kinds of answer stay distinguishable
+      // before anything opens.
+      openBtn.dataset.verb = verb ? `${VERB_WORD[verb][0]} · ` : "";
+      openBtn.setAttribute("aria-label", `${verb ? VERB_WORD[verb][0] : "Open"} ${title}`);
     }
     /* A landmark is measured across the gorge, not along the lane: the falls are three hundred
        and seventy metres away in a straight line and a hundred and eighty along the promenade,
@@ -8230,9 +8235,26 @@ function leaveOverlay(root, trigger) {
     const where = best.landmark
       ? `${metres(Math.hypot(best.x - x, best.z - depth))} away`
       : `${metres(best.z - depth)} ahead`;
-    say(`${title} · ${where}`,
-        best.el.dataset.frame === undefined ? "Press E to look closer." : "Press E to open the frame.");
+    say(`${title} · ${where}`, verb ? VERB_WORD[verb][1] : "");
   };
+
+  /* Round 74 -- what a press will do, said before the press.
+     The generator stamps one word on every pressable prop (`data-verb`, from `press_verb` in
+     _gen_html.py), and it is the *weakest* thing the object can offer: a door leaves, a print shows
+     photographs, a lift opens, and only a thing with nothing to show asks to be read. This table is
+     the only place that word becomes language, so the bar, the reach prompt and the record line
+     cannot describe the same press three different ways. The device's own idiom is the reason the
+     entry is a noun+verb pair rather than a sentence: the bar is a pill, and the prompt one line. */
+  const VERB_WORD = {
+    leave: ["Walk through", "Press E to go through."],
+    photos: ["Photographs", "Press E to see the photographs."],
+    ride: ["Ride", "Press E to ride."],
+    play: ["Play", "Press E to play."],
+    try: ["Try", "Press E to see it move."],
+    use: ["Use", "Press E to use it."],
+    read: ["Read", "Press E to read the record."],
+  };
+  const verbOf = (el) => (el && VERB_WORD[el.dataset.verb] ? el.dataset.verb : "");
 
   const wrapYaw = (degrees) => ((degrees + 180) % 360 + 360) % 360 - 180;
   let cornerAssist = 0;   // which side of a corner the creep last chose; see the wedge branch
@@ -8498,34 +8520,40 @@ function leaveOverlay(root, trigger) {
         else homeGlide();
       }
     } else if (!glideOnly) {
-      if (ride) return;   // the car carries you; the keys wait
-      /* Round 65: A and D turn the head, the way every first-person lane is driven.
+      /* Round 74: this used to `return` here, and the `return` skipped `rideStep` at the bottom of
+         the function -- so the Falls Incline announced "You ride the Falls Incline…", took the keys
+         away, and then never moved the car. The one interaction whose entire point is a visible
+         change was the one with no change at all (`.verify/_rideprobe.mjs`, height 0 for 2.4 s after
+         the press). The keys still wait; the car no longer does. */
+      if (!ride) {   // the car carries you; the keys wait
+        /* Round 65: A and D turn the head, the way every first-person lane is driven.
 
-         They used to strafe, with the arrows turning instead, and that is a scheme nobody arrives
-         with: a visitor who presses D expects to look right, and here the world slid sideways
-         under them instead -- which is why the movement read as broken rather than as unusual.
-         The stick on a touch screen still strafes (it has to: there is no A and D on a phone), and
-         the strafe is gone from the keyboard, where it was never what anybody wanted. */
-      let mx = stick ? stick.x : 0, md = stick ? -stick.y : 0;
-      if (keys.has("w") || keys.has("arrowup")) md += 1;
-      if (keys.has("s") || keys.has("arrowdown")) md -= 1;
-      const len = Math.hypot(mx, md) || 1;
-      const r = keys.has("shift") ? RUN : 1;
-      // WASD and the stick live in the view plane, not the room's fixed axes. `camPt` maps a
-      // camera-forward step to (sin(yaw), cos(yaw)) in the lane, and camera-right to
-      // (cos(yaw), -sin(yaw)); using the same basis here keeps movement and the view aligned after
-      // either a drag or a turn key. Pitch is intentionally excluded so looking up never lifts the
-      // walker off the floor. Turning remains rate-limited for comfort.
-      const heading = a(), sy = Math.sin(heading), cy = Math.cos(heading);
-      const wishX = ((mx * cy) + (md * sy)) / len * SPEED * r;
-      const wishD = ((-mx * sy) + (md * cy)) / len * SPEED * r;
-      // the pointer-lock demo's model, measured against ours: input frames set the velocity —
-      // no ramp to feel like skating — and only a released body decays (tau 90 ms: gone inside
-      // a step and a half, no drift past the wall the old 400 ms exponential eased through).
-      if (mx || md) { vx = wishX; vd = wishD; }
-      else { const dmp = Math.exp(-dt / 0.09); vx *= dmp; vd *= dmp;
-             if (Math.hypot(vx, vd) < 1.2) { vx = 0; vd = 0; } }
-      moveBody(x + vx * dt, depth + vd * dt);
+           They used to strafe, with the arrows turning instead, and that is a scheme nobody arrives
+           with: a visitor who presses D expects to look right, and here the world slid sideways
+           under them instead -- which is why the movement read as broken rather than as unusual.
+           The stick on a touch screen still strafes (it has to: there is no A and D on a phone), and
+           the strafe is gone from the keyboard, where it was never what anybody wanted. */
+        let mx = stick ? stick.x : 0, md = stick ? -stick.y : 0;
+        if (keys.has("w") || keys.has("arrowup")) md += 1;
+        if (keys.has("s") || keys.has("arrowdown")) md -= 1;
+        const len = Math.hypot(mx, md) || 1;
+        const r = keys.has("shift") ? RUN : 1;
+        // WASD and the stick live in the view plane, not the room's fixed axes. `camPt` maps a
+        // camera-forward step to (sin(yaw), cos(yaw)) in the lane, and camera-right to
+        // (cos(yaw), -sin(yaw)); using the same basis here keeps movement and the view aligned after
+        // either a drag or a turn key. Pitch is intentionally excluded so looking up never lifts the
+        // walker off the floor. Turning remains rate-limited for comfort.
+        const heading = a(), sy = Math.sin(heading), cy = Math.cos(heading);
+        const wishX = ((mx * cy) + (md * sy)) / len * SPEED * r;
+        const wishD = ((-mx * sy) + (md * cy)) / len * SPEED * r;
+        // the pointer-lock demo's model, measured against ours: input frames set the velocity —
+        // no ramp to feel like skating — and only a released body decays (tau 90 ms: gone inside
+        // a step and a half, no drift past the wall the old 400 ms exponential eased through).
+        if (mx || md) { vx = wishX; vd = wishD; }
+        else { const dmp = Math.exp(-dt / 0.09); vx *= dmp; vd *= dmp;
+               if (Math.hypot(vx, vd) < 1.2) { vx = 0; vd = 0; } }
+        moveBody(x + vx * dt, depth + vd * dt);
+      }
     }
     if (ride) rideStep();
     const gh = ride ? height : floorAt(depth, x);
@@ -8815,23 +8843,33 @@ function leaveOverlay(root, trigger) {
       listBtn.focus({ preventScroll: true });
     }
   };
-  /* Round 73: a landmark's record is read where the lane is written out, not in a window over the
-     picture. Opening it opens the drawer, opens the folded list it lives in, carries the visitor to
-     that row and marks it for a moment -- so a press on the falls has an answer that is the falls'
-     own words, and the picture is never covered by anything. */
-  let calledRow = null, calledTimer = 0;
-  const revealThing = (el) => {
-    const row = el ? document.getElementById(`thing-${el.dataset.obj}`) : null;
-    toggleList(true);
-    if (!row) return;
-    const box = row.closest("details");
-    if (box) box.open = true;
-    if (calledRow) calledRow.classList.remove("is-called");
-    if (typeof row.scrollIntoView === "function") row.scrollIntoView({ block: "center" });
-    row.classList.add("is-called");
-    calledRow = row;
-    if (calledTimer) clearTimeout(calledTimer);
-    calledTimer = setTimeout(() => { row.classList.remove("is-called"); calledRow = null; }, 2400);
+  /* Round 74 — the one text surface on the site, and the one kind of thing allowed to open it.
+     Round 73 deleted `showCard` because every press opened it; the owner's refinement is 「只留該需要用
+     文字彈出介面介紹的物件。其他…可以用E去互動看有沒有變化。你如果全部都做出彈出介面 這很傷使用者體驗。」
+     A landmark is exactly that object: the falls are 370 m away, nothing about pressing them can move,
+     and what the place has to say about them *is* the record. So `showWords` exists for `read` and for
+     nothing else -- `act()` calls it from the landmark branch alone, and `.verify/verify-ux.mjs` fails
+     the build if any other verb reaches a text surface. Everything else answers in the scene.
+     The card is 30rem wide and holds 100-290 characters of record, which is a paragraph you read --
+     not the 47 %-of-the-picture drawer the written lane opens to. */
+  const showWords = (m) => {
+    if (!card || !m) return;
+    const where = card.querySelector("[data-walk-where]");
+    const title = card.querySelector("[data-walk-title]");
+    const hint = card.querySelector("[data-walk-hint]");
+    const liveEl = card.querySelector("[data-walk-live]");
+    if (where) where.textContent = `${district} · the record`;
+    if (title) title.textContent = m.el.dataset.title || "";
+    if (hint) hint.textContent = m.el.dataset.hint || "";
+    if (liveEl) liveEl.textContent = "";
+    card.dataset.mode = "words";
+    if (asideEl) asideEl.hidden = true;
+    const wasOpen = !card.hidden;
+    card.hidden = false;
+    if (!wasOpen) overlayEntered();
+    if (infoBtn) infoBtn.setAttribute("aria-expanded", "true");
+    const btn = card.querySelector("[data-walk-card-close]");
+    if (btn) btn.focus({ preventScroll: true });
   };
   const boot = () => {
     // A texture that arrives after the first paint would otherwise stay black until the visitor
@@ -9034,7 +9072,11 @@ function leaveOverlay(root, trigger) {
     }
     /* The one record that is still worth a whole press: the thing the place is named for. It opens
        the written lane on its own row rather than a window over the picture (round 73). */
-    if (m.landmark) { revealThing(m.el); tutorAnswered(); }
+    /* The last verb, and the only one allowed to speak: the thing itself has nothing to show, so its
+       record is the whole answer. Round 73 sent this to the written lane, which opened a drawer 47 %
+       of the picture wide and scrolled a 100-row list to find one paragraph -- a heavier surface than
+       the card it replaced, for the one object that *does* need to be read. */
+    if (m.landmark) { showWords(m); tutorAnswered(); }
   };
   const nearestOf = (el) => meta.find((m) => m.el === el);
   /* Stand in front of a frame that has been opened. The lateral share used to be 0.45 of the frame's

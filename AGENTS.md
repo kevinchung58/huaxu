@@ -140,7 +140,11 @@ no package manifest, CDN, or additional runtime dependency is implied.
   read `skills/frame-evidence/SKILL.md`; every number quoted from a frame comes through it. Before
   touching a tap, key, drag, reach, card, bar or **exit** (an overlay, the browser's back gesture),
   read `skills/walk-input/SKILL.md`; it owns the press model, the turn constants and the enter/exit
-  history contract, and its probes (`_popup-audit`, `_turnprobe`, `_backprobe`) are the evidence. **Any
+  history contract, and its probes (`_popup-audit`, `_turnprobe`, `_backprobe`) are the evidence.
+  Before claiming that an **experience** is good — or that a press "was answered" — read
+  `skills/ux-walkthrough/SKILL.md`: it owns the two-tier answer rule (a press shows you something, and
+  only a thing with nothing to show may open text), the `press_verb` table, and the visitor's pass
+  `.verify/_uxwalk.mjs` with its gate `.verify/verify-ux.mjs`. A green gate is not an experience. **Any
   round that discovers a defect class, a measured constant, or a new instrument must write or amend a
   skill in the same round** — read `skills/skill-authoring/SKILL.md`, add the `skills/README.md` row
   and the `SKILLS.md` routing sentence, and run `node .verify/verify-skills.mjs`. The agent's skills
@@ -439,6 +443,7 @@ change and gets committed with the work that motivated it.
 | **scene-system** | `skills/scene-system/SKILL.md` | Starting any new place, or when the scene skills' order is unclear: the eight-phase pipeline that conducts place-intake / grounded-scene / district-author / landmark-space / lane-prop / street-commons, the renderer contract, the proven idioms with their numbers, the critique failure table, and the gate battery. Read first, then the phase skills. |
 | **real-place-builder** | `skills/real-place-builder/SKILL.md` | Building or substantially revising any grounded walkable place, district, or landmark; translates evidence and the repository's records into an implementation and acceptance plan. |
 | **scene-quality-loop** | `skills/scene-quality-loop/SKILL.md` | Final visual review after a substantial Three.js environment, object, camera, or renderer change; captures settled route/prop views, separates visual critique from mechanical gates, and requires recapture after fixes. See its upstream survey for selected methods and refusals. |
+| **ux-walkthrough** | `skills/ux-walkthrough/SKILL.md` | Whenever a press, bar, card, panel, reel, drawer, prompt or label changes, or the owner says 操作、體驗、彈出、很煩; judges the experience by what the press changes on the screen, keeps text for the `read` verb alone, and runs the visitor's pass (`_uxwalk`) before anyone claims a walk page feels right. |
 | **pua** | `skills/pua/SKILL.md` | Non-trivial implementation, repeated failure, stalled diagnosis, or any task requiring complete end-to-end verification; evidence-first and root-cause oriented. |
 | **karpathy-guidelines** | `skills/karpathy-guidelines/SKILL.md` | Non-trivial code changes: keep the implementation simple, surgical, and grounded in the actual repository. |
 | **pr-handoff** | `skills/pr-handoff/SKILL.md` | Before every PR creation/update and before merge; requires a fresh, prioritized next-round plan in `TODO.md` before GitHub operations. |

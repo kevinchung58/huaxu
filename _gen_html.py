@@ -6907,6 +6907,59 @@ def is_target(o):
     return False
 
 
+# Round 74, the owner's refinement of the same subject: 「只留該需要用文字彈出介面介紹的物件。其他就像你說的
+# 可以用E去互動看有沒有變化。你如果全部都做出彈出介面 這很傷使用者體驗。」 So a press is not only
+# "answered" -- it is answered *in the way the thing deserves*, and text is the last resort:
+#
+#     leave    you go through it                       no surface
+#     photos   it shows you photographs                the reel (pictures, not prose)
+#     ride     it carries you                          no surface
+#     play     it plays                                the toy
+#     try      it demonstrates                         no surface
+#     use      it opens / it comes on                  no surface
+#     read     **there is nothing to show**            the one text card on the site
+#
+# Precedence is the whole point: a thing that has something to show never asks to be read. The order
+# below is the order of the test, and `read` is only reached by a landmark -- an object whose entire
+# content is what is written about it. That is why the card may exist again: `showCard` opens it from
+# this one verb and from nowhere else, and `.verify/verify-ux.mjs` fails the build if any other verb
+# so much as touches it.
+PRESS_VERBS = ("leave", "photos", "ride", "play", "try", "use", "read")
+
+
+def press_verb(o):
+    """What a press on this prop will do, in the one word the visitor is shown beforehand."""
+    if o.get("leave"):
+        return "leave"
+    if o.get("story") or o.get("frame") is not None:
+        return "photos"
+    if o.get("ride"):
+        return "ride"
+    if o.get("game"):
+        return "play"
+    if "demo" in o:
+        return "try"
+    if o.get("states") and o.get("kind") in ("door", "glassfloor"):
+        return "use"
+    if o.get("landmark"):
+        return "read"
+    return ""
+
+
+# The written lane's phrasing of the same verb. One table, so the row and the bar cannot disagree
+# about what pressing the thing does -- the defect that cost round 71 a day was two names for one
+# thing.
+VERB_PHRASE = {
+    "leave": "the way out",
+    "photos": "its photographs",
+    "ride": "a ride",
+    "play": "a game",
+    "try": "a demonstration",
+    "use": "how it opens",
+    "read": "its record",
+}
+
+
 def walk_object(o, lane_half=10 ** 6):
     """One wall thing, expressed as a rectangle in centimetres plus whatever is painted on it.
 
@@ -6985,6 +7038,10 @@ def walk_object(o, lane_half=10 ** 6):
     # walk does not stop for it, the pointer does not press it, and the lane's list carries its
     # note instead of a card in the middle of the picture.
     quiet_attr = "" if is_target(o) else ' data-quiet="1" tabindex="-1"'
+    # Round 74: and it says what pressing it will do, before the press. The bar and the reach prompt
+    # read this one word (js/site.js `VERB_WORD`), so a visitor is never asked to press something and
+    # find out afterwards what kind of answer it gives.
+    verb_attr = f' data-verb="{press_verb(o)}"' if is_target(o) else ""
     # A landmark stands for something far and large: the falls over the gorge, the bridge across
     # it. It is a target with a long reach and a marker of its own, because the thing it names is
     # not within a hand's reach of anywhere the visitor can stand.
@@ -6994,7 +7051,7 @@ def walk_object(o, lane_half=10 ** 6):
             f'data-hint="{escape(o["hint"])}" data-ry="{o.get("ry", 0)}" data-w="{w}" data-h="{h}" '
             f'data-d="{dep}"{solid_attr}{kind_attr} style="{style}"{frame}{texture}{leaf_attr}{top_attr}{liton_attr}'
             f'{states}{leave}{awn_attr}{noren_attr}{fascia_attr}{story_attr}{extra_attr}'
-            f'{quiet_attr}{landmark_attr}></button>')
+            f'{verb_attr}{quiet_attr}{landmark_attr}></button>')
 
 
 def walk_html(d, drawer):
@@ -7076,15 +7133,10 @@ def walk_html(d, drawer):
     # the order you walk past it, and says which ones answer a press and what the press does. The card
     # that used to carry these paragraphs in the middle of the picture is no longer reachable from a
     # prop at all; a landmark's "record" is the row this list opens on.
+    # The lane's phrasing is the same table the button carries (round 74): one word decides both,
+    # so a row can never promise a press the bar does not make.
     def verb_of(o):
-        if o.get("leave"): return "the way out"
-        if o.get("story") or o.get("frame") is not None: return "its photographs"
-        if o.get("landmark"): return "its own record"
-        if o.get("ride"): return "a ride"
-        if o.get("game"): return "a game"
-        if "demo" in o: return "a demonstration"
-        if o.get("states"): return "the doors"
-        return ""
+        return VERB_PHRASE.get(press_verb(o), "")
     small_things = ""
     if placed:
         rows = []

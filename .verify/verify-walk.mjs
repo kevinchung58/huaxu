@@ -526,9 +526,12 @@ ok("the reach is announced with a dot on the note button, never with a caption",
      && /\.walk\.has-reach \.walk-info::after/.test(css));
 const inReach = qa(".walk-hit.is-reach");
 ok("exactly one thing is offered at a time", inReach.length === 1, `${inReach.length} in reach`);
-ok("and it is the frame, which promises the plate",
-   inReach[0].dataset.obj === "frame-scramble" && /open the frame/.test(q("[data-walk-record]").textContent),
-   `${inReach[0].dataset.obj} / ${q("[data-walk-record]").textContent}`);
+/* Round 74: the prompt is the thing's own verb now, so what this holds is that the promise matches
+   the object rather than that every object is promised the same sentence. */
+ok("and it is the frame, which promises the photographs",
+   inReach[0].dataset.obj === "frame-scramble" && inReach[0].dataset.verb === "photos"
+     && /see the photographs/i.test(q("[data-walk-record]").textContent),
+   `${inReach[0].dataset.obj}(${inReach[0].dataset.verb}) / ${q("[data-walk-record]").textContent}`);
 key("e");
 await sleep(60);
 const plate = q("#room-plate");
@@ -775,12 +778,13 @@ const closePlate = async () => {
 const openBar = q("[data-walk-open]");
 await closePlate();
 ok("nothing is open before the finger tries", card.hidden);
-ok("the finger's one press is a bar that names the thing it would open",
+ok("the finger's one press is a bar that names the thing it would open, and says what the press does",
    !!openBar && openBar.classList.contains("walk-open") && !openBar.hidden
      && qa(".walk-hit.is-reach").length === 1
      && openBar.textContent.trim() === (qa(".walk-hit.is-reach")[0].dataset.title || "").trim()
-     && /\.walk-open::before \{\n  content: "Open \\00B7 "/.test(css),
-   `${openBar ? JSON.stringify(openBar.textContent) : "missing"} / ${title0()}`);
+     && (openBar.dataset.verb || "").trim().startsWith("Photographs")
+     && /\.walk-open::before \{\n  content: attr\(data-verb\)/.test(css),
+   `${openBar ? JSON.stringify(openBar.textContent) : "missing"} verb=${openBar && openBar.dataset.verb} / ${title0()}`);
 ptr("pointerdown");
 ptr("pointerup");
 await sleep(60);

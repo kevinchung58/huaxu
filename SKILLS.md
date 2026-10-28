@@ -47,6 +47,8 @@ a gate that framed two of seven ids, a stop photographed from wherever the glide
 ray hit printed in centimetres that a round of TODO read as kilometres. Route any claim about a
 rendered frame through it (round 69k).
 
+`ux-walkthrough` owns the experience of a press: what a visitor is promised before they spend it, and what actually changes after. It exists because the owner judged the same surface four times — a card, then a card behind a bar, then no card, then text where there should have been a change — and because the Falls Incline announced a ride and moved nothing for eleven rounds of green gates. Route every change to a press, bar, card, panel, reel or prompt through it, and run `.verify/_uxwalk.mjs` before claiming a walk page feels right (round 74).
+
 `walk-input` is the seventeenth-track skill and the one that owns the hand: how a visitor presses
 something in a room and how far the head turns when they do. It exists because the picture used to be
 one big button (`.verify/_popup-audit.mjs` measured 25 taps out of 25 opening a card), because removing

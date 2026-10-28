@@ -32,8 +32,11 @@ The scene is look-only. Nothing on the picture presses anything.
   is `if (card && !card.hidden) { hideCard(); return; }` and has no other branch.
 - The finger's verb is the **bar**: `<button class="walk-open" data-walk-open hidden>` inside
   `.walk-bottom`. It appears only while something is in reach, carries that thing's own
-  `data-title`, and its click is `act(reach)`. CSS prefixes `Open · ` so the label cannot drift from
-  the name the reach announced.
+  `data-title`, and its click is `act(reach)`. Its prefix is the thing's own verb, read from
+  `data-verb` (`Read · The Horseshoe`, `Walk through · Kaminarimon`), so the visitor knows what kind of
+  answer is being offered before spending the press. Round 74 replaced the fixed `Open · `; the label
+  and the prompt come from one table in `js/site.js` (`VERB_WORD`), fed by the generator's
+  `press_verb`, so the bar, the prompt and the written lane cannot describe a press three ways.
 - A prop's own hit box answers **keyboard activation only**. `event.detail === 0` is the DOM's own
   discriminator between a click the keyboard synthesised (Enter/Space on a focused control) and a
   real pointer click; a pointer click focuses the view and is otherwise ignored.
@@ -67,11 +70,13 @@ the skyline / dome / track / tram / island / boat / pool / ship, the station fro
 Osaka Shosen, the Dalian hall, the retro high-mart, vending, the hall, and 17 shutter / arcade / plaza /
 funhouse / kiosk fronts.
 
-**The card is deleted, not hidden.** `showCard()` is gone from `js/site.js`. A press is answered by one of
-four things — a surface (a print's reel, the written lane, a toy, the note), the door it names, the
-thing's own state (a lift opening, the glass floor), or a demo — and by nothing else. Anything else is a
-press that does nothing, which is the thing the owner asked to remove. Hiding the card behind a named
-bar is **not** a fix: the bar still asks a visitor to press a shopfront that has nothing to say.
+**The card is for one verb only.** Round 73 deleted `showCard()` outright; round 74 brought back a
+single text surface, and only for the objects the owner named as needing one (「只留該需要用文字彈出介面
+介紹的物件」). Each pressable prop now carries the answer it will give, as `data-verb`, and the card opens
+for `read` (a landmark) and for nothing else — `skills/ux-walkthrough/SKILL.md` owns that rule and
+`.verify/verify-ux.mjs` enforces it. Everything else answers in the scene: a door leaves, a print opens
+its reel of photographs, a lift opens, a car moves. Hiding a card behind a named bar is **not** a fix:
+the bar still asks a visitor to press a shopfront that has nothing to say.
 
 **The paragraph is not deleted; it is written down.** The details block in the lane is
 `<details class="walk-things" data-walk-things>`: every drawn thing in the order you walk past it, and a
