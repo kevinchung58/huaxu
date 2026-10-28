@@ -917,6 +917,10 @@ function leaveOverlay(root, trigger) {
   const TURN_TAP_MS = 35;            // ms of turn a tap is worth: 85 deg/s x 0.035 = 3.0 degrees
   const DRAG_DEG_PER_PX = 0.065;     // a drag sets the heading from distance; 100 px = 6.5 degrees
   const GRAV = 2400, JUMP = 420, GLIDE_SPEED = 165;
+  /* Round 75: the glide's time and ceiling. 1.4 s is the wait this device already asks for a
+     photograph's arrival; 7000 cm/s puts the longest authored jump (Goat Island's Terrapin
+     Point, 155 m) at the same 1.4 s instead of 94. */
+  const GLIDE_T = 1.4, GLIDE_SPEED_MAX = 7000;
   let zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
   let vx = 0, vd = 0, phase = 0, bob = 0, raf = 0, last = 0, here = -1, reach = null;
   let tickMs = 0;
@@ -8157,6 +8161,16 @@ function leaveOverlay(root, trigger) {
     "portal", "deckwall", "glassfloor", "plinth", "hall", "hallbase", "hallplaster", "figure", "art",
     "academic", "identity", "poster", "vending"]);
   const FAR_REACH = 8000;          // cm: how far a thing you can only look at still answers
+  /* Round 75 -- the way out of a room answers from the room, not from arm's length.
+     Every walk page hangs its exit `133` cm beyond the lane's own near edge (the prop is authored at
+     z −46 and pushed out by `Z_SCALE`), and the first stop of a room is not at that edge: Goat
+     Island's is 116 cm in, Mojiko's 174, the CN Tower's 58. Measured on all five lanes with an exit
+     (`.verify/_stops.mjs`, `_reach.mjs`): at the stop the visitor arrives on, turning round and
+     pressing E did **nothing** on Goat Island, Mojiko and the CN Tower -- the one object on the page
+     that is unmistakably a door failed its own press, which is the defect class the owner named twice
+     (round 73: 「按了沒反應」). A doorway is not a shop window: you press it while walking at it, and
+     350 cm covers every page's first stop with room to spare (174 + 133 = 307). */
+  const EXIT_REACH = 350;
   /* Round 71: the finger's verb had no handle. A tap anywhere on the picture opened the card of
      whatever was in reach, and measured in `.verify/_popup-audit.mjs` that was 25 taps out of 25 on
      an empty canvas -- the whole screen was a button, and every prop the visitor walked past could
@@ -8195,7 +8209,8 @@ function leaveOverlay(root, trigger) {
       const dist = Math.hypot(dx, dd);
       const isMark = m.landmark === true;
       const isLook = isMark || LOOK_KINDS.has(m.kind);
-      const limit = isMark ? LANDMARK_REACH : (isLook ? FAR_REACH : REACH);
+      const isExit = m.el.dataset.verb === "leave";
+      const limit = isMark ? LANDMARK_REACH : (isLook ? FAR_REACH : (isExit ? EXIT_REACH : REACH));
       if (dist > limit) return;
       const facing = dist < 4 ? 1 : (dx * fx + dd * fd) / dist;
       if (facing < (isLook ? 0.2 : 0.35)) return;
@@ -8499,7 +8514,7 @@ function leaveOverlay(root, trigger) {
         moveBody(gliding.x, gliding.to);
         if (Math.hypot(gliding.x - x, gliding.to - depth) < 1.2) gliding = null;
       } else if (distance > 0.001) {
-        const stride = Math.min(distance, GLIDE_SPEED * dt);
+        const stride = Math.min(distance, (gliding.speed || GLIDE_SPEED) * dt);
         const moved = moveBody(x + dx * stride / distance, depth + dd * stride / distance);
         const remaining = Math.hypot(aimX - x, aimZ - depth);
         /* Round 69 — 撞到就繞, and "撞到" is measured in progress, not in displacement.
@@ -8516,8 +8531,13 @@ function leaveOverlay(root, trigger) {
         const gained = distance - remaining;
         const progressed = gained >= stride * 0.5;
         if (!sidestep && remaining < 1.2) gliding = null;
-        else if ((!progressed || moved < 0.001) && !detourAround()) gliding = null;
-        else homeGlide();
+        else if (!progressed || moved < 0.001) {
+          /* Round 75: a hard glide (a stop, a frame's own approach) is a promise about a place, so
+             when the solver cannot get round whatever is in the way it finishes the move rather than
+             cancelling it. A soft glide still gives up: the body must not be placed somewhere the
+             visitor did not ask to be. */
+          if (!detourAround()) { if (gliding.hard) finishGlide(); else gliding = null; }
+        } else homeGlide();
       }
     } else if (!glideOnly) {
       /* Round 74: this used to `return` here, and the `return` skipped `rideStep` at the bottom of
@@ -8817,11 +8837,31 @@ function leaveOverlay(root, trigger) {
     loop();
   };
 
-  const glideTo = (z, targetX) => {
-    gliding = { to: clamp(z, MIN_D, MAX_D),
-                x: clamp(targetX === undefined ? x : targetX, -halfAt(z), halfAt(z)) };
+  /* Round 75 -- a stop is a bookmark, and a bookmark that takes ninety seconds is not one.
+     `GLIDE_SPEED` is 165 cm/s, which is comfortable for the two- to three-metre glide a photograph
+     asks for and absurd for a station: clicking "Terrapin Point" (15599 cm down the Goat Island walk)
+     started a 94-second crawl, and clicking any stop on a loaded machine could give up part way and
+     leave the visitor short of the place the button named (measured, `.verify/_stops.mjs`: streets all
+     arrived, Goat's first three were still walking after 30 s and stopped 26-40 m short).
+     So the speed follows the jump: a move takes about `GLIDE_T`, never less than the comfort speed,
+     never more than `GLIDE_SPEED_MAX`. It is constant for the length of one glide, so a long jump
+     reads as one move rather than as an acceleration. `hard` glides (a stop, a frame) also finish on
+     the target if the solver cancels them half way -- being short of a place the button named is the
+     one outcome a bookmark must not have. */
+  const glideTo = (z, targetX, hard = false) => {
+    const to = clamp(z, MIN_D, MAX_D);
+    const tx = clamp(targetX === undefined ? x : targetX, -halfAt(to), halfAt(to));
+    const distance = Math.hypot(tx - x, to - depth);
+    gliding = { to, x: tx, hard, startedAt: performance.now(),
+                speed: clamp(distance / GLIDE_T, GLIDE_SPEED, GLIDE_SPEED_MAX) };
     vx = 0; vd = 0;
     loop();
+  };
+  const finishGlide = () => {
+    if (!gliding) return;
+    const { to, x: tx } = gliding;
+    gliding = null;
+    if (!collidesAt(tx, to)) moveBody(tx, to);
   };
 
   /* --- arriving, and the overlays that fold away ---
@@ -8969,11 +9009,17 @@ function leaveOverlay(root, trigger) {
     if (where) where.textContent = `${district} · one lane, drawn`;
     if (title) title.textContent = thing ? `${thing} · ${metres(reach.z - depth)} ahead`
                                           : "How to be in the lane";
+    /* Round 75 -- the card is called "How to be in the lane", and what it said under that heading was
+       a sentence about shopfronts: "the shutters carry no shop, the board is blank". That is true of
+       the street and false of seven other lanes -- Goat Island has no shutters, and the fall a visitor
+       is standing in front of is named. Every lane opens this card, so its copy has to be true in all
+       of them: the keys first, then the principle, with no prop of any one place in the sentence. */
     if (hint) hint.textContent = thing
       ? "It is in front of you and it answers a press: E, or the bar at the foot of the picture. "
         + "Everything this lane draws, and what pressing it does, is written out in the list."
-      : "Nothing here is labelled and nothing is named: the shutters carry no shop, the board is blank, "
-        + "because a name would be a claim about a place that is drawn rather than found.";
+      : "W A S D to walk, arrow keys or A / D to turn, E for what is in front of you, L for everything "
+        + "this lane draws, and Esc for the way out. Nothing is drawn with a name the record cannot "
+        + "support: where a place is drawn rather than found, it is drawn blank.";
     if (liveEl) liveEl.textContent = statusEl ? statusEl.textContent : "";
     const wasOpen = !card.hidden;
     card.hidden = false;
@@ -9087,7 +9133,7 @@ function leaveOverlay(root, trigger) {
      read from. */
   const atFrame = (n) => {
     const m = meta.find((it) => it.el.dataset.frame === String(n));
-    if (m) glideTo(m.z - 120, m.x * 0.58);
+    if (m) glideTo(m.z - 120, m.x * 0.58, true);   // stand in front of the thing you opened
   };
 
   /* --- input: every verb has both a key and a finger --- */
@@ -9102,7 +9148,7 @@ function leaveOverlay(root, trigger) {
       depth = stopZ[i]; x = clamp(stopX[i], -halfAt(stopZ[i]), halfAt(stopZ[i]));
       height = stopView[i].h; vy = 0; draw(); return;
     }
-    glideTo(stopZ[i], stopX[i]);
+    glideTo(stopZ[i], stopX[i], true);   // a stop is a bookmark: it must arrive
   }));
   Array.from(layer.querySelectorAll("[data-walk-to]")).forEach((btn) => btn.addEventListener("click", () => {
     glideTo(parseFloat(btn.getAttribute("data-walk-to")) || 0);
@@ -9344,6 +9390,11 @@ function leaveOverlay(root, trigger) {
   // camera that walks from one that jitters, and the numbers that matter are already in scope here.
   layer.__walk = { get depth() { return depth; }, get x() { return x; }, get height() { return height; },
                    get yaw() { return yaw; }, get pitch() { return pitch; }, get focal() { return focal; }, get quads() { return quads.length; },
+                   /* Round 75: a glide is a promise the stop strip makes, and a measuring instrument
+                      that guesses "arrived" from stillness guesses wrong on a loaded machine (the same
+                      mistake `_aim.mjs` made until round 72). The state is exposed so a probe can ask
+                      the lane whether it has finished rather than watch for it to sit still. */
+                   get glide() { return gliding ? { z: gliding.to, x: gliding.x } : null; },
                    get drawQuads() { return quads; },
                    get wallHalf() { return WALL; }, get radius() { return PLAYER_RADIUS; },
                    get halfWidth() { return HALF; },
@@ -9438,6 +9489,33 @@ function leaveOverlay(root, trigger) {
   const headEl = plate && plate.querySelector("[data-room-title]");
   const whereEl = plate && plate.querySelector("[data-room-where]");
   const hintEl = plate && plate.querySelector("[data-room-hint]");
+  /* Round 75b -- the reel's width. The record holds 1.83:1 landscapes (the falls, the street, the
+     hall) and 0.75:1 portraits (Tokyo's prints, the scramble, the tower), so a fixed column
+     letterboxes whichever shape it was not measured on: 9:16 gave a landscape 364 x 199 px inside a
+     full screen, and a full-width column gives a portrait 406 px inside a full screen. The box is the
+     picture: its ratio times the height the grid has left, capped by the panel's width. Measured here
+     because CSS cannot do it without the layout arguing with itself (see css/site.css). */
+  let frameAr = 9 / 16;
+  const sizeReel = () => {
+    if (!railEl || !panel) return;
+    const cs = getComputedStyle(panel);
+    const gap = parseFloat(cs.rowGap) || 0;
+    /* Only the children that take part in the grid: the panel's chrome (the close button, the heading
+       and the hint) is taken out of the flow and out of the picture's way, so counting them
+       subtracts a band of height that nothing is using -- measured 969 px of picture where 992 fit. */
+    const others = Array.from(panel.children)
+      .filter((el) => el !== railEl && getComputedStyle(el).position !== "absolute");
+    const chrome = others.reduce((a, el) => a + el.getBoundingClientRect().height, 0) + gap * others.length;
+    const availH = panel.clientHeight - (parseFloat(cs.paddingTop) || 0)
+      - (parseFloat(cs.paddingBottom) || 0) - chrome;
+    const availW = panel.clientWidth - (parseFloat(cs.paddingLeft) || 0)
+      - (parseFloat(cs.paddingRight) || 0);
+    if (!(availH > 0) || !(availW > 0)) return;
+    const w = Math.max(160, Math.min(availW, availH * frameAr));
+    railEl.style.setProperty("--reel-w", `${Math.round(w)}px`);
+  };
+  window.addEventListener("resize", () => { if (plate && plate.classList.contains("is-rail")) sizeReel(); });
+
   const paint = () => {
     frames.forEach((f, j) => { f.hidden = j !== fi; });
     // The rail's heading follows the frame rather than the click, because the dialog is read as
@@ -9453,6 +9531,14 @@ function leaveOverlay(root, trigger) {
       sg.classList.toggle("is-done", j < fi);
       sg.classList.toggle("is-now", j === fi);
     });
+    /* Round 75: the plate's hint promises "next frame ... previous one" and the segments promise a
+       sequence. A story of one frame has neither, so both are hidden rather than left telling a
+       visitor to tap for something that does not exist. The reel that ships today is 3 or 6 frames,
+       which is exactly why nobody would have noticed if a one-frame story were ever added. */
+    if (segRow) segRow.hidden = frames.length < 2;
+    if (countEl) countEl.hidden = frames.length < 2;
+    const whenEl = plate && plate.querySelector(".modal-panel > .when");
+    if (whenEl) whenEl.hidden = frames.length < 2;
     // The full-format ground is the frame's own pixels, so the screen behind the story changes with the
     // story; `url(...)` of an already-loaded file costs one decode and no bytes.
     if (panel) {
@@ -9464,6 +9550,22 @@ function leaveOverlay(root, trigger) {
          pixels. Resolving here is the one place that knows which document the file belongs to. */
       const raw = src && src.getAttribute("src");
       panel.style.setProperty("--fill", raw ? `url("${new URL(raw, document.baseURI).href}")` : "none");
+      /* Round 75b: the reel's width is the picture's own ratio times the height the grid gives it
+         (see `--ar` in css/site.css). One column cannot serve 1.83:1 landscapes and 0.75:1 portraits
+         at once: whichever it is not measured on is letterboxed, and the surface then covers the
+         screen to show a picture in a fifth of it. */
+      if (src) {
+        const setAr = () => {
+          const w = src.naturalWidth, h = src.naturalHeight;
+          frameAr = w && h ? w / h : 9 / 16;
+          if (panel) panel.style.setProperty("--ar", w && h ? `${w} / ${h}` : "9 / 16");
+          sizeReel();
+        };
+        setAr();
+        /* Before the file decodes there is no ratio to read; the frame keeps the authored 9:16 for
+           one paint and this fires on the decode, which is before it is ever shown. */
+        if (!src.complete) src.addEventListener("load", setAr, { once: true });
+      }
     }
     if (countEl) countEl.textContent = `${fi + 1} of ${frames.length}`;
   };

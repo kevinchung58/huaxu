@@ -568,10 +568,19 @@ const gridAt = css.indexOf("#room-plate.is-rail .story-frame {");
 const hiddenAt = css.search(/#room-plate \.story-frame\[hidden\] \{[^}]*display: none/);
 ok("a frame the reel hides leaves the layout — `[hidden]` has to out-rank the rail's own display",
    gridAt >= 0 && hiddenAt > gridAt, `grid@${gridAt} hidden@${hiddenAt}`);
+/* Round 75: the third clause here used to require `--col: min(100%, calc((100dvh - 7.5rem) * 9/16))`
+   — the rail's column was the width of a portrait story, and that is exactly what broke it: every
+   frame in this record is landscape, so `object-fit: contain` fitted each one to 364 px of picture
+   inside a full screen (`.verify/_surface.mjs`: 100 % cover, 9 % fill). The assertion's intent is
+   still "the plate is a screen, not a card", and that is still what it checks; what it now also
+   requires is that the reel's box is measured from the frame's own ratio rather than assumed. */
 ok("全版型: the rail is the screen, not a card that the screen holds",
    /#room-plate\.is-rail \.modal-panel \{[^}]*min-height: 100dvh[^}]*border-radius: 0/.test(css)
-     && /--col: min\(100%, calc\(\(100dvh - 7\.5rem\) \* 9 \/ 16\)\)/.test(css)
      && !/#room-plate\.is-rail \.modal-panel \{[^}]*box-shadow: var/.test(css));
+ok("the reel's box is the picture's own ratio, not a portrait column it was fitted into",
+   /--reel-w/.test(css) && /--ar/.test(css)
+     && /sizeReel/.test(js)
+     && /naturalWidth/.test(js) && /setProperty\("--reel-w"/.test(js));
 ok("the photograph keeps its own ratio inside the column — contain, never a crop",
    /#room-plate\.is-rail \.story-frame img \{[^}]*object-fit: contain/.test(css));
 ok("and the panel's duplicate words are hidden from the eye, kept for the tree",

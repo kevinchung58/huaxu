@@ -636,7 +636,7 @@ research = page("Research · Hua-Xu Zhong", "research", f"""
 {pillar_sections}
     </div>
     {titled("h2", "Publications", ICON_BOOK, "block-title reveal spaced")}
-    <p class="when reveal" data-glance>
+    <p class="when reveal">
       <span class="badge">Corresponding author</span> on {len(corr_pubs)} of the publications below ·
       <span class="badge">International research experience</span> {escape(intl_proj[3]) if intl_proj else ""} abroad, per the project record ·
       <span class="badge">International houses</span> every venue above is peer-reviewed and international: {", ".join(houses)}.
@@ -1738,7 +1738,7 @@ def gallery_html():
             out.append(f'    <p class="eyebrow reveal">{escape(b["label"])}</p>\n'
                        f'    <p class="when reveal">{escape(b["purpose"])} <span class="badge">'
                        f'{escape(b["kind"])}</span> {len(cards)} places</p>\n'
-                       f'    <p class="when reveal" data-walk-guide>{escape(HOW_TO_WALK)}</p>\n'
+                       f'    <p class="when reveal">{escape(HOW_TO_WALK)}</p>\n'
                        f'    <div class="place-cards" data-place-cards>\n      '
                        + "\n      ".join(cards) + '\n    </div>')
             continue
@@ -6496,8 +6496,14 @@ DISTRICTS = [
             # at -240), so these three are marks on water that exists instead of models of it. A
             # 4 m by 2 m "island" standing in for a bank 300 m off was a card with a card's copy on
             # it -- the copy is right, the body was the wrong shape for it.
+            # Round 75: these three were marked `landmark`, which made them pressable -- and they are
+            # 88 to 150 metres off the lane at the water's own level, so the reach that a landmark
+            # gets (600 m) let one of them *win* against the falls and answer a press aimed at the
+            # Horseshoe with a note about the trees on the far bank (`.verify/_reach.mjs`). They are
+            # the far bank drawn as geometry, not places on this island: scenery now, with their
+            # paragraphs in the written lane where every drawn thing's paragraph already lives.
             {"id": "woodline-c1", "kind": "landmark", "x": 8800, "z": 3448, "y": 400, "ry": 0,
-             "w": 2000, "h": 900, "d": 20, "landmark": True,
+             "w": 2000, "h": 900, "d": 20,
              "title": "The Canadian bank's trees, across the river",
              "hint": "The Table Rock promenade hides behind its own woodline from here; the "
                      "buildings rise above it and belong to the other drawing."},
@@ -6524,12 +6530,12 @@ DISTRICTS = [
                      "is why the American side is read as a fall onto rock and the Horseshoe as a "
                      "fall into water."},
             {"id": "channel-e", "kind": "landmark", "x": 12000, "z": 4138, "y": -2500, "ry": 0,
-             "w": 2400, "h": 800, "d": 20, "landmark": True,
+             "w": 2400, "h": 800, "d": 20,
              "title": "The gorge on the eastern side",
              "hint": "The same river after the drop, running north-east to the whirlpool. The "
                      "Canadian bank stands across it."},
             {"id": "pool-lower", "kind": "landmark", "x": 15000, "z": 7414, "y": -3000, "ry": 0,
-             "w": 24000, "h": 900, "d": 20, "landmark": True,
+             "w": 24000, "h": 900, "d": 20,
              "title": "The lower river, above the whirlpool",
              "hint": "Everything that goes over either falls ends here, running north-east toward "
                      "the whirlpool and the gorge. The water's colour is the gorge's own: a hard "
@@ -6656,8 +6662,12 @@ def rooms_plate_html(districts):
             '\n    <div class="story-segs" data-story-segs aria-hidden="true"></div>'
             f'\n    <div class="story-reel" data-story-reel>\n      {joined}\n    </div>'
             f'\n    <p class="story-count" data-story-count role="status">1 of {len(figures)}</p>'
-            '\n    <p class="when">Tap the right two thirds for the next frame, the left third for '
-            'the previous one. Hold to pause.</p>')
+            # Round 75: this line used to say "Tap the right two thirds ... Hold to pause", which is
+            # the finger's vocabulary in a device that also has a keyboard -- and the plate has
+            # answered `→` and `←` since it was built. A hint that names only the gesture you are not
+            # using reads as a broken control.
+            '\n    <p class="when">Right two thirds or \u2192 for the next frame, left third or '
+            '\u2190 for the previous one. Hold to pause.</p>')
     return f'''<div class="modal" id="room-plate" role="dialog" aria-modal="true" aria-label="Frames in the lane">
   <div class="modal-backdrop" data-room-close></div>
   <div class="modal-panel">
@@ -7285,7 +7295,7 @@ def walk_html(d, drawer):
         day_attr = (f' data-lane-day="1" data-lane-day-cycle="{opts.get("cycle", 900)}"'
                     f' data-lane-day-start="{opts.get("start", 0.45)}"'
                     f' data-lane-day-gain="{opts.get("gain", 1)}"')
-    return f"""<div class="walk" id="walk-{did}" data-walk="{label}" data-walk-id="{did}"
+    return f"""<div class="walk" id="walk-{did}" data-walk="{label}"
        data-lane-w="{lane["w"]}" data-lane-d="{walk_d}" data-lane-ceil="{lane["ceil"]}"
        data-lane-back="{lane["back"]}"{max_d_attr}{day_attr}{floor_attr}{zones_attr}{floors_attr}{ws_attr}
        data-eye="{EYE}">{banner_html}
@@ -7295,7 +7305,7 @@ def walk_html(d, drawer):
        facing, double-click to let the mouse look, L for the list, I for this note. The first visit is walked through once by a guide strip at the bottom of the screen; it is replayable from this note.
        Nothing is written over the space: every sentence is behind a button.">
     <canvas class="walk-three-canvas" data-walk-three width="16" height="9" aria-hidden="true"></canvas>
-    <div class="walk-hits" data-walk-hits>
+    <div class="walk-hits">
       {INDENT.join(parts)}
       {walk_islands(d, placed)}
     </div>

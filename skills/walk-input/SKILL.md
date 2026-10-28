@@ -247,6 +247,32 @@ phantom layer, focus returns, the reel folds, `research.html`'s publication card
 what it meant). jsdom cannot navigate, so "the Back finally leaves" is asserted in the browser probe
 and only "not swallowed by a phantom layer" in the gate — say which side holds which claim.
 
+## 6b. Round 75: reach is not one number, and a bookmark must arrive
+
+- **`REACH = 190` is the length of an arm, not the size of a gesture.** Three reach limits now exist and
+  each says what it means: `REACH 190` for a thing you touch, `FAR_REACH 8000` for a thing you only look
+  at, `LANDMARK_REACH 60000` for the thing the place is named for, and **`EXIT_REACH 350`** for a door.
+  The door's number is the one that was missing: every room hangs its exit 133 cm beyond the lane's near
+  edge and the first stop of a room is not the edge (Goat 116, Mojiko 174, CN Tower 58), so at the stop a
+  visitor lands on, turning round and pressing E did nothing on three of eight pages. A doorway is not a
+  shop window — you press it while walking at it.
+- **A glide's speed follows the jump.** `GLIDE_T 1.4 s`, `GLIDE_SPEED 165` floor, `GLIDE_SPEED_MAX 7000`
+  ceiling. At the flat comfort speed, Goat Island's Terrapin Point stop is a 94-second walk, and the
+  stairs/corridor glides that made 165 the right number are 2–3 m. A *hard* glide — a stop, a frame's
+  own approach, `glideTo(z, x, true)` — finishes on its target when the solver cannot get round
+  something, instead of being cancelled half way; a soft glide still gives up, because the body must not
+  be moved somewhere the visitor did not ask to be.
+- **`__walk.glide` is exposed** so an instrument can ask "is it finished" instead of watching for
+  stillness. `_aim.mjs` already learned this in round 72 (a loaded machine shows a resting body for a
+  second at a time); `_stops.mjs` and `_reach.mjs` now wait on the handle. A probe that polls for
+  stillness will call a stop unfinished and a reachable prop unreachable.
+- **A billboard that is pressable only because of a flag will win presses it cannot serve.** Three
+  Goat Island far-bank billboards carried `"landmark": True`, so they got the 600 m landmark reach and
+  one of them outranked the falls at the rail. `_reach.mjs` (walk to every pressable box on foot,
+  8 pages) is what found it, and it is the cheapest possible proof that a pressable thing exists in
+  reach at all: **40/40 after the fixes, 36/43 before** (the 7 misses were billboards 88–150 m off the
+  lane and two prints no stop could approach).
+
 ## 7. Order of work for a change like this
 
 1. Write or extend the probe **first** (`_popup-audit`, `_turnprobe`, `_census` for what is pressable

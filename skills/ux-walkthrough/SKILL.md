@@ -118,6 +118,42 @@ So the pass has two checks a DOM assertion cannot make: **does every custom prop
 **is every control on a surface painted in a colour that surface cannot swallow**. Both are now in
 `verify-ux.mjs` (three assertions, 66 → 69), and both fail on purpose when the fix is reverted.
 
+## 4c. Round 75: the surface is only half the question — its *contents* are the other half
+
+Round 74 settled which objects may open a surface. The owner's next turn (「你檢查其他的 該弄掉就動掉」) is
+the same question one level down, and four defects came out of it. All four were invisible to every
+gate that existed, because every gate asked *whether* something opened.
+
+- **A surface that covers the screen to show a picture in a fifth of it.** Pressing a print on
+  rooms-toronto opened the story rail over **100 %** of the viewport for a **364 × 199 px** drawing
+  (`.verify/_surface.mjs`: 100 % cover, **9 % fill**). The rail's column had been copied from a phone
+  story canvas — a 9:16 frame — and every picture in this record is landscape. The fix is not a
+  smaller surface: it is that the picture's box is the picture. `paint()` stamps `--ar` from the
+  file's natural size and `sizeReel()` stamps `--reel-w` from the height the grid has left; measured
+  after: **992 × 541 px, 68 % fill**, and a portrait print gets **479 × 642** instead of 406 px of
+  picture in 992 px of blur. The *words* keep `--measure: 30rem` (69–72 characters), because a
+  992 px caption line is 132 characters.
+- **A bookmark that does not take you to the place it names.** Clicking "Terrapin Point" on the Goat
+  Island walk started a **94-second** glide (15599 cm at the comfort speed of 165 cm/s), and on a loaded
+  machine glides were cancelled part way: measured with `.verify/_stops.mjs`, Goat's first three stops
+  were still walking after 30 s and settled **26–40 m short**. Fixed by making the speed follow the
+  jump (`GLIDE_T = 1.4 s`, ceiling `7000 cm/s`) and by letting a *hard* glide (a stop, a frame's own
+  approach) finish on its target instead of being dropped. Measured after: **10/10 stops within 0 cm**.
+- **A door that does not answer at the stop you arrive on.** Every room hangs its exit 133 cm beyond
+  the lane's near edge, and the first stop of a room is not the edge (Goat 116 cm, Mojiko 174, CN
+  Tower 58) — so at the stop the visitor lands on, turning round and pressing E did **nothing** on
+  three of the eight pages. `EXIT_REACH = 350` now covers it on all eight.
+- **A pressable that wins a press it cannot serve.** Three far-bank billboards on Goat Island were
+  authored as `landmark`, which gave them a 600 m reach; one of them *outranked the falls* and answered
+  a press aimed at the Horseshoe with a note about the trees. They are scenery now
+  (`press_verb` counts them as `read` only because of `landmark`; remove the flag and everything falls
+  into place), and their paragraphs live in the written lane like every other drawn thing's.
+
+So the pass has a second table to read, not just a first: **cover % and fill %** from `_surface.mjs`,
+**arrival shortfall** from `_stops.mjs`, and **can it be reached on foot** from `_reach.mjs`
+(40/40 after these fixes; before, the goldfish stall could only be found by wandering off the centre
+line).
+
 ## 5. How to run the pass (this is the E2E the owner asks for)
 
 1. **Boot the real pages, in a real browser**, from a live preview (`sh bin/preview`), not from a
@@ -144,6 +180,10 @@ So the pass has two checks a DOM assertion cannot make: **does every custom prop
   for reading (the written lane), or change the thing so it does not need explaining.
 - Never call a press "answered" because the record line changed. Measure the scene: quads, state, body,
   height. A sentence is not a change.
+- Never call a surface "small enough" without measuring what is inside it. A full-screen surface holding
+  a fifth of the picture is a pop-up with extra steps, and `cover` alone cannot tell the two apart.
+- Never let a bookmark (a stop, a chapter link, a row in a list) end anywhere but where it says it
+  goes. A glide that gives up half way is a promise the device broke.
 - Never judge an experience from a screenshot — *except* for what only a screenshot shows: a control
   painted in its own background, a card that covers the thing it describes, a ring around nothing. The
   counts and the frame answer different questions; this round needed both, and the invisible X was
@@ -155,6 +195,8 @@ So the pass has two checks a DOM assertion cannot make: **does every custom prop
 
 ## 7. Procedure
 
+0. Run `.verify/_surface.mjs`, `_stops.mjs` and `_reach.mjs` first: they answer *is there anything to
+   judge* before you judge the look of it.
 1. Run `_uxwalk.mjs` on the pages you touched (or all eight) and keep the output.
 2. Classify every press by `data-verb`; anything undefined or `read`-but-should-change is a finding.
 3. Fix the generator (`press_verb`) for a wrong verb; fix `js/site.js` for a wrong answer; fix the

@@ -1797,7 +1797,32 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   animation: none;
 }
 #room-plate.is-rail .modal-panel {
-  --col: min(100%, calc((100dvh - 7.5rem) * 9 / 16));
+  /* Round 75 -- the column was the width of a **9:16 frame**, and every picture in this record is
+     landscape. `--col` = (100dvh − 7.5rem) × 9/16 is 364 px on a 1024×768 screen, so `object-fit:
+     contain` fitted a 1.83:1 drawing by that width and the plate covered **100 %** of the viewport to
+     show a **364 × 199 px** picture -- 9 % of what the press had just promised (`.verify/_surface.mjs`,
+     rooms-toronto, `Photographs · The falls, small`). The Instagram story canvas is a portrait phone;
+     this is a desktop record of landscape drawings, so the canvas was the wrong half of the import.
+
+     The picture now gets the screen and the **words** get a measure: the reel is the panel's width,
+     the image is contained by whatever height is left, and the caption, the segments and the counter
+     are set to `--measure`. 34rem put the caption at ~72 characters on a 1024 px screen, in the
+     45-75 band a line of prose wants; 44rem put it at 94. */
+  /* Round 75b -- one column cannot be right for both shapes. The record's frames are 1.83:1
+     landscapes (the falls, the street, the hall) *and* 0.75:1 portraits (Tokyo's prints, the
+     scramble, the tower). A fixed column letterboxes whichever one it was not measured on: 9:16
+     letterboxed the landscapes to 364 x 199 px, and a full-width column letterboxes a portrait to
+     406 px of picture inside 992 px of blur. So the reel's width is now derived from the frame's own
+     aspect ratio (`--ar`, stamped by `paint()` from the file's natural size) and the height the grid
+     actually has: the picture fills its box in both shapes, and the box is never wider than needed.
+     The words keep a measure, because a 992 px caption line is 132 characters. */
+  --measure: min(100%, 30rem);
+  /* Round 75b -- the reel's box *is* the picture: `--ar` is stamped by `paint()` from the file's own
+     natural size and `--reel-w` from the height the grid has left. A stretched reel keeps a letterbox
+     band inside itself (measured: a 969 x 631 box holding a 969 x 529 picture, 102 px of nothing the
+     caption then sat in), so the height follows the ratio rather than the row. */
+  --ar: 9 / 16;
+  --reel-w: 100%;
   --rail-hold: 5s;
   width: 100%;
   max-width: none;
@@ -1847,16 +1872,23 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   white-space: nowrap;
 }
 #room-plate.is-rail .story-reel {
-  width: var(--col);
-  height: 100%;
-  align-self: stretch;
+  /* The width is stamped by `paint()`: the frame's own ratio times the height the grid has left, capped
+     by the panel's width. CSS cannot do it — `aspect-ratio` with `height: 100%` makes the grid column
+     size itself to the item's max-content (measured 1156 px of picture inside a 992 px column), and
+     `width: 100%` with `max-height: 100%` letterboxes the other shape instead. One measurement on
+     open, on resize and on every frame change is cheaper than a layout that argues with itself. */
+  height: auto;
+  width: var(--reel-w, 100%);
+  max-width: 100%;
+  aspect-ratio: var(--ar);
+  justify-self: center;
+  align-self: center;
   margin: 0;
 }
 #room-plate.is-rail .story-frame {
   position: relative;
   height: 100%;
-  display: grid;
-  grid-template-rows: 1fr auto;
+  display: block;
   text-align: left;
 }
 #room-plate.is-rail .story-frame img {
@@ -1869,21 +1901,32 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   box-shadow: none;
 }
 #room-plate.is-rail .story-frame figcaption {
+  /* Over the foot of the picture rather than under it. Under it, the caption's height came out of the
+     picture's, so the aspect ratio the reel was sized from was never the ratio the image got -- the
+     frame was 551 px tall for a 541 px picture and the difference had to be absorbed somewhere. Over
+     it, the reel is exactly the picture, and the scrim is the picture's own foot. Round 75c: the
+     scrim is the picture's width, and the words inside it sit in a `--measure` block centred on it,
+     because a caption pinned to the left edge of a 992 px picture reads as an accident. */
+  position: absolute;
+  inset: auto 0 0 0;
   margin: 0;
   max-width: none;
   width: 100%;
-  padding: 1.6rem 0.2rem 0.2rem;
+  /* The scrim spans the picture; the sentence inside it does not. At 1024 px a full-bleed caption
+     line was 58 characters wide and would be 72 at 1280 -- past the 45-75 band a line wants. */
+  padding: 2.4rem max(1rem, calc((100% - var(--measure)) / 2)) 0.7rem;
+  text-align: left;
   background: linear-gradient(180deg, rgba(5, 8, 15, 0), rgba(5, 8, 15, 0.86) 62%);
   color: #e9edf8;
   font-size: 0.94rem;
 }
 #room-plate.is-rail .story-segs {
-  width: var(--col);
+  width: var(--measure);
   margin: 0 auto;
 }
 #room-plate.is-rail .story-count,
 #room-plate.is-rail .modal-panel > .when {
-  width: var(--col);
+  width: var(--measure);
   margin-inline: auto;
   color: rgba(233, 237, 248, 0.62);
   text-align: center;
@@ -1976,8 +2019,9 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
 /* A story is the screen, so the panel is not a column the screen holds: this rule used to cap the
    rail at `min(36rem, 92vw)`, which put the plate in a 576 px box centred on a 1024 px viewport and
    left a band of bare backdrop down either side of a full-format story — the ground the frame is
-   supposed to fill stopped at the panel's edge. The column is `--col`'s job and it already knows the
-   width of a 9:16 frame; the panel's job is to be the whole screen so its blurred ground can be. */
+   supposed to fill stopped at the panel's edge. The panel's job is to be the whole screen so its
+   blurred ground can be; the picture's width is its own since round 75 (see `--measure` above), and
+   the words are the ones that keep a column now. */
 #room-plate.is-rail .modal-panel {
   max-width: none;
 }
