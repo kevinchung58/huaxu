@@ -99,7 +99,8 @@ sh bin/gate node .verify/verify-collision.cjs     # 28/28（7 頁，約 50 分�
 
 - **取景**：`_view.mjs`（一張影格一個行程，深站約 55 s）、`_walkshot.mjs`、`_aim.mjs`（轉到某個 yaw 再拍；
   `openPage(..., { reduce })` 必須在導覽前設）、`_gamesshot.cjs`、`_onscreen.mjs`、`browser-shot.mjs`。
-- **量測**：`_pix.mjs`、`_strip.mjs`、`_lumacheck.mjs`、`_hourprobe.cjs`、
+- **量測**：`_pix.mjs`、`_strip.mjs`、`_lumacheck.mjs`、`_hourprobe.cjs`、`_coupling.mjs`（`js/site.js` 的
+  頂層名字、每個名字被幾個區塊讀、每個區塊幾行幾個名字；P3 就是靠它決定從哪個縫切）、
   `_floorband.mjs`（每頁第一站的鋪面帶 y700-734 x160-864 的 mean／sd；比亮度用它，不要用整張影格的 mean）、
   `_lane.mjs` / `_tile.mjs` 是鋪面的診斷（單頁深看）；**跨頁的尺度是閘門 `verify-floor.mjs`**、
   `verify-motion.mjs`、`audit-all.mjs`（一次載入量所有 prop 在**它被畫出來的那個最大視角**上的形：框是
@@ -173,10 +174,18 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
 
 ### P3 — 拆 `js/site.js`（這一項要一整輪，不要用美工拆法交差）
 
-- **為什麼不能只搬檔**：它是四個頂層單元——頁面 chrome 145 行、共用 overlay 管線 ~115 行、點點遊戲 207 行、
-  **巷道 8,989 行（288 個宣告共用同一個 closure）**。把 closure 照檔切開不是搬移，是**把 288 個共用名字
-  改成介面**；而且最快的閘門 `verify-walk`（212 條）是把那一支腳本 `w.eval` 進 jsdom 跑的，ES module 做不到。
-  所以要拆就得**同時**付「給巷道介面」與「閘門改成真瀏覽器」兩筆錢。
+- **量的結果**（`_coupling.mjs`，2026-10-30，`js/site.js` 9,501 行）：**337 個頂層名字**、9 個註解區塊，
+  其中 9 個名字被 **5 個以上區塊**讀（`a`、`first`、`top`、`card`、`layer`、`frames`、`draw`、`last`、
+  `district` —— 這就是介面的種子），被 4 個區塊讀的有 9 個；**宣告後從沒被讀到的名字 0 個**。
+  區塊大小：`the model kit` 6,281 行／68 名字、`authored surfaces` 1,644 行／100 名字、
+  `Districts` 294 行／62 名字、`input` 543 行／30 名字。名字最多、行數最少的是 `authored surfaces`。
+- **硬牆，也是量出來的**：`js/site.js` 在 19 頁是純 `<script src>`（不是 module），而 **18 支 `.verify`
+  加上 `tests/helpers/boot.cjs` 是把這支檔案當文字 `w.eval` 進 jsdom** 在跑的。有 `import`/`export` 的
+  檔案不能被 `eval`，所以任何一次真的模組化，都會同時讓這 18 支＋5 條環境測試中的那幾條失效——不是「改天
+  再修」，是同一個 commit 裡必須改完，否則閘門紅成一片、而紅的原因跟畫面無關。
+- **為什麼不能只搬檔**：把 closure 照檔切開不是搬移，是**把 337 個共用名字改成介面**（其中 9 個是跨 5 個
+  以上區塊的）；最快的閘門 `verify-walk`（212 條）現在 evals 那支腳本。所以要拆就得**同時**付
+  「給巷道介面」與「18 支閘門改成真瀏覽器」兩筆錢。
 - **範圍與驗收**：切成 `js/lane/{fields,props,reach,rail,story,px}.js`（原生 ES module），每個檔只匯出它
   真正的介面；**閘門改成 puppeteer 開真頁面跑同一批斷言**（212 條要一條一條搬，不是重寫）；並用 `.preview`
   的影格逐像素比對。沒過這三關就不算拆完。
