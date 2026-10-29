@@ -110,6 +110,11 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
   平均／sd／p05-p95／rgb 與 Δluma；每個狀態拍 5 張先平均，並印出同狀態雜訊）、`_ray.mjs`（對某個像素
   射線，回報前三個命中的 mesh 與世界座標）、`_fps.mjs`。**這幾支遇到 pageerror 一律 exit 2、不印數字**：
   空白背景配 HUD 也會量出一張表。
+- **每一站看什麼**：`_stopview.mjs`（抵達後對畫面正中央射線，回報第一個**不透明**的面、它的距離，以及
+  `GRID=1` 時 16×12＝192 條射線的分類佔比：近牆／近物／遠景／天空／空。**單一射線只能找候選，佔比才能說
+  「這面牆是主角還是角落」**——第 81 輪用它掃 57 站，9 站中央 12 m 內有不透明立面，其中 Goat stop 3 的近牆
+  只佔畫面 19 %，所以那不是「貼牆」，是**主體被擠成一條**）。`_goatpitch.mjs`（同一個 stop 掃一串 pitch，
+  拍影格並量中央三分之一的 mean／sd／色數，用來挑取景）。
 - **表面與抵達**：`_surface.mjs`（cover／content／fill／字的 measure）、`_stops.mjs`（每站抵達誤差，等
   `__walk.glide` 收工）、`_reach.mjs`（走過去按得到嗎）、`_deadui.mjs`（每個控制元件按下去有沒有變化；
   jsdom 不能導航是它的盲點）、`_uxwalk.mjs`、`_gap.mjs`（缺面：覆蓋圖＋向下 miss）、`_aisleprobe.cjs`。
@@ -132,21 +137,23 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
 
 ## 3. 待辦（依優先序；每項都有驗收證據）
 
-### P2 — 按鈕 markup 產生器（世界資料已經搬完，剩下的是可互動的 UI）
+### P2 — ❌ 量過之後不成立：把 prop 改成資料省不到什麼
 
-- **現況**：> 60 KB 的 island 已經是 `js/places/<place>.js`（`window.__HX_PLACES[place][attr]`），頁面只留
-  `data-place` 標記＋普通 `<script>`，`readAny` 在 store 裡找，jsdom 閘門在 strip 前內聯。剩下的大塊是
-  `<button class="walk-hit" data-…>`——每一顆都是可互動元素，不是 JSON。
-- **做法**：把 prop 也寫成資料（generator → `js/places/<place>.props.js` → `js/site.js` 建 DOM）。
-- **動手前先量**：先寫一支量具量「按鈕 markup 佔幾 KB」，不要憑印象。
-- **代價寫在前面**：約 40 個 `data-*` 屬性與 `dataset` 的大小寫規則（`data-rideX` → `dataset.ridex`，
-  見 `AGENTS.md` 單位規則）；`verify-chain` 直接讀 HTML 字串裡的 `data-leave`／`data-story`；
-  `verify-walk` 讀 `.walk-hit` 的 DOM 與「nothing writes prose into the scene」；`tests/markup.test.cjs`
-  也是讀 HTML（搬完要一起改）。沒有 JS 時整條 lane 本來就不能走，不是新問題。
-- **不要重做**：改成 `fetch`／`await`。`js/site.js` 載入時同步組世界，async 會讓「先畫出一個沒有世界的
-  lane」變成可能；普通 `<script>` 在它之前跑，就是這條規則的實作。
-- **驗收**：19 頁 md5 冪等；`node --test`、`verify-walk`、`verify-chain`、`verify-ux` 全綠；
-  頁面位元組下降量與「按鈕 markup 佔幾 KB」對得上。
+248 顆 `<button class="walk-hit">` 的 markup 在 8 頁共 **129,112 B**（niagara 47,981＝它自己的 47 %、
+fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元組數：
+
+| 編碼 | 原始 | gzip |
+|---|---|---|
+| 現行 markup | 129,112 B | 25,762 B |
+| 完整 JSON（一個 prop 一個物件，所有 data-* 照留） | 129,095 B | — |
+| 精簡陣列（位置 + 固定的 9 個旗標 + style 字串） | 83,522 B | 21,733 B |
+
+精簡陣列省 35 % 原始位元組，但 **gzip 之後只省 16 %**（25.8 → 21.7 KB，整站一次請求），
+而代價是：`js/site.js` 要在建立 DOM 之後把 `style` 字串寫進去（等於把 `--x/--z/--w` 這一組搬到 runtime）、
+約 40 個屬性的 `dataset` 大小寫規則、`verify-chain`／`verify-walk`／`tests/markup.test.cjs` 三支讀 HTML 的閘門
+全部要改。**16 % 的 gzip 換三支閘門改寫＋一個新的 runtime 失敗模式，不划算。** 這不是「難做」，是「做完沒有好處」。
+若哪天頁面真的太大，先量哪一頁超過預算——現在最大的一頁是 niagara 101.7 KB（gzip 後約 20 KB），
+不是問題。詳見 `AGENTS.md` 的「不編造、不為數字而數字」。
 
 ### P3 — 拆 `js/site.js`（這一項要一整輪，不要用美工拆法交差）
 
@@ -162,9 +169,9 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
 ### P6 — 場景還欠的（站主 2026-10-23 的清單，未結案項）
 
 0. **Goat Island stop 3 的預設視角是往下看（等站主一句話）**：authored `yaw 88 / pitch 14`，而本專案的
-   pitch 正值＝往下，畫面中央 (480,430) 第一個命中的是 **528 cm 外、92 cm 高**的石牆，影格中間三分之一
-   是護牆、馬蹄只剩頂端一條（`.preview/r76/goat-stop3.png`）。建議 `pitch 14 → 0~2` 並重拍；
-   **看畫面的事留給站主**。驗收：重拍影格＋`_ray` 中央像素命中瀑布、不再命中 528 cm 的石牆。
+   pitch 正值＝往下。量到的（`_stopview.mjs`）：57 站裡有 **9 站**的正中央 12 m 內有不透明的立面，
+   但只有這一站的**主體**被擠成畫面上一條——`_goatpitch.mjs` 的 pitch 掃描與影格在 §4。
+   **看畫面的事留給站主**。驗收：站主選定 pitch 後重拍影格，中央像素落在水幕上、不再落在石牆上。
 1. **其他頁面的地標盤**：Goat 兩道瀑布已是世界幾何；Toronto 的 `falls` 模型只有 `look` 的數值，
    沒有專屬量具。
 2. **量具覆蓋**：`_lane.mjs` / `_tile.mjs` 只量 Niagara 的鋪面；量別的頁面前先確認 `FLOOR_PERIOD`
@@ -177,7 +184,18 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
 
 ## 4. 需要站主決定（代理不能替他決定）
 
-- **Goat Island stop 3 的 pitch**（P6-0）：`14 → 0~2`？影格 `.preview/r76/goat-stop3.png`。
+- **Goat Island stop 3 的 pitch**（P6-0，全站唯一的「抵達後正中央是牆」）。量到的（`_goatpitch.mjs`，
+  1024×768，reduce，`.preview/goat-pitch/pitch{N}.png`）：
+
+  | pitch | 畫面中央三分之一 mean／sd／色數 | 中間是什麼 |
+  |---|---|---|
+  | **14（現行）** | 117.9／51.9／62 | **5 m 外的石牆**，天空只剩頂上一條 |
+  | 8 | 105.6／53.6／64 | 石牆退了，水幕在中央 |
+  | 4 | 107.4／57.4／70 | 水幕為主 |
+  | 0 | 132.7／63.1／75 | 水幕＋樹線＋天空 |
+  | **−2** | 141.2／62.8／79 | 水幕與霧柱佔主要畫面，牆只在底部邊緣 |
+
+  建議改成 **0 或 −2**（−2 的取景最像在 Terrapin Point 站著看馬蹄）。這是我不能替他決定的取景。
 - **瀑布的圈要不要更亮**（`.preview/r65e/`、`.preview/r65b/falls2/`）；文字要不要縮短。
 - **夜景 fold 0.62 的上限**（全站規則；`verify-walk` 有「night fold keeps a readable floor」的斷言）。
 - **站點 6 的 A 字架要不要進畫面**（先量那條直線，不許先改後說）。
