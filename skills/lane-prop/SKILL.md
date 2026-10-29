@@ -42,6 +42,16 @@ round added are the edge of the place, not its view: `parapet` (stone posts and 
 `deckwall` and `lamp` — all three solid, in `WALK_SOLID_KINDS` — and `portal` (an opening's press
 box, not a solid).
 
+**A kind that draws nothing must say where its words are.** `landmark` is the one branch whose body
+the prop does not paint — the world prims draw the far bank, the falls, the gorge — and the press mark
+is placed by a separate flag, `data-landmark="1"`. A record with `kind: landmark` and no such flag
+therefore paints nothing, gets no box and answers nothing: it exists only as an entry in the written
+list at the foot of the page (`<li id="thing-<obj>">`), which is what `rooms-goat.html`'s three
+far-bank records are, on purpose. The invariant is gated in `.verify/verify-shapes.mjs`: **a landmark
+record either carries a mark or is quiet and listed by id**, because an unlisted one is a paragraph
+nobody can read. Its tell in the field is `.verify/audit-all.mjs` reporting it NEVER ON SCREEN from
+every stop and heading — that is a question, and the page's own list is the answer, not the defect.
+
 **The name is the kind.** `kindOf()` resolves an id by looking for the longest `SHAPE` key the id
 starts with, at a dash or the end of the string: `drawbridge-mj` is a `drawbridge`,
 `front-mj` is a `front`, `pool-moji` is a `pool`. The same rule is how `.verify/verify-shapes.mjs`

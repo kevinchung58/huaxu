@@ -55,6 +55,19 @@ const VW = 1024, VH = 768;
 
 const html = fs.readFileSync(ROOMS, "utf8");
 const IDS = [...new Set((html.match(/data-obj="[^"]*"/g) || []).map((s) => s.slice(10, -1)))];
+/* A landmark record with no press mark (`data-kind="landmark"`, no `data-landmark="1"`) is a
+   paragraph with a page anchor: the world prims draw the far bank, the written list carries the
+   words (`<li id="thing-<obj>">`), and the prop itself never paints and never gets a box. It is
+   therefore expected to be absent from every heading, and reporting it as NEVER ON SCREEN would be
+   the instrument mistaking the design for a defect -- `verify-shapes.mjs` holds the invariant that
+   such a record must be quiet and listed. They are counted separately. */
+const RECORDS = new Set();
+for (const b of html.matchAll(/<button[^>]*>/g)) {
+  const tag = b[0];
+  if (!/data-kind="landmark"/.test(tag) || /data-landmark="1"/.test(tag)) continue;
+  const id = (tag.match(/data-obj="([^"]+)"/) || [])[1];
+  if (id) RECORDS.add(id);
+}
 const STOPS = [...html.matchAll(/data-walk-stop="(\d+)"/g)].map((m) => Number(m[1]));
 
 const browser = await launch({ width: VW, height: VH });
@@ -153,12 +166,17 @@ for (const [id, r] of rows) {
               `${String(r.colours).padStart(5)} ${`${v.over}/${v.n}`.padStart(9)}` +
               `${r.area < AREA_MIN ? "  too small to judge" : ""}`);
 }
-const missing = IDS.filter((id) => !best[id]);
+const missing = IDS.filter((id) => !best[id] && !RECORDS.has(id));
+const recordSeen = [...RECORDS].filter((id) => best[id]);
 const flat = rows.filter(([, r]) => r.area >= AREA_MIN && r.sd < MIN_SD).map(([id]) => id);
 const small = rows.filter(([, r]) => r.area < AREA_MIN).map(([id]) => id);
-console.log(`\nprops ${IDS.length}, measured ${IDS.length - missing.length}, ` +
-            `flat (sd<${MIN_SD} on >= ${AREA_MIN} px) ${flat.length}, too small to judge ${small.length}`);
+const measuredCount = IDS.length - missing.length - RECORDS.size;
+console.log(`\nprops ${IDS.length}, measured ${measuredCount}, ` +
+            `flat (sd<${MIN_SD} on >= ${AREA_MIN} px) ${flat.length}, too small to judge ${small.length}` +
+            (RECORDS.size ? `, record-only ${RECORDS.size}` : ""));
 if (missing.length) console.log(`NEVER ON SCREEN: ${missing.join(", ")}`);
+if (RECORDS.size) console.log(`record-only (no body; the written list carries their words): ${[...RECORDS].join(", ")}` +
+                              (recordSeen.length ? ` — WARNING: also drawn: ${recordSeen.join(", ")}` : ""));
 if (missing.length || flat.length) {
   const strict = process.env.STRICT === "1";
   console.log(`${strict ? "FAIL" : "REPORT (not a gate)"}: ${flat.length} flat (${flat.join(", ")}), ${missing.length} unseen` +

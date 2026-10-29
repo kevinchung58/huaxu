@@ -14,7 +14,7 @@
 - **分支**：`arena/0cb70678-huaxu` → `master`；PR #21 開著，**未合併**（合併要站主一句授權）。
 - **三層驗證**：`node --test`（45 條，約 12 s，不開瀏覽器）→ `.verify/` 閘門 28 支（§2.3 的清單就是
   「有沒有跑」的判準）→ 量具（§2.4，只在需要數字時跑）。效能看 `tools/bench.mjs`（§5.6）。
-- **規模**：`js/site.js` 一個 closure 9,479 行（§3 P3）、產生器 7,524 行、`.verify` 84 支、`skills/` 19 個。
+- **規模**：`js/site.js` 一個 closure 9,479 行（§3 P3）、產生器 7,524 行、`.verify` 92 支、`skills/` 19 個。
 
 ## 2. 怎麼做（不變的部分）
 
@@ -65,7 +65,8 @@ node .verify/verify-rooms-e2e.cjs              # 72/72（0 failures）
 node .verify/verify-body.mjs                   # 73/73
 node .verify/verify-story.mjs                  # 27/27
 node .verify/verify-skills.mjs                 # 95/95（19 個 skill 都註冊、都有路由）
-node .verify/verify-gen.mjs                    # 6/6（無孤兒模組、名字不重複、閘門讀得到全部、冪等）
+node .verify/verify-gen.mjs                    # 7/7（無孤兒模組、名字不重複、閘門讀得到全部、
+                                               #    每頁釘的 ?v= 等於磁碟上 assets 的 sha1、冪等）
 node_modules/.bin/impeccable detect --json .   # []
 git diff --check && python3 -m py_compile _gen_html.py bin/toronto_massing.py
 md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff /tmp/a /tmp/b   # 冪等
@@ -96,7 +97,8 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
   `openPage(..., { reduce })` 必須在導覽前設）、`_gamesshot.cjs`、`_onscreen.mjs`、`browser-shot.mjs`。
 - **量測**：`_pix.mjs`、`_strip.mjs`、`_lumacheck.mjs`、`_hourprobe.cjs`、`_lane.mjs` / `_tile.mjs`（鋪面尺度）、
   `_floorband.mjs`（每頁第一站的鋪面帶 y700-734 x160-864 的 mean／sd；比亮度用它，不要用整張影格的 mean）、
-  `verify-motion.mjs`、`audit-all.mjs`（一次載入量所有可見 prop；**診斷不是閘門**，`STRICT=1` 才是）、
+  `verify-motion.mjs`、`audit-all.mjs`（一次載入量所有 prop 在**它被畫出來的那個最大視角**上的形：框是
+  `--padx/--pady` 收回來的剪影、`visibility:hidden` 的視角不算（§5.8）；**診斷不是閘門**，`STRICT=1` 才是）、
   `cost-probe.mjs`、`make-cover.mjs`。
 - **手感與互動**：`_turn.mjs` / `_keys.mjs`、`_census.mjs`、`browser-check.py`（點擊真的落在地上；jsdom 沒有
   hit-testing）、`wall-live.mjs`、`wall-pierce-live.mjs`、`walk-feel.mjs`。
@@ -137,6 +139,10 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
   反過來，閘門會把到不了的東西寫成真理。判官是 `.verify/verify-csslive.mjs`：它問 DOM，把剩下的分成
   LIVE／RUNTIME／DORMANT／DEAD。**只有 DEAD 才刪，DORMANT 要說出它等的是什麼資料。**
 - **閘門的綠燈是一次抽樣**：移動類的驗收要連跑。
+- **`?v=` 是雜湊，不是手寫的日期**：`gen/site.py` 用 sha1（css + site.js + scene3d + games + 兩支
+  Three.js）算十碼，`verify-gen` 第 5b 步在**重新產生之前**檢查每一頁釘的那十碼等於磁碟上的值——
+  頁面比 assets 舊一格，只有訪客的快取看得到（本輪就是這樣：Goat 的水流改了 `js/scene3d.js`，
+  但頁面停在上一組十碼）。
 - **數字要能被質疑**：量具本身也會錯（`skills/frame-evidence` §9、§9b、§9c）。引用一個數字時，
   它旁邊要有「怎麼量的」與「樣本範圍／雜訊」。
 
@@ -186,12 +192,18 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
 - 店面本體、樹線結構、東京最後一站、五重塔、廣場暗帶：更早的輪次已收，各由 `verify-shapes`、
   `_ray`、`verify-wheel` 等守住。
 
+- **量具覆蓋：248 顆 prop 全部量到「它自己的形」**：`audit-all.mjs` 的框修好兩處（未繪製的 prop 留著上一
+  個視角的變換；`getBoundingClientRect()` 回的是 44 px 按壓框而非剪影，見 §5.8），八頁重掃：
+  248 顆 prop、245 顆量到、18 顆在最大視角上 sd < 20、3 顆是只有文字的記錄（不是 prop）。
+  `skyline-cn` 209,646 px／sd 19.2／10-of-40 → **171,456 px／sd 30.2／5-of-10**，不再被判平。
+
 還開著：
-1. **其他頁面的地標盤**：Goat 兩道瀑布已是世界幾何；Toronto 的 `falls` 模型只有 `look` 的數值，沒有專屬量具。
-2. **量具覆蓋**：`_lane.mjs` / `_tile.mjs` 只量 Niagara 的鋪面；量別的頁面前先確認 `FLOOR_PERIOD`
-   對那個 floor style 的意義。`audit-all.mjs` 的「平不平」判準（框內 sd ≥ 20、面積 ≥ 120×120、
-   取最大視角）與程式不一致，`skyline-cn`（四棟塔的小模型，框內三成是空隙）因此永遠被判平——
-   **先修判準，不要動模型**。
+1. **`audit-all` 的平不平清單現在是「藝術問題」**：18 顆 sd < 20 的多半天生一面（`signA-s` 空白摺牌、
+   `plinth-*` 桌面、`curtain-back` 布幕、`queue-rail-*` 欄杆、`pipe-nakamise-e` 管、`mailbox-nakamise` 信箱）。
+   判準分不出「窗簾」與「壞掉的東西」，所以 `STRICT=1` 仍未開；要開就得先決定哪幾個 kind 天生是平面
+   ——那是站主的取捨（§4）。`hall-sl` 19.8 是唯一的邊界值（差 1 %，影格顯示磚面有開間）。
+2. **鋪面尺度量具只有 Niagara**：`_lane.mjs` / `_tile.mjs` 只量 Niagara 的鋪面；量別的頁面前先確認
+   `FLOOR_PERIOD` 對那個 floor style 的意義。
 3. **Niagara 的夜**：`HOUR=night` 沒有夜色授權 ⇒ 整頁深藍（mean 42.1）、只有兩顆燈光暈。
    要不要給 Clifton 一條夜色記錄是站主的決定（§4）。
 4. **Goat Island 另外兩件**：①鋪面偏亮（143.7 vs 記錄值 121，共用繪法，要動先確認別的頁）；
@@ -204,6 +216,8 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
 - **站點 6 的 A 字架要不要進畫面**（先量那條直線，不許先改後說）。
 - **Goat 的瀑布與 Toronto 的 falls 要不要也做地標盤**（P6-1）。
 - **Niagara 要不要一條夜色記錄**（P6-3）。
+- **哪幾個 prop kind 天生就是一面**（`signA` 空白摺牌、`plinth` 桌面、`curtain`、欄杆、管、信箱）：
+  定了才能把 `audit-all --STRICT` 當閘門開（P6-1，§5.8）。
 - **英文 CV PDF 與 ORCID iD**（`AGENTS.md` 的 backlog：站主提供檔案／網址後才加）。
 
 ## 5. 量到的常數與數字（不要重新發明）
@@ -305,8 +319,39 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 tracked 支檔案（`.git` 12 MB）：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、`js/site.js` 592 KB
 （9,479 行，**一個 closure**）、產生器 552 KB／7,524 行（入口 721 ＋ `gen/` 六個模組）、
-`css/site.css` 85 KB（2,707 行）。`.verify` 84 支，閘門 28 支，`skills/` 19 個。
+`css/site.css` 85 KB（2,707 行）。`.verify` 92 支，閘門 28 支，`skills/` 19 個。
 `image-search/`（3 張 CN Tower 參考照，**來源未追溯 → 永不入庫**）只留在磁碟。
+
+### 5.8 每一顆 prop 的形（`audit-all.mjs`，八頁）
+
+**框是什麼**：`[data-obj]` 是按壓目標，不是剪影。量的是 `getBoundingClientRect()` 減掉自己的
+`--padx/--pady`（`js/site.js` 把框長到 `HIT = 44`，再用 inset 把圈收回剪影上），而且
+`visibility:hidden` 的視角不算——沒被畫出來的 prop 留著上一個視角的變換（`js/site.js` 在寫新變換之前就
+return 了），那個矩形是別的地方。面積門檻 14,400 px（120×120）、sd 門檻 20、取**面積最大**的那個視角。
+`ROOMS=<page> node .verify/audit-all.mjs`，八頁一次跑約兩小時（niagara 最久）。
+
+| 頁 | props | 量到 | sd<20 | 太小不能判 | 只有文字的記錄 |
+|---|---|---|---|---|---|
+| street | 27 | 27 | 3 | 3 | 0 |
+| rooms | 33 | 33 | 2 | 0 | 0 |
+| rooms-fukuoka | 41 | 41 | 5 | 9 | 0 |
+| rooms-toronto | 26 | 26 | 1 | 12 | 0 |
+| rooms-niagara | 100 | 100 | 7 | 49 | 0 |
+| rooms-goat | 14 | 11 | 0 | 4 | 3 |
+| rooms-journey | 3 | 3 | 0 | 0 | 0 |
+| rooms-cntower | 4 | 4 | 0 | 0 | 0 |
+| **合計** | **248** | **245** | **18** | **77** | **3** |
+
+- **sd 量的是面與面之間的對比**（`flatShading`，一個面一個顏色），所以天生一面的東西 sd 就低：
+  `signA-s`／`signA-s2`（空白摺牌，規則 5 不許有字）、`plinth-retrohighmart`（桌面）、`curtain-back`（布幕）、
+  `frame-bridge`（畫框）、`ac-s`（牆上冷氣）、`bin-moji`（垃圾桶）、`pipe-nakamise-e`（管）、
+  `mailbox-nakamise`（信箱）、`block-d`、`planter-strip-2`、`queue-rail-a`／`b`、`point-rail-sw`／`se`、
+  `lights-post-b2`（欄杆與燈柱）。**這 18 顆不是 18 個缺陷**，判準分不出「窗簾」與「壞掉的東西」。
+- `hall-sl`（St. Lawrence Market，19.8）是唯一的邊界值：差門檻 1 %，影格顯示磚面有開間與綠屋頂。
+  要動它之前先問這是哪個問題——模型、門檻、還是那個 3.5:1 的長條框本身。
+- 3 顆 `record-only`：`woodline-c1`、`channel-e`、`pool-lower`（`rooms-goat`）——`kind: landmark` 卻沒有
+  `data-landmark="1"`，所以不畫、不給框、不回答，只在頁尾書面清單裡（`<li id="thing-…">`）。
+  `verify-shapes.mjs` 現在把這件事寫成不變式：**地標記錄要嘛有標記，要嘛是 quiet 且被清單列出**。
 
 ## 6. 已知限制（不要假裝解決了）
 
