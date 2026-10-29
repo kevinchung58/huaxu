@@ -304,6 +304,28 @@ Two rules come out of it:
    make it smaller, look at a heading where there is less to draw and confirm it is smaller; if it
    does not move, the instrument is reading a memory, not a measurement.
 
+## 9d. A hit rectangle is not the prop until three things are true
+
+`[data-obj]` is the press target, not a silhouette. Any statistic taken from
+`getBoundingClientRect()` on it is a statistic about whatever the rectangle encloses — and on
+`rooms-toronto` (26 props over 40 headings, `.verify/audit-all.mjs`) it was wrong twice:
+
+| what the rectangle was | `skyline-cn` | the verdict it produced |
+|---|---|---|
+| an undrawn prop's last transform | 339 × 609 px, identical at six headings | sd 19.2 → "flat"; the pixels were the hall's banded wall |
+| the prop's own silhouette | 171,456 px, mean 122.1 | sd 30.2, 5 of 10 views over 20 — it has form |
+
+1. **`visibility` first.** When the painter does not draw a prop it returns *before* writing a new
+   transform, so the element keeps the last heading's box. A "view" of that prop is a view of
+   something else, and it is the same rectangle every time, which is the tell.
+2. **Then the press floor.** `js/site.js` grows the box to `HIT = 44` px and insets the ring back
+   onto the shape with `--padx`/`--pady` (`css/site.css`). The silhouette is the rect deflated by its
+   own pad; the pad is written by the same pass as the box, so it is stale whenever (1) is.
+3. **Then open the frame.** Even a correct rectangle around a long prop seen at an angle encloses
+   background triangles: a low spread is a question, not a verdict. Two of the three props still on
+   that list are a blank board and a wall-mounted air conditioner — a plane and a small pale box, and
+   the criterion cannot know that from pixels.
+
 ## 10. A mirrored picture is not a cosmetic bug
 
 Round 70 found the 3D picture was the 2D model's **left-right mirror**, and the tell was that every

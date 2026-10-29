@@ -95,6 +95,7 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
 - **取景**：`_view.mjs`（一張影格一個行程，深站約 55 s）、`_walkshot.mjs`、`_aim.mjs`（轉到某個 yaw 再拍；
   `openPage(..., { reduce })` 必須在導覽前設）、`_gamesshot.cjs`、`_onscreen.mjs`、`browser-shot.mjs`。
 - **量測**：`_pix.mjs`、`_strip.mjs`、`_lumacheck.mjs`、`_hourprobe.cjs`、`_lane.mjs` / `_tile.mjs`（鋪面尺度）、
+  `_floorband.mjs`（每頁第一站的鋪面帶 y700-734 x160-864 的 mean／sd；比亮度用它，不要用整張影格的 mean）、
   `verify-motion.mjs`、`audit-all.mjs`（一次載入量所有可見 prop；**診斷不是閘門**，`STRICT=1` 才是）、
   `cost-probe.mjs`、`make-cover.mjs`。
 - **手感與互動**：`_turn.mjs` / `_keys.mjs`、`_census.mjs`、`browser-check.py`（點擊真的落在地上；jsdom 沒有
