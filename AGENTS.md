@@ -24,8 +24,10 @@ no package manifest, CDN, or additional runtime dependency is implied.
   Re-authoring a rolled-back file from session memory silently rewrites it to whatever you remember,
   and what is lost is exactly what you forgot to remember: the round-53 rebuild cost 190 authored
   lines (crest mist, lantern stalls, the record's real frontages) that the blob had kept whole.
-  A wiped sandbox also takes `node_modules` with it — run `bin/restore-env`, and remember headless
-  Chromium needs `LD_LIBRARY_PATH=/tmp/al2023/lib` after a manual unpack.
+  A wiped sandbox also takes `node_modules` with it — run `bin/restore-env`. Headless Chromium needs
+  `LD_LIBRARY_PATH=/tmp/al2023/lib`, which is why every gate is run as `sh bin/gate node …`: the
+  wrapper restores the packages and the libraries, exports the path, and refuses the two speed gates
+  (`verify-feel`, `verify-collision`) when another Chromium already has the box.
 - **A patch script for `_gen_html.py` anchors on one structural line, never on remembered prose or a
   line number.** Grep the exact anchor before writing it; assert every replacement fires exactly once;
   do all inserts in a single pass bottom-up, because line numbers shift under your own hands; and after

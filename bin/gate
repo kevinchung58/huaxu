@@ -1,0 +1,96 @@
+#!/bin/sh
+# gate -- run one verification gate in a sandbox that is probably not the one that ran it last time.
+#
+# Three things break a gate run here, and all three look like something else:
+#
+#   1. `node_modules` was wiped between turns -> `Cannot find module 'puppeteer-core'`, which reads
+#      as a bug in the gate. `bin/restore-env` fixes it.
+#   2. `/tmp/al2023/lib` was wiped -> puppeteer exits `Code: 127, libnspr4.so: cannot open shared
+#      object file`, which reads as a crashed browser (round 85: `verify-tables` and `verify-story`
+#      both "failed" this way inside a 16-gate batch, and both pass unchanged with the path set).
+#   3. another Chromium is already running -> the two gates that measure speed or collision
+#      (`verify-feel`, `verify-collision`) quietly measure a slower machine instead of failing.
+#      `TODO.md` section 2.3 says they need the box to themselves; this is what says so out loud.
+#   4. the page server is not running -> `net::ERR_CONNECTION_REFUSED at http://127.0.0.1:8080/...`,
+#      thrown from inside puppeteer, which reads as a broken gate rather than as a stopped server.
+#      A browser gate that asks for that URL now gets one started for it, and the server is stopped
+#      again when the gate exits -- a gate run must not leave a background process behind.
+#
+# So: restore what is missing, export the library path, refuse the exclusive gates on a busy box,
+# and then hand the command its own argv untouched and its own exit code back.
+#
+#   sh bin/gate node .verify/verify-walk.mjs
+#   sh bin/gate node --test
+#   sh bin/gate node tools/bench.mjs --check
+#
+# `GATE_VERBOSE=1` prints what it did; `GATE_CHROMIUM_PATTERN` overrides what counts as a running
+# Chromium (the default is the sandbox's own binary, /tmp/chromium).
+set -u
+cd "$(dirname "$0")/.."
+
+if [ "$#" -eq 0 ]; then
+  echo "usage: sh bin/gate <command> [args...]" >&2
+  exit 2
+fi
+
+say() { [ -n "${GATE_VERBOSE:-}" ] && echo "== $*" >&2; return 0; }
+
+# 1. the packages
+if [ ! -d node_modules/puppeteer-core ]; then
+  echo "== node_modules is missing: restoring the environment (sh bin/restore-env)" >&2
+  sh bin/restore-env >&2 || exit 1
+fi
+
+# 2. the browser's shared libraries
+if [ ! -f /tmp/al2023/lib/libnspr4.so ]; then
+  say "restoring /tmp/al2023"
+  sh bin/chromium-libs >&2 || exit 1
+fi
+LD_LIBRARY_PATH="/tmp/al2023/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH
+say "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+
+# 3. the gates that need an idle box
+case " $* " in
+  *verify-feel*|*verify-collision*|*walk-feel*)
+    PATTERN=${GATE_CHROMIUM_PATTERN:-/tmp/chromium}
+    if pgrep -f -- "$PATTERN" >/dev/null 2>&1; then
+      echo "REFUSED: $1 $2 wants the box to itself and a Chromium is already running ($PATTERN)." >&2
+      echo "         the speed it would measure is the other process's. Wait, or stop it, then re-run." >&2
+      exit 3
+    fi ;;
+esac
+
+# 4. the page server, for the gates that load over HTTP
+needs_server() {
+  for a in "$@"; do
+    [ -f "$a" ] || continue
+    grep -q "127\.0\.0\.1:8080\|localhost:8080" "$a" 2>/dev/null && return 0
+  done
+  return 1
+}
+listening() {
+  curl -s -o /dev/null --max-time 2 "http://127.0.0.1:8080/index.html" 2>/dev/null
+}
+
+SERVER_PID=
+cleanup() { [ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null; return 0; }
+trap cleanup EXIT INT TERM
+
+if needs_server "$@"; then
+  if listening; then
+    say "using the server already on 8080"
+  else
+    python3 -m http.server 8080 --bind 0.0.0.0 >/dev/null 2>&1 &
+    SERVER_PID=$!
+    i=0
+    while [ "$i" -lt 50 ] && ! listening; do sleep 0.1; i=$((i + 1)); done
+    if listening; then say "started a page server on 8080 (pid $SERVER_PID), will stop it after"
+    else echo "!! could not start a page server on 8080; run sh bin/preview and try again" >&2; exit 4; fi
+  fi
+fi
+
+"$@"
+CODE=$?
+cleanup
+exit "$CODE"

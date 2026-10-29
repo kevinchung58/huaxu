@@ -1,0 +1,47 @@
+#!/bin/sh
+# chromium-libs -- unpack the pinned Chromium's shared libraries to /tmp/al2023.
+#
+# `@sparticuz/chromium` ships its binaries brotli-compressed and unpacks them itself the first time
+# it is asked for an executable path -- but it unpacks into `node_modules`, not into the system
+# library search path, and the headless binary needs `libnspr4.so`, `libnss3.so` and the SwiftShader
+# GL stack from `/tmp/al2023/lib` before it will even start. Without that directory puppeteer dies
+# with `Code: 127 ... cannot open shared object file`, which reads like a crash in the gate and is
+# really a missing environment variable (round 85: `verify-tables` and `verify-story` both failed
+# that way inside a batch, and both pass when the path is exported).
+#
+# Idempotent and quiet: prints LIBS OK or LIBS MISSING, and installs nothing else. Called by
+# `bin/restore-env` (a wiped sandbox) and by `bin/gate` (before any browser gate), so the unpack
+# exists in one place instead of two.
+#
+# The decompression is done in node because `brotli` is not installed in this sandbox.
+set -e
+cd "$(dirname "$0")/.."
+
+if [ -f /tmp/al2023/lib/libnspr4.so ]; then
+  echo "LIBS OK"
+  exit 0
+fi
+
+BIN=node_modules/@sparticuz/chromium/bin
+if [ ! -d "$BIN" ]; then
+  echo "LIBS MISSING -- $BIN is not there; run sh bin/restore-env (it installs the packages)" >&2
+  exit 1
+fi
+
+node -e '
+const z = require("zlib"), fs = require("fs"), bin = process.argv[1];
+for (const f of ["al2023", "fonts", "swiftshader"]) {
+  const p = `${bin}/${f}.tar.br`;
+  if (fs.existsSync(p)) fs.writeFileSync(`/tmp/${f}.tar`, z.brotliDecompressSync(fs.readFileSync(p)));
+}' "$BIN"
+
+mkdir -p /tmp/al2023
+for t in al2023 swiftshader fonts; do
+  [ -f "/tmp/$t.tar" ] && tar -x -f "/tmp/$t.tar" -C /tmp/al2023 2>/dev/null || true
+done
+chmod -R 755 /tmp/al2023
+
+if [ -f /tmp/al2023/lib/libnspr4.so ]; then echo "LIBS OK"; else
+  echo "LIBS MISSING -- the tarballs unpacked but /tmp/al2023/lib/libnspr4.so is still absent" >&2
+  exit 1
+fi

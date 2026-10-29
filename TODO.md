@@ -12,7 +12,7 @@
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、
   `rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支**：`arena/0cb70678-huaxu` → `master`；PR #21 開著，**未合併**（合併要站主一句授權）。
-- **三層驗證**：`node --test`（45 條，約 12 s，不開瀏覽器）→ `.verify/` 閘門 28 支（§2.3 的清單就是
+- **三層驗證**：`node --test`（51 條，約 12 s，不開瀏覽器）→ `.verify/` 閘門 28 支（§2.3 的清單就是
   「有沒有跑」的判準）→ 量具（§2.4，只在需要數字時跑）。效能看 `tools/bench.mjs`（§5.6）。
 - **規模**：`js/site.js` 一個 closure 9,479 行（§3 P3）、產生器 7,524 行、`.verify` 92 支、`skills/` 19 個。
 
@@ -39,15 +39,18 @@
 
 ### 2.3 閘門（一次跑完）
 
-Puppeteer 需要 `LD_LIBRARY_PATH=/tmp/al2023/lib`；HTTP 型閘門要先 `sh bin/preview`（0.0.0.0:8080）；
-**`verify-collision` 與 `verify-feel` 要獨佔機器**（背景有別的 Chromium，量到的速度就不算數）。
+**每一支都走 `sh bin/gate`**：它補回被沙盒清掉的 `node_modules` 與 `/tmp/al2023/lib`、匯出
+`LD_LIBRARY_PATH`，並在機器上已經有 Chromium 時**拒絕**跑 `verify-feel`／`verify-collision`／`walk-feel`
+（exit 3）——背景有別的瀏覽器，量到的速度與碰撞就不是這一頁的（2026-10-30：`verify-tables` 與
+`verify-story` 在批次裡「紅」掉，其實只是沒匯出路徑，同一支單跑就過）。HTTP 型閘門仍要先
+`sh bin/preview`（0.0.0.0:8080）。
 
 **不在清單上的閘門等於不存在**：它不會紅，因為沒有人跑它。加一支閘門，就同時把它加進下面這一段。
 
 ```sh
 sh bin/restore-env && sh bin/preview          # 環境 + 伺服器（0.0.0.0:8080）
 # ── 不開瀏覽器（秒級）──
-node --test                                    # 45 條：41 條純檔案、4 條 jsdom 巷道
+node --test                                    # 51 條：41 條純檔案、4 條 jsdom 巷道、6 條環境（`bin/gate`）
 node tools/bench.mjs                           # 效能基準（§5.6）；`--check` 是預設，`--write` 重錄
 node .verify/verify-shapes.mjs                 # 248 個 prop 都有形
 node .verify/verify-geometry.mjs
@@ -71,19 +74,19 @@ node_modules/.bin/impeccable detect --json .   # []
 git diff --check && python3 -m py_compile _gen_html.py bin/toronto_massing.py
 md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff /tmp/a /tmp/b   # 冪等
 # ── 真瀏覽器，順序跑（獨佔）──
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-feel.mjs        # 12/12（獨佔）
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-look.mjs          # 5 張桌子都量到
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-nowebgl.mjs     # 35/35
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-island.cjs      # 47 站，每站 empty 0 %
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-mirror.mjs      # 看到的就是按到的（73 % vs 1 %）
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-box.mjs         # 75/75 框坐在自己畫素上、15/15 按壓（5 頁，約 3 分鐘；`SHIFT=40` 是反測）
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-motion.mjs
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-wheel.cjs       # 三張取最大（15 車廂）
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-hotel.cjs
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-rail.mjs        # 4/4（四個起點到同一顆停止點）
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-objects.mjs
-LD_LIBRARY_PATH=/tmp/al2023/lib node bin/verify-three.mjs           # 14,924 world + 1,048 water
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 頁，約 50 分鐘；動到移動／碰撞碼才必跑）
+sh bin/gate node .verify/verify-feel.mjs          # 12/12（獨佔）
+sh bin/gate node .verify/verify-look.mjs          # 5 張桌子都量到
+sh bin/gate node .verify/verify-nowebgl.mjs       # 35/35
+sh bin/gate node .verify/verify-island.cjs        # 47 站，每站 empty 0 %
+sh bin/gate node .verify/verify-mirror.mjs        # 看到的就是按到的（73 % vs 1 %）
+sh bin/gate node .verify/verify-box.mjs           # 75/75 框坐在自己畫素上、15/15 按壓（5 頁，約 3 分鐘；`SHIFT=40` 是反測）
+sh bin/gate node .verify/verify-motion.mjs
+sh bin/gate node .verify/verify-wheel.cjs         # 三張取最大（15 車廂）
+sh bin/gate node .verify/verify-hotel.cjs
+sh bin/gate node .verify/verify-rail.mjs          # 4/4（四個起點到同一顆停止點）
+sh bin/gate node .verify/verify-objects.mjs
+sh bin/gate node bin/verify-three.mjs             # 14,924 world + 1,048 water
+sh bin/gate node .verify/verify-collision.cjs     # 28/28（7 頁，約 50 分鐘；動到移動／碰撞碼才必跑）
 ```
 
 每支後面的數字是**最後一次跑到的**，不是保證；引用前重跑。

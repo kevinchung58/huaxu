@@ -206,15 +206,15 @@ Every change, before it is committed:
 ```
 sh bin/restore-env            # the sandbox wipes; this is idempotent and never resets hard
 sh bin/preview                # regenerate and serve
-node .verify/verify-shapes.mjs
-node .verify/verify-geometry.mjs
-node .verify/verify-clash.mjs
-node .verify/verify-walk.mjs
-node .verify/verify-collision.cjs        # the walker must not catch on walls (round 42)
-node .verify/verify-nowebgl.mjs          # no-WebGL: the lane names it and keeps its list (round 55)
-node .verify/verify-feel.mjs             # a walk's speed must not depend on the frame rate (round 56)
-node .verify/verify-body.mjs             # no body may stand inside a drawn prop; every depth keeps a 60 cm passage (round 57)
-node .verify/verify-objects.mjs          # needs LD_LIBRARY_PATH=/tmp/al2023/lib
+sh bin/gate node .verify/verify-shapes.mjs
+sh bin/gate node .verify/verify-geometry.mjs
+sh bin/gate node .verify/verify-clash.mjs
+sh bin/gate node .verify/verify-walk.mjs
+sh bin/gate node .verify/verify-collision.cjs        # the walker must not catch on walls (round 42)
+sh bin/gate node .verify/verify-nowebgl.mjs          # no-WebGL: the lane names it and keeps its list (round 55)
+sh bin/gate node .verify/verify-feel.mjs             # a walk's speed must not depend on the frame rate (round 56)
+sh bin/gate node .verify/verify-body.mjs             # no body may stand inside a drawn prop; every depth keeps a 60 cm passage (round 57)
+sh bin/gate node .verify/verify-objects.mjs
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 md5sum *.html; python3 _gen_html.py; md5sum *.html   # idempotent
 ```
@@ -247,8 +247,21 @@ tree still holds the branch's files.
 usually intact and only the branch pointer is wrong. Run it at the start of a turn and again
 whenever a tool call fails with a missing package.
 
-Scripts that need `node_modules` must live in `.verify/`, not `/tmp`. Puppeteer scripts need
-`LD_LIBRARY_PATH=/tmp/al2023/lib`.
+Scripts that need `node_modules` must live in `.verify/`, not `/tmp`.
+
+**Run every gate through `sh bin/gate`**, never as a bare `node .verify/...`:
+
+```sh
+sh bin/gate node .verify/verify-walk.mjs
+sh bin/gate node --test
+```
+
+It restores `node_modules` and `/tmp/al2023/lib` if the sandbox took them, exports
+`LD_LIBRARY_PATH=/tmp/al2023/lib` for puppeteer, and refuses `verify-feel` / `verify-collision` /
+`walk-feel` (exit 3) while another Chromium is running — those two measure speed and collision, and a
+busy box gives them a wrong answer instead of a red light. Both failure modes cost a round when they
+are not wrapped: `Cannot find module 'puppeteer-core'` and `Code: 127, libnspr4.so: cannot open
+shared object file` both read as a broken gate, and both are a missing environment.
 
 ## 7. Build in one pass, verify in one pass
 
