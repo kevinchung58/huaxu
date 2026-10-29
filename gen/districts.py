@@ -2640,12 +2640,17 @@ DISTRICTS = [
             # which could have worked). What the middle of the walk does hold, level and looking
             # down the rail, is the water and the gorge past it.
             {"z": 4200, "x": 250, "yaw": 70, "pitch": 6, "label": "the rail above the upper river"},
-            # Round 69m: the point itself, 3 m short of the floor's end. Projected at (7.0, 156.0)
-            # yaw 6 pitch 12: 38 % sheet, 22 % lower river, 26 % sky, 6 % rail. The drop reads as a
-            # drop. Both stops then moved in from the lane's edge (x 700 -> 250): the parapet stands
-            # at x 7.85-8.35, so a station at 700 stood 0.7 m from a 92 cm wall, and the frame was a
-            # stone diagonal with the falls behind it (`.preview/goat69mk`).
-            {"z": 5379, "x": 250, "yaw": 88, "pitch": 14, "label": "Terrapin Point"},
+            # Round 69m: the point itself, 3 m short of the floor's end; both stops pulled in from
+            # the lane's edge (x 700 -> 250) because the parapet stands at x 7.85-8.35 and a station
+            # at 700 stood 0.7 m from a 92 cm wall.
+            # Round 82: the pitch was still 14, and pitch is positive DOWN here -- so the stop named
+            # for the view arrived looking at a 5 m stone wall across the middle third, with the
+            # Horseshoe a stripe at 25-35 % height (`_stopview.mjs`: the only one of 57 stops whose
+            # own subject was off-centre like that). Swept with `_goatpitch.mjs` and the frame read
+            # at each: pitch 14 centre-third mean 117.9 / sd 51.9 / 62 colours (the parapet), pitch 0
+            # 132.7 / 63.1 / 75, pitch -2 141.2 / 62.8 / 79 (the sheet and its plume fill the frame,
+            # the rail along the bottom). -2 ships; `.preview/goat-pitch/` holds the five frames.
+            {"z": 5379, "x": 700, "yaw": 88, "pitch": -2, "label": "Terrapin Point"},
         ],
         "exit": {"id": "curtain-home", "kind": "noren", "x": 0, "z": -46, "y": 172, "ry": 0,
                  "title": "The way back across the Rainbow",

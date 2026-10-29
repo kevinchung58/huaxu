@@ -110,6 +110,10 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
   平均／sd／p05-p95／rgb 與 Δluma；每個狀態拍 5 張先平均，並印出同狀態雜訊）、`_ray.mjs`（對某個像素
   射線，回報前三個命中的 mesh 與世界座標）、`_fps.mjs`。**這幾支遇到 pageerror 一律 exit 2、不印數字**：
   空白背景配 HUD 也會量出一張表。
+- **一站一張影格**：`_stopshot.mjs`（按某一站、不瞄準，直接拍——驗收「訪客按了會看到什麼」用它，
+  不要用 `_aim` 把鏡頭調到好看為止）、`_goatcheck.mjs`（抵達後量 `blockedAt`、標記是否在框內、
+  按標記中央打到誰）、`_flowcheck.mjs`（同一個站兩張相隔 1.2 s 的影格，比對帶狀 mean 與變動像素佔比；
+  `OFF=1` 是對照組）、`_reducedstill.mjs`（reduced-motion 下兩張影格必須位元組相同）。
 - **每一站看什麼**：`_stopview.mjs`（抵達後對畫面正中央射線，回報第一個**不透明**的面、它的距離，以及
   `GRID=1` 時 16×12＝192 條射線的分類佔比：近牆／近物／遠景／天空／空。**單一射線只能找候選，佔比才能說
   「這面牆是主角還是角落」**——第 81 輪用它掃 57 站，9 站中央 12 m 內有不透明立面，其中 Goat stop 3 的近牆
@@ -166,36 +170,34 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
   的影格逐像素比對。沒過這三關就不算拆完。
 - **不要**為了讓行數好看而把 500 行搬進 `helpers.js`、留下 9,000 行的檔案。
 
-### P6 — 場景還欠的（站主 2026-10-23 的清單，未結案項）
+### P6 — 場景還欠的（站主 2026-10-23 的清單）
 
-0. **Goat Island stop 3 的預設視角是往下看（等站主一句話）**：authored `yaw 88 / pitch 14`，而本專案的
-   pitch 正值＝往下。量到的（`_stopview.mjs`）：57 站裡有 **9 站**的正中央 12 m 內有不透明的立面，
-   但只有這一站的**主體**被擠成畫面上一條——`_goatpitch.mjs` 的 pitch 掃描與影格在 §4。
-   **看畫面的事留給站主**。驗收：站主選定 pitch 後重拍影格，中央像素落在水幕上、不再落在石牆上。
-1. **其他頁面的地標盤**：Goat 兩道瀑布已是世界幾何；Toronto 的 `falls` 模型只有 `look` 的數值，
-   沒有專屬量具。
+已收（本輪或更早）：
+- **Goat Island stop 3 的取景**：`pitch 14 → −2`、站位 `x 250 → 700`（欄杆前 85 cm，`blockedAt` 為 false）。
+  量到的：中央三分之一 mean 117.9／sd 51.9／62 色 → **141.2／62.8／79**，水幕從「25–35 % 高的一條」
+  變成佔畫面下半，霧柱在中央；`falls-horseshoe` 標記 924,668 在框內且按得到；`verify-walk` 212/212、
+  `verify-island` 47/47、`verify-rail` 4/4、`verify-box` 75/75 全部重跑。影格 `.preview/goat-pitch/`。
+- **近水面是一片不會動的貼圖**：`foam`／`rapids` 兩張 tile 現在沿 V 軸以 `time` 捲動
+  （`FLOW_KEYS`／`FLOW_RATE`，`js/scene3d.js`；reduced-motion 時完全靜止）。A/B 量到的：
+  近水面 y 640-767 **2.38 mean／10.4 % 像素在動** ↔ 把流動關掉同一個框 **0.07／0 %**；
+  天空帶兩次都是 0.14–0.16，水幕帶 0.29–0.32（`_flowcheck.mjs`，`OFF=1` 是對照組）。
+  reduced-motion 下兩張影格位元組完全相同（`_reducedstill.mjs`）。
+- 店面本體、樹線結構、東京最後一站、五重塔、廣場暗帶：更早的輪次已收，各由 `verify-shapes`、
+  `_ray`、`verify-wheel` 等守住。
+
+還開著：
+1. **其他頁面的地標盤**：Goat 兩道瀑布已是世界幾何；Toronto 的 `falls` 模型只有 `look` 的數值，沒有專屬量具。
 2. **量具覆蓋**：`_lane.mjs` / `_tile.mjs` 只量 Niagara 的鋪面；量別的頁面前先確認 `FLOOR_PERIOD`
-   對那個 floor style 的意義。`audit-all.mjs` 的平不平判準（框內 sd ≥ 20、面積 ≥ 120×120 px、取最大視角）
-   與程式不一致，`skyline-cn`（四棟塔的小模型，框內三成是空隙）因此永遠被判平——**先修判準，不要動模型**。
-3. **Niagara 的夜**：`HOUR=night` 沒有夜色授權 ⇒ 整頁深藍（mean 42.1）、只有兩顆燈光暈。要不要給
-   Clifton 一條夜色記錄是站主的決定（§4）。
-4. **Goat Island 三件沒收尾的**：①鋪面偏亮（143.7 vs 記錄值 121，共用繪法，要動先確認別的頁）；
-   ②林線那帶偏暗（`canopy` 斑塊）；③近水面仍偏平（加了 `foam` 水流線，要真的流得改 shader）。
+   對那個 floor style 的意義。`audit-all.mjs` 的「平不平」判準（框內 sd ≥ 20、面積 ≥ 120×120、
+   取最大視角）與程式不一致，`skyline-cn`（四棟塔的小模型，框內三成是空隙）因此永遠被判平——
+   **先修判準，不要動模型**。
+3. **Niagara 的夜**：`HOUR=night` 沒有夜色授權 ⇒ 整頁深藍（mean 42.1）、只有兩顆燈光暈。
+   要不要給 Clifton 一條夜色記錄是站主的決定（§4）。
+4. **Goat Island 另外兩件**：①鋪面偏亮（143.7 vs 記錄值 121，共用繪法，要動先確認別的頁）；
+   ②林線那帶偏暗（`canopy` 斑塊）。
 
 ## 4. 需要站主決定（代理不能替他決定）
 
-- **Goat Island stop 3 的 pitch**（P6-0，全站唯一的「抵達後正中央是牆」）。量到的（`_goatpitch.mjs`，
-  1024×768，reduce，`.preview/goat-pitch/pitch{N}.png`）：
-
-  | pitch | 畫面中央三分之一 mean／sd／色數 | 中間是什麼 |
-  |---|---|---|
-  | **14（現行）** | 117.9／51.9／62 | **5 m 外的石牆**，天空只剩頂上一條 |
-  | 8 | 105.6／53.6／64 | 石牆退了，水幕在中央 |
-  | 4 | 107.4／57.4／70 | 水幕為主 |
-  | 0 | 132.7／63.1／75 | 水幕＋樹線＋天空 |
-  | **−2** | 141.2／62.8／79 | 水幕與霧柱佔主要畫面，牆只在底部邊緣 |
-
-  建議改成 **0 或 −2**（−2 的取景最像在 Terrapin Point 站著看馬蹄）。這是我不能替他決定的取景。
 - **瀑布的圈要不要更亮**（`.preview/r65e/`、`.preview/r65b/falls2/`）；文字要不要縮短。
 - **夜景 fold 0.62 的上限**（全站規則；`verify-walk` 有「night fold keeps a readable floor」的斷言）。
 - **站點 6 的 A 字架要不要進畫面**（先量那條直線，不許先改後說）。
@@ -253,6 +255,13 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
   不是水幕。
 - **shader 的 backtick 陷阱**：`js/scene3d.js` 的 6 個 shader 是 template literal，GLSL 註解裡一個 backtick
   會提早收掉字串，而 `node --check` 照過（讀成 tagged template）、瀏覽器整個空白。`shader-lits.mjs` 為此存在。
+
+### 5.4c 會動的水
+
+`FLOW_KEYS = {foam, rapids}`，`FLOW_RATE = {foam 0.055, rapids 0.11}`（V 單位／秒，`js/scene3d.js`）：
+只有這兩張測繪貼圖沿 V 軸捲動，而且**只在非 reduced-motion 時**（與水幕 shader 的 `uMotion` 同一條規則）。
+量法：同一個站拍兩張相隔 1.2 s 的影格，比對帶狀 mean 與「差 > 6 的像素佔比」，`OFF=1` 把 `FLOW_KEYS`
+清空當對照組（`_flowcheck.mjs`）。**不要用「看起來有動」當證據**——先前那版在 A/B 裡是 0 %。
 
 ### 5.5 夜景
 

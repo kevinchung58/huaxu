@@ -1534,6 +1534,12 @@ export function createSceneEffects(THREE, scene, source, materials = [], texture
   };
 }
 
+/* Which surveyed textures stand for moving water, and how fast their tile slides (V units per
+   second). Small on purpose: the foam bands are metres wide, and a tile crossing them in seconds
+   reads as a conveyor belt rather than a river. */
+const FLOW_KEYS = new Set(["foam", "rapids"]);
+const FLOW_RATE = { foam: 0.055, rapids: 0.11 };
+
 function buildRenderer(THREE, canvas, backdrop, api) {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: true, powerPreference: "low-power" });
   renderer.setPixelRatio(1);
@@ -1637,6 +1643,14 @@ function buildRenderer(THREE, canvas, backdrop, api) {
       emissive: new THREE.Color(0x16223c), emissiveIntensity: 0,
       polygonOffset: batch.key !== "__flat", polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
     material.userData.nightGlow = true;
+    /* A texture that stands for moving water has to move, or it is a printed sticker. The foam and
+       the rapids under the falls were exactly that: an authored still tile (`makeTexture` "foam")
+       on a horizontal quad, and from Terrapin Point the near water read as flat paint. The scroll is
+       the smallest honest change -- the tile slides under the geometry along its own V axis while
+       the quad stays authored -- and it is driven by the same `time` the water shader uses, so a
+       reduced-motion visitor gets a still (uMotion's rule, one line down). */
+    const flow = FLOW_KEYS.has(batch.key) ? FLOW_RATE[batch.key] : 0;
+    if (flow && map) { map.repeat.set(1, 1); material.userData.flow = flow; }
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = `surveyed world: ${batch.key}`;
     mesh.frustumCulled = true;
@@ -1954,6 +1968,14 @@ function buildRenderer(THREE, canvas, backdrop, api) {
         }
       }
       lastDay = day; lastHeld = held; lastDayPage = dayPage;
+    }
+    /* The scrolling tiles: offset advances with the frame's own time, so nothing here keeps a
+       clock of its own and a paused lane (reduced motion) is a still picture. */
+    if (!reducedMotion) {
+      for (const m of materials) {
+        const rate = m.userData && m.userData.flow;
+        if (rate && m.map) m.map.offset.y = (time * rate) % 1;
+      }
     }
     if (water) {
       water.uniforms.uTime.value = time; water.uniforms.uMotion.value = reducedMotion ? 0 : 1;
