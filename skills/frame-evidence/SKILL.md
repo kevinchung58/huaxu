@@ -180,43 +180,71 @@ undone.
 ## 9. Prove the instrument against the paint before quoting its numbers
 
 A per-prop rectangle is a *projection*, and a projection can be wrong. Round 70 measured `skyline-cn`
-in `rooms-toronto.html` at stop 4 and found the `[data-obj]` rectangle **not on the model**:
+in `rooms-toronto.html` at stop 4 and concluded the `[data-obj]` rectangle was **not on the model**,
+because the towers "painted at x 130-420" while the rectangle sat at 582. Round 70 also concluded the
+opposite: that after the mirror fix the same rectangle **frames** the towers. Both statements are in
+`TODO.md`. Both quote the same rectangle — and the paint in each came from a different colour
+heuristic ("the warmest cluster", "the rectangle's own crop").
 
-| heading | rectangle (x, y, w, h) | where the four towers are painted |
-|---|---|---|
-| 0° | 582, 191, 312, 552 | x 130-420, y 160-690 |
-| 30° | 163, 172, 305, 566 | x 548-860, y 170-700 |
-| 31° | 153, 171, 307, 569 | — |
-| 60° | -22, 147, 350, 622 | — |
+**Round 79 settled it with a measurement that cannot drift**: `.verify/verify-box.mjs` asks the
+renderer to paint one prop flat magenta (`#ff00ff`, a colour no scene contains), reads the bounding
+box of the magenta pixels, and reads the rectangle from the live DOM in the same parked state. Then it
+presses the middle of that paint through `document.elementFromPoint`.
 
-The rectangle *tracks* the heading (so it is not a stale DOM read) but it moves the **opposite way** to
-the paint, and the offset reverses sign between 0° and 30° — about +450 px one way, -400 px the other.
-Cropping the rectangle gives bare wall: mean 102.3, **sd 14.6**, 192 colours — exactly the number
-`audit-all.mjs` printed as "flat". The towers inside the same frame measure **sd 24.2**, 246 colours.
+| heading | rectangle | paint | cover | verdict |
+|---|---|---|---|---|
+| 0°, rooms-toronto stop 4 | 581,192 **312x552** | 581,191..892,683 | **100 %** | on its own paint |
+| 30°, same stop | 164,172 **305x566** | 163,172..468,683 | **100 %** | on its own paint |
+| 0°, rooms-fukuoka stop 2 | every visible prop | — | 100 % | 33/33 across two pages |
 
-So the verdict "skyline-cn is flat" was a measurement of a wall. And it is not one row of the table:
-`audit-all.mjs` and `verify-tables.mjs` both measure *through* those rectangles, so a rectangle that
-misses its prop makes every number derived from it void — including the ones that passed.
+So **P6-8 was a false alarm**: the rectangle was never on bare wall. What produced it is the failure
+this section is about — a heuristic asked to answer "which pixels are this prop". A colour rule fails
+on a prop that is not the only warm thing, a crop rule measures whatever the crop contains, and both
+produce a confident number. Ask the renderer instead. The patch is the one `_plume.mjs` already uses:
+rewrite the served `js/site.js` in memory, tint the quads of one prop after its branch has pushed
+them, and assert the anchor matched **exactly once** — a patch that quietly matches nothing measures
+the scene against itself and reports perfect agreement.
 
-The offset turned out to be a mirror, not a shift: every rectangle satisfies `x_rect = 1024 - x_paint`
-about the frame centre. `skyline-cn` 582-894 vs paint 130-420 at 0 deg; 163-466 vs 548-860 at 30 deg;
-the CN Tower's 500-586 vs paint 455-530; the dome's -25-431 vs paint 820-960. The cause is the camera,
-not the props: Three's `lookAt` with `up = +Y` looking down `+Z` gives a camera right axis of `-X`
-(`x = up x z`), while the 2D painter's `camPt` puts `+X` on the right (`W/2 + focal*dx/az`). The 3D
-picture is the 2D model's left-right mirror -- which also means the hit boxes, the reach test, and
-`_map.mjs`'s "the water is on your right" are all on the other side of what the visitor sees.
+Two properties, and one non-verdict:
+
+- **cover**: the prop's own pixels lie inside its rectangle. The mirror's signature was 0 %; a box
+  dragged 40 px sideways reads 3.9 % (`SHIFT=40 node .verify/verify-box.mjs`), which is how the gate
+  is proved able to fail.
+- **press**: `elementFromPoint` at the paint's centre answers with that prop, or with a **nearer** one
+  (`z-index = 1200 - depth/4`, and "of two overlapping boxes the nearer wins the press"). Scenery is
+  skipped: `[data-quiet]` carries `pointer-events: none` by design (round 65).
+- **the centre offset is not a verdict.** `skyline-cn` measures +30 px, because the box includes 61 px
+  of table below the model's own lower faces. A centre assertion would fail a correct box.
+
+**The box and the paint must describe the same frame.** A moving prop is read twice — rectangle first,
+screenshot a moment later — and the lane's animation moves between the two reads: `tree-c3`, swaying,
+shifted 8 px and the gate called a correct box 89 % covered. `js/site.js` reads `prefers-reduced-motion`
+**once, at boot** (`const ease = !reduce()`), so `_aim.openPage({ reduce: true })` sets the media
+feature *before* the navigation; emulating it afterwards changes nothing.
+
+**Two defects this gate found on its first run** (recorded in `TODO.md`, repro commands in the gate's
+header): the hub street's `stall-menya` is a 170x128 card standing parallel to the wall — edge-on, a
+12 px sliver at 19 m — and its own faces paint nothing at two headings while its press box sits on the
+shopfront behind it; and at `rooms-niagara.html` stop 3 the `falls-horseshoe` disc projects to x 1128
+of a 1024-wide frame, so the falls that stop exists to look at cannot be pressed without turning.
+
+Still true from round 70, and still worth memorising: the rectangle *tracks* the heading (so a stale
+DOM read is not the explanation), and an offset that reverses sign between 0° and 30° is a mirror, not
+a shift (`x_rect = W - x_paint`). That mirror is what round 70 fixed. **The rectangle was never moved
+by it.**
 
 The rule, before any per-prop number is quoted:
 
-1. Draw the rectangle on the frame (`.verify/_mark.mjs SRC DST X Y W H`) and look at it.
-2. If it is not on the paint, the **instrument** is the defect. Say so, and file it as an instrument
-   defect with the heading it was measured at — not as a scene defect with an adjective.
-3. Prefer a unit that cannot drift: `.verify/_box.py` over a rectangle *you chose by looking* beats a
-   rectangle the page handed you.
-
-A rectangle can also be honest and still uninformative: `tram-t`'s is the whole 380 cm track (because
-the record's `w` is the line, not the car), and `boat-lake`'s is clipped to 1x1 in most views. A prop
-that moves, or whose record describes its path, is not measured by its hit box.
+1. **Tint the prop and read its paint** (`verify-box.mjs`), or crop a rectangle you chose *by looking*
+   (`.verify/_box.py`). A colour heuristic is not a second opinion; it is a guess with a number on it.
+2. If the rectangle is not on the paint, the **instrument** or the **projection** is the defect. Say
+   which, with the heading it was measured at — not a scene defect with an adjective.
+3. A rectangle can be honest and still uninformative: `tram-t`'s is the whole 380 cm track (the
+   record's `w` is the line, not the car), and `boat-lake`'s is clipped to 1x1 in most views. A prop
+   that moves, or whose record describes its path, is not measured by its hit box.
+4. A prop standing at the frame's edge has a rectangle three times its visible paint
+   (`plinth-market` 1251 px of box, 200 px of frame). Measure the fill against the **visible** part of
+   the rectangle, or every edge prop fails for standing at the edge.
 
 ## 10. A mirrored picture is not a cosmetic bug
 

@@ -66,7 +66,7 @@ number quoted by `scene-quality-loop`, `pua`, or a PR body is supposed to come t
 because three tools in this repository ran to completion, printed confident lines, and were wrong —
 a gate that framed two of seven ids, a stop photographed from wherever the glide had got to, and a
 ray hit printed in centimetres that a round of TODO read as kilometres. Route any claim about a
-rendered frame through it (round 69k).
+rendered frame through it (round 69k). Round 79 added its sharpest instrument: `verify-box.mjs` tints one prop flat magenta in the served script, reads the bounding box of that paint and presses it, because two rounds had quoted the same rectangle as being on bare wall and on its model — and both paint readings were colour heuristics.
 
 `ux-walkthrough` owns the experience of a press: what a visitor is promised before they spend it, and what actually changes after. It exists because the owner judged the same surface four times — a card, then a card behind a bar, then no card, then text where there should have been a change — and because the Falls Incline announced a ride and moved nothing for eleven rounds of green gates. Route every change to a press, bar, card, panel, reel or prompt through it, and run `.verify/_uxwalk.mjs` before claiming a walk page feels right (round 74).
 

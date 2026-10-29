@@ -71,7 +71,8 @@ export async function launch({ width = 1024, height = 768 } = {}) {
 
 /* The hour is the visitor's and it is kept across pages, so it is set before the lane boots. */
 export async function openPage(browser, { rooms, hour = "day", base = "http://127.0.0.1:8080",
-                                            width = 1024, height = 768, intercept = null } = {}) {
+                                            width = 1024, height = 768, intercept = null,
+                                            reduce = false } = {}) {
   const page = await browser.newPage();
   page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
   /* A rewrite of one source file has to be armed BEFORE the navigation that loads it. Installing
@@ -83,6 +84,12 @@ export async function openPage(browser, { rooms, hour = "day", base = "http://12
     try { if (h === "night") window.localStorage.setItem("huaxu.walk-hour.v1", "night"); }
     catch (e) { /* private mode: the choice lives this visit only */ }
   }, hour);
+  /* Round 79: a measuring instrument that photographs a moving prop must not read its geometry from
+     one frame and its silhouette from another. `js/site.js` reads `prefers-reduced-motion` ONCE, at
+     boot (`const ease = !reduce()`), so the preference has to be in place before the navigation --
+     emulating it afterwards changes nothing and `verify-box` called a correct box 89 % covered
+     because a swaying crown had moved 8 px in the 600 ms between the two reads. */
+  if (reduce) await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
   await page.goto(`${base}/${rooms}`, { waitUntil: "networkidle0", timeout: 120000 });
   await page.waitForFunction(() => document.querySelector("[data-walk]")?.__walk?.renderer, { timeout: 60000 });
   await sleep(800);
