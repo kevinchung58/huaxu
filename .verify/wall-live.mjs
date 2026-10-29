@@ -4,7 +4,7 @@
    playing the site with a keyboard: it presses real keys in headless Chromium, walks the ring of
    each page while holding a brace against walls and plinths, and fails (loudly, in the output)
    if the live body ever stops answering while floor is legal ahead of the press. It also reads
-   the rAF cadence, which doubles as the software-renderer frame-time figure TODO.md keeps asking
+   the rAF cadence, which doubles as the software-renderer frame-time figure a report keeps asking
    for — the numbers are printed, and printing is this file's whole job: it is an instrument.
 
    Run (needs the restored env + LD_LIBRARY_PATH=/tmp/al2023/lib and `sh bin/preview`):

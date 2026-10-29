@@ -10,17 +10,25 @@ The owner requires `TODO.md` to be updated **before every PR is opened or update
 ## Before opening or updating a PR
 
 1. **Confirm scope and branch.** Read the user's current request, `AGENTS.md`, current PR state, branch name, `git status`, and the full diff against the PR head. Do not silently include ignored screenshots, reference photographs, local skills, or other untracked artifacts.
-2. **Review the current handoff.** Read the newest `TODO.md` section and the relevant older task records. Keep useful history; do not rewrite an older round as if it were current.
-3. **Write the new current-round section at the top of `TODO.md`.** Record:
+2. **Review the current handoff.** Read `TODO.md` for what is open, and `TODO-archive.md` for how a
+   related round went before. The archive is history, not truth: re-measure a number you are about to
+   rely on, and check whether a later round reversed the conclusion.
+3. **Keep the round log out of `TODO.md`** (owner ruling, 2026-10-29: 「那些紀錄都刪掉，我怕影響你判斷」).
+   The narrative of this round — what was tried, what it measured, what was refuted, which instrument
+   lied — is appended to `TODO-archive.md`. `TODO.md` receives only the deltas an actor needs: status,
+   a new or changed rule, a new gate on the list, a new constant, and the reordered open work. If a
+   sentence in the working file would only matter as "why we did it this way", it belongs in the archive.
+4. **Append the round log to `TODO-archive.md`.** Record:
    - the request/scope and consequential decisions;
    - source/research findings that will otherwise be lost, with URLs, dates/commits, license status, and uncertainty;
    - what changed and what is explicitly out of scope;
    - exact commands, measured counts/results, generated artifacts, and what was visually inspected;
    - known limitations, approximations, failed attempts that changed the diagnosis, and unverified claims;
-   - a **complete, prioritized next-round plan** for every outstanding task that is in scope or already promised, each with its prerequisite and observable acceptance evidence;
+   - which items it opened, closed or reversed in `TODO.md` (the working file holds the plan itself,
+     with each task's prerequisite and observable acceptance evidence);
    - decisions or assets that genuinely require owner input, separately from work the agent can do.
-4. **Audit the next-round list against the repository.** Re-read all active “not done”, “blocked”, “pending”, or “limitation” entries affected by this work. Mark completed or superseded items accurately, carry forward each still-open item or link to its precise section, and distinguish unrelated owner-input backlog from the next task. Do not invent work to make the list look full, and do not omit known work to claim the round is complete.
-5. **Review and validate `TODO.md` before any PR operation.** Ensure the top section matches the current diff and latest evidence, commands/results are not hypothetical, and each next task has a testable acceptance condition. Only after this check, commit and push the branch and create/update the PR.
+5. **Audit the next-round list against the repository.** Re-read all active “not done”, “blocked”, “pending”, or “limitation” entries affected by this work. Mark completed or superseded items accurately, carry forward each still-open item or link to its precise section, and distinguish unrelated owner-input backlog from the next task. Do not invent work to make the list look full, and do not omit known work to claim the round is complete.
+6. **Review and validate both files before any PR operation.** Ensure the top section matches the current diff and latest evidence, commands/results are not hypothetical, and each next task has a testable acceptance condition. Only after this check, commit and push the branch and create/update the PR.
 
 ## Before merge
 

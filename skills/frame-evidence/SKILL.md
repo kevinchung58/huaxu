@@ -173,9 +173,17 @@ comment explaining what it forbids will pass forever (round 69i's `mix()` scan).
 
 ## 8. Write it down where the next round will hit it
 
-Every retraction and every measured constant goes into `TODO.md` in the same round, in the section
-that made the claim. A correction that lives only in a chat message is a correction that will be
-undone.
+Every retraction and every measured constant goes into the repository in the same round, in the
+place the next actor will be standing:
+
+- a **constant or a rule that a future change must obey** → `TODO.md` §5 (or the code, next to what it
+  produced) — these are the numbers a later round is expected to act on;
+- a **retraction, a dead end, the story of which instrument lied** → `TODO-archive.md` — that is
+  history, and since round 81 it does not live in the working plan at all (owner ruling: old records
+  bend the next round's judgement). A retraction still has to be written, or the round that walks into
+  the same hole will do it again; it just must not sit where it reads as current truth.
+
+A correction that lives only in a chat message is a correction that will be undone.
 
 ## 9. Prove the instrument against the paint before quoting its numbers
 

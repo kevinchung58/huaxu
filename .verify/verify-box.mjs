@@ -1,7 +1,8 @@
 /* verify-box -- the `[data-obj]` rectangle must sit on the pixels its prop paints, and a press on
    those pixels must reach that prop (or something legitimately in front of it).
 
-   Why this gate exists (round 79). Round 70 left two claims in TODO.md that cannot both be true:
+   Why this gate exists (round 79). Round 70 left two claims that cannot both be true
+   (both kept in TODO-archive.md):
 
      (a) "the picture was the model's mirror; after the flip, `skyline-cn`'s rectangle [582,191,312,552]
           at yaw 0 frames the four towers";

@@ -157,7 +157,8 @@ The sweep is the second half of the rule. The first half is not adding dead thin
 - A new attribute needs a reader **in the same commit**, and the reader's value needs a user in the
   same commit. `data-lane-day-cycle` was authored, emitted, parsed, and unused for an unknown number
   of rounds because each of those three steps was somebody's good idea.
-- A new probe gets a line in `TODO.md` §2.4 in the same commit, or it is scratch and belongs in
+- A new probe gets a line in `TODO.md` §2.4 in the same commit (the instrument register; the round's
+  *story* goes to `TODO-archive.md`), or it is scratch and belongs in
   `/tmp`.
 - A new gate goes into §2.3 in the same commit, with its count, or it will not run again.
 - A new doc reference names a file that exists at the end of the commit (`verify-skills` cannot check

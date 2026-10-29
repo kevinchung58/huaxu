@@ -20,7 +20,7 @@ The loadable halves live in tracked `skills/` files. Route a real-place build th
 domain skill (`district-author`, `place-intake`, `japan-place`, `street-commons`, `lane-prop`, or
 `landmark-space`) → `scene-quality-loop` for rendered-frame acceptance, using `pua` for diagnosis and
 verification. `karpathy-guidelines` keeps implementation surgical. Before every PR creation/update,
-`pr-handoff` requires an accurate, prioritized next-round plan in `TODO.md`.
+`pr-handoff` requires an accurate, prioritized next-round plan in `TODO.md` — and, since round 81, keeps the round's own narrative in `TODO-archive.md` instead (the owner's ruling: those records bend the next round's judgement).
 
 The individual skills remain useful on their own: `district-author` owns the record/build rules/gate;
 `place-intake` turns supplied photographs into a record; `japan-place` covers Japanese place
