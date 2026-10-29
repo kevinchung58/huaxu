@@ -65,7 +65,10 @@ esac
 needs_server() {
   for a in "$@"; do
     [ -f "$a" ] || continue
-    grep -q "127\.0\.0\.1:8080\|localhost:8080" "$a" 2>/dev/null && return 0
+    # The URL is usually not in the gate at all: it is in `.verify/_aim.mjs`, which the gate
+    # imports. Round 85 measured the difference -- a new instrument importing `_aim` got no server,
+    # because it never spells out the address.
+    grep -qE "puppeteer|_aim\.mjs|127\.0\.0\.1:8080|localhost:8080" "$a" 2>/dev/null && return 0
   done
   return 1
 }

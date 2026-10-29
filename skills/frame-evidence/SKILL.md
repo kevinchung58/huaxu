@@ -137,6 +137,17 @@ The general form: a frame is evidence of *the page as served plus every value th
 renderer*. An override that did not reach the renderer is not part of the frame, and a number derived
 from that frame is a number about something else.
 
+**The same trap from the other side: a check that compares a page to the constant the page read.**
+`.verify/verify-floor.mjs` measures how many centimetres of pavement one tile covers and compares it
+with `64 x FLOOR_PERIOD[style]`. To see whether it can fail, `FLOOR_PERIOD` was changed from
+`{pavers: 3}` to `{pavers: 2}` and the gate re-run: the tile went 192 → 128 cm and the gate stayed
+green **3/3**, because the constant moved both sides of its own comparison. What it proves is real
+and narrower than it looks — the floor's uv obeys the table, the tile is square, every page's paving
+is textured — but *whether period 3 is the right period* is a fact about the painter's own feature
+size (four 48 cm stones across the canvas), which is not in the code anywhere for a gate to read.
+Before quoting a gate that checks a derived quantity, break the derivation on purpose and watch
+which side moves.
+
 ## 6c. Project the geometry before you press the shutter
 
 Round 69m re-aimed one stop three times (yaw 75, 66, 62) and the falls were not in frame any of

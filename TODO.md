@@ -12,9 +12,9 @@
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、
   `rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支**：`arena/0cb70678-huaxu` → `master`；PR #21 開著，**未合併**（合併要站主一句授權）。
-- **三層驗證**：`node --test`（51 條，約 12 s，不開瀏覽器）→ `.verify/` 閘門 28 支（§2.3 的清單就是
+- **三層驗證**：`node --test`（51 條，約 12 s，不開瀏覽器）→ `.verify/` 閘門 29 支（§2.3 的清單就是
   「有沒有跑」的判準）→ 量具（§2.4，只在需要數字時跑）。效能看 `tools/bench.mjs`（§5.6）。
-- **規模**：`js/site.js` 一個 closure 9,479 行（§3 P3）、產生器 7,524 行、`.verify` 92 支、`skills/` 19 個。
+- **規模**：`js/site.js` 一個 closure 9,479 行（§3 P3）、產生器 7,524 行、`.verify` 93 支、`skills/` 19 個。
 
 ## 2. 怎麼做（不變的部分）
 
@@ -85,6 +85,7 @@ sh bin/gate node .verify/verify-wheel.cjs         # 三張取最大（15 車廂�
 sh bin/gate node .verify/verify-hotel.cjs
 sh bin/gate node .verify/verify-rail.mjs          # 4/4（四個起點到同一顆停止點）
 sh bin/gate node .verify/verify-objects.mjs
+sh bin/gate node .verify/verify-floor.mjs         # 8 頁的鋪面 uv：一 tile = 64 × 該層 floor 的 period（12/12）
 sh bin/gate node bin/verify-three.mjs             # 14,924 world + 1,048 water
 sh bin/gate node .verify/verify-collision.cjs     # 28/28（7 頁，約 50 分鐘；動到移動／碰撞碼才必跑）
 ```
@@ -98,8 +99,9 @@ sh bin/gate node .verify/verify-collision.cjs     # 28/28（7 頁，約 50 分�
 
 - **取景**：`_view.mjs`（一張影格一個行程，深站約 55 s）、`_walkshot.mjs`、`_aim.mjs`（轉到某個 yaw 再拍；
   `openPage(..., { reduce })` 必須在導覽前設）、`_gamesshot.cjs`、`_onscreen.mjs`、`browser-shot.mjs`。
-- **量測**：`_pix.mjs`、`_strip.mjs`、`_lumacheck.mjs`、`_hourprobe.cjs`、`_lane.mjs` / `_tile.mjs`（鋪面尺度）、
+- **量測**：`_pix.mjs`、`_strip.mjs`、`_lumacheck.mjs`、`_hourprobe.cjs`、
   `_floorband.mjs`（每頁第一站的鋪面帶 y700-734 x160-864 的 mean／sd；比亮度用它，不要用整張影格的 mean）、
+  `_lane.mjs` / `_tile.mjs` 是鋪面的診斷（單頁深看）；**跨頁的尺度是閘門 `verify-floor.mjs`**、
   `verify-motion.mjs`、`audit-all.mjs`（一次載入量所有 prop 在**它被畫出來的那個最大視角**上的形：框是
   `--padx/--pady` 收回來的剪影、`visibility:hidden` 的視角不算（§5.8）；**診斷不是閘門**，`STRICT=1` 才是）、
   `cost-probe.mjs`、`make-cover.mjs`。
@@ -194,6 +196,10 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
   reduced-motion 下兩張影格位元組完全相同（`_reducedstill.mjs`）。
 - 店面本體、樹線結構、東京最後一站、五重塔、廣場暗帶：更早的輪次已收，各由 `verify-shapes`、
   `_ray`、`verify-wheel` 等守住。
+- **鋪面尺度量到八頁**（原本只有 Niagara）：`street`／`rooms`／`fukuoka`／`toronto`／`journey`／
+  `cntower` 一 tile 都是 **64.0 × 64.0 cm**（period 1），`niagara`／`goat` 的三層（含遠景 tier）都是
+  **192.0 × 192.0 cm**（`FLOOR_PERIOD pavers: 3`，即四顆 48 cm 的石頭）——橫豎兩軸一致、沒有條紋。
+  `verify-floor.mjs` 是它的閘門（12/12）。
 - **量具覆蓋：248 顆 prop 全部量到「它自己的形」**：`audit-all.mjs` 的框修好兩處（未繪製的 prop 留著上一
   個視角的變換；`getBoundingClientRect()` 回的是 44 px 按壓框而非剪影，見 §5.8），八頁重掃：
   248 顆 prop、245 顆量到、18 顆在最大視角上 sd < 20、3 顆是只有文字的記錄（不是 prop）。
@@ -204,8 +210,11 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
    `plinth-*` 桌面、`curtain-back` 布幕、`queue-rail-*` 欄杆、`pipe-nakamise-e` 管、`mailbox-nakamise` 信箱）。
    判準分不出「窗簾」與「壞掉的東西」，所以 `STRICT=1` 仍未開；要開就得先決定哪幾個 kind 天生是平面
    ——那是站主的取捨（§4）。`hall-sl` 19.8 是唯一的邊界值（差 1 %，影格顯示磚面有開間）。
-2. **鋪面尺度量具只有 Niagara**：`_lane.mjs` / `_tile.mjs` 只量 Niagara 的鋪面；量別的頁面前先確認
-   `FLOOR_PERIOD` 對那個 floor style 的意義。
+2. **鋪面的「該多大」仍然沒有表**：`verify-floor.mjs` 守住「uv 服從 `FLOOR_PERIOD`、tile 是正方形、
+   每頁的鋪面有貼圖」（8 頁、12 個 tile 層），但**它證明不了 period 對不對**——把 `FLOOR_PERIOD`
+   改 `pavers: 3 → 2`，tile 從 192 變成 128 cm，這支閘門照樣 3/3 綠（兩邊同時移動）。48 cm 的
+   paver 只存在於 `paintPavers` 的「128 px 橫放四顆石頭」裡，沒有任何表寫著它。要讓它可判，得先
+   把「一顆 paver 幾公分」寫成資料（站主的取捨，§4）。
 3. **Niagara 的夜**：`HOUR=night` 沒有夜色授權 ⇒ 整頁深藍（mean 42.1）、只有兩顆燈光暈。
    要不要給 Clifton 一條夜色記錄是站主的決定（§4）。
 4. **Goat Island 另外兩件**：①鋪面偏亮（143.7 vs 記錄值 121，共用繪法，要動先確認別的頁）；
@@ -218,6 +227,7 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
 - **站點 6 的 A 字架要不要進畫面**（先量那條直線，不許先改後說）。
 - **Goat 的瀑布與 Toronto 的 falls 要不要也做地標盤**（P6-1）。
 - **Niagara 要不要一條夜色記錄**（P6-3）。
+- **一顆鋪面石頭幾公分要不要寫成資料**（§3 P6-2：寫了 `verify-floor` 才驗得到 period，否則它只驗接線）。
 - **哪幾個 prop kind 天生就是一面**（`signA` 空白摺牌、`plinth` 桌面、`curtain`、欄杆、管、信箱）：
   定了才能把 `audit-all --STRICT` 當閘門開（P6-1，§5.8）。
 - **英文 CV PDF 與 ORCID iD**（`AGENTS.md` 的 backlog：站主提供檔案／網址後才加）。
@@ -321,7 +331,7 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 tracked 支檔案（`.git` 12 MB）：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、`js/site.js` 592 KB
 （9,479 行，**一個 closure**）、產生器 552 KB／7,524 行（入口 721 ＋ `gen/` 六個模組）、
-`css/site.css` 85 KB（2,707 行）。`.verify` 92 支，閘門 28 支，`skills/` 19 個。
+`css/site.css` 85 KB（2,707 行）。`.verify` 93 支，閘門 29 支，`skills/` 19 個。
 `image-search/`（3 張 CN Tower 參考照，**來源未追溯 → 永不入庫**）只留在磁碟。
 
 ### 5.8 每一顆 prop 的形（`audit-all.mjs`，八頁）

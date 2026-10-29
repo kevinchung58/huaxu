@@ -72,7 +72,9 @@ test("gate starts the page server a browser gate needs, and stops it again", (t)
   // The gate's own argument list is what says it needs the server: the wrapper reads the script for
   // the URL it loads, exactly as it reads a real gate.
   const probe = "/tmp/gate-probe.mjs";
-  fs.writeFileSync(probe, "// loads http://127.0.0.1:8080/index.html\n");
+  // No address in the file: the gates load through `.verify/_aim.mjs`, so the wrapper has to
+  // recognise the import as well as the URL.
+  fs.writeFileSync(probe, "import { launch } from \"./_aim.mjs\";\n");
   const r = run(["node", "-e",
     "fetch('http://127.0.0.1:8080/index.html').then((x) => console.log('status', x.status))", probe]);
   assert.equal(r.code, 0, r.stderr);
