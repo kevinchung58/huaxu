@@ -384,21 +384,53 @@ function patternCanvas(name) {
     noise(90, 150, 58);
   } else if (name === "stonewall" || name === "strata" || name === "tunnelc") {
     const step = name === "strata" ? 13 : 18;
+    /* Round 69g — a pattern tile is a *modulation*, not a value.
+     *
+     * `strata` was painted as rows of rgb(133..181), a mid grey. Every face that wears it is drawn
+     * as vertexColor * texture, so the tile silently multiplied the authored rock colour by ~0.33
+     * in linear light: the island's gorge wall came out at luma **41** at 300 m while the *same*
+     * colour, *same* normal and *same* air, drawn without a tile, came out at **84**. Two faces of
+     * one cliff, 2.4x apart, and the darker one is the one the eye reads as a slab.
+     *
+     * Nothing in the record asked for that: `c="#6e6a5f"` is the surface colour there, and a tile
+     * whose job is the beds and the joints has no business also deciding how bright the rock is.
+     * The base is near-white now, so the seams and the bed lines carry the pattern and the authored
+     * colour carries the value. (The Canadian wall in the same tile, 700 m further on, is the check
+     * that this reads as pale dolomite rather than as paper.)
+     */
     for (let y = 0, row = 0; y < 128; y += step, row++) {
-      const v = 133 + Math.floor(rnd() * 48);
+      /* Round 69g — 300 m 遠的岩壁，條紋要在 mipmap 之後還活著.
+       *
+       * A 1-px joint in a 128-texel tile is 0.4 px on screen at the far bank, so the sampler
+       * averaged it into the base and the wall measured a standard deviation of **4.4** — a flat
+       * grey rectangle with no beds in it at all, which is the same slab in a different grey. The
+       * joints are three texels now and the beds differ from each other by up to 22 % instead of
+       * jittering around one value; both survive the mip chain at that distance, which is the only
+       * distance this tile is looked at through.
+       */
+      const v = name === "strata" ? 190 + Math.floor(rnd() * 58) : 133 + Math.floor(rnd() * 48);
       c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(0, y, 128, step - 1);
       let x = row % 2 ? -16 : 0;
       while (x < 128) {
         const w = 24 + Math.floor(rnd() * 31);
-        line(x, y, x, y + step, "rgba(48,48,48,0.42)", 1);
+        /* The vertical joints are the ones that survive distance. A bed line runs *across* the
+           tile, so at 300 m it is one pixel tall against 26 m of rock and the mip chain averages
+           it away; a joint runs *down* the tile and is sampled the same way along its whole
+           length, so it stays a line. Round 69g measured both: horizontal-only, the island's face
+           at 300 m read sd 5.5 (a slab); with the joints at 3 texels, sd 14.5 with the beds
+           visible in the frame. */
+        line(x, y, x, y + step, "rgba(48,48,48,0.42)", name === "strata" ? 3.5 : 1);
         if (name === "stonewall") {
           line(x + 2, y + step - 3, x + w - 4, y + step - 3, "rgba(232,232,232,0.18)", 1);
         }
         x += w;
       }
-      if (name === "strata") line(0, y + 2, 128, y + 2, "rgba(235,235,235,0.23)", 1);
+      if (name === "strata") {
+        line(0, y, 128, y, "rgba(40,40,44,0.34)", 2);
+        line(0, y + 2, 128, y + 2, "rgba(255,255,255,0.26)", 1);
+      }
     }
-    noise(85, 118, 78);
+    if (name === "strata") noise(78, 150, 78); else noise(85, 118, 78);
   } else if (name === "rapids" || name === "foam") {
     c.fillStyle = name === "foam" ? "#9e9e9e" : "#777777"; c.fillRect(0, 0, 128, 128);
     for (let y = 2; y < 128; y += name === "foam" ? 9 : 7) {
@@ -584,7 +616,11 @@ export function buildLaneGeometry(THREE, quads, state = {}) {
       uvForPoint = (i) => [texcoords[i][0] / 128, texcoords[i][1] / 128];
     } else if (textureKind === "image") {
       const iw = Math.max(1, Number(image.naturalWidth) || 1), ih = Math.max(1, Number(image.naturalHeight) || 1);
-      uvForPoint = (i) => [texcoords[i][0] / iw, -texcoords[i][1] / ih];
+      /* Round 70: `u` runs backwards here because the frustum is mirrored (see makePerspective below).
+         The mirror is what stops the world being painted left-right wrong; a photography hung on a
+         wall, though, would arrive flipped, and a flipped photograph is a defect the mirror did not
+         set out to fix. One minus u puts the picture back the way it was taken. */
+      uvForPoint = (i) => [1 - texcoords[i][0] / iw, -texcoords[i][1] / ih];
     } else if (textureKind === "soft") {
       /* Round 58: a soft quad is a puff, and a puff's radial falloff belongs to the puff.
          This used to project each corner to the screen and divide by a radius in *pixels*, so a
@@ -1011,6 +1047,24 @@ function backdropSkyStops(backdrop, dayPage, day) {
   }));
 }
 
+/* How much of this sky is a light source at this hour.
+
+   The environment map is the same authored sky the backdrop is painted from, so a lane that had no
+   sky table had no environment either; giving one a table also gives it a PMREM of that table at
+   three's default intensity 1. Measured at Nakamise (round 69h), a night sky over the lane at
+   intensity 1 is not a night: the vermilion posts (#c8442f) came back at (36,57,114) -- blue three
+   times red on a red post -- and the paving at (40,65,120) where it had been (76,78,87). A night
+   sky is a dim source and the street's own lamps are the light, so a record may say what its sky is
+   worth at each hour; a record that says nothing keeps 1, which is what every lane already had. */
+function skyEnvIntensity(backdrop, dayPage, day) {
+  const e = (backdrop || {}).skyEnv;
+  if (!e) return 1;
+  const night = Number.isFinite(Number(e.night)) ? Number(e.night) : 1;
+  const light = Number.isFinite(Number(e.day)) ? Number(e.day) : 1;
+  const t = dayPage ? clamp(Number(day) || 0, 0, 1) : 0;
+  return night + (light - night) * t;
+}
+
 function makeSkyEnvironment(THREE, renderer, backdrop, dayPage, day) {
   if (typeof document === "undefined" || !renderer || !THREE.PMREMGenerator) return null;
   const stops = backdropSkyStops(backdrop || {}, dayPage, day);
@@ -1089,8 +1143,19 @@ function updateClouds(THREE, clouds, camera, state, reducedMotion) {
     /* Round 60: the plume takes the lamps the way the sheet does — half of them. The illumination
        plays on the spray; it does not turn the cloud over the Horseshoe into a purple object, which
        is what a full lamp colour did at 3 a.m. on a still frame. */
-    const tint = prim.il && dark ? NIGHT_LAMPS[Math.floor((state.time || 0) / 7) % NIGHT_LAMPS.length] : "#eef4f7";
-    rgb.set("#eef4f7");
+    /* Round 69 — a mist that is brighter than both its backgrounds can only add light.
+       `#eef4f7` is luma 243; the sheet it crosses is clipped to 227 and the plunge pool under it is
+       54. So the same puff was invisible over the water (243 on 227, both near the tone-map ceiling)
+       and a wash over the pool — and no amount of alpha fixes that, because a value above both
+       backgrounds has nowhere to go but the ceiling. Round 69e answered that by darkening the
+       spray to a grey-blue veil (#c9d8e0), which is right for a plume spread across the whole
+       brink and wrong for the plume as it is now built: five narrow columns, measured, standing
+       clear of the sheet. A veil has to sit *between* its backgrounds; a column has to be the
+       brightest thing in the frame. Against the pool (luma 54) and the far bank (90) a bright
+       column reads at once, and the sky at the top of the frame (220) is only 20 below it, so the
+       crown fades out instead of stamping a rectangle — which is what the photographs show. */
+    const tint = prim.il && dark ? NIGHT_LAMPS[Math.floor((state.time || 0) / 7) % NIGHT_LAMPS.length] : "#e8f1f4";
+    rgb.set("#e8f1f4");
     if (prim.il && dark) rgb.lerp(new THREE.Color(tint), 0.55);
     /* Each puff is weaker than before because there are three times as many of them; the plume's
        density comes from the count, the way it does in the photographs. */
@@ -1487,12 +1552,35 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   renderer.setClearColor(0x141e36, 1);
   backdrop = backdrop || {};
   const scene = new THREE.Scene();
-  scene.background = makeSkyTexture(THREE, backdrop, api.dayPage, api.day);
+  /* Round 70: the sky is our own inverted sphere, not `scene.background`.
+
+     The reason is the frustum: the picture used to be the 2D model's left-right mirror, and the fix
+     swaps the projection's left and right. That swap reverses the winding of every triangle on
+     screen. The world is all `DoubleSide` and does not care, but `scene.background` is rendered by
+     three's own background pass with a `BackSide` box — which, culled inside out, disappears and
+     leaves the clear colour (measured: Niagara stop 2 went from an authored blue sky to near-black
+     after the flip, while the wheel in front of it drew correctly). A sphere with `DoubleSide` and
+     the same authored sky texture cannot be culled whatever the handedness of the projection is,
+     and it carries the texture the sky record already produced, so the sky is the same sky. */
+  const skyFirst = makeSkyTexture(THREE, backdrop, api.dayPage, api.day);
+  const skyMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, depthWrite: false,
+    depthTest: false, fog: false, toneMapped: false });
+  // `makeSkyTexture` answers with a plain colour when the record authors no sky at all; a colour is
+  // not a map, and a sphere with an unusable map is a white ball around the room.
+  if (skyFirst && skyFirst.isTexture) skyMaterial.map = skyFirst; else skyMaterial.color.set(skyFirst || FALLBACK_COLOR);
+  const skyDome = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), skyMaterial);
+  skyDome.name = "authored sky";
+  skyDome.frustumCulled = false;
+  skyDome.renderOrder = -1000;      // painted first, and every surface in the hall covers it
+  scene.add(skyDome);
   // The environment is the same authored sky the backdrop is painted from — one elevation table,
   // sampled once, turned into a prefiltered radiance map by PMREM. Reflections and the visible sky
   // cannot disagree, because they read the same record (the one-world-query rule, pointed at light).
   const environment = makeSkyEnvironment(THREE, renderer, backdrop, api.dayPage, api.day);
-  if (environment) scene.environment = environment;
+  if (environment) {
+    scene.environment = environment;
+    scene.environmentIntensity = skyEnvIntensity(backdrop, api.dayPage, api.day);
+  }
   // A hemisphere light, coloured from the same elevation table as the sky and the environment:
   // it is the floor under which a scene may never go black — PMREM can fail on a weak software
   // renderer, and a lit-painted world must degrade to "gentle sky bounce", not to "unlit black".
@@ -1656,8 +1744,24 @@ function buildRenderer(THREE, canvas, backdrop, api) {
           // from them was a white shadow, which is how a 57 m curtain read as one flat wall.
           vec3 cold=mix(mix(uBand0,uBand1,0.30),vec3(0.62,0.76,0.79),0.42);
           vec3 deep=cold*vec3(0.44,0.58,0.62);
-          vec3 aerated=min(vec3(1.0),mix(cold,vec3(1.0),0.80)*1.02+vec3(0.12));
+          // Round 69: the pale end stops short of paper. Measured at the rail, the sheet's brightest
+          // value and its p95 were both 227 — the same value as the sky it is seen against, and an
+          // edge cannot exist between two equal values. That is a large part of why the crest read
+          // as a cut-out rather than as water.
+          vec3 aerated=min(vec3(1.0),mix(cold,vec3(1.0),0.62)*0.99+vec3(0.05));
+          /* Round 69 — 水面本身沒有明暗, and that is what "flat" means.
+             Measured on the round-68 artefact at the rail: the upper sheet sat at one value across
+             120 px of a 57 m fall (sd 31-33), because past vFall 0.42 the authored stop is uBand3,
+             which is near white, and the structure term is near 1 nearly everywhere. Falling water
+             is not one value: the upper third is sheet you can still see into (dense, green, dark),
+             the lower third is the boil it becomes (aerated, pale), and that gradient is a function
+             of the drop and of nothing else. It multiplies the existing structure rather than
+             replacing it, so the strands the owner has already seen keep their shape. */
+          float densityDark=smoothstep(0.05,0.26,vFall)*(1.0-smoothstep(0.52,0.88,vFall));
+          float boilLift=smoothstep(0.55,0.95,vFall);
           vec3 color=mix(deep,aerated,structure);
+          color*=mix(1.0,0.74,densityDark*0.85);
+          color=mix(color,min(vec3(1.0),color*1.05+vec3(0.03)),boilLift*0.45);
           // By night the whole sheet is under the lamps: the same structure, lit warm.
           color=mix(color,min(vec3(1.0),lit*1.12),uNight*0.38);
           // The ropes: 1.5 m columns, still antialiased by their footprint, but only allowed to add
@@ -1682,8 +1786,12 @@ function buildRenderer(THREE, canvas, backdrop, api) {
           color=mix(color,vec3(0.968,0.988,0.986),lip*0.72);
           // The foot: over the last third the strands go, the sheet loses its own colour and pales
           // into the spray it raises, which is what hides the plunge from every rim above it.
-          float foot=smoothstep(0.60,1.0,max(vFall,0.0));
-          color=mix(color,mix(base,vec3(0.90,0.94,0.945),0.72),foot*0.80);
+          // Round 69: the foot started at 60% of the drop and paled to 0.93, which measured as the
+          // last 40% of the curtain sitting at the tone-map ceiling with no interior detail — the
+          // white wash under the crest. The aeration is real, but it belongs in the last quarter and
+          // it ends at the aerated value, not above it.
+          float foot=smoothstep(0.74,1.0,max(vFall,0.0));
+          color=mix(color,mix(base,vec3(0.84,0.88,0.885),0.58),foot*0.78);
           gl_FragColor=vec4(color,1.0);
           #include <tonemapping_fragment>
           #include <colorspace_fragment>
@@ -1815,7 +1923,18 @@ function buildRenderer(THREE, canvas, backdrop, api) {
       state.camera.eye - Math.sin(pitch),
       state.camera.z + Math.cos(yaw) * Math.cos(pitch),
     );
-    camera.projectionMatrix.makePerspective(-w * 0.5 * near / focal, w * 0.5 * near / focal,
+    /* Round 70: the picture is the model's left-right mirror unless this frustum is flipped, so it
+       is flipped. `lookAt` with up = +Y looking down +Z gives the camera a right axis of -X
+       (x = up x z), while the lane's own painter puts +X on the right of the screen
+       (`camPt` -> `W/2 + focal*dx/az`, and `box()`/the hit rectangles use exactly that). Measured on
+       `skyline-cn` at Toronto's city stop: every `[data-obj]` rectangle satisfied
+       `x_rect = 1024 - x_paint`, which is the mirror, and it put the click boxes, the reach test that
+       decides what pressing E opens, and `_map.mjs`'s left and right all on the opposite side of
+       what the visitor was looking at. Swapping left and right here is the whole repair: the world
+       keeps its authored geography, the camera stops mirroring it, and the 3D picture and the 2D
+       model finally agree about which way round the place is. Nothing in the record carries lettering
+       (the one `pic` path is unused), so there is no text to un-mirror. */
+    camera.projectionMatrix.makePerspective(w * 0.5 * near / focal, -w * 0.5 * near / focal,
       h * 0.5 * near / focal, -h * 0.5 * near / focal, near, camera.far);
     camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
 
@@ -1854,13 +1973,20 @@ function buildRenderer(THREE, canvas, backdrop, api) {
       sceneEffects.update({ ...state, day, dayPage, time });
     }
 
+    // The sky rides the eye: a dome that stayed at the world origin would be walked through.
+    skyDome.position.set(state.camera.x, state.camera.eye, state.camera.z);
+    skyDome.scale.setScalar(Math.min(60000, camera.far * 0.5));
     if (Math.abs(day - Number(lastSky.split("|")[0])) > 0.004 || lastSky.endsWith(`|${Boolean(state.dayPage)}`) === false) {
       const texture = makeSkyTexture(THREE, backdrop, Boolean(state.dayPage), day);
-      if (scene.background && scene.background.isTexture) scene.background.dispose();
-      scene.background = texture;
+      if (skyMaterial.map && skyMaterial.map.isTexture) skyMaterial.map.dispose();
+      if (texture && texture.isTexture) skyMaterial.map = texture;
+      else { skyMaterial.map = null; skyMaterial.color.set(texture || FALLBACK_COLOR); }
+      skyMaterial.needsUpdate = true;
       const stops = backdropSkyStops(backdrop, Boolean(state.dayPage), day);
       const horizon = skyColorAt(stops, 0, Boolean(state.dayPage), day);
       scene.fog.color.set(horizon);
+      // The same hour that changes the sky changes how much light it is worth (skyEnvIntensity).
+      if (environment) scene.environmentIntensity = skyEnvIntensity(backdrop, Boolean(state.dayPage), day);
       lastSky = `${day}|${Boolean(state.dayPage)}`;
     }
     renderer.render(scene, camera);
@@ -1877,7 +2003,9 @@ function buildRenderer(THREE, canvas, backdrop, api) {
       for (const texture of laneTextures.values()) texture.texture.dispose();
       if (laneSoftTexture) laneSoftTexture.dispose();
       if (sceneEffects) sceneEffects.dispose();
-      if (scene.background && scene.background.isTexture) scene.background.dispose();
+      if (skyMaterial.map && skyMaterial.map.isTexture) skyMaterial.map.dispose();
+      skyMaterial.dispose();
+      skyDome.geometry.dispose();
       renderer.dispose();
       for (const texture of textures.values()) texture.dispose();
       for (const material of materials) material.dispose();

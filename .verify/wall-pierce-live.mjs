@@ -53,7 +53,10 @@ for (const name of PAGES) {
     const WALL = w().wallHalf;
     const segs = [];
     try {
-      const world = (JSON.parse(document.querySelector("[data-walk-backdrop]").textContent).world || {});
+      const el = document.querySelector("[data-walk-backdrop]");
+      const t = (el.textContent || "").trim();
+      const bd = t ? JSON.parse(t) : (((window.__HX_PLACES || {})[el.dataset.place] || {})["data-walk-backdrop"] || {});
+      const world = (bd.world || {});
       for (const p of world.prims || []) {
         if (p.t !== "f" && p.t !== "x") continue;
         const pts = p.p || [];

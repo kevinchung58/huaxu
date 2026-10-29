@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import * as THREE from "../js/vendor/three-0.186.1/three.module.js";
+import { genSource } from "./gen-source.mjs";
 import { buildLaneGeometry, buildWaterGeometry, buildWorldGeometry, createSceneEffects } from "../js/scene3d.js";
 
 const ROOT = process.cwd();
@@ -20,7 +21,7 @@ const supported = new Set(["f", "x", "w", "m", "l", "rb", "fw"]);
 const pageFiles = fs.readdirSync(ROOT).filter((name) => /^rooms.*\.html$/.test(name) || name === "street.html").sort();
 const sceneSource = fs.readFileSync(path.join(ROOT, "js/scene3d.js"), "utf8");
 const siteSource = fs.readFileSync(path.join(ROOT, "js/site.js"), "utf8");
-const generator = fs.readFileSync(path.join(ROOT, "_gen_html.py"), "utf8");
+const generator = genSource(ROOT);   // the split generator, entry point included (round 78)
 const cssSource = fs.readFileSync(path.join(ROOT, "css/site.css"), "utf8");
 const license = path.join(ROOT, `js/vendor/three-${VERSION}/LICENSE`);
 
@@ -78,9 +79,26 @@ for (const file of pageFiles) {
   assert.match(html, /<div class="walk-offline" data-walk-offline hidden[^>]*>/,
     `${file} needs the no-WebGL panel, shipped closed`);
   assert.match(html, /data-walk-offline-where/, `${file} needs the panel's standing-position line`);
-  const match = html.match(/<script type="application\/json" data-walk-backdrop>([\s\S]*?)<\/script>/);
-  if (!match) continue;
-  const backdrop = JSON.parse(match[1]);
+  /* P2 (round 69): a big place keeps its world data in js/places/<place>.js and leaves an empty
+     marker carrying `data-place`. Read the marker's file exactly as the page's <script src> does —
+     the check is still "what does this page hand the renderer", just through the file it points at
+     instead of through an inline blob. */
+  const inline = html.match(/<script type="application\/json" data-walk-backdrop>([\s\S]*?)<\/script>/);
+  const marker = html.match(/<script type="application\/json" data-walk-backdrop data-place="([a-z0-9-]+)"><\/script>/);
+  let backdrop = null;
+  if (inline) {
+    backdrop = JSON.parse(inline[1]);
+  } else if (marker) {
+    const dataFile = path.join(ROOT, "js", "places", `${marker[1]}.js`);
+    assert.ok(fs.existsSync(dataFile), `${file} points its world at ${dataFile}, which the generator did not write`);
+    const src = fs.readFileSync(dataFile, "utf8");
+    const assignment = src.slice(src.indexOf("window.__HX_PLACES["));
+    const obj = assignment.slice(assignment.indexOf("=") + 1, assignment.lastIndexOf(";"));
+    const store = JSON.parse(obj);
+    backdrop = store["data-walk-backdrop"];
+    assert.ok(backdrop && backdrop.world, `${dataFile} must carry the backdrop the marker promises`);
+  }
+  if (!backdrop) continue;
   const prims = backdrop.world && backdrop.world.prims;
   if (!Array.isArray(prims) || !prims.length) continue;
 

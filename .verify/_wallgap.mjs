@@ -29,9 +29,15 @@ for (const f of PAGES) {
     const ox = Math.max(Math.abs(lx) - b.w / 2, 0), od = Math.max(Math.abs(ld) - b.d / 2, 0);
     return ox * ox + od * od < R * R;
   });
-  const bdRaw = layer.querySelector("[data-walk-backdrop]");
+  /* P2 (round 69): the biggest islands are in js/places/<place>.js now, behind a marker that keeps
+     the attribute and `data-place`; read whichever of the two holds the bytes. */
+  const readBackdrop = (el) => { const t = (el.textContent || "").trim(); if (t) return JSON.parse(t);
+    const store = (window.__HX_PLACES || {})[el.dataset.place]; return (store && store["data-walk-backdrop"]) || {}; };
   let prims = [];
-  try { prims = (JSON.parse(bdRaw.textContent).world || {}).prims || []; } catch (e) {}
+  try {
+    const el = layer.querySelector("[data-walk-backdrop]");
+    prims = (readBackdrop(el).world || {}).prims || [];
+  } catch (e) {}
   // a wall quad: 3- or 4-point polygon with big y span and a small horizontal footprint run
   const walls = [];
   for (const p of prims) {

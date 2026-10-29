@@ -36,7 +36,12 @@ function boot(file, hash = "") {
       const m = String((e && e.message) || e);
       if (/navigation/.test(m)) navs.push(m); else errors.push(m);
     });
-    let html = fs.readFileSync(file, "utf8").replace(/<script[^>]*src=[^>]*><\/script>/g, "");
+    // P2 (round 69): the place's world data is a plain script file now; jsdom fetches nothing, so it
+    // is inlined here before the external-script strip, the same bytes the browser loads.
+    let html = fs.readFileSync(file, "utf8")
+      .replace(/<script[^>]*src="(js\/places\/[a-z0-9-]+\.js)(\?[^"]*)?"[^>]*><\/script>/g,
+               (_m, src) => `<script>${fs.readFileSync(src, "utf8")}</script>`)
+      .replace(/<script[^>]*src=[^>]*><\/script>/g, "");
     const dom = new JSDOM(html, {
       runScripts: "dangerously", pretendToBeVisual: true,
       url: "https://huaxu.test/" + file + hash, virtualConsole: vc,
@@ -157,20 +162,60 @@ async function turnToReach(env, objId, maxTaps = 60) {
   return !!(r && r.dataset.obj === objId);
 }
 
-/* Sidle with A/D in the view plane until near the wanted door, then turn toward
-   its world-space centre. Doors sit flush to a wall at x ±346; the walker's stop
-   keeps ~60 cm off the wall, well inside the 190 cm reach. */
-async function sidleToReach(env, objId, dir = -1, maxFrames = 400) {
-  const k = dir < 0 ? "a" : "d";
-  env.key(k);
-  for (let i = 0; i < maxFrames; i += 4) {
-    await env.pump(4);
+/* Walk up to a thing the way a visitor does now: turn to its own bearing, then walk in.
+
+   This replaced a `sidleToReach` that held A and slid sideways toward a door. Round 65 made A/D turn
+   the head instead of strafing, so a gate that still holds A spins the walker on the spot and then
+   walks it into a wall: every door, print and aisle below reported the neighbouring shopfront as the
+   thing in reach, which read as a reach bug and was a gate bug. The walk is repeated in rounds
+   because a wall between the body and the thing needs a new bearing once the body has slid along it. */
+async function walkToReach(env, objId, maxFrames = 600, rounds = 6) {
+  const el = env.doc.querySelector(`[data-obj="${objId}"]`);
+  if (!el) return false;
+  const tx = () => parseFloat(el.style.getPropertyValue("--x"));
+  const tz = () => parseFloat(el.style.getPropertyValue("--z"));
+  for (let round = 0; round < rounds; round++) {
     const r = env.reach();
-    if (r && r.dataset.obj === objId) { env.keyUp(k); await env.pump(4); return true; }
+    if (r && r.dataset.obj === objId) return true;
+    const bearing = Math.atan2(tx() - env.walk().x, tz() - env.walk().depth) * 180 / Math.PI;
+    await turnToYaw(env, bearing);
+    env.key("w");
+    for (let i = 0; i < maxFrames; i += 5) {
+      await env.pump(5);
+      const now = env.reach();
+      if (now && now.dataset.obj === objId) break;
+      if (Math.hypot(tx() - env.walk().x, tz() - env.walk().depth) < 90) break;
+    }
+    env.keyUp("w");
+    await env.pump(6);
   }
-  env.keyUp(k);
-  await env.pump(4);
-  return turnToReach(env, objId);
+  const r = env.reach();
+  return !!(r && r.dataset.obj === objId);
+}
+
+/* Hold W until the body stops moving — the honest way to meet a wall, now that walking goes where the
+   head points rather than down the lane's own axis. Returns the resting position. */
+/* Hold W until the body stops moving along the axis it is being pushed into.
+
+   Round 77: this used to watch `depth + x`. A body pushed at a wall at a heading a degree or two
+   off square keeps sliding *along* the wall, so the sum never settles, the loop ran its full 900
+   frames, and the caller's "you crossed the tunnel, you did not walk down it" drift bound measured
+   how long the harness had been holding W rather than how straight the crossing was. Pass the axis
+   the wall is on: x for a side wall, depth for an end wall. */
+async function walkUntilBlocked(env, maxFrames = 900, axis = null) {
+  env.key("w");
+  const at = () => (axis === "x" ? env.walk().x : axis === "depth" ? env.walk().depth
+    : env.walk().depth + env.walk().x);
+  let last = at(), still = 0;
+  for (let i = 0; i < maxFrames; i += 5) {
+    await env.pump(5);
+    const now = at();
+    if (Math.abs(now - last) < 0.05) { if (++still >= 3) break; } else { still = 0; }
+    last = now;
+  }
+  env.keyUp("w");
+  await env.pump(6);
+  return { ...env.walk() };
 }
 
 /* Hold W until the walker is deep enough (door z minus a body's width), with a
@@ -254,15 +299,17 @@ async function main() {
   ok("street movement: W follows the turned camera without yaw drift",
      yaw1 !== yaw0 && Math.abs(afterW.yaw - yaw1) < 0.01 && wForward > 100 && Math.abs(wRight) < 1.5,
      `yaw ${yaw0.toFixed(1)}->${afterW.yaw.toFixed(1)}; forward ${wForward.toFixed(1)} cm, side ${wRight.toFixed(1)} cm`);
+  /* Round 65 made A turn the head rather than strafe, and this gate still asserted a strafe until
+     round 72 — which is why it was the oldest red line in the repository. What the lane promises now
+     is the opposite: the key turns, and the body does not slide sideways under it. */
   const beforeA = { ...env.walk() };
   env.key("a"); await env.pump(30); env.keyUp("a"); await env.pump(35);
   const afterA = { ...env.walk() };
-  const aX = afterA.x - beforeA.x, aD = afterA.depth - beforeA.depth;
-  const aForward = aX * Math.sin(angle) + aD * Math.cos(angle);
-  const aRight = aX * Math.cos(angle) - aD * Math.sin(angle);
-  ok("street movement: A stays perpendicular to the turned camera's forward axis",
-     aRight < -35 && Math.abs(aForward) < 4,
-     `right ${aRight.toFixed(1)} cm; forward drift ${aForward.toFixed(1)} cm`);
+  const aTurn = wrapYaw(afterA.yaw - beforeA.yaw);
+  const aSlide = Math.hypot(afterA.x - beforeA.x, afterA.depth - beforeA.depth);
+  ok("street movement: A turns the head left and the body does not slide sideways under it",
+     aTurn < -20 && aSlide < 3,
+     `turned ${aTurn.toFixed(1)}°; body moved ${aSlide.toFixed(1)} cm`);
   ok("movement uses a calm walk speed and a sub-centimetre head cue",
      env.walk().maxSpeed <= 210 && env.walk().turnRate <= 90,
      `${env.walk().maxSpeed.toFixed(0)} cm/s max; ${env.walk().turnRate}°/s turn`);
@@ -311,24 +358,21 @@ async function main() {
      tunnelWidth === 240 && env.walk().wallHalf === 120 && env.walk().halfWidth === tunnelHalf
        && tunnelHalf === 96,
      `wall ±${env.walk().wallHalf}; body centre ±${env.walk().halfWidth}`);
-  env.key("a"); await env.pump(100); env.keyUp("a"); await env.pump(8);
-  const leftWall = env.walk().x;
-  ok("A stops at the narrow tunnel's inside wall, never beyond it",
-     leftWall >= -tunnelHalf - 0.01 && Math.abs(leftWall + tunnelHalf) < 1.1,
-     `x=${leftWall.toFixed(2)} / limit=-${tunnelHalf}`);
-  await env.pump(45); // let the view-plane sidestep's release inertia settle before measuring D
-  const leftStop = { ...env.walk() }, tunnelYaw = leftStop.yaw * Math.PI / 180;
-  env.key("d");
-  for (let i = 0; i < 180 && env.walk().x < tunnelHalf - 0.5; i++) await env.pump(1);
-  env.keyUp("d"); await env.pump(45);
-  const rightStop = { ...env.walk() };
-  const tunnelDx = rightStop.x - leftStop.x, tunnelDd = rightStop.depth - leftStop.depth;
-  const tunnelForward = tunnelDx * Math.sin(tunnelYaw) + tunnelDd * Math.cos(tunnelYaw);
-  const tunnelRight = tunnelDx * Math.cos(tunnelYaw) - tunnelDd * Math.sin(tunnelYaw);
-  ok("D reaches the opposite wall without widening the 2.4 m tunnel",
+  /* Turn into the wall and walk into it: with A/D turning, this is the gesture that meets the
+     tunnel's side, and the promise is unchanged — the body stops at its own half-width, not at the
+     wall's line, and it never passes through. */
+  await turnToYaw(env, -90);                       // head pointed at the −x wall
+  const leftStop = await walkUntilBlocked(env, 900, "x");
+  ok("walking into the narrow tunnel's left wall stops at the body's limit, never beyond it",
+     leftStop.x >= -tunnelHalf - 0.01 && Math.abs(leftStop.x + tunnelHalf) < 1.1,
+     `x=${leftStop.x.toFixed(2)} / limit=-${tunnelHalf}`);
+  await turnToYaw(env, 90);                        // across to the other wall
+  const rightStop = await walkUntilBlocked(env, 900, "x");
+  ok("and the opposite wall is reached without widening the 2.4 m tunnel",
      rightStop.x <= tunnelHalf + 0.01 && Math.abs(rightStop.x - tunnelHalf) < 1.1
-       && tunnelRight > tunnelHalf * 1.9 && Math.abs(tunnelForward) < 2,
-     `x=${rightStop.x.toFixed(2)} / limit=+${tunnelHalf}; forward drift=${tunnelForward.toFixed(2)} cm`);
+       && Math.abs(rightStop.depth - leftStop.depth) < 400,
+     `x=${rightStop.x.toFixed(2)} / limit=+${tunnelHalf}; `
+       + `forward drift=${(rightStop.depth - leftStop.depth).toFixed(2)} cm (a diagonal crossing may advance)`);
 
   const journeyLimit = Number(tunnel.dataset.laneMaxD);
   ok("Journey's tunnel opens onto its deck at the page-authored walk limit",
@@ -337,6 +381,7 @@ async function main() {
   /* Walk until the clamp holds, not for a fixed number of frames: the tunnel is its real 56 m now
      (round 33), and the 600 frames that used to reach the deck stopped 17 m in -- the same lie
      walkToDepth's note describes. The cap scales with the authored limit. */
+  await turnToYaw(env, 0);                         // down the tunnel, toward the deck
   env.key("w");
   for (let i = 0, last = -1; i < Math.ceil(journeyLimit / 2) + 600; i += 20) {
     await env.pump(20);
@@ -352,13 +397,14 @@ async function main() {
      `depth=${deckStop.toFixed(2)} / limit=${journeyLimit}`);
   // And back the whole way, until the rear clamp holds -- a fixed 600 frames now ends mid-tunnel,
   // where "not through the rear boundary" would be true without ever meeting it.
-  env.key("s");
+  await turnToYaw(env, 180);                       // turn round; S still walks backwards as well
+  env.key("w");
   for (let i = 0, last = -1; i < Math.ceil(journeyLimit / 2) + 600; i += 20) {
     await env.pump(20);
     if (Math.abs(env.walk().depth - last) < 0.01) break;
     last = env.walk().depth;
   }
-  env.keyUp("s"); await env.pump(8);
+  env.keyUp("w"); await env.pump(8);
   ok("S cannot walk through the rear boundary either",
      env.walk().depth >= env.walk().minDepth - 0.01 && env.walk().depth - env.walk().minDepth < 1.2,
      `depth=${env.walk().depth.toFixed(2)} / minimum=${env.walk().minDepth}`);
@@ -413,7 +459,12 @@ async function main() {
   ok("the walker stops at the near face of the port table instead of entering its volume",
      Math.abs(atPlinth - plinthStop) < 1.2 && Math.abs(env.walk().depth - atPlinth) < 0.1,
      `depth=${atPlinth.toFixed(2)} / table edge=${plinthStop.toFixed(2)}`);
-  env.key("d"); await env.pump(180); env.keyUp("d"); await env.pump(8);
+  /* Step into the right-hand aisle: head for the hall's own wall and let the table's corner slide the
+     body along it. (Before round 65 this was a held D; D turns the head now, so the walk is aimed.) */
+  await turnToYaw(env, 90);
+  env.key("w");
+  for (let i = 0; i < 40 && env.walk().x < env.walk().halfWidth - env.walk().radius - 1; i++) await env.pump(20);
+  env.keyUp("w"); await env.pump(8);
   const sideX = env.walk().x;
   ok("the visitor can move fully around the port table without crossing its collision footprint",
      sideX > plinthX + plinthHalf + env.walk().radius
@@ -422,6 +473,7 @@ async function main() {
   /* round 54 review: the fixed pump was budgeted for the hall as R32 authored it — since the lane
      runs on to the quay (d 900→1100), 250 frames no longer reaches the far clamp. What the gate
      guards is the aisle's OPENNESS, so let it walk until it arrives or the budget (3× the old) runs. */
+  await turnToYaw(env, 0);                         // and on down the hall, past the display
   env.key("w");
   for (let i = 0; i < 40 && env.walk().depth < env.walk().maxDepth - 1.5; i++) await env.pump(20);
   env.keyUp("w"); await env.pump(8);
@@ -462,7 +514,7 @@ async function main() {
   env.close();
   env = await boot("street.html");
   await walkToDepth(env, 430);                            // door walk-z 464: stop just short of it
-  const cReach = await sidleToReach(env, "door-toronto", -1);
+  const cReach = await walkToReach(env, "door-toronto");
   ok("street: the Toronto door comes into reach (ring on it)", cReach,
      env.reach() ? env.reach().dataset.obj : "nothing in reach");
   env.navs.length = 0;
@@ -475,7 +527,7 @@ async function main() {
   out.push("\n-- Street -> Tokyo on foot: E on the middle door --");
   env = await boot("street.html");
   await walkToDepth(env, 1330);                           // door walk-z 1363: the middle of the street
-  const tReach = await sidleToReach(env, "door-tokyo", 1);
+  const tReach = await walkToReach(env, "door-tokyo");
   ok("street: the Tokyo door comes into reach", tReach,
      env.reach() ? env.reach().dataset.obj : "nothing in reach");
   env.navs.length = 0;
@@ -488,7 +540,7 @@ async function main() {
   out.push("\n-- Street -> Fukuoka on foot: E on the last door --");
   env = await boot("street.html");
   await walkToDepth(env, 2230);                           // door walk-z 2262: the far stretch
-  const fReach = await sidleToReach(env, "door-fukuoka", -1);
+  const fReach = await walkToReach(env, "door-fukuoka");
   ok("street: the Fukuoka door comes into reach", fReach,
      env.reach() ? env.reach().dataset.obj : "nothing in reach");
   env.navs.length = 0;
@@ -542,7 +594,7 @@ async function main() {
   const bayZ = parseFloat(bayW1.style.getPropertyValue("--z"));
   await turnToYaw(env, 0);
   await walkToDepth(env, bayZ - 60);
-  await sidleToReach(env, "shopbay-w1", -1);
+  await walkToReach(env, "frame-sensoji");
   const rowReach = env.reach();
   // What is nearest at this row is the print hung on the shutter, not the 5.5 m-wide bay behind it:
   // the bay's centre is a metre and a half away while the print is an arm's length (measured at this
@@ -582,7 +634,9 @@ async function main() {
   // test path is world-axis aligned; visitors can approach it at any heading in the actual scene.
   await turnToYaw(env, 0);
   env.key("w"); await env.pump(700); env.keyUp("w"); await env.pump(8);
-  env.key("d"); await env.pump(180); env.keyUp("d"); await env.pump(8);
+  await turnToYaw(env, 90);                        // into the right-hand aisle beside the table
+  await walkUntilBlocked(env, 400);
+  await turnToYaw(env, 0);                         // and down it, toward the water
   env.key("w"); await env.pump(250); env.keyUp("w"); await env.pump(8);
   await walkDeep(env, 250);
   const fWalk = env.walk();
@@ -594,21 +648,23 @@ async function main() {
   /* ---- 9. The doors are painted geometry: walk in, turn, click, leave ---- */
   out.push("\n-- The hub doors are painted geometry, and clicking one leaves --");
   for (const [file, objId, expect, prep] of [
-    ["street.html", "door-toronto", "rooms-toronto.html", { fwd: 420, side: -1 }],
-    ["street.html", "door-tokyo", "rooms.html", { fwd: 1200, side: 1 }],
-    ["street.html", "door-fukuoka", "rooms-fukuoka.html", { fwd: 2000, side: -1 }],
-    ["rooms.html", "gate-kaminari", "street.html", { fwd: 300, side: 0 }],
-    ["rooms-fukuoka.html", "curtain-back", "street.html", { fwd: 300, side: 0 }],
-    ["rooms-toronto.html", "door-back", "street.html", { fwd: 300, side: 0 }],
+    ["street.html", "door-toronto", "rooms-toronto.html", { fwd: 420 }],
+    ["street.html", "door-tokyo", "rooms.html", { fwd: 1200 }],
+    ["street.html", "door-fukuoka", "rooms-fukuoka.html", { fwd: 2000 }],
+    ["rooms.html", "gate-kaminari", "street.html", { fwd: 300 }],
+    ["rooms-fukuoka.html", "curtain-back", "street.html", { fwd: 300 }],
+    ["rooms-toronto.html", "door-back", "street.html", { fwd: 300 }],
   ]) {
     const e2 = await boot(file);
     const el = e2.doc.querySelector(`[data-obj="${objId}"]`);
-    // A door needs both some distance (its box overflows the view at arm's length) and a look
-    // toward it: walk past the mouth, edge to its side of the street, then turn until on screen.
+    /* A door needs both some distance (its box overflows the view at arm's length) and a look toward
+       it: walk in to the depth, then turn to the door's own bearing. This used to edge sideways with
+       A/D, which turned the head instead of the body after round 65 and left the door off screen. */
     if (prep.fwd) await walkToDepth(e2, prep.fwd);
-    if (prep.side) {
-      const k = prep.side < 0 ? "a" : "d";
-      e2.key(k); await e2.pump(30); e2.keyUp(k); await e2.pump(6);
+    if (el) {
+      const bearing = Math.atan2(parseFloat(el.style.getPropertyValue("--x")) - e2.walk().x,
+                                 parseFloat(el.style.getPropertyValue("--z")) - e2.walk().depth) * 180 / Math.PI;
+      await turnToYaw(e2, bearing);
     }
     let vis = el && el.style.visibility === "visible";
     for (let i = 0; i < 70 && !vis; i++) {

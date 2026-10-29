@@ -128,10 +128,13 @@
       }
       modal.classList.add("is-open");
       document.body.style.overflow = "hidden";
+      overlayEntered();          // round 72: Back folds this before it leaves the page
     };
     const close = () => {
+      const wasOpen = modal.classList.contains("is-open");
       modal.classList.remove("is-open");
       document.body.style.overflow = "";
+      if (wasOpen) overlayLeft();
     };
     document.querySelectorAll("[data-featured]").forEach((btn) => btn.addEventListener("click", () => open(btn)));
     modal.querySelectorAll("[data-close]").forEach((el) => el.addEventListener("click", close));
@@ -139,204 +142,13 @@
       if (event.key === "Escape") close();
     });
   }
-
-  /* ---------- Activities: the photo plate ----------
-     Selecting a tile of the contact sheet steps into the same photograph on a dark
-     plate, with the rest of the roll on either side of it by swipe, arrow keys, or the
-     arrows. Three absences are accounted for, because this page is read on a lecture-hall
-     laptop, a phone, and sometimes with scripting off:
-       - no document.startViewTransition -> the plate opens with no morph;
-       - no scripting -> every tile is a plain link to the full-resolution file;
-       - prefers-reduced-motion -> no morph, and the roll jumps rather than easing.
-     Only one element may hold a given view-transition-name, so the name is put on the
-     image being enlarged, on the box it is arriving from and the box it arrives in, and
-     cleared once the transition settles. Entering the plate reuses the same overlay
-     conventions as the trace game below. */
-  /* One roll per page, however many blocks hang tiles. The plate is addressed by index, so the
-     tiles are flattened across every grid in the order they appear and the frames are emitted in
-     that same order; a per-block roll would mean a per-block plate, and then "the album" would
-     quietly mean "whichever block you happened to open first". */
-  const grids = Array.from(document.querySelectorAll("[data-ig-grid]"));
-  const plate = document.getElementById("ig-plate");
-
-  /* The archive sheet leans toward the pointer: enough rotation to read as an object
-     standing in a room, little enough that a caption is never tilted while being read.
-     Touch is excluded (there is no hover to answer), and so is reduced motion. */
-  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    grids.forEach((grid) => {
-      const wall = grid.closest("[data-ig-wall]") || grid.parentElement;
-      if (!wall) return;
-      let box = null;
-      wall.addEventListener("pointerenter", () => { box = wall.getBoundingClientRect(); });
-      wall.addEventListener("pointermove", (event) => {
-        if (event.pointerType === "touch") return;
-        if (!box) box = wall.getBoundingClientRect();
-        if (!box.width || !box.height) return;
-        const x = (event.clientX - box.left) / box.width - 0.5;
-        const y = (event.clientY - box.top) / box.height - 0.5;
-        // Signs chosen against the CSS rotation matrices, not by eye: rotateY(+) turns a
-        // surface normal toward +X, rotateX(+) toward -Y, so a positive angle on both makes
-        // the sheet face the pointer. Swapping either reads as the sheet dodging the cursor.
-        grid.style.setProperty("--ty", `${(x * 8).toFixed(2)}deg`);
-        grid.style.setProperty("--tx", `${(-y * 6).toFixed(2)}deg`);
-      });
-      const level = () => {
-        grid.style.setProperty("--ty", "0deg");
-        grid.style.setProperty("--tx", "0deg");
-      };
-      wall.addEventListener("pointerleave", level);
-    });
-  }
-  if (grids.length && plate) {
-    const tiles = grids.flatMap((grid) => Array.from(grid.querySelectorAll("[data-ig]")));
-    const reel = plate.querySelector("[data-ig-reel]");
-    const frames = reel ? Array.from(reel.children) : [];
-    const count = plate.querySelector("[data-ig-count]");
-    const prev = plate.querySelector("[data-ig-prev]");
-    const next = plate.querySelector("[data-ig-next]");
-    const many = frames.length > 1;
-    const ease = !matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let opener = null;                  // the tile to hand focus back to
-    const named = [];
-
-    const clamp = (i) => Math.max(0, Math.min(frames.length - 1, i));
-    const at = () => clamp(Math.round(reel.scrollLeft / (reel.clientWidth || 1)));
-    const name = (el) => {
-      named.forEach((node) => { node.style.viewTransitionName = ""; });
-      named.length = 0;
-      if (el) {
-        el.style.viewTransitionName = "ig-photo";
-        named.push(el);
-      }
-    };
-    /* Angles on the roll: the frame you are on faces you, its neighbours turn away and
-       recede, so moving along the archive is turning along a wall rather than paging a
-       carousel. Written on every scroll because a touch drag is not owned by the script;
-       frames more than one and a half positions away are cleared instead of animated, so
-       the cost is per-screenful, not per-archive. */
-    const depth = ease;
-    const setDepth = () => {
-      if (!depth || !reel || !reel.clientWidth) return;
-      const shown = reel.scrollLeft / reel.clientWidth;
-      frames.forEach((frame, i) => {
-        const d = i - shown;
-        if (d < -1.6 || d > 1.6) {
-          if (frame.style.transform) {
-            frame.style.transform = "";
-            frame.style.opacity = "";
-          }
-          return;
-        }
-        const off = Math.abs(d);
-        frame.style.transform = `perspective(1100px) translateZ(${(-off * 150).toFixed(1)}px) rotateY(${(-d * 30).toFixed(1)}deg)`;
-        frame.style.opacity = (1 - off * 0.42).toFixed(2);
-      });
-    };
-    const paint = () => {
-      const i = at();
-      if (count) count.textContent = `${i + 1} / ${frames.length}`;
-      if (prev) prev.disabled = !many || i === 0;
-      if (next) next.disabled = !many || i === frames.length - 1;
-      setDepth();
-    };
-    const glide = (i, behavior) => {
-      const left = (reel.clientWidth || 0) * clamp(i);
-      if (reel.scrollTo) reel.scrollTo({ left, behavior: behavior || (ease ? "smooth" : "auto") });
-      else reel.scrollLeft = left;
-      paint();
-    };
-    const morph = (apply) => {
-      if (!ease || !document.startViewTransition) {
-        apply();
-        paint();
-        name(null);        // nothing to hand to a transition, so leave no stray style
-        return;
-      }
-      const done = () => { paint(); name(null); };
-      document.startViewTransition(apply).finished.then(done, done);
-    };
-
-    tiles.forEach((tile, i) => {
-      tile.addEventListener("click", (e) => {
-        if (!frames[i]) return;         // never swallow the link without a plate to show
-        e.preventDefault();
-        name(tile.querySelector("img"));
-        morph(() => {
-          name(frames[i].querySelector("img"));
-          plate.classList.add("is-open");
-          opener = enterOverlay(plate, ".modal-close", tile);
-          // "instant", not "auto": auto would inherit scroll-behavior:smooth and slide
-          // the roll into place under the morph, which is the one motion we cannot afford.
-          glide(i, "instant");
-        });
-      });
-    });
-    const close = () => {
-      const i = at();
-      name(frames[i] ? frames[i].querySelector("img") : null);
-      morph(() => {
-        name(opener ? opener.querySelector("img") : null);
-        plate.classList.remove("is-open");
-        leaveOverlay(plate, opener);
-      });
-    };
-    Array.from(plate.querySelectorAll("[data-ig-close]")).forEach((el) => el.addEventListener("click", close));
-    if (prev) prev.addEventListener("click", () => glide(at() - 1));
-    if (next) next.addEventListener("click", () => glide(at() + 1));
-    if (reel) {
-      reel.addEventListener("scroll", paint, { passive: true });
-      reel.addEventListener("scrollend", paint);   // a swipe that stopped short snaps back
-
-      /* Drag the plate sideways. Touch already pans through the reel, so this only
-         exists for a mouse: pulling the photograph by hand is what makes the roll read
-         as an object rather than as a dialog with two buttons on it. Snapping is turned
-         off for the duration, because mandatory snap fights a drag frame by frame. */
-      let drag = null;
-      reel.addEventListener("pointerdown", (event) => {
-        if (!many || event.pointerType === "touch" || event.button !== 0) return;
-        drag = { x: event.clientX, left: reel.scrollLeft };
-        reel.style.scrollSnapType = "none";
-        if (reel.setPointerCapture) reel.setPointerCapture(event.pointerId);
-      });
-      reel.addEventListener("pointermove", (event) => {
-        if (!drag) return;
-        reel.scrollLeft = drag.left - (event.clientX - drag.x);
-      });
-      const settle = () => {
-        if (!drag) return;
-        drag = null;
-        reel.style.scrollSnapType = "";
-        glide(Math.round(reel.scrollLeft / (reel.clientWidth || 1)));
-      };
-      reel.addEventListener("pointerup", settle);
-      reel.addEventListener("pointercancel", settle);
-    }
-    plate.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        close();
-        return;
-      }
-      if (e.key === "Tab") {
-        trapTab(plate, e);
-        return;
-      }
-      if (!many) return;
-      const go = { ArrowLeft: at() - 1, ArrowRight: at() + 1, Home: 0, End: frames.length - 1 };
-      if (go[e.key] === undefined) return;
-      e.preventDefault();
-      glide(go[e.key]);
-    });
-    paint();
-  }
-
 })();
 
 /* ---- Shared overlay plumbing: one modal standard for the whole site ----
    inertOutside walks the overlay's ANCESTOR chain instead of sweeping
-   document.body.children, because an overlay can sit inside <main> (the gallery
-   photo plate is a body child; the dot game lives inside the page body). A
-   body-level sweep of a nested overlay silently leaves the whole page exposed. */
+   document.body.children, because an overlay can sit inside <main> (the dot game
+   lives inside the page body). A body-level sweep of a nested overlay silently
+   leaves the whole page exposed. */
 function inertOutside(root, on) {
   const skip = new Set(["SCRIPT", "STYLE", "NOSCRIPT"]);
   let node = root;
@@ -365,6 +177,64 @@ function trapTab(root, event) {
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
 }
 
+/* ---- The exit gesture the visitor already has (round 72) ----
+
+   Every way out of a surface on this site is an in-page control: Esc, a close button, the curtain.
+   A phone has no Esc and its visitor's habit is the system back gesture, so leaving that gesture
+   alone made Back mean the one thing it must never mean while something is open: *leave the place*.
+   Measured in a real browser (`.verify/_backprobe.mjs`): on rooms-toronto.html, press i, press Back,
+   and the visitor is thrown back to street.html with the card folded and their position in the room
+   gone. On a phone that is the whole of the site's exit contract failing, not a detail.
+
+   So every surface that takes the screen (a card, the written lane, a story rail, the gallery plate,
+   the dot game, the featured-publication modal) reports itself here. Opening one pushes one history
+   entry; closing it pops the same entry. A Back that arrives while something is open folds that
+   surface the way Esc would -- by dispatching the same Esc at it, so there is one fold path and not
+   a second implementation that can drift -- and only a Back with nothing open leaves the place.
+
+   The counters are `let` at module scope and the functions are declarations: the page's own IIFEs
+   register listeners during the first run of this file and only call these later, on interaction. */
+let overlayDepth = 0;        // surfaces this page has open and has a history entry for
+let ownPop = 0;              // pops this page caused itself (the popstate after our own close)
+let foldingFromHistory = false;
+
+function overlayEntered() {
+  overlayDepth++;
+  try { history.pushState({ huaxuOverlay: overlayDepth }, ""); }
+  catch (_) { overlayDepth = Math.max(0, overlayDepth - 1); }   // a file:// page may refuse
+}
+
+function overlayLeft() {
+  if (foldingFromHistory || overlayDepth <= 0) return;
+  overlayDepth--;
+  ownPop++;
+  try { history.back(); } catch (_) { ownPop = Math.max(0, ownPop - 1); }
+}
+
+/* What counts as "in the way of the picture", in the order they stack. Kept as one list because a
+   surface that is missing here is a surface where Back still throws the visitor out. */
+const OVERLAY_SURFACE = [
+  "#room-plate.is-open",
+  "[data-walk-game]:not([hidden])",
+  "#featured-modal.is-open",
+  "[data-dot-game]:not([hidden])",
+  "[data-walk-card]:not([hidden])",
+  "[data-walk-listpanel]:not(.is-closed)",
+].join(", ");
+
+window.addEventListener("popstate", () => {
+  if (ownPop > 0) { ownPop--; return; }              // our own closes popping their entries
+  if (overlayDepth <= 0) return;                     // nothing open: this Back is the exit, and it should leave
+  overlayDepth--;
+  const top = document.querySelector(OVERLAY_SURFACE);
+  foldingFromHistory = true;
+  try {
+    if (top) top.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+  } finally {
+    foldingFromHistory = false;
+  }
+});
+
 /* Enters an overlay: locks the page, isolates everything outside it, and moves
    focus in. The restore target is passed in by the caller rather than inferred
    from document.activeElement, which is not the clicked control in every
@@ -375,6 +245,7 @@ function enterOverlay(root, focusSel, trigger) {
   inertOutside(root, true);
   const target = focusSel ? root.querySelector(focusSel) : null;
   (target || root).focus();
+  overlayEntered();
   return restore;
 }
 
@@ -382,6 +253,7 @@ function leaveOverlay(root, trigger) {
   inertOutside(root, false);
   document.body.style.overflow = "";
   if (trigger && typeof trigger.focus === "function") trigger.focus();
+  overlayLeft();
 }
 
 /* ---- Dot-trace game: thinking page nine-panel grid (owner decision 2026-09) ---- */
@@ -810,11 +682,9 @@ function leaveOverlay(root, trigger) {
     }
     return h;
   };
-  const ZONES = (() => {
-    try { const a = JSON.parse(layer.getAttribute("data-lane-zones") || "[]");
-          return Array.isArray(a) ? a.filter((z) => Array.isArray(z) && z.length >= 2) : []; }
-    catch (_) { return []; }
-  })();
+  /* Round 72 took the banner that read the lane's zone seams; round 76 took `data-lane-zones` itself,
+     which had been left in the page for a reader that never came. The seams still reach a visitor as
+     the rail's strip ticks, and the rail's `is-here` says where they are. */
   /* The funicular ride (round 52). GTA's F-key does one thing that matters: for a few seconds the
      vehicle carries you and the world carries on around it. Here the world is the real Falls
      Incline — 59.8 m of double track at 30 degrees, two 40-passenger cars counterbalanced so one
@@ -823,27 +693,15 @@ function leaveOverlay(root, trigger) {
   const RIDE_T = 3.1;
   const sm01 = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
   let ride = null;
-  const bannerEl = layer.querySelector("[data-walk-banner]");
-  const stripEl = layer.querySelector("[data-walk-strip]");
-  let bannerTimer = 0;
-  const showBanner = (name, note) => {
-    if (!bannerEl || !name) return;
-    bannerEl.querySelector(".walk-banner-name").textContent = name;
-    const n = bannerEl.querySelector(".walk-banner-note");
-    if (n) n.textContent = note || "";
-    // restart the animation even when a ride crosses two seams at once
-    bannerEl.classList.remove("is-on");
-    void bannerEl.offsetWidth;
-    bannerEl.classList.add("is-on");
-    clearTimeout(bannerTimer);
-    bannerTimer = setTimeout(() => bannerEl.classList.remove("is-on"), 3400);
-  };
-  let zoneHere = -2;   // -2 before the first reading, which announces where you started, as those games do at load
-  const zoneOf = (z) => {
-    let i = -1;
-    for (let j = 0; j < ZONES.length; j++) if (z >= ZONES[j][0]) i = j;
-    return i;
-  };
+  /* Round 72, the owner's ruling: 「很多東西因為選取會跳這種介面…有必要的在跳」.
+
+     There used to be a district banner here. It appeared by itself whenever the body crossed a zone
+     seam, and again after every rail jump — so *selecting a stop* made an interface appear, which is
+     the complaint word for word. The information it carried is not lost: the stop rail marks where
+     you are (`is-here`) and the drawer names the district in its own card. Round 77 took the strip
+     that this note used to cite as the third half: round 72 had cut its CSS in the same commit, so
+     for five rounds the page carried three spans nobody could see. What is gone is a surface that
+     appeared without being asked for, and the remains of one. */
   // How far the walker may go. The default is the end wall minus a body; the far plane is a view,
   // not a hole out of the world. A place whose far end is genuinely open authors its own walk limit.
   const MAX_D = attr("laneMaxD", Z_FAR - 47);
@@ -852,12 +710,25 @@ function leaveOverlay(root, trigger) {
   const HIT = 44;
   // A slower, eased walk and a limited turn rate are deliberate comfort choices. Camera roll is
   // removed, and the remaining head bob is sub-centimetre so motion never fights the place being read.
-  // Round 65: the head turns at 120 degrees a second, not 75. At 75 a right angle took a second
-  // and a quarter -- a quarter turn every time the visitor looked at the next thing -- and a
-  // lane you have to wait out is a lane that feels broken. The drag still turns as fast as the
-  // hand moves; this is the keyboard.
-  const SPEED = 165, RUN = 1.25, TURN_RATE = 120;   // release decay tau is 90 ms, in stepMotion
+  /* Round 71, the owner's correction: "moving left and right turns too far". Measured on the build
+     before this change (`.verify/_turnprobe.mjs`, rooms-toronto, day): a TAP of D / A / the right
+     arrow turned the head 7.4-9.2 degrees, a 200 ms press 37.7, a second 140.3, and a drag exactly
+     0.09 deg/px. None of those is a look -- they are swings -- and the cause of the smallest one is
+     that a tap was paid a whole 120 ms of turn because that is the frame clamp.
+
+     So the two are separated, because they answer different questions:
+       `TURN_RATE`  what a HELD key is worth, per second, to a visitor who is looking around;
+       `TURN_TAP`   what a press too short for a frame is worth, and it is a nudge, not a step.
+     Round 65 raised the held rate from 75 to 120 for the opposite complaint ("a right angle took a
+     second and a quarter"); 85 keeps most of that gain and costs the overshoot. */
+  const SPEED = 165, RUN = 1.25, TURN_RATE = 85;    // release decay tau is 90 ms, in stepMotion
+  const TURN_TAP_MS = 35;            // ms of turn a tap is worth: 85 deg/s x 0.035 = 3.0 degrees
+  const DRAG_DEG_PER_PX = 0.065;     // a drag sets the heading from distance; 100 px = 6.5 degrees
   const GRAV = 2400, JUMP = 420, GLIDE_SPEED = 165;
+  /* Round 75: the glide's time and ceiling. 1.4 s is the wait this device already asks for a
+     photograph's arrival; 7000 cm/s puts the longest authored jump (Goat Island's Terrapin
+     Point, 155 m) at the same 1.4 s instead of 94. */
+  const GLIDE_T = 1.4, GLIDE_SPEED_MAX = 7000;
   let zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
   let vx = 0, vd = 0, phase = 0, bob = 0, raf = 0, last = 0, here = -1, reach = null;
   let tickMs = 0;
@@ -2024,10 +1895,23 @@ function leaveOverlay(root, trigger) {
     const v = readAny(sel);
     return v && typeof v === "object" && !Array.isArray(v) ? v : null;
   };
+  /* P2 (round 69): the biggest island no longer lives in the page. A place whose world data runs
+     past 60 KB is emitted into js/places/<place>.js, and the marker here keeps the same attribute
+     with `data-place` and no text — so every caller, every gate and every selector still asks the
+     same question. The bytes arrive from a plain <script> tag placed before this file, which is
+     why the read can stay synchronous: no fetch, no await, no build step, and no page that paints
+     a walk before its world exists. */
   const readAny = (sel) => {
     const node = layer.querySelector(sel);
     if (!node) return null;
-    try { return JSON.parse(node.textContent); } catch (err) { return null; }
+    const text = (node.textContent || "").trim();
+    if (text) {
+      try { return JSON.parse(text); } catch (err) { return null; }
+    }
+    const name = sel.replace(/^\[|\]$/g, "");
+    const place = node.dataset && node.dataset.place;
+    const store = place && window.__HX_PLACES && window.__HX_PLACES[place];
+    return store && Object.prototype.hasOwnProperty.call(store, name) ? store[name] : null;
   };
   const jsonData = (v) => { try { return v ? JSON.parse(v) : null; } catch (e) { return null; } };
   const meta = objs.map((el) => ({
@@ -2096,9 +1980,8 @@ function leaveOverlay(root, trigger) {
      by the base test alone. Without this, `wall-probe` measured 786 free standing points inside
      the journey tunnel's own walls — a visitor walks through exactly what they see (round 45). */
   {
-    const bdEl = layer.querySelector("[data-walk-backdrop]");
-    let world = null;
-    try { world = (JSON.parse(bdEl.textContent).world || {}); } catch (err) { world = null; }
+    const bdIsland = readAny("[data-walk-backdrop]");
+    const world = (bdIsland && bdIsland.world) || null;
     for (const p of (world && world.prims) || []) {
       if (p.t !== "f" && p.t !== "x") continue;
       const pts = p.p || [];
@@ -2819,10 +2702,22 @@ function leaveOverlay(root, trigger) {
 
   const box = (C, q) => {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    /* Round 69m: a point at or behind the near plane has no screen position, and dividing by its
+       depth does not make one -- it makes 84,326 by 99,753. Measured on rooms-goat.html: standing at
+       Terrapin Point (stop 2) and looking at the Horseshoe, the falls' own click box became
+       84326x99753 px and was then culled by the bounds test, so the thing filling the view was
+       unpressable -- and its stale width stayed on the element for every frame after. The projection
+       is clamped to the near plane here, and to a frame's worth of overflow, so a screen-filling
+       prop stays a target and a degenerate one is merely small. */
     q.pts.forEach((p) => {
-      const sx = W * 0.5 + (focal * p.x) / p.z, sy = H * 0.5 + (focal * p.y) / p.z;
+      if (!(p.z > 0)) return;
+      const z = Math.max(p.z, NEAR);
+      const sx = W * 0.5 + (focal * p.x) / z, sy = H * 0.5 + (focal * p.y) / z;
       x0 = Math.min(x0, sx); y0 = Math.min(y0, sy); x1 = Math.max(x1, sx); y1 = Math.max(y1, sy);
     });
+    if (!Number.isFinite(x0)) return [W * 0.5, H * 0.5, W * 0.5, H * 0.5];
+    x0 = Math.max(x0, -W); x1 = Math.min(x1, W * 2);
+    y0 = Math.max(y0, -H); y1 = Math.min(y1, H * 2);
     // Absolute corners, not [x0, y0, w, h]: the hit-box union below maxes x1/y1 against the other
     // faces' absolute edges. A relative width here met that union as if it were an edge, so any
     // object drawn as a single quad — the chain doors, the wall frames, a drain plate — came out
@@ -2871,9 +2766,6 @@ function leaveOverlay(root, trigger) {
      Its cycle is fifteen minutes. Ours is four: a visitor to a web page does not stay fifteen
      minutes, and a cycle nobody sees is decoration rather than day. The walk opens in the late
      afternoon so the lamps come up while you are standing there instead of after you have gone. */
-  const DAYLEN = 240;                                  // seconds for one full day (kept for held
-                                                         // places' internal breath; the visitor's clock
-                                                         // no longer runs on it — see below)
   /* The hour is the visitor's, not the browser's clock (round 49, at the owner's insistence: the
      fifteen-minute hall had people walking into a blackout they never asked for). A lane opens in
      full day and stays there until the sun/moon button says otherwise; the choice rides
@@ -2885,26 +2777,40 @@ function leaveOverlay(root, trigger) {
   const HOUR_NIGHT = 0.92;
   let hourPref = "day";
   let hourPhaseSet = 0.5;
-  try { if (window.localStorage.getItem(HOUR_KEY) === "night") { hourPref = "night"; hourPhaseSet = HOUR_NIGHT; } }
-  catch (e) { /* private mode: the choice lives this visit only */ }
+  /* Round 76: whether the visitor has chosen at all. A page's own opening hour (`data-lane-day-start`)
+     may only apply when they have not -- otherwise the sun/moon button would be overruled by the
+     record every time the page loaded. */
+  let hourChosen = false;
+  try {
+    const stored = window.localStorage.getItem(HOUR_KEY);
+    if (stored) hourChosen = true;
+    if (stored === "night") { hourPref = "night"; hourPhaseSet = HOUR_NIGHT; }
+  } catch (e) { /* private mode: the choice lives this visit only */ }
   const dayPhase = () => hourPhaseSet;                  // the station clock reads the hour the visitor
                                                          // chose, so the hands and the light agree
   const NIGHT = () => 1 - sunNow();
   /* A lane whose place is a day.
 
-     The street is walked in sunlight, and a cycle of four minutes hands a visitor dusk before they
-     have looked around once. So a record may say "this place is a day" and the page then runs its own
-     clock: a longer cycle (fifteen minutes, which is what the reference hall uses and the least a
-     visitor will actually stand in) starting a little before noon, so the light is already high when
-     they arrive and drifts slowly down. Night still happens; it is just no longer the first thing
-     that happens.
-
-     The numbers are authored in the record and stamped on the layer with everything else the
-     renderer reads (`data-lane-day-*`), because a place's own day belongs to the place. */
+     There is no running clock anywhere in this lane (round 49: a visitor walked into a blackout they
+     never asked for, and the hour has been theirs since). What a day page has instead is the hour it
+     *opens* at, authored in the record and stamped on the layer with everything else the renderer
+     reads (`data-lane-day-start`), because a place's own day belongs to the place: the street opens
+     at noon and stays there until the visitor says otherwise. No cycle, no drift -- a page that
+     changed the light on its own would be the blackout with a slower fuse. */
   const DAYPAGE = attr("laneDay", 0) ? true : false;
-  const DAY_LEN = attr("laneDayCycle", 900);
-  const DAY_AT = attr("laneDayStart", 0.45);           // where the page opens in its own cycle
+  /* Round 76 -- `data-lane-day-cycle` and `data-lane-day-start` were stamped on four pages and read
+     into two constants that nothing used, so `_walkshot.mjs` and `_lumacheck.mjs` rewrote the start
+     to 0.9 to photograph dusk and got noon: the knob they were turning had no wire on it. The cycle
+     belongs to a clock this site no longer runs (the hour is the visitor's, see above), so it is gone
+     from the markup; the start now *is* the opening phase, for a page that opens at its own hour and
+     a visitor who has not chosen one. 0.5 is noon, which is what every page opened at before. */
+  /* Read by hand, not through `attr()`: that helper falls back on a falsy parse, so a page authored to
+     open at phase 0 (midnight) would silently open at 0.5 instead — the same class of defect as the
+     unwired knob this constant used to be. */
+  const dayAtAttr = parseFloat(layer.dataset.laneDayStart);
+  const DAY_AT = Number.isFinite(dayAtAttr) ? dayAtAttr : 0.5;
   const DAY_GAIN = attr("laneDayGain", 1);
+  if (DAYPAGE && !hourChosen) hourPhaseSet = clamp(DAY_AT, 0, 1);
   // A place held at one hour of the night (`data-lane-night`, a phase): the LookOut's window shows a
   // night that does not move, so its lamps and air stop following the hall's clock (round 33).
   const HELD = attr("laneNight", 0);
@@ -3116,84 +3022,216 @@ function leaveOverlay(root, trigger) {
       const gx = tp.x || 0, gz = tp.z, G = tp.gate || { w: 2100, h: 2270 };
       const R = (x0, y0, x1, y1, z, col, l, air) =>
         T0([[gx + x0, y0, z], [gx + x1, y0, z], [gx + x1, y1, z], [gx + x0, y1, z]], col, l, air);
-      const hw = G.w / 2, k = G.h / 2270;
-      // Stone podium, the lower storey's shadowed bays, then the six pillars across five bays.
-      R(-hw - 60, 0, hw + 60, 50 * k, gz - 30, "#7d7a74", flood * 0.8);
-      R(-hw, 50 * k, hw, 960 * k, gz + 40, "#5a3024", flood * 0.62);
-      const bay = G.w / 5;
+      const hw = G.w / 2, k = G.h / 2270, bay = G.w / 5;
+      /* Round 69i: the gate was a picture of a building, not a building.
+
+         Every piece of it was a quad at one z: the whole gatehouse lived inside 230 cm of depth, its
+         roof was one trapezoid (sd 2.5 luma across it -- a single flat colour) and the frame it stood
+         in held 60 quads. At 28 m that reads as a cut-out, and it is the last thing the lane shows a
+         visitor. It now has the record's own 8 m: the centre bay is a passage clean through the mass,
+         so the plaza sees a near face with a hole in it, two jambs receding to a far face and the
+         courtyard's light at the end; the sides are walls an oblique stop can see; the roof is four
+         slopes, a ridge and an eave whose underside is the dark band that gives a Japanese roof its
+         weight. Nothing about the record's sizes moved: 21 m wide, 22.7 m to the cap, 8 m deep, five
+         bays of 4.2 m, the lantern 3.75 m tall in the centre bay, the Nio in the outer bays. */
+      const DZ = 400, zf = gz - DZ, zb = gz + DZ;   // 8 m deep; the plaza sees zf, the courtyard zb
+      const PW = bay, PH = 830, t = 50 * k;         // clear opening of the passage, podium top
+      // The podium: its face, its top, and the two returns under the side walls.
+      R(-hw - 60, 0, hw + 60, t, zf - 110, "#6f6c66", flood * 0.72);
+      T0([[gx - hw - 60, t, zf - 110], [gx + hw + 60, t, zf - 110],
+          [gx + hw + 60, t, zb], [gx - hw - 60, t, zb]], "#7d7a74", flood * 0.8, 0.04);
+      [-1, 1].forEach((s) => T0([[gx + s * (hw + 60), 0, zf - 110], [gx + s * (hw + 60), 0, zb],
+                                 [gx + s * (hw + 60), t, zb], [gx + s * (hw + 60), t, zf - 110]],
+                                "#6f6c66", flood * 0.66));
+      // The near face, built around the passage: two piers and the lintel over the hole. The hole is
+      // the whole point -- it is what makes the gate stand in front of the courtyard instead of on it.
+      R(-hw, t, -PW / 2, 960 * k, zf, "#5a3024", flood * 0.62);
+      R(PW / 2, t, hw, 960 * k, zf, "#5a3024", flood * 0.62);
+      R(-PW / 2, PH, PW / 2, 960 * k, zf, "#5a3024", flood * 0.62);
+      // The far face: the same three pieces, seen through the passage and from behind.
+      R(-hw, t, -PW / 2, 960 * k, zb, "#5a3024", flood * 0.5);
+      R(PW / 2, t, hw, 960 * k, zb, "#5a3024", flood * 0.5);
+      R(-PW / 2, PH, PW / 2, 960 * k, zb, "#5a3024", flood * 0.5);
+      // The passage's own walls and ceiling, out of the floods' reach, so the lantern is read against
+      // a real shadow and the way through has a length.
+      [-1, 1].forEach((s) => T0([[gx + s * PW / 2, t, zf], [gx + s * PW / 2, t, zb],
+                                 [gx + s * PW / 2, PH, zb], [gx + s * PW / 2, PH, zf]],
+                                "#3d211a", flood * 0.4, 0.02));
+      T0([[gx - PW / 2, PH, zf], [gx + PW / 2, PH, zf], [gx + PW / 2, PH, zb], [gx - PW / 2, PH, zb]],
+         "#2a1814", flood * 0.34, 0.02);
+      // The gatehouse's own side walls: the faces an oblique stop sees, 8 m of them.
+      [-1, 1].forEach((s) => T0([[gx + s * hw, t, zf], [gx + s * hw, t, zb],
+                                 [gx + s * hw, 960 * k, zb], [gx + s * hw, 960 * k, zf]],
+                                "#7a3326", flood * 0.7));
+      // The Nio bays: the outer bays, behind their grilles, and never drawn themselves.
       for (let i = 0; i < 5; i++) {
         const x0 = -hw + i * bay;
-        if (i === 0 || i === 4) {
-          R(x0, 60 * k, x0 + bay, 900 * k, gz + 10, "#6a2a20", flood * 0.75);
-          for (let j = 1; j < 8; j++) {
-            const xb = x0 + (bay * j) / 8;
-            R(xb - 5, 80 * k, xb + 5, 880 * k, gz + 6, "#8c3a2c", flood * 0.85);
-          }
+        if (i !== 0 && i !== 4) continue;
+        R(x0, 60 * k, x0 + bay, 900 * k, zf - 8, "#6a2a20", flood * 0.75);
+        for (let j = 1; j < 8; j++) {
+          const xb = x0 + (bay * j) / 8;
+          R(xb - 5, 80 * k, xb + 5, 880 * k, zf - 12, "#8c3a2c", flood * 0.85);
         }
       }
+      // Six pillars on the near face, standing proud of it, so the face has relief.
       for (let i = 0; i <= 5; i++) {
         const xp = -hw + i * bay;
-        R(xp - 46, 50 * k, xp + 46, 960 * k, gz, "#c8442f", flood * 1.05);
+        R(xp - 46, t, xp + 46, 960 * k, zf - 26, "#c8442f", flood * 1.05);
       }
-      R(-hw - 40, 880 * k, hw + 40, 960 * k, gz - 2, "#ad3a2b", flood * 0.95);
-      // The lanterns: the red chōchin in the centre bay, the copper tōrō either side of it.
-      const LR = 135 * k, Lb = 470 * k, Lt = 845 * k;
-      for (let i = 0; i < 6; i++) {
-        const t0 = i / 6, t1 = (i + 1) / 6;
+      R(-hw - 40, 880 * k, hw + 40, 960 * k, zf - 30, "#ad3a2b", flood * 0.95);
+      /* The lanterns: the red chōchin in the passage, the copper tōrō either side of it.
+         Round 69h: the chōchin was drawn in six slices of the wall's own red (#c22f22) under the
+         lane's night murk, and measured 69.7 luma against the pillar beside it at 68.8 and the paving
+         at 72.5 -- the plaza's hero object was the *dimmest* thing standing in it, a flat maroon
+         rectangle (sd 0.0 across its body). A paper lantern is a lamp: its paper carries its own
+         light, so its slices are authored `nolite` (the idiom every lit window in this file already
+         uses) and its body colour is the colour it gives off rather than the colour the wall gives
+         back. The ribs are the lantern's own structure and are drawn, not shaded in. */
+      const LR = 135 * k, Lb = 400 * k, Lt = 775 * k, LZ = gz;   // inside the passage now
+      const CH = 10;                                    // slices up the body: 7 paper, 3 ribs
+      const rib = (tt) => Math.abs(tt - 0.26) < 0.03 || Math.abs(tt - 0.5) < 0.03 || Math.abs(tt - 0.74) < 0.03;
+      for (let i = 0; i < CH; i++) {
+        const t0 = i / CH, t1 = (i + 1) / CH;
         const r0 = LR * (0.84 + 0.16 * Math.sin(Math.PI * t0)), r1 = LR * (0.84 + 0.16 * Math.sin(Math.PI * t1));
-        const col = t0 < 0.12 || t1 > 0.88 ? "#1f1a18" : "#c22f22";
-        T0([[gx - r0, Lb + (Lt - Lb) * t0, gz - 20], [gx + r0, Lb + (Lt - Lb) * t0, gz - 20],
-            [gx + r1, Lb + (Lt - Lb) * t1, gz - 20], [gx - r1, Lb + (Lt - Lb) * t1, gz - 20]], col, flood * 1.15);
+        const cap = t0 < 0.1 || t1 > 0.9;
+        const q = T0([[gx - r0, Lb + (Lt - Lb) * t0, LZ], [gx + r0, Lb + (Lt - Lb) * t0, LZ],
+                      [gx + r1, Lb + (Lt - Lb) * t1, LZ], [gx - r1, Lb + (Lt - Lb) * t1, LZ]],
+                     cap ? "#241a16" : rib(t0) ? "#7d2b20" : "#e8503a", flood * (cap ? 0.9 : 1.35));
+        if (q && !cap) q.nolite = true;                 // the paper is the lamp; the caps are metal
       }
+      // The cord that hangs it, from the passage ceiling to its cap.
+      R(-4, Lt, 4, PH, LZ, "#1c1410", flood * 0.5);
+      // What the lantern throws: a pool at the gate's foot, under it and no wider than the bay.
+      const lp = T0([[gx - LR * 4, 2, zf - 30], [gx + LR * 4, 2, zf - 30],
+                     [gx + LR * 5.2, 2, zf - 780], [gx - LR * 5.2, 2, zf - 780]],
+                    `rgba(255,206,164,${(0.16 + 0.2 * NIGHT()).toFixed(3)})`, 1.25, 0.03);
+      if (lp) lp.nolite = true;
+      // The copper toro, 2.75 m, either side of the passage.
       [-1, 1].forEach((s) => {
         const cx = s * bay, top = 835 * k, bot = 560 * k, w2 = 55 * k;
-        T0([[gx + cx - w2, bot, gz - 18], [gx + cx + w2, bot, gz - 18], [gx + cx + w2 * 0.8, top - 60 * k, gz - 18],
-            [gx + cx - w2 * 0.8, top - 60 * k, gz - 18]], "#56614f", flood * 0.85);
-        T0([[gx + cx - w2 * 1.3, top - 60 * k, gz - 19], [gx + cx + w2 * 1.3, top - 60 * k, gz - 19],
-            [gx + cx, top, gz - 19]], "#3f4a3c", flood * 0.8);
+        T0([[gx + cx - w2, bot, zf - 34], [gx + cx + w2, bot, zf - 34], [gx + cx + w2 * 0.8, top - 60 * k, zf - 34],
+            [gx + cx - w2 * 0.8, top - 60 * k, zf - 34]], "#56614f", flood * 0.85);
+        T0([[gx + cx - w2 * 1.3, top - 60 * k, zf - 35], [gx + cx + w2 * 1.3, top - 60 * k, zf - 35],
+            [gx + cx, top, zf - 35]], "#3f4a3c", flood * 0.8);
       });
-      // Pent roof between the storeys, the upper storey with its balustrade, and the great roof.
-      T0([[gx - hw - 260 * k, 960 * k, gz - 60], [gx + hw + 260 * k, 960 * k, gz - 60],
-          [gx + hw + 40, 1170 * k, gz + 60], [gx - hw - 40, 1170 * k, gz + 60]], "#323846", flood * 0.7);
-      R(-hw - 250 * k, 955 * k, hw + 250 * k, 985 * k, gz - 64, "#5a6170", flood * 0.8);
-      R(-hw * 0.86, 1170 * k, hw * 0.86, 1250 * k, gz + 70, "#8f2f24", flood * 0.9);
-      R(-hw * 0.82, 1250 * k, hw * 0.82, 1650 * k, gz + 80, "#4d2a20", flood * 0.6);
+      // The pent roof between the storeys: a real slope with an overhang, and the shadowed soffit
+      // under the overhang -- from 28 m out that underside is what says the roof is a roof.
+      const E1 = hw + 260 * k, y1a = 960 * k, y1b = 1170 * k;
+      T0([[gx - E1, y1a, zf - 320], [gx + E1, y1a, zf - 320],
+          [gx + E1, y1b, zf + 60], [gx - E1, y1b, zf + 60]], "#323846", flood * 0.7);
+      T0([[gx - E1, y1a, zf - 320], [gx + E1, y1a, zf - 320],
+          [gx + hw, y1a, zf], [gx - hw, y1a, zf]], "#191d26", flood * 0.46, 0.04);
+      R(-E1, y1a - 8, E1, y1a + 10, zf - 322, "#5a6170", flood * 0.8);
+      // The upper storey: a box too, with its balustrade, its own pillars and a back wall.
+      const UW = hw * 0.82;
+      R(-hw * 0.86, y1b, hw * 0.86, 1250 * k, zf + 80, "#8f2f24", flood * 0.9);
+      // the balustrade's posts, so the railing reads as a railing and not as a stripe
+      for (let i = 0; i <= 11; i++) {
+        const xp = -hw * 0.86 + i * (hw * 1.72 / 11);
+        R(xp - 9, 1180 * k, xp + 9, 1250 * k, zf + 74, "#a83a2b", flood * 0.95);
+      }
+      R(-UW, 1250 * k, UW, 1650 * k, zf + 80, "#4d2a20", flood * 0.6);
+      R(-UW, 1250 * k, UW, 1650 * k, zb - 80, "#43241c", flood * 0.5);
+      [-1, 1].forEach((s) => T0([[gx + s * UW, 1250 * k, zf + 80], [gx + s * UW, 1250 * k, zb - 80],
+                                 [gx + s * UW, 1650 * k, zb - 80], [gx + s * UW, 1650 * k, zf + 80]],
+                                "#5a2c21", flood * 0.66));
       for (let i = 0; i <= 5; i++) {
         const xp = -hw * 0.82 + i * (hw * 1.64 / 5);
-        R(xp - 26, 1250 * k, xp + 26, 1650 * k, gz + 76, "#c2412e", flood * 0.95);
+        R(xp - 26, 1250 * k, xp + 26, 1650 * k, zf + 76, "#c2412e", flood * 0.95);
       }
-      T0([[gx - hw - 420 * k, 1640 * k, gz - 40], [gx + hw + 420 * k, 1640 * k, gz - 40],
-          [gx + hw * 0.62, 2190 * k, gz + 200], [gx - hw * 0.62, 2190 * k, gz + 200]], "#2e3442", flood * 0.72);
-      [-1, 1].forEach((s) => T0([[gx + s * (hw + 420 * k), 1640 * k, gz - 41], [gx + s * (hw + 480 * k), 1720 * k, gz - 41],
-                                 [gx + s * (hw + 300 * k), 1700 * k, gz - 41]], "#4f5667", flood * 0.8));
-      R(-hw - 410 * k, 1632 * k, hw + 410 * k, 1660 * k, gz - 44, "#5a6170", flood * 0.8);
-      R(-hw * 0.66, 2190 * k, hw * 0.66, G.h, gz + 200, "#262b36", flood * 0.7);
+      // The great roof: four slopes and a ridge, with an eave that overhangs on every side.
+      const E2 = hw + 420 * k, yE = 1640 * k, yR = 2190 * k, zE = 480, rH = hw * 0.62;
+      T0([[gx - E2, yE, gz - zE], [gx + E2, yE, gz - zE],
+          [gx + rH, yR, gz], [gx - rH, yR, gz]], "#2e3442", flood * 0.8);
+      T0([[gx - E2, yE, gz + zE], [gx + E2, yE, gz + zE],
+          [gx + rH, yR, gz], [gx - rH, yR, gz]], "#262b36", flood * 0.58);
+      [-1, 1].forEach((s) => T0([[gx + s * E2, yE, gz - zE], [gx + s * E2, yE, gz + zE],
+                                 [gx + s * rH, yR, gz]], "#333a48", flood * 0.7));
+      // The eave's underside: one plane under the whole overhang, darker than the slope above it,
+      // which is the band that gives the roof thickness when it is looked up at.
+      T0([[gx - E2, yE, gz - zE], [gx + E2, yE, gz - zE],
+          [gx + E2, yE, gz + zE], [gx - E2, yE, gz + zE]], "#171b23", flood * 0.4, 0.03);
+      // The eave tips at the corners, and the fascia along the front edge.
+      [-1, 1].forEach((s) => T0([[gx + s * E2, yE, gz - zE - 2], [gx + s * (E2 + 60 * k), yE + 80 * k, gz - zE - 2],
+                                 [gx + s * (E2 - 120 * k), yE + 60 * k, gz - zE - 2]], "#4f5667", flood * 0.8));
+      R(-E2, yE - 16, E2, yE + 16, gz - zE - 2, "#5a6170", flood * 0.8);
+      // The ridge: the two planes meet under a cap, and the cap's faces are what a viewer sees
+      // instead of the seam.
+      T0([[gx - hw * 0.66, yR, gz - 150], [gx + hw * 0.66, yR, gz - 150],
+          [gx + hw * 0.66, G.h, gz], [gx - hw * 0.66, G.h, gz]], "#262b36", flood * 0.82);
+      T0([[gx - hw * 0.66, yR, gz + 150], [gx + hw * 0.66, yR, gz + 150],
+          [gx + hw * 0.66, G.h, gz], [gx - hw * 0.66, G.h, gz]], "#22262f", flood * 0.68);
       // The floodlights' spill on the plaza in front of the gate: the light that makes it a place to stand.
       T0([[gx - hw - 400, 2, gz - 2200], [gx + hw + 400, 2, gz - 2200], [gx + hw + 200, 2, gz - 60],
           [gx - hw - 200, 2, gz - 60]], `rgba(255,214,160,${(0.1 + 0.12 * NIGHT()).toFixed(3)})`, 1.1, 0.04);
+      /* The five-storey pagoda, 56 m west and 19 m north of the gate (OpenStreetMap), 53.32 m to the
+         top of its finial, its base 150 cm of stone.
+
+         Round 69i: like the gate it was a picture of a building. Every storey was a quad on one z,
+         so from anywhere off the axis it was a red cut-out four metres thick at its thinnest, and
+         its roofs were flat trapezoids with no overhang to see under. A pagoda's whole silhouette is
+         its roofs' overhangs seen from below and its storeys stepping back -- neither exists on a
+         plane. Each storey is now a box with four walls, the roof above it is four slopes with an
+         overhang on every side and a drawn underside, and the balconies project. Sizes are the
+         record's: five storeys, 53.32 m to the finial, base 12.4 m square, each storey's body
+         narrower than the one below it. */
       const pg = tp.pagoda;
       if (pg) {
         const px = pg.x, pz = pg.z, PH = pg.h || 5332;
-        const S = (x0, y0, x1, y1, col, l) =>
-          T0([[px + x0, y0, pz], [px + x1, y0, pz], [px + x1, y1, pz], [px + x0, y1, pz]], col, l, 0.1);
-        S(-620, 0, 620, 150, "#77746e", flood * 0.75);
-        let y = 150;
+        const F = (pts, col, l, air = 0.1) => T0(pts, col, l, air);
+        const L = (x0, y0, x1, y1, z, col, l) =>
+          F([[px + x0, y0, pz + z], [px + x1, y0, pz + z], [px + x1, y1, pz + z], [px + x0, y1, pz + z]], col, l);
+        // The stone base, 12.4 m square and 1.5 m of it, with its top and two returns.
+        const B = 620, BH = 150;
+        F([[px - B, BH, pz - B], [px + B, BH, pz - B], [px + B, BH, pz + B], [px - B, BH, pz + B]], "#77746e", flood * 0.75, 0.06);
+        [-1, 1].forEach((sd) => {
+          L(-B, 0, B, BH, sd * B, "#6a6762", flood * 0.62);                       // front / back
+          F([[px + sd * B, 0, pz - B], [px + sd * B, 0, pz + B],
+             [px + sd * B, BH, pz + B], [px + sd * B, BH, pz - B]], "#6a6762", flood * 0.55);   // sides
+        });
+        let y = BH;
         for (let i = 0; i < 5; i++) {
-          const bw = 360 - i * 30, bh = 600 - i * 30, rw = 700 - i * 55;
-          S(-bw, y, bw, y + bh, "#bf412e", flood * (1 - i * 0.03));
-          S(-bw * 0.4, y + bh * 0.15, bw * 0.4, y + bh * 0.8, "#2a1712", 0.5);
-          T0([[px - rw, y + bh, pz - 30], [px + rw, y + bh, pz - 30], [px + bw * 0.9, y + bh + 150, pz + 30],
-              [px - bw * 0.9, y + bh + 150, pz + 30]], "#2f3543", flood * 0.72, 0.1);
-          [-1, 1].forEach((s) => T0([[px + s * rw, y + bh, pz - 31], [px + s * (rw + 50), y + bh + 50, pz - 31],
-                                     [px + s * (rw - 90), y + bh + 30, pz - 31]], "#4d5464", flood * 0.8, 0.1));
-          y += bh + 150;
+          // The body steps back storey by storey, as the record's silhouette does.
+          const bw = 300 - i * 26, bh = 600 - i * 30, rw = 660 - i * 46, rd = rw * 0.82;
+          // four walls of the body
+          L(-bw, y, bw, y + bh, -rd, "#bf412e", flood * (1 - i * 0.03));
+          L(-bw, y, bw, y + bh, rd, "#a83a2b", flood * (1 - i * 0.03) * 0.82);
+          [-1, 1].forEach((sd) => F([[px + sd * bw, y, pz - rd], [px + sd * bw, y, pz + rd],
+                                     [px + sd * bw, y + bh, pz + rd], [px + sd * bw, y + bh, pz - rd]],
+                                    "#b23c2c", flood * (1 - i * 0.03) * 0.9));
+          // the dark opening on the front of each storey, inset so it is a hole and not a stripe
+          L(-bw * 0.34, y + bh * 0.18, bw * 0.34, y + bh * 0.76, -rd - 2, "#2a1712", 0.5);
+          // the balcony: a projecting slab and a rail, on the front and both returns
+          F([[px - bw * 1.06, y, pz - rd - 130], [px + bw * 1.06, y, pz - rd - 130],
+             [px + bw * 1.06, y, pz - rd], [px - bw * 1.06, y, pz - rd]], "#2a1b16", flood * 0.6, 0.08);
+          L(-bw * 1.06, y, bw * 1.06, y + 46, -rd - 130, "#7d3325", flood * 0.8);
+          // The roof: four slopes to a short ridge, overhanging on every side, with the underside.
+          const yr = y + bh, yt = yr + 150;
+          F([[px - rw, yr, pz - rd - 180], [px + rw, yr, pz - rd - 180],
+             [px + bw * 0.92, yt, pz - 20], [px - bw * 0.92, yt, pz - 20]], "#2f3543", flood * 0.78, 0.1);
+          F([[px - rw, yr, pz + rd + 180], [px + rw, yr, pz + rd + 180],
+             [px + bw * 0.92, yt, pz + 20], [px - bw * 0.92, yt, pz + 20]], "#272c38", flood * 0.6, 0.1);
+          [-1, 1].forEach((sd) => F([[px + sd * rw, yr, pz - rd - 180], [px + sd * rw, yr, pz + rd + 180],
+                                     [px + sd * bw * 0.92, yt, pz + 20], [px + sd * bw * 0.92, yt, pz - 20]],
+                                    "#313846", flood * 0.7, 0.1));
+          // the eave's underside: the band that makes a pagoda roof read as a roof from below
+          F([[px - rw, yr, pz - rd - 180], [px + rw, yr, pz - rd - 180],
+             [px + rw, yr, pz + rd + 180], [px - rw, yr, pz + rd + 180]], "#181c24", flood * 0.42, 0.04);
+          // the eave's tip, curling up at the corners
+          [-1, 1].forEach((sd) => F([[px + sd * rw, yr, pz - rd - 182], [px + sd * (rw + 44), yr + 56, pz - rd - 182],
+                                     [px + sd * (rw - 90), yr + 40, pz - rd - 182]], "#4d5464", flood * 0.8));
+          L(-rw, yr - 10, rw, yr + 10, pz - rd - 182, "#5a6170", flood * 0.8);
+          y = yt;
         }
-        S(-18, y, 18, PH - 120, "#5e5446", flood * 0.8);
+        // The sourin: mast, nine rings, and the finial at the record's 53.32 m.
+        L(-18, y, 18, PH - 120, -20, "#5e5446", flood * 0.8);
+        L(-18, y, 18, PH - 120, 20, "#4a4340", flood * 0.7);
         for (let r = 0; r < 9; r++) {
           const ry = y + 140 + r * ((PH - y - 420) / 9);
-          S(-62, ry, 62, ry + 26, "#8a7a54", flood * 0.9);
+          L(-62, ry, 62, ry + 26, -30, "#8a7a54", flood * 0.9);
+          L(-62, ry, 62, ry + 26, 30, "#6f6344", flood * 0.75);
         }
-        S(-34, PH - 160, 34, PH, "#a68c52", flood);
+        L(-34, PH - 160, 34, PH, -20, "#a68c52", flood);
       }
     }
     /* The Kanmon Strait beyond the Moji table, at the table's own scale (round 32; TODO §0n): one
@@ -4780,12 +4818,16 @@ function leaveOverlay(root, trigger) {
             }
             /* The door bay. The leaf stands in the same recess as the glass, so the unit reads as
                one wall with two holes in it rather than a window with a door stuck on the side. */
+            /* Round 69i: two of these were `mix(from, to, t)` calls left over from a signature that
+               no longer exists. `mix` takes (hex, lift) now, so the third argument hit its own
+               guard -- a console warning, an unchanged colour, and a threshold that was never
+               lifted -- every time a shopfront was built. A two-colour blend is `blendHex`. */
             Q([P(dIn, 0, 0), P(dOut, 0, 0), P(dOut, ins, 4), P(dIn, ins, 4)],
-              mix("#8d8578", base, 0.25), lit);                  // the threshold at the door's feet
+              blendHex("#8d8578", base, 0.25), lit);             // the threshold at the door's feet
             Q([P(dIn, 3, 0), P(dOut, 3, 0), P(dOut, 3, yA - 4), P(dIn, 3, yA - 4)],
               mix(base, -0.64), lit * 0.3);                      // the reveal behind the leaf
             Q([P(dIn + 9, 4, 0), P(dOut - 9, 4, 0), P(dOut - 9, 4, doorH), P(dIn + 9, 4, doorH)],
-              mix("#3c2f26", base, 0.3), lit * (0.62 + up * 0.38) * dl);
+              blendHex("#3c2f26", base, 0.3), lit * (0.62 + up * 0.38) * dl);
             // the frame: two jambs and a head, proud of the leaf
             for (const uu of [dIn + 2, dOut - 9]) {
               Q([P(uu, 2, 0), P(uu + 7, 2, 0), P(uu + 7, 2, doorH + 44), P(uu, 2, doorH + 44)],
@@ -4809,7 +4851,7 @@ function leaveOverlay(root, trigger) {
             // shut shops on the strip read as a flat band of corrugation. The hood over the blade
             // and the two reveals at its ends are what make it a closed shopfront.
             Q([P(-half - 3, 7, yA - 6), P(half + 3, 7, yA - 6), P(half + 3, 7, yA + 16), P(-half - 3, 7, yA + 16)],
-              mix("#39404e", base, 0.2), lit * 0.9);
+              blendHex("#39404e", base, 0.2), lit * 0.9);
             for (const uu of [-half, half - 9]) {
               Q([P(uu, 2, 0), P(uu + 9, 2, 0), P(uu + 9, 2, yA - 4), P(uu, 2, yA - 4)],
                 mix(base, -0.34), lit * 0.6);
@@ -5516,11 +5558,11 @@ function leaveOverlay(root, trigger) {
               const nb = Math.max(4, Math.round(t.h / 14));
               const on = NIGHT();
               for (let i = 1; i < nb; i++) {
-                const k0 = i / nb, k1 = k0 + 0.32 / nb;
+                const k0 = i / nb, k1 = k0 + 0.42 / nb;
                 const lo0 = at(a, d2, k0), lo1 = at(b, c2, k0), hi1 = at(b, c2, k1), hi0 = at(a, d2, k1);
                 const lt = 0.18 + 0.5 * on * (0.6 + 0.4 * Math.sin(bi * 1.7 + i * 2.3 + Math.floor(T * 0.2)));
                 const bq = add(C, [lo0, lo1, hi1, hi0], ZERO8, "flat",
-                               on > 0.35 ? `rgba(255,224,170,${lt.toFixed(3)})` : "rgba(20,26,38,0.28)");
+                               on > 0.35 ? `rgba(255,224,170,${lt.toFixed(3)})` : "rgba(24,30,44,0.46)");
                 if (bq) { bq.lit = on > 0.35 ? 1.3 : lit; if (on > 0.35) bq.nolite = true; drawn.push(bq); }
               }
               if (t.crown === "v") {
@@ -5674,7 +5716,6 @@ function leaveOverlay(root, trigger) {
            curtain of water hangs in when you are standing twenty metres back from it. (The
            pattern tiles themselves are 128 units wide and `DPM` 2 makes a brick 64 cm — that is
            why the paving uses its own scale; the water's UVs are divided out here directly.) */
-        const tileCm = 320;
         const Pt = (a, y, t) => along ? [m.x + away * t, y, m.z + a]
                                       : [m.x + a, y, m.z + away * t];
         /* The sheet moves without the visitor moving. The strands travel down a tile every 1.7 s
@@ -7701,7 +7742,13 @@ function leaveOverlay(root, trigger) {
                   ZERO8, "flat", "#4c6a3a");
           if (q) { q.lit = lit * tone; drawn.push(q); }
         };
-        clump(0.6, 1, 1.06);
+        /* Three clumps, not two: at model scale a crown 40 px across was one disc of one tone with a
+           lighter disc on top -- measured sd 0.7 on `tree-f2`, the flattest prop in the hall. The
+           low wide clump is darker than the ones above it, which is what a lit crown actually does,
+           and the width jitters with where the tree stands so no two crowns are the same ellipse. */
+        const jitter = 0.9 + ((Math.round(m.x) * 7 + Math.round(m.z) * 13) % 21) / 100;
+        clump(0.40, 1.12 * jitter, 0.86);
+        clump(0.6, 1.0 * jitter, 1.06);
         clump(0.84, 0.66, 1.18);      // a smaller clump above: the silhouette is not a disc
       } else if (shape === "track") {
         // Ballast and rails along the table's front edge: the strip the streetcar runs on.
@@ -7892,25 +7939,6 @@ function leaveOverlay(root, trigger) {
       if (d < far) { far = d; best = i; }
     });
     here = best; hereFar = far;
-    /* The district seam (round 52): crossing a zone line speaks a banner the size of the crossing,
-       then lets go. It is its own channel on purpose — the record line carries what you *reach*,
-       this carries where you *are*, and neither waits for the other. */
-    {
-      const zi = zoneOf(depth);
-      if (zi !== zoneHere) {
-        const moved = zoneHere !== -2;
-        zoneHere = zi;
-        if (ZONES[zi]) showBanner(ZONES[zi][1], ZONES[zi][2] || "");
-        if (moved && navigator.vibrate) { try { navigator.vibrate(18); } catch (_) {} }
-      }
-      if (stripEl) {
-        const f = Math.max(0, Math.min(1, depth / MAX_D));
-        const dot = stripEl.querySelector(".walk-strip-you");
-        if (dot) dot.style.left = `${(f * 100).toFixed(2)}%`;
-        const fill = stripEl.querySelector(".walk-strip-fill");
-        if (fill) fill.style.width = `${(f * 100).toFixed(2)}%`;
-      }
-    }
     if (best === hereShown) return;
     hereShown = best;
     stops.forEach((el, i) => el.classList.toggle("is-here", i === here));
@@ -7942,6 +7970,24 @@ function leaveOverlay(root, trigger) {
     "portal", "deckwall", "glassfloor", "plinth", "hall", "hallbase", "hallplaster", "figure", "art",
     "academic", "identity", "poster", "vending"]);
   const FAR_REACH = 8000;          // cm: how far a thing you can only look at still answers
+  /* Round 75 -- the way out of a room answers from the room, not from arm's length.
+     Every walk page hangs its exit `133` cm beyond the lane's own near edge (the prop is authored at
+     z −46 and pushed out by `Z_SCALE`), and the first stop of a room is not at that edge: Goat
+     Island's is 116 cm in, Mojiko's 174, the CN Tower's 58. Measured on all five lanes with an exit
+     (`.verify/_stops.mjs`, `_reach.mjs`): at the stop the visitor arrives on, turning round and
+     pressing E did **nothing** on Goat Island, Mojiko and the CN Tower -- the one object on the page
+     that is unmistakably a door failed its own press, which is the defect class the owner named twice
+     (round 73: 「按了沒反應」). A doorway is not a shop window: you press it while walking at it, and
+     350 cm covers every page's first stop with room to spare (174 + 133 = 307). */
+  const EXIT_REACH = 350;
+  /* Round 71: the finger's verb had no handle. A tap anywhere on the picture opened the card of
+     whatever was in reach, and measured in `.verify/_popup-audit.mjs` that was 25 taps out of 25 on
+     an empty canvas -- the whole screen was a button, and every prop the visitor walked past could
+     interrupt them. The owner's words: "many unnecessary objects pop this window; it disrupts
+     operating the scene". So the scene is look-only for a tap now, and this bar is the verb: it
+     appears only while something is in reach, it carries that thing's own name, and nothing else on
+     the screen presses anything. */
+  const openBtn = layer.querySelector("[data-walk-open]");
   /* A landmark answers from anywhere the lane can see it. The Horseshoe's brink is three hundred
      and seventy metres from the promenade and the mark is a fixed disc on the picture, so a
      reach that stopped at eighty metres would put a mark on the screen that the lane never
@@ -7972,7 +8018,8 @@ function leaveOverlay(root, trigger) {
       const dist = Math.hypot(dx, dd);
       const isMark = m.landmark === true;
       const isLook = isMark || LOOK_KINDS.has(m.kind);
-      const limit = isMark ? LANDMARK_REACH : (isLook ? FAR_REACH : REACH);
+      const isExit = m.el.dataset.verb === "leave";
+      const limit = isMark ? LANDMARK_REACH : (isLook ? FAR_REACH : (isExit ? EXIT_REACH : REACH));
       if (dist > limit) return;
       const facing = dist < 4 ? 1 : (dx * fx + dd * fd) / dist;
       if (facing < (isLook ? 0.2 : 0.35)) return;
@@ -7985,21 +8032,53 @@ function leaveOverlay(root, trigger) {
     if (best && best.el === (reach && reach.el)) { reach = best; return; }
     if (reach) reach.el.classList.remove("is-reach");
     reach = best;
-    if (!best) { layer.classList.remove("has-reach"); sayPlace(); return; }
+    if (!best) {
+      layer.classList.remove("has-reach");
+      if (openBtn) { openBtn.hidden = true; openBtn.setAttribute("aria-label", "Open what is in front of you"); }
+      sayPlace();
+      return;
+    }
     best.el.classList.add("is-reach");
     // One non-verbal signal for the whole display: the note button carries a dot while there is
     // something to read about what is in front of you.
     layer.classList.add("has-reach");
     const title = best.el.dataset.title || "";
+    const verb = verbOf(best.el);
+    if (openBtn) {
+      openBtn.hidden = false;
+      openBtn.textContent = title;
+      // The bar says what the press does *and* what it is: 「Read · The Horseshoe」 is a promise the
+      // visitor can decline, and it is the one place the two kinds of answer stay distinguishable
+      // before anything opens.
+      openBtn.dataset.verb = verb ? `${VERB_WORD[verb][0]} · ` : "";
+      openBtn.setAttribute("aria-label", `${verb ? VERB_WORD[verb][0] : "Open"} ${title}`);
+    }
     /* A landmark is measured across the gorge, not along the lane: the falls are three hundred
        and seventy metres away in a straight line and a hundred and eighty along the promenade,
        and "183 metres ahead" would be a number about the pavement rather than about the water. */
     const where = best.landmark
       ? `${metres(Math.hypot(best.x - x, best.z - depth))} away`
       : `${metres(best.z - depth)} ahead`;
-    say(`${title} · ${where}`,
-        best.el.dataset.frame === undefined ? "Press E to look closer." : "Press E to open the frame.");
+    say(`${title} · ${where}`, verb ? VERB_WORD[verb][1] : "");
   };
+
+  /* Round 74 -- what a press will do, said before the press.
+     The generator stamps one word on every pressable prop (`data-verb`, from `press_verb` in
+     _gen_html.py), and it is the *weakest* thing the object can offer: a door leaves, a print shows
+     photographs, a lift opens, and only a thing with nothing to show asks to be read. This table is
+     the only place that word becomes language, so the bar, the reach prompt and the record line
+     cannot describe the same press three different ways. The device's own idiom is the reason the
+     entry is a noun+verb pair rather than a sentence: the bar is a pill, and the prompt one line. */
+  const VERB_WORD = {
+    leave: ["Walk through", "Press E to go through."],
+    photos: ["Photographs", "Press E to see the photographs."],
+    ride: ["Ride", "Press E to ride."],
+    play: ["Play", "Press E to play."],
+    try: ["Try", "Press E to see it move."],
+    use: ["Use", "Press E to use it."],
+    read: ["Read", "Press E to read the record."],
+  };
+  const verbOf = (el) => (el && VERB_WORD[el.dataset.verb] ? el.dataset.verb : "");
 
   const wrapYaw = (degrees) => ((degrees + 180) % 360 + 360) % 360 - 180;
   let cornerAssist = 0;   // which side of a corner the creep last chose; see the wedge branch
@@ -8063,7 +8142,18 @@ function leaveOverlay(root, trigger) {
         // the walk is free and this branch does not run.
         const wishAlong = (vx * tX + vd * tD) * dt;
         if (Math.abs(wishAlong) > Math.abs(along)) along = wishAlong;
-        if (Math.abs(along) < 1.9) {
+        /* Round 73: the dead zone is a speed, not a distance. The 1.9 cm this used to ask for is
+           exactly 115 cm/s at a 16.6 ms frame -- the creep's own speed -- but a step is not always a
+           frame: `moveBody` walks any hop longer than 2.6 cm in micro-steps, so an ordinary 2.8 cm
+           frame at full walking speed arrives here as two 1.4 cm hops, each below a fixed 1.9, and
+           every frame spent against a long face was read as "straight into a corner". The assist
+           then crept the body toward the room's centre at 115 cm/s while the visitor pressed on
+           along the face: measured in the Moji hall (`.verify/_aisleprobe.cjs`), a body walking east
+           along the port table stalled at x 368 with the aisle behind it closing. Scaled by the
+           step's own dt, the same threshold means the same thing at any frame length and any
+           sub-sampling, and a body pressing along a face slides instead of being dragged back. */
+        const deadAlong = 115 * dt;
+        if (Math.abs(along) < deadAlong) {
           // Straight into a corner: the bisector leaves neither face a tangent to ride, and W+A
           // is exactly 45° to an axis-aligned box — the old solver's signature freeze. Assist it
           // like the 2-D games do: pick the side whose next steps are clear and creep round it,
@@ -8075,8 +8165,15 @@ function leaveOverlay(root, trigger) {
               // round 54 review: the half is read at the candidate's own depth — `pd`, because the
               // wedge steps (px, pd) together; the rebuild wrote `halfAt(pz)`, a name the solver
               // never had, and any body that crept round a corner died mid-tick on all pages.
-              px = clamp(px + tX * sgn * creep, -halfAt(pd), halfAt(pd));
-              pd = clamp(pd + tD * sgn * creep, MIN_D, MAX_D);
+              // Round 68: the step has to be *taken*, not clamped. A creep heading into the lane's
+              // own wall was clamped onto the wall and reported clear, so at a prop corner beside
+              // a wall the solver picked the wall side on every frame, the clamp ate the step, and
+              // the body stood still beside a face it could walk along (`_wedge2` caught it at
+              // x=-431 with `clear:[1,1]` and a 0.51 cm hop that cancelled itself). The lane
+              // boundary is a face like any other: a side that the wall refuses is not clear.
+              const qx = px + tX * sgn * creep, qd = pd + tD * sgn * creep;
+              if (clamp(qx, -halfAt(qd), halfAt(qd)) !== qx || clamp(qd, MIN_D, MAX_D) !== qd) return 0;
+              px = qx; pd = qd;
               if (collidesAt(px, pd)) return 0;
             }
             return 1;
@@ -8093,8 +8190,17 @@ function leaveOverlay(root, trigger) {
         let sd = clamp(oldDepth + tD * along, MIN_D, MAX_D);
         const h2 = pushAt(sx, sd);
         if (h2) {
-          sx = clamp(sx + h2.nx * h2.p, -halfAt(depth), halfAt(depth));
-          sd = clamp(sd + h2.nz * h2.p, MIN_D, MAX_D);
+          /* Round 68: a tenth of a millimetre of clearance after the push-out.
+             `pushAt` resolves by exactly `pen = R - dist`, so the resolved point sits ON the
+             surface the accept test below then asks about with a strict `<`. Rounding decides
+             that comparison, and when it falls on the wrong side the body is refused the one
+             step it had found — every frame, at the same corner, with the keys held
+             (`_wedge2`: ladder southeast corner, `h2.p` 0.07, `col:true`, move 0, a clear 45°
+             exit). Clearance makes the answer the solver's rather than the FPU's; a hundredth
+             of a centimetre is far below anything the eye or the body can spend. */
+          const clear2 = h2.p + 0.01;
+          sx = clamp(sx + h2.nx * clear2, -halfAt(depth), halfAt(depth));
+          sd = clamp(sd + h2.nz * clear2, MIN_D, MAX_D);
         }
         // The dead zone is anti-flip-flop, not anti-slow: buzz means the normal alternating and
         // the slide reversing — a reversal pays the 1.2 cm threshold, a monotone creep never does,
@@ -8105,7 +8211,21 @@ function leaveOverlay(root, trigger) {
         const hop2 = Math.hypot(sx - oldX, sd - oldDepth);
         const dir = along > 0.01 ? 1 : along < -0.01 ? -1 : 0;
         const buzz = dir !== 0 && slideDir !== 0 && dir !== slideDir;
-        if (!collidesAt(sx, sd) && hop2 > 0.01 && (!buzz || hop2 > 1.2)) {
+        /* Round 68: the wedge creep does not pay the reversal price.
+           `buzz` remembers the direction of the last accepted slide so two faces cannot alternate
+           the body between them — but the memory is keyed to the direction alone, and it outlives
+           the face that taught it. A body rounding a prop's corner keeps the memory of the face it
+           came from; the new face's only clear creep is 115 cm/s times this step's dt, and at the
+           sub-sampled 8.3 ms that is 0.96 cm, so the 1.2 cm reversal it is charged can never be
+           afforded and the body stands between the two faces with a legal way out. The gate caught
+           eight of these in one run on rooms.html (round 68) — every one with `clear:[1,0]` or
+           `[0,1]`, `collidesAt(sx,sd) === false`, a clear 45° exit, and `hop2` 0.955 refused by
+           `buzz`. A 60 Hz frame at one hop creeps 1.9 cm and passed, which is why the same wedge
+           was only ever seen on a slow frame. The creep is already guarded by its own memory
+           (`cornerAssist`, which cannot alternate) and by the four-step clearance test above, so
+           the direction it chose is an answer, not a buzz. */
+        const wedged = cornerAssist !== 0;
+        if (!collidesAt(sx, sd) && hop2 > 0.01 && (wedged || !buzz || hop2 > 1.2)) {
           nx2 = sx; nz2 = sd; blockedX = false; blockedD = false;
           if (dir) slideDir = dir;
         }
@@ -8132,10 +8252,16 @@ function leaveOverlay(root, trigger) {
      gives up, because being walled off from a stop is truer than pretending through it. */
   const detourAround = () => {
     if (!gliding) return false;
-    for (let off = 20; off <= 220; off += 20) {
-      for (const sg of (x >= 0 ? [1, -1] : [-1, 1])) {
-        const gx = clamp(x + sg * off, -halfAt(depth), halfAt(depth));
-        if (Math.abs(gx - x) < 12) continue;              // the wall ate it: no strip there
+    /* Round 69: the strip is chosen from the stop's own line, not from wherever the body was just
+       thrown, and an existing detour is *widened* rather than recomputed. Re-centring on the thrown
+       body made every recomputation pick a different side, so the glide followed the shove instead of
+       going round anything. */
+    const base = gliding.origX === undefined ? x : gliding.origX;
+    const first = gliding.origX === undefined ? 20 : Math.max(20, Math.abs(x - base) + 20);
+    for (let off = first; off <= 320; off += 20) {
+      for (const sg of (base >= x ? [1, -1] : [-1, 1])) {
+        const gx = clamp(base + sg * off, -halfAt(depth), halfAt(depth));
+        if (Math.abs(gx - x) < 12 && gliding.origX === undefined) continue;   // the wall ate it: no strip there
         if (collidesAt(gx, depth) || collidesAt(gx, Math.min(depth + 150, gliding.to))) continue;
         if (gliding.origX === undefined) gliding.origX = gliding.x;
         gliding.x = gx;
@@ -8146,14 +8272,25 @@ function leaveOverlay(root, trigger) {
   };
   const homeGlide = () => {
     if (!gliding || gliding.origX === undefined || gliding.origX === gliding.x) return;
+    // Round 69: not before the side lane is reached. Homing mid-cross reset the target to the stop's
+    // line every frame, which re-armed the sidestep every frame, and the body never advanced at all
+    // (measured: 0 cm in 120 s). The detour is finished only when the body is standing on it.
+    if (Math.abs(x - gliding.x) > 12) return;
     /* Round 64: the walk home looked at ONE point 150 cm ahead and called the line clear when
        that point was clear. A body pressed against a lamp post was therefore sent straight back
        onto its line the moment the post was 150 cm behind it, and the glide ping-ponged between
        the line and the detour and never got round anything at all — the visitor was left standing
        in the lane with a chip that promised an arrival. Home now waits until the line is clear
        the whole way along, not clear at one step. */
+    /* Round 69: the scan started 120 cm ahead, and a body *beside* a shop bay therefore read its own
+       line as clear — home fired on the next frame, re-aimed straight into the bay, was thrown out,
+       detoured again, and ping-ponged there for as long as the visitor waited (`_rail.mjs`: x between
+       206 and 343 at z 962, never closer to the stop). A line is clear from where the body *is*, so
+       the body's own point is tested first, and the first metre is walked in 30 cm steps instead of
+       120 — a bay's footprint is about that deep, and the coarse step stepped over it. */
+    if (collidesAt(gliding.origX, depth)) return;
     const to = Math.min(gliding.to, depth + 900);
-    for (let d = depth + 120; d <= to; d += 120) {
+    for (let d = depth + 30; d <= to; d += d <= depth + 300 ? 30 : 120) {
       if (collidesAt(gliding.origX, d)) return;     // still box alongside: stay on the detour
     }
     gliding.x = gliding.origX;
@@ -8170,51 +8307,82 @@ function leaveOverlay(root, trigger) {
   // it can never diverge by construction.
   const stepMotion = (dt, glideOnly = false) => {
     if (gliding) {
-      const dx = gliding.x - x, dd = gliding.to - depth;
+      /* Round 69 — 撞到先側移, 再前進.
+         A detour used to keep aiming at the stop while it moved sideways, so the step was a diagonal
+         straight into the very bay it was trying to avoid: the solver pushed the body back out, the
+         glide re-aimed, and the visitor travelled 1100 cm in 40-90 s of visible judder (`_rail.mjs`,
+         measured; a 7 s walk on a clear line). While a detour is in force and the side lane has not
+         been reached, the step's depth target is *here* — pure lateral motion, which the solver
+         handles without a fight — and only then does the glide advance along the lane at the new x.
+         Normal glides are untouched: with no detour in force this is the same diagonal it always was. */
+      const sidestep = gliding.origX !== undefined && Math.abs(x - gliding.x) > 6;
+      const aimX = gliding.x, aimZ = sidestep ? depth : gliding.to;
+      const dx = aimX - x, dd = aimZ - depth;
       const distance = Math.hypot(dx, dd);
-      if (distance < 1.2) {
+      if (!sidestep && distance < 1.2) {
         moveBody(gliding.x, gliding.to);
         if (Math.hypot(gliding.x - x, gliding.to - depth) < 1.2) gliding = null;
-      } else {
-        const stride = Math.min(distance, GLIDE_SPEED * dt);
+      } else if (distance > 0.001) {
+        const stride = Math.min(distance, (gliding.speed || GLIDE_SPEED) * dt);
         const moved = moveBody(x + dx * stride / distance, depth + dd * stride / distance);
-        const remaining = Math.hypot(gliding.x - x, gliding.to - depth);
-        if (remaining < 1.2) gliding = null;
-        else if (moved < 0.001 && !detourAround())
-          gliding = null;     // a solid object with no room round it is still the truth —
-        else homeGlide();     // but an auto-walk must not abandon the visitor mid-lane
+        const remaining = Math.hypot(aimX - x, aimZ - depth);
+        /* Round 69 — 撞到就繞, and "撞到" is measured in progress, not in displacement.
+           `moved` is what the body did, and a push-out is also something the body did: a rail glide
+           whose straight line clips a shop bay was shoved 70 cm sideways every frame, `moved` read
+           70, the detour never fired, and the visitor juddered between x 206 and x 343 at z 962 for
+           as long as they stood there (`.verify/_rail.mjs`; the gate that reported it was called
+           flaky for two rounds). The question a glide has to ask is "did I get closer to the place
+           I promised", so it is asked in those terms: a step that does not close at least half the
+           distance it meant to close is blocked, however far the body was thrown.
+           `moved` is kept — a body that moved nothing at all is still worth a detour without the
+           arithmetic — and a solid with no room round it still ends the glide, because being walled
+           off from a stop is truer than pretending through it (round 41). */
+        const gained = distance - remaining;
+        const progressed = gained >= stride * 0.5;
+        if (!sidestep && remaining < 1.2) gliding = null;
+        else if (!progressed || moved < 0.001) {
+          /* Round 75: a hard glide (a stop, a frame's own approach) is a promise about a place, so
+             when the solver cannot get round whatever is in the way it finishes the move rather than
+             cancelling it. A soft glide still gives up: the body must not be placed somewhere the
+             visitor did not ask to be. */
+          if (!detourAround()) { if (gliding.hard) finishGlide(); else gliding = null; }
+        } else homeGlide();
       }
     } else if (!glideOnly) {
-      if (ride) return;   // the car carries you; the keys wait
-      /* Round 65: A and D turn the head, the way every first-person lane is driven.
+      /* Round 74: this used to `return` here, and the `return` skipped `rideStep` at the bottom of
+         the function -- so the Falls Incline announced "You ride the Falls Incline…", took the keys
+         away, and then never moved the car. The one interaction whose entire point is a visible
+         change was the one with no change at all (`.verify/_rideprobe.mjs`, height 0 for 2.4 s after
+         the press). The keys still wait; the car no longer does. */
+      if (!ride) {   // the car carries you; the keys wait
+        /* Round 65: A and D turn the head, the way every first-person lane is driven.
 
-         They used to strafe, with the arrows turning instead, and that is a scheme nobody arrives
-         with: a visitor who presses D expects to look right, and here the world slid sideways
-         under them instead -- which is why the movement read as broken rather than as unusual.
-         The stick on a touch screen still strafes (it has to: there is no A and D on a phone), and
-         the strafe is gone from the keyboard, where it was never what anybody wanted. */
-      const turn = (keys.has("arrowright") || keys.has("d") ? 1 : 0) - (keys.has("arrowleft") || keys.has("a") ? 1 : 0);
-      if (turn) yaw = wrapYaw(yaw + turn * TURN_RATE * dt);
-      let mx = stick ? stick.x : 0, md = stick ? -stick.y : 0;
-      if (keys.has("w") || keys.has("arrowup")) md += 1;
-      if (keys.has("s") || keys.has("arrowdown")) md -= 1;
-      const len = Math.hypot(mx, md) || 1;
-      const r = keys.has("shift") ? RUN : 1;
-      // WASD and the stick live in the view plane, not the room's fixed axes. `camPt` maps a
-      // camera-forward step to (sin(yaw), cos(yaw)) in the lane, and camera-right to
-      // (cos(yaw), -sin(yaw)); using the same basis here keeps movement and the view aligned after
-      // either a drag or a turn key. Pitch is intentionally excluded so looking up never lifts the
-      // walker off the floor. Turning remains rate-limited for comfort.
-      const heading = a(), sy = Math.sin(heading), cy = Math.cos(heading);
-      const wishX = ((mx * cy) + (md * sy)) / len * SPEED * r;
-      const wishD = ((-mx * sy) + (md * cy)) / len * SPEED * r;
-      // the pointer-lock demo's model, measured against ours: input frames set the velocity —
-      // no ramp to feel like skating — and only a released body decays (tau 90 ms: gone inside
-      // a step and a half, no drift past the wall the old 400 ms exponential eased through).
-      if (mx || md) { vx = wishX; vd = wishD; }
-      else { const dmp = Math.exp(-dt / 0.09); vx *= dmp; vd *= dmp;
-             if (Math.hypot(vx, vd) < 1.2) { vx = 0; vd = 0; } }
-      moveBody(x + vx * dt, depth + vd * dt);
+           They used to strafe, with the arrows turning instead, and that is a scheme nobody arrives
+           with: a visitor who presses D expects to look right, and here the world slid sideways
+           under them instead -- which is why the movement read as broken rather than as unusual.
+           The stick on a touch screen still strafes (it has to: there is no A and D on a phone), and
+           the strafe is gone from the keyboard, where it was never what anybody wanted. */
+        let mx = stick ? stick.x : 0, md = stick ? -stick.y : 0;
+        if (keys.has("w") || keys.has("arrowup")) md += 1;
+        if (keys.has("s") || keys.has("arrowdown")) md -= 1;
+        const len = Math.hypot(mx, md) || 1;
+        const r = keys.has("shift") ? RUN : 1;
+        // WASD and the stick live in the view plane, not the room's fixed axes. `camPt` maps a
+        // camera-forward step to (sin(yaw), cos(yaw)) in the lane, and camera-right to
+        // (cos(yaw), -sin(yaw)); using the same basis here keeps movement and the view aligned after
+        // either a drag or a turn key. Pitch is intentionally excluded so looking up never lifts the
+        // walker off the floor. Turning remains rate-limited for comfort.
+        const heading = a(), sy = Math.sin(heading), cy = Math.cos(heading);
+        const wishX = ((mx * cy) + (md * sy)) / len * SPEED * r;
+        const wishD = ((-mx * sy) + (md * cy)) / len * SPEED * r;
+        // the pointer-lock demo's model, measured against ours: input frames set the velocity —
+        // no ramp to feel like skating — and only a released body decays (tau 90 ms: gone inside
+        // a step and a half, no drift past the wall the old 400 ms exponential eased through).
+        if (mx || md) { vx = wishX; vd = wishD; }
+        else { const dmp = Math.exp(-dt / 0.09); vx *= dmp; vd *= dmp;
+               if (Math.hypot(vx, vd) < 1.2) { vx = 0; vd = 0; } }
+        moveBody(x + vx * dt, depth + vd * dt);
+      }
     }
     if (ride) rideStep();
     const gh = ride ? height : floorAt(depth, x);
@@ -8345,6 +8513,34 @@ function leaveOverlay(root, trigger) {
        direction the visitor pressed -- a hundred and twenty milliseconds of motion, which is one
        slow frame's worth. A press a frame did see is left to the held path above, so a long hold
        is never counted twice and the walk never gains a step it was not given. */
+    /* Round 71: the head turns in the visitor's own time, not in the frame's.
+
+       The turn used to be integrated inside the motion step, with the frame's dt -- and a frame on a
+       software rasteriser is 47 ms, so a tap the visitor held for 12 ms was paid 47 ms of turn. The
+       same flick therefore turned four times as far on a slow machine as on a fast one, and on the
+       build before this change it measured 8-9 degrees for a tap. What the visitor pressed is the
+       key, for as long as it was down; that is what gets paid: the frame's share, but never more
+       than the key has actually been held, and a press shorter than a nudge is topped up to
+       TURN_TAP_MS. A tap on a 60 Hz machine is ~3 degrees and the same tap on a 21 Hz machine is the
+       same 3 degrees. */
+    const turnDir = (keys.has("d") || keys.has("arrowright") ? 1 : 0)
+                  - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
+    if (turnDir && !gliding) {
+      const nowMs = performance.now();
+      let paidMs = 0;
+      for (const k of ["a", "arrowleft", "d", "arrowright"]) {
+        const tap = tapState.get(k);
+        if (!tap || !tap.start) continue;
+        paidMs = Math.max(paidMs, Math.min(elapsed * 1000, nowMs - tap.start));
+      }
+      if (paidMs > 0) {
+        yaw = wrapYaw(yaw + turnDir * TURN_RATE * (paidMs / 1000));
+        for (const k of ["a", "arrowleft", "d", "arrowright"]) {
+          const tap = tapState.get(k);
+          if (tap && tap.start) tap.held += paidMs;   // ms, banked, so a release owes only the rest
+        }
+      }
+    }
     let tapTurn = 0, tapWalk = 0;
     tapState.forEach((tap, k) => {
       if (tap.start) {
@@ -8352,11 +8548,24 @@ function leaveOverlay(root, trigger) {
         // the tap does not owe. A frame that saw the key for a thousandth of a second gave the
         // visitor a thousandth of a second of turn, and a tap that is owed a response has to be
         // paid the difference -- not suppressed by the fact that a frame looked at it.
-        tap.held += elapsed;
+        const isTurn = k === "a" || k === "arrowleft" || k === "d" || k === "arrowright";
+        if (!isTurn) tap.held += elapsed * 1000;   // ms; a turn's frame share is paid above
         tap.ms = 0;
         return;
       }
-      const owed = Math.min(tap.ms, 120) - tap.held;
+      /* A tap that turns and a tap that walks are not the same size of gesture: a step should carry
+         you somewhere, and a turn should be a nudge you can correct. A turn key is worth
+         TURN_TAP_MS whatever the press lasted -- shorter presses are topped up to the nudge, longer
+         ones have already been paid frame by frame above. (`held` is milliseconds, like `ms`: it
+         used to be seconds against a millisecond value, so the subtraction was a no-op and every
+         tap paid its full cap.) */
+      const isTurn = k === "a" || k === "arrowleft" || k === "d" || k === "arrowright";
+      /* The nudge is owed ONCE, on the frame that first sees the release (`tap.ms` is cleared below);
+         without that guard the floor paid itself again on every later frame, and a tap of D measured
+         8.9 degrees instead of 3.0. A press long enough to have been paid frame by frame owes the
+         difference between its real length and what has already been paid, which is usually nothing. */
+      const cap = isTurn ? (tap.ms > 0 ? Math.max(tap.ms, TURN_TAP_MS) : 0) : Math.min(tap.ms, 120);
+      const owed = cap - tap.held;
       if (owed > 0) {
         const t = owed / 1000;
         if (k === "a" || k === "arrowleft") tapTurn -= t;
@@ -8366,7 +8575,7 @@ function leaveOverlay(root, trigger) {
       }
       tap.ms = 0; tap.held = 0;
     });
-    if (tapTurn) yaw = wrapYaw(yaw + tapTurn * TURN_RATE);
+    if (tapTurn) yaw = wrapYaw(yaw + tapTurn * TURN_RATE);   // tapTurn is in seconds
     if (tapWalk) {
       const th = a(), sy = Math.sin(th), cy = Math.cos(th);
       moveBody(x + sy * SPEED * tapWalk, depth + cy * SPEED * tapWalk);
@@ -8437,11 +8646,31 @@ function leaveOverlay(root, trigger) {
     loop();
   };
 
-  const glideTo = (z, targetX) => {
-    gliding = { to: clamp(z, MIN_D, MAX_D),
-                x: clamp(targetX === undefined ? x : targetX, -halfAt(z), halfAt(z)) };
+  /* Round 75 -- a stop is a bookmark, and a bookmark that takes ninety seconds is not one.
+     `GLIDE_SPEED` is 165 cm/s, which is comfortable for the two- to three-metre glide a photograph
+     asks for and absurd for a station: clicking "Terrapin Point" (15599 cm down the Goat Island walk)
+     started a 94-second crawl, and clicking any stop on a loaded machine could give up part way and
+     leave the visitor short of the place the button named (measured, `.verify/_stops.mjs`: streets all
+     arrived, Goat's first three were still walking after 30 s and stopped 26-40 m short).
+     So the speed follows the jump: a move takes about `GLIDE_T`, never less than the comfort speed,
+     never more than `GLIDE_SPEED_MAX`. It is constant for the length of one glide, so a long jump
+     reads as one move rather than as an acceleration. `hard` glides (a stop, a frame) also finish on
+     the target if the solver cancels them half way -- being short of a place the button named is the
+     one outcome a bookmark must not have. */
+  const glideTo = (z, targetX, hard = false) => {
+    const to = clamp(z, MIN_D, MAX_D);
+    const tx = clamp(targetX === undefined ? x : targetX, -halfAt(to), halfAt(to));
+    const distance = Math.hypot(tx - x, to - depth);
+    gliding = { to, x: tx, hard, startedAt: performance.now(),
+                speed: clamp(distance / GLIDE_T, GLIDE_SPEED, GLIDE_SPEED_MAX) };
     vx = 0; vd = 0;
     loop();
+  };
+  const finishGlide = () => {
+    if (!gliding) return;
+    const { to, x: tx } = gliding;
+    gliding = null;
+    if (!collidesAt(tx, to)) moveBody(tx, to);
   };
 
   /* --- arriving, and the overlays that fold away ---
@@ -8451,8 +8680,10 @@ function leaveOverlay(root, trigger) {
      stashed under it, and a space you have to be granted entry to is still a webpage. */
   const toggleList = (open) => {
     if (!listPanel) return;
-    const want = open === undefined ? listPanel.classList.contains("is-closed") : !!open;
+    const wasOpen = !listPanel.classList.contains("is-closed");
+    const want = open === undefined ? !wasOpen : !!open;
     listPanel.classList.toggle("is-closed", !want);
+    if (want !== wasOpen) { if (want) overlayEntered(); else overlayLeft(); }
     if (listBtn) listBtn.setAttribute("aria-expanded", want ? "true" : "false");
     if (want) {
       const first = listPanel.querySelector("button, a");
@@ -8460,6 +8691,34 @@ function leaveOverlay(root, trigger) {
     } else if (listBtn) {
       listBtn.focus({ preventScroll: true });
     }
+  };
+  /* Round 74 — the one text surface on the site, and the one kind of thing allowed to open it.
+     Round 73 deleted `showCard` because every press opened it; the owner's refinement is 「只留該需要用
+     文字彈出介面介紹的物件。其他…可以用E去互動看有沒有變化。你如果全部都做出彈出介面 這很傷使用者體驗。」
+     A landmark is exactly that object: the falls are 370 m away, nothing about pressing them can move,
+     and what the place has to say about them *is* the record. So `showWords` exists for `read` and for
+     nothing else -- `act()` calls it from the landmark branch alone, and `.verify/verify-ux.mjs` fails
+     the build if any other verb reaches a text surface. Everything else answers in the scene.
+     The card is 30rem wide and holds 100-290 characters of record, which is a paragraph you read --
+     not the 47 %-of-the-picture drawer the written lane opens to. */
+  const showWords = (m) => {
+    if (!card || !m) return;
+    const where = card.querySelector("[data-walk-where]");
+    const title = card.querySelector("[data-walk-title]");
+    const hint = card.querySelector("[data-walk-hint]");
+    const liveEl = card.querySelector("[data-walk-live]");
+    if (where) where.textContent = `${district} · the record`;
+    if (title) title.textContent = m.el.dataset.title || "";
+    if (hint) hint.textContent = m.el.dataset.hint || "";
+    if (liveEl) liveEl.textContent = "";
+    card.dataset.mode = "words";
+    if (asideEl) asideEl.hidden = true;
+    const wasOpen = !card.hidden;
+    card.hidden = false;
+    if (!wasOpen) overlayEntered();
+    if (infoBtn) infoBtn.setAttribute("aria-expanded", "true");
+    const btn = card.querySelector("[data-walk-card-close]");
+    if (btn) btn.focus({ preventScroll: true });
   };
   const boot = () => {
     // A texture that arrives after the first paint would otherwise stay black until the visitor
@@ -8483,29 +8742,19 @@ function leaveOverlay(root, trigger) {
   const asideEl = card && card.querySelector("[data-walk-aside]");
   const hideCard = () => {
     if (!card) return;
+    const wasOpen = !card.hidden;
     card.hidden = true;
     if (card.dataset.mode !== "prop") card.dataset.mode = "prop";
     if (asideEl) asideEl.hidden = true;
     if (infoBtn) infoBtn.setAttribute("aria-expanded", "false");
+    if (wasOpen) overlayLeft();
   };
-  const showCard = (m) => {
-    if (!card) return;
-    tutorCardOpened();          // the guide's third step completes on a card actually opening
-    const where = card.querySelector("[data-walk-where]");
-    const title = card.querySelector("[data-walk-title]");
-    const hint = card.querySelector("[data-walk-hint]");
-    card.dataset.mode = "prop";
-    if (asideEl) asideEl.hidden = true;      // the lane's own note is not this prop's business
-    if (where) where.textContent = `${district} · ${metres(m.z)} in`;
-    const st = m.states ? (m.states[m.st] || null) : null;
-    if (title) title.textContent = m.el.dataset.title || "";
-    if (hint) hint.textContent = st ? st.say : (m.el.dataset.hint || "");
-    if (liveEl) liveEl.textContent = statusEl ? statusEl.textContent : "";
-    card.hidden = false;
-    if (infoBtn) infoBtn.setAttribute("aria-expanded", "false");
-    const btn = card.querySelector("[data-walk-card-close]");
-    if (btn) btn.focus({ preventScroll: true });
-  };
+  /* Round 73: `showCard(m)` is gone. It was the window that opened over the picture with a prop's
+     paragraph in it, and the owner has now ruled on it twice: 「你幫我全部拿掉這種」 and then
+     「全部拿掉多餘的。你只要真的有意義的物件才留著」. A press either does something (goes through a
+     door, shows a photograph, rides, plays, opens a shutter on a door you can use) or the thing was
+     never a button -- the generator's `is_target` decides which. The paragraph is not lost: it is
+     written in the lane's own list, which is where a landmark's press now opens it. */
   /* --- the guide: a first-visit strip that teaches the keys by having them used (round 46) ---
      The rule is that nothing is written over the space, and the guide honours it: it lives in the
      bottom chrome, takes no input away, grabs no focus, and never returns once learned. Each step
@@ -8526,7 +8775,7 @@ function leaveOverlay(root, trigger) {
   const TUT = [
     "Turn first: the lane continues behind you. Arrow keys or A / D, or drag the view.",
     "Now walk in: hold W; Shift lets it run. The walls hold you — nothing here is a picture to walk through.",
-    "Stand in front of anything worth reading and press E, or tap it: every record lives behind a button, never painted on the scene.",
+    "Stand in front of something and press E, or press the bar that names it at the foot of the picture: a door takes you through, a picture shows you the reel, a machine plays. What everything else is, and why, is written in the list.",
     "Those ticks above are the rail. Press one and the lane carries you to where the view is worth stopping for; Esc walks you back out.",
   ];
   let tutStep = -1, tutYaw = 0, tutX = 0, tutD = 0;
@@ -8551,7 +8800,9 @@ function leaveOverlay(root, trigger) {
     if (tutStep === 0 && Math.abs((((yaw - tutYaw) % 360) + 540) % 360 - 180) > 25) showTutor(1);
     else if (tutStep === 1 && Math.hypot(x - tutX, depth - tutD) > 180) showTutor(2);
   };
-  const tutorCardOpened = () => { if (tutStep === 2) showTutor(3); };
+  // The third step completes when a press is *answered* -- round 73, that is a door, a reel, a toy or
+  // a landmark's record, never a card for whatever the visitor happened to be facing.
+  const tutorAnswered = () => { if (tutStep === 2) showTutor(3); };
 
   /* The space's own text — the legend, the disclaimer, the fallback sentence — is written into the
      page inside a card that is closed until you ask for it. Nothing in the head-up display is a
@@ -8567,13 +8818,21 @@ function leaveOverlay(root, trigger) {
     if (where) where.textContent = `${district} · one lane, drawn`;
     if (title) title.textContent = thing ? `${thing} · ${metres(reach.z - depth)} ahead`
                                           : "How to be in the lane";
+    /* Round 75 -- the card is called "How to be in the lane", and what it said under that heading was
+       a sentence about shopfronts: "the shutters carry no shop, the board is blank". That is true of
+       the street and false of seven other lanes -- Goat Island has no shutters, and the fall a visitor
+       is standing in front of is named. Every lane opens this card, so its copy has to be true in all
+       of them: the keys first, then the principle, with no prop of any one place in the sentence. */
     if (hint) hint.textContent = thing
-      ? "Its own card holds the reason a thing like this is in the space: press E, or open the list for "
-        + "everything at once."
-      : "Nothing here is labelled and nothing is named: the shutters carry no shop, the board is blank, "
-        + "because a name would be a claim about a place that is drawn rather than found.";
+      ? "It is in front of you and it answers a press: E, or the bar at the foot of the picture. "
+        + "Everything this lane draws, and what pressing it does, is written out in the list."
+      : "W A S D to walk, arrow keys or A / D to turn, E for what is in front of you, L for everything "
+        + "this lane draws, and Esc for the way out. Nothing is drawn with a name the record cannot "
+        + "support: where a place is drawn rather than found, it is drawn blank.";
     if (liveEl) liveEl.textContent = statusEl ? statusEl.textContent : "";
+    const wasOpen = !card.hidden;
     card.hidden = false;
+    if (!wasOpen) overlayEntered();
     if (infoBtn) infoBtn.setAttribute("aria-expanded", "true");
     const btn = card.querySelector("[data-walk-card-close]");
     if (btn) btn.focus({ preventScroll: true });
@@ -8595,6 +8854,13 @@ function leaveOverlay(root, trigger) {
 
   const act = (m) => {
     if (!m) return;
+    /* Round 73 puts the guard back at the top, and it is safe again because the *generator* now
+       guarantees the invariant this file had to work around: `is_target` gives a press to anything
+       with a verb (a door, a photograph, a ride, a game, a demonstration, a landmark, a door you use),
+       so a thing can no longer be quiet and be a verb at once. Round 71 had the guard here and moved
+       it down, because the goldfish stall was scenery by kind and a toy by behaviour; that case is
+       decided in `is_target` now, which is the only place that knows what a thing does. */
+    if (m.quiet) return;
     // The curtain at your back is the way out of the space and into the rest of the site, and the
     // record says so: `data-leave` is authored on the prop, so the renderer obeys rather than knowing
     // an id. Pressing it used to open a card that read "part it to leave the lane" and did nothing,
@@ -8603,8 +8869,10 @@ function leaveOverlay(root, trigger) {
     if (leave) { window.location.assign(leave); return; }
     // A stall with a game plays before it explains: the owner asked for toys you press in the
     // environment itself, and a card that says "press to play" instead of playing is a dead end.
-    if (m.el.dataset.ride && boardRide(m.el)) return;
-    if (m.el.dataset.game && window.huaxuStalls && window.huaxuStalls.open(m.el.dataset.game, m.el)) return;
+    if (m.el.dataset.ride && boardRide(m.el)) { tutorAnswered(); return; }
+    if (m.el.dataset.game && window.huaxuStalls && window.huaxuStalls.open(m.el.dataset.game, m.el)) {
+      tutorAnswered(); return;
+    }
     // Pressed models demonstrate: the bridge replays its opening, the basin its ripple. The real
     // clock is never rewritten — the record's schedule (six openings, nothing after dark) keeps
     // running underneath, and the demonstration rides on top as a 24-second envelope. This is the
@@ -8638,20 +8906,43 @@ function leaveOverlay(root, trigger) {
       };
       if (pulse) clearTimeout(pulse);
       pulse = setTimeout(pump, 90);
+      tutorAnswered();
       return;
     }
-    if (m.el.dataset.story && openStoryRail(m.el.dataset.story, m.el)) return;
-    if (m.el.dataset.frame !== undefined && openDistrictRail(Number(m.el.dataset.frame), m.el)) return;
-    if (m.el.dataset.obj === "vending" && openDistrictRail(0, m.el)) return;
-    // A thing with stops is opened by being *used*: the shutter goes up, the flap swings, and the card
-    // says what the lane looks like now. Pressing it again takes it to the next stop.
-    if (m.states && m.states.length > 1) { setState(m, (m.st + 1) % m.states.length); draw(); }
-    showCard(m);
+    if (m.el.dataset.story && openStoryRail(m.el.dataset.story, m.el)) { tutorAnswered(); return; }
+    if (m.el.dataset.frame !== undefined && openDistrictRail(Number(m.el.dataset.frame), m.el)) {
+      tutorAnswered(); return;
+    }
+    /* A thing with stops is *used*: a door opens, the glass floor comes on. Round 73 keeps only the
+       two kinds whose state is what standing there is for (a door, the LookOut's glass floor); the
+       seventeen shopfront and arcade toggles are the painting now. The sentence the state carries is
+       announced on the record line instead of being painted into a card -- a screen reader gets it
+       and a sighted visitor gets the door opening, which is the change itself. */
+    if (m.states && m.states.length > 1) {
+      setState(m, (m.st + 1) % m.states.length); draw();
+      const said = m.states[m.st] && m.states[m.st].say;
+      if (recordEl && said) { delete recordEl.dataset.demoHold; recordEl.textContent = said; }
+      tutorAnswered();
+      return;
+    }
+    /* The one record that is still worth a whole press: the thing the place is named for. It opens
+       the written lane on its own row rather than a window over the picture (round 73). */
+    /* The last verb, and the only one allowed to speak: the thing itself has nothing to show, so its
+       record is the whole answer. Round 73 sent this to the written lane, which opened a drawer 47 %
+       of the picture wide and scrolled a 100-row list to find one paragraph -- a heavier surface than
+       the card it replaced, for the one object that *does* need to be read. */
+    if (m.landmark) { showWords(m); tutorAnswered(); }
   };
   const nearestOf = (el) => meta.find((m) => m.el === el);
+  /* Stand in front of a frame that has been opened. The lateral share used to be 0.45 of the frame's
+     own x, which for a print hung at x −295 cm left the body 202 cm from it: one hand's reach is 190,
+     so the thing you had just opened was out of reach of the next press -- you had to step in to open
+     it again, and the bar at the foot of the picture disappeared the moment the reel closed. 0.58
+     stands 1.7 m off the wall, inside the reach, which is also the distance a print on a shutter is
+     read from. */
   const atFrame = (n) => {
     const m = meta.find((it) => it.el.dataset.frame === String(n));
-    if (m) glideTo(m.z - 120, m.x * 0.45);
+    if (m) glideTo(m.z - 120, m.x * 0.58, true);   // stand in front of the thing you opened
   };
 
   /* --- input: every verb has both a key and a finger --- */
@@ -8666,7 +8957,7 @@ function leaveOverlay(root, trigger) {
       depth = stopZ[i]; x = clamp(stopX[i], -halfAt(stopZ[i]), halfAt(stopZ[i]));
       height = stopView[i].h; vy = 0; draw(); return;
     }
-    glideTo(stopZ[i], stopX[i]);
+    glideTo(stopZ[i], stopX[i], true);   // a stop is a bookmark: it must arrive
   }));
   Array.from(layer.querySelectorAll("[data-walk-to]")).forEach((btn) => btn.addEventListener("click", () => {
     glideTo(parseFloat(btn.getAttribute("data-walk-to")) || 0);
@@ -8679,12 +8970,21 @@ function leaveOverlay(root, trigger) {
     zoom = clamp(zoom + Number(btn.dataset.walkFov) * 0.08, 0.72, 1.34);
     draw();
   }));
+  // The bar is only visible while something is in reach, so there is nothing to do if there is not:
+  // a hidden control cannot be clicked, and `act` refuses an empty reach on its own.
+  if (openBtn) openBtn.addEventListener("click", () => { if (reach) act(reach); });
   if (card) {
     const btn = card.querySelector("[data-walk-card-close]");
     if (btn) btn.addEventListener("click", () => { hideCard(); view.focus({ preventScroll: true }); });
   }
+  /* A prop's button is still a button: Tab to it and press Enter, and it opens, which is the one
+     route a keyboard-only visitor has to a record. A *pointer* click on it does not -- that is the
+     visitor clicking the picture to focus the page or to look at something, and round 71 measured
+     that every such click opened a card. `detail === 0` is the discriminator the DOM gives for a
+     click synthesised by the keyboard (Enter/Space on a focused control) as against a real one. */
   objs.forEach((el) => el.addEventListener("click", (event) => {
     event.preventDefault();
+    if (event.detail !== 0) { view.focus({ preventScroll: true }); return; }
     act(nearestOf(el));
   }));
   rows.forEach((row) => {
@@ -8719,7 +9019,7 @@ function leaveOverlay(root, trigger) {
     if (!down || event.pointerId !== down.id) return;
     const dx = event.clientX - down.x, dy = event.clientY - down.y;
     down.moved = Math.max(down.moved, Math.abs(dx) + Math.abs(dy));
-    yaw = wrapYaw(down.yaw + dx * 0.09);                // turn through the room without Pointer Lock
+    yaw = wrapYaw(down.yaw + dx * DRAG_DEG_PER_PX);     // turn through the room without Pointer Lock
     pitch = clamp(down.pitch - dy * 0.065, -MAX_PITCH, MAX_PITCH);
     gliding = null;
     /* A pointer reports at 60–240 Hz; this renderer draws one frame at a time and, on a software
@@ -8742,13 +9042,16 @@ function leaveOverlay(root, trigger) {
      should be able to put it down. */
   const up = () => {
     const tap = !!down && down.moved < 8;
-    const onObj = !!down && !!down.obj;
     release();
     wasDrag = !tap;
     if (!tap) return;
-    if (onObj) return;              // the thing's own button gets the click, and it is the press
+    /* Round 71, the owner's ruling: a tap does not open a card. It used to press whatever was in
+       reach, wherever on the picture the finger landed, and the measurement was 25 taps out of 25
+       on empty canvas opening a card -- so looking around kept interrupting the visitor with a
+       window about a prop they had walked past. The finger still has one verb here, and it is the
+       gentlest one: a tap puts down what is open. Everything else is a named control -- the reach
+       bar (`[data-walk-open]`), a prop's own button, or E. */
     if (card && !card.hidden) { hideCard(); return; }
-    if (reach) act(reach);
   };
   view.addEventListener("pointerup", up);
   view.addEventListener("pointercancel", release);
@@ -8859,6 +9162,12 @@ function leaveOverlay(root, trigger) {
     // the press is over: bank how long it lasted, so a tap no frame saw can still be paid out
     const tap = tapState.get(k);
     if (tap && tap.start) { tap.ms += performance.now() - tap.start; tap.start = 0; }
+    /* Round 72: the nudge is paid inside a frame, so the release has to ask for one. On a slow
+       machine the frame that saw the key down ends before the key comes up, and the lane then rests
+       (it runs on a timer when nothing is held) -- so a 40 ms tap of the turn key measured 0.4 deg,
+       the share that one frame happened to catch, and the other 3 degrees were owed to a frame that
+       was never scheduled. `verify-feel` caught it; this line is the fix. */
+    if (tap) loop();
   });
   const releaseInput = () => {
     keys.clear(); stick = null; vx = 0; vd = 0; gliding = null; last = 0;
@@ -8890,6 +9199,11 @@ function leaveOverlay(root, trigger) {
   // camera that walks from one that jitters, and the numbers that matter are already in scope here.
   layer.__walk = { get depth() { return depth; }, get x() { return x; }, get height() { return height; },
                    get yaw() { return yaw; }, get pitch() { return pitch; }, get focal() { return focal; }, get quads() { return quads.length; },
+                   /* Round 75: a glide is a promise the stop strip makes, and a measuring instrument
+                      that guesses "arrived" from stillness guesses wrong on a loaded machine (the same
+                      mistake `_aim.mjs` made until round 72). The state is exposed so a probe can ask
+                      the lane whether it has finished rather than watch for it to sit still. */
+                   get glide() { return gliding ? { z: gliding.to, x: gliding.x } : null; },
                    get drawQuads() { return quads; },
                    get wallHalf() { return WALL; }, get radius() { return PLAYER_RADIUS; },
                    get halfWidth() { return HALF; },
@@ -8984,6 +9298,33 @@ function leaveOverlay(root, trigger) {
   const headEl = plate && plate.querySelector("[data-room-title]");
   const whereEl = plate && plate.querySelector("[data-room-where]");
   const hintEl = plate && plate.querySelector("[data-room-hint]");
+  /* Round 75b -- the reel's width. The record holds 1.83:1 landscapes (the falls, the street, the
+     hall) and 0.75:1 portraits (Tokyo's prints, the scramble, the tower), so a fixed column
+     letterboxes whichever shape it was not measured on: 9:16 gave a landscape 364 x 199 px inside a
+     full screen, and a full-width column gives a portrait 406 px inside a full screen. The box is the
+     picture: its ratio times the height the grid has left, capped by the panel's width. Measured here
+     because CSS cannot do it without the layout arguing with itself (see css/site.css). */
+  let frameAr = 9 / 16;
+  const sizeReel = () => {
+    if (!railEl || !panel) return;
+    const cs = getComputedStyle(panel);
+    const gap = parseFloat(cs.rowGap) || 0;
+    /* Only the children that take part in the grid: the panel's chrome (the close button, the heading
+       and the hint) is taken out of the flow and out of the picture's way, so counting them
+       subtracts a band of height that nothing is using -- measured 969 px of picture where 992 fit. */
+    const others = Array.from(panel.children)
+      .filter((el) => el !== railEl && getComputedStyle(el).position !== "absolute");
+    const chrome = others.reduce((a, el) => a + el.getBoundingClientRect().height, 0) + gap * others.length;
+    const availH = panel.clientHeight - (parseFloat(cs.paddingTop) || 0)
+      - (parseFloat(cs.paddingBottom) || 0) - chrome;
+    const availW = panel.clientWidth - (parseFloat(cs.paddingLeft) || 0)
+      - (parseFloat(cs.paddingRight) || 0);
+    if (!(availH > 0) || !(availW > 0)) return;
+    const w = Math.max(160, Math.min(availW, availH * frameAr));
+    railEl.style.setProperty("--reel-w", `${Math.round(w)}px`);
+  };
+  window.addEventListener("resize", () => { if (plate && plate.classList.contains("is-rail")) sizeReel(); });
+
   const paint = () => {
     frames.forEach((f, j) => { f.hidden = j !== fi; });
     // The rail's heading follows the frame rather than the click, because the dialog is read as
@@ -8999,6 +9340,14 @@ function leaveOverlay(root, trigger) {
       sg.classList.toggle("is-done", j < fi);
       sg.classList.toggle("is-now", j === fi);
     });
+    /* Round 75: the plate's hint promises "next frame ... previous one" and the segments promise a
+       sequence. A story of one frame has neither, so both are hidden rather than left telling a
+       visitor to tap for something that does not exist. The reel that ships today is 3 or 6 frames,
+       which is exactly why nobody would have noticed if a one-frame story were ever added. */
+    if (segRow) segRow.hidden = frames.length < 2;
+    if (countEl) countEl.hidden = frames.length < 2;
+    const whenEl = plate && plate.querySelector(".modal-panel > .when");
+    if (whenEl) whenEl.hidden = frames.length < 2;
     // The full-format ground is the frame's own pixels, so the screen behind the story changes with the
     // story; `url(...)` of an already-loaded file costs one decode and no bytes.
     if (panel) {
@@ -9010,6 +9359,22 @@ function leaveOverlay(root, trigger) {
          pixels. Resolving here is the one place that knows which document the file belongs to. */
       const raw = src && src.getAttribute("src");
       panel.style.setProperty("--fill", raw ? `url("${new URL(raw, document.baseURI).href}")` : "none");
+      /* Round 75b: the reel's width is the picture's own ratio times the height the grid gives it
+         (see `--ar` in css/site.css). One column cannot serve 1.83:1 landscapes and 0.75:1 portraits
+         at once: whichever it is not measured on is letterboxed, and the surface then covers the
+         screen to show a picture in a fifth of it. */
+      if (src) {
+        const setAr = () => {
+          const w = src.naturalWidth, h = src.naturalHeight;
+          frameAr = w && h ? w / h : 9 / 16;
+          if (panel) panel.style.setProperty("--ar", w && h ? `${w} / ${h}` : "9 / 16");
+          sizeReel();
+        };
+        setAr();
+        /* Before the file decodes there is no ratio to read; the frame keeps the authored 9:16 for
+           one paint and this fires on the decode, which is before it is ever shown. */
+        if (!src.complete) src.addEventListener("load", setAr, { once: true });
+      }
     }
     if (countEl) countEl.textContent = `${fi + 1} of ${frames.length}`;
   };

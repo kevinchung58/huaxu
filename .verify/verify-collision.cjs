@@ -37,7 +37,15 @@ function boot(file) {
     const vc = new VirtualConsole();
     vc.on("jsdomError", (e) => { const m = String((e && e.message) || e);
       if (!/navigation/.test(m)) errors.push(m); });
-    const html = fs.readFileSync(file, "utf8").replace(/<script src="[^"]*"><\/script>/g, "");
+    /* P2 (round 69): a place's world data is its own file now, loaded by a plain <script> in a real
+       browser. jsdom does not fetch external scripts at all — this harness strips every one of them
+       and evals js/site.js itself — so the place data is inlined here, before that strip, exactly as
+       the browser would have run it. Skipping this leaves __HX_PLACES empty and every big page boots
+       into a lane with no world, which the collision checks would then measure as "nothing to hit". */
+    const html = fs.readFileSync(file, "utf8")
+      .replace(/<script src="(js\/places\/[a-z0-9-]+\.js)(\?[^"]*)?"><\/script>/g,
+               (_m, src) => `<script>${fs.readFileSync(src, "utf8")}</script>`)
+      .replace(/<script src="[^"]*"><\/script>/g, "");
     const dom = new JSDOM(html, { runScripts: "dangerously", pretendToBeVisual: true,
       url: "https://huaxu.test/" + file, virtualConsole: vc });
     const w = dom.window;
@@ -262,8 +270,20 @@ async function pageGate(file) {
     const layer = env.doc.querySelector("[data-walk]");
     const WALL0 = Number(layer.dataset.laneW ?? 640) / 2;
     const MIND0 = Number(layer.dataset.laneStart ?? 0), MAXD0 = Number(layer.dataset.laneLen ?? 6000);
+    /* P2 (round 69): the backdrop of a big place lives in js/places/<place>.js now, and this gate
+       read `.textContent` only — so after the data moved it found zero quads and scanned zero runs
+       for exactly the pages the check was written for (round 45's 526/786 free points were on
+       niagara and journey). A gate that silently loses its subject is worse than a red one: it
+       printed "holes x0" about nothing. Read the same two places the page does. */
     let bd = {};
-    try { bd = JSON.parse((env.doc.querySelector("[data-walk-backdrop]") || {}).textContent || "{}"); } catch (e) {}
+    {
+      const el = env.doc.querySelector("[data-walk-backdrop]");
+      try { bd = JSON.parse((el && el.textContent) || "{}"); } catch (e) { bd = {}; }
+      if (!bd.world && el) {
+        const store = (env.w.__HX_PLACES || {})[el.dataset.place];
+        bd = (store && store["data-walk-backdrop"]) || {};
+      }
+    }
     const segd = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1];
       const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz || 1)));
       return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t); };

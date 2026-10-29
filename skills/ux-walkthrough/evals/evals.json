@@ -1,0 +1,26 @@
+{
+  "skill": "ux-walkthrough",
+  "why": "The owner judged the experience four times and each time the defect was one of two shapes: text where there should have been a change, or no change at all. These prompts are the ones a future round would actually type.",
+  "evals": [
+    {
+      "prompt": "站主說：「又跳出這個視窗了，很干擾。」你剛把某個 prop 的 E 改成開卡片。先做什麼？",
+      "with_skill": "先量：跑 .verify/_uxwalk.mjs，看那個物件的 data-verb。若不是 read（它其實會動、會開、會顯示照片），錯的是那把按鍵的回答，不是卡片的樣式——把回答改成場景裡的變化，並讓 verify-ux.mjs 紅一次確認它抓得到。",
+      "baseline": "調整卡片的位置、大小、關閉動畫，或加一個「不再顯示」的偏好設定。"
+    },
+    {
+      "prompt": "新增一個可以按 E 的物件（例如一台會轉的風車），你怎麼決定它要不要開文字視窗？",
+      "with_skill": "press_verb() 依序回傳 leave/photos/ride/play/try/use/read；風車會轉 ⇒ try，卡片不可能被打開。data-verb 會讓橫桿寫「Try · …」，verify-ux.mjs 會斷言它沒有開卡片、且場景真的變了。",
+      "baseline": "在 act() 裡加一個分支開卡片，因為「訪客可能想知道這是什麼」。"
+    },
+    {
+      "prompt": "閘門都綠了，站主卻說「按了都沒反應」。哪一個環節被漏掉了？",
+      "with_skill": "「有回應」在舊閘門裡等於「record 那一行字變了」。要量場景：quads、data-state、body height、x。第 74 輪的 Falls Incline 就是這樣被抓到的（record 寫著「You ride the Falls Incline」，高度 0 整整 2.4 秒）。",
+      "baseline": "重跑同一批閘門，回報全部通過。"
+    },
+    {
+      "prompt": "要交一份體驗報告給站主。格式是什麼？",
+      "with_skill": "一行結論（✅／⚠️／🚨），只列真的被違反的幾條啟發法，每條一兩個 bullet 帶量到的數字（例如「卡片 13 % vs 抽屜 47 %」），最後最多三項優先動作。不寫長篇。",
+      "baseline": "寫一段散文說整體感覺，或列出全部十條啟發法。"
+    }
+  ]
+}

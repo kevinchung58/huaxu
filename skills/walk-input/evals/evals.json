@@ -1,0 +1,32 @@
+{
+  "skill": "walk-input",
+  "evals": [
+    {
+      "id": "tap-opens-a-card",
+      "prompt": "The owner says the prop card keeps appearing for unimportant objects and interrupts them. Shrink it and move it to the corner?",
+      "expect": [
+        "no: measure first with .verify/_popup-audit.mjs and say how many taps opened a card (25/25 on rooms-cntower stop 3)",
+        "make the picture look-only: a tap folds what is open and presses nothing; the verb is the [data-walk-open] bar that carries the prop's own title",
+        "re-run the audit and quote both halves: 0/N taps opened a card AND the bar opened exactly the thing it named"
+      ]
+    },
+    {
+      "id": "stall-went-dead",
+      "prompt": "After the tap change, verify-games reports 20/23 — pressing the goldfish stall no longer opens its toy. Weaken the gate?",
+      "expect": [
+        "no: the stall is data-quiet=1 tabindex=-1 because its kind is 'board', and the tap was its only route",
+        "move the quiet guard in act() below every real verb, and make is_target() true for game/ride/story/'demo' in o",
+        "re-run verify-games to 23/23 and state that quiet means unannounced, not inert"
+      ]
+    },
+    {
+      "id": "turn-too-fast",
+      "prompt": "Turning left and right feels far too big. Just lower TURN_RATE to 40?",
+      "expect": [
+        "diagnose first: the turn was integrated with the frame dt, so a 12 ms tap was paid 47-670 ms and measured 8-9 degrees",
+        "pay the visitor's own milliseconds (paidMs banked in tap.held in ms, nudge owed once via tap.ms > 0), keep 85 deg/s and a 35 ms floor = ~3 degrees a tap, drag 0.065 deg/px",
+        "re-scale the gate turns by 120/85 rather than deleting assertions, update every instrument constant, and quote _turnprobe.mjs before/after"
+      ]
+    }
+  ]
+}

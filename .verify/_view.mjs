@@ -89,37 +89,50 @@ for (const view of VIEWS) {
   console.log(`STOP ${view.stop} ${target.label} → ${JSON.stringify({ target, at, arrived, waited: Math.round((Date.now() - t0) / 1000) })}`);
   if (!arrived) { console.log(`NOT THERE: stop ${view.stop} — no frame saved`); continue; }
 
-  // Turn with a held arrow key: the same rate the visitor has, and it cannot press anything.
-  // The rate is the site's own (TURN_RATE in js/site.js), and the hold is cut short by a tenth:
-  // a frame on a software rasteriser can be a third of a second, and a hold sized for the frame
-  // rate overshoots by tens of degrees when the machine is busy -- which is how a frame labelled
-  // "yaw 90" ends up at 148 and photographs the wrong side of the street.
-  // The key stays down until the head has actually come round: a frame on a software rasteriser
-  // can be a third of a second, and a hold timed to the frame rate is a hold the lane never
-  // sees -- the key goes down and up between two ticks, and the head does not move at all.
-  const TURN_RATE = 120;
-  for (let guard = 0; guard < 24; guard++) {
-    const s = await state();
-    const d = ((view.yaw - s.yaw + 540) % 360) - 180;
-    if (Math.abs(d) < 1.5) break;
-    const key = d > 0 ? "ArrowRight" : "ArrowLeft";
-    await page.keyboard.down(key);
-    const budget = Math.max(600, (Math.abs(d) / TURN_RATE) * 1000 * 1.35);
-    const t0 = Date.now();
-    while (Date.now() - t0 < budget) {
-      await sleep(60);
-      const s2 = await state();
-      const moved = Math.abs(((s2.yaw - s.yaw + 540) % 360) - 180);
-      if (moved >= Math.abs(d) - 1.2) break;
-    }
-    await page.keyboard.up(key);
-    await sleep(160);
+  /* Aiming, third version, because the first two were both wrong and both looked fine.
+
+     v1 held an arrow key for at least 600 ms ("a software rasteriser needs a long hold"): at 120
+     deg/s that is 72 degrees, and three frames named yaw0 were shot at -15.9, -34.1 and -20.9.
+     v2 sized the burst to the angle left and re-read the head. It still could not land: the lane
+     integrates turning per frame with dt clamped to 0.12 s, so the SMALLEST turn a key press can
+     make is 120 * 0.12 = 14.4 degrees (measured: a 150 ms hold moved the head 14.4 and stopped).
+     A key cannot aim a camera to a degree on a slow frame; a drag can.
+
+     So the aim is the gesture a visitor with a mouse or a thumb actually uses: pointer down, move,
+     up. That path sets the heading from the drag distance (0.065 deg per pixel, site.js) instead of
+     integrating it over frames, so one drag lands wherever it is aimed. Drags travel at least 9 px
+     because a pointerup that moved less than 8 px is a *tap* in the lane's own rule, and a tap
+     presses whatever is under the pointer. Residual under 0.8 deg is left alone: it is under a
+     pixel at this focal length, and inside the tolerance the stops are read back with. */
+  const DRAG = 0.065, cx = Math.round(VW / 2), cy = Math.round(VH / 2);
+  const dragBy = async (px) => {
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + px, cy, { steps: 3 });
+    await page.mouse.up();
+    await sleep(260);
+  };
+  let off = 0, aimed = false;
+  for (let guard = 0; guard < 8; guard++) {
+    const s2 = await state();
+    off = ((view.yaw - s2.yaw + 540) % 360) - 180;
+    if (Math.abs(off) <= 0.8) { aimed = true; break; }
+    const px = Math.max(-420, Math.min(420, Math.round(off / DRAG)));
+    if (Math.abs(px) < 9) { aimed = Math.abs(off) <= 0.8; break; }
+    await dragBy(px);
   }
-  // The pointer out of the frame: a preview card floats over the picture when it rests on the canvas.
+  // The last word is the head's own, read after it settles.
+  let s3 = await state();
+  for (let i = 0; i < 6 && s3; i++) { await sleep(200); const n = await state(); if (n && Math.abs(n.yaw - s3.yaw) < 0.02) break; s3 = n; }
+  off = s3 ? ((view.yaw - s3.yaw + 540) % 360) - 180 : 0;
+  if (Math.abs(off) > 1.2) { console.log(`NOT AIMED: stop ${view.stop} — ${off.toFixed(1)} deg off, no frame saved`); continue; }
+  // The pointer to the corner with no button held: a hover, not a drag, so the head does not move,
+  // and a preview card no longer floats over the picture.
   await page.mouse.move(2, 2);
   await sleep(900);
   const s = await state();
-  const name = `stop${view.stop}-yaw${Math.round(view.yaw)}-${VW}x${VH}${view.label ? "-" + view.label : ""}`;
+  // The file is named for the head that was actually there, never for the wish.
+  const name = `stop${view.stop}-yaw${s ? Math.round(s.yaw) : Math.round(view.yaw)}-${VW}x${VH}${view.label ? "-" + view.label : ""}`;
   await page.screenshot({ path: `${OUT}/${name}.png` });
   console.log(`SHOT ${name} at ${JSON.stringify(s)}`);
 }

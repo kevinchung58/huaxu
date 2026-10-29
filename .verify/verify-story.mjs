@@ -113,22 +113,29 @@ const railView = await page.evaluate(() => {
   return stop ? { yaw: stop.dataset.viewYaw, pitch: stop.dataset.viewPitch } : null;
 });
 /* Round 59 re-aimed the rail stop: the view was measured against the photographs and the west
-   quarter (yaw -82, a shallow pitch of 2) is what a visitor who has stopped at the rail is
-   actually looking at -- the Horseshoe's face over the parapet. Round 64: this gate still asked for
-   the round-33 numbers (-15 / 10), so it hung on its waitForFunction and the story gate had not
-   run to the end for four rounds. The numbers below are the record's, and a change to them has to
-   come through here with its reason. */
+   quarter (a shallow pitch of 2) is what a visitor who has stopped at the rail is actually looking
+   at -- the Horseshoe's face over the parapet. Round 64: this gate still asked for the round-33
+   numbers (-15 / 10), so it hung on its waitForFunction and the story gate had not run to the end
+   for four rounds. The numbers below are the record's, and a change to them has to come through
+   here with its reason.
+
+   Round 69e is that change, and this is its reason. The heading was -82, and measured with the
+   page's own camera it put the spray's alpha-weighted centre at screen x 220 of 1024 with only
+   3 of 53 billboards inside the frame: the rail was aimed 27 degrees short of the falls. The
+   heading now comes from the crest itself -- the brink point farthest from its own end-to-end
+   chord, 356 m out at -109.4 degrees -- so -109 keeps the curtain corner to corner. The pitch is
+   unchanged: the visitor is still looking over the parapet, not up at the sky. */
 ok("the Table Rock rail stop aims over the parapet at the Horseshoe",
-   railView?.yaw === "-82" && railView?.pitch === "2", JSON.stringify(railView));
+   railView?.yaw === "-109" && railView?.pitch === "2", JSON.stringify(railView));
 await page.evaluate(() => document.querySelector("[data-walk-stop='3']").click());
 await page.waitForFunction(() => {
   const w = document.querySelector("[data-walk]")?.__walk;
-  return w && w.yaw === -82 && w.pitch === 2;
+  return w && w.yaw === -109 && w.pitch === 2;
 }, { timeout: 5000 });
 ok("choosing the rail stop applies its authored camera view",
    await page.evaluate(() => {
      const w = document.querySelector("[data-walk]").__walk;
-     return w.yaw === -82 && w.pitch === 2;
+     return w.yaw === -109 && w.pitch === 2;
    }));
 await page.goto("http://127.0.0.1:8080/rooms-niagara.html", { waitUntil: "networkidle0" });
 await sleep(1500);
@@ -142,7 +149,9 @@ await sleep(1500);
 // deck), not a prop called falls-jb; what the tunnel owns is the deck's parapet at its mouth.
 ok("behind the falls boots in the tunnel, its deck at the mouth and the falls in its world",
    await page.evaluate(() => {
-     const bd = JSON.parse(document.querySelector("[data-walk-backdrop]")?.textContent || "{}");
+     const el = document.querySelector("[data-walk-backdrop]");
+     const t = (el.textContent || "").trim();
+     const bd = t ? JSON.parse(t) : (((window.__HX_PLACES || {})[el.dataset.place] || {})["data-walk-backdrop"] || {});
      return !!document.querySelector("[data-obj='deckwall-jb']")
        && ((bd.world && bd.world.prims) || []).some((p) => p.t === "w");
    }));

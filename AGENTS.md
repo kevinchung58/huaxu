@@ -48,6 +48,43 @@ no package manifest, CDN, or additional runtime dependency is implied.
   own state at timeout; if the site answered and the harness blinked, fix the budget (or the lifecycle
   event waited on: `domcontentloaded` plus a state wait, not `load` over abandoned subresources) and
   say so in the gate's comment.
+- **A movement gate that passes once has measured one walk, not the walker.** `verify-collision`'s
+  route through a page depends on the state its own earlier rams leave behind (a corner watch is
+  skipped when the body already stands within 60 cm of it), and the lane's idle pulse can land a
+  frame between two pumped ones — so two runs of the same page are two different approaches to the
+  same geometry. Round 68's wedge appeared in one run of four and in none of the next six; a single
+  green run is one sample, and the acceptance for a solver change is a loop (20 runs) *plus* the
+  wide instrument (`.verify/_wedge.cjs`: every rail stop at 16 headings, the diagonal presses, every
+  solid's four corners). And when a gate says a body stands still with a legal way out, print the
+  solver's own decision (`_wedge2.cjs` patches `moveStep` in memory, one anchor at a time) instead of
+  re-deriving its maths in the gate: the three defects that round closed — a creep step below the
+  anti-flip-flop price, a clearance probe that clamped at the lane wall, and a push-out that landed
+  exactly on the collision boundary the accept test asks about with a strict `<` — were all "the
+  escape was legal, tested and refused", and none of them was visible from the outside.
+
+- **A gate that fails half the time is reporting a defect, not noise.** Round 68 read `verify-walk`'s
+  intermittent failure as flakiness and called 192/192 a pass. Round 69 closed the second window
+  (two JSDOM lanes in one process halve each other's frame rate), and the failure stayed: the gate's
+  guide was tapping a rail stop and the body never arrived. The glide probe (now
+  `.verify/verify-rail.mjs`, which is that probe with assertions) published the glide's own state and
+  showed it — x thrown between 206 and 343 at z 962, never closer to the stop, because a push-out
+  counts as movement, so the detour never fired, and then because the detour kept aiming
+  at the stop while it moved sideways, so every step was a diagonal back into the bay it was trying
+  to avoid. A visitor who taps a stop chip was juddering in front of a planter. **An intermittent
+  gate is a measurement with a hole in it: fix the hole (budget, lifecycle, contention) and, if the
+  failure survives a correct harness, believe it about the product.** Never re-baseline an assertion
+  to the flaky result — 192/192 was the flake being lucky.
+
+- **A mention is not a user, and a gate is not a judge.** Round 76 kept a dead `.plate-navy` family
+  because a comment called it "a documented fallback" and kept the plan-view strip because a comment
+  promised it marked the seams; the owner's ruling is 「不是提到就不是垃圾」 — being named in a gate, a
+  doc, a comment or a checklist does not make a thing live, and "I cannot be this conservative" is a
+  direct instruction. Round 77 also found the opposite trap: `verify-walk` held four assertions about
+  the album's full-screen viewer by reading the *stylesheet*, so they passed for five rounds and made
+  259 dead lines look tested — deleting them turned the gate red, which reads as "you broke
+  something". **Ask the DOM**: `.verify/verify-csslive.mjs` classifies every selector as LIVE /
+  RUNTIME / DORMANT / DEAD (546 / 0 dead as of round 77) and the only one you may delete is DEAD;
+  a DORMANT path must say which data it is waiting for, out loud, in `TODO.md`.
 
 - **The unit rule, all of it:** only the depth axis converts — record `z` and `d` cross into walk
   space ×2.9 (`Z_SCALE`), while `x`, `y`, `w`, `h`, stop `--x` and every dataset passthrough field
@@ -111,7 +148,20 @@ no package manifest, CDN, or additional runtime dependency is implied.
   `skills/grounded-scene/SKILL.md`, and the matching domain skills above. Before the visual gate,
   read `skills/scene-quality-loop/SKILL.md`; before any PR is opened or updated, read
   `skills/pr-handoff/SKILL.md` and update `TODO.md` with a complete, prioritized plan for the next
-  round. These are tracked project skills, not optional suggestions. Apply PUA as an evidence-first
+  round. Before drawing a conclusion from a screenshot, a ray, a pixel statistic or a stop position,
+  read `skills/frame-evidence/SKILL.md`; every number quoted from a frame comes through it. Before
+  touching a tap, key, drag, reach, card, bar or **exit** (an overlay, the browser's back gesture),
+  read `skills/walk-input/SKILL.md`; it owns the press model, the turn constants and the enter/exit
+  history contract, and its probes (`_popup-audit`, `_turnprobe`, `_backprobe`) are the evidence.
+  Before claiming that an **experience** is good — or that a press "was answered" — read
+  `skills/ux-walkthrough/SKILL.md`: it owns the two-tier answer rule (a press shows you something, and
+  only a thing with nothing to show may open text), the `press_verb` table, and the visitor's pass
+  `.verify/_uxwalk.mjs` with its gate `.verify/verify-ux.mjs`. A green gate is not an experience. **Any
+  round that discovers a defect class, a measured constant, or a new instrument must write or amend a
+  skill in the same round** — read `skills/skill-authoring/SKILL.md`, add the `skills/README.md` row
+  and the `SKILLS.md` routing sentence, and run `node .verify/verify-skills.mjs`. The agent's skills
+  do not activate themselves; this rule and that gate are what make the habit automatic, so neither
+  is optional. These are tracked project skills, not optional suggestions. Apply PUA as an evidence-first
   method—diagnose, change approach when stalled, inspect related effects, and verify the actual
   artifact. Do **not** use shaming, threats, fabricated performance reviews/KPIs, endless retries,
   or PUA as authority to bypass permissions, user constraints, safety, or tests. A scene is not
@@ -181,15 +231,30 @@ Files you MAY edit directly:
 
 | Path | Purpose |
 |---|---|
-| `_gen_html.py` | Generator: nav, page templates, publications, gallery data. Run it after editing. |
+| `_gen_html.py` | Generator entry point: assembles the page bodies and writes every file. Run it after editing anything in `gen/`. |
+| `gen/` | The generator's parts (round 78, a pure move): `site.py` (nav, footer, icons, `page()`), `content.py` (publications, projects, pillars, courses, the report's rows), `media.py` (the image registry and the wall), `world.py` (the surveyed worlds), `districts.py` (the district records), `render.py` (the lane's markup). Edit these, not the emitted HTML. |
 | `index/about/research/teaching/activities/service/links/404.html` | Generated output. Do not hand-edit. |
 | `css/site.css` | Single stylesheet, versioned via `?v=` query string |
-| `js/site.js` | Single script file — nav, reveals, the photo plate, and the dot-trace game (see below) |
+| `js/site.js` | The lane, the page chrome and the dot-trace game, in one closure (see §Layout note below) |
 | `IMG/` | Portrait and gallery photos |
 | `SPEC-gallery-3d.md` | **Not built.** The owner-facing proposal for a walkable Activities archive, written from a first-hand read of his reference site; read it before any 3D work or any change to the dependency rule |
 | `.nojekyll` | Keeps GitHub Pages from running Jekyll — do not delete |
 | `TODO.md` | The working plan for the next round: what is next, how we work, and the measured facts. Rewritten each round; a finished item is deleted rather than narrated. Update it before every PR operation. |
 | `TODO-archive.md` | The earlier rounds' full log, kept for provenance. Read-only: if a fact is still relevant, move it into `TODO.md` instead of editing the archive. |
+
+Route a layout change through `skills/pure-move-split` (round 78).
+
+**Why the generator is split and the script is not (round 78, measured).** `_gen_html.py` was one
+7,484-line file whose ordering was load-bearing: page bodies, the loops that fill them and the
+records they read were interleaved, so a split had to be a *move* with a proof, not a refactor. It is
+now an entry point plus six modules, and the proof is that all 19 emitted pages are byte-identical
+before and after. `js/site.js` is a different shape: four top-level units (page chrome 145 lines,
+shared overlay plumbing ~115, the dot-trace game 207, and **the lane, 8,989 lines with 288
+declarations sharing one closure**). Splitting the closure at file boundaries is not a move — every
+name it shares would have to become an explicit interface, and the fastest gate in this repository
+(`verify-walk`, 212 assertions) works by `w.eval`-ing that one script into jsdom, which ES modules
+cannot do. So the script stays one file until a round is prepared to give the lane an interface and
+pay for a slower gate; do not "fix" it with a cosmetic split that leaves a 9,000-line file behind.
 
 Reference photographs (`image-search/`) are deliberately **not tracked**: their sources are
 untraceable, so they stay on the working disk for human comparison only. The same rule covers any
@@ -298,25 +363,36 @@ lives in `js/site.js` (the `[data-dot-*]` block). Contract to keep intact, in th
   keep the detector at 0 findings. No test framework or package-manager runtime; the approved vendored
   Three.js exception is limited to walkable-scene pages.
 
-## Interactive: the photo plate
+## Interactive: the photograph wall (activities.html)
 
-The album on `activities.html` is a wall of plates you step into, not a static figure row — do
-not reduce it back to a thumbnail strip, and do not reinstate the `data-deck` markup that used to
-ship there: it had no CSS and no JS at all, which is how this section came to describe a feature
-that did not exist. Content comes from the image registry (`IMG_RULES` / `ALBUM` in
-`_gen_html.py`); all behavior lives in `js/site.js` (the `[data-ig-*]` block). Contract to keep
-intact:
+Round 77 deleted the album viewer that used to be described in this section: a full-screen plate with
+a roll, arrow buttons, a position count and a named view transition, 259 lines of CSS and 189 of
+`js/site.js`. It had never emitted a single element — a plate needs a caption and a date, and no
+classroom photograph has ever been given either — and four assertions in `verify-walk` passed for five
+rounds by reading the *stylesheet* instead of a page. What ships is the wall and nothing else, and the
+contract that remains is short:
 
-- Tiles are links to the full-resolution file, never buttons; `preventDefault()` runs only
-  when there is a plate to show, so the archive survives with scripting off.
-- The zoom is a named view transition: `view-transition-name` is set on the tile image, then
-  on the plate image, then cleared. Putting it on every tile in CSS collides and the morph
-  stops with no error.
-- A block with nothing to hang keeps its heading and its reason (`Nothing in this block yet`
-  plus the count of what is held), because an archive that silently omits a shelf is
-  indistinguishable from one that never had it. A `record` image is not shown until it has a
-  caption with a venue and a date — do not add a placeholder photograph or a "forthcoming"
-  promise to make a block look full.
+- **A tile is a `<figure class="ig-tile">`: the photograph, and the line that says what it is.** Its
+  `alt` carries the same words for a reader who never sees the picture. There is no link, no second
+  surface, no `data-ig`, and no `#ig-plate`; do not add a viewer back without photographs to view.
+- **A block with nothing to hang keeps its heading and its reason** (`Nothing in this block yet` plus
+  the count of what is held), because an archive that silently omits a shelf is indistinguishable from
+  one that never had it. A `record` image is not shown until it has a caption with a venue and a date —
+  do not add a placeholder photograph or a "forthcoming" promise to make a block look full. If you do
+  date one, `.verify/verify-csslive.mjs` flips the wall's five rules from DORMANT to LIVE; if it stays
+  DORMANT for another year, that is the answer to whether it should exist.
+- **Required assets fail the build.** A place card's cover (`IMG/{id}-cover.jpg`) and a principle row's
+  illustration are checked by the generator now; the "No cover yet" card and the typographic `.plate`
+  fallback are gone with the states they designed for.
+- **No watched state.** Nothing may be marked seen, nothing expires; a count is a position, not a
+  countdown.
+- Sizes come from the file: `poster_attrs()` reads the JPEG header so the grid cannot shift, and
+  `loading="lazy"` stays on the images.
+- `inertOutside` / `trapTab` / `enterOverlay` / `leaveOverlay` are the site's shared overlay plumbing;
+  the dot-trace game and the lane's card and story plate use them. Keep them shared.
+
+## Interactive: the lane's display and the story plate
+
 - **A state is geometry.** Props that can be used carry `states` in the district record and their light
   is addressed by `of: "<prop id>"`, so a stop changes a quad and a brightness, never only a caption;
   nothing in the space is animated by a clock of its own (`T` is sampled once per frame and read by the
@@ -330,23 +406,22 @@ intact:
   tap that did not become a drag is a press. These are not polish: an invisible overlay and a class deleted
   two rounds ago made the lane unclickable and the exit a description of an exit, and 130 jsdom assertions
   passed it — because jsdom has no hit-testing. Anything about landing a click is `.verify/browser-check.py`'s.
-- **A story is the screen, and one mouse button is a gesture.** Both plates are full-format
-  (`100dvh`, no radius, no shadow, no `pop`, media `contain`ed, duplicate headings visually hidden) and
-  the grounds differ on purpose: a story (`#room-plate.is-rail`) fills the remainder with a blurred copy
-  of its own frame, a post (`#ig-plate`) sits on a plain field. Do not "unify" the grounds, and do not
-  strip the plate's own dark `background` — a caption's contrast is measured against it. Every pointer gesture in the site ignores
-  `event.button !== 0`, `contextmenu` is refused only while a drag is live, and `auxclick` is blocked for
-  the middle button alone so the tiles keep working as links.
-- **One roll per page.** The plate is addressed by index, so the tiles are flattened across every
-  `[data-ig-grid]` in DOM order and the frames are emitted in that same order; `verify-walk.mjs`
-  asserts the two lists agree. `#room-plate` (the lane) and `#ig-plate` (the album) are different
-  viewers for different surfaces and must not be merged or duplicated.
+- **A story is the screen.** `#room-plate.is-rail` is full-format (`100dvh`, no radius, no shadow, no
+  `pop`, media `contain`ed, duplicate headings visually hidden) and it fills the remainder with a
+  blurred copy of its own frame — the one ground in the site that is made of the picture it shows. Do
+  not "unify" it with anything, and do not strip the panel's own dark `background`: a caption's
+  contrast is measured against it. Every pointer gesture in the site ignores `event.button !== 0`,
+  `contextmenu` is refused only while a drag is live, and `auxclick` is blocked for the middle button
+  alone.
 - **The head-up display wears no words.** Everything textual in the lane's chrome is folded into an
   icon button that opens `data-walk-card`; the status and record lines remain only as `.sr-only` live
   regions, the station rail is ticks whose heights come from each stop's authored `--p` depth, and even
   the view controls are glyphs of the site's own icon set rather than `−`/`+`. `verify-walk.mjs` asserts
   that no node in `.walk-hud` has text of its own — do not "improve" discoverability by putting a label
-  back on the space.
+  back on the space. Round 77 removed the plan-view strip (three spans, 15 lines of JS, two `zones`
+  tables) that used to sit in that chrome: round 72 had already cut its four CSS rules while its own
+  commit message cited the strip as the surviving indicator, so for five rounds it was DOM nobody could
+  see. A progress indicator is a design decision, not a repair — do not restore it by adding CSS.
 - **The space wears the atmosphere; the view only frames it.** Wall materials, ground markings and
   hanging lights are emitted as scene islands (`data-walk-surfaces`, `data-walk-marks`, the
   lantern entries in `data-walk-lights`) and painted from tiles the renderer draws in code. Every
@@ -356,18 +431,9 @@ intact:
   record's own `d` while their objects ran on to `walk_d`). Nothing may
   be lit by a source the data does not name, nothing may be dressed with a photograph of somebody's real
   street, and no surface carries invented lettering — the blank folding board is that assertion.
-- **No watched state.** `放進限時動態只是做相簿用`: this is an album, not a story. Nothing may be
-  marked seen, nothing expires, and `1 / n` is a position, not a countdown.
-- Sizes come from the file: `poster_attrs()` reads the JPEG header so neither the grid nor the
-  plate can shift, and `loading="lazy"` stays on the tiles.
-- `inertOutside` / `trapTab` / `enterOverlay` / `leaveOverlay` are the site's shared overlay
-  plumbing; the plate and the dot game both use them. Keep them shared.
-- Depth in the **Activities album and its story plate** remains CSS transforms only. Their tilt and
-  angled roll are `perspective()` plus `rotateY`/`translateZ`; this owner-approved Three.js decision
-  (2026-10-16) is scoped to walkable environments and does not redesign or WebGL-ify the album.
-  The album's flat-JPEG surfaces remain DOM content, not reconstructed 3D geometry.
-- The frames' perspective is written **inside each frame's own transform**: a scroll container
-  flattens its children, so a `perspective` inherited from the plate would be ignored.
+- **Depth in the lane stays WebGL, everything else stays DOM.** The Three.js decision (owner,
+  2026-10-16) is scoped to walkable environments; the page's own figures and the story plate's frames
+  remain CSS transforms, not reconstructed 3D geometry.
 
 ## Design system
 
@@ -405,6 +471,7 @@ change and gets committed with the work that motivated it.
 | **scene-system** | `skills/scene-system/SKILL.md` | Starting any new place, or when the scene skills' order is unclear: the eight-phase pipeline that conducts place-intake / grounded-scene / district-author / landmark-space / lane-prop / street-commons, the renderer contract, the proven idioms with their numbers, the critique failure table, and the gate battery. Read first, then the phase skills. |
 | **real-place-builder** | `skills/real-place-builder/SKILL.md` | Building or substantially revising any grounded walkable place, district, or landmark; translates evidence and the repository's records into an implementation and acceptance plan. |
 | **scene-quality-loop** | `skills/scene-quality-loop/SKILL.md` | Final visual review after a substantial Three.js environment, object, camera, or renderer change; captures settled route/prop views, separates visual critique from mechanical gates, and requires recapture after fixes. See its upstream survey for selected methods and refusals. |
+| **ux-walkthrough** | `skills/ux-walkthrough/SKILL.md` | Whenever a press, bar, card, panel, reel, drawer, prompt or label changes, or the owner says 操作、體驗、彈出、很煩; judges the experience by what the press changes on the screen, keeps text for the `read` verb alone, and runs the visitor's pass (`_uxwalk`) before anyone claims a walk page feels right. |
 | **pua** | `skills/pua/SKILL.md` | Non-trivial implementation, repeated failure, stalled diagnosis, or any task requiring complete end-to-end verification; evidence-first and root-cause oriented. |
 | **karpathy-guidelines** | `skills/karpathy-guidelines/SKILL.md` | Non-trivial code changes: keep the implementation simple, surgical, and grounded in the actual repository. |
 | **pr-handoff** | `skills/pr-handoff/SKILL.md` | Before every PR creation/update and before merge; requires a fresh, prioritized next-round plan in `TODO.md` before GitHub operations. |
@@ -414,6 +481,7 @@ change and gets committed with the work that motivated it.
 | **lane-prop** | `skills/lane-prop/SKILL.md` | One object, light, state or stop inside an existing district: the `SHAPE`/`OBJ_SIZE` registers, the id-prefix naming rule, `Z_SCALE`, `glow`/`of:`, `states`/`leave`, and the measurement that closes it. |
 | **street-commons** | `skills/street-commons/SKILL.md` | The street the rooms stand on: a second street or a new region along the hub, seaside/promenade/harbour/riverbank work, a commercial strip, **and anything that asks for daylight ("有太陽", 海邊, 港, 沿岸, 運河, 商店街)**. Carries the palette-and-sun constraint that makes a sunlit street a stylesheet decision rather than a scene one, and the arithmetic of opening one side of a lane. |
 | **landmark-space** | `skills/landmark-space/SKILL.md` | One landmark object becomes its own walkable space (CN Tower as a room, not a miniature), and the owner's link contract: press the prop, the IG-story plate opens first, an enter-the-space action beside it. Use when a prop should own a district, when the subject is one tall or huge object, or for the beauty gate on any 3D space. |
+| **walk-input** | `skills/walk-input/SKILL.md` | Any change to a tap, key, drag, reach, card, bar, stop or exit, and before claiming a control "feels right": the press model (the picture is look-only, the bar is the verb), quiet-versus-dead, the real-time turn contract (85 deg/s, 3 deg a tap, 0.065 deg/px), the enter/exit history contract (Back folds a surface before it leaves a place) and the probes (`_popup-audit`, `_turnprobe`, `_backprobe`) plus the gates (`verify-overlay`, `verify-exit`) that measure all of it. |
 | **grounded-scene** | `skills/grounded-scene/SKILL.md` | Any experience scene (體驗場景) that recreates a real place and must feel nearly the same as being there — the owner's round-20 rule. Carries the ladder of evidence (owner's photos → official material → satellite/map → Street View/panoramas → photographs), the measurement table, the fidelity contract (details shrink; sequence, scale, sightlines and distinctive geometry must not), and the fidelity gate. Runs under `district-author`/`landmark-space`, never instead of them. |
 
 **`.claude/skills/` — third-party skills, local-only, gitignored** (not tracked in this repo; the

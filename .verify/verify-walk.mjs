@@ -11,7 +11,8 @@ const rooms = fs.readFileSync("rooms.html", "utf8");
 const act = fs.readFileSync("activities.html", "utf8");
 const css = fs.readFileSync("css/site.css", "utf8");
 const js = fs.readFileSync("js/site.js", "utf8");
-const gen = fs.readFileSync("_gen_html.py", "utf8");
+import { genSource } from "../bin/gen-source.mjs";
+const gen = genSource(".");
 const html = rooms;
 
 const ctx = {
@@ -107,6 +108,31 @@ const key = (k, type = "keydown") => (doc.activeElement || doc.documentElement).
   new w.KeyboardEvent(type, { key: k, bubbles: true }));
 const click = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true, cancelable: true }));
 const hold = async (k, ms) => { key(k, "keydown"); await new Promise((r) => setTimeout(r, ms)); key(k, "keyup"); };
+/* Round 73: what is in reach at a row is the thing that is *hung* there, and it hangs on one side of
+   the lane at one depth, so a fixed turn-and-step no longer lands on it. This walks the way a visitor
+   does: turn to the thing's own bearing, step in, repeat until it is in reach. */
+const turnToBearing = async (deg) => {
+  const d = ((deg - body().yaw + 540) % 360) - 180;
+  if (Math.abs(d) < 1.2) return;
+  await hold(d < 0 ? "a" : "d", Math.max(40, Math.round((Math.abs(d) / 85) * 1000)));
+  await sleep(80);
+};
+const walkToThing = async (id, rounds = 8) => {
+  const el = q(`[data-obj="${id}"]`);
+  if (!el) return false;
+  for (let i = 0; i < rounds; i++) {
+    const here = qa(".walk-hit.is-reach")[0];
+    if (here && here.dataset.obj === id) return true;
+    const tx = parseFloat(el.style.getPropertyValue("--x"));
+    const tz = parseFloat(el.style.getPropertyValue("--z"));
+    await turnToBearing(Math.atan2(tx - body().x, tz - body().depth) * 180 / Math.PI);
+    await hold("w", 420);
+    await sleep(90);
+  }
+  const here = qa(".walk-hit.is-reach")[0];
+  return !!(here && here.dataset.obj === id);
+};
+
 const holdTogether = async (keys, ms) => {
   keys.forEach((k) => key(k, "keydown"));
   await new Promise((r) => setTimeout(r, ms));
@@ -168,24 +194,76 @@ const lights = island("lights"), wires = island("wires"), beams = island("beams"
       vista = island("vista"), bd = island("backdrop");
 const strips = lights.filter((L) => L.bulb === false);
 const lanterns = lights.filter((L) => L.body === "lantern");
+/* Round 69h: a bay's light is a paper lantern under its eave, not a strip with no body. The old
+   shape -- `bulb: false` and a 0.22-alpha tint -- was multiplied by the lamp's own strength
+   (scaledEffectTint), so the row that is the street's whole light at night came out at 0.10 opacity
+   and measured three white pixels in a 1024 px frame. What has to stay true is the count and the
+   place: one per bay, standing where its bay stands, hanging under the eave and above a head. */
+const bayLanterns = lanterns.filter((L) => (L.of || "").startsWith("shopbay-"));
 /* Round 56: a strip is the *bay's* strip. The street gained one more unlit source -- the vending
    machine's own glow, which is authored on the prop and inherits its position from it -- so the
    count that has to equal the bays is the count of strips that name a bay, and every other source
    is asked, below, to name a prop that stands exactly where it does. */
 const bayStrips = strips.filter((L) => (L.of || "").startsWith("shopbay-"));
-ok("lights are data: a strip light under every bay's eave, and the globes on the fascias",
-   bayStrips.length === bays.length && bayStrips.every((L) => bays.some((b) => b.id === L.of && b.x === L.x && b.z === L.z))
-     && lights.filter((L) => L.bulb !== false).length >= 4,
-   `${bayStrips.length} bay strips / ${strips.length - bayStrips.length} prop glows / ${lights.length} lights`);
-ok("nothing hangs on a wire the street does not have",
-   (wires || []).length === 0 && !lights.some((L) => L.body === "lantern") && (beams || []).length === 0);
+ok("lights are data: a lantern under every bay's eave, and the globes on the fascias",
+   bayLanterns.length === bays.length
+     && bayLanterns.every((L) => bays.some((b) => b.id === L.of && b.x === L.x && b.z === L.z)
+                                && L.y >= 260 && L.y <= 340 && L.size >= 18 && L.size <= 32)
+     && strips.filter((L) => (L.of || "").startsWith("shopbay-")).length === 0
+     && lights.filter((L) => L.bulb === true).length >= 4,
+   `${bayLanterns.length} bay lanterns / ${lights.filter((L) => L.bulb === true).length} globes / ${lights.length} lights`);
+/* A halo's radius is a size in centimetres, and the hub street's own lanterns carry 30 on a 22 cm
+   body. Authored at 260 on a 3 m-high lane twice that street's width, one lamp covered the walk and
+   read as a searchlight standing in it (round 69h, measured in the frame before the number moved). */
+ok("lanterns hang under an eave on their own cord, at a lantern's size and a lantern's halo",
+   lanterns.every((L) => (L.of || "").startsWith("shopbay-") && L.r <= 40 && L.size <= 32 && /^#[0-9a-f]{6}$/i.test(L.tint || ""))
+     && (beams || []).length === 0);
+ok("nothing crosses the walk: the street has no wires, and no lantern hangs off one",
+   (wires || []).length === 0 && lanterns.every((L) => L.swing === undefined));
 ok("the far end is Hozomon at its sourced size, with the pagoda 56 m west and 19 m north of it",
    bd && bd.temple && bd.temple.gate.w === 2100 && bd.temple.gate.h === 2270 && bd.temple.z > WALK_D
      && bd.temple.pagoda.x === -5600 && bd.temple.pagoda.z - bd.temple.z === 1900 && bd.temple.pagoda.h === 5332);
+/* Round 69i: the gate was a flat picture of a gatehouse -- every quad at one z, a roof of one
+   trapezoid (measured sd 1.2 luma across it), 60 quads in the whole frame. It is a building now, and
+   these are the properties that make it one rather than a cut-out: the record's own 8 m of depth
+   (a second, far face and side walls at +-400 cm), a passage clean through the mass at the centre
+   bay (2 * 2100/5 wide, with a ceiling above it), and a roof of four slopes meeting at a ridge with
+   an eave overhanging on every side. A frame of it is also taken, so the gate cannot regress to a
+   plane while the numbers still add up. */
+{
+  const gateFrom = js.indexOf("five-storey pagoda at the head of Nakamise");
+  const gateSrc = gateFrom < 0 ? "" : js.slice(gateFrom, js.indexOf("The Kanmon Strait beyond the Moji table"));
+  ok("Hozomon is a building with the record's 8 m of depth: a far face and two side walls",
+     /const DZ = 400, zf = gz - DZ, zb = gz \+ DZ/.test(gateSrc)
+       && (gateSrc.match(/zb, "/g) || []).length >= 3 && /gx \+ s \* hw, t, zf/.test(gateSrc));
+  ok("its centre bay is a passage clean through the mass, with walls and a ceiling of its own",
+     /const PW = bay, PH = 830/.test(gateSrc) && /gx \+ s \* PW \/ 2, t, zb/.test(gateSrc)
+       && /gx - PW \/ 2, PH, zf/.test(gateSrc) && /\[gx - PW \/ 2, PH, zf\], \[gx \+ PW \/ 2, PH, zf\]/.test(gateSrc));
+  ok("its roof is four slopes, a ridge and an eave with an underside, not one trapezoid",
+     /const E2 = hw \+ 420 \* k, yE = 1640 \* k, yR = 2190 \* k/.test(gateSrc)
+       // the source wraps between the eave corners and the ridge, so the two ends are matched
+       // separately: a slope is the pair of them, not one line of text.
+       && /gz - zE\]/.test(gateSrc) && /gz \+ zE\]/.test(gateSrc)
+       && (gateSrc.match(/\[gx \+ rH, yR, gz\], \[gx - rH, yR, gz\]/g) || []).length === 2
+       && /gx \+ s \* rH, yR, gz\]\], "#333a48"/.test(gateSrc)
+       && /"#171b23", flood \* 0\.4/.test(gateSrc) && /gx \+ hw \* 0\.66, G\.h, gz/.test(gateSrc));
+}
 ok("the plaza continues the street's own paving, at street level, from the last shops on",
    bd.plaza.y === 0 && bd.plaza.z0 === WALK_D && bd.plaza.z1 > bd.temple.z);
-ok("a street with no lid has a sky that reaches the top of the frame",
-   bd.sky.length === 3 && bd.sky[bd.sky.length - 1].y1 >= 120000 && /const cl = OPEN \|\| VAULT \? null : lidQuad\(/.test(js) && /if \(VAULT && !OPEN\)/.test(js));
+/* Round 69h: the sky was three *far-plane height* bands on a 1,200 m plane, which put band 2's top
+   3.34 deg above the horizon -- above the 4.8 m roofline a visitor only ever saw band 3, one flat
+   colour (measured 8.7-13.4 luma down a 150 px column, at both hours). The table is now authored as
+   elevations with a day and a night colour each, and the gain that makes it a light source is
+   authored per hour beside it. */
+ok("a street with no lid opens onto a sky with a gradient, not onto one band seen through a hole",
+   bd && bd.skyAround && Array.isArray(bd.skyAround.stops) && bd.skyAround.stops.length >= 6
+     && bd.skyAround.stops[0].e <= 0 && bd.skyAround.stops[bd.skyAround.stops.length - 1].e >= 90
+     && bd.skyAround.stops.every((st) => /^#[0-9a-f]{6}$/i.test(st.n || "") && /^#[0-9a-f]{6}$/i.test(st.c || ""))
+     && bd.skyEnv && bd.skyEnv.night > 0 && bd.skyEnv.night < 1 && bd.skyEnv.day >= bd.skyEnv.night
+     && /const cl = OPEN \|\| VAULT \? null : lidQuad\(/.test(js) && /if \(VAULT && !OPEN\)/.test(js),
+   bd && bd.skyAround ? `${bd.skyAround.stops.length} stops, env ${bd.skyEnv && JSON.stringify(bd.skyEnv)}` : "no sky table");
+ok("the lane keeps one hour, and it is the hour its own text is written in",
+   /data-lane-night="0\.92"/.test(rooms) && !/data-lane-day=/.test(rooms));
 ok("the aperture opens the whole end of the street onto the plaza",
    vista && vista.w >= 880 && vista.y0 <= 4 && vista.y1 >= 490);
 ok("no prop's z is left in record units (all scaled by 2.9)",
@@ -360,12 +438,26 @@ ok("a wet patch earns its place: every patch has a light standing above it",
      && L.x >= m.x0 && L.x <= m.x1 && L.z >= m.z0 && L.z <= m.z1)));
 ok("a shopfront is a recess in whichever wall it hangs on, built through the wall's own axes",
    /const P = \(u, v, y\) =>/.test(js) && !/face\(inset\/2/.test(js));
+/* Round 69i: `mix` takes (hex, lift), and four call sites were still passing a third argument from
+   a signature that no longer exists -- the guard fired, the colour was returned unchanged, and the
+   threshold/hood that was meant to be tinted by the shopfront was never tinted at all. It is a
+   warning nobody reads in a console nobody opens; this reads the source. */
+{
+  // Comments are stripped first: this file's own notes quote the old signature, and a gate that
+  // reads prose as code fails on its own explanation.
+  const code = js.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+  const threeArg = [...code.matchAll(/\bmix\(([^()]*)\)/g)].filter((m) => m[1].split(",").length >= 3
+    && !/hex,\s*k/.test(m[1]));
+  ok("no call site passes `mix` a third argument: a blend of two colours is `blendHex`",
+     threeArg.length === 0, threeArg.slice(0, 3).map((m) => m[0].trim()).join(" | "));
+}
 ok("glass lets the far side through, and says so in code", /rgba\(186,214,240,0\.2\d?\)/.test(js));
 ok("a hanging lamp is tied to the wire and the swing moves the body with it",
    /const swayOf = \(L\) =>/.test(js) && /reduce\(\) \? 0 :/.test(js)
    && /3D wire or lamp cord/.test(fs.readFileSync("js/scene3d.js", "utf8")));
-ok("a lantern's period and amplitude are authored, not random",
-   lanterns.every((L) => L.swing > 0 && L.period > 1 && L.phase !== undefined));
+ok("a lantern that swings has an authored period and amplitude, not a random one",
+   lanterns.every((L) => L.swing === undefined
+     || (L.swing > 0 && L.period > 1 && L.phase !== undefined)));
 ok("textures are mapped, not stretched photographs",
    /textureKind = soft \? "soft" : textureSource \? "pattern" : image \? "image" : "flat"/.test(fs.readFileSync("js/scene3d.js", "utf8")));
 /* The air and the night used to share one ceiling of 0.6, which is why the far half of a room
@@ -420,12 +512,13 @@ ok("the plaza is walked into, and the gate stands past the clamp: a street that 
 // The scramble plate, from the stop between the shuttered rows, 44 cm ahead of it at the post line.
 click(stopAt(1392));
 await settle(1392);
-await hold("a", 700);                                     // turn left: A turns the head, as the
+await hold("a", 988);                                      // turn left: A turns the head, as the
+// (round 71: 85 deg/s, so 120/85 x the old hold turns the same 84 degrees)
 await hold("w", 1400);                                    // arrows do, so the lane is walked into
 await sleep(120);
 ok("the wall prop nearer you wins: the reach is nearest-first, not list-order",
    /The scramble at Shibuya|A shop on the west row/.test(status()), status());
-await hold("d", 700);                                     // and the head comes back down the lane
+await hold("d", 988);                                      // and the head comes back down the lane
 await sleep(120);
 ok("standing at the frame's own depth brings it into reach",
    /The scramble at Shibuya/.test(status()), status());
@@ -434,9 +527,12 @@ ok("the reach is announced with a dot on the note button, never with a caption",
      && /\.walk\.has-reach \.walk-info::after/.test(css));
 const inReach = qa(".walk-hit.is-reach");
 ok("exactly one thing is offered at a time", inReach.length === 1, `${inReach.length} in reach`);
-ok("and it is the frame, which promises the plate",
-   inReach[0].dataset.obj === "frame-scramble" && /open the frame/.test(q("[data-walk-record]").textContent),
-   `${inReach[0].dataset.obj} / ${q("[data-walk-record]").textContent}`);
+/* Round 74: the prompt is the thing's own verb now, so what this holds is that the promise matches
+   the object rather than that every object is promised the same sentence. */
+ok("and it is the frame, which promises the photographs",
+   inReach[0].dataset.obj === "frame-scramble" && inReach[0].dataset.verb === "photos"
+     && /see the photographs/i.test(q("[data-walk-record]").textContent),
+   `${inReach[0].dataset.obj}(${inReach[0].dataset.verb}) / ${q("[data-walk-record]").textContent}`);
 key("e");
 await sleep(60);
 const plate = q("#room-plate");
@@ -473,10 +569,19 @@ const gridAt = css.indexOf("#room-plate.is-rail .story-frame {");
 const hiddenAt = css.search(/#room-plate \.story-frame\[hidden\] \{[^}]*display: none/);
 ok("a frame the reel hides leaves the layout — `[hidden]` has to out-rank the rail's own display",
    gridAt >= 0 && hiddenAt > gridAt, `grid@${gridAt} hidden@${hiddenAt}`);
+/* Round 75: the third clause here used to require `--col: min(100%, calc((100dvh - 7.5rem) * 9/16))`
+   — the rail's column was the width of a portrait story, and that is exactly what broke it: every
+   frame in this record is landscape, so `object-fit: contain` fitted each one to 364 px of picture
+   inside a full screen (`.verify/_surface.mjs`: 100 % cover, 9 % fill). The assertion's intent is
+   still "the plate is a screen, not a card", and that is still what it checks; what it now also
+   requires is that the reel's box is measured from the frame's own ratio rather than assumed. */
 ok("全版型: the rail is the screen, not a card that the screen holds",
    /#room-plate\.is-rail \.modal-panel \{[^}]*min-height: 100dvh[^}]*border-radius: 0/.test(css)
-     && /--col: min\(100%, calc\(\(100dvh - 7\.5rem\) \* 9 \/ 16\)\)/.test(css)
      && !/#room-plate\.is-rail \.modal-panel \{[^}]*box-shadow: var/.test(css));
+ok("the reel's box is the picture's own ratio, not a portrait column it was fitted into",
+   /--reel-w/.test(css) && /--ar/.test(css)
+     && /sizeReel/.test(js)
+     && /naturalWidth/.test(js) && /setProperty\("--reel-w"/.test(js));
 ok("the photograph keeps its own ratio inside the column — contain, never a crop",
    /#room-plate\.is-rail \.story-frame img \{[^}]*object-fit: contain/.test(css));
 ok("and the panel's duplicate words are hidden from the eye, kept for the tree",
@@ -500,66 +605,120 @@ await sleep(60);
 ok("closing hands focus back to the thing on the wall that opened it",
    !plate.classList.contains("is-open") && doc.activeElement && doc.activeElement.classList.contains("walk-hit"));
 
-// A shop bay is a prop with no frame, so it is answered by the card, not the plate: from the stop
-// between the shuttered rows, step across to the east row's posts.
+/* Round 73: a shop bay is the painting, not a button. From between the shutters what a visitor can
+   actually reach is the print hung on one of them -- a thing that shows you something -- and the
+   paragraph that used to open in a card over the picture is in the lane, written out. */
 click(stopAt(1392));
 await settle(1392);
-await hold("d", 700);                                  // turn right, to face the east row
-await hold("w", 1500);                                  // and walk into the lane's east side
-await sleep(120);
-ok("between the rows, the shop at the posts is what you are standing in front of",
-   /A shop on the east row/i.test(status()), `${status()} | x=${body().x.toFixed(1)} d=${body().depth.toFixed(1)} yaw=${body().yaw.toFixed(1)} reach=${title0()}`);
-key("e");
-await sleep(60);
+const reachedPrint = await walkToThing("frame-scramble");
 const card = q("[data-walk-card]");
-ok("E on a prop opens its card", !card.hidden && /shut for the night/i.test(q("[data-walk-title]").textContent));
-ok("the card says what is left out and why: the mural's people, the fascia's name",
-   /Asakusa Emaki/.test(q("[data-walk-hint]").textContent) && /blank here/.test(q("[data-walk-hint]").textContent));
-click(q("[data-walk-card-close]"));
-await sleep(40);
-ok("the card closes again", card.hidden);
-// and the head comes back down the lane, so the press boxes below are the ones a visitor
-// walking forward would meet -- not the two that happen to be east of where the card was read
-await hold("a", 700);
-await sleep(120);
+const reachEl = () => qa(".walk-hit.is-reach")[0];
+ok("between the rows, the print hung on a shutter is what you are standing in front of",
+   reachedPrint && !!reachEl() && reachEl().dataset.frame !== undefined
+     && reachEl().dataset.quiet === undefined,
+   `${status()} | x=${body().x.toFixed(1)} d=${body().depth.toFixed(1)} yaw=${body().yaw.toFixed(1)} `
+     + `reach=${reachEl() ? reachEl().dataset.obj : "nothing"}`);
+const plateAtRow = q("#room-plate");
+key("e");
+await sleep(80);
+ok("E on a print opens the reel on that wall, never a window over the picture",
+   plateAtRow.classList.contains("is-open") && plateAtRow.classList.contains("is-rail") && card.hidden,
+   `${plateAtRow.className} / card hidden=${card.hidden}`);
+click(plateAtRow.querySelector("[data-room-close]"));
+await sleep(60);
+ok("and the reel folds again", !plateAtRow.classList.contains("is-open"));
+ok("the paragraph that used to be in that card is in the lane, written out, with what a press does",
+   /Asakusa Emaki/.test(q("[data-walk-things]").textContent)
+     && /blank here/.test(q("[data-walk-things]").textContent)
+     && q("[data-walk-things]").querySelectorAll("li.is-pressable").length >= 1,
+   `${q("[data-walk-things]").querySelectorAll("li").length} rows, `
+     + `${q("[data-walk-things]").querySelectorAll("li.is-pressable").length} pressable`);
+/* Round 73: the press boxes are measured where a visitor meets them -- looking down the lane, not
+   nose-to-shutter at 1.2 m, where nothing is on screen and a count of zero is the right answer. */
+await turnToBearing(0);
+await sleep(200);
+const boxes = qa(".walk-hit").filter((e) => e.style.visibility === "visible");
+ok("every visible press box is a fingertip, whatever the object's pixel size is",
+   boxes.length >= 3 && boxes.every((e) => parseFloat(e.style.width) >= 44 && parseFloat(e.style.height) >= 44),
+   `${boxes.length} boxes, narrowest ${Math.min(...boxes.map((e) => parseFloat(e.style.width)))}px`);
+ok("and the nearer thing wins where two boxes overlap",
+   boxes.every((e) => e.style.zIndex !== "")
+     && /m\.el\.style\.zIndex = String\(1200 - Math\.min\(1100/.test(js),
+   `z ${Math.min(...boxes.map((e) => +e.style.zIndex))}–${Math.max(...boxes.map((e) => +e.style.zIndex))}`);
 
-/* The states contract, tested where the states are (round 32). Nakamise after closing has nothing a
-   visitor operates -- every shop is shut, and nothing is invented to press -- so the rule that a state
-   is geometry runs on the street, whose fronts have real stops: each ships at its first, a press paints
-   the front from its new stop and moves the light that is its own, and the stops are only the
-   authored ones. */
-const stHtml = fs.readFileSync("street.html", "utf8");
-const sw = boot(stHtml, "https://huaxu.test/street.html");
+// and the head goes back to the west row, so the reel below is the print a visitor was reading
+await walkToThing("frame-scramble");
+
+/* The states contract, moved in round 73 to the page that still has states. A shutter that only
+   changes its own paint is the painting now; what is left with stops is what a visitor *uses* -- a
+   door that opens, and the LookOut's glass floor you step onto -- and they are all on the CN Tower
+   page. The contract itself is unchanged: a thing with stops ships at its first, a press paints it
+   from its new stop, its own light moves with it, and the only stops are the authored ones. What
+   changed is that the sentence a state carries is announced on the record line instead of being
+   painted into a card over the picture. */
+const stHtml = fs.readFileSync("rooms-cntower.html", "utf8");
+const sw = boot(stHtml, "https://huaxu.test/rooms-cntower.html");
 await sleep(600);
 const sDoc = sw.document;
 const sclick = (el) => el.dispatchEvent(new sw.MouseEvent("click", { bubbles: true, cancelable: true }));
-const stLights = JSON.parse(stHtml.match(/data-walk-lights>(.*?)<\/script>/)[1]);
 const stateful = Array.from(sDoc.querySelectorAll("[data-states]"));
-const front = sDoc.querySelector('[data-obj="front-s"]');
+const lift = sDoc.querySelector('[data-obj="lift-cn"]');
 const sQuads = () => sDoc.querySelector("[data-walk]").__walk.quads;
-ok("the kit is a button in the lane, not a painted detail", !!front && front.tagName === "BUTTON"
-   && front.dataset.frame === undefined && stateful.length >= 2);
+const sCard = () => sDoc.querySelector("[data-walk-card]");
+ok("a thing you can use ships its stops in the document, and only such a thing does",
+   stateful.length === 3 && stateful.every((el) => el.dataset.state === "0")
+     && stateful.every((el) => el.dataset.quiet === undefined),
+   `${stateful.length}: ${stateful.map((el) => el.dataset.obj).join(", ")}`);
 ok("a thing with stops ships at its first one, and the count of stops is the document's",
-   stateful.every((el) => el.dataset.state === "0")
-     && JSON.parse(front.dataset.states).length === 2, `${stateful.length} things with stops`);
+   lift && JSON.parse(lift.dataset.states).length === 2, lift ? lift.dataset.states.slice(0, 40) : "no lift");
 await sleep(300);
 const quadsShut = sQuads();
-sclick(front);
+const liftSays = JSON.parse(lift.dataset.states);
+sclick(lift);
 await sleep(400);
-ok("and the front changes by being used, with the card saying what it looks like now",
-   front.dataset.state === "1" && !sDoc.querySelector("[data-walk-card]").hidden, `state=${front.dataset.state}`);
-ok("the state is geometry, not a caption: the front is painted from its new stop",
-   sQuads() !== quadsShut, `${quadsShut} -> ${sQuads()} quads`);
-ok("and the light moves with the front, because the light is that front's record",
-   stLights.filter((L) => L.of).every((L) =>
-     Array.from(sDoc.querySelectorAll(".walk-hit")).some((el) => el.dataset.obj === L.of))
-     && stLights.some((L) => L.of === "front-s"), stLights.filter((L) => L.of).map((L) => L.of).join(","));
-sclick(front);
+ok("the lift opens when it is used, and nothing opens over the picture",
+   lift.dataset.state === "1" && sCard().hidden,
+   `state=${lift.dataset.state} card hidden=${sCard().hidden}`);
+/* The LookOut's own doors are an emissive panel on the painted core: their stop changes the light on
+   them, and that is measured below on the SkyPod's leaves, which are real geometry. What this holds
+   is only that a press *does* something to the scene -- its light, its paint or its faces. */
+ok("a used thing is redrawn, not merely described",
+   sQuads() !== quadsShut || lift.dataset.state === "1",
+   `${quadsShut} -> ${sQuads()} quads, state ${lift.dataset.state}`);
+ok("and the sentence the state carries is announced on the record line, not painted",
+   sDoc.querySelector("[data-walk-record]").textContent.trim() === (liftSays[1].say || "").trim(),
+   `${JSON.stringify(sDoc.querySelector("[data-walk-record]").textContent.slice(0, 60))} vs ${JSON.stringify((liftSays[1].say || "").slice(0, 60))}`);
+sclick(lift);
 await sleep(300);
 ok("pressing again takes it to the next stop, and the only stops are the ones authored",
-   front.dataset.state === "0", `state=${front.dataset.state}`);
+   lift.dataset.state === "0", `state=${lift.dataset.state}`);
+/* A door whose leaves are opaque geometry changes the scene when it opens; the LookOut's own doors
+   are an emissive panel on a painted core, so their state is a colour rather than a face. The SkyPod
+   lift is the one with leaves, and that is what "geometry, not a caption" is measured on. */
+const sky = sDoc.querySelector('[data-obj="lift-skypod"]');
+const skyQuads = sQuads();
+sclick(sky);
+await sleep(400);
+ok("an opened door is built, not described: the lift's own leaves change the scene",
+   sQuads() !== skyQuads, `${skyQuads} -> ${sQuads()} quads`);
+sclick(sky);
+await sleep(200);
 ok("an interactive thing says so without a word: the reach ring is dashed for a prop you can use",
    /\.walk-hit\[data-states\]/.test(css));
+/* And the painting stays painting: the street's shopfronts and Niagara's arcade fronts ship quiet,
+   out of the tab order, with no interaction contract in the document at all. */
+const frontHtml = fs.readFileSync("street.html", "utf8");
+const frontBit = frontHtml.match(/<button[^>]*data-obj="front-s"[^>]*>/);
+ok("a frontage that only changes its own paint is not a button and carries no stops",
+   !!frontBit && /data-quiet="1"/.test(frontBit[0]) && /tabindex="-1"/.test(frontBit[0])
+     && !/data-states=/.test(frontBit[0]),
+   frontBit ? "quiet, untabbable, no states" : "front-s is missing");
+/* The lights are the props' own records, whatever those props are now allowed to do. */
+const stLights = JSON.parse(frontHtml.match(/data-walk-lights>(.*?)<\/script>/)[1]);
+ok("a lane's lights still name the props they belong to",
+   stLights.filter((L) => L.of).every((L) => frontHtml.includes(`data-obj="${L.of}"`))
+     && stLights.some((L) => L.of === "front-s"),
+   stLights.filter((L) => L.of).map((L) => L.of).join(","));
 sw.close();
 
 /* Three failures a DOM without layout cannot see, and the owner could: the head-up display's rows were
@@ -580,21 +739,18 @@ const navs = () => ctx.navs.filter((m) => /navigation/.test(m)).length;
 click(noren);
 ok("and walking through Kaminarimon leaves the street, instead of describing the exit",
    navs() === 1, JSON.stringify(ctx.navs.slice(-1)));
-click(q('[data-obj="shopbay-e2"]'));
-await sleep(60);
-key("Escape");
-ok("Esc folds what is open before it folds the space", card.hidden && navs() === 1,
-   `card hidden=${card.hidden} navs=${navs()}`);
+/* Round 73: what is open beside a print is its reel, so that is what Esc has to fold first. The plate
+   carries its own Esc (and stops it, so leaving the frame is not leaving the lane). */
+key("e");
+await sleep(90);
+ok("a print's reel is open before the Esc test", q("#room-plate").classList.contains("is-open"));
+q("#room-plate").dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+await sleep(80);
+ok("Esc folds what is open before it folds the space",
+   !q("#room-plate").classList.contains("is-open") && card.hidden && navs() === 1,
+   `plate ${q("#room-plate").className} card hidden=${card.hidden} navs=${navs()}`);
 key("Escape");
 ok("and with nothing left to unfold, Esc is the door", navs() === 2, JSON.stringify(ctx.navs.slice(-2)));
-const boxes = qa(".walk-hit").filter((e) => e.style.visibility === "visible");
-ok("every visible press box is a fingertip, whatever the object's pixel size is",
-   boxes.length >= 3 && boxes.every((e) => parseFloat(e.style.width) >= 44 && parseFloat(e.style.height) >= 44),
-   `${boxes.length} boxes, narrowest ${Math.min(...boxes.map((e) => parseFloat(e.style.width)))}px`);
-ok("and the nearer thing wins where two boxes overlap",
-   boxes.every((e) => e.style.zIndex !== "")
-     && /m\.el\.style\.zIndex = String\(1200 - Math\.min\(1100/.test(js),
-   `z ${Math.min(...boxes.map((e) => +e.style.zIndex))}–${Math.max(...boxes.map((e) => +e.style.zIndex))}`);
 ok("the ring stays on the silhouette, not on the grown box",
    /\.walk-hit::after \{[^}]*inset: var\(--pady, 0px\) var\(--padx, 0px\)/.test(css)
      && !/\.walk-hit:hover \{/.test(css));
@@ -606,35 +762,86 @@ ok("and the one control that must never be hunted for is louder than the tools",
    q("[data-walk-exit]").classList.contains("walk-exit")
      && /\.walk-exit \{[^}]*min-width: 2\.7rem/.test(css) && !/class="walk-icon"[^>]*href="index/.test(html));
 
-/* The finger's verb. `E` is a keyboard and a phone has none, so a tap that never became a look has to
-   press what is in front of you; and a look that *was* a drag must not press anything at all. */
+/* The finger's verb (round 71). `E` is a keyboard and a phone has none, so the picture still has to
+   answer a finger -- but the owner's ruling is that the answer is not a card for whatever happens to
+   be within reach: "many unnecessary objects pop this window; it disrupts operating the scene". The
+   measurement that forced the change was `.verify/_popup-audit.mjs` on rooms-cntower: 25 taps out of
+   25 on empty canvas opened a card, because the whole picture was a button.
+
+   What is true now, and what this block holds the lane to:
+     - a tap on the picture presses nothing at all; it only folds what is already open;
+     - the press lives in one control, `[data-walk-open]`, which carries the name of the thing it will
+       open and is absent when nothing is in reach;
+     - a prop's own box answers the keyboard only, never a pointer;
+     - a drag turns the head and opens nothing. */
 const stage = q("[data-walk-view]");
 const ptr = (type, dx = 0, dy = 0) => stage.dispatchEvent(
   new w.PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, clientX: 500 + dx, clientY: 400 + dy }));
-const closePlate = async () => { if (!card.hidden) click(q("[data-walk-card-close]")); await sleep(40); };
+const closePlate = async () => {
+  if (!card.hidden) click(q("[data-walk-card-close]"));
+  const pl = q("#room-plate");
+  if (pl.classList.contains("is-open")) {
+    pl.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  }
+  await sleep(50);
+};
+const openBar = q("[data-walk-open]");
 await closePlate();
 ok("nothing is open before the finger tries", card.hidden);
+ok("the finger's one press is a bar that names the thing it would open, and says what the press does",
+   !!openBar && openBar.classList.contains("walk-open") && !openBar.hidden
+     && qa(".walk-hit.is-reach").length === 1
+     && openBar.textContent.trim() === (qa(".walk-hit.is-reach")[0].dataset.title || "").trim()
+     && (openBar.dataset.verb || "").trim().startsWith("Photographs")
+     && /\.walk-open::before \{\n  content: attr\(data-verb\)/.test(css),
+   `${openBar ? JSON.stringify(openBar.textContent) : "missing"} verb=${openBar && openBar.dataset.verb} / ${title0()}`);
 ptr("pointerdown");
 ptr("pointerup");
-await sleep(50);
-ok("a tap on the scene presses the thing you are standing in front of",
-   !card.hidden && qa(".walk-hit.is-reach").length === 1, `${title0()} / ${q("[data-walk-title]").textContent}`);
+await sleep(60);
+ok("a tap on the picture opens nothing, however much is in reach", card.hidden);
+const barTitle = openBar.textContent.trim();
+click(openBar);
+await sleep(90);
+ok("pressing the bar opens exactly the thing it named, and never a window with a paragraph in it",
+   q("#room-plate").classList.contains("is-open") && card.hidden
+     && qa(".walk-hit.is-reach").length === 1
+     && (qa(".walk-hit.is-reach")[0].dataset.title || "").trim() === barTitle,
+   `${barTitle} -> plate ${q("#room-plate").className} / card hidden=${card.hidden}`);
+ptr("pointerdown");
+ptr("pointerup");
+await sleep(60);
+ok("and a tap on the picture does not add a second thing on top of it", card.hidden
+   && q("#room-plate").classList.contains("is-open"));
+await closePlate();
+ok("the reel folds from its own control, so the fold has one place", !q("#room-plate").classList.contains("is-open"));
+ptr("pointerdown");
+ptr("pointerup");
+await sleep(60);
+ok("a second tap is still only a look: nothing opens", card.hidden && !q("#room-plate").classList.contains("is-open"));
+/* A pointer click on a prop's own box is a pointer click: `detail` is the browser's own count of
+   clicks, and the boxes answer only a click with no pointer behind it (the one a keyboard's Enter
+   makes). Without the distinction a stray click on any shopfront the visitor happened to be facing
+   opened a card -- the same complaint from the other side. */
+const faceBox = reachEl();
+const boxClick = (detail) => faceBox.dispatchEvent(
+  new w.MouseEvent("click", { bubbles: true, cancelable: true, detail, button: 0 }));
+boxClick(1);
+await sleep(60);
+ok("a pointer click on a prop's box presses nothing",
+   card.hidden && !q("#room-plate").classList.contains("is-open"), faceBox && faceBox.dataset.obj);
+boxClick(0);
+await sleep(90);
+ok("the keyboard's activation of that same box still opens the thing it is",
+   card.hidden && q("#room-plate").classList.contains("is-open"),
+   `${faceBox && faceBox.dataset.obj} -> plate ${q("#room-plate").className}`);
 await closePlate();
 const yawBefore = body().yaw;
 ptr("pointerdown");
-ptr("pointermove", 60, 0);
+ptr("pointermove", 200, 0);
 ptr("pointerup");
-await sleep(50);
+await sleep(60);
 ok("a drag turns the head and presses nothing",
-   card.hidden && Math.abs(body().yaw - yawBefore) > 3, `Δyaw ${(body().yaw - yawBefore).toFixed(1)}°`);
-ptr("pointerdown");
-ptr("pointerup");
-await sleep(50);
-ok("and the tap the drag refused now opens the plate", !card.hidden);
-ptr("pointerdown");
-ptr("pointerup");
-await sleep(50);
-ok("tapping the scene again puts the plate back down, so the finger has both directions", card.hidden);
+   card.hidden && Math.abs(body().yaw - yawBefore) > 8, `Δyaw ${(body().yaw - yawBefore).toFixed(1)}°`);
 ptr("pointerdown");
 ptr("pointercancel");
 await sleep(50);
@@ -665,6 +872,7 @@ stage.dispatchEvent(auxLeft);
 ok("the middle button's scroll widget is refused over the scene, and no other click is",
    middle.defaultPrevented && !auxLeft.defaultPrevented);
 await closePlate();                 // the context-menu probe's pointerup is a tap in jsdom; fold it before walking
+await sleep(40);
 ok("the context-menu probe's synthetic tap is folded before testing movement", card.hidden);
 
 ok("the chrome's press areas are bigger than its glyphs, since the glyphs are the drawing",
@@ -736,7 +944,7 @@ const projection = (from, to, heading) => {
   return { forward: dx * Math.sin(a) + dz * Math.cos(a),
            side: dx * Math.cos(a) - dz * Math.sin(a) };
 };
-await hold("arrowright", 800);
+await hold("arrowright", 1129);
 const turnedYaw = body().yaw;
 const w0 = { x: body().x, depth: body().depth };
 await hold("w", 650);
@@ -748,7 +956,7 @@ ok("W follows the view after a turn, rather than the lane's fixed depth axis",
 await sleep(650);                         // let the previous velocity ease out before changing verbs
 const a0 = { x: body().x, depth: body().depth };
 const yawBeforeA = body().yaw;
-await hold("a", 550);
+await hold("a", 777);
 const a1 = { x: body().x, depth: body().depth };
 const aVector = projection(a0, a1, yawBeforeA);
 const dyawA = ((body().yaw - yawBeforeA + 540) % 360) - 180;
@@ -774,21 +982,25 @@ ok("the touch stick shares camera-relative forward with W",
    stickVector.forward > 12 && Math.abs(stickVector.side) < Math.abs(stickVector.forward) * 0.5,
    `forward=${stickVector.forward.toFixed(1)} cm, side=${stickVector.side.toFixed(1)} cm`);
 
-/* Two formats, two grounds — asserted so the difference stays a decision instead of drifting back into an
-   accident. The lane's rail is a story: 9:16, blurred with its own pixels. The album is a post viewer:
-   full-screen, plain field, nothing invented about the photograph's ratio. */
-ok("the album's viewer is the screen too, and it is not a card any more",
-   /#ig-plate\.is-open \.ig-plate \{[^}]*min-height: 100dvh[^}]*border-radius: 0[^}]*background: none[^}]*box-shadow: none[\s\S]{0,60}animation: none/.test(css));
-ok("its photographs are contained, never cropped to fill the frame",
-   /#ig-plate\.is-open \.ig-frame img \{[^}]*object-fit: contain/.test(css)
-     && !/#ig-plate\.is-open \.ig-frame img \{[^}]*object-fit: cover/.test(css));
-ok("and a story gets a blurred ground while a post gets a plain one — the difference is in the code",
+/* Round 77: the album's viewer is gone, and this is where its four assertions lived. They held the
+   shape of a full-screen plate that no page could ever emit — the wall has carried no photograph
+   since it was written, because a plate needs a caption and a date and none has been given. Holding
+   the CSS of an unreachable surface is how 230 dead lines survived five rounds of "dead code"
+   sweeps; the assertions now hold what ships. */
+const actHtml = fs.readFileSync("activities.html", "utf8");
+ok("the album has no viewer to open: no page, no script, no stylesheet names one",
+   !/id="ig-plate"/.test(fs.readdirSync(".").filter((f) => f.endsWith(".html"))
+     .map((f) => fs.readFileSync(f, "utf8")).join("\n"))
+     && !/data-ig\b/.test(js) && !/#ig-plate|\.ig-reel|\.ig-frame\b|\.ig-btn\b|\.ig-count/.test(css));
+ok("a photograph on the wall is a figure with its own caption, not a link to a second surface",
+   /figure class="ig-tile"/.test(gen) && /figcaption/.test(gen) && !/data-ig\b/.test(gen));
+ok("the wall's grid crops to a fixed ratio, so a mixed roll does not jog the page",
+   /\.ig-tile img \{[^}]*aspect-ratio: 4 \/ 3[^}]*object-fit: cover/.test(css));
+ok("a story still gets a blurred ground of its own pixels, and no viewer borrows it",
    /#room-plate\.is-rail \.modal-panel::before \{[\s\S]*filter: blur\(2\.6rem\)/.test(css)
-     && !/#ig-plate\.is-open \.ig-plate::before/.test(css));
-ok("on a phone the album's controls become the edges of the screen and hide themselves",
-   /@media \(max-width: 34rem\) \{[\s\S]*?#ig-plate\.is-open \.ig-btn \{\n    top: 0;[\s\S]*?width: 34%;[\s\S]*?opacity: 0/.test(css));
-ok("the plate still owns a dark ground, because that is what its caption is measured against",
-   /\.ig-plate \{\n  background: var\(--navy-deep\);\n\}/.test(css));
+     && !/#ig-plate/.test(css));
+ok("a block with nothing to hang says so in words, and draws no empty grid",
+   /Nothing in this block yet/.test(actHtml) && !/class="ig-grid"/.test(actHtml));
 
 /* ---- 3c. the note: the one button that opens words -------------------------------------------- */
 const infoBtn = q("[data-walk-info]");
@@ -848,42 +1060,26 @@ ok("the fallback is styled to be readable without hover",
 ok("the 2D lane painter is deleted, not dormant", !/data-walk-canvas|canvas2d/.test(html + gen + js + css)
    && !/quads\.forEach\(emit\)/.test(js));
 
-/* ---- 5. the album on the reading surface ------------------------------------------------------ */
+/* ---- 5. the wall on the reading surface ------------------------------------------------------- */
 {
   const w2 = boot(act, "https://huaxu.test/activities.html");
   const d2 = w2.document;
-  d2.startViewTransition = (cb) => { if (cb) cb(); return { finished: new Promise(() => {}) }; };
   const q2 = (s) => d2.querySelector(s);
   const qa2 = (s) => Array.from(d2.querySelectorAll(s));
-  const click2 = (el) => el.dispatchEvent(new w2.MouseEvent("click", { bubbles: true, cancelable: true }));
-  const tiles = qa2("[data-ig]"), frames = qa2(".ig-frame"), plate2 = q2("#ig-plate");
-  if (tiles.length === 0) {
-    /* The wall is empty today — classroom's records are all held, and the Field notes plates live
-       on the place cards now — so the honest state is a reason where a viewer would be. These
-       asserts hold the empty state to the same standard: nothing is invented to fill it. */
-    ok("an empty wall prints its reason instead of a viewer",
-       plate2 === null && /Nothing in this block yet/.test(act)
-         && /0 shown · 3 held for want of a caption/.test(act),
-       "0 tiles");
-    ok("no viewer is emitted when there is nothing to view",
-       qa2(".modal").length === 0 && !q2("#room-plate"));
-  } else {
-    ok("the album is emitted, not only styled",
-       tiles.length >= 2 && !!plate2 && qa2("[data-ig-grid]").length >= 1);
-    ok("one viewer per page here: the album does not clone the lane's plate",
-       qa2(".modal").length === 1 && !q2("#room-plate"));
-    ok("the roll holds exactly what the wall shows",
-       tiles.length === frames.length, `${tiles.length}/${frames.length}`);
-    ok("a tile addresses its own plate, in the same order",
-       tiles.every((t, i) => t.getAttribute("href") === `#${frames[i].id}`));
-    ok("the wall is photographs: no caption, no index chip, not one character on a tile",
-       tiles.every((t) => !(t.textContent || "").trim() && !t.querySelector(".ig-cap, .ig-fig"))
-         && !/\.ig-cap|\.ig-fig/.test(css));
-    ok("and the claims a tile used to wear are now said where you have to arrive to read them",
-       tiles.every((t) => / · generated plate$/.test(t.getAttribute("aria-label") || ""))
-         && frames.every((f) => / · generated plate$/.test(f.querySelector("figcaption").textContent)));
-  }
-  ok("nothing is marked as seen: album, not story", !/is-viewed|data-viewed|has-viewed/.test(act + js + css));
+  /* Round 77: the wall has no viewer, no roll, no tile and no data-ig of any kind, and it has had no
+     photograph since it was written — a plate needs a caption and a date, and none has been given.
+     The empty state is the state this page ships, so it is the one worth holding to standard: it
+     prints the reason, it invents nothing, and it opens nothing. */
+  ok("an empty wall prints its reason instead of a viewer",
+     q2("#ig-plate") === null && qa2("[data-ig]").length === 0
+       && /Nothing in this block yet/.test(act)
+       && /0 shown · 3 held for want of a caption/.test(act),
+     `${qa2(".ig-tile").length} tiles`);
+  ok("no viewer is emitted when there is nothing to view, and no modal of any kind",
+     qa2(".modal").length === 0 && !q2("#room-plate") && !/id="ig-plate"/.test(act));
+  ok("the wall's markup is one grid or one sentence -- never an empty wrapper around nothing",
+     !/class="ig-wall"/.test(act) && !/data-ig-wall/.test(act));
+ok("nothing is marked as seen: album, not story", !/is-viewed|data-viewed|has-viewed/.test(act + js + css));
 }
 
 /* ---- 6. the cache-buster is the assets' own hash ----------------------------------------------- */
@@ -1088,6 +1284,16 @@ ok("the 2D lane painter is deleted, not dormant", !/data-walk-canvas|canvas2d/.t
    own glide deliberately comes after the walking step, so a carried body can never impersonate
    strides. */
 {
+  /* Round 69: close the lane this gate has been walking before the guide boots its own.
+     Two live JSDOM windows in one process each keep a requestAnimationFrame pump running, so the
+     second window got roughly half the frames of the first — and the rail's glide is measured in
+     wall-clock seconds, not in frames. Measured with one window: the stop at z 1392 is reached in
+     8.5 s (1332 cm at ~157 cm/s). Measured with the first window still alive, the same glide had not
+     arrived in 9.6 s; the settle timed out; the next keypress cancelled the glide (`gliding = null`
+     on the first W/A/S/D); and every assertion after it was about wherever the body happened to be
+     standing. That is the coin flip — 2 of 4 runs failed on HEAD before any round-69 change.
+     Nothing after this line uses the first window. */
+  w.close();
   const g = boot(rooms, "https://huaxu.test/rooms-guide.html");
   const gdoc = g.document;
   const gq = (s) => gdoc.querySelector(s);
@@ -1097,8 +1303,20 @@ ok("the 2D lane painter is deleted, not dormant", !/data-walk-canvas|canvas2d/.t
   const ghold = async (k, ms) => { gkey(k); await sleep(ms); gkey(k, "keyup"); };
   const gholdT = async (ks, ms) => { ks.forEach((k) => gkey(k)); await sleep(ms); ks.forEach((k) => gkey(k, "keyup")); };
   const gbody = () => gq("[data-walk]").__walk;
+  /* Waits for the body, not for a stopwatch — and says whether it got there. The 40 s ceiling is
+     ~5x the measured 8.5 s, so a slow machine is merely slow; if it ever is not enough, the
+     assertion below fails loudly instead of measuring the wrong place (round 68's rule: a gate that
+     passes once has measured one walk). */
   const gsettle = async (want) => {
-    for (let i = 0; i < 240; i++) { await sleep(40); if (Math.abs(gbody().depth - want) < 2) return; }
+    const trace = [];
+    for (let i = 0; i < 1000; i++) {
+      await sleep(40);
+      const d = gbody().depth;
+      if (i % 50 === 0) trace.push(Math.round(d));
+      if (Math.abs(d - want) < 2) return true;
+    }
+    gsettle.trace = trace;
+    return false;
   };
   const gt = () => gq("[data-walk-tutor-text]").textContent;
   const status0 = () => gq("[data-walk-status]").textContent.trim();
@@ -1110,22 +1328,46 @@ ok("the 2D lane painter is deleted, not dormant", !/data-walk-canvas|canvas2d/.t
   await ghold("ArrowRight", 400); await sleep(300);
   ok("a turn that actually turned hands over the walking step",
      gc() === "2 / 4" && /Now walk in/.test(gt()), `${gc()} ${gt()}`);
-  await gholdT(["w", "shift"], 1800); await sleep(300);
+  /* Strides measured in centimetres, not in milliseconds: 1800 ms of held keys is 2.8 m on an idle
+     machine and 1.2 m on a busy one, and "two metres" is the contract. So the keys are held until
+     the body has actually moved two metres (with a ceiling, so a broken walk fails here and not
+     three assertions later). */
+  const gz0 = gbody().depth;
+  for (let i = 0; i < 200 && gbody().depth - gz0 < 200; i++) { await gholdT(["w", "shift"], 120); }
+  await sleep(300);
   ok("real strides of two metres — not the rail's carrying — open the reading step",
-     gc() === "3 / 4" && /press E/.test(gt()), `${gc()} d-moved ok`);
+     gc() === "3 / 4" && /press E/.test(gt()),
+     `${gc()} moved ${(gbody().depth - gz0).toFixed(0)} cm`);
   const gstops = [...gdoc.querySelectorAll("[data-walk-stop]")];
   const gstop = (z) => gstops.reduce((best, el) =>
     Math.abs(parseFloat(el.style.getPropertyValue("--z")) - z) <
     Math.abs(parseFloat(best.style.getPropertyValue("--z")) - z) ? el : best, gstops[0]);
   const gz = parseFloat(gstop(1392).style.getPropertyValue("--z"));
-  gclick(gstop(1392)); await gsettle(gz);
-  await ghold("d", 700); await ghold("w", 1500);
-  await sleep(120);
-  gkey("e"); await sleep(80);
-  ok("opening a card finishes the teaching: last step, a way out where Skip was",
-     !gq("[data-walk-card]").hidden && gc() === "4 / 4" && /rail/.test(gt())
+  gclick(gstop(1392));
+  const garrived = await gsettle(gz);
+  ok("the rail carries the visitor to the stop it names — round the planter in its way, before any key is pressed",
+     garrived, `at ${gbody().depth.toFixed(0)} of ${gz} — every 2 s: ${(gsettle.trace || []).join(" ")}`);
+  /* Round 73: what answers a press here is the print on the west row, so the guide's third step is
+     finished by opening that print's reel -- the same "a press was answered" it was finished by when
+     the answer was a card. */
+  const gturn = async (deg) => {
+    const d = ((deg - gbody().yaw + 540) % 360) - 180;
+    if (Math.abs(d) >= 1.2) await ghold(d < 0 ? "a" : "d", Math.max(40, Math.round(Math.abs(d) / 85 * 1000)));
+    await sleep(80);
+  };
+  const gprint = gq('[data-obj="frame-scramble"]');
+  for (let i = 0; i < 8 && !(gq(".walk-hit.is-reach") || {}).dataset; i++) {
+    await gturn(Math.atan2(parseFloat(gprint.style.getPropertyValue("--x")) - gbody().x,
+                           parseFloat(gprint.style.getPropertyValue("--z")) - gbody().depth) * 180 / Math.PI);
+    await ghold("w", 420); await sleep(90);
+  }
+  const gReach = gq(".walk-hit.is-reach");
+  gkey("e"); await sleep(120);
+  ok("opening a thing answers the teaching: last step, a way out where Skip was",
+     !!(gReach && gReach.dataset.frame !== undefined) && gq("#room-plate").classList.contains("is-open")
+       && gc() === "4 / 4" && /rail/.test(gt())
        && gq("[data-walk-tutor-done]").hidden === false && gq("[data-walk-tutor-skip]").hidden === true,
-     `${gc()} card=${!gq("[data-walk-card]").hidden} ${status0()} ${gt()}`);
+     `${gc()} plate=${gq("#room-plate").className} ${status0()} ${gt()}`);
   gclick(gq("[data-walk-tutor-done]"));
   ok("Got it closes the guide and marks it learned for this browser",
      gq("[data-walk-tutor]").hidden === true && g.localStorage.getItem("huaxu.walk-guide.v1") === "1");
@@ -1166,11 +1408,16 @@ const fail = out.filter((l) => l.startsWith("FAIL")).length;
 }
 
 /* ---- the hour is the visitor's (round 49) --------------------------------------------------------
-   The owner's ruling: no browser clock may darken a lane behind the visitor's back. The page opens
-   in day, one button trades it for night, the choice carries across lanes, and a place held at its
-   own authored night (the LookOut) gets no button at all. */
+   The owner's ruling: no browser clock may darken a lane behind the visitor's back. A lane that
+   authors a day opens in it, one button trades it for night, the choice carries across lanes, and a
+   place held at its own authored night gets no button at all because its hour is a fact.
+
+   Round 69h moved Tokyo into the second group, so this block no longer boots `rooms.html` to prove
+   the first: a page that has no day cannot demonstrate the trade. It boots Niagara (a day page) for
+   the cycle and keeps the held-place assertions for both Tokyo and the LookOut. */
 {
-  const h = boot(rooms, "https://huaxu.test/rooms-hour.html");
+  const dayPage = fs.readFileSync("rooms-niagara.html", "utf8");
+  const h = boot(dayPage, "https://huaxu.test/rooms-hour.html");
   const hl = h.document.querySelector("[data-walk]");
   const hb = h.document.querySelector("[data-walk-hour]");
   ok("a lane opens in day, held there — the chrome carries the hour", hl.dataset.walkClock === "day" && !!hb, hl.dataset.walkHour);
@@ -1184,18 +1431,21 @@ const fail = out.filter((l) => l.startsWith("FAIL")).length;
      && /Night now\. Switch/.test(hb.getAttribute("aria-label")) && /Night comes/.test(h.document.querySelector("[data-walk-record]").textContent),
      `${hl.dataset.walkClock} ${hb.getAttribute("aria-label")}`);
   ok("and the choice is remembered for the site", h.localStorage.getItem("huaxu.walk-hour.v1") === "night");
-  const h2 = boot(rooms, "https://huaxu.test/rooms-hour2.html", "night");
+  const h2 = boot(dayPage, "https://huaxu.test/rooms-hour2.html", "night");
   ok("a lane entered with the choice set opens already in night",
      h2.document.querySelector("[data-walk]").dataset.walkClock === "night"
        && h2.document.querySelector("[data-walk-hour]").classList.contains("is-night"));
   h2.document.querySelector("[data-walk-hour]").dispatchEvent(new h2.MouseEvent("click", { bubbles: true, cancelable: true }));
   ok("back to day crosses the lane the same way", h2.localStorage.getItem("huaxu.walk-hour.v1") === "day");
-  const held = fs.readFileSync("rooms-cntower.html", "utf8");
-  ok("a room whose window shows one fixed night carries no hour button at all",
-     !/data-walk-hour/.test(held) && /data-lane-night/.test(held));
-  const heldBoot = boot(held, "https://huaxu.test/rooms-cntower.html", "day");
-  ok("…and the visitor's choice cannot overwrite the authored hour there",
-     heldBoot.localStorage.getItem("huaxu.walk-hour.v1") === "day" && !heldBoot.document.querySelector("[data-walk-hour]"));
+  const heldPages = { "rooms.html": "Tokyo", "rooms-cntower.html": "the LookOut" };
+  for (const [file, who] of Object.entries(heldPages)) {
+    const held = fs.readFileSync(file, "utf8");
+    ok(`a place whose hour is a fact (${who}) carries no hour button at all`,
+       !/data-walk-hour/.test(held) && /data-lane-night="0\.92"/.test(held) && !/data-lane-day=/.test(held));
+    const heldBoot = boot(held, `https://huaxu.test/${file}`, "day");
+    ok(`…and the visitor's choice cannot overwrite the authored hour in ${who}`,
+       heldBoot.localStorage.getItem("huaxu.walk-hour.v1") === "day" && !heldBoot.document.querySelector("[data-walk-hour]"));
+  }
   {
     const scjs = fs.readFileSync("js/scene3d.js", "utf8");
     ok("the lit path folds the same navy the painter calls murk, as the sun goes",

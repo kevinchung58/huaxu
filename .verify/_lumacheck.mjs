@@ -26,7 +26,11 @@ const intercept = (start) => {
   page.on("request", async (req) => {
     if (!req.url().endsWith("street.html")) return req.continue();
     const res = await fetch(req.url());
-    const body = (await res.text()).replace('data-lane-day-start="0.45"', `data-lane-day-start="${start}"`);
+    /* Round 76: this used to replace the literal `data-lane-day-start="0.45"`. Half the pages ship
+       `0.5`, and until round 76 site.js read the value into a constant it never used -- so every
+       "dusk" frame this probe has taken was a noon frame. The regex rewrites whatever the page ships,
+       and the value is now the opening phase for a visitor who has not chosen an hour. */
+    const body = (await res.text()).replace(/(data-lane-day-start="[\d.]+")/, `data-lane-day-start="${start}"`);
     req.respond({ status: 200, contentType: "text/html", body });
   });
 };
@@ -38,6 +42,12 @@ await intercept("0.98");
 await page.goto("http://localhost:8080/street.html", { waitUntil: "load" });
 await new Promise((r) => setTimeout(r, 2500));
 await stats("street night");
+/* Round 76: phase 0 is midnight, and `attr()` falls back on a falsy parse -- so this line also
+   proves the page's opening hour is read by hand rather than through that helper. */
+await intercept("0");
+await page.goto("http://localhost:8080/street.html", { waitUntil: "load" });
+await new Promise((r) => setTimeout(r, 2500));
+await stats("street midnight (start=0)");
 await intercept(null);
 await page.goto("http://localhost:8080/rooms.html", { waitUntil: "load" });
 await new Promise((r) => setTimeout(r, 2500));

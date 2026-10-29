@@ -1,0 +1,32 @@
+{
+  "skill": "frame-evidence",
+  "evals": [
+    {
+      "id": "stale-stop-frame",
+      "prompt": "Take a screenshot of stop 6 on rooms-niagara.html facing yaw 90 and tell me whether the shopfronts look right.",
+      "expect": [
+        "waits for the stop's own --z/--x and reports the signed shortfall rather than a fixed sleep",
+        "aims by drag at 0.065 deg/px, reads the heading back, and refuses if it missed",
+        "states the renderer and the frame path with the heading that was actually reached"
+      ]
+    },
+    {
+      "id": "units",
+      "prompt": "The canopy ray hit says 19416. How far away is the treeline and does it need a lower-detail layer?",
+      "expect": [
+        "reads the units as centimetres: 194 m, not 19 km",
+        "refuses to answer the detail question before measuring the prim's screen size",
+        "says what measurement would settle it (tile size vs pixels, _map.mjs + _box.py)"
+      ]
+    },
+    {
+      "id": "gate-that-cannot-fail",
+      "prompt": "verify-look lists planter-i1, stall-m1 and crate-m2 and exits 0 saying nothing was on screen. Ship it?",
+      "expect": [
+        "no: every named id must be resolved against [data-obj] first, and a missing id is a FAIL",
+        "an empty frame or a missed heading exits non-zero",
+        "distinguishes a diagnostic report (exit 0, labelled) from a gate"
+      ]
+    }
+  ]
+}

@@ -33,6 +33,50 @@ acceptance; `pua` is the evidence-first debugging method; and `pr-handoff` owns 
 grounding, and domain skills before environment work, the visual loop before sign-off, and the PR
 handoff before every PR operation.
 
+`skill-authoring` owns the register itself: when a lesson becomes a skill rather than a `TODO.md`
+line, how to write one (front matter, refusals, the measured number, a procedure), and the three
+places it must be registered. `.verify/verify-skills.mjs` is its gate — it cannot read intent, but it
+fails when a skill on disk is unregistered or unrouted, which is exactly the state `skills/` was in
+at round 69k (fifteen skills, four rows). Run it every round, not only the rounds that edit skills.
+
+`dead-ballast` owns the other half of `skill-authoring`: not whether a skill is registered, but
+whether anything in the repository still **does** something. Round 77 sharpened its rule to the
+owner's words — 不是提到就不是垃圾 — **a mention is not a user**: being named in a gate, a doc, a
+comment or a fallback story does not make a thing live. Its instrument is `.verify/verify-csslive.mjs`
+(546 selectors, 0 dead), and its newest section is the one that decides dormant from dead. It exists because the owner asked twice
+(round 73 「全部拿掉多餘的」, round 76 「不該有的垃圾都刪掉」) and because the expensive ballast is silent —
+an attribute the generator emits that no code applies made every dusk frame in this repository a noon
+frame for an unknown number of rounds, and eight working gates (`verify-island`, `verify-ux`,
+`verify-overlay`, `verify-mirror`, `verify-rooms-e2e`, …) were absent from the run block in `TODO.md`
+§2.3, which is the same as not having them. Route any round that removes things, or any round that ends
+with time left, through it; route a new attribute, probe or gate through it before adding it (round 76).
+
+`pure-move-split` owns the layout itself: when a file grows past the point where a round can hold it
+in one head, how to split it **by name ownership** rather than by line number, how to prove the move
+with a byte-identical output, and the part that is always forgotten — every gate that read the old
+file as text keeps passing while seeing a tenth of the code, so they are re-pointed in the same
+commit (`bin/gen-source.mjs`). It also records the file that was **not** split, `js/site.js`, and
+why: 8,989 of its lines share one closure, and the fastest gate here evaluates that script as one
+string. Route any round that proposes "modularise this", or a framework as the fix for file size,
+through it first (round 78).
+
+`frame-evidence` is the sixteenth-track skill and the one that keeps the other fifteen honest: it
+owns arrival, aim, units, refusal, and the difference between "measured" and "believed". Every
+number quoted by `scene-quality-loop`, `pua`, or a PR body is supposed to come through it. It exists
+because three tools in this repository ran to completion, printed confident lines, and were wrong —
+a gate that framed two of seven ids, a stop photographed from wherever the glide had got to, and a
+ray hit printed in centimetres that a round of TODO read as kilometres. Route any claim about a
+rendered frame through it (round 69k).
+
+`ux-walkthrough` owns the experience of a press: what a visitor is promised before they spend it, and what actually changes after. It exists because the owner judged the same surface four times — a card, then a card behind a bar, then no card, then text where there should have been a change — and because the Falls Incline announced a ride and moved nothing for eleven rounds of green gates. Route every change to a press, bar, card, panel, reel or prompt through it, and run `.verify/_uxwalk.mjs` before claiming a walk page feels right (round 74).
+
+`walk-input` is the seventeenth-track skill and the one that owns the hand: how a visitor presses
+something in a room and how far the head turns when they do. It exists because the picture used to be
+one big button (`.verify/_popup-audit.mjs` measured 25 taps out of 25 opening a card), because removing
+that button took the goldfish stall's only route with it, and because the turn was paid in frames
+instead of the visitor's own milliseconds (8–9° for a tap). Route every change to a tap, key, drag,
+reach, card, bar or stop through it (round 71).
+
 ---
 
 ## 1. Grill first, build second
