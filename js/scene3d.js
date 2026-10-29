@@ -1990,6 +1990,13 @@ function buildRenderer(THREE, canvas, backdrop, api) {
       lastSky = `${day}|${Boolean(state.dayPage)}`;
     }
     renderer.render(scene, camera);
+    /* What the frame actually submitted, read from the renderer's own counter rather than counted
+       by hand: `tools/bench.mjs` needs a number that moves when a draw call is added, and the
+       per-batch prim lists (`stats.triangles`) cannot see the frustum. Published next to the other
+       stats because a measurement that is not readable from the page is a measurement nobody keeps
+       honest. */
+    stats.drawCalls = renderer.info.render.calls;
+    stats.frameTriangles = renderer.info.render.triangles;
   }
 
   return {
