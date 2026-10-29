@@ -9244,6 +9244,16 @@ function leaveOverlay(root, trigger) {
                    // The no-WebGL path is the lane's own state, not the mounted module's: the mount
                    // reports the refusal here so one place decides what a renderer-less lane shows.
                    noteOffline,
+                   /* Round 80: the lane draws when something changes, and on a resting page that
+                      means it may not draw at all — so `renderMs` (an exponential average of the
+                      renderer's own cost) keeps whatever the last frame cost, including the one
+                      frame that compiled the shaders. `tools/bench.mjs` warmed up for forty
+                      frames and still read 3,975 ms on niagara where the settled cost is 3.4 ms:
+                      the warm-up was asking for animation frames the lane had no reason to spend
+                      paint on. This asks for the frame directly. It is the same `draw()` the keys
+                      call, published for the same reason `drawQuads` and `blockedAt` are: an
+                      instrument that cannot ask the page for one frame measures the last one. */
+                   draw: () => { if (threeRenderer) draw(); return Boolean(threeRenderer); },
                    get backdrop() { return bd; }, get day() { return DAY(); }, get dayPage() { return DAYPAGE; },
                    attachThree(engine) {
                      if (!engine || typeof engine.render !== "function") return false;

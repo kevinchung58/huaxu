@@ -9,9 +9,18 @@
 - **站台**：靜態學術網站（Hua-Xu Zhong）。零依賴、零 build step；所有 `*.html` 只由 `python3 _gen_html.py` 產生（第 78 輪起本體在 `gen/` 六個模組，入口 721 行）；runtime 只有 vendored 的 Three.js 0.186.1。
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、`rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支 / PR**：`arena/0cb70678-huaxu` → `master`（本輪開 PR；合併要站主一句授權）。
-- **閘門 28 支**（第 79 輪加 `verify-box`，5 頁 75 個量測）。
+- **閘門 28 支**（第 79 輪加 `verify-box`，5 頁 75 個量測）＋ **`node --test` 45 條**與 **`tools/bench.mjs`**（第 80 輪；這兩者是「秒級、不用瀏覽器」的一層）。
 
-- **第 79 輪（本輪）—— 「框在牆上還是在模型上」不再用顏色猜：把 prop 塗成洋紅、量它的畫素、再按它**
+- **第 80 輪（本輪）—— 「通通都做好」：把第 3 節剩下的四項一件一件收掉，其中兩項是被自己的量具推翻的**
+  - **P5 交出來的是兩樣東西，不是一份清單**：`tests/`（`node --test`，45 條，12 s，exit 0）＋`tools/bench.mjs`（8 頁一排數字，`tools/bench-baseline.json` 是尺）。
+    - **第 68 輪的三個碰撞成因直接寫成屬性**，跑真的 `js/site.js`（jsdom，boot 從 `verify-collision` 抽成 `tests/helpers/boot.cjs`，沒有重寫任何一支閘門）：cause 2 = 貼著街 stop 7 那道長牆（z 2657–4150，先從固體清單量出「沒有東西」的那一段）以 45/60/75° 壓牆，90 幀滑 20 cm 以上、沒有 24 幀的停頓、身體不會越過 `halfWidth`；cause 1 = `bollard-s`（四面都在 R+6 有地板），每個方位前**重新煞一次**，六個方位 40 幀走 110–123 cm；cause 3 = 用頁面自己的 `blockedAt`：剛好 R 是合法、R+0.01 合法、R−0.5 在裡面。
+    - **測試自己抓到的兩個量具錯誤**：① 第一個 cause-1 fixture 用 `planter-s1` 會紅——但那是把身體推進「花台南面 × 車道牆」的角，**停下來才是對的**（`verify-collision` 的判準要「前方有合法出口」），所以錯的是 fixture 不是解算器，換成 `bollard-s`；② `turnTo` 的舊寫法每次敲 2 幀就放開，3° 一步跨過自己 2.8° 的窗口，320 次預算全用在來回擺盪（實測只轉了 57°），改成「按住、一幀一幀、要跨過去就放手」，現在誤差 ≤1.5°。
+  - **bench 的第一版是假的，而且假得剛好支持錯的結論**：它量到 niagara **1,679 ms**、journey **1,045 ms**，於是「渲染是瓶頸」看起來成立。真相是 `__walk.renderMs` 是 0.7/0.3 指數平均，而**靜止的車道不一定會重畫**——那個值是掛載時編譯 shader 的那一幀。`js/site.js` 因此發佈 **`__walk.draw()`**（和按鍵叫的是同一個 `draw()`），bench 先要 40 幀再取 16 幀中位數，並印出樣本範圍（凍住是 `3975–3975`，活的是 `24–34`）。修好後 niagara 同一站是 **17.4 ms（14–24）**。寫進 `skills/frame-evidence` §9c。
+  - **P4 被自己的數字推翻**：真數字是 render **2.4–17.4 ms**、**43–143** 個 draw call、**2.5k–10k** 三角形；而本站最長的車道 **159 m**、霧要到 ~4 km 才飽和 → **CULL_MIN 300 m 之外沒有任何東西**。距離剔除能省下的「提交」本來就已經是這個形狀，多做一次只會多批次。這一項不是「沒做」，是**量過之後不成立**（數字表在 §3 P4、量具 `cull-probe.mjs` 留在 §2.4）。第 76 輪那句「瀏覽器畫 canvas 78–471 ms」是滑行與載入中的讀數；靜止車道的 `frameMs` 是 50 ms 的 idle 脈搏。
+  - **P1 是「已修、但沒人回去量」**：`_gap.mjs` 今天在 yaw −109 與 −90 各自 `STEP=8`（12,288 條射線）都回報 **downward misses 0**、覆蓋圖全 `#`、命中 10 個 mesh。第 69g 的 108 條在某個後續輪次裡已經被補掉。河面多邊形一根手指都沒動——這一項**沒有東西可修**，錯的是「還列著」。
+  - **P3 沒有做，而且這一輪不該做**：規格寫在 §3，它要的是把 288 個共用名字改成介面、把 `verify-walk` 的 212 條斷言一條一條搬到 puppeteer、再加逐像素比對——這是**專門的一輪**，不是一個下午的尾工。留下來說明白，比交一個美工拆法誠實。
+
+- **第 79 輪—— 「框在牆上還是在模型上」不再用顏色猜：把 prop 塗成洋紅、量它的畫素、再按它**
   - 起因：站主說「用 skills 並且遵循 AGENTS.md 做該做的事情」。照 `skills/karpathy-guidelines` 與 `pua` 先讀現況，`TODO.md` 第 3 節的 **P6-8** 自己就是一個矛盾：它說 `skyline-cn` 的框在 yaw 0 是 582–894、而「四棟塔畫在 130–420，框在空牆上」，同一份 TODO 的第 1 節卻寫「翻面之後同一個框**正好框住**四棟塔」。**兩個結論引用的框是同一個**，差別只在「哪些畫素算那個 prop」——兩次都是**顏色啟發式**（「最暖的連通塊」／「裁框自己的平均值」）。這就是 `skills/frame-evidence` §9 那條還沒被執行到的規矩。
   - **新閘門 `.verify/verify-box.mjs`（第 28 支，2 頁 33 個 prop，約 60 秒）**：把**單一 prop** 的 quad 在**記憶體裡**改成平塗洋紅 `#ff00ff`（`_plume.mjs`／`_wedge2.cjs` 的同一招，anchor `m.shown = false;` **assert 只命中一次**），讀洋紅畫素的 bbox，再從同一個停住的影格的 DOM 讀框，然後用 `document.elementFromPoint` **按那團畫素的正中央**。判準三個、而且都不是「中心對齊」：
     - **cover**：prop 自己的畫素要落在它的框裡（≥ 97%，3 px 給抗鋸齒邊）。鏡射的簽名是 0%；框故意移 40 px 是 **3.9%**。
@@ -261,6 +270,8 @@ Puppeteer 需要 `LD_LIBRARY_PATH=/tmp/al2023/lib`；HTTP 型閘門要先 `sh bi
 ```sh
 sh bin/restore-env && sh bin/preview          # 環境 + 伺服器（0.0.0.0:8080）
 # ── 不開瀏覽器（秒級）──
+node --test                                    # 45 條（第 80 輪）：41 條純檔案、4 條 jsdom 巷道，約 12 s
+node tools/bench.mjs                           # 基準尺（第 80 輪）：每頁一列 frame/render/quads/calls/tris；`--check` 是預設，`--write` 重錄
 node .verify/verify-shapes.mjs                 # 248 個 prop 都有形
 node .verify/verify-geometry.mjs
 node .verify/verify-clash.mjs
@@ -310,6 +321,7 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
 - **量測**：`_pix.mjs`（像素比對）、`_strip.mjs`（抽一條像素帶）、`_lumacheck.mjs`（各時段的平均亮度）、`_hourprobe.cjs`（夜景的可讀性）、`_lane.mjs` / `_tile.mjs`（鋪面與材質的實際尺度）、`verify-motion.mjs`（每個物件自己框內的像素變化）、`audit-all.mjs`（一次載入量所有可見 prop）、`cost-probe.mjs`（一幀提交多少 quad／三角形）、`make-cover.mjs`（把一張真影格存成封面）。
 - **手感與互動**：`_turn.mjs` / `_keys.mjs`（鍵盤手感與速度）、`_census.mjs`（互動普查）、`browser-check.py`（**點擊真的落在地上**——AGENTS 指定；jsdom 沒有 hit-testing）、`wall-live.mjs`（真瀏覽器的撞牆連段）、`wall-pierce-live.mjs`（真瀏覽器的穿牆取樣）、`walk-feel.mjs`（真瀏覽器的加減速與轉向）。
 - **碰撞診斷（第 68 輪）**：`_wedge.cjs`（寬掃描：每個 rail stop 16 個方位＋斜向壓牆＋每個 solid 四角，**連續**回報「有合法出口卻站著」的 STALL）、`_wedge2.cjs`（同一條路線，但把 `js/site.js` 的 `moveStep` **在記憶體裡**逐點插旗，印出 `clear`／`along`／`hop2`／`buzz`／`ok`；每個 anchor 都 assert 只命中一次）。**改 `moveStep` 就要重對 anchor**，這是它的代價，也是它抓出三個成因的方式。
+- **效能（第 80 輪）**：`tools/bench.mjs`（每頁一列：frame 間隔、render 自身成本、quads、draw call、三角形、render scale；印出樣本**範圍**，凍住的平均值一眼就看得出來）、`cull-probe.mjs`（同一個 stop 幾個 yaw 下讀 render／calls／tris，用來分辨「畫面貴」還是「提交貴」）。**教訓（`skills/frame-evidence` §9c）**：`__walk.renderMs` 是 0.7/0.3 的指數平均，而靜止的車道不一定會重畫——量具必須用 `__walk.draw()` 要真的影格。
 - **水與霧（第 69 輪）**：`_plume.mjs`（把 `js/scene3d.js` **在記憶體裡**補上 `window.__threeScene`，回報霧的 billboard 數／alpha／包圍盒；`MIST=red` 把霧染紅證明幾何在哪、`MIST=off` 關掉它）、`_water.mjs`（40 px 一條帶的平均／sd／p05-p95／rgb，以及開霧前後每帶的 Δluma；`STOP/YAW/HOUR/SCENE/OUT`，`SCENE=` 可以拿舊版 `scene3d.js` 做 A/B）、`_ray.mjs`（在活的場景裡對某個像素射線，回報前三個命中的 mesh 名與世界座標——「畫面那條黑的是什麼」用這個問，不要猜）、`_fps.mjs`（同一台 headless 上的 fps，用來判斷多出來的幾何有沒有代價）。**三支瀏覽器量具遇到 pageerror 一律 exit 2、不印數字**：空白背景配上 HUD 也會量出一張表，那張表不是場景。
 - **自動走（第 69 輪）**：`verify-rail.mjs`（閘門：四個起點點同一顆停止點，每個都要在 30 s 內到，失敗會印出最後八幀的「身體 ↔ 目標」與是否在繞路；舊版 `site.js` 跑 1/4，修好後 4/4。它把 `js/site.js` 在記憶體裡補一行 trace，anchor 命中數不對就拋錯）
 - **診斷**：`_stuck.mjs` / `_stuck2.mjs`（卡住）、`_tapdiag.mjs`（點擊診斷）、`_wallgap.mjs`（畫牆與可行走空間）、`_csscheck.mjs`（樣式表解析與套用）、`wall-probe.cjs`（受困／滑動／擱淺普查）、`verify-rooms-e2e.cjs`（jsdom 啟動樣板，碰撞閘門共用同一份 boot）。
@@ -333,7 +345,15 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
 - **順帶修好的一件事**：平面色 `#6e6a5f` 在 290 m 處是一張灰卡，改成加拿大崖面同一片 `strata`（16 m 一磚），頂邊於是有了質感可斷，不再是畫上去的邊。
 - 剩下的 71 條向下射線集中在 (e,n)≈0,0 與 100,0——那是**崖線腳下的河面邊界**（河面只畫到島的岸線），屬於「水面的邊」，不是崖；要收掉它得把河面往西補，已列為下面這一項 P1。
 
-<details><summary>原本的 P0 記錄（保留，因為驗收方式還在用）</summary>
+### P1 — ✅ 已量到收掉（第 80 輪）：向下射線 0 條
+
+第 69g 留下的 108 條向下 miss 今天再量**不存在**：`AIM_YAW=-109 STOP=3 STEP=8 node .verify/_gap.mjs` 與
+`AIM_YAW=-90` 兩次都是 **downward misses 0**、**6×8 覆蓋圖全 `#`**、命中 10 個 mesh、洞的範圍 `null`。
+`STEP=8` 是 12,288 條射線（1024/8 × 768/8），比第 69g 那次的取樣更密。也就是說崖腳那塊「沒有水的河面
+西界」在 69g 之後的某一輪裡被補上了，只是沒有人回去量它——**這一項是「已修、未驗」，不是「已修」**。
+量具留著（`_gap.mjs` 是這個主張的擁有者），河面多邊形一根手指都沒動。
+
+<details><summary>存檔：第 69e 的「碗口」與第 69f/69g 的河面西界原記錄（驗收方式還在用）</summary>
 
 ### P1 — 河面只畫到島的岸線（第 69f 輪剩下來的 71 條向下射線；第 69g 重新量過，**仍未動**）
 
@@ -366,15 +386,40 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
 - **`js/site.js` 沒拆，而且不該用「拆檔」的名義拆**：它是四個頂層單元——頁面 chrome 145 行、共用的 overlay 管線 ~115 行、點點遊戲 207 行、**巷道 8,989 行（288 個宣告共用同一個 closure）**。把 closure 照檔切開不是搬移，是**把 288 個共用名字改成介面**；而且本站最快的閘門（`verify-walk` 212 條）是把那一支腳本 `w.eval` 進 jsdom 跑的，ES module 做不到。所以要拆就得**同時**付「給巷道介面」與「閘門變慢」兩筆錢。這件事留給專門的一輪，規格寫在下面，不要用留下一個 9,000 行檔案的美工拆法交差。
   - 下一輪（若要做）的範圍與驗收：把巷道切成 `js/lane/{fields,props,reach,rail,story,px}.js`（原生 ES module），每個檔只匯出它真正的介面；**閘門改成 puppeteer 開真頁面跑同一批斷言**（212 條要一條一條搬，不是重寫），並用 `.preview` 的影格逐像素比對。沒過這三關就不算拆完。
 
-### P4 — 距離剔除
+### P4 — ❌ 量過之後不成立（第 80 輪）：這種世界沒有「遠處」可以剔除
 
-- 照 `mrdoob/slop-newyork` 的 `scene-culling.js`（500 m proxy cell、CULL_MIN 300 / CULL_MAX 2000）。量到的瓶頸是**瀏覽器在畫 canvas**（frame gap 78–471 ms，lane JS 只有 38–60 ms）→ 少畫像素就是快。
-- **驗收**：`tools/bench.mjs` 量到 frame 時間下降，且剔除邊界外的畫面內容不變。
+`mrdoob/slop-newyork` 的 `scene-culling.js` 是為一座城市寫的：500 m proxy cell、`CULL_MIN 300`、
+`CULL_MAX 2000`。本站最大的一條車道是 **15,901 cm（159 m）**，而霧是 `FogExp2(0.000005)`——要到
+**約 4 km** 才飽和。所以整個世界都在 CULL_MIN 裡面，剔除的邊界畫在哪裡都一樣：**沒有東西在遠處。**
 
-### P5 — 真的測試套件 + 基準
+而且成本也不在「提交」上（這一輪才量得到真數字，見下）：
 
-- `tests/*.test.cjs`（node:test）：把「單元性質」的檢查從自製 harness 搬出來；瀏覽器型的留在 `.verify/`，**不重寫已有的 27 支閘門**。第 68 輪的三個碰撞成因（蠕行門檻、clamp 探測、push-out 邊界）是這套測試的第一批 case。
-- `tools/bench.mjs`：一條命令量 frame 時間、draw call、prim 數——重構的迴歸尺。
+| 頁 | render（自身成本，ms） | draw call | 三角形 | quads |
+|---|---|---|---|---|
+| rooms-cntower | 2.4 | 45 | 10,113 | 158 |
+| rooms-fife…goat | 2.7 | 43 | 3,138 | 321 |
+| street | 7.0 | 73 | 2,570 | 729 |
+| rooms-journey | 8.4 | 44 | 6,267 | 737 |
+| rooms-toronto | 9.1 | 64 | 3,812 | 958 |
+| rooms-fukuoka | 13.5 | 60 | 4,215 | 1367 |
+| rooms | 14.3 | 143 | 3,748 | 796 |
+| rooms-niagara | 17.4 | 65 | 9,522 | 2382 |
+
+一幀 2.4–17.4 ms、43–143 個 draw call、2.5k–10k 個三角形。這已經是距離剔除**想達到**的形狀（少數
+批次、少量提交），再做一次只會增加批次數而不會少畫任何東西。第 76 輪那句「瓶頸是瀏覽器在畫 canvas
+（frame gap 78–471 ms）」是滑行與載入中的讀數：靜止車道的 `frameMs` 是它自己的 50 ms idle 脈搏
+（`js/site.js` 的 idle pulse），不是量測值。
+
+**保留的兩樣東西**：`tools/bench.mjs`（現在是真的尺——先修好它的假讀數，見下）與 `cull-probe.mjs`
+（同一個 stop 換方向讀 render／calls／tris：niagara stop 3 yaw −109 是 3.4 ms／50 calls／4,673 tris，
+yaw 88 是 5.4／55／4,983，stop 0 是 19.9 ms）。哪天有一頁真的慢，`bench --check` 會先說話。
+
+**這一項順手抓到的真缺陷（儀器，不是產品）**：`tools/bench.mjs` 第一版量到 niagara **1,679 ms**、
+journey **1,045 ms**，看起來像「渲染是瓶頸」，於是 P4 的前提就成立了。真相是 `__walk.renderMs` 是
+0.7/0.3 的指數平均，而**靜止的車道不一定會重畫**——那個 1,679 是掛載時編譯 shader 的那一幀，被平均
+一直帶著走。修法：`js/site.js` 發佈 `__walk.draw()`（量具直接要一幀，和按鍵叫的是同一個 `draw()`），
+bench 先要 40 幀、再取 16 幀的中位數，並印出樣本範圍（凍住的值長成 `3975–3975`，活的值長成 `24–34`）。
+修好後同一頁同一站是 **17.4 ms（14–24）**。寫進 `skills/frame-evidence` §9c。
 
 ### P6 — 場景還欠的（站主 2026-10-23 的清單；第 69k 輪重寫）
 
@@ -496,6 +541,26 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 - **`verify-rooms-e2e` 曾經一直是紅的**（53 PASS／18 FAIL，`cc24606` 上 51／20）：它寫死第 64 輪「A／D 平移」的契約，改成「先轉到方位再走」之後 72/72。閘門紅不等於產品壞，先問它寫的是哪一輪的契約。
 - **`audit-all.mjs` 是診斷，不是閘門**（`STRICT=1` 才是閘門）：`boat-lake`／`tram-t` 這種「量具框到的是路徑不是車」的物件會讓它永遠不過。
 - **拖曳常數只有一個**：0.065 deg/px，`_aim.mjs`、`verify-look`、`_view.mjs`、`_keys.mjs`、`_tapdiag.mjs` 全部照它；第 76 輪再加一條，任何「等滑行結束」的等待都要問 `__walk.glide`，不要用固定秒數。
+
+### 5.5b 一幀的代價（第 80 輪，`tools/bench.mjs` 記錄的基準）
+
+`node tools/bench.mjs --write` 在沙盒的 SwiftShader 上、每頁在**自己的第一站**、`draw()` 要 40 幀暖機後取 16 幀中位數：
+
+| 頁 | frame 間隔 | render（自身） | 樣本範圍 | quads | calls | 三角形 |
+|---|---|---|---|---|---|---|
+| rooms-cntower | 17 ms | 2.4 ms | 2–3 | 158 | 45 | 10,113 |
+| rooms-goat | 20 ms | 2.7 ms | 2–4 | 321 | 43 | 3,138 |
+| street | 38 ms | 7.0 ms | 4–14 | 729 | 73 | 2,570 |
+| rooms-journey | 50 ms | 8.4 ms | 7–13 | 737 | 44 | 6,267 |
+| rooms-toronto | 35 ms | 9.1 ms | 5–12 | 958 | 64 | 3,812 |
+| rooms-fukuoka | 52 ms | 13.5 ms | 7–23 | 1367 | 60 | 4,215 |
+| rooms | 45 ms | 14.3 ms | 9–19 | 796 | 143 | 3,748 |
+| rooms-niagara | 50 ms | 17.4 ms | 14–24 | 2382 | 65 | 9,522 |
+
+讀法（三條，都是這一輪量出來的）：
+- **`frame` 這一欄不是效能**。靜止的車道以 50 ms 的 idle 脈搏畫，`frameMs` 量到的是那個節奏；要量畫面的成本看 `render`。滑行或載入中的 frame 間隔（78–471 ms）也不能當成 steady state。
+- **同一台機器上 render 會晃 2–3 倍**（street 三跑 53.5／121.0／64.9 ms，程式沒動），所以 `--check` 只管**計數器**（quads／calls／tris，每跑都一樣，容許 2 % 的動態擺動）與 `render` 的 3 倍粗圍籬。
+- **這個世界沒有「遠處」**：最長車道 159 m，霧 `FogExp2(0.000005)` 要到 ~4 km 才飽和。任何以距離為判準的剔除（P4）在這裡都沒有對象。
 
 ### 5.6 倉庫大小
 

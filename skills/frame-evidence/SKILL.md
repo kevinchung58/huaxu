@@ -268,6 +268,32 @@ ways to lie. All three were hit in round 79 on the same gate:
    branch that wants "the scene as it is" reads that. A frame is evidence of what was drawn when it
    was drawn; a number taken from the wrong frame is worse than no number.
 
+## 9c. A published average is only as fresh as the frames behind it
+
+The lane publishes `__walk.renderMs` — an exponential average (0.7 old + 0.3 new) of what the
+renderer's own `render()` call cost — so that a report can say what the machine was asked to draw.
+It is the right number to read and it has one trap: **the lane only draws when something changes.**
+A page that has loaded, finished its glide and been left alone may not draw again at all, and the
+average then keeps the last frame's value — which on the first frame includes shader compilation.
+
+Measured while writing `tools/bench.mjs` (round 80): niagara at the Table Rock rail read
+**3,975 ms** through a bench that warmed up for forty `requestAnimationFrame` ticks, and **3.4 ms**
+the moment a mouse move forced a real draw (`.verify/cull-probe.mjs`). Same page, same stop, same
+heading. The 1,170× error was the instrument's, and it was in the direction that invents a
+performance problem — the whole “the renderer is the bottleneck” reading of P4 rested on it.
+
+Two rules come out of it:
+
+1. **Ask for the frame.** `js/site.js` publishes `__walk.draw()` for exactly this (round 80): the
+   same `draw()` the keys call, so an instrument can request N real frames and read what they cost.
+   Warm up *past* the average's memory (0.7^n: forty frames, not eight), then sample, and print the
+   **spread** next to the median — a frozen value reads as `3975–3975`, which is how this was
+   caught, and a live one as `24–34`.
+2. **A metric that cannot move is not evidence.** Before quoting a number that a change is supposed
+   to move, check that the number moves between two states you know differ. If drawing less should
+   make it smaller, look at a heading where there is less to draw and confirm it is smaller; if it
+   does not move, the instrument is reading a memory, not a measurement.
+
 ## 10. A mirrored picture is not a cosmetic bug
 
 Round 70 found the 3D picture was the 2D model's **left-right mirror**, and the tell was that every

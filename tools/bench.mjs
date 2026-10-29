@@ -60,8 +60,14 @@ const BASE = process.env.BASE || "http://127.0.0.1:8080";
 const BASELINE = process.env.BASELINE || "tools/bench-baseline.json";
 const WRITE = process.argv.includes("--write");
 const TOLERANCE = Number(process.env.TOLERANCE || 3);     // render-time guard: only an order-of-magnitude jump counts
-const SAMPLES = Number(process.env.SAMPLES || 12);        // frames averaged per state
-const WARMUP = Number(process.env.WARMUP || 8);           // frames dropped before sampling
+const SAMPLES = Number(process.env.SAMPLES || 16);        // frames averaged per state
+/* 40, not 8. `__walk.renderMs` is an exponential average (0.7 old + 0.3 new), so one shader
+   compile or texture upload — 1.5 s on the first frame of a water page — keeps reading as a
+   one-and-a-half-second frame for a dozen frames afterwards. Measured while probing culling:
+   niagara at the Table Rock rail reads 1,611 ms through this bench's original 8-frame warm-up and
+   3.4 ms once the average has settled (`.verify/cull-probe.mjs`), a 470× error invented by the
+   instrument. The EMA needs ~35 frames to forget a spike; warm up past that. */
+const WARMUP = Number(process.env.WARMUP || 40);          // frames dropped before sampling
 
 const pages = process.env.PAGES ? process.env.PAGES.split(",") : fs.readdirSync(".")
   .filter((f) => (f === "street.html" || /^rooms.*\.html$/.test(f)))
@@ -99,27 +105,24 @@ for (const file of pages) {
     .catch(() => {});
   await sleep(2500);
 
-  /* Sample the published state once per committed frame, inside the page: 12 rAF callbacks give 12
-     samples of whatever the lane is publishing, and each one carries the renderer's own cost for the
-     frame it belongs to. Reading from outside (one evaluate per sample) would measure the protocol,
-     not the frame. */
+  /* Ask the page for the frames, then read what they cost.
+     The lane draws when something changes; a resting lane may not draw at all, so a bench that just
+     waits for animation frames reads whatever the *last* frame cost — on niagara that was the mount
+     frame that compiled the shaders, 3,975 ms against a settled 3.4 ms (`.verify/cull-probe.mjs`).
+     `__walk.draw()` is published for exactly this; every sample below is one real frame. */
   const sample = await page.evaluate(async (n, warm) => {
     const api = document.querySelector("[data-walk]").__walk;
+    const frame = () => new Promise((r) => requestAnimationFrame(r));
+    for (let i = 0; i < warm; i++) { api.draw(); await frame(); }
     const out = [];
-    let seen = 0;
-    await new Promise((resolve) => {
-      const tick = () => {
-        seen += 1;
-        if (seen > warm) {
-          out.push({ frameMs: api.frameMs, renderMs: api.renderMs, quads: api.quads,
-                     scale: api.renderScale,
-                     calls: api.threeStats && api.threeStats.drawCalls,
-                     tris: api.threeStats && api.threeStats.frameTriangles });
-        }
-        if (out.length >= n) resolve(); else requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    });
+    for (let i = 0; i < n; i++) {
+      api.draw();
+      out.push({ frameMs: api.frameMs, renderMs: api.renderMs, quads: api.quads,
+                 scale: api.renderScale,
+                 calls: api.threeStats && api.threeStats.drawCalls,
+                 tris: api.threeStats && api.threeStats.frameTriangles });
+      await frame();
+    }
     return out;
   }, SAMPLES, WARMUP);
 
@@ -142,8 +145,10 @@ for (const file of pages) {
     renderer: staged.renderer, errors: errors.length,
   };
   rows.push(row);
+  const spread = `${Math.round(Math.min(...sample.map((s) => s.renderMs)))}–` +
+                 `${Math.round(Math.max(...sample.map((s) => s.renderMs)))}`;
   console.log(`${row.page.padEnd(20)} frame ${row.frameMs.toFixed(0).padStart(5)} ms  ` +
-              `render ${row.renderMs.toFixed(1).padStart(5)} ms  quads ${String(row.quads).padStart(4)}  ` +
+              `render ${row.renderMs.toFixed(1).padStart(5)} ms (${spread})  quads ${String(row.quads).padStart(4)}  ` +
               `calls ${String(row.calls).padStart(4)}  tris ${String(row.tris).padStart(6)}  ` +
               `scale ${row.renderScale.toFixed(2)}${row.errors ? `  ERRORS ${row.errors}` : ""}`);
   await page.close();
@@ -185,7 +190,12 @@ for (const row of rows) {
   /* The counters are the ruler (exact, reproducible); the milliseconds are context. Growing any of
      the three means the frame is asking the GPU for more than it used to, which is what P4 has to
      make smaller — and shrinking them is the win a culling round claims. */
-  const grew = dQuads > 0 || dCalls > 0 || dTris > 0;
+  /* A little wobble is the lane's own: its dynamic props (a swaying crown, a moving car) are
+     compiled into the frame and their quad count moves by a couple between runs — measured
+     2,380 → 2,382 quads and 9,518 → 9,522 triangles on niagara with no change to the scene. So the
+     counters are gated at 2 %, which is far below any real addition and above that noise. */
+  const wobble = (now, was) => now - was > Math.max(5, was * 0.02);
+  const grew = wobble(row.quads, ref.quads) || wobble(row.calls, ref.calls) || wobble(row.tris, ref.tris);
   const slow = dRender > TOLERANCE;
   const verdict = grew || slow ? "SLOW" : "ok";
   if (verdict === "SLOW") bad++;
