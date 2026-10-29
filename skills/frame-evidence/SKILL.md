@@ -171,19 +171,21 @@ looks like water. Use it to **choose** the shot, then look at the shot.
 When a gate greps source for a forbidden shape, strip `/* */` and `//` first. A gate that quotes the
 comment explaining what it forbids will pass forever (round 69i's `mix()` scan).
 
-## 8. Write it down where the next round will hit it
+## 8. Write it down where the next change will trip over it
 
-Every retraction and every measured constant goes into the repository in the same round, in the
-place the next actor will be standing:
+A measurement that survives only in a chat message is a measurement that will be undone; a measurement
+that survives as a *narrative* is worse, because the next round reads it as current truth. So write
+the number where it does work and nowhere else:
 
-- a **constant or a rule that a future change must obey** → `TODO.md` §5 (or the code, next to what it
-  produced) — these are the numbers a later round is expected to act on;
-- a **retraction, a dead end, the story of which instrument lied** → `TODO-archive.md` — that is
-  history, and since round 81 it does not live in the working plan at all (owner ruling: old records
-  bend the next round's judgement). A retraction still has to be written, or the round that walks into
-  the same hole will do it again; it just must not sit where it reads as current truth.
+- **A constant or rule a future change must obey** → the code, beside what it produced (`PLAYER_RADIUS`,
+  `deadAlong`, the road's own widths), or `TODO.md` §5 if it belongs to a decision rather than a file.
+- **A gate that holds the behaviour** → `TODO.md` §2.3, or it never runs again.
+- **An instrument that is still useful** → `TODO.md` §2.4, or it is scratch and lives in `/tmp`.
 
-A correction that lives only in a chat message is a correction that will be undone.
+There is no fourth place. No round log, no archive, no "lessons so far" section — the owner deleted
+them twice (「那些紀錄都刪掉，我怕影響你判斷」/「我覺得都不需要」). A retraction still has to land
+somewhere: it lands in the code comment where the wrong thing used to be, or as the gate that now
+catches it. If neither of those is possible, the retraction was not a fact about the product.
 
 ## 9. Prove the instrument against the paint before quoting its numbers
 

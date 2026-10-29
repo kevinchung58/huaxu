@@ -14,7 +14,7 @@ cd "$(dirname "$0")/.."
 # Which branch this checkout is on. It used to be a literal, and the literal outlived its session:
 # a sandbox that moved the pointer would reset --soft onto a branch nobody was working on any more,
 # which un-commits the session's work without touching a file and leaves the next commit forking
-# from the wrong parent (see TODO-archive.md, "branch 會在你回合中途被重設"). Derive it instead: the branch
+# from the wrong parent. Derive it instead: the branch
 # HEAD is on if that is an arena branch, otherwise the newest arena branch the remote has.
 BRANCH=${BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null)}
 case "$BRANCH" in

@@ -157,9 +157,9 @@ The sweep is the second half of the rule. The first half is not adding dead thin
 - A new attribute needs a reader **in the same commit**, and the reader's value needs a user in the
   same commit. `data-lane-day-cycle` was authored, emitted, parsed, and unused for an unknown number
   of rounds because each of those three steps was somebody's good idea.
-- A new probe gets a line in `TODO.md` §2.4 in the same commit (the instrument register; the round's
-  *story* goes to `TODO-archive.md`), or it is scratch and belongs in
-  `/tmp`.
+- A new probe gets a line in `TODO.md` §2.4 in the same commit (the instrument register), or it is
+  scratch and lives in `/tmp`. The story of why it exists belongs in its own header comment, nowhere
+  else: no round logs anywhere in the repository (owner ruling, 2026-10-29).
 - A new gate goes into §2.3 in the same commit, with its count, or it will not run again.
 - A new doc reference names a file that exists at the end of the commit (`verify-skills` cannot check
   this; a sweep can).
@@ -182,8 +182,9 @@ The sweep is the second half of the rule. The first half is not adding dead thin
    files in `.verify/` → 82 (`_albumprobe` went with the album), 66 images all referenced, generator
    output identical apart from the removed markup and the cache-bust hash, `verify-walk` 212/212.
 2. For each candidate, find its references across every tracked text file and write down the number.
-3. Choose delete / wire / document per §3. Say the reason in one line in `TODO.md`, because the next
-   sweep will ask the same question.
+3. Choose delete / wire / document per §3. Say the reason in one line where the survivor lives — a code
+   comment or its `TODO.md` register line, never a round log — because the sweep will ask the same
+   question.
 4. Delete; regenerate; diff. Prove the pages did not change except where you meant them to.
 5. Update the registers in the same commit: `TODO.md` §2.3 (gate list, with counts), §2.4 (instruments,
    without the deleted ones), `skills/README.md` + `SKILLS.md` if a skill changed, and the skill itself
