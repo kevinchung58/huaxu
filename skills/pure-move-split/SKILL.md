@@ -72,11 +72,21 @@ would have kept passing while seeing 10 % of the code:
 import it. `_assert_no_duplicate_keys()` walks `gen/*.py` too — proved by planting a duplicate `"id"`
 in `gen/content.py` and watching the build exit 1 at `line 53: 'id'`.
 
-**Check every text reader before declaring a split done:**
+**Check every reader before declaring a split done:**
 
 ```sh
-grep -rn '_gen_html\.py' .verify/*.mjs .verify/*.cjs bin/*.mjs | grep -v '^.*#'
+grep -rn '_gen_html\.py\|site\.js' .verify/*.mjs .verify/*.cjs bin/*.mjs | grep -v '^.*#'
 ```
+
+And then check the ones a grep cannot see, because they are **tools that only run when someone has
+installed their optional dependencies** — the round-78 miss. `bin/toronto_massing.py` pinned
+`--generator _gen_html.py` and read `TOR_O` / `TOR_GRID` / `TOR_TOWERS` out of it with `ast`; the
+split moved them to `gen/world.py`, so the tool had been broken since the commit and **no gate
+noticed**, because it needs `pip install pmtiles mapbox-vector-tile shapely` plus a downloaded
+archive before it even starts. A tool that cannot run is a tool that is not tested. The fix is
+`bin/gen_literals.py` (stdlib only, searches every generator file, and when it fails it says which
+files it looked in), and the durable part: `verify-gen` **executes** it every round. Whatever data
+your split relocates, find the code that reads it by path rather than by import.
 
 ## 4. What the split bought, measured
 

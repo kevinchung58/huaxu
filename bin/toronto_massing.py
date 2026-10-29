@@ -6,7 +6,8 @@ Optional data-prep tool only; no website dependency. Requires:
 
 The script reads School of Cities' PMTiles derivative (repo commit
 7bb3596ae7a443f403324857912dd7e361bb8f4d, static/buildings-2025.pmtiles.gz), joins clipped
-z14 MVT parts by feature ID, converts to the local metre frame in _gen_html.py, and compares
+z14 MVT parts by feature ID, converts to the local metre frame defined by the site generator
+(`gen/world.py` since round 78; found by search, not by a pinned path), and compares
 source polygons with the existing TOR_TOWERS boxes. Counts are massing polygons, not unique
 buildings. The .gz suffix is not a gzip wrapper around the PMTiles archive; its MVT tiles are
 individually gzip-compressed.
@@ -17,11 +18,11 @@ Example:
 from __future__ import annotations
 
 import argparse
-import ast
 import gzip
 import hashlib
 import json
 import math
+import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -35,6 +36,9 @@ except ImportError as exc:  # optional research dependencies, never site depende
     raise SystemExit("Install optional tools: pip install pmtiles mapbox-vector-tile shapely") from exc
 
 ROOT = Path(__file__).resolve().parents[1]
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gen_literals  # noqa: E402  (sibling helper: where the generator keeps its literals)
 ZOOM, LAYER = 14, "buildings2025"
 DATA_URL = "https://open.toronto.ca/dataset/3d-massing/"
 LICENSE_URL = "https://open.toronto.ca/open-data-licence/"
@@ -46,18 +50,21 @@ PMTILES_PATH = "static/buildings-2025.pmtiles.gz"
 PMTILES_SOURCE_URL = f"{TILE_REPO_URL}/blob/{TILE_REPO_COMMIT}/{PMTILES_PATH}"
 
 
-def toronto_constants(path: Path):
-    """Read only literal data; importing _gen_html.py would rewrite generated pages."""
-    tree = ast.parse(path.read_text(encoding="utf-8"))
-    wanted, found = {"TOR_O", "TOR_GRID", "TOR_TOWERS"}, {}
-    for node in tree.body:
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id in wanted:
-                    found[target.id] = ast.literal_eval(node.value)
-    if found.keys() != wanted:
-        raise ValueError(f"Missing Toronto constants in {path}: {wanted - found.keys()}")
-    return tuple(found["TOR_O"]), float(found["TOR_GRID"]), found["TOR_TOWERS"]
+def toronto_constants(path: Path | None):
+    """The three Toronto literals, read out of the generator file that holds them.
+
+    Reads only literal data: importing the generator would rewrite every page. The exact file moved
+    in round 78's split (the constants live in `gen/world.py` now), so the default is a search rather
+    than a path — see `bin/gen_literals.py`, and the check in `.verify/verify-gen.mjs`.
+    """
+    wanted = {"TOR_O", "TOR_GRID", "TOR_TOWERS"}
+    if path is None:
+        path, values = gen_literals.find_literals(ROOT, wanted)
+    else:
+        values = gen_literals.literals_in(path, wanted)
+        if values.keys() != wanted:
+            raise ValueError(f"Missing Toronto constants in {path}: {wanted - values.keys()}")
+    return tuple(values["TOR_O"]), float(values["TOR_GRID"]), values["TOR_TOWERS"]
 
 
 def scales(lat0):
@@ -128,7 +135,8 @@ def main():
     ap.add_argument("--tower-overlap-fraction", type=float, default=0.5)
     ap.add_argument("--simplify-m", type=float, default=1.5)
     ap.add_argument("--output", type=Path, help="optional compact review JSON; not a site asset")
-    ap.add_argument("--generator", type=Path, default=ROOT / "_gen_html.py")
+    ap.add_argument("--generator", type=Path,
+                    help="a generator file to read the literals from; default: search all of them")
     a = ap.parse_args()
     if not a.archive.is_file():
         ap.error(f"archive not found: {a.archive}")

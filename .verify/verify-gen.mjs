@@ -13,7 +13,12 @@
         missed a call site fails at import time in Python, but only for the module actually loaded);
      4. `bin/gen-source.mjs` covers every file -- a gate reading less than the whole generator would
         keep printing green;
-     5. the generator is idempotent: running it twice leaves every emitted page byte-identical.
+     5. the generator is idempotent: running it twice leaves every emitted page byte-identical;
+     6. a tool that reads the generator's data still finds it. `bin/toronto_massing.py` pinned
+        `--generator _gen_html.py` and the split moved `TOR_O`/`TOR_GRID`/`TOR_TOWERS` into
+        `gen/world.py`. Nothing failed: the tool imports two optional packages and needs a
+        downloaded archive, so no gate could even start it. It reads them through
+        `bin/gen_literals.py` now, and this line is what catches the next move.
 
    Run:  node .verify/verify-gen.mjs
 */
@@ -109,6 +114,13 @@ for (const probe of ["def walk_html", "DISTRICTS = ", "def gallery_html", "def p
 }
 ok("bin/gen-source.mjs covers the whole generator");
 
+/* 6. the consumers of the generator's data can still find it */
+const literals = execFileSync("python3", ["bin/gen_literals.py"], { cwd: ROOT, encoding: "utf8" }).trim();
+assert.match(literals, /holds TOR_GRID, TOR_O, TOR_TOWERS$/, `bin/gen_literals.py: ${literals}`);
+assert.ok(!fs.readFileSync(path.join(ROOT, "bin/toronto_massing.py"), "utf8").includes('default=ROOT / "_gen_html.py"'),
+  "bin/toronto_massing.py pins --generator to _gen_html.py again; the constants live in gen/world.py");
+ok("bin/toronto_massing.py finds the Toronto literals through bin/gen_literals.py");
+
 /* 5. idempotence */
 const pages = fs.readdirSync(ROOT).filter((f) => f.endsWith(".html")).sort();
 const digest = () => Object.fromEntries(pages.map((p) => [p, crypto.createHash("md5").update(fs.readFileSync(path.join(ROOT, p))).digest("hex")]));
@@ -119,4 +131,4 @@ const drift = pages.filter((p) => before[p] !== after[p]);
 assert.deepEqual(drift, [], `the generator is not idempotent: ${drift.join(", ")} changed on a second run`);
 ok(`${pages.length} pages rebuild byte-identical`);
 
-console.log(`verify-gen: ${pass}/${pass} pass -- ${files.length} files, ${defines.size} names, ${pages.length} pages idempotent`);
+console.log(`verify-gen: ${pass}/${pass} pass -- ${files.length} files, ${defines.size} names, ${pages.length} pages idempotent, literals reachable`);

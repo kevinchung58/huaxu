@@ -19,7 +19,8 @@
   - **`js/site.js` 沒有拆，而且不該用「拆檔」的名義拆**：它是四個頂層單元——頁面 chrome 145 行、共用 overlay 管線 ~115 行、點點遊戲 207 行、**巷道 8,989 行（288 個宣告共用同一個 closure）**。把 closure 照檔切開不是搬移，是**把 288 個共用名字改成介面**（重寫，風險不同）；而且本站最快的閘門 `verify-walk`（212 條）是把那一支腳本 `w.eval` 進 jsdom 跑的，**ES module 做不到**，所以拆它同時要付「介面」與「閘門改成真瀏覽器」兩筆錢。留給專門的一輪，規格寫在 P3。**不做美工拆法**（把 500 行搬去 `helpers.js`、留下 9,000 行檔案），那兩筆錢一筆都沒付。
   - **新 skill `pure-move-split`（第 19 個）**：純搬移怎麼做、怎麼證明、拆完哪些閘門會瞎、哪個檔案不能拆。附上可重複使用的 `scripts/split_by_ownership.py`（AST＋symtable，名稱歸屬、tuple 目標、註解換行、import 修剪都在裡面）與本 repo 的 `scripts/spec-gen.py`；**用工具重建一次 `gen/` 與 `_gen_html.py`，`diff` 逐檔相同**——工具不是文件，是這一輪真的用過的那一支。`verify-skills` **95/95（19 個 skill）**。
   - **量到的（第 78 輪，拆後重跑）**：19 頁 md5 與拆前逐一相同、冪等；walk **212/212**、ux **69/69**、overlay **95/95**、exit **82/82**、body **73/73**、story **27/27**、feel **12/12**、nowebgl **35/35**、rail **4/4**、games **23/23**、shapes **248**、geometry／clash／tables／objects／motion／chain 全綠、csslive **546 條：400／123／5／0 DEAD**、skills **95/95**、rooms-e2e **72/72（0 failures）**、mirror PASS、look 5/5、island **47/47**、hotel PASS、wheel PASS、`verify-three`（14,924 world ＋ 1,048 water triangles）、`shader-lits` 6 個 program 完整、`verify-gen` **5/5**。
-  - **這一輪沒跑的**：`verify-collision`（約 50 分鐘；沒有動任何移動／碰撞碼，rooms-e2e 的碰撞段有跑）。**Terrapin Point 的預設視角**（第 76 輪留下的、要站主決定的那一條）仍然沒動。
+  - **拆分之後才發現的第二個受害者：`bin/toronto_massing.py` 已經壞了，而且沒有東西會告訴你。** 它的 `--generator` 預設釘在 `_gen_html.py`，用 `ast` 去那裡讀 `TOR_O`／`TOR_GRID`／`TOR_TOWERS`；拆分把這三個常數搬進 `gen/world.py` 之後，它會拋 `Missing Toronto constants`。**沒有任何閘門抓到**，因為那支工具要先 `pip install` 三個套件、再下載一份 archive 才跑得起來——一支跑不起來的工具等於不存在。修法：新增 `bin/gen_literals.py`（只用標準庫，搜尋全部產生器檔案、找不到就說「我找過哪些檔」），`toronto_massing.py` 改成用它、預設改成搜尋；`verify-gen` 多一條（**6/6**）真的去執行它，並斷言 `--generator` 沒有再被釘回路徑。**反測**：把 `TOR_O` 改名 → 紅（「searched world.」）；把預設路徑釘回去 → 紅。
+  - **這一輪把 `verify-collision` 補跑了**（第 77 輪跳過的那支，約 50 分鐘）：7 頁 28 條全過、exit 0。**Terrapin Point 的預設視角**仍然沒動——這一輪量了 pitch 4／14／22 三張影格（`.preview/r79/goat3-*.png`）並寫下為什麼**不改**：影格裡正中央那道灰色的東西是站位前 531 cm 的石護牆（射線命中 `surveyed world: stonewall`，高 40 cm），而真正的水幕在 75 m 外的對岸；把 pitch 往下壓會讓護牆佔滿中景、往上抬會讓天空吃到 24 %。**這是這一站「站在馬蹄瀑布崖邊」的真實構圖**（貨真價實的無遮蔽缺口不存在——真實的 Terrapin Point 也是隔著矮牆看水從腳下消失），改它等於改這一站的立意，所以留給站主一句話。同一輪的射線統計與畫面**對不起來**（護牆下的舖面沒有被算進任何一類），依 `frame-evidence` 的規矩，**不引用那個百分比**。
 - **第 77 輪（上一輪）—— 「不是提到就不是垃圾」：把「有人在提它」和「有人在用它」分開，只留真的會被用的**：
   - 站主：「那個喔！不是提到就不是垃圾。你不能這樣保守，你必須垃圾真的就刪掉。該維持的都弄好。繼續」第 76 輪用「它有被寫在註解裡／有被閘門讀」當作留下的理由，這一輪把那個理由本身當成要刪的東西。
   - **新的量具 `verify-csslive.mjs`（是閘門，不是探針）**：把 `css/site.css` 的每一條選擇器連行號解析出來（615 條），用 jsdom 問 19 個頁面有沒有東西匹配，再把沒匹配的分成 **LIVE／RUNTIME（腳本會加）／DORMANT（產生器寫得出來，只是今天沒有那種資料）／DEAD**。`_gen_html.py` 的**註解與 docstring 先剝掉**才去比對——上一輪的兩個誤判就是從那裡來的（一句「.plate-navy 是 fallback」＋一個檔名 `grid-2-grouping.jpg`）。結果：**36 條對不到 → 12 條 → DEAD 0**。反測：故意塞一條 `.zzz-dead-test{…}` 進去，它會紅。
@@ -255,7 +256,7 @@ node .verify/verify-rooms-e2e.cjs              # 72/72（0 failures）
 node .verify/verify-body.mjs                   # 73/73
 node .verify/verify-story.mjs                  # 27/27（需 LD_LIBRARY_PATH）
 node .verify/verify-skills.mjs                 # 95/95（19 個 skill 都註冊、都有路由）
-node .verify/verify-gen.mjs                    # 5/5（拆分後的產生器：無孤兒模組、名字不重複、閘門讀得到全部、冪等）
+node .verify/verify-gen.mjs                    # 6/6（無孤兒模組、名字不重複、閘門讀得到全部、冪等、工具找得到產生器的常數）
 node_modules/.bin/impeccable detect --json .   # []
 git diff --check && python3 -m py_compile _gen_html.py bin/toronto_massing.py
 md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff /tmp/a /tmp/b   # 冪等
@@ -474,7 +475,7 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 ### 5.6 倉庫大小
 
-tracked 支檔案（`.git` 12 MB）：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、`js/site.js` 592 KB（9,479 行，**一個 closure**，第 78 輪決定不拆）、產生器 552 KB／**7,524 行＝入口 721 ＋ `gen/` 六個模組 6,803**（第 78 輪拆完；原本是單檔 7,484 行）、`TODO-archive.md` 375 KB、`css/site.css` 85 KB（2,707 行）。`.verify` **83 支**，閘門 **27 支**。
+tracked 支檔案（`.git` 12 MB）：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、`js/site.js` 592 KB（9,479 行，**一個 closure**，第 78 輪決定不拆）、產生器 552 KB／**7,524 行＝入口 721 ＋ `gen/` 六個模組 6,803**（第 78 輪拆完；原本是單檔 7,484 行）、`TODO-archive.md` 375 KB、`css/site.css` 85 KB（2,707 行）。`.verify` **83 支**，閘門 **27 支**，`bin/` 多一支給工具用的 `gen_literals.py`。
 `image-search/`（1.2 MB，3 張 CN Tower 參考照，**來源未追溯 → 永不入庫**）只留在磁碟。
 
 ## 6. 已知限制（不要假裝解決了）
