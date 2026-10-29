@@ -191,7 +191,6 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
   reduced-motion 下兩張影格位元組完全相同（`_reducedstill.mjs`）。
 - 店面本體、樹線結構、東京最後一站、五重塔、廣場暗帶：更早的輪次已收，各由 `verify-shapes`、
   `_ray`、`verify-wheel` 等守住。
-
 - **量具覆蓋：248 顆 prop 全部量到「它自己的形」**：`audit-all.mjs` 的框修好兩處（未繪製的 prop 留著上一
   個視角的變換；`getBoundingClientRect()` 回的是 44 px 按壓框而非剪影，見 §5.8），八頁重掃：
   248 顆 prop、245 顆量到、18 顆在最大視角上 sd < 20、3 顆是只有文字的記錄（不是 prop）。
