@@ -112,13 +112,19 @@ DISTRICTS = [
             # page names as a toy is honest furniture. Their whole body is the CSS of .walk-stall,
             # their lights join the authored lamp field so night lights them like everything else,
             # and `game` rides to the script as data-game — press it and the toy opens over the lane.
-            {"id": "stall-kingyo", "kind": "board", "w": 170, "h": 128, "d": 90,
+            # Round 79: sized from the reference the project already cites (SKILLS.md section 2:
+            # "a yatai is ~3 m by 2.5 m by 2.5 m"). At 170 x 128 the card measured 47 x 117 px at
+            # 10 m -- a mustard-and-navy rectangle the size of a door handle, which the owner's toy
+            # had been standing behind for twenty-nine rounds. The record's `d` is the footprint a
+            # plaza check needs, not the booth's depth: a card is a fascia, and the 2.5 m behind the
+            # counter is not modelled (`.walk-stall` dresses the button).
+            {"id": "stall-kingyo", "kind": "board", "w": 300, "h": 250, "d": 40,
              "x": 322, "z": 330, "y": 0, "ry": -90, "game": "kingyo",
              "title": "The goldfish stall, under the first lanterns",
              "hint": "A toy, not a survey: paper net, a basin of dark water, and goldfish that are "
                      "the street's own lamp colours. Press it to play; nothing here claims a shop "
                      "stood at this address."},
-            {"id": "stall-menya", "kind": "board", "w": 170, "h": 128, "d": 90,
+            {"id": "stall-menya", "kind": "board", "w": 300, "h": 250, "d": 40,
              "x": -322, "z": 700, "y": 0, "ry": 90, "game": "menya",
              "title": "The mask targets, along the lantern string",
              "hint": "A toy, not a survey: blank wooden masks on a beaded curtain, a pellet gun of "
@@ -273,11 +279,11 @@ DISTRICTS = [
             # One lantern each, hung at the stall: `of` ties the light to the prop (the vending
             # machine's trick) so the pool belongs to the stand and the hour button finds them lit
             # or dark with the rest of the string.
-            {"x": 300, "y": 252, "z": 330, "r": 34, "k": 0.55, "body": "lantern",
-             "size": 18, "h": 252, "swing": 1.3, "period": 5.5, "phase": 2.4, "liton": 0.78,
+            {"x": 300, "y": 300, "z": 330, "r": 34, "k": 0.55, "body": "lantern",
+             "size": 18, "h": 300, "swing": 1.3, "period": 5.5, "phase": 2.4, "liton": 0.78,
              "of": "stall-kingyo"},
-            {"x": -300, "y": 252, "z": 700, "r": 34, "k": 0.55, "body": "lantern",
-             "size": 18, "h": 252, "swing": 1.4, "period": 4.8, "phase": 0.9, "liton": 0.81,
+            {"x": -300, "y": 300, "z": 700, "r": 34, "k": 0.55, "body": "lantern",
+             "size": 18, "h": 300, "swing": 1.4, "period": 4.8, "phase": 0.9, "liton": 0.81,
              "of": "stall-menya"},
             {"x": -279, "y": 316, "z": 780, "r": 30, "k": 0.5, "body": "lantern",
              "size": 22, "h": 316, "swing": 1.4, "period": 5.8, "phase": 1.2, "liton": 0.71},

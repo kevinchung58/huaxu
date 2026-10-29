@@ -9,7 +9,7 @@
 - **站台**：靜態學術網站（Hua-Xu Zhong）。零依賴、零 build step；所有 `*.html` 只由 `python3 _gen_html.py` 產生（第 78 輪起本體在 `gen/` 六個模組，入口 721 行）；runtime 只有 vendored 的 Three.js 0.186.1。
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、`rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支 / PR**：`arena/0cb70678-huaxu` → `master`（本輪開 PR；合併要站主一句授權）。
-- **閘門 28 支**（第 79 輪加 `verify-box`）。
+- **閘門 28 支**（第 79 輪加 `verify-box`，5 頁 75 個量測）。
 
 - **第 79 輪（本輪）—— 「框在牆上還是在模型上」不再用顏色猜：把 prop 塗成洋紅、量它的畫素、再按它**
   - 起因：站主說「用 skills 並且遵循 AGENTS.md 做該做的事情」。照 `skills/karpathy-guidelines` 與 `pua` 先讀現況，`TODO.md` 第 3 節的 **P6-8** 自己就是一個矛盾：它說 `skyline-cn` 的框在 yaw 0 是 582–894、而「四棟塔畫在 130–420，框在空牆上」，同一份 TODO 的第 1 節卻寫「翻面之後同一個框**正好框住**四棟塔」。**兩個結論引用的框是同一個**，差別只在「哪些畫素算那個 prop」——兩次都是**顏色啟發式**（「最暖的連通塊」／「裁框自己的平均值」）。這就是 `skills/frame-evidence` §9 那條還沒被執行到的規矩。
@@ -25,7 +25,11 @@
     - **`rooms-niagara.html` stop 3 yaw −109**：`falls-horseshoe` 的地標盤投影在 **x 1128**（影格只有 1024 寬）——那一站存在的目的就是看馬蹄瀑布，而**看得到、按不到**（要轉頭 42° 才找得到它）。
   - **`.verify/_aim.mjs` 多一個 `reduce` 參數**（預設 false，不影響既有 27 支閘門）：任何「一個影格裡同時讀幾何與讀畫素」的量具都該用它。
   - **量到的（第 79 輪，`verify-box` 之外全部在改動後重跑）**：box **33/33（5/5 按壓）**、walk **212/212**、ux **69/69**、overlay **95/95**、exit **82/82**、body **73/73**、story **27/27**、games **23/23**、shapes **248**、csslive **546 條（DEAD 0）**、skills **95/95**、gen **6/6**、mirror **PASS（框 73%、鏡像 1%）**、island **47/47（每站 0 % empty）**、rail **4/4**、nowebgl **35/35**、rooms-e2e **0 failures**、objects／motion／wheel（**18 艙**）／hotel／three（**14,924 world ＋ 1,048 water**）**PASS**、tables／look 全量到、feel **12/12**（第一次 11/12＝`0.2°`，是緊接在 `verify-rooms-e2e` 後面跑的；單獨跑 **3.0°** 過——這條「要獨佔機器」的既有註記現在有第二個數字）。**沒跑**：`verify-collision`（本輪沒動任何移動／碰撞碼；約 50 分鐘）。
-  - **skill 同輪更新**：`skills/frame-evidence` §9 改寫（同一份 TODO 裡的兩個矛盾數字、洋紅方法、同一影格規則、兩個新缺陷、邊緣 prop 的 fill），`skills/README.md` 那一列與 `SKILLS.md` 的路由句同步；`verify-skills` **95/95**。
+  - **skill 同輪更新**：`skills/frame-evidence` §9 改寫
+  - **同一輪續作（站主說「繼續都弄好」）：把兩個 P0 修掉，`verify-box` 擴到 5 頁**。① 兩個攤位照屋台尺寸 **170×128 → 300×250**、`.walk-stall` 重畫（百分比尺寸）、燈籠 252 → 300；② `js/site.js` 的地標盤**夾進畫面**（背後的地標仍隱藏），niagara **1128 → 924**、goat **(1161,775) → 924,668**，`elementFromPoint` 兩邊都**打到自己**；③ `verify-box` 加 **CSS 身體分支**（量未塗色基準影格上的亮度差＋按壓）與**每個 heading 一張基準影格**，預設頁 **2 → 5 頁、33 → 75 個量測、15 個按壓全過**。反測 `SHIFT=40` 仍 **exit 1**。
+  - **量具又錯了兩次，兩次都是量具**：① 第一次把 CSS 身體的攤位報成 `pressable box, nothing painted`——那是**tint 對 CSS 沒有畫面可塗**，不是缺陷（缺陷是真的，但不是那句話說的）；② 清 tint 之後拍到的影格仍有洋紅殘影（`front-s` 上 2 px 一條），因為 `__walk.drawQuads` 在畫布換幀前就乾淨了。**修法不是等更久，是每個 heading 先拍一張「還沒塗任何東西」的基準影格**，要「場景原樣」的分支全部讀那一張。→ 寫進 `skills/frame-evidence` §9b。
+  - **5 頁 75/75 的量到的**：street stop 0 **20/20**（含 2 個 CSS 攤位、2 個按壓）、fukuoka stop 2 **重跑**、toronto stop 4、niagara stop 3、goat stop 2；每個 heading 都留一張 `-base.png` 給人看。
+（同一份 TODO 裡的兩個矛盾數字、洋紅方法、同一影格規則、兩個新缺陷、邊緣 prop 的 fill），`skills/README.md` 那一列與 `SKILLS.md` 的路由句同步；`verify-skills` **95/95**。
 
 - **第 78 輪（上一輪）—— 站主問 React，答案是「問題在兩個檔案，不在沒有框架」；產生器拆完，腳本不拆（並說清楚為什麼）**：
   - 站主：「你這邊是不是這東西用 react 做對你來說比較好處理。但礙於我們用 GitHub page 目前就只能這樣？」→「該做你都去做」。**GitHub Pages 不是限制**：它只是靜態檔案伺服器，React 打好包一樣能放。真正的限制是這個 repo 自己定的（零 build step、零 committed 依賴、只 vendored Three.js 0.186.1）。而且站主感覺到的痛是真的、只是名稱不對——痛的是**兩個檔**：`_gen_html.py` 7,484 行、`js/site.js` 9,479 行。3D 巷道（每一幀都是命令式程式）換 React 一點好處都沒有；產生器與介面外殼有，但那是檔案大小的問題，不是框架的問題。**所以：保持靜態，拆檔案。**
@@ -283,7 +287,7 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-look.mjs          # 5 張桌
 LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-nowebgl.mjs     # 35/35
 LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-island.cjs      # 沒有一站站在空無一物前面（47 站，每站 empty 0 %）
 LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-mirror.mjs      # 看到的就是按到的
-LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-box.mjs        # 33/33 框坐在自己的畫素上、5/5 按壓打到它（約 60 s，兩頁；`SHIFT=40` 是反測）
+LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-box.mjs        # 75/75 框坐在自己的畫素上、15/15 按壓打到它（5 頁：toronto／fukuoka／street／niagara／goat，約 3 分鐘；`SHIFT=40` 是反測）
 LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-motion.mjs
 LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-wheel.cjs       # 三張取最大（15 車廂；單張量到 9 是抽樣誤差）
 LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-hotel.cjs
@@ -330,17 +334,6 @@ LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-collision.cjs   # 28/28（7 
 - 剩下的 71 條向下射線集中在 (e,n)≈0,0 與 100,0——那是**崖線腳下的河面邊界**（河面只畫到島的岸線），屬於「水面的邊」，不是崖；要收掉它得把河面往西補，已列為下面這一項 P1。
 
 <details><summary>原本的 P0 記錄（保留，因為驗收方式還在用）</summary>
-
-### P0（第 79 輪開，未修）— 兩個「看得到／按不到」的按壓缺陷（`verify-box` 抓到的）
-
-兩個都是**一個 verifiable 的量具已經寫好**的缺陷，修完就把那一頁加進 `verify-box` 的 `PAGES`，而且要綠。
-
-- **P0-1 港區街道的拉麵攤是一片側邊的卡（`street.html`）**：`stall-menya`（`game`＝menya，有動詞、有按壓框）在記錄裡是 `kind: board`，而 `board` 畫的是一片 **170×128 的平面**，`ry: 90` 讓它**沿著牆**站（x −322、距牆 28 cm）。從街道中央看是 **19 m 外 12 px 寬的側邊**；它的面在 stop 0 與 stop 1 **一個洋紅畫素都沒有**（被身後的 `front-n` 店面蓋掉），而**按壓框（44×67）坐在那間店面上**。`stall-kingyo` 同型（框 47×117、畫素 575，也幾乎不可見）。
-  - 重現：`ROOMS=street.html STOP=0 node .verify/verify-box.mjs`（會印 `stall-menya … pressable box but nothing of it is painted`）。`IDS=stall-menya` 只量那一個。
-  - 候選修法（`lane-prop`＋`scene-quality-loop`：這是**看得見的改動**，要拍影格）：給它一個真的身體（`foodstall: "stall"` 的櫃台＋雨棚＋黑洞，第 54 輪就有那支 painter），或至少 `ry: 0` 讓卡面朝街道；兩個都要重拍 stop 0/1 並讓 `verify-box` 綠。**不要**只把框做大。
-- **P0-2 看得到馬蹄瀑布，卻按不到它（`rooms-niagara.html` 與 `rooms-goat.html` 都是）**：地標盤是 `falls-horseshoe` 唯一的可按表面（它自己不畫幾何），而它在三個「就是為了看瀑布」的站位上**投影到框外**：niagara stop 3 yaw −109 → **(1128, 396)**；goat stop 2 yaw 88 → **(1161, 775)**；goat stop 3（§P6.0 的 2171）同族。影格只有 1024×768，而這兩個座標都在框外（一個右邊、一個右下），出框之後 `elementFromPoint` 拿不到任何東西——**瀑布看得到、按不到**。（不要在報告裡寫「偏幾度」：這裡沒有一個量具量過角度，量到的是**像素座標**。）
-  - 重現：`ROOMS=rooms-niagara.html STOP=3 YAWS=-109 node .verify/verify-box.mjs` 與 `ROOMS=rooms-goat.html STOP=2 YAWS=88 node .verify/verify-box.mjs`（都印 `press WRONG:nothing`）。
-  - 兩條路，都屬站主的構圖決定：(a) 出框的地標盤夾在畫面邊緣（「往右轉」的指示，遊戲慣例），(b) 動 yaw 讓瀑布中心與霧柱都在框內（會改第 69e 輪已經驗收的取景）。**先量投影再選**，不要憑印象。
 
 ### P1 — 河面只畫到島的岸線（第 69f 輪剩下來的 71 條向下射線；第 69g 重新量過，**仍未動**）
 

@@ -246,6 +246,28 @@ The rule, before any per-prop number is quoted:
    (`plinth-market` 1251 px of box, 200 px of frame). Measure the fill against the **visible** part of
    the rectangle, or every edge prop fails for standing at the edge.
 
+## 9b. The tint's own failure modes, and the bodies it cannot tint
+
+The magenta method of section 9 measures a prop by taking the pixels only it painted, so it has three
+ways to lie. All three were hit in round 79 on the same gate:
+
+1. **A CSS body has no quad.** The hub street's two festival stalls are painted by `.walk-stall` on
+   the button itself — a `background` of awning stripes, posts, booth and basin — and the renderer
+   pushes nothing for them. The tint paints nothing, and the first version of the gate reported
+   "pressable box, nothing painted" against a stall that answers its own press at every heading. The
+   fix is a branch, not a verdict: measure that kind of body on the **untinted base frame** (the
+   stall's luminance against a column of pavement beside it) and keep the press test, which is the
+   property either way. Ask of every prop: is the thing drawn by a quad, or by CSS?
+2. **A stale tint survives into the next prop's frame.** The tint is cleared between props, but on
+   this rasteriser a repaint costs 300–600 ms and `__walk.drawQuads` — which publishes a clean list
+   as soon as the new frame is committed — can be clean while the canvas still shows the previous
+   one. Measured: a 2 px magenta stripe down one edge of the kingyo stall's body frame, which was
+   `front-s` (the shopfront beside it) still tinted.
+3. **So do not read a frame you did not tint with a wait.** The answer that held is not a longer
+   sleep: it is one **untinted frame per heading**, shot before anything is tinted, and every
+   branch that wants "the scene as it is" reads that. A frame is evidence of what was drawn when it
+   was drawn; a number taken from the wrong frame is worse than no number.
+
 ## 10. A mirrored picture is not a cosmetic bug
 
 Round 70 found the 3D picture was the 2D model's **left-right mirror**, and the tell was that every

@@ -7826,8 +7826,19 @@ function leaveOverlay(root, trigger) {
         // looking at, and the box is only the record's way of saying how big it is.
         const pt = camPt(C, m.x, m.y, m.z);
         if (pt.z > NEAR) {
-          const sx = W * 0.5 + (focal * pt.x) / pt.z, sy = H * 0.5 + (focal * pt.y) / pt.z;
           const R = 46;
+          let sx = W * 0.5 + (focal * pt.x) / pt.z, sy = H * 0.5 + (focal * pt.y) / pt.z;
+          /* Round 79: the disc is clamped into the frame, not left where the projection puts it.
+             Measured with `verify-box`: at the two stops authored to look at the Horseshoe, its
+             point projects to x 1128 of a 1024-wide frame (niagara stop 3, yaw -109) and to
+             1161,775 (goat stop 2) -- the falls fill the picture and the mark that says "you can
+             open this" is outside it, so `elementFromPoint` finds nothing there. A mark pinned to
+             the edge still says which way the thing is, and it is the only mark in the lane that is
+             not on a surface. Everything else about the pass is unchanged: a landmark behind the
+             body is still hidden rather than pinned to the wrong edge. */
+          const M = 8;
+          sx = clamp(sx, R + M, W - R - M);
+          sy = clamp(sy, R + M, H - R - M);
           m.el.style.visibility = "visible";
           m.el.tabIndex = m.quiet ? -1 : 0;
           m.el.style.setProperty("--padx", "0px");

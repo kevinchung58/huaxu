@@ -35,19 +35,12 @@
              (`data-quiet`) is skipped by design: CSS gives it `pointer-events: none`, so the finger
              goes through a bin to whatever is behind it (round 65).
 
-   Two pages are in the default set because they are green and they cover the two kinds of prop the
-   other instruments lean on (a diorama model and its trees; a hall of built models and framed
-   photographs). Two measured defects are NOT yet in it, because the gate must be usable before it is
-   widened -- both are written up in TODO.md with the command that reproduces them:
-
-     ROOMS=street.html STOP=0      `stall-menya` (and `stall-kingyo`) are 170x128 cards standing
-                                   parallel to the wall: edge-on, a 12 px sliver at 19 m, and menya's
-                                   own faces paint nothing at two headings while its press box sits on
-                                   the shopfront behind it.
-     ROOMS=rooms-niagara.html STOP=3 YAWS=-109
-                                   `falls-horseshoe`'s disc projects at x 1128 of a 1024-wide frame:
-                                   the falls the stop exists to look at cannot be pressed without
-                                   turning the head.
+   A third kind of body has no quad at all: the hub street's two festival stalls are painted by CSS on
+   the button itself (`.walk-stall`), so the tint has nothing to paint. They are measured on the
+   untinted base frame instead -- their luminance against a column of the pavement beside them -- and
+   their press. That branch exists because the gate's first run reported them as "pressable box,
+   nothing painted"; the defect was real but not the one that message names (round 79: 170 x 128 cards
+   seen edge-on, resized to the yatai reference and redressed in CSS).
 
    Run:  LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-box.mjs
          ROOMS=rooms-toronto.html STOP=4 YAWS=0,30 IDS=skyline-cn node .verify/verify-box.mjs  # one prop
@@ -57,11 +50,15 @@ import fs from "node:fs";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { launch, openPage, arrive, aim, park, sleep } from "./_aim.mjs";
 
-/* The gate's pages: `PAGES="rooms-toronto.html:4:0,30|rooms-fukuoka.html:2:0,45"`. Overridable by
-   ROOMS/STOP/YAWS for one page, which is how a diagnosis of one prop is run. */
+/* The gate's pages, each `rooms:stop:yaws`. The five are the kinds of body the lane draws:
+   a diorama model and its trees (toronto), a hall of built models and framed photographs (fukuoka),
+   CSS-bodied stalls on the hub street (street), and the two stops authored to look at the Horseshoe,
+   whose mark round 79 clamps into the frame (niagara, goat). Overridable by ROOMS/STOP/YAWS for one
+   page, which is how a diagnosis of one prop is run. */
 const PAGES = (process.env.ROOMS
   ? `${process.env.ROOMS}:${process.env.STOP || 4}:${process.env.YAWS || "0,30"}`
-  : process.env.PAGES || "rooms-toronto.html:4:0,30|rooms-fukuoka.html:2:0,45")
+  : process.env.PAGES || "rooms-toronto.html:4:0,30|rooms-fukuoka.html:2:0,45|street.html:0:0,20"
+    + "|rooms-niagara.html:3:-109|rooms-goat.html:2:88")
   .split("|").map((p) => {
     const [rooms, stop, yaws] = p.split(":");
     return { rooms, stop: Number(stop), yaws: yaws.split(",").map(Number).filter(Number.isFinite) };
@@ -125,6 +122,12 @@ for (const { rooms, stop, yaws } of PAGES) {
     await park(page);
     const heading = await page.evaluate(() => document.querySelector("[data-walk]").__walk.yaw);
     console.log(`  yaw ${heading.toFixed(1)}`);
+    /* One untinted frame per heading, shot before anything is tinted: it is what the CSS bodies are
+       measured on (a stall's body is painted by the button, so there is no quad to tint) and what a
+       reader can open to see the place the numbers describe. */
+    const base = `${OUT}/${rooms.replace(/\.html$/, "")}-stop${stop}-yaw${Math.round(heading)}-base.png`;
+    await page.screenshot({ path: base });
+    const baseImg = await loadImage(base);
 
     /* Every prop on screen at this heading, with the numbers this gate needs: the rectangle, its
        depth-encoded z-index, whether it is scenery, and whether it is a landmark (no paint). */
@@ -135,11 +138,22 @@ for (const { rooms, stop, yaws } of PAGES) {
         const b = el.getBoundingClientRect();
         return { id: el.dataset.obj, x: b.left + shift, y: b.top, w: b.width, h: b.height,
                  z: Number(el.style.zIndex) || 0, quiet: el.hasAttribute("data-quiet"),
-                 landmark: el.hasAttribute("data-landmark") };
+                 landmark: el.hasAttribute("data-landmark"),
+                 /* A stall's whole body is CSS on the button itself (`.walk-stall`), so the
+                    renderer draws no quad for it and the tint has nothing to paint. That is not a
+                    defect -- it is a different kind of body -- and the gate must not report it as
+                    "pressable box, nothing painted". See the CSS-body branch below. */
+                 css: el.classList.contains("walk-stall") };
       }), IDS, SHIFT);
 
     for (const rect of props) {
       const id = rect.id;
+      /* Clear the previous prop's tint before this prop is measured: the tint is applied to the
+         quads of the frame that is about to be shot, so a stale one only matters for the branches
+         that read a frame they did not tint -- and those read the untinted BASE frame taken once per
+         heading (below), which is clean by construction. */
+      await page.evaluate(() => { window.__boxTint = null; });
+
       /* A landmark draws nothing by design (round 65): it stands for something the world already
          paints, and its box is a fixed disc at its own point in the world. There is no paint to
          compare it with, so only the press is measured -- from the middle of the disc. */
@@ -181,6 +195,44 @@ for (const { rooms, stop, yaws } of PAGES) {
       await page.evaluate(() => { window.__boxTint = null; });
 
       const where = `rect ${Math.round(rect.x)},${Math.round(rect.y)} ${Math.round(rect.w)}x${Math.round(rect.h)}`;
+      /* A CSS body: the button paints itself, so there is no quad to tint. The property that
+         matters is the same one the visitor cares about -- is the thing drawn, and does a press on
+         it answer -- so it is measured on the untinted base frame: the stall's own luminance against
+         a column of pavement beside it, and where a press in its middle lands. */
+      if (rect.css) {
+        const cnv = createCanvas(baseImg.width, baseImg.height), g3 = cnv.getContext("2d");
+        g3.drawImage(baseImg, 0, 0);
+        const bp = g3.getImageData(0, 0, baseImg.width, baseImg.height).data;
+        const luma = (x, y) => {
+          if (x < 0 || y < 0 || x >= baseImg.width || y >= baseImg.height) return null;
+          const i = (y * baseImg.width + x) * 4;
+          return (bp[i] * 0.299 + bp[i + 1] * 0.587 + bp[i + 2] * 0.114);
+        };
+        let sumIn = 0, nIn = 0, sumOut = 0, nOut = 0;
+        for (let y = Math.round(rect.y); y < Math.round(rect.y + rect.h); y++) {
+          for (let x = Math.round(rect.x + rect.w * 0.15); x < Math.round(rect.x + rect.w * 0.85); x++) {
+            const l = luma(x, y); if (l === null) continue; sumIn += l; nIn++;
+          }
+          const l = luma(Math.round(rect.x - 24), y);           // a column of pavement beside it
+          if (l !== null) { sumOut += l; nOut++; }
+        }
+        const at = await page.evaluate((x, y) => {
+          const el = document.elementFromPoint(x, y);
+          const hit = el && el.closest && el.closest("[data-obj]");
+          return hit ? hit.dataset.obj : (el ? el.tagName.toLowerCase() : "nothing");
+        }, Math.round(rect.x + rect.w / 2), Math.round(rect.y + rect.h / 2));
+        const pressOk = at === id;
+        const contrast = nIn && nOut ? Math.abs(sumIn / nIn - sumOut / nOut) : 0;
+        const ok = pressOk && contrast >= 12;
+        rows++; if (!ok) fails++; tapRows++; if (!pressOk) tapFails++;
+        if (!ok) failures.push(`${rooms} stop ${stop} yaw ${Math.round(heading)} ${id}: css body ` +
+          `contrast ${contrast.toFixed(1)} press ${at}`);
+        console.log(`    ${id.padEnd(20)} ${ok ? "ok  " : "FAIL"}  rect ${Math.round(rect.x)},${Math.round(rect.y)} ` +
+                    `${Math.round(rect.w)}x${Math.round(rect.h)}  css body, luma against the pavement ` +
+                    `${contrast.toFixed(1)} (needs >= 12)  press ${pressOk ? "itself" : `WRONG:${at}`}  ${base}`);
+        continue;
+      }
+
       /* A pressable prop whose own faces paint nothing here. Two very different worlds look like
          this, and the gate must not merge them: the prop is behind another prop that covers it
          (occlusion), or the prop's silhouette is painted by a NEIGHBOUR's faces -- measured on the

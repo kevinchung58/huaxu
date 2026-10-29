@@ -2028,13 +2028,35 @@ body.shell {
    walk-hit magnet dressed by CSS — awning, counter, basin — so the surveyed world never acquires a
    geometry that no source surveyed. Its colours are all borrowed: the amber of the shopfront lamps,
    the night navy, the same paper the plates use. */
+/* Round 79: the stall had three layers and read as one flat block. At the authored 300 x 250 they
+   are drawn as a stall reads from the street: a striped awning across the top fifth, the two posts
+   that carry it, the dark booth under it, the counter along the bottom and the basin on the
+   counter. Every colour is borrowed from the street's own palette (the lamp amber, the night navy,
+   the counter's wood), and every size is a PERCENTAGE of the button, so the fascia scales with the
+   projection instead of being resized in pixels -- at 10 m this button is 84 px wide and a 26 px
+   stripe came out as one navy block. */
 .walk-stall {
   background:
-    repeating-linear-gradient(90deg, rgba(224, 161, 63, 0.92) 0 22px, rgba(20, 29, 48, 0.95) 22px 44px)
-      0 0 / 100% 30% no-repeat,
-    linear-gradient(rgba(11, 20, 48, 0.95) 0%, rgba(11, 20, 48, 0.95) 0%) 6% 30% / 88% 44% no-repeat,
-    radial-gradient(40% 34% at 50% 84%, rgba(27, 50, 71, 0.95) 98%, transparent 100%);
-  border-radius: 0.35rem 0.35rem 0.15rem 0.15rem;
+    /* the basin on the counter, with the lamp's highlight on its far rim */
+    radial-gradient(circle at 50% 46%, rgba(255, 236, 205, 0.55) 0 3px, transparent 4px) 50% 77% / 34% 18% no-repeat,
+    radial-gradient(ellipse 50% 50% at 50% 60%, rgba(20, 40, 62, 0.98) 88%, rgba(122, 88, 54, 0.9) 100%)
+      50% 77% / 34% 18% no-repeat,
+    /* the counter */
+    linear-gradient(rgba(126, 90, 55, 0.98) 0 100%) 6% 86% / 88% 9% no-repeat,
+    /* the two posts that carry the awning */
+    linear-gradient(rgba(96, 68, 42, 0.98) 0 100%) 5% 20% / 6% 68% no-repeat,
+    linear-gradient(rgba(96, 68, 42, 0.98) 0 100%) 89% 20% / 6% 68% no-repeat,
+    /* the booth's dark opening, which is what a visitor presses */
+    linear-gradient(rgba(9, 16, 38, 0.97) 0 100%) 11% 24% / 78% 64% no-repeat,
+    /* the awning: a scalloped hem under stripes that repeat in percentages, so the booth wears six
+       stripes whether it is 84 px across or 400 */
+    radial-gradient(circle at 50% 100%, rgba(224, 161, 63, 0.95) 0 42%, transparent 45%)
+      0 21% / 8.4% 7% repeat-x,
+    repeating-linear-gradient(90deg, rgba(226, 164, 66, 0.96) 0 8.4%, rgba(20, 29, 48, 0.96) 8.4% 16.8%)
+      0 0 / 100% 20% no-repeat,
+    /* the lamp over the counter, and the shadow it casts down the booth */
+    radial-gradient(52% 34% at 50% 24%, rgba(255, 217, 160, 0.32), transparent 74%);
+  border-radius: 0.3rem 0.3rem 0.12rem 0.12rem;
   box-shadow: 0 0 34px rgba(255, 217, 160, 0.16);
 }
 .walk-game {
