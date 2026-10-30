@@ -14,6 +14,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { execFileSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const PAGES = fs.readdirSync(ROOT).filter((f) => f.endsWith(".html")).sort();
@@ -50,6 +51,16 @@ test("every page with a lane is a page the generator wrote", () => {
        journey 600 cm more (the tunnel runs past its own record). Only the relation the rail obeys
        is asserted below — every stop is inside the far end. */
   }
+});
+
+test("walkable-page discovery covers every registered scene", () => {
+  const { walkPages } = require("../bin/walk-pages.cjs");
+  const registered = JSON.parse(execFileSync("python3", ["-c",
+    "import json; from gen.site import ROOMS; print(json.dumps([r[2] for r in ROOMS if r[4] == 'open']))"],
+    { cwd: ROOT, encoding: "utf8" })).sort();
+  assert.ok(registered.length >= 8, `${registered.length} registered walkable pages`);
+  assert.deepEqual(LANES, registered, "the emitted walkable pages match the generator's registry");
+  assert.deepEqual(walkPages(ROOT), registered, "the collision gate includes every emitted walkable page");
 });
 
 test("prop ids are unique on every page", async (t) => {

@@ -18,10 +18,11 @@
 const { JSDOM, VirtualConsole } = require("jsdom");
 const fs = require("fs");
 const { siteText } = require("../bin/site-sources.cjs");
+const { walkPages } = require("../bin/walk-pages.cjs");
 
 const js = siteText();
-const ALL_PAGES = ["street.html", "rooms.html", "rooms-fukuoka.html", "rooms-toronto.html",
-                   "rooms-cntower.html", "rooms-niagara.html", "rooms-journey.html"];
+const ALL_PAGES = walkPages();
+if (!ALL_PAGES.length) throw new Error("verify-collision: no walkable pages found");
 // GATE_PAGE=rooms-fukuoka runs one page — for diagnosis, not for the commit gate
 const PAGES = process.env.GATE_PAGE ? [process.env.GATE_PAGE + ".html"] : ALL_PAGES;
 const fails = [];
@@ -268,9 +269,10 @@ async function pageGate(file) {
   // against the page's own blockedAt, never a re-implementation. Pre-fix: 526/786 free points on
   // niagara and journey — that scan is this check's bite.
   {
-    const layer = env.doc.querySelector("[data-walk]");
-    const WALL0 = Number(layer.dataset.laneW ?? 640) / 2;
-    const MIND0 = Number(layer.dataset.laneStart ?? 0), MAXD0 = Number(layer.dataset.laneLen ?? 6000);
+    // Use the live walker's own bounds. The emitted pages do not define laneStart/laneLen;
+    // inventing defaults here used to ignore floor walls before zero and past 60 m.
+    const WALL0 = W.wallHalf;
+    const MIND0 = mn, MAXD0 = mx_;
     /* P2 (round 69): the backdrop of a big place lives in js/places/<place>.js now, and this gate
        read `.textContent` only — so after the data moved it found zero quads and scanned zero runs
        for exactly the pages the check was written for (round 45's 526/786 free points were on
@@ -313,7 +315,7 @@ async function pageGate(file) {
     const blockedAt = env.walk().blockedAt;
     const half = env.walk().halfWidth;
     let holes = 0;
-    outer: for (let x = -half; x <= half && !holes; x += 8) for (let z = MIND0; z <= Math.min(MAXD0, 30000); z += 8) {
+    outer: for (let x = -half; x <= half && !holes; x += 8) for (let z = MIND0; z <= MAXD0; z += 8) {
       for (const [a, b2] of runs) if (segd(x, z, a, b2) < 14.4 && !blockedAt(x, z)) { holes++; continue outer; }
     }
     ok(`${file}: painted floor-walls block the body (holes x${holes})`, holes === 0,
@@ -352,9 +354,6 @@ async function pageGate(file) {
   for (const p of PAGES) await pageGate(p);
   console.log(`\nverify-collision: ${checks - fails.length}/${checks} pass`);
   if (fails.length) { for (const f of fails) console.log("FAILED " + f); process.exit(1); }
-  /* The gate used to leave the process standing after the last line, because the jsdom window it
-     opened keeps a handle open. The result was on the screen and the exit code was unreachable,
-     so "the gate passed" could only ever be read by eye and never by a script. Leave now, with
-     the code the result implies. */
+  /* jsdom windows keep handles open, so leave with the verdict once every page was checked. */
   process.exit(0);
 })();

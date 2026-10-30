@@ -12,8 +12,11 @@
         the scene as empty either.
 
    The measure is the honest one: stand at every stop, look where the stop says to look, and count
-   how many rays meet nothing at all. Sky is a ray that hits nothing; but a view made mostly of sky at
-   eye level is not a sky, it is a hole. Round 69m measured stop 2 of Goat Island at 44 of 48 cells
+   how many rays meet only the sky or nothing. The sky is a renderer mesh drawn first without depth
+   testing or writing; geometry behind its sphere can still be visible. Ignore sky hits, light
+   sprites/additive effects and geometry outside the camera's clip range. A view made mostly of sky
+   at eye level is a hole. Ray hits are a geometric proxy, not a measurement of texture alpha.
+   Round 69m measured stop 2 of Goat Island at 44 of 48 cells
    EMPTY (92%) while its frame's standard deviation was a healthy 50.2 -- brightness variation is not
    content, which is why this gate counts hits and not contrast.
 
@@ -26,9 +29,9 @@
    Run:  LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/verify-island.cjs
          PAGES=rooms-goat.html for one page.  COLS=10 ROWS=6 for a coarser grid.
 */
-const PAGES = (process.env.PAGES ||
-  "rooms-niagara.html,rooms-goat.html,rooms-toronto.html,rooms.html,rooms-journey.html,rooms-cntower.html,rooms-fukuoka.html")
-  .split(",").map((s) => s.trim()).filter(Boolean);
+const { walkPages } = require("../bin/walk-pages.cjs");
+const PAGES = process.env.PAGES === undefined ? walkPages()
+  : process.env.PAGES.split(",").map((s) => s.trim()).filter(Boolean);
 const COLS = Number(process.env.COLS || 10), ROWS = Number(process.env.ROWS || 6);
 const MAX_EMPTY = Number(process.env.MAX_EMPTY || 60);   // percent of the sampled band
 const VW = 1024, VH = 768;
@@ -36,7 +39,8 @@ const VW = 1024, VH = 768;
 (async () => {
   const { launch, openPage, arrive, aim, park, state } = await import("./_aim.mjs");
   const browser = await launch({ width: VW, height: VH });
-  let fails = 0, checked = 0, worst = { pct: -1 };
+  let fails = 0, checked = 0, expected = 0, worst = { pct: -1 };
+  if (!PAGES.length) { console.log("FAIL: no pages requested"); fails++; }
 
   for (const rooms of PAGES) {
     /* The camera is a local in scene3d.js; it is published to the page for this page only. */
@@ -53,9 +57,9 @@ const VW = 1024, VH = 768;
     };
     let page;
     try { page = await openPage(browser, { rooms, hour: "day", width: VW, height: VH, intercept: expose }); }
-    catch (e) { console.log(`SKIP ${rooms}: ${e.message.split("\n")[0]}`); continue; }
+    catch (e) { console.log(`FAIL ${rooms}: ${e.message.split("\n")[0]}`); fails++; continue; }
     const ok = await page.evaluate(() => !!(window.__cam && window.__threeScene));
-    if (!ok) { console.log(`SKIP ${rooms}: no camera published (does this page use scene3d?)`); await page.close(); continue; }
+    if (!ok) { console.log(`FAIL ${rooms}: no camera published (does this page use scene3d?)`); fails++; await page.close(); continue; }
 
     const stops = await page.evaluate(() => [...document.querySelectorAll("[data-walk-stop]")].map((el, i) => {
       const read = (k) => { const v = Number.parseFloat(getComputedStyle(el).getPropertyValue(k)); return Number.isFinite(v) ? v : null; };
@@ -64,15 +68,16 @@ const VW = 1024, VH = 768;
                pitch: el.dataset.viewPitch !== undefined ? Number(el.dataset.viewPitch) : null,
                label: el.getAttribute("aria-label") };
     }));
-    if (!stops.length) { console.log(`SKIP ${rooms}: no stops`); await page.close(); continue; }
+    if (!stops.length) { console.log(`FAIL ${rooms}: no stops`); fails++; await page.close(); continue; }
+    expected += stops.length;
 
     console.log(`\n${rooms} — ${stops.length} stops`);
     for (const s of stops) {
       const a = await arrive(page, s.i);
-      if (!a.arrived) { console.log(`  stop ${s.i}: ${a.arrived === false ? a.why : "no arrival"}`); continue; }
+      if (!a.arrived) { console.log(`  FAIL stop ${s.i}: ${a.why || "no arrival"}`); fails++; continue; }
       // Where the stop says to look; a stop with no authored view looks straight down the lane.
       const g = await aim(page, s.yaw === null ? 0 : s.yaw, { pitch: s.pitch === null ? 0 : s.pitch, width: VW, height: VH });
-      if (!g.aimed) { console.log(`  stop ${s.i}: NOT AIMED (${g.off.toFixed(1)} deg)`); fails++; continue; }
+      if (!g.aimed) { console.log(`  FAIL stop ${s.i}: NOT AIMED (${Number.isFinite(g.off) ? `${g.off.toFixed(1)} deg` : "no state"})`); fails++; continue; }
       await park(page, 500);
       const st = await state(page);
       const empty = await page.evaluate(({ COLS, ROWS, VW, VH }) => {
@@ -84,7 +89,23 @@ const VW = 1024, VH = 768;
             const y = VH * 0.2 + (r + 0.5) * (VH * 0.6) / ROWS;
             const x = (c + 0.5) * VW / COLS;
             rc.setFromCamera(new T.Vector2((x / VW) * 2 - 1, -(y / VH) * 2 + 1), cam);
-            const hit = rc.intersectObjects(scene.children, true)[0];
+            const hit = rc.intersectObjects(scene.children, true).find((candidate) => {
+              const object = candidate.object;
+              // The sky is painted first without depth testing/writing. Unlike an opaque mesh it
+              // does not hide a farther surface, so ignore it rather than stopping the ray at it.
+              if (object.name === "authored sky") return false;
+              for (let node = object; node; node = node.parent) if (node.visible === false) return false;
+              const material = Array.isArray(object.material)
+                ? object.material[candidate.face?.materialIndex || 0] : object.material;
+              if (material && (material.visible === false || (Number.isFinite(material.opacity) && material.opacity <= 0))) return false;
+              // Glows, flares and additive light pools are overlays, not scene geometry. A halo can
+              // span every ray while the actual frame behind it is still nothing but sky.
+              if (object.isSprite || (material && material.blending === T.AdditiveBlending)) return false;
+              // Raycaster itself has no camera near/far clipping. Projection tests the same clip
+              // range as the renderer, including the longer diagonal rays at the frame edges.
+              const clipZ = candidate.point.clone().project(cam).z;
+              return clipZ >= -1 && clipZ <= 1;
+            });
             n++;
             if (!hit) miss++;
           }
@@ -102,8 +123,8 @@ const VW = 1024, VH = 768;
   }
 
   await browser.close();
-  console.log(`\nworst stop: ${worst.where} at ${worst.pct}%`);
-  console.log(fails ? `verify-island: ${fails} of ${checked} stops stand in front of nothing`
+  console.log(checked ? `\nworst stop: ${worst.where} at ${worst.pct}%` : "\nno stops measured");
+  console.log(fails ? `verify-island: ${fails} failure(s); ${checked}/${expected} stops measured`
                     : `verify-island: all ${checked} stops see something (bar: empty <= ${MAX_EMPTY}%)`);
   process.exit(fails ? 1 : 0);
 })();

@@ -7814,11 +7814,16 @@
        going round anything. */
     const base = gliding.origX === undefined ? x : gliding.origX;
     const first = gliding.origX === undefined ? 20 : Math.max(20, Math.abs(x - base) + 20);
-    for (let off = first; off <= 320; off += 20) {
+    const dir = Math.sign(gliding.to - depth);
+    const ahead = depth + dir * Math.min(150, Math.abs(gliding.to - depth));
+    // Search the full available width, even if the target x is in a wider band further away.
+    // One extra step includes the clamped boundary on either side.
+    const half = halfAt(depth);
+    for (let off = first; off <= half + Math.abs(base) + 20; off += 20) {
       for (const sg of (base >= x ? [1, -1] : [-1, 1])) {
-        const gx = clamp(base + sg * off, -halfAt(depth), halfAt(depth));
+        const gx = clamp(base + sg * off, -half, half);
         if (Math.abs(gx - x) < 12 && gliding.origX === undefined) continue;   // the wall ate it: no strip there
-        if (collidesAt(gx, depth) || collidesAt(gx, Math.min(depth + 150, gliding.to))) continue;
+        if (collidesAt(gx, depth) || collidesAt(gx, ahead)) continue;
         if (gliding.origX === undefined) gliding.origX = gliding.x;
         gliding.x = gx;
         return true;
@@ -7845,12 +7850,23 @@
        the body's own point is tested first, and the first metre is walked in 30 cm steps instead of
        120 — a bay's footprint is about that deep, and the coarse step stepped over it. */
     if (collidesAt(gliding.origX, depth)) return;
-    const to = Math.min(gliding.to, depth + 900);
-    for (let d = depth + 30; d <= to; d += d <= depth + 300 ? 30 : 120) {
-      if (collidesAt(gliding.origX, d)) return;     // still box alongside: stay on the detour
+    // Look toward the target, not always toward increasing depth: on the return trip the
+    // table is behind the body, and a forward-only scan sends the body straight back into it.
+    const dir = Math.sign(gliding.to - depth);
+    const span = Math.min(900, Math.abs(gliding.to - depth));
+    for (let dist = 30; dist <= span; dist += dist <= 300 ? 30 : 120) {
+      if (collidesAt(gliding.origX, depth + dir * dist)) return; // still box alongside: stay on the detour
     }
     gliding.x = gliding.origX;
     delete gliding.origX;
+  };
+  const reachedGlideWaypoint = () => {
+    // Reaching a detour at the target depth is not arrival: restore the requested x and let
+    // the normal swept solver reach it. A target inside a solid cannot be forced through it.
+    if (gliding.origX !== undefined && gliding.origX !== gliding.x && !collidesAt(gliding.origX, gliding.to)) {
+      gliding.x = gliding.origX;
+      delete gliding.origX;
+    } else gliding = null;
   };
 
   // One motion step, in the pipeline vocabulary adopted in round 46 (Mint spatial-contracts §2):
@@ -7877,7 +7893,7 @@
       const distance = Math.hypot(dx, dd);
       if (!sidestep && distance < 1.2) {
         moveBody(gliding.x, gliding.to);
-        if (Math.hypot(gliding.x - x, gliding.to - depth) < 1.2) gliding = null;
+        if (Math.hypot(gliding.x - x, gliding.to - depth) < 1.2) reachedGlideWaypoint();
       } else if (distance > 0.001) {
         const stride = Math.min(distance, (gliding.speed || GLIDE_SPEED) * dt);
         const moved = moveBody(x + dx * stride / distance, depth + dd * stride / distance);
@@ -7895,12 +7911,11 @@
            off from a stop is truer than pretending through it (round 41). */
         const gained = distance - remaining;
         const progressed = gained >= stride * 0.5;
-        if (!sidestep && remaining < 1.2) gliding = null;
+        if (!sidestep && remaining < 1.2) reachedGlideWaypoint();
         else if (!progressed || moved < 0.001) {
-          /* Round 75: a hard glide (a stop, a frame's own approach) is a promise about a place, so
-             when the solver cannot get round whatever is in the way it finishes the move rather than
-             cancelling it. A soft glide still gives up: the body must not be placed somewhere the
-             visitor did not ask to be. */
+          /* A hard glide gets one last collision-checked sweep toward its requested stop when no
+             detour is available. It can still stop short; it must never jump through a solid. A soft
+             glide simply gives up. */
           if (!detourAround()) { if (gliding.hard) finishGlide(); else gliding = null; }
         } else homeGlide();
       }
@@ -8210,9 +8225,8 @@
      arrived, Goat's first three were still walking after 30 s and stopped 26-40 m short).
      So the speed follows the jump: a move takes about `GLIDE_T`, never less than the comfort speed,
      never more than `GLIDE_SPEED_MAX`. It is constant for the length of one glide, so a long jump
-     reads as one move rather than as an acceleration. `hard` glides (a stop, a frame) also finish on
-     the target if the solver cancels them half way -- being short of a place the button named is the
-     one outcome a bookmark must not have. */
+     reads as one move rather than as an acceleration. A hard glide (a stop, a frame) tries a final
+     swept move if no detour is available; collision still takes precedence over reaching the target. */
   const glideTo = (z, targetX, hard = false) => {
     const to = clamp(z, MIN_D, MAX_D);
     const tx = clamp(targetX === undefined ? x : targetX, -halfAt(to), halfAt(to));

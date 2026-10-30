@@ -152,21 +152,26 @@ export async function arrive(page, stop, { tol = 6, arriveMs = 300000, settleSam
     const atRest = stillMs >= Math.max(settleSamples * 1000, frameMs * 6) && !gliding;
     if (zOk && xOk && atRest) {
       const short = Math.round(at.z - target.z);
-      return { arrived: true, blocked: false, target, at, short, stillMs,
+      const shortX = target.x === null ? null : Math.round(at.x - target.x);
+      return { arrived: true, blocked: false, target, at, short, shortX, stillMs,
                waited: Math.round((Date.now() - t0) / 1000) };
     }
-    if (atRest && !zOk) {
-      /* Stopped, still short: something is in the way. Report it as a fact, not as a failure of
-         the instrument -- the frame may still be the right one, but the caller must say so. */
+    if (atRest && (!zOk || !xOk)) {
+      /* A settled body can be short on either axis. Report both when x was authored; a correct
+         depth does not turn the wrong side of a wide lane into the requested stop. */
       const short = Math.round(at.z - target.z);
-      return { arrived: false, blocked: true, target, at, short,
+      const shortX = target.x === null ? null : Math.round(at.x - target.x);
+      const xInfo = shortX === null ? "" : `, ${shortX >= 0 ? "+" : ""}${shortX} cm from --x `
+        + `(${Math.round(at.x)} vs ${target.x})`;
+      return { arrived: false, blocked: true, target, at, short, shortX,
                why: `body settled ${short >= 0 ? "+" : ""}${short} cm from --z `
-                    + `(${Math.round(at.z)} vs ${target.z}) after ${Math.round(stillMs / 100) / 10} s still, `
+                    + `(${Math.round(at.z)} vs ${target.z})${xInfo} after ${Math.round(stillMs / 100) / 10} s still, `
                     + `frame ${Math.round(frameMs)} ms`,
                waited: Math.round((Date.now() - t0) / 1000) };
     }
   }
   return { arrived: false, blocked: false, target, at, short: at ? Math.round(at.z - target.z) : null,
+           shortX: at && target.x !== null ? Math.round(at.x - target.x) : null,
            why: `no arrival after ${Math.round(arriveMs / 1000)} s`, waited: Math.round((Date.now() - t0) / 1000) };
 }
 

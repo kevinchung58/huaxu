@@ -1,7 +1,7 @@
 /* The lane's own invariants, asserted against the real `js/site.js` in jsdom.
 
    These are the three collision causes of round 68, expressed as properties rather than as a replay
-   of `verify-collision` (which stays the end-to-end sweep: seven pages, every stop, every solid's
+   of `verify-collision` (which stays the end-to-end sweep: every walkable page, stop and solid's
    corners, 24-frame rings). A property here is cheap enough to run on every edit, and each one names
    the mechanism it guards:
 
@@ -189,3 +189,42 @@ test("the collision boundary sits where the clearance rule says (cause 3)", () =
   }
   assert.ok(faces >= 8, `the street offered ${faces} unshared faces to test`);
 }));
+
+/* A stop is a bookmark, not merely the next step in a predefined route. Across Moji's wide table
+   and Niagara's obstacles, direct selections must reach the authored x/z in either direction without
+   crossing a solid or treating a temporary detour as the destination. */
+test("rail bookmarks reach their actual x/z across obstructions in both directions", async (t) => {
+  async function arrive(env, index) {
+    const button = env.doc.querySelector(`[data-walk-stop="${index}"]`);
+    assert.ok(button, `stop ${index} exists`);
+    const z = Number.parseFloat(button.style.getPropertyValue("--z"));
+    const x = Number.parseFloat(button.style.getPropertyValue("--x"));
+    const W = env.walk();
+    assert.equal(W.blockedAt(x, z), false, `stop ${index}'s target is clear`);
+    button.click();
+    let frames = 0;
+    while (W.glide && frames < 600) {
+      await env.pump(1);
+      const s = env.state();
+      assert.equal(W.blockedAt(s.x, s.depth), false,
+        `stop ${index}: frame ${frames} cannot enter a solid`);
+      frames += 1;
+    }
+    const s = env.state();
+    const shortfall = Math.hypot(s.x - x, s.depth - z);
+    assert.equal(W.glide, null, `stop ${index}: still gliding after ${frames} frames, ${shortfall.toFixed(1)} cm short`);
+    assert.ok(shortfall <= 6, `stop ${index}: ${shortfall.toFixed(1)} cm short of (${x}, ${z})`);
+  }
+  const cases = [
+    ["rooms-fukuoka.html", null, 10], ["rooms-fukuoka.html", null, 12],
+    ["rooms-fukuoka.html", null, 13], ["rooms-fukuoka.html", 9, 5], ["rooms-fukuoka.html", 11, 5],
+    ["rooms-niagara.html", 6, 4], ["rooms-niagara.html", 8, 4],
+  ];
+  for (const [file, start, target] of cases) {
+    await t.test(`${file}: ${start === null ? "entrance" : `stop ${start}`} → stop ${target}`,
+      () => withPage(file, async (env) => {
+        if (start !== null) await arrive(env, start);
+        await arrive(env, target);
+      }));
+  }
+});

@@ -94,7 +94,15 @@ prove "this pixel is the SkyWheel". When a claim needs the prop, measure the fra
 - Every id or stop a gate names must be resolved against the page (`[data-obj]`, `[data-walk-stop]`)
   before it is measured. An id that does not exist is a **FAIL**, not a skip: the old
   `verify-look` framed 2 of 7 ids that had been deleted, then reported success.
+- A requested page or stop that cannot be opened, reached, aimed or measured is a **FAIL**, not a
+  skipped row. An empty requested set must not pass as complete coverage. A gate claiming all walkable
+  pages derives that set from the emitted lanes and checks it against the generator's registry.
 - A frame with nothing in it is a **FAIL**. A heading that missed is a **FAIL**. Both exit non-zero.
+  Ignore invisible objects, zero-opacity materials and hits outside the camera's clip planes when
+  raycasting. Sprites and additive light overlays are not structural scenery: a halo can cover every
+  ray without hiding an empty sky. Ignore the raycastable sky dome itself: it is painted first without
+  depth testing or writing, so geometry farther than the dome can still be visible over it. Ray hits
+  do not resolve texture alpha or replace inspection of the rendered frame.
 - A gate that is a diagnostic (an audit of everything, a map, a ray) may report and exit 0, but it
   must say so on its own line: "REPORT (not a gate)". Do not let a report wear a gate's authority,
   and do not let a gate hide behind a report.
@@ -169,6 +177,8 @@ per-prim factor is doing the darkening — and the wrong first move regardless, 
 look decision.
 
 The rule: **before quoting a painted colour, read `vcol`; before quoting a band, read what is in it.**
+Three.js ray hits already expose resolved vertex indices in `face.a/b/c`, even for indexed geometry;
+use those indices directly rather than applying the geometry index a second time.
 And when two pages paint the same thing differently — this wall is hazed `air × 1.9` on one page and
 `air × 1.0` on the other, from the same generator — that is a finding to write down, not a bug to
 silently harmonise: which direction is right is the owner's.
