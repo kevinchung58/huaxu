@@ -54,6 +54,8 @@
 清單，所以清單不會跟磁碟漂移：磁碟上有一支 `verify-*` 而清單沒寫，或清單寫了磁碟沒有的，`--check` 直接
 exit 2 並點名（`tests/gatelist.test.cjs` 釘住這件事）。常用：`--list`、`--only=walk,box`、`--skip=collision`、
 `--stop`。清單第一行的 `sh bin/preview` 不會被執行——伺服器不會結束，需要伺服器的閘門由 `bin/gate` 起停。
+**整段一次的實測時間**（2026-10-30，本機）：35 支 32.6 分鐘（最久 `verify-island` 443 s、
+`tools/bench` 435 s、`verify-tables` 213 s）＋ `verify-collision` 31.5 分鐘 ≈ **64 分鐘**。
 
 ```sh
 sh bin/restore-env && sh bin/preview          # 環境 + 伺服器（0.0.0.0:8080）
@@ -96,7 +98,7 @@ sh bin/gate node .verify/verify-rail.mjs          # 4/4（四個起點到同一�
 sh bin/gate node .verify/verify-objects.mjs
 sh bin/gate node .verify/verify-floor.mjs         # 8 頁的鋪面 uv：一 tile = 64 × 該層 floor 的 period（12/12）
 sh bin/gate node bin/verify-three.mjs             # 14,924 world + 1,048 water
-sh bin/gate node .verify/verify-collision.cjs     # 28/28（7 頁，約 50 分鐘；動到移動／碰撞碼才必跑）
+sh bin/gate node .verify/verify-collision.cjs     # 28/28（7 頁，實測 31.5 分鐘；動到移動／碰撞碼才必跑）
 ```
 
 每支後面的數字是**最後一次跑到的**，不是保證；引用前重跑。
