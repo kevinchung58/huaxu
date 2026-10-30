@@ -12,8 +12,9 @@
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、
   `rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支**：`arena/0cb70678-huaxu` → `master`；PR #21 開著，**未合併**（合併要站主一句授權）。
-- **三層驗證**：`node --test`（51 條，約 12 s，不開瀏覽器）→ `.verify/` 閘門 29 支（§2.3 的清單就是
-  「有沒有跑」的判準）→ 量具（§2.4，只在需要數字時跑）。效能看 `tools/bench.mjs`（§5.6）。
+- **三層驗證**：`node --test`（55 條，約 11 s，不開瀏覽器）→ `.verify/` 閘門 31 支（§2.3 的清單就是
+  「有沒有跑」的判準；整段用 `python3 bin/gate-all.py` 跑，它讀的就是那份清單）→ 量具（§2.4，只在需要
+  數字時跑）。效能看 `tools/bench.mjs`（§5.6）。
 - **規模**：頁面程式 4 支共 9,552 行（載入順序在 `bin/site-sources.json`；巷道的 9,045 行仍是一個 closure，§3 P3）、
   產生器 7,524 行、`.verify` 98 支（其中閘門 31 支）、`skills/` 19 個。
 
@@ -48,10 +49,16 @@
 
 **不在清單上的閘門等於不存在**：它不會紅，因為沒有人跑它。加一支閘門，就同時把它加進下面這一段。
 
+**這一段可以直接執行**：`python3 bin/gate-all.py` 讀的就是下面這個圍籬，照順序一支一支跑（每支都走
+`sh bin/gate`，一次一支，印出耗時與它自己的最後一行，紅的把尾巴印出來），最後給一張表。它不另外存一份
+清單，所以清單不會跟磁碟漂移：磁碟上有一支 `verify-*` 而清單沒寫，或清單寫了磁碟沒有的，`--check` 直接
+exit 2 並點名（`tests/gatelist.test.cjs` 釘住這件事）。常用：`--list`、`--only=walk,box`、`--skip=collision`、
+`--stop`。清單第一行的 `sh bin/preview` 不會被執行——伺服器不會結束，需要伺服器的閘門由 `bin/gate` 起停。
+
 ```sh
 sh bin/restore-env && sh bin/preview          # 環境 + 伺服器（0.0.0.0:8080）
 # ── 不開瀏覽器（秒級）──
-node --test                                    # 51 條：41 條純檔案、4 條 jsdom 巷道、6 條環境（`bin/gate`）
+node --test                                    # 55 條：45 條純檔案、4 條 jsdom 巷道、6 條環境（`bin/gate`）
 node tools/bench.mjs                           # 效能基準（§5.6）；`--check` 是預設，`--write` 重錄
 node .verify/verify-shapes.mjs                 # 248 個 prop 都有形
 node .verify/verify-geometry.mjs

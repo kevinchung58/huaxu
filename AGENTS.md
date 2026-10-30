@@ -27,7 +27,10 @@ no package manifest, CDN, or additional runtime dependency is implied.
   A wiped sandbox also takes `node_modules` with it — run `bin/restore-env`. Headless Chromium needs
   `LD_LIBRARY_PATH=/tmp/al2023/lib`, which is why every gate is run as `sh bin/gate node …`: the
   wrapper restores the packages and the libraries, exports the path, and refuses the two speed gates
-  (`verify-feel`, `verify-collision`) when another Chromium already has the box.
+  (`verify-feel`, `verify-collision`) when another Chromium already has the box. The whole battery is
+  one command — `python3 bin/gate-all.py` — which executes the list in `TODO.md` §2.3 *from the list
+  itself*: it keeps no copy, and it exits 2 when the list and `.verify/` disagree in either direction,
+  because a gate nobody runs cannot go red.
 - **A patch script for `_gen_html.py` anchors on one structural line, never on remembered prose or a
   line number.** Grep the exact anchor before writing it; assert every replacement fires exactly once;
   do all inserts in a single pass bottom-up, because line numbers shift under your own hands; and after

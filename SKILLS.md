@@ -295,6 +295,10 @@ this repo that is operational, not aspirational:
   template is `.verify/verify-collision.cjs`: named properties, explicit thresholds, and a
   demonstrated *bite* (run the gate against the pre-fix artifact and show it fails). A visual fix
   ships with freshly eyeballed frames from the served artifact, not from the code that made it.
+- **The battery is a list you can run, not a list you retype.** `python3 bin/gate-all.py` executes
+  `TODO.md` §2.3 in order, one `sh bin/gate` at a time, and exits 2 when a `verify-*` file on disk is
+  missing from the list or a listed gate is missing from disk. The enumeration in a handoff is then
+  what the runner printed, not what the round remembered.
 - **Handoff reports what actually ran, in those words.** A round closes by listing the gates that
   were executed with their tallies, and by naming what could not run and why, in the same breath —
   never by letting "verified" imply a browser was opened when only a headless harness was (round 46
