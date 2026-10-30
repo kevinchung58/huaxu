@@ -150,6 +150,24 @@ supports. What can be compared exactly is what the programme hands the renderer:
 a refactor, and `.verify/_abdiff.mjs` only to *look* at a difference with its threshold distribution
 printed beside the image.
 
+### Before you namespace a closure, count the collisions
+
+The obvious cheap route to splitting a closure is text: declare `const NS = {}` at the top, turn each
+top-level declaration into `NS.x = …`, and rewrite every read. **Count first.** A name is only
+rewritable if it means one thing in the file; if any nested function, parameter, `catch` or block
+re-declares the same spelling, the rewrite rebinds the inner one and the result loads and draws the
+wrong thing — a silent failure, and one no gate here would catch, because the code is valid.
+
+`.verify/_shadow.py` answers it for this programme: of **339 top-level names, 20 are introduced again
+as a local or parameter deeper in the same file**, and the worst is `a` — the hottest identifier in
+the file, 2,245 reads, 45 shadow sites. So a text-only namespacing of the lane is not a move: it is a
+correct scope analysis (which needs a parser, and this repository has none and may not add one) or 20
+hand-rewritten call sites verified one at a time. The other 319 would rewrite cleanly, which is
+exactly the trap: 94 % success looks like a green run and ships the 6 %.
+
+The rule: **a split whose proof is a text substitution must first show that no interface name is
+shadowed anywhere. Otherwise it is a rewrite, and it is priced as one.**
+
 ### What must not be split cosmetically
 
 The lane is still 9,045 lines and stays that way until a round is prepared to pay for it:

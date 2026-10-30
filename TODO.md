@@ -114,6 +114,8 @@ sh bin/gate node .verify/verify-collision.cjs     # 28/28（7 頁，約 50 分�
   四邊形、相機、`threeStats` 排序後取 sha1，逐個 stop 印 SAME／DIFFERENT；不要用整張影格的差異判，讀
   `skills/frame-evidence` §9e）、`_abdiff.mjs`（兩張影格的差異分佈＋門檻計數，**看**差異用它，判有沒有差異用
   `_scenehash`）、`_partsprobe.mjs`（四支是不是真的都載入、`__walk` 有沒有掛上、overlay 名字解不解析得到）、
+  `_shadow.py`（P3 的價錢：339 個頂層名字裡有幾個在更深層被當成參數／區域變數重用——決定「能不能只靠
+  改字拆 closure」，今天 20 個，`a` 一個就 45 處）、
   `_floorband.mjs`（每頁第一站的鋪面帶 y700-734 x160-864 的 mean／sd；比亮度用它，不要用整張影格的 mean）、
   `_lane.mjs` / `_tile.mjs` 是鋪面的診斷（單頁深看）；**跨頁的尺度是閘門 `verify-floor.mjs`**、
   `verify-motion.mjs`、`audit-all.mjs`（一次載入量所有 prop 在**它被畫出來的那個最大視角**上的形：框是
@@ -193,10 +195,17 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
   `tests/helpers/boot.cjs` 已改成讀 `siteText()`（分開 eval 看不到前一段的 `let/const`——量過，不是猜的）。
 - **剩下的巷道**（`js/site.js`，`_coupling.mjs` 2026-10-30）：**9,045 行、288 個宣告共用一個 closure**，
   其中 11 個名字被 5 個以上區塊讀。這是介面，不是行數。
-- **為什麼還沒拆**：切 closure 不是搬移，是把 288 個共用名字改成介面；最快的閘門 `verify-walk`（212 條）
-  現在把整段文字 eval 進 jsdom，而 **ES module 不能用這種方式 eval**，所以一次真的模組化要同時付
-  「設計介面」與「把 212 條搬去真瀏覽器」兩筆錢，並在同一個 commit 裡改完。
-- **範圍與驗收**（真的要做的那一輪）：維持經典 script 或把介面寫成顯式匯出，二者擇一並在 commit 裡說清楚；
+- **為什麼還沒拆，而且不是靠改字就能拆**：切 closure 不是搬移，是把 288 個共用名字改成介面。量過
+  （`_shadow.py`：339 個頂層名字，其中 **20 個在程式更深的層級又被當成參數／區域變數**，最熱的 `a`
+  一個就 45 處）——所以任何「把 `name` 換成 `NS.name`」的文字改寫都會把那 20 個的內層綁定一起改掉，結果是
+  畫得出來、畫錯東西。正確做法需要真正的 scope 分析，而這裡不能有 parser：`acorn`／`babel`／`esbuild`
+  都不在（就算裝了也是 build step，硬規則 2），自己寫一個能正確處理樣板字串與 regex/除法歧義的 lexer
+  不是這一項的價值所在。**剩下的 319 個名字可以乾淨改寫，這 20 個不行**——這就是它一直是 rewrite 而不是
+  move 的原因。
+- **第二筆錢**：最快的閘門 `verify-walk`（212 條）現在把整段文字 eval 進 jsdom，而 **ES module 不能用
+  這種方式 eval**，所以一次真的模組化要同時付「設計介面」與「把 212 條搬去真瀏覽器」兩筆錢。
+- **範圍與驗收**（真的要做的那一輪）：先寫 scope 分析（或逐一手改那 20 個衝突名字並在 commit 裡列出）；
+  維持經典 script 或把介面寫成顯式匯出，二者擇一並在 commit 裡說清楚；
   每個縫用 `_coupling.mjs` 命名；用 `verify-sources` 守；改動前後用 `_scenehash.mjs` 逐個 stop 比
   「程式交給 renderer 的四邊形」，**不要**用整張影格的逐像素差異驗收（`skills/frame-evidence` §9e：
   同一個 build 自己跟自己就差了 4,249 個 ±1 的像素）。
