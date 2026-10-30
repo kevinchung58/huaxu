@@ -54,9 +54,12 @@ report.
 3. **A probe no round invokes.** For every file in `.verify/`, count references outside itself, in
    every tracked text file — `TODO.md`, `AGENTS.md`, `SKILLS.md`, `skills/`, the gates, the generator.
    Zero references is a candidate; **it is not yet a verdict** (see §3).
-4. **A gate missing from the checklist.** List `.verify/verify-*` and diff it against the run block in
-   `TODO.md` §2.3. This is the sweep's only finding that should *not* be deleted: a working gate is
-   made alive by adding it to the checklist, and dead by deleting it.
+4. **A gate missing from the checklist.** `python3 bin/gate-all.py --check` does exactly this diff and
+   exits 2, naming the file: the runner executes the block in `TODO.md` §2.3 *from that block*, so it
+   reads list and disk in both directions (`tests/gatelist.test.cjs` holds the negative case). Compare
+   by hand only if the runner is the thing you are changing. This is the sweep's only finding that
+   should *not* be deleted: a working gate is made alive by adding it to the checklist, and dead by
+   deleting it.
 5. **A CSS selector no page can match.** A grep cannot answer this: it finds `.plate` inside a prose
    comment and `grid-2` inside an image filename. Use `.verify/verify-csslive.mjs` (round 77): it
    parses every selector out of `css/site.css` with its line number, asks jsdom whether any page
