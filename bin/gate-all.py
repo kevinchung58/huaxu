@@ -192,7 +192,8 @@ def main(argv):
     if bad:
         print("\nre-run one of these with:\n")
         for _, _, c, _, _ in bad:
-            print(f"  sh bin/gate {c}")
+            body = c[len("sh bin/gate "):] if c.startswith("sh bin/gate ") else c
+            print(f"  sh bin/gate {body}")
         return 1
     return 0
 
