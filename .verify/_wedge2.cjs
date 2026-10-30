@@ -14,6 +14,7 @@
 */
 const { JSDOM, VirtualConsole } = require("jsdom");
 const fs = require("fs");
+const { siteText } = require("../bin/site-sources.cjs");
 const FILE = process.argv[2] || (process.env.GATE_PAGE ? process.env.GATE_PAGE + ".html" : "rooms.html");
 
 function boot(file) {
@@ -90,7 +91,7 @@ function boot(file) {
 
 
 function patchedSite() {
-  let js = fs.readFileSync("js/site.js", "utf8");
+  let js = siteText();
   const subs = [
     ["const moveStep = (nextX, nextDepth, dt = 0.0166) => {",
      "const moveStep = (nextX, nextDepth, dt = 0.0166) => { const __d = (window.__ms = { nx: +nextX.toFixed(2), nz: +nextDepth.toFixed(2), dt: +dt.toFixed(4) });"],

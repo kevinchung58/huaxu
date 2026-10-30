@@ -137,14 +137,8 @@ const pages = fs.readdirSync(ROOT).filter((f) => f.endsWith(".html")).sort();
    happened (the Goat Island water-flow edit to js/scene3d.js landed after the pages had been
    rebuilt, leaving 19 pages pinning the previous 10 hex digits). The rule is read out of
    `gen/site.py` rather than restated, so a new asset added to that tuple is covered here too. */
-const sitePy = read("gen/site.py");
-const tuple = sitePy.match(/_asset_ver[\s\S]*?for f in \(([\s\S]*?)\):/);
-assert.ok(tuple, "gen/site.py: _asset_ver's file tuple is not where this gate expects it");
-const assetFiles = [...tuple[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
-assert.ok(assetFiles.length >= 6, `gen/site.py: _asset_ver lists ${assetFiles.length} assets`);
-const hash = crypto.createHash("sha1");
-for (const f of assetFiles) hash.update(fs.readFileSync(path.join(ROOT, f)));
-const want = hash.digest("hex").slice(0, 10);
+const { assetVer, assetFiles } = await import("../bin/asset-ver.mjs");
+const want = assetVer();
 /* Only the assets that make up the digest are read here: a page also loads `js/places/<place>.js`
    with a digest of its own (gen/render.py), and that one is a different rule with a different
    scope -- folding it in would report four pages as self-contradictory. */
@@ -152,7 +146,7 @@ const pinned = {};
 for (const p of pages) {
   const html = fs.readFileSync(path.join(ROOT, p), "utf8");
   const vs = new Set();
-  for (const f of assetFiles) {
+  for (const f of assetFiles()) {
     const re = new RegExp(f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\?v=([0-9a-f]{10})", "g");
     for (const m of html.matchAll(re)) vs.add(m[1]);
   }
@@ -164,7 +158,7 @@ const mixed = Object.entries(pinned).filter(([, vs]) => vs.length > 1).map(([p])
 assert.deepEqual(mixed, [], `a page pins two different digests: ${mixed.join(", ")}`);
 const stale = Object.entries(pinned).filter(([, vs]) => vs[0] !== want).map(([p, vs]) => `${p}(${vs[0]})`);
 assert.deepEqual(stale, [], `pages are stale for the assets on disk (want ?v=${want}): ${stale.join(", ")}`);
-ok(`${Object.keys(pinned).length} pages pin ?v=${want}, the digest of the ${assetFiles.length} assets`);
+ok(`${Object.keys(pinned).length} pages pin ?v=${want}, the digest of the ${assetFiles().length} assets`);
 
 /* 5. idempotence */
 const digest = () => Object.fromEntries(pages.map((p) => [p, crypto.createHash("md5").update(fs.readFileSync(path.join(ROOT, p))).digest("hex")]));

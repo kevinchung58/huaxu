@@ -31,6 +31,7 @@
    Run:  sh bin/gate node .verify/verify-floor.mjs   (PAGES=a.html,b.html to narrow)
 */
 import fs from "node:fs";
+import { siteText } from "../bin/site-sources.mjs";
 import { launch, openPage, arrive, park } from "./_aim.mjs";
 
 const PAGES = (process.env.PAGES || "street.html,rooms.html,rooms-fukuoka.html,rooms-toronto.html,rooms-niagara.html,rooms-goat.html,rooms-journey.html,rooms-cntower.html").split(",");
@@ -39,7 +40,7 @@ const DPM = 2;      // js/site.js: the tile canvas's pixels per centimetre
 const TILE = 128;   // the tile canvas's side, in uv units
 /* The periods are read out of the painter rather than kept here: a gate with its own copy of the
    table would pass while the code it is checking moved. */
-const PERIOD = Object.fromEntries([...(fs.readFileSync("js/site.js", "utf8")
+const PERIOD = Object.fromEntries([...(siteText()
   .match(/const FLOOR_PERIOD = \{([^}]*)\}/) || [, ""])[1]
   .matchAll(/(\w+)\s*:\s*(\d+(?:\.\d+)?)/g)].map((m) => [m[1], Number(m[2])]));
 

@@ -4,6 +4,7 @@
    their published rules on fixed seeds, and a district without stalls ships no dialog at all.
    Run from the repo root: `node .verify/verify-games.mjs`. */
 import fs from "node:fs";
+import { siteText } from "../bin/site-sources.mjs";
 const { JSDOM, VirtualConsole } = await import("jsdom");
 
 const out = [];
@@ -50,7 +51,7 @@ function boot(markup, url) {
     get src() { return this._s; }
     get complete() { return !!this._s; }
   };
-  const js = fs.readFileSync("js/site.js", "utf8");
+  const js = siteText();
   const gs = fs.readFileSync("js/games.js", "utf8");
   w.eval(js);
   w.eval(gs);

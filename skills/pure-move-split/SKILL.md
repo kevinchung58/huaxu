@@ -12,8 +12,9 @@ files**, `_gen_html.py` at 7,484 lines and `js/site.js` at 9,479. He said 「該
 generator was split. It is now a **715-line entry point plus six modules**, and the split is proven
 by **all 19 emitted pages being byte-identical** before and after.
 
-Then the second half was **not** done, and this file says so out loud (§5). A skill that pretends
-both halves were split would be exactly the confident-wrong instrument `frame-evidence` exists for.
+The second half — `js/site.js` — was done in two stages: round 86 cut the three small units out
+(§5), and the lane itself is still one closure, which the same section says out loud. A skill that
+pretended otherwise would be exactly the confident-wrong instrument `frame-evidence` exists for.
 
 ## 1. Why a split needs a proof, not a review
 
@@ -106,26 +107,63 @@ of scrolling a 7,484-line file, and — the part that matters for this repositor
 renderer that consumes it are now visibly different files**, so "where does this come from" has one
 answer.
 
-## 5. The file that must not be split cosmetically
+## 5. A classic script splits by text, and its proof is the bytes
 
-`js/site.js` is 9,479 lines and **was not split**, deliberately, and the reason is not laziness:
+Round 86, `js/site.js` was 9,552 lines. Four top-level units were tangled there — page chrome (145),
+shared overlay plumbing (115), the dot-trace game (207), and **the lane, 9,045 lines with 288
+declarations sharing one closure**. The three small ones came out; the lane did not. What the round
+learned is the rule for anything else in this shape:
 
-- it is four top-level units — page chrome (145 lines), shared overlay plumbing (~115), the dot-trace
-  game (207) — and **the lane: 8,989 lines, 288 declarations sharing one closure**;
-- cutting a closure at a file boundary is not a move: every shared name becomes an explicit
-  interface, and that is a rewrite with a different risk profile;
-- the fastest gate in this repository, `verify-walk` (212 assertions), works by `w.eval`-ing that one
-  script into jsdom. **ES modules cannot be evaluated that way**, so the split also costs a slower,
-  browser-driven gate — every assertion has to be ported, not re-written.
+> **A classic script is split into more classic scripts, in a fixed order, and the proof is that the
+> parts joined in that order are byte-identical to the file they came from.** Not "it loads". Not
+> "the pages look right".
 
-So the honest statement, in `AGENTS.md` and `TODO.md` §P3, is: *the generator is split, the script is
-not, here is the price of the remaining half*. Do not "fix" this with a cosmetic split that leaves a
-9,000-line file behind and moves the other 500 lines into `helpers.js` — that pays none of the cost
-and spends the round.
+- The load order lives in **one** file, `bin/site-sources.json`, and everything reads it through
+  `bin/site-sources.mjs` (`siteFiles()`, `siteText()`, `sitePath()`) or its `.cjs` twin for jsdom
+  gates. Python reads the same JSON. A second copy of that list is a split waiting to go half-blind.
+- **The parts share one global lexical environment.** They are classic scripts, so a `let`/`const`/
+  `class` declared at top level in two parts throws at load — a silent last-one-wins bug for `var`,
+  a hard error for the rest. `.verify/verify-sources.mjs` scans for it; keep that scan.
+- **A gate that `w.eval`-ed the old file must join the text, not evaluate part by part.** A later
+  indirect eval cannot see an earlier one's `let`/`const` — measured, not assumed: `siteText()` is now
+  what `verify-walk`, `verify-ux`, `verify-overlay`, the `.cjs` gates and `tests/helpers/boot.cjs`
+  feed jsdom.
+- **`?v=` follows the list too.** The digest is a sha1 over `bin/asset-list.json` + `bin/site-sources.json`
+  (`bin/asset-ver.mjs`, mirrored by `gen/site.py`). `verify-walk` and `verify-gen` went red after the
+  split *because each recomputed the list itself*; both now import the one function. Two derivations
+  of one digest is the same defect as two copies of the file list.
+- **Seams are chosen by measurement, not by taste.** `_coupling.mjs` counts, per section, how many
+  top-level names it declares and how many are read from elsewhere; the cut goes where that number is
+  small. It reports 11 names read from 5+ sections across the joined programme, all of them inside the
+  lane.
 
-If it is done, the scope is: `js/lane/{fields,props,reach,rail,story,px}.js` as native ES modules, each
-exporting only its real interface; the 212 assertions ported to a real page under puppeteer; and
-`.preview` frames compared pixel-for-pixel against the pre-split frames.
+### What pixel-identity cannot prove here
+
+The generator's proof is byte-identical HTML; the script's proof is byte-identical source. Do **not**
+try to add "and the frames are identical": the same build, same stop, same heading, two browser
+launches differ on a few thousand pixels by one unit per channel (Toronto stop 4), and a build one
+refactor old differs on 4,249 pixels at ±1, 331 at ≥2, 109 at ≥6 and 4 at ≥20 — *below* that same-build
+noise floor for the interesting thresholds. Bit-exact frames are not a criterion this rasteriser
+supports. What can be compared exactly is what the programme hands the renderer: `__walk.drawQuads`
+(mode, texture key, colour, world corners, uv), the camera and `__walk.threeStats`.
+`.verify/_scenehash.mjs` hashes exactly that and reports SAME/DIFFERENT per stop; use it for an A/B of
+a refactor, and `.verify/_abdiff.mjs` only to *look* at a difference with its threshold distribution
+printed beside the image.
+
+### What must not be split cosmetically
+
+The lane is still 9,045 lines and stays that way until a round is prepared to pay for it:
+
+- every one of its 288 declarations shares one closure; cutting at a file boundary is not a move, it
+  is an interface design;
+- the fastest gate in this repository, `verify-walk` (212 assertions), works by evaluating that text
+  in jsdom. **ES modules cannot be evaluated that way**, so the split also costs a browser-driven
+  gate — every assertion ported, not rewritten.
+
+Do not "fix" it with a cosmetic split that moves 500 lines into `helpers.js` and leaves 9,000 behind.
+If it is done, the scope is: keep them classic scripts (or make the interface explicit *and* port the
+gates in the same commit), name each seam with `_coupling.mjs`, and prove the seams with
+`verify-sources` plus `_scenehash.mjs` per stop.
 
 ## 6. Checklist before claiming a split is done
 
@@ -137,5 +175,9 @@ exporting only its real interface; the 212 assertions ported to a real page unde
 5. No top-level name is defined in two modules (that is a silent last-one-wins bug, the same class as
    a duplicate dict key).
 6. The full gate battery, not a subset — a split touches everything, so everything runs.
-7. The docs that name the layout (`AGENTS.md` §Layout, `TODO.md` §5.6 sizes) are true, and the
+7. The docs that name the layout (`AGENTS.md` §Layout, `TODO.md` sizes) are true, and the
    half that was not split says so in the same breath as the half that was.
+8. For a script split: the parts **joined in load order** equal the old bytes (`cmp`), every reader
+   uses `siteText()`/`siteFiles()`, the `?v=` digest is derived once (`bin/asset-ver.mjs`), and
+   `verify-sources` passes — that is the gate that holds the ordering, the digest and the duplicate
+   scan, so a split cannot quietly drop one.

@@ -19,10 +19,11 @@
 */
 const { JSDOM, VirtualConsole } = require("jsdom");
 const fs = require("fs");
+const { siteText } = require("../../bin/site-sources.cjs");
 const path = require("path");
 
 const ROOT = path.resolve(__dirname, "../..");
-const SITE = fs.readFileSync(path.join(ROOT, "js/site.js"), "utf8");
+const SITE = siteText(ROOT);   // every part, in load order (bin/site-sources.json)
 
 function boot(file) {
   return new Promise((resolve, reject) => {

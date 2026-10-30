@@ -117,9 +117,10 @@ no package manifest, CDN, or additional runtime dependency is implied.
   module without `setCacheEnabled(false)` measures the tested code a second time and calls it a
   different path; and the renderer flag must be read in the same evaluation as the screenshot —
   read early, and `attachThree` races the read, so the frame is 3D while the label says otherwise.
-- The cache-buster is **derived, not hand-bumped**: `VER` in `_gen_html.py` is the sha1 of
-  `css/site.css`, `js/site.js`, `js/scene3d.js`, `js/games.js`, and the two pinned Three.js runtime
-  files, truncated;
+- The cache-buster is **derived, not hand-bumped**: `VER` is the sha1 over the five files in
+  `bin/asset-list.json` (`css/site.css`, `js/scene3d.js`, `js/games.js`, both pinned Three.js files) plus
+  the four in `bin/site-sources.json`, truncated to ten hex digits; `bin/asset-ver.mjs` is the only
+  computation outside `gen/site.py`, which reads the same two lists;
   the stylesheet, classic script and module script read that one value. It used to be a literal that a human had to remember, and it went stale the
   first time the renderer changed in a commit that forgot: new rooms, old `?v=`, and the only person
   who would ever see the bug is a returning visitor whose browser drew them with the last renderer.
@@ -233,9 +234,10 @@ Workflow for any content or markup change:
 
 Files you MAY edit directly:
 
-- `css/site.css` — all styling. Nothing to bump: `VER` is derived from this file and `js/site.js`
-  on every build, and the harness fails if a page disagrees (see the cache-buster note above)
-- `js/site.js` — nav toggle, reveal animations, small interactions
+- `css/site.css` — all styling. Nothing to bump: `VER` is derived from this file and every page-programme
+  part on every build, and the harness fails if a page disagrees (see the cache-buster note above)
+- `js/overlay.js`, `js/chrome.js`, `js/dot-game.js`, `js/site.js` — the page programme, in that load order
+  (`bin/site-sources.json`). Add a new part by editing that one list, never the generated pages.
 - `IMG/` — photos and assets
 - `_gen_html.py` — the generator itself
 
@@ -247,25 +249,35 @@ Files you MAY edit directly:
 | `gen/` | The generator's parts (round 78, a pure move): `site.py` (nav, footer, icons, `page()`), `content.py` (publications, projects, pillars, courses, the report's rows), `media.py` (the image registry and the wall), `world.py` (the surveyed worlds), `districts.py` (the district records), `render.py` (the lane's markup). Edit these, not the emitted HTML. |
 | `index/about/research/teaching/activities/service/links/404.html` | Generated output. Do not hand-edit. |
 | `css/site.css` | Single stylesheet, versioned via `?v=` query string |
-| `js/site.js` | The lane, the page chrome and the dot-trace game, in one closure (see §Layout note below) |
+| `bin/site-sources.json` | The page programme in load order: `overlay`, `chrome`, `dot-game`, `site` (see §Layout note below) |
+| `js/overlay.js` · `js/chrome.js` · `js/dot-game.js` | Modal plumbing (134 lines) · page chrome (154) · the dot-trace game (218) |
+| `js/site.js` | The lane: 9,045 lines, 288 declarations sharing one closure |
 | `IMG/` | Portrait and gallery photos |
 | `SPEC-gallery-3d.md` | **Not built.** The owner-facing proposal for a walkable Activities archive, written from a first-hand read of his reference site; read it before any 3D work or any change to the dependency rule |
 | `.nojekyll` | Keeps GitHub Pages from running Jekyll — do not delete |
 | `TODO.md` | Only what the next action needs: status, the hard rules, the gate list, the open work, the measured constants. **No round logs anywhere** (owner ruling, 2026-10-29); a finished item is deleted rather than narrated. Update it before every PR operation. |
 
-Route a layout change through `skills/pure-move-split` (round 78).
+Route a layout change through `skills/pure-move-split` (rounds 78, 86).
 
-**Why the generator is split and the script is not (round 78, measured).** `_gen_html.py` was one
-7,484-line file whose ordering was load-bearing: page bodies, the loops that fill them and the
+**Why the generator is split, and how far the script is (rounds 78, 86, measured).** `_gen_html.py` was
+one 7,484-line file whose ordering was load-bearing: page bodies, the loops that fill them and the
 records they read were interleaved, so a split had to be a *move* with a proof, not a refactor. It is
 now an entry point plus six modules, and the proof is that all 19 emitted pages are byte-identical
-before and after. `js/site.js` is a different shape: four top-level units (page chrome 145 lines,
-shared overlay plumbing ~115, the dot-trace game 207, and **the lane, 8,989 lines with 288
-declarations sharing one closure**). Splitting the closure at file boundaries is not a move — every
-name it shares would have to become an explicit interface, and the fastest gate in this repository
-(`verify-walk`, 212 assertions) works by `w.eval`-ing that one script into jsdom, which ES modules
-cannot do. So the script stays one file until a round is prepared to give the lane an interface and
-pay for a slower gate; do not "fix" it with a cosmetic split that leaves a 9,000-line file behind.
+before and after.
+
+`js/site.js` was four top-level units in one file — page chrome, shared overlay plumbing, the dot-trace
+game, and **the lane**. Round 86 split the first three out (`js/overlay.js`, `js/chrome.js`,
+`js/dot-game.js`) and the proof is the same kind: the four parts joined in `bin/site-sources.json` order
+are **byte-identical** to the 607,062-byte file they came from, and all four are still classic scripts
+sharing one global lexical environment, which is why `verify-sources` fails on a top-level name declared
+twice. They are *not* ES modules: every gate that reads the programme as text would have to be rewritten
+around `import`, and `w.eval` into jsdom — how the fastest gate here (212 assertions) works — cannot
+evaluate a module at all.
+
+The lane stays one file on purpose. Its 288 declarations share one closure; cutting that at a file
+boundary is not a move, it is an interface design plus 212 ported assertions plus a browser-driven gate.
+So: **the programme is split into four, the lane is not** — do not "finish" it with a cosmetic cut that
+leaves a 9,000-line file behind.
 
 Reference photographs (`image-search/`) are deliberately **not tracked**: their sources are
 untraceable, so they stay on the working disk for human comparison only. The same rule covers any

@@ -337,6 +337,36 @@ Two rules come out of it:
    that list are a blank board and a wall-mounted air conditioner — a plane and a small pale box, and
    the criterion cannot know that from pixels.
 
+## 9e. One build is not bit-stable against itself
+
+A refactor needs a proof that it changed nothing, and the obvious proof — "the frames are identical" —
+is not available here. Round 86 measured it before quoting it, on `rooms-toronto` stop 4 heading 90,
+day, reduced motion, 1024×768, three ways:
+
+| the two frames | px differing | ≥2 | ≥6 | ≥20 |
+|---|---|---|---|---|
+| same build, same browser, two launches | 4,249–27,014 | 331–1,514 | 109–385 | 4–0 |
+| same build, two browser processes | **0** | 0 | 0 | 0 |
+| same build, two servers, one process | **347,294** | 147,475 | 13,434 | 89 |
+| the build one refactor old | 4,249 | 331 | 109 | **4** |
+
+The last row is the one that matters: **the refactor's difference sits below the noise floor of the
+same build measured twice.** On a Niagara night frame the same comparison came out 0 px. So
+"0 px differ" is a claim about the launch, not about the code, and "N px differ" is not a claim at
+all until it is compared with the same-build number for that stop.
+
+What *is* exact is what the programme hands the renderer. `__walk.drawQuads` gives every quad's mode,
+texture key, colour, world corners and uv; `__walk.x/yaw/pitch/depth` the camera; `__walk.threeStats`
+the counters. `.verify/_scenehash.mjs` sorts those rows, hashes them, and prints SAME/DIFFERENT per
+stop and heading — that is the A/B instrument for a refactor, and it found the one thing the pictures
+could not: at fukuoka stop 2 the two builds' cameras differ in the third decimal (`z 990.00` vs
+`989.93`), which is a real difference — a frame-count difference in the glide — that no pixel count
+would have separated from dither. A camera that stops a millimetre short is not a visual defect, but
+it is a measurement, and it is the kind that only a structural digest reports.
+
+(One visual check is still worth keeping: the same scene at night, where dither has nothing to hide
+behind. That is where 0 px means 0 px.)
+
 ## 10. A mirrored picture is not a cosmetic bug
 
 Round 70 found the 3D picture was the 2D model's **left-right mirror**, and the tell was that every
@@ -373,6 +403,7 @@ left or right. The flip itself is two lines; the proof is the frames.
 4. Crop, look, and write the verdict in numbers plus one sentence of judgement.
 5. If the claim survives, it goes to TODO with the numbers and the frame path. If it does not, the
    retraction goes there instead — with the number that killed it.
+6. If the claim is "this changed nothing", the frame is not the instrument: `_scenehash.mjs` (§9e).
 
 ### When you flip handedness, re-derive every box that was measured on the old frames
 

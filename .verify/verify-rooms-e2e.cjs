@@ -21,8 +21,9 @@
 */
 const { JSDOM, VirtualConsole } = require("jsdom");
 const fs = require("fs");
+const { siteText } = require("../bin/site-sources.cjs");
 
-const js = fs.readFileSync("js/site.js", "utf8");
+const js = siteText();
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const out = [], fails = [];

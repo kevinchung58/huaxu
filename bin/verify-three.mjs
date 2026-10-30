@@ -9,6 +9,7 @@
  * still requires the scene screenshots and a real WebGL-capable browser review.
  */
 import assert from "node:assert/strict";
+import { siteText } from "./site-sources.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import * as THREE from "../js/vendor/three-0.186.1/three.module.js";
@@ -20,7 +21,7 @@ const VERSION = "0.186.1";
 const supported = new Set(["f", "x", "w", "m", "l", "rb", "fw"]);
 const pageFiles = fs.readdirSync(ROOT).filter((name) => /^rooms.*\.html$/.test(name) || name === "street.html").sort();
 const sceneSource = fs.readFileSync(path.join(ROOT, "js/scene3d.js"), "utf8");
-const siteSource = fs.readFileSync(path.join(ROOT, "js/site.js"), "utf8");
+const siteSource = siteText(ROOT);   // every part, in load order
 const generator = genSource(ROOT);   // the split generator, entry point included (round 78)
 const cssSource = fs.readFileSync(path.join(ROOT, "css/site.css"), "utf8");
 const license = path.join(ROOT, `js/vendor/three-${VERSION}/LICENSE`);

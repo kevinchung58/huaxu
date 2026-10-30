@@ -29,6 +29,7 @@
    `node .verify/verify-ux.mjs`.
 */
 import fs from "node:fs";
+import { siteText } from "../bin/site-sources.mjs";
 
 const { JSDOM, VirtualConsole } = await import("jsdom");
 const out = [];
@@ -88,7 +89,7 @@ function boot(markup, url) {
 }
 
 const css = fs.readFileSync("css/site.css", "utf8");
-const js = fs.readFileSync("js/site.js", "utf8");
+const js = siteText();
 
 /* ---- 0. the one text surface is named, and the bar promises the verb -------------------------- */
 ok("the bar's prefix is the verb, not a fixed word", /\.walk-open::before \{[^}]*content: attr\(data-verb\)/.test(css)

@@ -6,7 +6,8 @@
 
    Run:  node .verify/verify-shapes.mjs   */
 import fs from "node:fs";
-const js = fs.readFileSync("js/site.js", "utf8");
+import { siteText } from "../bin/site-sources.mjs";
+const js = siteText();
 const grab = (re) => { const m = js.match(re); return m ? m[1] : ""; };
 // keys are camel-cased in places (`signA`), so the parser has to take capitals or it reports
 // props as unresolved that the site has been resolving all along

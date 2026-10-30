@@ -14,7 +14,8 @@
 - **分支**：`arena/0cb70678-huaxu` → `master`；PR #21 開著，**未合併**（合併要站主一句授權）。
 - **三層驗證**：`node --test`（51 條，約 12 s，不開瀏覽器）→ `.verify/` 閘門 29 支（§2.3 的清單就是
   「有沒有跑」的判準）→ 量具（§2.4，只在需要數字時跑）。效能看 `tools/bench.mjs`（§5.6）。
-- **規模**：`js/site.js` 一個 closure 9,479 行（§3 P3）、產生器 7,524 行、`.verify` 93 支、`skills/` 19 個。
+- **規模**：頁面程式 4 支共 9,552 行（載入順序在 `bin/site-sources.json`；巷道的 9,045 行仍是一個 closure，§3 P3）、
+  產生器 7,524 行、`.verify` 98 支（其中閘門 31 支）、`skills/` 19 個。
 
 ## 2. 怎麼做（不變的部分）
 
@@ -60,6 +61,7 @@ node .verify/verify-chain.mjs
 node .verify/verify-games.mjs                  # 23/23
 node .verify/shader-lits.mjs                   # 6 個 shader program 完整
 node .verify/verify-walk.mjs                   # 212/212
+node .verify/verify-sources.mjs                # 10/10（4 支組成的頁面程式：順序、?v= 同一顆、沒有重複頂層名字）
 node .verify/verify-csslive.mjs                # 546 條選擇器：LIVE 400／RUNTIME 123／DORMANT 5／DEAD 0
 node .verify/verify-ux.mjs                     # 69/69（按壓的動詞表、文字只給 read）
 node .verify/verify-overlay.mjs                # 95/95（什麼可以蓋在走頁上、由哪個手勢）
@@ -99,8 +101,12 @@ sh bin/gate node .verify/verify-collision.cjs     # 28/28（7 頁，約 50 分�
 
 - **取景**：`_view.mjs`（一張影格一個行程，深站約 55 s）、`_walkshot.mjs`、`_aim.mjs`（轉到某個 yaw 再拍；
   `openPage(..., { reduce })` 必須在導覽前設）、`_gamesshot.cjs`、`_onscreen.mjs`、`browser-shot.mjs`。
-- **量測**：`_pix.mjs`、`_strip.mjs`、`_lumacheck.mjs`、`_hourprobe.cjs`、`_coupling.mjs`（`js/site.js` 的
-  頂層名字、每個名字被幾個區塊讀、每個區塊幾行幾個名字；P3 就是靠它決定從哪個縫切）、
+- **量測**：`_pix.mjs`、`_strip.mjs`、`_lumacheck.mjs`、`_hourprobe.cjs`、`_coupling.mjs`（頁面程式的
+  頂層名字、每個名字被幾個區塊讀、每個區塊幾行幾個名字；預設把四支接起來量，`FILE=js/site.js` 只看巷道；
+  P3 就是靠它決定從哪個縫切）、`_scenehash.mjs`（**A/B 一支改動有沒有改到畫面**：把 `__walk.drawQuads` 的每個
+  四邊形、相機、`threeStats` 排序後取 sha1，逐個 stop 印 SAME／DIFFERENT；不要用整張影格的差異判，讀
+  `skills/frame-evidence` §9e）、`_abdiff.mjs`（兩張影格的差異分佈＋門檻計數，**看**差異用它，判有沒有差異用
+  `_scenehash`）、`_partsprobe.mjs`（四支是不是真的都載入、`__walk` 有沒有掛上、overlay 名字解不解析得到）、
   `_floorband.mjs`（每頁第一站的鋪面帶 y700-734 x160-864 的 mean／sd；比亮度用它，不要用整張影格的 mean）、
   `_lane.mjs` / `_tile.mjs` 是鋪面的診斷（單頁深看）；**跨頁的尺度是閘門 `verify-floor.mjs`**、
   `verify-motion.mjs`、`audit-all.mjs`（一次載入量所有 prop 在**它被畫出來的那個最大視角**上的形：框是
@@ -172,23 +178,21 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
 若哪天頁面真的太大，先量哪一頁超過預算——現在最大的一頁是 niagara 101.7 KB（gzip 後約 20 KB），
 不是問題。詳見 `AGENTS.md` 的「不編造、不為數字而數字」。
 
-### P3 — 拆 `js/site.js`（這一項要一整輪，不要用美工拆法交差）
+### P3 — 給巷道一個介面（前三支已拆，剩下 9,045 行）
 
-- **量的結果**（`_coupling.mjs`，2026-10-30，`js/site.js` 9,501 行）：**337 個頂層名字**、9 個註解區塊，
-  其中 9 個名字被 **5 個以上區塊**讀（`a`、`first`、`top`、`card`、`layer`、`frames`、`draw`、`last`、
-  `district` —— 這就是介面的種子），被 4 個區塊讀的有 9 個；**宣告後從沒被讀到的名字 0 個**。
-  區塊大小：`the model kit` 6,281 行／68 名字、`authored surfaces` 1,644 行／100 名字、
-  `Districts` 294 行／62 名字、`input` 543 行／30 名字。名字最多、行數最少的是 `authored surfaces`。
-- **硬牆，也是量出來的**：`js/site.js` 在 19 頁是純 `<script src>`（不是 module），而 **18 支 `.verify`
-  加上 `tests/helpers/boot.cjs` 是把這支檔案當文字 `w.eval` 進 jsdom** 在跑的。有 `import`/`export` 的
-  檔案不能被 `eval`，所以任何一次真的模組化，都會同時讓這 18 支＋5 條環境測試中的那幾條失效——不是「改天
-  再修」，是同一個 commit 裡必須改完，否則閘門紅成一片、而紅的原因跟畫面無關。
-- **為什麼不能只搬檔**：把 closure 照檔切開不是搬移，是**把 337 個共用名字改成介面**（其中 9 個是跨 5 個
-  以上區塊的）；最快的閘門 `verify-walk`（212 條）現在 evals 那支腳本。所以要拆就得**同時**付
-  「給巷道介面」與「18 支閘門改成真瀏覽器」兩筆錢。
-- **範圍與驗收**：切成 `js/lane/{fields,props,reach,rail,story,px}.js`（原生 ES module），每個檔只匯出它
-  真正的介面；**閘門改成 puppeteer 開真頁面跑同一批斷言**（212 條要一條一條搬，不是重寫）；並用 `.preview`
-  的影格逐像素比對。沒過這三關就不算拆完。
+- **已完成的一半**：頁面程式拆成四支經典 script，`bin/site-sources.json` 是唯一的載入順序
+  （`overlay` 133 行／`chrome` 153／`dot-game` 217／巷道 9,045）。**四支接起來與拆之前的 607,062 B 完全相同**；
+  `verify-sources` 10/10 守住順序、單一 `?v=`、重複頂層名字、接起來能不能 parse。18 支閘門＋
+  `tests/helpers/boot.cjs` 已改成讀 `siteText()`（分開 eval 看不到前一段的 `let/const`——量過，不是猜的）。
+- **剩下的巷道**（`js/site.js`，`_coupling.mjs` 2026-10-30）：**9,045 行、288 個宣告共用一個 closure**，
+  其中 11 個名字被 5 個以上區塊讀。這是介面，不是行數。
+- **為什麼還沒拆**：切 closure 不是搬移，是把 288 個共用名字改成介面；最快的閘門 `verify-walk`（212 條）
+  現在把整段文字 eval 進 jsdom，而 **ES module 不能用這種方式 eval**，所以一次真的模組化要同時付
+  「設計介面」與「把 212 條搬去真瀏覽器」兩筆錢，並在同一個 commit 裡改完。
+- **範圍與驗收**（真的要做的那一輪）：維持經典 script 或把介面寫成顯式匯出，二者擇一並在 commit 裡說清楚；
+  每個縫用 `_coupling.mjs` 命名；用 `verify-sources` 守；改動前後用 `_scenehash.mjs` 逐個 stop 比
+  「程式交給 renderer 的四邊形」，**不要**用整張影格的逐像素差異驗收（`skills/frame-evidence` §9e：
+  同一個 build 自己跟自己就差了 4,249 個 ±1 的像素）。
 - **不要**為了讓行數好看而把 500 行搬進 `helpers.js`、留下 9,000 行的檔案。
 
 ### P6 — 場景還欠的（站主 2026-10-23 的清單）
@@ -338,9 +342,10 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 ### 5.7 倉庫大小
 
-tracked 支檔案（`.git` 12 MB）：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、`js/site.js` 592 KB
-（9,479 行，**一個 closure**）、產生器 552 KB／7,524 行（入口 721 ＋ `gen/` 六個模組）、
-`css/site.css` 85 KB（2,707 行）。`.verify` 93 支，閘門 29 支，`skills/` 19 個。
+tracked 支檔案（`.git` 12 MB）：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、
+產生器 552 KB／7,524 行（入口 721 ＋ `gen/` 六個模組）、
+`css/site.css` 85 KB（2,707 行）。頁面程式四支共 596 KB（`js/site.js` 577 KB／9,045 行，仍是一個 closure）。
+`.verify` 98 支，閘門 31 支，`skills/` 19 個。
 `image-search/`（3 張 CN Tower 參考照，**來源未追溯 → 永不入庫**）只留在磁碟。
 
 ### 5.8 每一顆 prop 的形（`audit-all.mjs`，八頁）

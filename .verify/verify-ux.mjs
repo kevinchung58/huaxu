@@ -31,6 +31,7 @@
    `node .verify/verify-ux.mjs`.
 */
 import fs from "node:fs";
+import { siteText } from "../bin/site-sources.mjs";
 
 const { JSDOM, VirtualConsole } = await import("jsdom");
 const out = [];
@@ -90,7 +91,7 @@ function boot(markup, url) {
 }
 
 const sheet = fs.readFileSync("css/site.css", "utf8");
-const js = fs.readFileSync("js/site.js", "utf8");
+const js = siteText();
 const css = sheet;   // the pre-round-74 assertions below read `css`; one read of the file, two names
 
 /* ---- 0. the one text surface is named, and the bar promises the verb -------------------------- */

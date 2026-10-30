@@ -22,10 +22,22 @@
    Diagnostic, exit 0. Run:  node .verify/_coupling.mjs   [FILE=js/site.js]
 */
 import fs from "node:fs";
+import { siteFiles } from "../bin/site-sources.mjs";
 
-const FILE = process.env.FILE || "js/site.js";
-const src = fs.readFileSync(FILE, "utf8");
+/* Default: the whole page programme, joined in load order -- the unit a split has to keep working.
+   `FILE=js/site.js` measures one part (that is how the lane's own 9,045 lines were measured before
+   the first cut). */
+const FILE = process.env.FILE || "(programme)";
+const src = FILE === "(programme)"
+  ? siteFiles().map((f) => fs.readFileSync(f, "utf8")).join("\n")
+  : fs.readFileSync(FILE, "utf8");
 const lines = src.split("\n");
+if (FILE === "(programme)") {
+  for (const f of siteFiles()) {
+    console.log(`${f.padEnd(18)} ${String(fs.readFileSync(f, "utf8").split("\n").length).padStart(5)} lines`);
+  }
+  console.log("");
+}
 
 /* The file's own section markers -- the dashed comment lines such as "the model kit (round 36)".
    A name belongs to the last marker above it; the text before the first one is the section "(top)". */

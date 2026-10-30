@@ -1,0 +1,7 @@
+[
+  "css/site.css",
+  "js/scene3d.js",
+  "js/games.js",
+  "js/vendor/three-0.186.1/three.core.js",
+  "js/vendor/three-0.186.1/three.module.js"
+]

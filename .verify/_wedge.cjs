@@ -9,6 +9,7 @@
 */
 const { JSDOM, VirtualConsole } = require("jsdom");
 const fs = require("fs");
+const { siteText } = require("../bin/site-sources.cjs");
 const FILE = process.argv[2] || (process.env.GATE_PAGE ? process.env.GATE_PAGE + ".html" : "rooms.html");
 
 function boot(file) {
@@ -18,7 +19,7 @@ function boot(file) {
     vc.on("jsdomError", (e) => { const m = String((e && e.message) || e);
       if (!/navigation/.test(m)) errors.push(m); });
     const html = fs.readFileSync(file, "utf8").replace(/<script src="[^"]*"><\/script>/g, "");
-    const js = fs.readFileSync("js/site.js", "utf8");
+    const js = siteText();
     const dom = new JSDOM(html, { runScripts: "dangerously", pretendToBeVisual: true,
       url: "https://huaxu.test/" + file, virtualConsole: vc });
     const w = dom.window;
