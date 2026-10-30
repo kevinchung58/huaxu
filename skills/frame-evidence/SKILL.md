@@ -148,6 +148,31 @@ size (four 48 cm stones across the canvas), which is not in the code anywhere fo
 Before quoting a gate that checks a derived quantity, break the derivation on purpose and watch
 which side moves.
 
+## 6e. The authored colour is not the painted colour, and a band is not one surface
+
+Two mistakes, both about naming what a number is a number *of*.
+
+**A row average is an average of whatever is in the row.** "The tree line above the falls is too dark"
+was measured on the served frame as a 1024-px-wide strip at y 345-417 and came back luma **52** — which
+reads like a dark green band, and is really the canopy on part of the width and the bright sky on the
+rest, averaged together. The strip's own top colours were near-neutral (46,54,54), which no green
+material produces. A horizontal band must be *located* before it is averaged: ray several pixels
+across it and see which surfaces are there.
+
+**The authored colour is a starting point, not the paint.** `_ray.mjs` reports, for a hit, the vertex
+colour the quad actually hands the renderer (`vcol`). On the same frame the American bank's woodline is
+authored `#556f45` (85,111,69) and reaches the renderer at **[0.091, 0.159, 0.060]** — rgb 23,41,15,
+about **0.27×** its author value, because that prim carries `dg: 0.45` (a day gain) and the light at
+that point is ~0.6, and the two multiply. So "the author says mid-green, why is it dark" has an
+answer that can be read, and "raise the author colour until it looks right" is the wrong lever when a
+per-prim factor is doing the darkening — and the wrong first move regardless, because brightness is a
+look decision.
+
+The rule: **before quoting a painted colour, read `vcol`; before quoting a band, read what is in it.**
+And when two pages paint the same thing differently — this wall is hazed `air × 1.9` on one page and
+`air × 1.0` on the other, from the same generator — that is a finding to write down, not a bug to
+silently harmonise: which direction is right is the owner's.
+
 ## 6c. Project the geometry before you press the shutter
 
 Round 69m re-aimed one stop three times (yaw 75, 66, 62) and the falls were not in frame any of
