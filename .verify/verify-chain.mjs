@@ -8,9 +8,10 @@
    Run: node .verify/verify-chain.mjs
 */
 import fs from "node:fs";
+import { siteText } from "../bin/site-sources.mjs";
 
 const css = fs.readFileSync("css/site.css", "utf8");
-const js  = fs.readFileSync("js/site.js", "utf8");
+const js  = siteText();
 
 // Lightweight recorder ctx — we don't assert paint here, just boot + navigation.
 function makeCtx() {

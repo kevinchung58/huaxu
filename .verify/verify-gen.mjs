@@ -13,7 +13,10 @@
         missed a call site fails at import time in Python, but only for the module actually loaded);
      4. `bin/gen-source.mjs` covers every file -- a gate reading less than the whole generator would
         keep printing green;
-     5. the generator is idempotent: running it twice leaves every emitted page byte-identical;
+     5. the generator is idempotent: running it twice leaves every emitted page byte-identical, and
+        the `?v=` every page pins is the digest of the assets on disk -- a page that asks for the
+        previous renderer is invisible to every other gate here and only shows up in a visitor's
+        cache;
      6. a tool that reads the generator's data still finds it. `bin/toronto_massing.py` pinned
         `--generator _gen_html.py` and the split moved `TOR_O`/`TOR_GRID`/`TOR_TOWERS` into
         `gen/world.py`. Nothing failed: the tool imports two optional packages and needs a
@@ -121,8 +124,43 @@ assert.ok(!fs.readFileSync(path.join(ROOT, "bin/toronto_massing.py"), "utf8").in
   "bin/toronto_massing.py pins --generator to _gen_html.py again; the constants live in gen/world.py");
 ok("bin/toronto_massing.py finds the Toronto literals through bin/gen_literals.py");
 
-/* 5. idempotence */
 const pages = fs.readdirSync(ROOT).filter((f) => f.endsWith(".html")).sort();
+
+/* 5b. the page pins the bytes it will actually load — checked BEFORE the regeneration below,
+   which would otherwise repair exactly the staleness this looks for.
+
+   `gen/site.py` derives `?v=` from a sha1 over css/site.css, js/site.js, js/scene3d.js, js/games.js
+   and the two vendored Three.js files, so that a returning visitor cannot get a current page with a
+   cached renderer. That guarantee only holds while the pages on disk were generated AFTER the last
+   asset edit -- and nothing used to check it: the idempotence test above regenerates first, so it
+   compares the generator to itself, and a page shipped one asset-edit stale passed every gate. It
+   happened (the Goat Island water-flow edit to js/scene3d.js landed after the pages had been
+   rebuilt, leaving 19 pages pinning the previous 10 hex digits). The rule is read out of
+   `gen/site.py` rather than restated, so a new asset added to that tuple is covered here too. */
+const { assetVer, assetFiles } = await import("../bin/asset-ver.mjs");
+const want = assetVer();
+/* Only the assets that make up the digest are read here: a page also loads `js/places/<place>.js`
+   with a digest of its own (gen/render.py), and that one is a different rule with a different
+   scope -- folding it in would report four pages as self-contradictory. */
+const pinned = {};
+for (const p of pages) {
+  const html = fs.readFileSync(path.join(ROOT, p), "utf8");
+  const vs = new Set();
+  for (const f of assetFiles()) {
+    const re = new RegExp(f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\?v=([0-9a-f]{10})", "g");
+    for (const m of html.matchAll(re)) vs.add(m[1]);
+  }
+  // A page that loads none of them pins nothing and is not this gate's business.
+  if (!vs.size) continue;
+  pinned[p] = [...vs];
+}
+const mixed = Object.entries(pinned).filter(([, vs]) => vs.length > 1).map(([p]) => p);
+assert.deepEqual(mixed, [], `a page pins two different digests: ${mixed.join(", ")}`);
+const stale = Object.entries(pinned).filter(([, vs]) => vs[0] !== want).map(([p, vs]) => `${p}(${vs[0]})`);
+assert.deepEqual(stale, [], `pages are stale for the assets on disk (want ?v=${want}): ${stale.join(", ")}`);
+ok(`${Object.keys(pinned).length} pages pin ?v=${want}, the digest of the ${assetFiles().length} assets`);
+
+/* 5. idempotence */
 const digest = () => Object.fromEntries(pages.map((p) => [p, crypto.createHash("md5").update(fs.readFileSync(path.join(ROOT, p))).digest("hex")]));
 const before = digest();
 execFileSync("python3", ["_gen_html.py"], { cwd: ROOT, stdio: "pipe" });

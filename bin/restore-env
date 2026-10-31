@@ -14,7 +14,7 @@ cd "$(dirname "$0")/.."
 # Which branch this checkout is on. It used to be a literal, and the literal outlived its session:
 # a sandbox that moved the pointer would reset --soft onto a branch nobody was working on any more,
 # which un-commits the session's work without touching a file and leaves the next commit forking
-# from the wrong parent (see TODO.md, "branch 會在你回合中途被重設"). Derive it instead: the branch
+# from the wrong parent. Derive it instead: the branch
 # HEAD is on if that is an arena branch, otherwise the newest arena branch the remote has.
 BRANCH=${BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null)}
 case "$BRANCH" in
@@ -45,20 +45,10 @@ echo "HEAD $(git log --oneline -1)  [branch ${BRANCH:-unknown}]"
 
 npm install --no-save --silent jsdom @napi-rs/canvas impeccable@4.1.0 puppeteer-core @sparticuz/chromium
 
-# Chromium's prebuilt binaries ship brotli-compressed, and `brotli` is not installed here, so the
-# unpacking is done in node.
-node -e '
-const z = require("zlib"), fs = require("fs");
-for (const f of ["al2023", "fonts", "swiftshader"]) {
-  const p = `${process.cwd()}/node_modules/@sparticuz/chromium/bin/${f}.tar.br`;
-  if (fs.existsSync(p)) fs.writeFileSync(`/tmp/${f}.tar`, z.brotliDecompressSync(fs.readFileSync(p)));
-}'
-mkdir -p /tmp/al2023
-for t in al2023 swiftshader fonts; do
-  [ -f "/tmp/$t.tar" ] && tar -x -f "/tmp/$t.tar" -C /tmp/al2023 2>/dev/null || true
-done
-chmod -R 755 /tmp/al2023
-test -f /tmp/al2023/lib/libnspr4.so && echo "LIBS OK" || echo "LIBS MISSING"
+# Chromium's shared libraries, in the one place that knows how to unpack them (bin/chromium-libs).
+# A missing /tmp/al2023/lib is not fatal here: `bin/gate` calls the same script before any browser
+# gate, so a sandbox that wiped /tmp after this ran still has one path back.
+sh bin/chromium-libs || echo "!! Chromium's libraries are still missing; browser gates will not start." >&2
 
 # skill-creator is the one third-party skill the repo's own skill-authoring rule depends on
 # (AGENTS.md, "Skills"), so it is restored here rather than left to whoever notices it is gone.

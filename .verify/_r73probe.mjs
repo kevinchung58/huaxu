@@ -4,6 +4,7 @@
    Run: node .verify/_r73probe.mjs
 */
 import fs from "node:fs";
+import { siteText } from "../bin/site-sources.mjs";
 import { JSDOM, VirtualConsole } from "jsdom";
 
 function boot(file) {
@@ -50,7 +51,7 @@ function boot(file) {
       for (const e of snap) { try { e.cb(now); } catch (err) {} }
     }
   };
-  w.eval(fs.readFileSync("js/site.js", "utf8"));
+  w.eval(siteText());
   return { w, doc: w.document, pump };
 }
 

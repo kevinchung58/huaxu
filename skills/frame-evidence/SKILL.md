@@ -94,7 +94,15 @@ prove "this pixel is the SkyWheel". When a claim needs the prop, measure the fra
 - Every id or stop a gate names must be resolved against the page (`[data-obj]`, `[data-walk-stop]`)
   before it is measured. An id that does not exist is a **FAIL**, not a skip: the old
   `verify-look` framed 2 of 7 ids that had been deleted, then reported success.
+- A requested page or stop that cannot be opened, reached, aimed or measured is a **FAIL**, not a
+  skipped row. An empty requested set must not pass as complete coverage. A gate claiming all walkable
+  pages derives that set from the emitted lanes and checks it against the generator's registry.
 - A frame with nothing in it is a **FAIL**. A heading that missed is a **FAIL**. Both exit non-zero.
+  Ignore invisible objects, zero-opacity materials and hits outside the camera's clip planes when
+  raycasting. Sprites and additive light overlays are not structural scenery: a halo can cover every
+  ray without hiding an empty sky. Ignore the raycastable sky dome itself: it is painted first without
+  depth testing or writing, so geometry farther than the dome can still be visible over it. Ray hits
+  do not resolve texture alpha or replace inspection of the rendered frame.
 - A gate that is a diagnostic (an audit of everything, a map, a ray) may report and exit 0, but it
   must say so on its own line: "REPORT (not a gate)". Do not let a report wear a gate's authority,
   and do not let a gate hide behind a report.
@@ -137,6 +145,44 @@ The general form: a frame is evidence of *the page as served plus every value th
 renderer*. An override that did not reach the renderer is not part of the frame, and a number derived
 from that frame is a number about something else.
 
+**The same trap from the other side: a check that compares a page to the constant the page read.**
+`.verify/verify-floor.mjs` measures how many centimetres of pavement one tile covers and compares it
+with `64 x FLOOR_PERIOD[style]`. To see whether it can fail, `FLOOR_PERIOD` was changed from
+`{pavers: 3}` to `{pavers: 2}` and the gate re-run: the tile went 192 → 128 cm and the gate stayed
+green **3/3**, because the constant moved both sides of its own comparison. What it proves is real
+and narrower than it looks — the floor's uv obeys the table, the tile is square, every page's paving
+is textured — but *whether period 3 is the right period* is a fact about the painter's own feature
+size (four 48 cm stones across the canvas), which is not in the code anywhere for a gate to read.
+Before quoting a gate that checks a derived quantity, break the derivation on purpose and watch
+which side moves.
+
+## 6e. The authored colour is not the painted colour, and a band is not one surface
+
+Two mistakes, both about naming what a number is a number *of*.
+
+**A row average is an average of whatever is in the row.** "The tree line above the falls is too dark"
+was measured on the served frame as a 1024-px-wide strip at y 345-417 and came back luma **52** — which
+reads like a dark green band, and is really the canopy on part of the width and the bright sky on the
+rest, averaged together. The strip's own top colours were near-neutral (46,54,54), which no green
+material produces. A horizontal band must be *located* before it is averaged: ray several pixels
+across it and see which surfaces are there.
+
+**The authored colour is a starting point, not the paint.** `_ray.mjs` reports, for a hit, the vertex
+colour the quad actually hands the renderer (`vcol`). On the same frame the American bank's woodline is
+authored `#556f45` (85,111,69) and reaches the renderer at **[0.091, 0.159, 0.060]** — rgb 23,41,15,
+about **0.27×** its author value, because that prim carries `dg: 0.45` (a day gain) and the light at
+that point is ~0.6, and the two multiply. So "the author says mid-green, why is it dark" has an
+answer that can be read, and "raise the author colour until it looks right" is the wrong lever when a
+per-prim factor is doing the darkening — and the wrong first move regardless, because brightness is a
+look decision.
+
+The rule: **before quoting a painted colour, read `vcol`; before quoting a band, read what is in it.**
+Three.js ray hits already expose resolved vertex indices in `face.a/b/c`, even for indexed geometry;
+use those indices directly rather than applying the geometry index a second time.
+And when two pages paint the same thing differently — this wall is hazed `air × 1.9` on one page and
+`air × 1.0` on the other, from the same generator — that is a finding to write down, not a bug to
+silently harmonise: which direction is right is the owner's.
+
 ## 6c. Project the geometry before you press the shutter
 
 Round 69m re-aimed one stop three times (yaw 75, 66, 62) and the falls were not in frame any of
@@ -171,52 +217,190 @@ looks like water. Use it to **choose** the shot, then look at the shot.
 When a gate greps source for a forbidden shape, strip `/* */` and `//` first. A gate that quotes the
 comment explaining what it forbids will pass forever (round 69i's `mix()` scan).
 
-## 8. Write it down where the next round will hit it
+## 8. Write it down where the next change will trip over it
 
-Every retraction and every measured constant goes into `TODO.md` in the same round, in the section
-that made the claim. A correction that lives only in a chat message is a correction that will be
-undone.
+A measurement that survives only in a chat message is a measurement that will be undone; a measurement
+that survives as a *narrative* is worse, because the next round reads it as current truth. So write
+the number where it does work and nowhere else:
+
+- **A constant or rule a future change must obey** → the code, beside what it produced (`PLAYER_RADIUS`,
+  `deadAlong`, the road's own widths), or `TODO.md` §5 if it belongs to a decision rather than a file.
+- **A gate that holds the behaviour** → `TODO.md` §2.3, or it never runs again.
+- **An instrument that is still useful** → `TODO.md` §2.4, or it is scratch and lives in `/tmp`.
+
+There is no fourth place. No round log, no archive, no "lessons so far" section — the owner deleted
+them twice (「那些紀錄都刪掉，我怕影響你判斷」/「我覺得都不需要」). A retraction still has to land
+somewhere: it lands in the code comment where the wrong thing used to be, or as the gate that now
+catches it. If neither of those is possible, the retraction was not a fact about the product.
 
 ## 9. Prove the instrument against the paint before quoting its numbers
 
 A per-prop rectangle is a *projection*, and a projection can be wrong. Round 70 measured `skyline-cn`
-in `rooms-toronto.html` at stop 4 and found the `[data-obj]` rectangle **not on the model**:
+in `rooms-toronto.html` at stop 4 and concluded the `[data-obj]` rectangle was **not on the model**,
+because the towers "painted at x 130-420" while the rectangle sat at 582. Round 70 also concluded the
+opposite: that after the mirror fix the same rectangle **frames** the towers. Both statements are in
+`TODO.md`. Both quote the same rectangle — and the paint in each came from a different colour
+heuristic ("the warmest cluster", "the rectangle's own crop").
 
-| heading | rectangle (x, y, w, h) | where the four towers are painted |
-|---|---|---|
-| 0° | 582, 191, 312, 552 | x 130-420, y 160-690 |
-| 30° | 163, 172, 305, 566 | x 548-860, y 170-700 |
-| 31° | 153, 171, 307, 569 | — |
-| 60° | -22, 147, 350, 622 | — |
+**Round 79 settled it with a measurement that cannot drift**: `.verify/verify-box.mjs` asks the
+renderer to paint one prop flat magenta (`#ff00ff`, a colour no scene contains), reads the bounding
+box of the magenta pixels, and reads the rectangle from the live DOM in the same parked state. Then it
+presses the middle of that paint through `document.elementFromPoint`.
 
-The rectangle *tracks* the heading (so it is not a stale DOM read) but it moves the **opposite way** to
-the paint, and the offset reverses sign between 0° and 30° — about +450 px one way, -400 px the other.
-Cropping the rectangle gives bare wall: mean 102.3, **sd 14.6**, 192 colours — exactly the number
-`audit-all.mjs` printed as "flat". The towers inside the same frame measure **sd 24.2**, 246 colours.
+| heading | rectangle | paint | cover | verdict |
+|---|---|---|---|---|
+| 0°, rooms-toronto stop 4 | 581,192 **312x552** | 581,191..892,683 | **100 %** | on its own paint |
+| 30°, same stop | 164,172 **305x566** | 163,172..468,683 | **100 %** | on its own paint |
+| 0°, rooms-fukuoka stop 2 | every visible prop | — | 100 % | 33/33 across two pages |
 
-So the verdict "skyline-cn is flat" was a measurement of a wall. And it is not one row of the table:
-`audit-all.mjs` and `verify-tables.mjs` both measure *through* those rectangles, so a rectangle that
-misses its prop makes every number derived from it void — including the ones that passed.
+So **P6-8 was a false alarm**: the rectangle was never on bare wall. What produced it is the failure
+this section is about — a heuristic asked to answer "which pixels are this prop". A colour rule fails
+on a prop that is not the only warm thing, a crop rule measures whatever the crop contains, and both
+produce a confident number. Ask the renderer instead. The patch is the one `_plume.mjs` already uses:
+rewrite the served `js/site.js` in memory, tint the quads of one prop after its branch has pushed
+them, and assert the anchor matched **exactly once** — a patch that quietly matches nothing measures
+the scene against itself and reports perfect agreement.
 
-The offset turned out to be a mirror, not a shift: every rectangle satisfies `x_rect = 1024 - x_paint`
-about the frame centre. `skyline-cn` 582-894 vs paint 130-420 at 0 deg; 163-466 vs 548-860 at 30 deg;
-the CN Tower's 500-586 vs paint 455-530; the dome's -25-431 vs paint 820-960. The cause is the camera,
-not the props: Three's `lookAt` with `up = +Y` looking down `+Z` gives a camera right axis of `-X`
-(`x = up x z`), while the 2D painter's `camPt` puts `+X` on the right (`W/2 + focal*dx/az`). The 3D
-picture is the 2D model's left-right mirror -- which also means the hit boxes, the reach test, and
-`_map.mjs`'s "the water is on your right" are all on the other side of what the visitor sees.
+Two properties, and one non-verdict:
+
+- **cover**: the prop's own pixels lie inside its rectangle. The mirror's signature was 0 %; a box
+  dragged 40 px sideways reads 3.9 % (`SHIFT=40 node .verify/verify-box.mjs`), which is how the gate
+  is proved able to fail.
+- **press**: `elementFromPoint` at the paint's centre answers with that prop, or with a **nearer** one
+  (`z-index = 1200 - depth/4`, and "of two overlapping boxes the nearer wins the press"). Scenery is
+  skipped: `[data-quiet]` carries `pointer-events: none` by design (round 65).
+- **the centre offset is not a verdict.** `skyline-cn` measures +30 px, because the box includes 61 px
+  of table below the model's own lower faces. A centre assertion would fail a correct box.
+
+**The box and the paint must describe the same frame.** A moving prop is read twice — rectangle first,
+screenshot a moment later — and the lane's animation moves between the two reads: `tree-c3`, swaying,
+shifted 8 px and the gate called a correct box 89 % covered. `js/site.js` reads `prefers-reduced-motion`
+**once, at boot** (`const ease = !reduce()`), so `_aim.openPage({ reduce: true })` sets the media
+feature *before* the navigation; emulating it afterwards changes nothing.
+
+**Two defects this gate found on its first run** (recorded in `TODO.md`, repro commands in the gate's
+header): the hub street's `stall-menya` is a 170x128 card standing parallel to the wall — edge-on, a
+12 px sliver at 19 m — and its own faces paint nothing at two headings while its press box sits on the
+shopfront behind it; and at `rooms-niagara.html` stop 3 the `falls-horseshoe` disc projects to x 1128
+of a 1024-wide frame, so the falls that stop exists to look at cannot be pressed without turning.
+
+Still true from round 70, and still worth memorising: the rectangle *tracks* the heading (so a stale
+DOM read is not the explanation), and an offset that reverses sign between 0° and 30° is a mirror, not
+a shift (`x_rect = W - x_paint`). That mirror is what round 70 fixed. **The rectangle was never moved
+by it.**
 
 The rule, before any per-prop number is quoted:
 
-1. Draw the rectangle on the frame (`.verify/_mark.mjs SRC DST X Y W H`) and look at it.
-2. If it is not on the paint, the **instrument** is the defect. Say so, and file it as an instrument
-   defect with the heading it was measured at — not as a scene defect with an adjective.
-3. Prefer a unit that cannot drift: `.verify/_box.py` over a rectangle *you chose by looking* beats a
-   rectangle the page handed you.
+1. **Tint the prop and read its paint** (`verify-box.mjs`), or crop a rectangle you chose *by looking*
+   (`.verify/_box.py`). A colour heuristic is not a second opinion; it is a guess with a number on it.
+2. If the rectangle is not on the paint, the **instrument** or the **projection** is the defect. Say
+   which, with the heading it was measured at — not a scene defect with an adjective.
+3. A rectangle can be honest and still uninformative: `tram-t`'s is the whole 380 cm track (the
+   record's `w` is the line, not the car), and `boat-lake`'s is clipped to 1x1 in most views. A prop
+   that moves, or whose record describes its path, is not measured by its hit box.
+4. A prop standing at the frame's edge has a rectangle three times its visible paint
+   (`plinth-market` 1251 px of box, 200 px of frame). Measure the fill against the **visible** part of
+   the rectangle, or every edge prop fails for standing at the edge.
 
-A rectangle can also be honest and still uninformative: `tram-t`'s is the whole 380 cm track (because
-the record's `w` is the line, not the car), and `boat-lake`'s is clipped to 1x1 in most views. A prop
-that moves, or whose record describes its path, is not measured by its hit box.
+## 9b. The tint's own failure modes, and the bodies it cannot tint
+
+The magenta method of section 9 measures a prop by taking the pixels only it painted, so it has three
+ways to lie. All three were hit in round 79 on the same gate:
+
+1. **A CSS body has no quad.** The hub street's two festival stalls are painted by `.walk-stall` on
+   the button itself — a `background` of awning stripes, posts, booth and basin — and the renderer
+   pushes nothing for them. The tint paints nothing, and the first version of the gate reported
+   "pressable box, nothing painted" against a stall that answers its own press at every heading. The
+   fix is a branch, not a verdict: measure that kind of body on the **untinted base frame** (the
+   stall's luminance against a column of pavement beside it) and keep the press test, which is the
+   property either way. Ask of every prop: is the thing drawn by a quad, or by CSS?
+2. **A stale tint survives into the next prop's frame.** The tint is cleared between props, but on
+   this rasteriser a repaint costs 300–600 ms and `__walk.drawQuads` — which publishes a clean list
+   as soon as the new frame is committed — can be clean while the canvas still shows the previous
+   one. Measured: a 2 px magenta stripe down one edge of the kingyo stall's body frame, which was
+   `front-s` (the shopfront beside it) still tinted.
+3. **So do not read a frame you did not tint with a wait.** The answer that held is not a longer
+   sleep: it is one **untinted frame per heading**, shot before anything is tinted, and every
+   branch that wants "the scene as it is" reads that. A frame is evidence of what was drawn when it
+   was drawn; a number taken from the wrong frame is worse than no number.
+
+## 9c. A published average is only as fresh as the frames behind it
+
+The lane publishes `__walk.renderMs` — an exponential average (0.7 old + 0.3 new) of what the
+renderer's own `render()` call cost — so that a report can say what the machine was asked to draw.
+It is the right number to read and it has one trap: **the lane only draws when something changes.**
+A page that has loaded, finished its glide and been left alone may not draw again at all, and the
+average then keeps the last frame's value — which on the first frame includes shader compilation.
+
+Measured while writing `tools/bench.mjs` (round 80): niagara at the Table Rock rail read
+**3,975 ms** through a bench that warmed up for forty `requestAnimationFrame` ticks, and **3.4 ms**
+the moment a mouse move forced a real draw (`.verify/cull-probe.mjs`). Same page, same stop, same
+heading. The 1,170× error was the instrument's, and it was in the direction that invents a
+performance problem — the whole “the renderer is the bottleneck” reading of P4 rested on it.
+
+Two rules come out of it:
+
+1. **Ask for the frame.** `js/site.js` publishes `__walk.draw()` for exactly this (round 80): the
+   same `draw()` the keys call, so an instrument can request N real frames and read what they cost.
+   Warm up *past* the average's memory (0.7^n: forty frames, not eight), then sample, and print the
+   **spread** next to the median — a frozen value reads as `3975–3975`, which is how this was
+   caught, and a live one as `24–34`.
+2. **A metric that cannot move is not evidence.** Before quoting a number that a change is supposed
+   to move, check that the number moves between two states you know differ. If drawing less should
+   make it smaller, look at a heading where there is less to draw and confirm it is smaller; if it
+   does not move, the instrument is reading a memory, not a measurement.
+
+## 9d. A hit rectangle is not the prop until three things are true
+
+`[data-obj]` is the press target, not a silhouette. Any statistic taken from
+`getBoundingClientRect()` on it is a statistic about whatever the rectangle encloses — and on
+`rooms-toronto` (26 props over 40 headings, `.verify/audit-all.mjs`) it was wrong twice:
+
+| what the rectangle was | `skyline-cn` | the verdict it produced |
+|---|---|---|
+| an undrawn prop's last transform | 339 × 609 px, identical at six headings | sd 19.2 → "flat"; the pixels were the hall's banded wall |
+| the prop's own silhouette | 171,456 px, mean 122.1 | sd 30.2, 5 of 10 views over 20 — it has form |
+
+1. **`visibility` first.** When the painter does not draw a prop it returns *before* writing a new
+   transform, so the element keeps the last heading's box. A "view" of that prop is a view of
+   something else, and it is the same rectangle every time, which is the tell.
+2. **Then the press floor.** `js/site.js` grows the box to `HIT = 44` px and insets the ring back
+   onto the shape with `--padx`/`--pady` (`css/site.css`). The silhouette is the rect deflated by its
+   own pad; the pad is written by the same pass as the box, so it is stale whenever (1) is.
+3. **Then open the frame.** Even a correct rectangle around a long prop seen at an angle encloses
+   background triangles: a low spread is a question, not a verdict. Two of the three props still on
+   that list are a blank board and a wall-mounted air conditioner — a plane and a small pale box, and
+   the criterion cannot know that from pixels.
+
+## 9e. One build is not bit-stable against itself
+
+A refactor needs a proof that it changed nothing, and the obvious proof — "the frames are identical" —
+is not available here. Round 86 measured it before quoting it, on `rooms-toronto` stop 4 heading 90,
+day, reduced motion, 1024×768, three ways:
+
+| the two frames | px differing | ≥2 | ≥6 | ≥20 |
+|---|---|---|---|---|
+| same build, same browser, two launches | 4,249–27,014 | 331–1,514 | 109–385 | 4–0 |
+| same build, two browser processes | **0** | 0 | 0 | 0 |
+| same build, two servers, one process | **347,294** | 147,475 | 13,434 | 89 |
+| the build one refactor old | 4,249 | 331 | 109 | **4** |
+
+The last row is the one that matters: **the refactor's difference sits below the noise floor of the
+same build measured twice.** On a Niagara night frame the same comparison came out 0 px. So
+"0 px differ" is a claim about the launch, not about the code, and "N px differ" is not a claim at
+all until it is compared with the same-build number for that stop.
+
+What *is* exact is what the programme hands the renderer. `__walk.drawQuads` gives every quad's mode,
+texture key, colour, world corners and uv; `__walk.x/yaw/pitch/depth` the camera; `__walk.threeStats`
+the counters. `.verify/_scenehash.mjs` sorts those rows, hashes them, and prints SAME/DIFFERENT per
+stop and heading — that is the A/B instrument for a refactor, and it found the one thing the pictures
+could not: at fukuoka stop 2 the two builds' cameras differ in the third decimal (`z 990.00` vs
+`989.93`), which is a real difference — a frame-count difference in the glide — that no pixel count
+would have separated from dither. A camera that stops a millimetre short is not a visual defect, but
+it is a measurement, and it is the kind that only a structural digest reports.
+
+(One visual check is still worth keeping: the same scene at night, where dither has nothing to hide
+behind. That is where 0 px means 0 px.)
 
 ## 10. A mirrored picture is not a cosmetic bug
 
@@ -254,6 +438,7 @@ left or right. The flip itself is two lines; the proof is the frames.
 4. Crop, look, and write the verdict in numbers plus one sentence of judgement.
 5. If the claim survives, it goes to TODO with the numbers and the frame path. If it does not, the
    retraction goes there instead — with the number that killed it.
+6. If the claim is "this changed nothing", the frame is not the instrument: `_scenehash.mjs` (§9e).
 
 ### When you flip handedness, re-derive every box that was measured on the old frames
 

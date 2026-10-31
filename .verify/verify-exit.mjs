@@ -28,6 +28,7 @@
    Run from the repo root: `node .verify/verify-exit.mjs`.
 */
 import fs from "node:fs";
+import { siteText } from "../bin/site-sources.mjs";
 
 const { JSDOM, VirtualConsole } = await import("jsdom");
 
@@ -97,7 +98,7 @@ function boot(file, hash = "") {
   Object.defineProperty(w.HTMLElement.prototype, "clientHeight", { configurable: true, get() {
     return this.className && String(this.className).includes("walk-view") ? 768 : 0;
   }});
-  w.eval(fs.readFileSync("js/site.js", "utf8"));
+  w.eval(siteText());
   const doc = w.document;
   return {
     w, doc, navs,

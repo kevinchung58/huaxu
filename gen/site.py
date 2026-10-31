@@ -8,6 +8,7 @@ round 78 and proven byte-identical on all 19 emitted pages; the entry point is `
 from pathlib import Path
 from html import escape
 import hashlib
+import json
 # The repo root, two levels up from `gen/site.py` (round 78: the split moved this file
 # below the root it measures). Every path in the generator hangs off this one line.
 ROOT = Path(__file__).resolve().parent.parent
@@ -26,14 +27,28 @@ def _asset_ver() -> str:
     page pin is the same browser-cache bug as a stale Canvas fallback.
     """
     h = hashlib.sha1()
-    for f in ("css/site.css", "js/site.js", "js/scene3d.js", "js/games.js",
-              "js/vendor/three-0.186.1/three.core.js", "js/vendor/three-0.186.1/three.module.js"):
+    for f in (*ASSET_FILES, *SITE_FILES):
         h.update((ROOT / f).read_bytes())
     return h.hexdigest()[:10]
 
 
+# The page programme, in load order, read out of `bin/site-sources.json` — the same file every gate
+# and every test in this repository reads. `js/site.js` was one 9,501-line script until 2026-10-30;
+# it is four now (overlay, chrome, dot-game, the lane), and the generator, the gates and the browsers
+# all have to agree on the list and the order, so the list exists once. A part that is in the list
+# but not in the pages would be dead code no gate could see; a part in the pages but not the list
+# would run in a browser and not in the tests. `.verify/verify-sources.mjs` checks both directions.
+SITE_FILES = json.loads((ROOT / "bin/site-sources.json").read_text(encoding="utf-8"))
+# The assets a page loads that are not part of the page programme (the stylesheet, the Three.js
+# module, the pinned runtime). Read, not restated: `bin/asset-ver.mjs` hashes the same two lists for
+# the gates, and `.verify/verify-gen.mjs` compares the pages against that one computation.
+ASSET_FILES = json.loads((ROOT / "bin/asset-list.json").read_text(encoding="utf-8"))
+
 VER = _asset_ver()
 CSS = f"css/site.css?v={VER}"
+# Built after VER, because the tags carry it: an f-string here, not a "{{VER}}" left for whatever
+# formats the page next -- the first version did that and shipped four literal "{VER}" tags.
+SITE_TAGS = "\n".join(f'<script src="{f}?v={VER}"></script>' for f in SITE_FILES)
 SITE = "https://kevinchung58.github.io/huaxu"
 DESC = "Hua-Xu Zhong, researcher in educational technology, AI in education, and design thinking."
 
@@ -194,9 +209,9 @@ def nav(active: str) -> str:
         </div>
       </div>
     </nav>
-    <button class="menu-toggle" type="button" aria-label="Toggle menu" aria-expanded="false">{ICON_MENU}</button>
+    <button class="menu-toggle" type="button" aria-label="Toggle menu" aria-controls="mobile-menu" aria-expanded="false">{ICON_MENU}</button>
   </div>
-  <nav class="mobile" aria-label="Mobile">
+  <nav class="mobile" id="mobile-menu" aria-label="Mobile">
     {a("index.html", "Home", "home")}
     {a("about.html", "About", "about")}
     {a("research.html", "Research", "research")}
@@ -229,7 +244,7 @@ FOOT = f"""<footer>
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top">{ICON_UP}</button>
-<script src="js/site.js?v={VER}"></script>"""
+{SITE_TAGS}"""
 
 
 # Structured data. Google resolves a person's name largely from schema.org markup, and the site had
@@ -337,7 +352,7 @@ def shell_page(title: str, body: str, path: str, cover: str = "IMG/1.jpg",
 </head>
 <body class="shell">
 {body}
-<script src="js/site.js?v={VER}"></script>
+{SITE_TAGS}
 <script src="js/games.js?v={VER}" defer></script>
 <script type="module" src="js/scene3d.js?v={VER}"></script>
 </body>

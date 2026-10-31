@@ -20,7 +20,7 @@ The loadable halves live in tracked `skills/` files. Route a real-place build th
 domain skill (`district-author`, `place-intake`, `japan-place`, `street-commons`, `lane-prop`, or
 `landmark-space`) → `scene-quality-loop` for rendered-frame acceptance, using `pua` for diagnosis and
 verification. `karpathy-guidelines` keeps implementation surgical. Before every PR creation/update,
-`pr-handoff` requires an accurate, prioritized next-round plan in `TODO.md`.
+`pr-handoff` requires an accurate, prioritized next-round plan in `TODO.md` — and forbids round logs anywhere in the repository (owner ruling, twice: 「那些紀錄都刪掉」／「我覺得都不需要」). The story of a round belongs to its commit message and its PR body, which are written once and never read as a plan.
 
 The individual skills remain useful on their own: `district-author` owns the record/build rules/gate;
 `place-intake` turns supplied photographs into a record; `japan-place` covers Japanese place
@@ -55,10 +55,11 @@ with time left, through it; route a new attribute, probe or gate through it befo
 in one head, how to split it **by name ownership** rather than by line number, how to prove the move
 with a byte-identical output, and the part that is always forgotten — every gate that read the old
 file as text keeps passing while seeing a tenth of the code, so they are re-pointed in the same
-commit (`bin/gen-source.mjs`). It also records the file that was **not** split, `js/site.js`, and
-why: 8,989 of its lines share one closure, and the fastest gate here evaluates that script as one
-string. Route any round that proposes "modularise this", or a framework as the fix for file size,
-through it first (round 78).
+commit (`bin/gen-source.mjs` for the generator, `bin/site-sources.mjs` for the script). Round 86 took
+the other half with the same proof: the page programme is now four classic scripts joined by text
+(607,062 bytes identical), and the lane — 9,045 lines, 288 declarations in one closure — is what
+remains unsplit, on purpose. Route any round that proposes "modularise this", or a framework as the
+fix for file size, through it first (rounds 78, 86).
 
 `frame-evidence` is the sixteenth-track skill and the one that keeps the other fifteen honest: it
 owns arrival, aim, units, refusal, and the difference between "measured" and "believed". Every
@@ -66,7 +67,7 @@ number quoted by `scene-quality-loop`, `pua`, or a PR body is supposed to come t
 because three tools in this repository ran to completion, printed confident lines, and were wrong —
 a gate that framed two of seven ids, a stop photographed from wherever the glide had got to, and a
 ray hit printed in centimetres that a round of TODO read as kilometres. Route any claim about a
-rendered frame through it (round 69k).
+rendered frame through it (round 69k). Round 79 added its sharpest instrument: `verify-box.mjs` tints one prop flat magenta in the served script, reads the bounding box of that paint and presses it, because two rounds had quoted the same rectangle as being on bare wall and on its model — and both paint readings were colour heuristics. Its §9b is the other half: a tint can only measure what the renderer drew, so a CSS-painted body (the hub street's stalls) has no quad to tint, a stale tint can survive into the next frame, and the answer to both is one untinted base frame per heading rather than a longer wait. Round 80 added §9c, the opposite mistake in the same family: `__walk.renderMs` is an exponential average and the lane does not redraw on a resting page, so a bench that merely waited read the shader-compile frame forever (3,975 ms against a settled 3.4 ms on niagara); the fix is to ask the page for real frames (`__walk.draw()`), warm up past the average's memory, and print the sample spread so a frozen number looks frozen.
 
 `ux-walkthrough` owns the experience of a press: what a visitor is promised before they spend it, and what actually changes after. It exists because the owner judged the same surface four times — a card, then a card behind a bar, then no card, then text where there should have been a change — and because the Falls Incline announced a ride and moved nothing for eleven rounds of green gates. Route every change to a press, bar, card, panel, reel or prompt through it, and run `.verify/_uxwalk.mjs` before claiming a walk page feels right (round 74).
 
@@ -206,15 +207,15 @@ Every change, before it is committed:
 ```
 sh bin/restore-env            # the sandbox wipes; this is idempotent and never resets hard
 sh bin/preview                # regenerate and serve
-node .verify/verify-shapes.mjs
-node .verify/verify-geometry.mjs
-node .verify/verify-clash.mjs
-node .verify/verify-walk.mjs
-node .verify/verify-collision.cjs        # the walker must not catch on walls (round 42)
-node .verify/verify-nowebgl.mjs          # no-WebGL: the lane names it and keeps its list (round 55)
-node .verify/verify-feel.mjs             # a walk's speed must not depend on the frame rate (round 56)
-node .verify/verify-body.mjs             # no body may stand inside a drawn prop; every depth keeps a 60 cm passage (round 57)
-node .verify/verify-objects.mjs          # needs LD_LIBRARY_PATH=/tmp/al2023/lib
+sh bin/gate node .verify/verify-shapes.mjs
+sh bin/gate node .verify/verify-geometry.mjs
+sh bin/gate node .verify/verify-clash.mjs
+sh bin/gate node .verify/verify-walk.mjs
+sh bin/gate node .verify/verify-collision.cjs        # the walker must not catch on walls (round 42)
+sh bin/gate node .verify/verify-nowebgl.mjs          # no-WebGL: the lane names it and keeps its list (round 55)
+sh bin/gate node .verify/verify-feel.mjs             # a walk's speed must not depend on the frame rate (round 56)
+sh bin/gate node .verify/verify-body.mjs             # no body may stand inside a drawn prop; every depth keeps a 60 cm passage (round 57)
+sh bin/gate node .verify/verify-objects.mjs
 node node_modules/impeccable/cli/bin/cli.js detect --json css/site.css $(ls *.html)
 md5sum *.html; python3 _gen_html.py; md5sum *.html   # idempotent
 ```
@@ -247,8 +248,21 @@ tree still holds the branch's files.
 usually intact and only the branch pointer is wrong. Run it at the start of a turn and again
 whenever a tool call fails with a missing package.
 
-Scripts that need `node_modules` must live in `.verify/`, not `/tmp`. Puppeteer scripts need
-`LD_LIBRARY_PATH=/tmp/al2023/lib`.
+Scripts that need `node_modules` must live in `.verify/`, not `/tmp`.
+
+**Run every gate through `sh bin/gate`**, never as a bare `node .verify/...`:
+
+```sh
+sh bin/gate node .verify/verify-walk.mjs
+sh bin/gate node --test
+```
+
+It restores `node_modules` and `/tmp/al2023/lib` if the sandbox took them, exports
+`LD_LIBRARY_PATH=/tmp/al2023/lib` for puppeteer, and refuses `verify-feel` / `verify-collision` /
+`walk-feel` (exit 3) while another Chromium is running — those two measure speed and collision, and a
+busy box gives them a wrong answer instead of a red light. Both failure modes cost a round when they
+are not wrapped: `Cannot find module 'puppeteer-core'` and `Code: 127, libnspr4.so: cannot open
+shared object file` both read as a broken gate, and both are a missing environment.
 
 ## 7. Build in one pass, verify in one pass
 
@@ -281,6 +295,10 @@ this repo that is operational, not aspirational:
   template is `.verify/verify-collision.cjs`: named properties, explicit thresholds, and a
   demonstrated *bite* (run the gate against the pre-fix artifact and show it fails). A visual fix
   ships with freshly eyeballed frames from the served artifact, not from the code that made it.
+- **The battery is a list you can run, not a list you retype.** `python3 bin/gate-all.py` executes
+  `TODO.md` §2.3 in order, one `sh bin/gate` at a time, and exits 2 when a `verify-*` file on disk is
+  missing from the list or a listed gate is missing from disk. The enumeration in a handoff is then
+  what the runner printed, not what the round remembered.
 - **Handoff reports what actually ran, in those words.** A round closes by listing the gates that
   were executed with their tallies, and by naming what could not run and why, in the same breath —
   never by letting "verified" imply a browser was opened when only a headless harness was (round 46

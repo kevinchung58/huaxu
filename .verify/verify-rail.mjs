@@ -25,10 +25,11 @@
  * asserted to hit once. Run from the repo root: `node .verify/verify-rail.mjs`.
  */
 import fs from "node:fs";
+import { siteText } from "../bin/site-sources.mjs";
 import assert from "node:assert/strict";
 
 const rooms = fs.readFileSync("rooms.html", "utf8");
-let js = fs.readFileSync("js/site.js", "utf8");
+let js = siteText();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const { JSDOM, VirtualConsole } = await import("jsdom");
 

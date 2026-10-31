@@ -9,10 +9,11 @@
  * still requires the scene screenshots and a real WebGL-capable browser review.
  */
 import assert from "node:assert/strict";
+import { siteText } from "./site-sources.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import * as THREE from "../js/vendor/three-0.186.1/three.module.js";
-import { genSource } from "./gen-source.mjs";
+import { assetFiles } from "./asset-ver.mjs";
 import { buildLaneGeometry, buildWaterGeometry, buildWorldGeometry, createSceneEffects } from "../js/scene3d.js";
 
 const ROOT = process.cwd();
@@ -20,8 +21,7 @@ const VERSION = "0.186.1";
 const supported = new Set(["f", "x", "w", "m", "l", "rb", "fw"]);
 const pageFiles = fs.readdirSync(ROOT).filter((name) => /^rooms.*\.html$/.test(name) || name === "street.html").sort();
 const sceneSource = fs.readFileSync(path.join(ROOT, "js/scene3d.js"), "utf8");
-const siteSource = fs.readFileSync(path.join(ROOT, "js/site.js"), "utf8");
-const generator = genSource(ROOT);   // the split generator, entry point included (round 78)
+const siteSource = siteText(ROOT);   // every part, in load order
 const cssSource = fs.readFileSync(path.join(ROOT, "css/site.css"), "utf8");
 const license = path.join(ROOT, `js/vendor/three-${VERSION}/LICENSE`);
 
@@ -54,9 +54,18 @@ assert.match(siteSource, /if \(bd\) drawFar\(C\);/,
   "compact distant scenes must also reach the 3D renderer");
 assert.doesNotMatch(siteSource, /drawWorld\(/,
   "the surveyed world is scene3d's alone now: no second painter may redraw it");
-assert.match(generator, /js\/scene3d\.js/);
-assert.match(generator, /three-0\.186\.1\/three\.core\.js/);
-assert.match(generator, /three-0\.186\.1\/three\.module\.js/);
+/* The bridge and both pinned runtime files have to be *versioned*, and since round 86 the list of
+   versioned files is `bin/asset-list.json` read by `bin/asset-ver.mjs` — the generator no longer
+   spells these paths out, so asserting on its text tested a literal that had moved. Ask the list
+   instead: a page's `?v=` covers whatever is in it, and `verify-walk`/`verify-gen` already hold every
+   page to that one digest. */
+const assetList = assetFiles();
+assert.ok(assetList.includes("js/scene3d.js"),
+  "the Three.js bridge must be covered by the ?v= digest");
+for (const mod of ["three.core.js", "three.module.js"]) {
+  assert.ok(assetList.some((f) => f.endsWith(`three-${VERSION}/${mod}`)),
+    `the pinned runtime ${mod} must be covered by the ?v= digest`);
+}
 
 let worldPages = 0, totalTriangles = 0, totalWaterTriangles = 0, totalWater = 0, totalMist = 0;
 let walkPages = 0;

@@ -15,13 +15,14 @@
         PAGES=street.html node .verify/_reach.mjs
 */
 import fs from "node:fs";
+import { siteText } from "../bin/site-sources.mjs";
 
 const { JSDOM, VirtualConsole } = await import("jsdom");
 
 const PAGES = (process.env.PAGES || "street.html,rooms.html,rooms-fukuoka.html,rooms-toronto.html,"
   + "rooms-niagara.html,rooms-goat.html,rooms-journey.html,rooms-cntower.html").split(",");
 
-const js = fs.readFileSync("js/site.js", "utf8");
+const js = siteText();
 
 function boot(file) {
   const navs = [], errors = [];

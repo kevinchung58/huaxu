@@ -6,7 +6,8 @@
 
    Run:  node .verify/verify-shapes.mjs   */
 import fs from "node:fs";
-const js = fs.readFileSync("js/site.js", "utf8");
+import { siteText } from "../bin/site-sources.mjs";
+const js = siteText();
 const grab = (re) => { const m = js.match(re); return m ? m[1] : ""; };
 // keys are camel-cased in places (`signA`), so the parser has to take capitals or it reports
 // props as unresolved that the site has been resolving all along
@@ -51,6 +52,35 @@ for (const f of PAGES) {
    `plane` is the one value that *is* the default, so it is the one value allowed to have no branch.
    This is the check that would have caught a `bench: "bench"` written before the bench was painted,
    and it is what makes "the shape is named" mean "the shape is drawn" from now on. */
+/* A shape that draws nothing is allowed only when the record says where its words live.
+
+   `kind: landmark` is the one branch whose body is drawn by the world prims instead of by the prop
+   (site.js `shape === "landmark"`), and the press mark is placed by a different flag —
+   `data-landmark="1"`. A landmark record without that flag therefore paints nothing and gets no
+   box: it is a paragraph with a page anchor, and the only place a visitor can meet it is the
+   written list at the foot of the page (`<li id="thing-<obj>">`). That is legitimate for
+   rooms-goat's three far-bank records (round 75 turned them into scenery on purpose), and it is
+   invisible when it is not legitimate: `.verify/audit-all.mjs` reported woodline-c1, channel-e and
+   pool-lower as NEVER ON SCREEN from six stops and eight headings, and only the page's own list
+   could say whether that was a defect or the design. So the invariant is written down here: a
+   landmark record either has a mark, or it is quiet AND listed by id. */
+const marks = { drawn: 0, records: 0 };
+for (const f of PAGES) {
+  const page = fs.readFileSync(f, "utf8");
+  for (const b of page.matchAll(/<button[^>]*>/g)) {
+    const tag = b[0];
+    if (!/data-kind="landmark"/.test(tag)) continue;
+    const id = (tag.match(/data-obj="([A-Za-z0-9-]+)"/) || [])[1];
+    if (/data-landmark="1"/.test(tag)) { marks.drawn++; continue; }
+    const quiet = /data-quiet="1"/.test(tag);
+    const listed = new RegExp(`<li id="thing-${id}"`).test(page);
+    if (quiet && listed) { marks.records++; continue; }
+    bad++;
+    console.log(`\n   ${f}: "${id}" is a landmark record with no mark and no written entry ` +
+                `(quiet ${quiet}, listed ${listed}) — it paints nothing, presses nothing and says nothing`);
+  }
+}
+console.log(`landmark records: ${marks.drawn} with a press mark, ${marks.records} with a written entry only`);
 const shapes = [...new Set(Object.values(SHAPE))].sort();
 const unpainted = shapes.filter((v) => v !== "plane" && !new RegExp(`shape === "${v}"`).test(js));
 if (unpainted.length) {

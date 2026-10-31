@@ -1,28 +1,22 @@
-/* _ray — what is actually at a pixel, read out of the live scene by raycasting.
-   Diagnostic (exit 0). Built for round 69 because a black slab crossed the falls and no amount of
-   reading the record said which of 1,351 prims it was: the frame says *where*, the raycaster says
-   *what*. Prints, for each sample pixel, the first three hits with the mesh name, the hit point in
-   world cm and the face material.
-   Run: LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/_ray.mjs [stop] [px,py ...] */
-import fs from "node:fs";
-import { createRequire } from "node:module";
-const require = createRequire(import.meta.url);
-const puppeteer = require("puppeteer-core");
-const chromium = require("@sparticuz/chromium").default || require("@sparticuz/chromium");
+/* _ray — raw ray intersections at a pixel, read from the live scene.
+   A diagnostic, not a gate: prints the first three hits with the mesh, position, distance, clipping,
+   visibility and vertex colours. A raw hit is not necessarily a painted pixel: it can be hidden,
+   clipped, transparent or the sky drawn behind a farther surface. Refuses a missed stop or heading
+   (exit 2); ALLOW_SHORT=1 explicitly permits a settled-short stop and labels the actual position.
+   Run: sh bin/gate node .verify/_ray.mjs [stop] [px,py ...] */
+import { launch, openPage, arrive, aim, park } from "./_aim.mjs";
+
 const BASE = process.env.BASE || "http://127.0.0.1:8080";
 const FILE = process.env.FILE || "rooms-niagara.html";
 const STOP = Number(process.argv[2] || 3);
 const YAW = Number(process.env.YAW || -90);
+const PITCH = process.env.PITCH === undefined ? null : Number(process.env.PITCH);
+const HOUR = process.env.HOUR || "day";
+const ALLOW_SHORT = process.env.ALLOW_SHORT === "1";
 const PX = (process.argv.slice(3).join(" ") || "300,340 560,330 800,330 900,600 700,700")
   .split(" ").map((s) => s.split(",").map(Number));
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const browser = await puppeteer.launch({ executablePath: await chromium.executablePath(),
-  args: [...chromium.args, "--no-sandbox", "--disable-dev-shm-usage"], headless: true,
-  defaultViewport: { width: 1024, height: 768 } });
-const page = await browser.newPage();
-page.on("pageerror", (e) => console.log("PAGEERROR", String(e).slice(0, 160)));
-await page.setRequestInterception(true);
-page.on("request", async (req) => {
+const browser = await launch({ width: 1024, height: 768 });
+const expose = async (req) => {
   if (!/\/js\/scene3d\.js(\?|$)/.test(req.url())) return req.continue();
   try {
     const body = (await (await fetch(req.url())).text())
@@ -30,37 +24,33 @@ page.on("request", async (req) => {
                "const scene = new THREE.Scene(); window.__threeScene = scene; window.__THREE = THREE;")
       .replace("const camera = new THREE.PerspectiveCamera(45, 1, 20, 600000);",
                "const camera = (window.__cam = new THREE.PerspectiveCamera(45, 1, 20, 600000));")
-      // The batch's own item table: a merged mesh records which prim each vertex range came from,
-      // so a hit triangle can be traced back to the authored record instead of guessed at.
+      // A merged mesh records which prim owns each vertex range.
       .replace("colorBatches.push({ geometry, items: batch.items });",
                "colorBatches.push({ geometry, items: batch.items }); window.__colorBatches = colorBatches;");
     req.respond({ status: 200, contentType: "application/javascript", body });
   } catch (e) { req.continue(); }
-});
-await page.goto(`${BASE}/${FILE}`, { waitUntil: "load", timeout: 120000 });
-await page.waitForFunction(() => document.querySelector("[data-walk]")?.__walk, { timeout: 90000 });
-await sleep(2000);
-const target = await page.evaluate((i) => {
-  const el = document.querySelectorAll("[data-walk-stop]")[i];
-  const z = parseFloat(el.style.getPropertyValue("--z")) || 0; el.click(); return z;
-}, STOP);
-for (let i = 0; i < 600; i++) {
-  const d = await page.evaluate(() => document.querySelector("[data-walk]").__walk.depth);
-  if (Math.abs(d - target) < 8) break; await sleep(300);
+};
+const page = await openPage(browser, { rooms: FILE, base: BASE, hour: HOUR, intercept: expose });
+const exposed = await page.evaluate(() => !!(window.__threeScene && window.__cam && window.__THREE));
+if (!exposed) {
+  console.log("REFUSED: scene or camera was not published");
+  await browser.close(); process.exit(2);
 }
-await page.evaluate(async (yaw) => {
-  const w = document.querySelector("[data-walk]").__walk, view = document.querySelector("[data-walk]");
-  for (let i = 0; i < 600; i++) {
-    const err = ((yaw - w.yaw + 540) % 360) - 180;
-    if (Math.abs(err) <= 1.5) break;
-    const key = err > 0 ? "arrowright" : "arrowleft";
-    view.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
-    await new Promise((r) => setTimeout(r, 16));
-    view.dispatchEvent(new KeyboardEvent("keyup", { key, bubbles: true }));
-    await new Promise((r) => setTimeout(r, 24));
-  }
-}, YAW);
-await sleep(1200);
+const a = await arrive(page, STOP);
+if (!a.target || (!a.arrived && !(ALLOW_SHORT && a.blocked))) {
+  console.log(`REFUSED stop ${STOP}: ${a.why || "no arrival"}`);
+  await browser.close(); process.exit(2);
+}
+const g = await aim(page, YAW, { pitch: PITCH });
+if (!g.aimed) {
+  console.log(`REFUSED heading: requested yaw ${YAW}, actual yaw ${g.yaw}, pitch ${g.pitch}`);
+  await browser.close(); process.exit(2);
+}
+await park(page);
+const renderer = await page.evaluate(() => document.querySelector("[data-walk]").__walk.renderer);
+console.log(`REPORT (not a gate) raw ray hits — ${FILE} stop ${STOP}: target z=${a.target.z} x=${a.target.x}; ` +
+  `body z=${Math.round(a.at.z)} x=${Math.round(a.at.x)}; yaw ${g.yaw.toFixed(1)} pitch ${g.pitch.toFixed(1)}; ${renderer}`);
+if (a.blocked) console.log(`NOTE: ${a.why} — ALLOW_SHORT=1 reports the actual place, not the authored stop`);
 const hits = await page.evaluate((pts) => {
   const scene = window.__threeScene, cam = window.__cam, THREE = window.__THREE;
   const ray = new THREE.Raycaster();
@@ -83,16 +73,21 @@ const hits = await page.evaluate((pts) => {
       let vc = null;
       const col = x.object.geometry && x.object.geometry.getAttribute("color");
       if (col && x.face) {
-        const idx = x.object.geometry.index;
-        const tri = idx ? [idx.getX(x.face.a), idx.getX(x.face.b), idx.getX(x.face.c)] : [x.face.a, x.face.b, x.face.c];
+        // Raycaster.face already contains resolved vertex indices, including on indexed geometry.
+        const tri = [x.face.a, x.face.b, x.face.c];
         vc = tri.map((i) => [col.getX(i), col.getY(i), col.getZ(i)].map((v) => +v.toFixed(3)));
       }
+      const material = Array.isArray(x.object.material)
+        ? x.object.material[x.face?.materialIndex || 0] : x.object.material;
+      let visible = !material || material.visible !== false;
+      for (let node = x.object; node; node = node.parent) if (node.visible === false) visible = false;
       return {
         mesh: x.object.name || "(unnamed)",
-        mat: x.object.material && (x.object.material.name || x.object.material.type),
+        mat: material && (material.name || material.type),
         p: x.point.toArray().map((v) => Math.round(v)),
-        d: Math.round(x.distance), vc, prim,
-        op: x.object.material && x.object.material.opacity,
+        d: Math.round(x.distance), vc, prim, visible,
+        clipZ: +x.point.clone().project(cam).z.toFixed(4),
+        op: material && material.opacity,
       };
     });
     out.push({ px, py, h });
@@ -101,7 +96,8 @@ const hits = await page.evaluate((pts) => {
 }, PX);
 for (const r of hits) {
   console.log(`pixel ${r.px},${r.py}`);
-  for (const h of r.h) console.log(`   ${String(h.d).padStart(6)} cm  ${h.mesh.padEnd(34)} at ${JSON.stringify(h.p)}` +
+  for (const h of r.h) console.log(`   ${String(h.d).padStart(6)} cm (${(h.d / 100).toFixed(1)} m)  ${h.mesh.padEnd(34)} at ${JSON.stringify(h.p)}` +
+    (!h.visible ? "  hidden" : "") + (Math.abs(h.clipZ) > 1 ? `  clipped(z=${h.clipZ})` : "") +
     (h.vc ? `  vcol ${JSON.stringify(h.vc)}` : "") + (h.op !== undefined && h.op < 1 ? `  op ${h.op}` : "") +
     (h.prim ? `\n           prim ${JSON.stringify(h.prim).slice(0, 260)}` : ""));
 }

@@ -21,8 +21,9 @@
 */
 const { JSDOM, VirtualConsole } = require("jsdom");
 const fs = require("fs");
+const { siteText } = require("../bin/site-sources.cjs");
 
-const js = fs.readFileSync("js/site.js", "utf8");
+const js = siteText();
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const out = [], fails = [];
@@ -93,7 +94,7 @@ function boot(file, hash = "") {
       const i = queue.findIndex((q) => q.id === id);
       if (i >= 0) queue.splice(i, 1);
     };
-    w.performance = { now: () => now };
+    Object.defineProperty(w.performance, "now", { configurable: true, value: () => now });
     async function pump(n, frameMs = 17) {
       for (let i = 0; i < n; i++) {
         now += frameMs;

@@ -20,6 +20,7 @@
    `node .verify/verify-overlay.mjs`.
 */
 import fs from "node:fs";
+import { siteText } from "../bin/site-sources.mjs";
 
 const { JSDOM, VirtualConsole } = await import("jsdom");
 const out = [];
@@ -71,7 +72,7 @@ function boot(markup, url) {
     get src() { return this._s; }
     get complete() { return !!this._s; }
   };
-  w.eval(fs.readFileSync("js/site.js", "utf8"));
+  w.eval(siteText());
   return { w, navs };
 }
 
@@ -105,7 +106,7 @@ for (const file of PAGES) {
      !/data-walk-banner|walk-banner/.test(html));
 }
 const css = fs.readFileSync("css/site.css", "utf8");
-const js = fs.readFileSync("js/site.js", "utf8");
+const js = siteText();
 ok("no CSS rule paints a walk banner", !/\.walk-banner/.test(css));
 /* `is-on` belongs to other chrome (the back-to-top button, the album's chips), so the assertion
    names the banner's own identifiers: what it forbids is a *timed reveal of a surface*, and the

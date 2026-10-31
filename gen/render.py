@@ -708,12 +708,6 @@ def walk_html(d, drawer):
     </div>
   </div>
 {offline_html}{game_html}
-  <div class="walk-tutor" data-walk-tutor hidden aria-hidden="false">
-    <p class="walk-tutor-step" data-walk-tutor-text></p>
-    <span class="walk-tutor-n" data-walk-tutor-count></span>
-    <button type="button" class="walk-tutor-act" data-walk-tutor-skip aria-label="Skip the guide">skip</button>
-    <button type="button" class="walk-tutor-act" data-walk-tutor-done aria-label="Got it, leave me to the lane">done</button>
-  </div>
   <div class="walk-hud">
     <div class="walk-top">
       <div class="walk-pick">
@@ -724,6 +718,12 @@ def walk_html(d, drawer):
         <p class="sr-only" data-walk-status role="status">Building the lane…</p>
         <p class="sr-only" data-walk-record aria-live="polite"></p>
       </div>
+    </div>
+    <div class="walk-tutor" data-walk-tutor hidden aria-hidden="false">
+      <p class="walk-tutor-step" data-walk-tutor-text aria-live="polite"></p>
+      <span class="walk-tutor-n" data-walk-tutor-count></span>
+      <button type="button" class="walk-tutor-act" data-walk-tutor-skip aria-label="Skip the guide">skip</button>
+      <button type="button" class="walk-tutor-act" data-walk-tutor-done aria-label="Got it, leave me to the lane">done</button>
     </div>
     <div class="walk-bottom">
       <!-- Round 71, the owner's ruling: a tap on the picture presses nothing. The finger's verb is

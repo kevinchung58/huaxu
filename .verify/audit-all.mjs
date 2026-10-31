@@ -34,29 +34,64 @@ const MIN_SD = Number(process.env.MIN_SD || 20);
    pixels and no honest statistic can be taken from it, so it is reported as "too small to judge"
    rather than as flat. Round 70: the code was judging the MEDIAN view instead, which failed every
    small prop in the room and put twenty of twenty-six on a list of defects. */
-const AREA_MIN = Number(process.env.AREA_MIN || 14400);   // 120 x 120 px
+/* WHAT A PROP'S BOX IS, measured on rooms-toronto (26 props, 40 views):
+
+   1. A prop the painter does not draw is left `visibility: hidden` and keeps the transform of the
+      last frame it WAS drawn on -- `js/site.js` returns before writing a new one. Its rectangle is
+      therefore a rectangle from some other heading, and this tool used to read it as "the prop is on
+      screen here". `skyline-cn`, never drawn at stop 4, handed in the same 339 x 609 box at six
+      headings in a row (that box is the hall's banded wall, sd 19.2 -- a verdict about the wall).
+      A hidden element has no view; it is skipped, so a prop absent from every heading lands in
+      NEVER ON SCREEN instead of being measured through a wall.
+
+   2. The press floor: `js/site.js` grows a hit box to HIT = 44 px and pulls the ring back onto the
+      silhouette with `--padx`/`--pady` (css/site.css insets by them). `getBoundingClientRect()`
+      returns the padded box, so a small prop's statistics were the statistics of its padding plus
+      whatever stands behind it -- the "three tenths of the box is a gap" that kept a model on the
+      flat list. The silhouette is the rectangle deflated by its own pad, and that is what is
+      measured and what AREA_MIN judges. */
+const AREA_MIN = Number(process.env.AREA_MIN || 14400);   // 120 x 120 px, silhouette only
 const VW = 1024, VH = 768;
 
 const html = fs.readFileSync(ROOMS, "utf8");
 const IDS = [...new Set((html.match(/data-obj="[^"]*"/g) || []).map((s) => s.slice(10, -1)))];
+/* A landmark record with no press mark (`data-kind="landmark"`, no `data-landmark="1"`) is a
+   paragraph with a page anchor: the world prims draw the far bank, the written list carries the
+   words (`<li id="thing-<obj>">`), and the prop itself never paints and never gets a box. It is
+   therefore expected to be absent from every heading, and reporting it as NEVER ON SCREEN would be
+   the instrument mistaking the design for a defect -- `verify-shapes.mjs` holds the invariant that
+   such a record must be quiet and listed. They are counted separately. */
+const RECORDS = new Set();
+for (const b of html.matchAll(/<button[^>]*>/g)) {
+  const tag = b[0];
+  if (!/data-kind="landmark"/.test(tag) || /data-landmark="1"/.test(tag)) continue;
+  const id = (tag.match(/data-obj="([^"]+)"/) || [])[1];
+  if (id) RECORDS.add(id);
+}
 const STOPS = [...html.matchAll(/data-walk-stop="(\d+)"/g)].map((m) => Number(m[1]));
 
 const browser = await launch({ width: VW, height: VH });
 const page = await openPage(browser, { rooms: ROOMS, hour: "day", width: VW, height: VH });
 
-const boxes = () => page.evaluate((ids) => {
+const boxes = () => page.evaluate(({ ids, VW, VH }) => {
   const out = {};
   for (const id of ids) {
     const el = document.querySelector(`[data-obj="${id}"]`);
     if (!el) continue;
+    // Not drawn on this heading: the transform is last heading's, not this one's. See the note above.
+    if (getComputedStyle(el).visibility === "hidden") continue;
     const r = el.getBoundingClientRect();
-    const x = Math.max(0, Math.round(r.left)), y = Math.max(0, Math.round(r.top));
-    const w = Math.min(1024, Math.round(r.right)) - x, h = Math.min(768, Math.round(r.bottom)) - y;
+    // The silhouette is the hit box minus its own press padding (css/site.css insets by these).
+    const pax = parseFloat(el.style.getPropertyValue("--padx")) || 0;
+    const pay = parseFloat(el.style.getPropertyValue("--pady")) || 0;
+    const x0 = Math.max(0, Math.round(r.left + pax)), y0 = Math.max(0, Math.round(r.top + pay));
+    const x1 = Math.min(VW, Math.round(r.right - pax)), y1 = Math.min(VH, Math.round(r.bottom - pay));
+    const w = x1 - x0, h = y1 - y0;
     if (w < 6 || h < 6) continue;
-    out[id] = { x, y, w, h };
+    out[id] = { x: x0, y: y0, w, h };
   }
   return out;
-}, IDS);
+}, { ids: IDS, VW, VH });
 
 async function shoot() { const f = `/tmp/audit-${Math.random().toString(36).slice(2)}.png`; await page.screenshot({ path: f }); return f; }
 
@@ -131,12 +166,17 @@ for (const [id, r] of rows) {
               `${String(r.colours).padStart(5)} ${`${v.over}/${v.n}`.padStart(9)}` +
               `${r.area < AREA_MIN ? "  too small to judge" : ""}`);
 }
-const missing = IDS.filter((id) => !best[id]);
+const missing = IDS.filter((id) => !best[id] && !RECORDS.has(id));
+const recordSeen = [...RECORDS].filter((id) => best[id]);
 const flat = rows.filter(([, r]) => r.area >= AREA_MIN && r.sd < MIN_SD).map(([id]) => id);
 const small = rows.filter(([, r]) => r.area < AREA_MIN).map(([id]) => id);
-console.log(`\nprops ${IDS.length}, measured ${IDS.length - missing.length}, ` +
-            `flat (sd<${MIN_SD} on >= ${AREA_MIN} px) ${flat.length}, too small to judge ${small.length}`);
+const measuredCount = IDS.length - missing.length - RECORDS.size;
+console.log(`\nprops ${IDS.length}, measured ${measuredCount}, ` +
+            `flat (sd<${MIN_SD} on >= ${AREA_MIN} px) ${flat.length}, too small to judge ${small.length}` +
+            (RECORDS.size ? `, record-only ${RECORDS.size}` : ""));
 if (missing.length) console.log(`NEVER ON SCREEN: ${missing.join(", ")}`);
+if (RECORDS.size) console.log(`record-only (no body; the written list carries their words): ${[...RECORDS].join(", ")}` +
+                              (recordSeen.length ? ` — WARNING: also drawn: ${recordSeen.join(", ")}` : ""));
 if (missing.length || flat.length) {
   const strict = process.env.STRICT === "1";
   console.log(`${strict ? "FAIL" : "REPORT (not a gate)"}: ${flat.length} flat (${flat.join(", ")}), ${missing.length} unseen` +

@@ -1,5 +1,16 @@
 @import url("https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500;1,6..72,600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&family=Archivo:wght@500;600;700&display=swap");
 
+/* Three characters from Noto Serif TC (OFL in fonts/): a local fallback for the owner's name
+   when the browser has no CJK font. The content-hashed filename keeps caches honest. */
+@font-face {
+  font-family: "Hua-Xu Name";
+  src: url("../fonts/huaxu-name-aa0e846997.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  unicode-range: U+6829, U+83EF, U+937E;
+}
+
 /* ============================================================
    Hua-Xu Zhong — design tokens
    Editorial scholarly world: deep navy plates, warm paper,
@@ -31,7 +42,7 @@
   --radius: 0.5rem;
   --nav-h: 4.25rem;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --serif: "Source Serif 4", Georgia, serif;
+  --serif: "Source Serif 4", "Hua-Xu Name", Georgia, serif;
   --display: "Newsreader", "Source Serif 4", Georgia, serif;
   --sans: "Archivo", system-ui, sans-serif;
 }
@@ -179,6 +190,11 @@ body::-webkit-scrollbar-thumb { background: var(--navy-soft); border-radius: 999
   background: var(--navy-deep);
   border-top: 1px solid rgba(226, 164, 92, 0.2);
   padding: 0.6rem;
+  /* The fixed header cannot scroll with the page. Keep every link reachable on a short screen. */
+  max-height: calc(100vh - var(--nav-h));
+  max-height: calc(100dvh - var(--nav-h));
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 .mobile.is-open { display: block; animation: pop 220ms var(--ease); }
 .mobile a {
@@ -1107,18 +1123,20 @@ main {
 .review-list li::marker { color: var(--accent); }
 
 /* ============ Links ============ */
-.link-grid { display: grid; gap: 0.75rem; }
-@media (min-width: 700px) { .link-grid { grid-template-columns: 1fr 1fr; } }
-@media (min-width: 1000px) { .link-grid { grid-template-columns: 1fr 1fr 1fr; } }
+.link-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+@media (min-width: 700px) { .link-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1000px) { .link-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .link-grid a { text-decoration: none; display: block; }
 .link-grid .card {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  column-gap: 0.75rem;
+  min-width: 0;
   min-height: 3.6rem;
 }
-.link-grid .card h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.link-grid .card h3 { margin: 0; font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
+.link-grid .card .link-note { grid-column: 1 / -1; }
 .link-grid .card span {
   color: var(--accent-ink);
   font-family: var(--sans);
@@ -1231,16 +1249,19 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   object-fit: contain;
   object-position: center bottom;
 }
-.persona:hover .persona-alt,
-.persona:focus-visible .persona-alt,
+.persona:not(.is-controlled):focus-visible .persona-alt,
 .persona.is-alt .persona-alt { opacity: 1; transform: none; }
 .persona-alt .pf { opacity: 0; }
-.persona:hover .pf-blink,
-.persona:focus-visible .pf-blink,
+.persona:not(.is-controlled):focus-visible .pf-blink,
 .persona.is-alt .pf-blink { animation: pf-blink 4.2s step-end infinite; }
-.persona:hover .pf-laugh,
-.persona:focus-visible .pf-laugh,
+.persona:not(.is-controlled):focus-visible .pf-laugh,
 .persona.is-alt .pf-laugh { animation: pf-laugh 4.2s step-end infinite; }
+/* A touch browser can retain :hover after a tap. An explicit toggle takes precedence
+   over that preview until the pointer or focus actually leaves the control. */
+.persona:not(.is-controlled):hover .persona-alt { opacity: 1; transform: none; }
+.persona:not(.is-controlled):hover .pf-blink { animation: pf-blink 4.2s step-end infinite; }
+.persona:not(.is-controlled):hover .pf-laugh { animation: pf-laugh 4.2s step-end infinite; }
+.persona:not(.is-controlled):hover .persona-hint { opacity: 0; }
 @keyframes pf-blink {
   0%, 44% { opacity: 0; }
   46%, 52% { opacity: 1; }
@@ -1267,7 +1288,7 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
   border-radius: 999px;
   transition: opacity 300ms var(--ease);
 }
-.persona:hover .persona-hint,
+.persona:not(.is-controlled):focus-visible .persona-hint,
 .persona.is-alt .persona-hint { opacity: 0; }
 
 /* ============ Motion ============ */
@@ -2028,13 +2049,35 @@ body.shell {
    walk-hit magnet dressed by CSS — awning, counter, basin — so the surveyed world never acquires a
    geometry that no source surveyed. Its colours are all borrowed: the amber of the shopfront lamps,
    the night navy, the same paper the plates use. */
+/* Round 79: the stall had three layers and read as one flat block. At the authored 300 x 250 they
+   are drawn as a stall reads from the street: a striped awning across the top fifth, the two posts
+   that carry it, the dark booth under it, the counter along the bottom and the basin on the
+   counter. Every colour is borrowed from the street's own palette (the lamp amber, the night navy,
+   the counter's wood), and every size is a PERCENTAGE of the button, so the fascia scales with the
+   projection instead of being resized in pixels -- at 10 m this button is 84 px wide and a 26 px
+   stripe came out as one navy block. */
 .walk-stall {
   background:
-    repeating-linear-gradient(90deg, rgba(224, 161, 63, 0.92) 0 22px, rgba(20, 29, 48, 0.95) 22px 44px)
-      0 0 / 100% 30% no-repeat,
-    linear-gradient(rgba(11, 20, 48, 0.95) 0%, rgba(11, 20, 48, 0.95) 0%) 6% 30% / 88% 44% no-repeat,
-    radial-gradient(40% 34% at 50% 84%, rgba(27, 50, 71, 0.95) 98%, transparent 100%);
-  border-radius: 0.35rem 0.35rem 0.15rem 0.15rem;
+    /* the basin on the counter, with the lamp's highlight on its far rim */
+    radial-gradient(circle at 50% 46%, rgba(255, 236, 205, 0.55) 0 3px, transparent 4px) 50% 77% / 34% 18% no-repeat,
+    radial-gradient(ellipse 50% 50% at 50% 60%, rgba(20, 40, 62, 0.98) 88%, rgba(122, 88, 54, 0.9) 100%)
+      50% 77% / 34% 18% no-repeat,
+    /* the counter */
+    linear-gradient(rgba(126, 90, 55, 0.98) 0 100%) 6% 86% / 88% 9% no-repeat,
+    /* the two posts that carry the awning */
+    linear-gradient(rgba(96, 68, 42, 0.98) 0 100%) 5% 20% / 6% 68% no-repeat,
+    linear-gradient(rgba(96, 68, 42, 0.98) 0 100%) 89% 20% / 6% 68% no-repeat,
+    /* the booth's dark opening, which is what a visitor presses */
+    linear-gradient(rgba(9, 16, 38, 0.97) 0 100%) 11% 24% / 78% 64% no-repeat,
+    /* the awning: a scalloped hem under stripes that repeat in percentages, so the booth wears six
+       stripes whether it is 84 px across or 400 */
+    radial-gradient(circle at 50% 100%, rgba(224, 161, 63, 0.95) 0 42%, transparent 45%)
+      0 21% / 8.4% 7% repeat-x,
+    repeating-linear-gradient(90deg, rgba(226, 164, 66, 0.96) 0 8.4%, rgba(20, 29, 48, 0.96) 8.4% 16.8%)
+      0 0 / 100% 20% no-repeat,
+    /* the lamp over the counter, and the shadow it casts down the booth */
+    radial-gradient(52% 34% at 50% 24%, rgba(255, 217, 160, 0.32), transparent 74%);
+  border-radius: 0.3rem 0.3rem 0.12rem 0.12rem;
   box-shadow: 0 0 34px rgba(255, 217, 160, 0.16);
 }
 .walk-game {
@@ -2100,15 +2143,22 @@ body.shell {
   color: rgba(205, 214, 238, 0.62);
 }
 .walk-tutor {
+  position: absolute;
+  left: 50%;
+  bottom: calc(6.8rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 0.55rem;
-  margin: 0 auto 0.5rem;
+  width: min(46rem, calc(100% - 2rem));
   padding: 0.4rem 0.7rem;
-  max-width: min(46rem, 94%);
   border: 1px solid rgba(205, 214, 238, 0.34);
   border-radius: 8px;
   background: rgba(6, 11, 26, 0.74);
+}
+/* Keep the guide above the touch stick and the named action bar. */
+@media (pointer: coarse) {
+  .walk-tutor { bottom: calc(11rem + env(safe-area-inset-bottom)); }
 }
 .walk-tutor[hidden] {
   display: none;
@@ -2122,6 +2172,9 @@ body.shell {
 .walk-tutor-step {
   margin: 0;
   flex: 1 1 auto;
+  min-width: 0;
+  max-height: max(2rem, calc(100dvh - 17.5rem));
+  overflow: auto;
   color: var(--muted-navy);
   font-size: 0.8rem;
   line-height: 1.45;
@@ -2134,6 +2187,8 @@ body.shell {
   color: var(--accent-bright);
   font: inherit;
   font-size: 0.76rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0.15rem 0.55rem;
   cursor: pointer;
 }
@@ -2246,6 +2301,8 @@ body.shell {
 .walk-hud .walk-stop {
   pointer-events: auto;
 }
+/* The bounded guide, unlike the full-width layout rows, is itself scrollable and interactive. */
+.walk-hud > .walk-tutor { pointer-events: auto; }
 .walk-top {
   display: flex;
   align-items: flex-start;

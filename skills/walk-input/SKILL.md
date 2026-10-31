@@ -257,11 +257,16 @@ and only "not swallowed by a phantom layer" in the gate — say which side holds
   visitor lands on, turning round and pressing E did nothing on three of eight pages. A doorway is not a
   shop window — you press it while walking at it.
 - **A glide's speed follows the jump.** `GLIDE_T 1.4 s`, `GLIDE_SPEED 165` floor, `GLIDE_SPEED_MAX 7000`
-  ceiling. At the flat comfort speed, Goat Island's Terrapin Point stop is a 94-second walk, and the
-  stairs/corridor glides that made 165 the right number are 2–3 m. A *hard* glide — a stop, a frame's
-  own approach, `glideTo(z, x, true)` — finishes on its target when the solver cannot get round
-  something, instead of being cancelled half way; a soft glide still gives up, because the body must not
-  be moved somewhere the visitor did not ask to be.
+  ceiling. A hard glide gets a final swept attempt if no detour is available; a clear destination does
+  not make the intervening path clear, and collision must not be bypassed to force an arrival.
+- **A bookmark must work directly from either direction.** Test the authored x and z from the entrance
+  and from stops on both sides of a wide obstacle, not only consecutive stops. Sample the walker's
+  collision state en route. `__walk.glide === null` means the glide ended, not that it arrived.
+  A detour must search the usable lane width, probe clearance in the direction of travel, and restore
+  the original target x before finishing; the temporary detour is not the destination.
+- **Collision depth coverage uses the live walker's bounds.** Read `minDepth` and `maxDepth` from
+  `__walk`; un-emitted attributes and fixed distance caps silently leave parts of a walk unchecked.
+  `wallHalf` is the base shell width, not the wider bounds of a lane with width segments.
 - **`__walk.glide` is exposed** so an instrument can ask "is it finished" instead of watching for
   stillness. `_aim.mjs` already learned this in round 72 (a loaded machine shows a resting body for a
   second at a time); `_stops.mjs` and `_reach.mjs` now wait on the handle. A probe that polls for

@@ -54,9 +54,12 @@ report.
 3. **A probe no round invokes.** For every file in `.verify/`, count references outside itself, in
    every tracked text file — `TODO.md`, `AGENTS.md`, `SKILLS.md`, `skills/`, the gates, the generator.
    Zero references is a candidate; **it is not yet a verdict** (see §3).
-4. **A gate missing from the checklist.** List `.verify/verify-*` and diff it against the run block in
-   `TODO.md` §2.3. This is the sweep's only finding that should *not* be deleted: a working gate is
-   made alive by adding it to the checklist, and dead by deleting it.
+4. **A gate missing from the checklist.** `python3 bin/gate-all.py --check` does exactly this diff and
+   exits 2, naming the file: the runner executes the block in `TODO.md` §2.3 *from that block*, so it
+   reads list and disk in both directions (`tests/gatelist.test.cjs` holds the negative case). Compare
+   by hand only if the runner is the thing you are changing. This is the sweep's only finding that
+   should *not* be deleted: a working gate is made alive by adding it to the checklist, and dead by
+   deleting it.
 5. **A CSS selector no page can match.** A grep cannot answer this: it finds `.plate` inside a prose
    comment and `grid-2` inside an image filename. Use `.verify/verify-csslive.mjs` (round 77): it
    parses every selector out of `css/site.css` with its line number, asks jsdom whether any page
@@ -157,8 +160,9 @@ The sweep is the second half of the rule. The first half is not adding dead thin
 - A new attribute needs a reader **in the same commit**, and the reader's value needs a user in the
   same commit. `data-lane-day-cycle` was authored, emitted, parsed, and unused for an unknown number
   of rounds because each of those three steps was somebody's good idea.
-- A new probe gets a line in `TODO.md` §2.4 in the same commit, or it is scratch and belongs in
-  `/tmp`.
+- A new probe gets a line in `TODO.md` §2.4 in the same commit (the instrument register), or it is
+  scratch and lives in `/tmp`. The story of why it exists belongs in its own header comment, nowhere
+  else: no round logs anywhere in the repository (owner ruling, 2026-10-29).
 - A new gate goes into §2.3 in the same commit, with its count, or it will not run again.
 - A new doc reference names a file that exists at the end of the commit (`verify-skills` cannot check
   this; a sweep can).
@@ -181,8 +185,9 @@ The sweep is the second half of the rule. The first half is not adding dead thin
    files in `.verify/` → 82 (`_albumprobe` went with the album), 66 images all referenced, generator
    output identical apart from the removed markup and the cache-bust hash, `verify-walk` 212/212.
 2. For each candidate, find its references across every tracked text file and write down the number.
-3. Choose delete / wire / document per §3. Say the reason in one line in `TODO.md`, because the next
-   sweep will ask the same question.
+3. Choose delete / wire / document per §3. Say the reason in one line where the survivor lives — a code
+   comment or its `TODO.md` register line, never a round log — because the sweep will ask the same
+   question.
 4. Delete; regenerate; diff. Prove the pages did not change except where you meant them to.
 5. Update the registers in the same commit: `TODO.md` §2.3 (gate list, with counts), §2.4 (instruments,
    without the deleted ones), `skills/README.md` + `SKILLS.md` if a skill changed, and the skill itself

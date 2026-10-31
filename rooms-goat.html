@@ -26,7 +26,7 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","@id":"https://kevinchung58.github.io/huaxu/rooms-goat.html","url":"https://kevinchung58.github.io/huaxu/rooms-goat.html","isPartOf":{"@type":"WebSite","name":"Hua-Xu Zhong","url":"https://kevinchung58.github.io/huaxu/index.html"}}</script>
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
   <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
-  <link rel="stylesheet" href="css/site.css?v=1257965d15" />
+  <link rel="stylesheet" href="css/site.css?v=285fc1df9e" />
 </head>
 <body class="shell">
 <div class="walk" id="walk-goat" data-walk="Goat Island"
@@ -72,22 +72,22 @@
       <p class="walk-offline-where" data-walk-offline-where aria-hidden="true"></p>
     </div>
   </div>
-  <div class="walk-tutor" data-walk-tutor hidden aria-hidden="false">
-    <p class="walk-tutor-step" data-walk-tutor-text></p>
-    <span class="walk-tutor-n" data-walk-tutor-count></span>
-    <button type="button" class="walk-tutor-act" data-walk-tutor-skip aria-label="Skip the guide">skip</button>
-    <button type="button" class="walk-tutor-act" data-walk-tutor-done aria-label="Got it, leave me to the lane">done</button>
-  </div>
   <div class="walk-hud">
     <div class="walk-top">
       <div class="walk-pick">
         <a class="walk-icon walk-exit" href="rooms-niagara.html#at-curtain-rainbow" data-walk-exit aria-label="Leave the lane"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-7.5A2.25 2.25 0 0 0 3.75 5.25v13.5A2.25 2.25 0 0 0 6 21h7.5a2.25 2.25 0 0 0 2.25-2.25V15" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12H3m0 0 3.75-3.75M3 12l3.75 3.75" /></svg></a>
-        <div class="walk-stops" role="group" aria-label="Stops in this lane"><button type="button" class="walk-stop" data-walk-stop="0" style="--z:116px;--p:0.007;--x:0px" aria-label="the foot of the Goat Island walk, 116 cm in"></button><button type="button" class="walk-stop" data-walk-stop="1" data-view-yaw="285" data-view-pitch="12" style="--z:7105px;--p:0.447;--x:-700px" aria-label="the rail at the American Falls, 7105 cm in"></button><button type="button" class="walk-stop" data-walk-stop="2" data-view-yaw="70" data-view-pitch="6" style="--z:12180px;--p:0.766;--x:250px" aria-label="the rail above the upper river, 12180 cm in"></button><button type="button" class="walk-stop" data-walk-stop="3" data-view-yaw="88" data-view-pitch="14" style="--z:15599px;--p:0.981;--x:250px" aria-label="Terrapin Point, 15599 cm in"></button></div>
+        <div class="walk-stops" role="group" aria-label="Stops in this lane"><button type="button" class="walk-stop" data-walk-stop="0" style="--z:116px;--p:0.007;--x:0px" aria-label="the foot of the Goat Island walk, 116 cm in"></button><button type="button" class="walk-stop" data-walk-stop="1" data-view-yaw="285" data-view-pitch="12" style="--z:7105px;--p:0.447;--x:-700px" aria-label="the rail at the American Falls, 7105 cm in"></button><button type="button" class="walk-stop" data-walk-stop="2" data-view-yaw="70" data-view-pitch="6" style="--z:12180px;--p:0.766;--x:250px" aria-label="the rail above the upper river, 12180 cm in"></button><button type="button" class="walk-stop" data-walk-stop="3" data-view-yaw="88" data-view-pitch="-2" style="--z:15599px;--p:0.981;--x:700px" aria-label="Terrapin Point, 15599 cm in"></button></div>
       </div>
       <div class="walk-read">
         <p class="sr-only" data-walk-status role="status">Building the lane…</p>
         <p class="sr-only" data-walk-record aria-live="polite"></p>
       </div>
+    </div>
+    <div class="walk-tutor" data-walk-tutor hidden aria-hidden="false">
+      <p class="walk-tutor-step" data-walk-tutor-text aria-live="polite"></p>
+      <span class="walk-tutor-n" data-walk-tutor-count></span>
+      <button type="button" class="walk-tutor-act" data-walk-tutor-skip aria-label="Skip the guide">skip</button>
+      <button type="button" class="walk-tutor-act" data-walk-tutor-done aria-label="Got it, leave me to the lane">done</button>
     </div>
     <div class="walk-bottom">
       <!-- Round 71, the owner's ruling: a tap on the picture presses nothing. The finger's verb is
@@ -172,8 +172,11 @@
   </div>
 </div>
 
-<script src="js/site.js?v=1257965d15"></script>
-<script src="js/games.js?v=1257965d15" defer></script>
-<script type="module" src="js/scene3d.js?v=1257965d15"></script>
+<script src="js/overlay.js?v=285fc1df9e"></script>
+<script src="js/chrome.js?v=285fc1df9e"></script>
+<script src="js/dot-game.js?v=285fc1df9e"></script>
+<script src="js/site.js?v=285fc1df9e"></script>
+<script src="js/games.js?v=285fc1df9e" defer></script>
+<script type="module" src="js/scene3d.js?v=285fc1df9e"></script>
 </body>
 </html>

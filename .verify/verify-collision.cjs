@@ -17,10 +17,12 @@
 */
 const { JSDOM, VirtualConsole } = require("jsdom");
 const fs = require("fs");
+const { siteText } = require("../bin/site-sources.cjs");
+const { walkPages } = require("../bin/walk-pages.cjs");
 
-const js = fs.readFileSync("js/site.js", "utf8");
-const ALL_PAGES = ["street.html", "rooms.html", "rooms-fukuoka.html", "rooms-toronto.html",
-                   "rooms-cntower.html", "rooms-niagara.html", "rooms-journey.html"];
+const js = siteText();
+const ALL_PAGES = walkPages();
+if (!ALL_PAGES.length) throw new Error("verify-collision: no walkable pages found");
 // GATE_PAGE=rooms-fukuoka runs one page — for diagnosis, not for the commit gate
 const PAGES = process.env.GATE_PAGE ? [process.env.GATE_PAGE + ".html"] : ALL_PAGES;
 const fails = [];
@@ -86,7 +88,7 @@ function boot(file) {
     let rafId = 1;
     w.requestAnimationFrame = (cb) => { queue.push({ id: rafId, cb }); return rafId++; };
     w.cancelAnimationFrame = (id) => { const i = queue.findIndex((q) => q.id === id); if (i >= 0) queue.splice(i, 1); };
-    w.performance = { now: () => now };
+    Object.defineProperty(w.performance, "now", { configurable: true, value: () => now });
     async function pump(n) {
       for (let i = 0; i < n; i++) {
         now += 17;
@@ -237,10 +239,12 @@ async function pageGate(file) {
     for (let i = 0; i < 320; i++) {
       const y = env.walk().yaw;
       const err = ((target - y + 540) % 360) - 180;
-      if (Math.abs(err) <= 1.4) return;
+      if (Math.abs(err) <= 1.5) return; // half of the walker's 2.975° minimum tap
       env.key(err > 0 ? "arrowright" : "arrowleft"); await env.pump(2);
       env.keyUp(err > 0 ? "arrowright" : "arrowleft");
+      await env.pump(1); // pay any remaining release nudge before measuring the heading
     }
+    throw new Error(`${file}: could not turn to ${target}° (yaw=${env.walk().yaw})`);
   };
 
   // V1: sweep the ring and a diagonal press at every wall — no freeze may find an exit
@@ -267,9 +271,10 @@ async function pageGate(file) {
   // against the page's own blockedAt, never a re-implementation. Pre-fix: 526/786 free points on
   // niagara and journey — that scan is this check's bite.
   {
-    const layer = env.doc.querySelector("[data-walk]");
-    const WALL0 = Number(layer.dataset.laneW ?? 640) / 2;
-    const MIND0 = Number(layer.dataset.laneStart ?? 0), MAXD0 = Number(layer.dataset.laneLen ?? 6000);
+    // Use the live walker's own bounds. The emitted pages do not define laneStart/laneLen;
+    // inventing defaults here used to ignore floor walls before zero and past 60 m.
+    const WALL0 = W.wallHalf;
+    const MIND0 = mn, MAXD0 = mx_;
     /* P2 (round 69): the backdrop of a big place lives in js/places/<place>.js now, and this gate
        read `.textContent` only — so after the data moved it found zero quads and scanned zero runs
        for exactly the pages the check was written for (round 45's 526/786 free points were on
@@ -312,7 +317,7 @@ async function pageGate(file) {
     const blockedAt = env.walk().blockedAt;
     const half = env.walk().halfWidth;
     let holes = 0;
-    outer: for (let x = -half; x <= half && !holes; x += 8) for (let z = MIND0; z <= Math.min(MAXD0, 30000); z += 8) {
+    outer: for (let x = -half; x <= half && !holes; x += 8) for (let z = MIND0; z <= MAXD0; z += 8) {
       for (const [a, b2] of runs) if (segd(x, z, a, b2) < 14.4 && !blockedAt(x, z)) { holes++; continue outer; }
     }
     ok(`${file}: painted floor-walls block the body (holes x${holes})`, holes === 0,
@@ -351,9 +356,6 @@ async function pageGate(file) {
   for (const p of PAGES) await pageGate(p);
   console.log(`\nverify-collision: ${checks - fails.length}/${checks} pass`);
   if (fails.length) { for (const f of fails) console.log("FAILED " + f); process.exit(1); }
-  /* The gate used to leave the process standing after the last line, because the jsdom window it
-     opened keeps a handle open. The result was on the screen and the exit code was unreachable,
-     so "the gate passed" could only ever be read by eye and never by a script. Leave now, with
-     the code the result implies. */
+  /* jsdom windows keep handles open, so leave with the verdict once every page was checked. */
   process.exit(0);
 })();

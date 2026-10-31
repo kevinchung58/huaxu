@@ -6,11 +6,12 @@
    appearance. Run from the repo root:
    `node .verify/verify-walk.mjs`. */
 import fs from "node:fs";
+import { siteText } from "../bin/site-sources.mjs";
 
 const rooms = fs.readFileSync("rooms.html", "utf8");
 const act = fs.readFileSync("activities.html", "utf8");
 const css = fs.readFileSync("css/site.css", "utf8");
-const js = fs.readFileSync("js/site.js", "utf8");
+const js = siteText();
 import { genSource } from "../bin/gen-source.mjs";
 const gen = genSource(".");
 const html = rooms;
@@ -1084,18 +1085,20 @@ ok("nothing is marked as seen: album, not story", !/is-viewed|data-viewed|has-vi
 
 /* ---- 6. the cache-buster is the assets' own hash ----------------------------------------------- */
 {
-  const { createHash } = await import("node:crypto");
-  const hash = createHash("sha1");
-  ["css/site.css", "js/site.js", "js/scene3d.js", "js/games.js",
-   "js/vendor/three-0.186.1/three.core.js", "js/vendor/three-0.186.1/three.module.js"]
-    .forEach((asset) => hash.update(fs.readFileSync(asset)));
-  const digest = hash.digest("hex").slice(0, 10);
+  /* The asset list is not restated here: `bin/asset-ver.mjs` hashes the two JSON lists the generator
+     itself reads, so a part added to the programme cannot leave this gate one file behind. */
+  const { assetVer, assetFiles } = await import("../bin/asset-ver.mjs");
+  const assets = assetFiles();
+  const digest = assetVer();
   const pages = fs.readdirSync(".").filter((f) => f.endsWith(".html"));
   const tokens = new Set();
   const wrong = [];
   pages.forEach((f) => {
     const html = fs.readFileSync(f, "utf8");
-    const tags = [...html.matchAll(/(?:site\.css|site\.js|scene3d\.js|games\.js)\?v=([0-9a-z]+)/g)].map((m) => m[1]);
+    /* Only the files the token covers. A page also loads `js/places/<place>.js` under its own digest
+       (gen/render.py); counting those here would report four pages as shipping two keys. */
+    const tags = assets.flatMap((a) => [...html.matchAll(new RegExp(
+      a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\?v=([0-9a-z]+)", "g"))].map((m) => m[1]));
     tags.forEach((t) => tokens.add(t));
     // Every page must ask for the bytes on disk, and ask for both with one token: two tokens is how a
     // build ships a new renderer under an old key, which no other gate here can see because it only

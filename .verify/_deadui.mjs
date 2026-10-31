@@ -12,10 +12,11 @@
 
    Run: node .verify/_deadui.mjs */
 import fs from "node:fs";
+import { siteText } from "../bin/site-sources.mjs";
 const { JSDOM, VirtualConsole } = await import("jsdom");
 const PAGES = ["street.html", "rooms.html", "rooms-fukuoka.html", "rooms-toronto.html",
   "rooms-niagara.html", "rooms-goat.html", "rooms-journey.html", "rooms-cntower.html"];
-const js = fs.readFileSync("js/site.js", "utf8");
+const js = siteText();
 const games = fs.readFileSync("js/games.js", "utf8");
 
 function boot(file) {

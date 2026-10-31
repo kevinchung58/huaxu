@@ -25,7 +25,7 @@
   <title>Research · Hua-Xu Zhong</title>
   <link rel="icon" type="image/png" href="IMG/mascot-icon.png" />
   <link rel="apple-touch-icon" href="IMG/mascot-icon.png" />
-  <link rel="stylesheet" href="css/site.css?v=1257965d15" />
+  <link rel="stylesheet" href="css/site.css?v=285fc1df9e" />
 </head>
 <body>
 <a class="skip" href="#main">Skip to main content</a>
@@ -55,9 +55,9 @@
         </div>
       </div>
     </nav>
-    <button class="menu-toggle" type="button" aria-label="Toggle menu" aria-expanded="false"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg></button>
+    <button class="menu-toggle" type="button" aria-label="Toggle menu" aria-controls="mobile-menu" aria-expanded="false"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg></button>
   </div>
-  <nav class="mobile" aria-label="Mobile">
+  <nav class="mobile" id="mobile-menu" aria-label="Mobile">
     <a href="index.html" class="">Home</a>
     <a href="about.html" class="">About</a>
     <a href="research.html" class="is-active">Research</a>
@@ -102,10 +102,10 @@
       <span class="badge">International research experience</span> September 7, 2023 – April 8, 2024 abroad, per the project record ·
       <span class="badge">International houses</span> every venue above is peer-reviewed and international: Elsevier, Emerald, Frontiers, MDPI, Springer, Taylor & Francis.
     </p>
-    <div class="filters reveal" data-filter-group>
-      <button class="chip is-on" type="button" data-filter="all">All (21)</button>
-      <button class="chip" type="button" data-filter="Journal">Journal (17)</button>
-      <button class="chip" type="button" data-filter="Conference">Conference (4)</button>
+    <div class="filters reveal" data-filter-group role="group" aria-label="Filter publications by type">
+      <button class="chip is-on" type="button" data-filter="all" aria-pressed="true">All (21)</button>
+      <button class="chip" type="button" data-filter="Journal" aria-pressed="false">Journal (17)</button>
+      <button class="chip" type="button" data-filter="Conference" aria-pressed="false">Conference (4)</button>
     </div>
     <div class="year-block" data-year="2026"><h3>2026 <span>3 publications</span></h3><article class="pub is-featured reveal" data-pub-type="Journal">
   <div class="badges"><span class="badge">2026</span><span class="badge">Journal</span><span class="badge gold">Featured</span><span class="badge">Corresponding author</span></div>
@@ -387,14 +387,17 @@
   </div>
 </footer>
 <button class="to-top" type="button" aria-label="Scroll to top"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg></button>
-<script src="js/site.js?v=1257965d15"></script>
+<script src="js/overlay.js?v=285fc1df9e"></script>
+<script src="js/chrome.js?v=285fc1df9e"></script>
+<script src="js/dot-game.js?v=285fc1df9e"></script>
+<script src="js/site.js?v=285fc1df9e"></script>
 
-<div class="modal" id="featured-modal" role="dialog" aria-modal="true">
+<div class="modal" id="featured-modal" role="dialog" aria-modal="true" aria-labelledby="featured-modal-title">
   <div class="modal-backdrop" data-close></div>
   <div class="modal-panel">
     <button class="modal-close" type="button" data-close aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
     <p class="eyebrow" style="color:var(--accent)">Featured paper</p>
-    <h3 data-modal-title></h3>
+    <h3 id="featured-modal-title" data-modal-title></h3>
     <p class="authors" data-modal-authors></p>
     <p class="source" data-modal-source></p>
     <p class="source" data-modal-note style="color:var(--accent);font-weight:600">Corresponding author: Hua-Xu Zhong</p>
