@@ -2298,10 +2298,11 @@ body.shell {
   pointer-events: none;
 }
 .walk-hud .walk-icon,
-.walk-hud .walk-stop,
-.walk-hud > .walk-tutor {
+.walk-hud .walk-stop {
   pointer-events: auto;
 }
+/* The bounded guide, unlike the full-width layout rows, is itself scrollable and interactive. */
+.walk-hud > .walk-tutor { pointer-events: auto; }
 .walk-top {
   display: flex;
   align-items: flex-start;

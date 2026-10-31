@@ -1861,7 +1861,11 @@
                          // A lift is a door that parts in the middle: the door painter draws it
                          // without the panels, handle and fanlight that make a street door.
                          lift: "door" });
-  const mix = (hex, k) => {    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const mix = (hex, k) => {
+    // A shade can itself be shaded again (for example a post face or a bright water rope).
+    // Preserve the existing hex calculation while accepting this function's own rgb() output.
+    const rgb = hex[0] === "#" ? null : /^rgb\(\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\)$/i.exec(hex);
+    const c = rgb ? rgb.slice(1).map(Number) : [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
     /* Round 61: a caller that passes a third argument is calling the wrong function, and the result
        used to be the literal string `rgb(NaN,NaN,NaN)` — an invalid colour that the renderer drew as
        white. One such call (the SkyWheel's steel) was the wheel's 26 rim and A-frame quads. Loud in
@@ -1889,7 +1893,7 @@
   const ZERO8 = [0, 0, 0, 0, 0, 0, 0, 0];
   const quads = [];
   let threeRenderer = null;
-  let nanLogged = 0;   // TEMP
+  let nanLogged = 0;   // warn at most three times per scene if a material colour is invalid
   const add = (C, corners, uv, mode, arg, img) => {
     const pts = corners.map((c, i) => {
       const o = camPt(C, c[0], c[1], c[2]);
