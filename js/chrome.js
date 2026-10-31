@@ -1,9 +1,6 @@
-/* The page's own chrome: the nav that marks itself scrolled, the "more" menus, the mobile menu, the
-   back-to-top button and the featured-photograph modal. It runs on every page and reads nothing from
-   the lane.
-
-   Reads from `js/overlay.js`: `overlayEntered`, `overlayLeft` (the two history calls), and so it is
-   loaded after that file. Nothing reads this file: it is one IIFE and every name in it is its own.
+/* The page's own chrome: the nav, menus, back-to-top button, portrait, publication filters and
+   featured-paper modal. The modal uses the focus and history helpers in js/overlay.js, loaded first.
+   Nothing reads this file: it is one IIFE and every name in it is its own.
    ---------------------------------------------------------------------------------------------- */
 
 (() => {
@@ -49,6 +46,11 @@
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      if (toggle && mobile?.classList.contains("is-open")) {
+        mobile.classList.remove("is-open");
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.focus();
+      }
       mores.forEach((more) => {
         more.classList.remove("is-open");
         more.querySelector(".more-btn")?.setAttribute("aria-expanded", "false");
@@ -77,7 +79,10 @@
   }
 
   document.querySelectorAll(".persona").forEach((p) => {
-    const toggle = () => p.classList.toggle("is-alt");
+    const toggle = () => {
+      p.classList.add("is-controlled");
+      p.setAttribute("aria-pressed", String(p.classList.toggle("is-alt")));
+    };
     p.addEventListener("click", toggle);
     p.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -85,6 +90,12 @@
         toggle();
       }
     });
+    // A new hover/focus may preview the portrait again, but an explicit toggle takes
+    // precedence until the pointer or focus leaves the control.
+    p.addEventListener("pointerleave", (event) => {
+      if (event.pointerType !== "touch") p.classList.remove("is-controlled");
+    });
+    p.addEventListener("blur", () => p.classList.remove("is-controlled"));
   });
 
   document.querySelectorAll("[data-filter-group]").forEach((group) => {
@@ -93,8 +104,11 @@
     const years = document.querySelectorAll("[data-year]");
     chips.forEach((chip) => {
       chip.addEventListener("click", () => {
-        chips.forEach((c) => c.classList.remove("is-on"));
-        chip.classList.add("is-on");
+        chips.forEach((c) => {
+          const selected = c === chip;
+          c.classList.toggle("is-on", selected);
+          c.setAttribute("aria-pressed", String(selected));
+        });
         const key = chip.getAttribute("data-filter");
         let shown = 0;
         items.forEach((item) => {
@@ -109,21 +123,26 @@
           }
         });
         years.forEach((block) => {
-          const visible = [...block.querySelectorAll("[data-pub-type]")].some((el) => !el.hidden);
-          block.hidden = !visible;
+          const count = [...block.querySelectorAll("[data-pub-type]")].filter((el) => !el.hidden).length;
+          block.hidden = count === 0;
+          const label = block.querySelector("h3 > span");
+          if (label) label.textContent = `${count} publication${count === 1 ? "" : "s"}`;
         });
       });
     });
   });
 
-  const modal = document.querySelector("#featured-modal");
-  if (modal) {
+  const bindFeatured = () => {
+    const modal = document.querySelector("#featured-modal");
+    if (!modal) return;
     const title = modal.querySelector("[data-modal-title]");
     const authors = modal.querySelector("[data-modal-authors]");
     const source = modal.querySelector("[data-modal-source]");
     const note = modal.querySelector("[data-modal-note]");
     const doi = modal.querySelector("[data-modal-doi]");
+    let trigger = null;
     const open = (btn) => {
+      if (modal.classList.contains("is-open")) return;
       title.textContent = btn.dataset.title || "";
       authors.innerHTML = (btn.dataset.authors || "").replace(/H\.-X\. Zhong/g, "<b>H.-X. Zhong</b>");
       source.textContent = btn.dataset.source || "";
@@ -135,19 +154,23 @@
         doi.hidden = true;
       }
       modal.classList.add("is-open");
-      document.body.style.overflow = "hidden";
-      overlayEntered();          // round 72: Back folds this before it leaves the page
+      trigger = enterOverlay(modal, ".modal-close", btn);
     };
     const close = () => {
-      const wasOpen = modal.classList.contains("is-open");
+      if (!modal.classList.contains("is-open")) return;
       modal.classList.remove("is-open");
-      document.body.style.overflow = "";
-      if (wasOpen) overlayLeft();
+      leaveOverlay(modal, trigger);
+      trigger = null;
     };
     document.querySelectorAll("[data-featured]").forEach((btn) => btn.addEventListener("click", () => open(btn)));
     modal.querySelectorAll("[data-close]").forEach((el) => el.addEventListener("click", close));
-    document.addEventListener("keydown", (event) => {
+    modal.addEventListener("keydown", (event) => {
       if (event.key === "Escape") close();
+      else trapTab(modal, event);
     });
-  }
+  };
+  // The generated dialog follows the scripts in the page; wait for it rather than
+  // attaching listeners to an element that has not been parsed yet.
+  if (document.querySelector("#featured-modal")) bindFeatured();
+  else if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindFeatured, { once: true });
 })();

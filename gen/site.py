@@ -209,9 +209,9 @@ def nav(active: str) -> str:
         </div>
       </div>
     </nav>
-    <button class="menu-toggle" type="button" aria-label="Toggle menu" aria-expanded="false">{ICON_MENU}</button>
+    <button class="menu-toggle" type="button" aria-label="Toggle menu" aria-controls="mobile-menu" aria-expanded="false">{ICON_MENU}</button>
   </div>
-  <nav class="mobile" aria-label="Mobile">
+  <nav class="mobile" id="mobile-menu" aria-label="Mobile">
     {a("index.html", "Home", "home")}
     {a("about.html", "About", "about")}
     {a("research.html", "Research", "research")}

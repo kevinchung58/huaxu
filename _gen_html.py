@@ -104,7 +104,7 @@ about = page("About · Hua-Xu Zhong", "about", f"""
   <div class="wrap">
     <div class="section-head reveal"><p class="eyebrow">Statement</p><h1>About</h1><p>Academic journey and vision</p></div>
     <div class="about-card reveal">
-      <div class="persona" role="button" tabindex="0" aria-label="Toggle illustrated portrait">
+      <div class="persona" role="button" tabindex="0" aria-label="Toggle illustrated portrait" aria-pressed="false">
         <span class="persona-frame">
           <img src="IMG/2.jpg" alt="Hua-Xu Zhong" />
           <span class="persona-alt" aria-hidden="true">
@@ -112,7 +112,7 @@ about = page("About · Hua-Xu Zhong", "about", f"""
             <img class="pf pf-blink" src="IMG/mascot-blink.png" alt="" loading="lazy" />
             <img class="pf pf-laugh" src="IMG/mascot-laugh.png" alt="" loading="lazy" />
           </span>
-          <span class="persona-hint" aria-hidden="true">Hover me</span>
+          <span class="persona-hint" aria-hidden="true">Tap or click</span>
         </span>
       </div>
       <div class="about-copy">
@@ -178,10 +178,10 @@ research = page("Research · Hua-Xu Zhong", "research", f"""
       <span class="badge">International research experience</span> {escape(intl_proj[3]) if intl_proj else ""} abroad, per the project record ·
       <span class="badge">International houses</span> every venue above is peer-reviewed and international: {", ".join(houses)}.
     </p>
-    <div class="filters reveal" data-filter-group>
-      <button class="chip is-on" type="button" data-filter="all">All ({len(pubs)})</button>
-      <button class="chip" type="button" data-filter="Journal">Journal ({j_count})</button>
-      <button class="chip" type="button" data-filter="Conference">Conference ({c_count})</button>
+    <div class="filters reveal" data-filter-group role="group" aria-label="Filter publications by type">
+      <button class="chip is-on" type="button" data-filter="all" aria-pressed="true">All ({len(pubs)})</button>
+      <button class="chip" type="button" data-filter="Journal" aria-pressed="false">Journal ({j_count})</button>
+      <button class="chip" type="button" data-filter="Conference" aria-pressed="false">Conference ({c_count})</button>
     </div>
     {''.join(year_html)}
     {titled("h2", "Featured papers", ICON_SPARK, "block-title reveal spaced")}
@@ -194,12 +194,12 @@ research = page("Research · Hua-Xu Zhong", "research", f"""
   </div>
 </section>
 """, extra=f"""
-<div class="modal" id="featured-modal" role="dialog" aria-modal="true">
+<div class="modal" id="featured-modal" role="dialog" aria-modal="true" aria-labelledby="featured-modal-title">
   <div class="modal-backdrop" data-close></div>
   <div class="modal-panel">
     <button class="modal-close" type="button" data-close aria-label="Close">{ICON_X}</button>
     <p class="eyebrow" style="color:var(--accent)">Featured paper</p>
-    <h3 data-modal-title></h3>
+    <h3 id="featured-modal-title" data-modal-title></h3>
     <p class="authors" data-modal-authors></p>
     <p class="source" data-modal-source></p>
     <p class="source" data-modal-note style="color:var(--accent);font-weight:600">Corresponding author: Hua-Xu Zhong</p>

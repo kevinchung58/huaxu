@@ -8344,7 +8344,7 @@
   };
   const TUT = [
     "Turn first: the lane continues behind you. Arrow keys or A / D, or drag the view.",
-    "Now walk in: hold W; Shift lets it run. The walls hold you — nothing here is a picture to walk through.",
+    "Now walk in: hold W, or push the stick on a touch screen; Shift lets it run. The walls hold you — nothing here is a picture to walk through.",
     "Stand in front of something and press E, or press the bar that names it at the foot of the picture: a door takes you through, a picture shows you the reel, a machine plays. What everything else is, and why, is written in the list.",
     "Those ticks above are the rail. Press one and the lane carries you to where the view is worth stopping for; Esc walks you back out.",
   ];
@@ -8677,7 +8677,8 @@
     // holding a control: keys must not steal Space from a focused button (that is how a keyboard
     // user activates things), and the open drawer is a document to be read, not a HUD to walk in.
     const busy = (card && !card.hidden) || (listPanel && !listPanel.classList.contains("is-closed"));
-    const onControl = document.activeElement && document.activeElement.closest(".walk-tools, .walk-stops, .walk-list, .walk-card");
+    const onControl = document.activeElement && document.activeElement.closest(
+      "button, a[href], input, select, textarea, summary, [role='button'], [contenteditable='true'], .walk-tools, .walk-stops, .walk-list, .walk-card");
     if (busy && k !== "escape" && k !== "l" && k !== "i") return;   // folding must survive folding: L
                                                           // closes what L opened and I closes what I
                                                           // opened, or a folded interface is a cage
