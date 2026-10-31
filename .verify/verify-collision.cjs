@@ -88,7 +88,7 @@ function boot(file) {
     let rafId = 1;
     w.requestAnimationFrame = (cb) => { queue.push({ id: rafId, cb }); return rafId++; };
     w.cancelAnimationFrame = (id) => { const i = queue.findIndex((q) => q.id === id); if (i >= 0) queue.splice(i, 1); };
-    w.performance = { now: () => now };
+    Object.defineProperty(w.performance, "now", { configurable: true, value: () => now });
     async function pump(n) {
       for (let i = 0; i < n; i++) {
         now += 17;
@@ -239,10 +239,12 @@ async function pageGate(file) {
     for (let i = 0; i < 320; i++) {
       const y = env.walk().yaw;
       const err = ((target - y + 540) % 360) - 180;
-      if (Math.abs(err) <= 1.4) return;
+      if (Math.abs(err) <= 1.5) return; // half of the walker's 2.975° minimum tap
       env.key(err > 0 ? "arrowright" : "arrowleft"); await env.pump(2);
       env.keyUp(err > 0 ? "arrowright" : "arrowleft");
+      await env.pump(1); // pay any remaining release nudge before measuring the heading
     }
+    throw new Error(`${file}: could not turn to ${target}° (yaw=${env.walk().yaw})`);
   };
 
   // V1: sweep the ring and a diagonal press at every wall — no freeze may find an exit

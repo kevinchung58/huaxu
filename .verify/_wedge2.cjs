@@ -1,12 +1,12 @@
-/* _wedge2 — the same sweep as _wedge, but with the solver itself reporting why a frame refused to move.
+/* _wedge2 — a solver trace that reports why a frame refused to move.
    Diagnostic only, never committed as a gate: js/site.js is patched in memory (every anchor asserted
-   to hit exactly once) and every patched statement only records values. exit 0 always.
+   to hit exactly once) and every patched statement only records values. Invalid coverage exits 2.
    Why: verify-collision's V1 only asks its question at the 24th consecutive slow frame and only
    when the last 30 frames are all under 0.5 cm/s, so the same wedge can pass or fail depending on
-   what the frame ring happened to hold. This sweeps wider (every rail stop, 16 headings, the
-   diagonal presses, and every solid's four corners) and reports EVERY run of >=20 frames slower
-   than 2 cm/s that still has a legal forward exit and a prop within 6 cm — the gate's own
-   definition, measured continuously.
+   what the frame ring happened to hold. This probe tries eight headings and forward/turn presses
+   from the initial position, then approaches solid corners. It reports runs of 24 frames below
+   2 cm/s when a forward exit remains legal and a prop is within 6 cm. Unlike _wedge, it does not
+   sweep from every rail stop.
    Run: ROUNDS=5 node .verify/_wedge2.cjs [page.html]   (stops at the first round with a hit)
    It patches js/site.js IN MEMORY only; every anchor is asserted to hit exactly once, so editing
    `moveStep` makes it throw by design — re-point the anchors (they are listed in patchedSite below)
@@ -15,6 +15,7 @@
 const { JSDOM, VirtualConsole } = require("jsdom");
 const fs = require("fs");
 const { siteText } = require("../bin/site-sources.cjs");
+const { legalPosition } = require("./_wedge-geometry.cjs");
 const FILE = process.argv[2] || (process.env.GATE_PAGE ? process.env.GATE_PAGE + ".html" : "rooms.html");
 
 function boot(file) {
@@ -23,7 +24,11 @@ function boot(file) {
     const vc = new VirtualConsole();
     vc.on("jsdomError", (e) => { const m = String((e && e.message) || e);
       if (!/navigation/.test(m)) errors.push(m); });
-    const html = fs.readFileSync(file, "utf8").replace(/<script src="[^"]*"><\/script>/g, "");
+    // Place data is a synchronous external script in the live page; jsdom does not fetch it.
+    const html = fs.readFileSync(file, "utf8")
+      .replace(/<script src="(js\/places\/[a-z0-9-]+\.js)(\?[^"]*)?"><\/script>/g,
+               (_m, src) => `<script>${fs.readFileSync(src, "utf8")}</script>`)
+      .replace(/<script src="[^"]*"><\/script>/g, "");
     const js = patchedSite();
     const dom = new JSDOM(html, { runScripts: "dangerously", pretendToBeVisual: true,
       url: "https://huaxu.test/" + file, virtualConsole: vc });
@@ -65,7 +70,7 @@ function boot(file) {
     let rafId = 1;
     w.requestAnimationFrame = (cb) => { queue.push({ id: rafId, cb }); return rafId++; };
     w.cancelAnimationFrame = (id) => { const i = queue.findIndex((q) => q.id === id); if (i >= 0) queue.splice(i, 1); };
-    w.performance = { now: () => now };
+    Object.defineProperty(w.performance, "now", { configurable: true, value: () => now });
     async function pump(n) {
       for (let i = 0; i < n; i++) {
         now += 17;
@@ -98,7 +103,7 @@ function patchedSite() {
     ["const hit = pushAt(cx, cz) || pushAt(oldX, oldDepth);",
      "const hit = (__d.hit = pushAt(cx, cz) || pushAt(oldX, oldDepth)); if (hit) __d.n = [+hit.nx.toFixed(3), +hit.nz.toFixed(3), +hit.p.toFixed(2)];"],
     ["let along = (cx - oldX) * tX + (cz - oldDepth) * tD;",
-     "let along = (__d.along0 = +((cx - oldX) * tX + (cz - oldDepth) * tD).toFixed(3));"],
+     "let along = (cx - oldX) * tX + (cz - oldDepth) * tD; __d.along0 = +along.toFixed(3);"],
     ["if (Math.abs(wishAlong) > Math.abs(along)) along = wishAlong;",
      "if (Math.abs(wishAlong) > Math.abs(along)) along = wishAlong; __d.along1 = +along.toFixed(3); __d.t = [+tX.toFixed(3), +tD.toFixed(3)]; __d.cx = +cx.toFixed(2); __d.cz = +cz.toFixed(2); __d.wish = +(vx * tX + vd * tD).toFixed(2);"],
     /* Round 73: the dead zone carries its own name now (it is a speed, `115 * dt`, not the fixed
@@ -116,7 +121,7 @@ function patchedSite() {
     ["if (cornerAssist) along = creep * cornerAssist;",
      "if (cornerAssist) along = creep * cornerAssist; __d.alongF = +along.toFixed(3); __d.creep = +creep.toFixed(3);"],
     ["const hop2 = Math.hypot(sx - oldX, sd - oldDepth);",
-     "const hop2 = (__d.hop2 = +Math.hypot(sx - oldX, sd - oldDepth).toFixed(3)); __d.s = [+sx.toFixed(2), +sd.toFixed(2)]; __d.h2 = h2 ? [+h2.nx.toFixed(2), +h2.nz.toFixed(2), +h2.p.toFixed(2)] : null;"],
+     "const hop2 = Math.hypot(sx - oldX, sd - oldDepth); __d.hop2 = +hop2.toFixed(3); __d.s = [+sx.toFixed(2), +sd.toFixed(2)]; __d.h2 = h2 ? [+h2.nx.toFixed(2), +h2.nz.toFixed(2), +h2.p.toFixed(2)] : null;"],
     ["if (!collidesAt(sx, sd) && hop2 > 0.01 && (wedged || !buzz || hop2 > 1.2)) {",
      "__d.col = collidesAt(sx, sd); __d.buzz = buzz; __d.dir = dir; __d.wedged = wedged; __d.ok = !__d.col && hop2 > 0.01 && (wedged || !buzz || hop2 > 1.2); if (__d.ok) {"],
     ["x = nx2; depth = nz2;",
@@ -130,12 +135,16 @@ function patchedSite() {
   return js;
 }
 (async () => {
-  const FILE = process.argv[2] || "rooms.html";
   const ROUNDS = Number(process.env.ROUNDS || 6);
   for (let round = 1; round <= ROUNDS; round++) {
     const env = await boot(FILE);
     const W = env.walk();
-    const hw = W.halfWidth, mn = W.minDepth, mx_ = W.maxDepth, R = W.radius;
+    const R = W.radius;
+    const legal = legalPosition(W, env.doc.querySelector("[data-walk]"));
+    if (env.doc.querySelector("[data-walk-backdrop][data-place]") && !W.backdrop) {
+      console.error(`${FILE}: sourced backdrop did not load; no sweep was measured`);
+      process.exit(2);
+    }
     const px = (el, p) => { const v = el.style.getPropertyValue(p); return v ? parseFloat(v) : 0; };
     const props = Array.from(env.doc.querySelectorAll('[data-obj][data-solid="true"]')).map((el) => {
       const m = (p) => parseFloat(el.dataset[p]) || 0;
@@ -169,7 +178,7 @@ function patchedSite() {
         const ex = Math.sin(aa), ed = Math.cos(aa);
         if ((ex * fx + ed * fd) / norm < 0.35) continue;
         const qx = x + ex * 45, qz = z + ed * 45;
-        if (Math.abs(qx) <= hw && qz >= mn && qz <= mx_ && !collides(qx, qz)) out.push(k * 45);
+        if (legal(qx, qz)) out.push(k * 45);
       }
       return out;
     };
@@ -208,10 +217,12 @@ function patchedSite() {
       for (let i = 0; i < 320; i++) {
         const y = env.walk().yaw;
         const err = ((target - y + 540) % 360) - 180;
-        if (Math.abs(err) <= 1.4) return;
+        if (Math.abs(err) <= 1.5) return; // half of the walker's 2.975° minimum tap
         env.key(err > 0 ? "arrowright" : "arrowleft"); await env.pump(2);
         env.keyUp(err > 0 ? "arrowright" : "arrowleft");
+        await env.pump(1); // pay any remaining release nudge before measuring the heading
       }
+      throw new Error(`${FILE}: could not turn to ${target}° (yaw=${env.walk().yaw})`);
     };
     for (let k = 0; k < 8; k++) { await turnTo(k * 45); await watch(["w"], 120); }
     await watch(["w", "a"], 100); await watch(["w", "d"], 100);
@@ -226,6 +237,12 @@ function patchedSite() {
       }
     }
     console.log(`round ${round}: ${frames} frames, ${hits} freeze-with-exit`);
+    if (env.errors.length) {
+      console.error("page errors:", env.errors.slice(0, 3));
+      env.w.close();
+      process.exit(2);
+    }
+    env.w.close();
     if (hits) break;
   }
   process.exit(0);

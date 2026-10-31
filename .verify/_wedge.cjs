@@ -1,15 +1,15 @@
-/* _wedge — a diagnosis instrument, not a gate (exit 0 always; read the numbers).
+/* _wedge — a diagnosis instrument, not a gate (read the numbers; invalid coverage exits 2).
    Why: verify-collision's V1 only asks its question at the 24th consecutive slow frame and only
    when the last 30 frames are all under 0.5 cm/s, so the same wedge can pass or fail depending on
    what the frame ring happened to hold. This sweeps wider (every rail stop, 16 headings, the
-   diagonal presses, and every solid's four corners) and reports EVERY run of >=20 frames slower
-   than 2 cm/s that still has a legal forward exit and a prop within 6 cm — the gate's own
-   definition, measured continuously.
+   forward/turn presses, and every solid's four corners). It reports each run of >=20 frames slower
+   than 2 cm/s, marking whether a prop is within 6 cm and which forward exits remain legal.
    Run: node .verify/_wedge.cjs [page.html]   (GATE_PAGE=rooms also works)
 */
 const { JSDOM, VirtualConsole } = require("jsdom");
 const fs = require("fs");
 const { siteText } = require("../bin/site-sources.cjs");
+const { legalPosition, atStop } = require("./_wedge-geometry.cjs");
 const FILE = process.argv[2] || (process.env.GATE_PAGE ? process.env.GATE_PAGE + ".html" : "rooms.html");
 
 function boot(file) {
@@ -18,7 +18,11 @@ function boot(file) {
     const vc = new VirtualConsole();
     vc.on("jsdomError", (e) => { const m = String((e && e.message) || e);
       if (!/navigation/.test(m)) errors.push(m); });
-    const html = fs.readFileSync(file, "utf8").replace(/<script src="[^"]*"><\/script>/g, "");
+    // Place data is a synchronous external script in the live page; jsdom does not fetch it.
+    const html = fs.readFileSync(file, "utf8")
+      .replace(/<script src="(js\/places\/[a-z0-9-]+\.js)(\?[^"]*)?"><\/script>/g,
+               (_m, src) => `<script>${fs.readFileSync(src, "utf8")}</script>`)
+      .replace(/<script src="[^"]*"><\/script>/g, "");
     const js = siteText();
     const dom = new JSDOM(html, { runScripts: "dangerously", pretendToBeVisual: true,
       url: "https://huaxu.test/" + file, virtualConsole: vc });
@@ -60,7 +64,7 @@ function boot(file) {
     let rafId = 1;
     w.requestAnimationFrame = (cb) => { queue.push({ id: rafId, cb }); return rafId++; };
     w.cancelAnimationFrame = (id) => { const i = queue.findIndex((q) => q.id === id); if (i >= 0) queue.splice(i, 1); };
-    w.performance = { now: () => now };
+    Object.defineProperty(w.performance, "now", { configurable: true, value: () => now });
     async function pump(n) {
       for (let i = 0; i < n; i++) {
         now += 17;
@@ -87,7 +91,12 @@ function boot(file) {
 (async () => {
   const env = await boot(FILE);
   const W = env.walk();
-  const hw = W.halfWidth, mn = W.minDepth, mx_ = W.maxDepth, R = W.radius;
+  const R = W.radius;
+  const legal = legalPosition(W, env.doc.querySelector("[data-walk]"));
+  if (env.doc.querySelector("[data-walk-backdrop][data-place]") && !W.backdrop) {
+    console.error(`${FILE}: sourced backdrop did not load; no sweep was measured`);
+    process.exit(2);
+  }
   const px = (el, p) => { const v = el.style.getPropertyValue(p); return v ? parseFloat(v) : 0; };
   const props = Array.from(env.doc.querySelectorAll('[data-obj][data-solid="true"]')).map((el) => {
     const m = (p) => parseFloat(el.dataset[p]) || 0;
@@ -136,7 +145,7 @@ function boot(file) {
           const ex = Math.sin(aa), ed = Math.cos(aa);
           if ((ex * fwd.x + ed * fwd.d) / norm < 0.35) continue;
           const qx = s.x + ex * 45, qz = s.depth + ed * 45;
-          if (Math.abs(qx) <= hw && qz >= mn && qz <= mx_ && !collides(qx, qz)) exits.push(k * 45);
+          if (legal(qx, qz)) exits.push(k * 45);
         }
         const sol = s.solver;
         const near = props.map((bb) => {
@@ -162,21 +171,40 @@ function boot(file) {
     for (let i = 0; i < 320; i++) {
       const y = env.walk().yaw;
       const err = ((target - y + 540) % 360) - 180;
-      if (Math.abs(err) <= 1.4) return;
+      if (Math.abs(err) <= 1.5) return; // half of the walker's 2.975° minimum tap
       env.key(err > 0 ? "arrowright" : "arrowleft"); await env.pump(2);
       env.keyUp(err > 0 ? "arrowright" : "arrowleft");
+      await env.pump(1); // pay any remaining release nudge before measuring the heading
     }
+    throw new Error(`${FILE}: could not turn to ${target}° (yaw=${env.walk().yaw})`);
   };
   const stops = Array.from(env.doc.querySelectorAll("[data-walk-stop]"));
+  if (!stops.length) {
+    console.error(`${FILE}: no rail stops found; no stop sweep was measured`);
+    process.exit(2);
+  }
   console.log(`${FILE}: ${props.length} solids, ${stops.length} rail stops`);
   for (let i = 0; i < stops.length; i++) {
-    stops[i].click();
-    await env.pump(420);
+    const returnToStop = async () => {
+      stops[i].click();
+      for (let f = 0; f < 420; f += 10) {
+        await env.pump(10);
+        if (!env.walk().glide) break;
+      }
+      const arrived = env.walk();
+      if (!atStop(arrived, stops[i])) {
+        console.error(`${FILE}: stop ${i} was not reached (x=${arrived.x}, z=${arrived.depth}, gliding=${!!arrived.glide})`);
+        process.exit(2);
+      }
+    };
     for (let k = 0; k < 16; k++) {
+      await returnToStop();
       await turnTo(k * 22.5);
       await watch(["w"], 120);
     }
+    await returnToStop();
     await watch(["w", "a"], 90);
+    await returnToStop();
     await watch(["w", "d"], 90);
   }
   for (const b of props) {
@@ -193,6 +221,9 @@ function boot(file) {
   const uniq = new Map();
   for (const s of stalls) uniq.set(`${s.x},${s.z}`, s);
   console.log(`unique positions: ${uniq.size}`);
-  if (env.errors.length) console.log("page errors:", env.errors.slice(0, 3));
+  if (env.errors.length) {
+    console.error("page errors:", env.errors.slice(0, 3));
+    process.exit(2);
+  }
   process.exit(0);
 })();
