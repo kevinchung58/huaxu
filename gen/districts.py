@@ -54,21 +54,21 @@ DISTRICTS = [
             # never opened. The last door sits at 780 with room to spare.
             {"id": "door-toronto", "kind": "door", "x": -346, "z": 160, "y": 0, "ry": 90,
              "leaf": "#274b66",
-             "glow": [{"r": 150, "k": 0.75, "dy": 235, "tint": "rgba(255,178,102,0.6)"}],
+             "glow": [{"out": 18, "r": 150, "k": 0.75, "dy": 235, "tint": "rgba(255,178,102,0.6)"}],
              "leave": ROOM_BY_ID["toronto"]["page"],
              "title": "The door onto Toronto",
              "hint": "It opens onto the little city: a dark hall of lit tables where Toronto, its "
                      "falls and its markets stand small enough to walk around."},
             {"id": "door-tokyo", "kind": "door", "x": 346, "z": 470, "y": 0, "ry": -90,
              "leaf": "#5c4434",
-             "glow": [{"r": 150, "k": 0.72, "dy": 235}],
+             "glow": [{"out": 18, "r": 150, "k": 0.72, "dy": 235}],
              "leave": ROOM_BY_ID["tokyo"]["page"],
              "title": "The door onto Tokyo",
              "hint": "It opens onto Nakamise-dori at night: Kaminarimon behind you, the shops "
                      "shuttered, Hozomon lit at the far end. Kaminarimon brings you back."},
             {"id": "door-fukuoka", "kind": "door", "x": -346, "z": 780, "y": 0, "ry": 90,
              "leaf": "#4b4368",
-             "glow": [{"r": 150, "k": 0.7, "dy": 235}],
+             "glow": [{"out": 18, "r": 150, "k": 0.7, "dy": 235}],
              "leave": ROOM_BY_ID["fukuoka"]["page"],
              "title": "The door onto Fukuoka",
              "hint": "It opens onto Moji Port: a hall of models at dusk -- the port's old buildings "
@@ -141,7 +141,7 @@ DISTRICTS = [
             # measured at 65.0 luma and left there on purpose.
             {"id": "front-s", "kind": "front", "x": 346, "z": 700, "y": 0, "ry": -90,
              "awn": "#6a3226", "noren": "#2e4a7a", "liton": 0.72,
-             "glow": [{"r": 120, "k": 0.38, "dy": 190}],
+             "glow": [{"out": 32, "r": 120, "k": 0.38, "dy": 190}],
              "title": "A shut front with a light behind it",
              "hint": "Shutter down, light on in the transom: a building with nobody in it and a "
                      "timer on its lamp. It keeps the far stretch of street from being empty. "
@@ -155,7 +155,7 @@ DISTRICTS = [
              ]},
             {"id": "front-n", "kind": "front", "x": -346, "z": 620, "y": 0, "ry": 90,
              "awn": "#2e4a52", "liton": 0.90,
-             "glow": [{"r": 120, "k": 0.3, "dy": 190}],
+             "glow": [{"out": 32, "r": 120, "k": 0.3, "dy": 190}],
              "title": "Another shut front, across the crossing",
              "hint": "Same story from the other side of the street: shutter down, transom lit. "
                      "Two closed fronts facing is most of what a night street is. Done, this one "
@@ -181,7 +181,7 @@ DISTRICTS = [
              # machine's own — a fluorescent shelf is not a sodium lamp — and the pavement in front
              # of it takes a cool splash rather than a warm one, which is how you can tell the two
              # kinds of light apart with your back to them.
-             "glow": [{"r": 130, "k": 0.95, "dy": 150, "tint": "rgba(196,226,255,0.5)"}],
+             "glow": [{"out": 38, "r": 130, "k": 0.95, "dy": 150, "tint": "rgba(196,226,255,0.5)"}],
              "title": "The vending machine on the Japanese half",
              "hint": "It is the one light that runs all day on this street: a machine with a lit "
                      "shelf of cans is what tells you the far half is Japan, and it says it without "
@@ -200,7 +200,7 @@ DISTRICTS = [
             # so the quarter is open at whatever hour the page opens.
             {"id": "shop-r1", "kind": "front", "x": 346, "z": 320, "y": 0, "ry": -90,
              "w": 160, "awn": "#3f4d7a", "noren": "#6a2e2e", "liton": 0.74,
-             "glow": [{"r": 110, "k": 0.55, "dy": 180}],
+             "glow": [{"out": 32, "r": 110, "k": 0.55, "dy": 180}],
              "title": "An open shop under an indigo awning",
              "hint": "The first shop on the right: canvas out, noren in the recess head, and the "
                      "shutter standing up. Nothing on the fascia, because the lettering would be "
@@ -209,14 +209,14 @@ DISTRICTS = [
                          "k": 0.8, "shut": 0.9}]},
             {"id": "shop-r2", "kind": "front", "x": 346, "z": 900, "y": 0, "ry": -90,
              "w": 240, "awn": "#7a4a26", "liton": 0.86,
-             "glow": [{"r": 100, "k": 0.34, "dy": 180}],
+             "glow": [{"out": 32, "r": 100, "k": 0.34, "dy": 180}],
              "title": "A wider shop near the water end",
              "hint": "A tan canvas over a wider recess. The last shop before the street gives "
                      "up to the quay.",
              "states": [{"say": "Open, like the rest of the quarter.", "k": 0.8, "shut": 0.9}]},
             {"id": "shop-l1", "kind": "front", "x": -346, "z": 400, "y": 0, "ry": 90,
              "w": 210, "awn": "#4a5a3a", "noren": "#2e4a7a", "liton": 0.80,
-             "glow": [{"r": 120, "k": 0.46, "dy": 180}],
+             "glow": [{"out": 32, "r": 120, "k": 0.46, "dy": 180}],
              "title": "An open shop under a moss awning",
              "hint": "The left side's first shop, across from the indigo one: two awnings "
                      "facing is what makes the stretch a shopping street rather than a wall with "
@@ -224,7 +224,7 @@ DISTRICTS = [
              "states": [{"say": "Open.", "k": 0.8, "shut": 0.9}]},
             {"id": "shop-l2", "kind": "front", "x": -346, "z": 950, "y": 0, "ry": 90,
              "w": 170, "awn": "#7a3434", "liton": 0.78,
-             "glow": [{"r": 110, "k": 0.38, "dy": 180}],
+             "glow": [{"out": 32, "r": 110, "k": 0.38, "dy": 180}],
              "title": "The last shop on the left",
              "hint": "A rust canvas at the water end of the left wall. Past it the wall runs "
                      "out and the rail begins.",
@@ -1492,7 +1492,7 @@ DISTRICTS = [
             # Parks), so its door is here, beside the door back to the hall.
             {"id": "door-journey", "kind": "door", "x": 678, "z": 469, "y": 0, "ry": -90,
              "leaf": "#33414e",
-             "glow": [{"r": 110, "k": 0.45, "dy": 200, "tint": "rgba(160,210,230,0.4)"}],
+             "glow": [{"out": 30, "r": 110, "k": 0.45, "dy": 200, "tint": "rgba(160,210,230,0.4)"}],
              "title": "Journey Behind the Falls",
              "hint": "Inside Table Rock Centre: an elevator drops 38 m through the rock to the 1944 "
                      "tunnel, its two portals behind the sheet and the deck at the foot of the falls.",
@@ -1611,7 +1611,7 @@ DISTRICTS = [
             {"id": "arcade-a", "kind": "front", "x": 1001, "z": 2320, "y": 0, "ry": -90,
              "w": 340, "h": 250, "d": 26, "awn": "#3f4d7a", "awnout": 150,
              "fascia": "#b9ac8e", "liton": 0.62,
-             "glow": [{"r": 90, "k": 0.6, "dy": 210, "tint": "rgba(255,180,110,0.5)"}],
+             "glow": [{"out": 40, "r": 90, "k": 0.6, "dy": 210, "tint": "rgba(255,180,110,0.5)"}],
              "states": [{"say": "Open. The glass is lit and the shutter stands up.", "k": 0.9, "shut": 0.92}],
              "title": "An arcade, mid-block",
              "hint": "Clifton Hill is a street of games, wax, and water parks, and a drawing may "
@@ -1620,7 +1620,7 @@ DISTRICTS = [
             {"id": "arcade-b", "kind": "front", "x": 1001, "z": 2560, "y": 0, "ry": -90,
              "w": 300, "h": 260, "d": 26, "awn": "#7a3f3a", "awnout": 150,
              "fascia": "#b9ac8e", "liton": 0.66,
-             "glow": [{"r": 90, "k": 0.55, "dy": 218, "tint": "rgba(255,180,110,0.5)"}],
+             "glow": [{"out": 40, "r": 90, "k": 0.55, "dy": 218, "tint": "rgba(255,180,110,0.5)"}],
              "states": [{"say": "Open. A wall of lamps over a glass front.", "k": 0.9, "shut": 0.94}],
              "title": "Another front, another marquee",
              "hint": "Two storeys of funhouse and a wall of lamps: the strip's measure again, not "
@@ -1628,7 +1628,7 @@ DISTRICTS = [
             {"id": "arcade-c", "kind": "front", "x": 1001, "z": 2800, "y": 0, "ry": -90,
              "w": 320, "h": 240, "d": 26, "awn": "#3f6a4a", "awnout": 150,
              "fascia": "#b9ac8e", "liton": 0.7,
-             "glow": [{"r": 90, "k": 0.6, "dy": 200, "tint": "rgba(255,180,110,0.5)"}],
+             "glow": [{"out": 40, "r": 90, "k": 0.6, "dy": 200, "tint": "rgba(255,180,110,0.5)"}],
              "states": [{"say": "Open. The wheel fills the end of the street from this door.", "k": 0.9, "shut": 0.96}],
              "title": "The arcade nearest the wheel",
              "hint": "From its door the SkyWheel fills the end of the street — the one view the "
@@ -1644,14 +1644,14 @@ DISTRICTS = [
             # the plaza's floor, which is the rule the whole lane is held to.
             {"id": "sign-a", "kind": "sign", "x": 999, "z": 2320, "y": 268, "ry": -90,
              "w": 300, "h": 54, "d": 10, "leaf": "#b98a4a", "liton": 0.55,
-             "glow": [{"r": 120, "k": 0.5, "dy": 60, "tint": "rgba(255,196,120,0.45)"}],
+             "glow": [{"out": 14, "r": 120, "k": 0.5, "dy": 60, "tint": "rgba(255,196,120,0.45)"}],
              "title": "The first marquee, blank",
              "hint": "A lit board over a front. It carries no word: the lettering would belong to a "
                      "business that need not stand on this street, and a drawn street does not "
                      "pretend to have one."},
             {"id": "sign-b", "kind": "sign", "x": 999, "z": 2800, "y": 262, "ry": -90,
              "w": 312, "h": 50, "d": 10, "leaf": "#8b5a4a", "liton": 0.68,
-             "glow": [{"r": 120, "k": 0.5, "dy": 60, "tint": "rgba(255,180,120,0.45)"}],
+             "glow": [{"out": 14, "r": 120, "k": 0.5, "dy": 60, "tint": "rgba(255,180,120,0.45)"}],
              "title": "The marquee by the wheel",
              "hint": "Blank, like its pair. What a marquee says is a lease; what it does is throw "
                      "light on the pavement, and that is the part a drawing can keep."},
@@ -1774,7 +1774,7 @@ DISTRICTS = [
             {"id": "funhouse", "kind": "front", "x": -1001, "z": 2320, "y": 0, "ry": 90,
              "w": 330, "h": 330, "d": 26, "awn": "#6a4a86", "awnout": 170,
              "fascia": "#c9b98e", "liton": 0.6,
-             "glow": [{"r": 100, "k": 0.55, "dy": 300, "tint": "rgba(196,150,255,0.42)"}],
+             "glow": [{"out": 40, "r": 100, "k": 0.55, "dy": 300, "tint": "rgba(196,150,255,0.42)"}],
              "states": [{"say": "Open. The mirrors inside are nobody's business here.", "k": 0.9, "shut": 0.95}],
              "title": "The funhouse front",
              "hint": "Three storeys of painted front, an awning, and a lit board over the door with "
@@ -1837,15 +1837,15 @@ DISTRICTS = [
              "w": 16, "h": 470, "d": 16, "leaf": "#2f3a44", "solid": True,
              "title": "Its pair", "hint": "The street is framed twice over."},
             {"id": "lights-a", "kind": "noren", "x": 0, "z": 2420, "y": 470, "ry": 0,
-             "w": 1720, "h": 26, "solid": False,
+             "w": 1720, "h": 26, "solid": False, "liton": 0.56,
              "title": "Lights strung across the street", "hint": "A cable of bulbs, post to post, "
                      "the way a fun row is lit after dark. The strip is the one place in this "
                      "drawing that stays bright late."},
             {"id": "lights-b", "kind": "noren", "x": 0, "z": 2760, "y": 470, "ry": 0,
-             "w": 1720, "h": 26, "solid": False,
+             "w": 1720, "h": 26, "solid": False, "liton": 0.6,
              "title": "The second span", "hint": "Four spans reach the plaza; this is the second."},
             {"id": "lights-c", "kind": "noren", "x": 0, "z": 3120, "y": 470, "ry": 0,
-             "w": 1720, "h": 26, "solid": False,
+             "w": 1720, "h": 26, "solid": False, "liton": 0.64,
              "title": "The span over the plaza", "hint": "Wider than the others: the street has "
                      "opened out by the time the cable reaches it."},
             {"id": "plaza-bench-1", "kind": "bench", "x": 864, "z": 3120, "y": 0, "ry": 0,
@@ -1948,7 +1948,7 @@ DISTRICTS = [
             {"id": "plaza-front-w1", "kind": "front", "x": -1642, "z": 2900, "y": 0, "ry": 90,
              "w": 300, "h": 300, "d": 26, "awn": "#7a4a3a", "awnout": 160,
              "fascia": "#c2b494", "liton": 0.62,
-             "glow": [{"r": 100, "k": 0.5, "dy": 250, "tint": "rgba(255,196,130,0.42)"}],
+             "glow": [{"out": 40, "r": 100, "k": 0.5, "dy": 250, "tint": "rgba(255,196,130,0.42)"}],
              "states": [{"say": "Open. The glass is lit and the shutter stands up.", "k": 0.9, "shut": 0.94}],
              "title": "A front on the square's west side",
              "hint": "The strip turns the corner here: the fronts stop running down the street and "
@@ -1956,7 +1956,7 @@ DISTRICTS = [
             {"id": "plaza-front-w2", "kind": "front", "x": -1642, "z": 3180, "y": 0, "ry": 90,
              "w": 300, "h": 320, "d": 26, "awn": "#3f5a6a", "awnout": 160,
              "fascia": "#b9ac8e", "liton": 0.68,
-             "glow": [{"r": 100, "k": 0.52, "dy": 260, "tint": "rgba(255,186,120,0.42)"}],
+             "glow": [{"out": 40, "r": 100, "k": 0.52, "dy": 260, "tint": "rgba(255,186,120,0.42)"}],
              "states": [{"say": "Open. A wall of lamps over a glass front.", "k": 0.9, "shut": 0.94}],
              "title": "Its neighbour, round the corner",
              "hint": "Two fronts and a rail are enough to make an edge; the rest of the square is "
@@ -1964,7 +1964,7 @@ DISTRICTS = [
             {"id": "plaza-front-n1", "kind": "front", "x": 1649, "z": 3060, "y": 0, "ry": -90,
              "w": 280, "h": 270, "d": 26, "awn": "#6a4a3a", "awnout": 150,
              "fascia": "#c2b494", "liton": 0.6,
-             "glow": [{"r": 90, "k": 0.5, "dy": 230, "tint": "rgba(255,196,130,0.4)"}],
+             "glow": [{"out": 40, "r": 90, "k": 0.5, "dy": 230, "tint": "rgba(255,196,130,0.4)"}],
              "states": [{"say": "Open. The queue for the wheel stands outside it.", "k": 0.9, "shut": 0.94}],
              "title": "The front facing the wheel",
              "hint": "A ticket hall and a counter: the business the ride lives on, drawn as a face "
@@ -2062,15 +2062,11 @@ DISTRICTS = [
             # blank cream face is what stood between the rail and the gorge in every frame from the
             # brink: the same failure as round 58's beige tunnel, one unit mistake further on.
             {"side": -1, "z0": round(1483 / Z_SCALE, 1), "z1": 10350, "y0": 0, "y1": 400, "kind": "open"}],
-        "lamps": [
-            {"x": 640, "y": 410, "z": 120, "r": 90, "k": 0.45},
-            {"x": 640, "y": 410, "z": 1150, "r": 90, "k": 0.45},
-            # the strip burns brighter than the promenade, and its row starts at the Parkway
-            {"x": 640, "y": 430, "z": 2320, "r": 120, "k": 0.55},
-            {"x": 640, "y": 430, "z": 2700, "r": 120, "k": 0.55},
-            {"x": 640, "y": 430, "z": 3080, "r": 120, "k": 0.5},
-            {"x": 640, "y": 430, "z": 3420, "r": 110, "k": 0.45},
-        ],
+        # No free-standing lights: this place's lamps are its ten lamp posts (`"kind": "lamp"` in
+        # the objects above), and the emitter gives each post its halo at its own glass. The six
+        # entries that used to be here stood at x=640 whatever the posts did -- two of them on the
+        # trail's posts by coincidence, four over the strip with nothing under them.
+        "lamps": [],
         "backdrop": {
             "skyAround": NIAGARA_SKY,
             "world": {"prims": niagara_world(LaneFrame(0.0, 14.0, 0.0, 180.0))},

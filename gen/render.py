@@ -13,6 +13,14 @@ from gen.districts import DISTRICTS
 from gen.media import INDENT, poster_attrs
 from gen.site import ICON_BOOK, ICON_BULB, ICON_CAMERA, ICON_CASE, ICON_CHAT, ICON_EXIT, ICON_FOV_IN, ICON_FOV_OUT, ICON_OUT, ICON_UP, ICON_X, ROOT, titled
 from gen.world import EYE, KINDS, LANE_FALLBACK, OBJ_SIZE, WALK_SOLID_KINDS, Z_SCALE
+
+# What a lamp post is worth as a light (see where the light island is built). `r` is the halo's
+# radius in cm, not a reach: the glass is 30 cm across, and TODO §5.5 records what a large `r`
+# does (260 is a searchlight). `k` is what the trail's two lamps were authored at.
+# `lift` is how far towards the eye the halo is drawn: it is a depth-tested sprite and the glass
+# is a 30 cm box round the point it stands at, so a halo at the glass's centre is inside its own
+# lamp (measured: "BEHIND walk lane at 15 cm" for all ten). 24 cm clears the box's 21 cm diagonal.
+LAMP_POST = {"r": 45, "k": 0.45, "lift": 24}
 def wall_frames(d):
     """A district's frames are objects before they are anything else: each hangs on a wall
     at a coordinate, so walking the lane and reading the content are the same list, and a
@@ -128,12 +136,33 @@ def walk_islands(d, placed):
             # the pavement in front of it as a splash, not as a pool under a fitting). A record
             # field the emitter does not stamp never reaches the renderer — the trap `lane-prop` §7
             # records — so the inheritance happens here, in the one place that builds the island.
-            lights.append({"x": o["x"], "y": o.get("y", 0) + g.get("dy", h - 18), "z": o["z"],
+            # `out`: how far in front of the prop's own face the fitting hangs, in cm. A glow is
+            # drawn as a depth-tested halo, and one placed at the prop's origin is *inside* the prop:
+            # measured on Clifton Hill at night (`.verify/_lampsee.mjs`), every shop's halo was
+            # 7-13 cm behind the shopfront that owns it and none of them showed. A wall prop faces
+            # the lane's axis, an end prop faces the entrance; a glow that says nothing stays put.
+            gx, gz = o["x"], o["z"]
+            if g.get("out"):
+                if abs(o.get("ry", 0)) > 45:
+                    gx += (1 if o["x"] < 0 else -1) * g["out"]
+                else:
+                    gz -= g["out"]
+            lights.append({"x": gx, "y": o.get("y", 0) + g.get("dy", h - 18), "z": gz,
                            "r": g["r"], "k": g["k"], "bulb": False, "of": o["id"],
                            **({"tint": g["tint"]} if "tint" in g else {}),
                            **({"liton": o["liton"]} if o.get("liton") is not None else {}),
                            **({"spill": g.get("spill", 1)} if o.get("awn") else {}),
                            **({"spill": g["spill"]} if "spill" in g else {})})
+    # A lamp post is a light. The post's glass is drawn by the lane (`kind === "lamp"`, taller than
+    # 200 cm) and goes warm after dark, so its halo and its share of the ground's light belong at
+    # the glass -- derived here from the post itself, so the two cannot drift apart. Clifton Hill
+    # had drifted: four halos hung at x=640 over the strip with no post under them while the eight
+    # posts of the strip and the square stood dark. The glass is 46 cm tall and its foot is 65 cm
+    # under the post's top (js/site.js, "the glass"), which puts its middle 42 cm down.
+    for o in placed:
+        if o["kind"] == "lamp" and o.get("h", 0) > 200 and not o.get("glow"):
+            lights.append({"x": o["x"], "y": o.get("y", 0) + o["h"] - 42, "z": o["z"],
+                           "r": LAMP_POST["r"], "k": LAMP_POST["k"], "lift": LAMP_POST["lift"]})
     for L in d.get("lanterns", []):
         # The authored radius is the paper; how far the light reaches is a multiple of it. A glow with
         # no body is a smudge, so `size` and `h` travel with it and the renderer draws what it is told.

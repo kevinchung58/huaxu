@@ -1,0 +1,26 @@
+{
+  "_": "Props that are one face by nature (owner ruling 2026-11-14, TODO §3 P6-1). audit-all judges a prop flat when its largest view has sd < 20 over >= 14,400 px; these are flat because the thing itself is, so STRICT=1 does not fail on them. Any other flat prop is a defect. An entry that names no prop on its page is itself a failure, so the list cannot outlive what it excuses.",
+  "street.html": {
+    "signA-s": "a folding board, both faces blank by rule (no invented lettering)",
+    "signA-s2": "the same board, its pair",
+    "ac-s": "an air-conditioner's casing: one grey box face"
+  },
+  "rooms.html": {
+    "pipe-nakamise-e": "a drain pipe: one colour down its length"
+  },
+  "rooms-fukuoka.html": {
+    "curtain-back": "a cloth curtain",
+    "frame-bridge": "a poster frame seen as its mount",
+    "bin-moji": "a bin: one painted face"
+  },
+  "rooms-niagara.html": {
+    "block-d": "a brick block's blank side",
+    "queue-rail-a": "a rail: bars against the paving",
+    "queue-rail-b": "a rail",
+    "point-rail-sw": "a rail",
+    "point-rail-se": "a rail",
+    "lights-post-b2": "a post",
+    "queue-rail-c": "a rail: the third of the queue's three (-a and -b are on the owner's list; this one measured 15.9 on 2026-11-14)",
+    "plaza-rail": "a rail: measured exactly 20.0 on 2026-11-14, i.e. on the line; the same bars as the queue's"
+  }
+}

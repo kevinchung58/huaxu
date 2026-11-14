@@ -12,10 +12,12 @@
    that is never on screen in any tested view is a failure, printed as one, because a measurement
    tool that measures nothing must not report success.
 
-   Status: this is a DIAGNOSTIC, not a gate. It reports every prop and exits 0; `STRICT=1` makes it
-   exit 1 on a flat or unseen prop, which is how it should be run once the open list is empty. A
-   report must not wear a gate's authority: the three props still flat at round 69k are named in
-   TODO.md §3 P6, not hidden behind a green tick.
+   Status: a report by default (exits 0), a GATE under `STRICT=1` (exits 1 on a flat prop, an
+   unseen prop, or a stale entry in the list below). The criterion -- sd < 20 on the largest view
+   -- cannot tell a curtain from a broken model, so what is one face BY NATURE is written down, by
+   the owner, in `.verify/flat-by-nature.json`, one reason per prop. A listed prop that measures
+   flat is reported as such and does not fail; any other flat prop does. The list is checked the
+   other way too: an entry naming no prop on its page fails, so it cannot outlive what it excuses.
 
    Run:  LD_LIBRARY_PATH=/tmp/al2023/lib ROOMS=rooms-toronto.html node .verify/audit-all.mjs
          YAWS='-165,-135,-105,-75,-45,-15,15,45,75,105,135,165' for a finer sweep.
@@ -54,6 +56,7 @@ const AREA_MIN = Number(process.env.AREA_MIN || 14400);   // 120 x 120 px, silho
 const VW = 1024, VH = 768;
 
 const html = fs.readFileSync(ROOMS, "utf8");
+const BY_NATURE = JSON.parse(fs.readFileSync(new URL("./flat-by-nature.json", import.meta.url), "utf8"))[ROOMS] || {};
 const IDS = [...new Set((html.match(/data-obj="[^"]*"/g) || []).map((s) => s.slice(10, -1)))];
 /* A landmark record with no press mark (`data-kind="landmark"`, no `data-landmark="1"`) is a
    paragraph with a page anchor: the world prims draw the far bank, the written list carries the
@@ -168,7 +171,11 @@ for (const [id, r] of rows) {
 }
 const missing = IDS.filter((id) => !best[id] && !RECORDS.has(id));
 const recordSeen = [...RECORDS].filter((id) => best[id]);
-const flat = rows.filter(([, r]) => r.area >= AREA_MIN && r.sd < MIN_SD).map(([id]) => id);
+const flatAll = rows.filter(([, r]) => r.area >= AREA_MIN && r.sd < MIN_SD).map(([id]) => id);
+const flat = flatAll.filter((id) => !(id in BY_NATURE));
+const excused = flatAll.filter((id) => id in BY_NATURE);
+const stale = Object.keys(BY_NATURE).filter((id) => !IDS.includes(id));
+const notFlat = Object.keys(BY_NATURE).filter((id) => IDS.includes(id) && !flatAll.includes(id));
 const small = rows.filter(([, r]) => r.area < AREA_MIN).map(([id]) => id);
 const measuredCount = IDS.length - missing.length - RECORDS.size;
 console.log(`\nprops ${IDS.length}, measured ${measuredCount}, ` +
@@ -177,12 +184,15 @@ console.log(`\nprops ${IDS.length}, measured ${measuredCount}, ` +
 if (missing.length) console.log(`NEVER ON SCREEN: ${missing.join(", ")}`);
 if (RECORDS.size) console.log(`record-only (no body; the written list carries their words): ${[...RECORDS].join(", ")}` +
                               (recordSeen.length ? ` — WARNING: also drawn: ${recordSeen.join(", ")}` : ""));
-if (missing.length || flat.length) {
+if (excused.length) console.log(`flat by nature (flat-by-nature.json): ${excused.map((id) => `${id} — ${BY_NATURE[id]}`).join("; ")}`);
+if (notFlat.length) console.log(`listed as flat by nature but not flat on this run (the entry may be removable): ${notFlat.join(", ")}`);
+if (stale.length) console.log(`STALE: flat-by-nature.json names props this page does not have: ${stale.join(", ")}`);
+if (missing.length || flat.length || stale.length) {
   const strict = process.env.STRICT === "1";
-  console.log(`${strict ? "FAIL" : "REPORT (not a gate)"}: ${flat.length} flat (${flat.join(", ")}), ${missing.length} unseen` +
+  console.log(`${strict ? "FAIL" : "REPORT (not a gate)"}: ${flat.length} flat (${flat.join(", ")}), ${missing.length} unseen, ${stale.length} stale` +
               (small.length ? `; too small to judge: ${small.join(", ")}` : ""));
   await browser.close();
   process.exit(strict ? 1 : 0);
 }
-console.log("audit: every prop measured on its largest view");
+console.log(`audit: every prop measured on its largest view; ${excused.length} flat by nature, 0 flat otherwise`);
 await browser.close();

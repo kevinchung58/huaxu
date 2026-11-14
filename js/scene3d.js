@@ -309,13 +309,19 @@ function patternCanvas(name) {
        tree crown is two metres across, so the masses are drawn at two metres, with darker
        hollows under them -- at a hundred metres the line still has a texture and still reads as
        trees rather than as a painted wall. */
+    /* The hollows go down FIRST and the crowns over them. They were drawn last: 28 discs of
+       7-22 px on a 128 px tile is more area than the tile has, so the "hollows under the masses"
+       were a lid over them -- 72% of the tile under 10% linear, and a tile is a multiplier, so
+       every woodline on the site was painted at 8.7% of its authored colour: black discs with a
+       green rim (`node .verify/_tilemean.mjs canopy`; TODO §3 P6). Crowns over hollows is what
+       the paragraph above describes, and it leaves 26% -- beside `hotelw` 28% and `towerwin` 24%. */
     c.fillStyle = "#6d6d6d"; c.fillRect(0, 0, 128, 128);
-    for (let i = 0; i < 90; i++) {
-      const v = Math.round(70 + rnd() * 150), r = 9 + rnd() * 21;
-      spot(rnd() * 128, rnd() * 128, r, `rgb(${v},${v},${v})`);
-    }
     for (let i = 0; i < 28; i++) {
       const v = Math.round(34 + rnd() * 44), r = 7 + rnd() * 15;
+      spot(rnd() * 128, rnd() * 128, r, `rgb(${v},${v},${v})`);
+    }
+    for (let i = 0; i < 90; i++) {
+      const v = Math.round(70 + rnd() * 150), r = 9 + rnd() * 21;
       spot(rnd() * 128, rnd() * 128, r, `rgb(${v},${v},${v})`);
     }
   } else if (name === "hotelw") {
@@ -560,6 +566,8 @@ export function buildLaneGeometry(THREE, quads, state = {}) {
   // 2D night keeps its full lift; the lit path now matches its legibility, not an invented brightness.
   const night = clamp((Number(state.night) || 0) * 0.40, 0, 0.58);
   const dayPage = Boolean(state.dayPage);
+  // the same dusk line the scene's night glow opens on (render(): nightK)
+  const selfK = dayPage ? clamp(((Number(state.night) || 0) - 0.45) / 0.5, 0, 1) : 0;
   const fogMax = clamp(state.fogMax === undefined ? 0.6 : Number(state.fogMax), 0, 0.6);
   const dayGain = Number.isFinite(Number(state.dayGain)) ? Number(state.dayGain) : 1;
   const sourceQuads = Array.isArray(quads) ? quads : [];
@@ -641,7 +649,18 @@ export function buildLaneGeometry(THREE, quads, state = {}) {
       : clamp(Number(q.air) || 0, 0, 0.6);
     const lit = Number(q.lit) || 0;
     const isNoLight = Boolean(q.nolite);
-    const darkness = isNoLight ? 0 : night;
+    /* A quad that is its own light (`q.self`, 0..1): a lamp's glass, a lit board, a ride's bulbs.
+
+       `nolite` only keeps a quad out of the night's darkening; under a sky the quad is still an
+       albedo, and the renderer multiplies it by the night sky's light and adds the murk on top.
+       Measured at Clifton Hill (rooms-niagara.html, night, stop 6): a lamp glass authored
+       #ffdca0 at lit 1.3 arrived on screen at (84,98,135) against walls at (35,62,118) -- a lamp
+       that is on was a grey-blue box. A self-lit quad is sent as a NEGATIVE darkness, so it needs
+       no attribute of its own: the shader emits its colour as authored and takes no light. Only a
+       sky-lit page at night has this problem (a hall's ambient is white), so by day and in a
+       hall the value is 0 and the quad is exactly what `nolite` already made it. */
+    const self = clamp(Number(q.self) || 0, 0, 1) * selfK;
+    const darkness = self > 0 ? -self : isNoLight ? 0 : night;
     const sun = q.day === false || isNoLight ? 0
       : day * dayGain * (q.daygain === undefined ? 1 : Number(q.daygain));
     const faces = triangulate(THREE, points);
@@ -698,6 +717,10 @@ function laneShaderMaterial(THREE, map, transparent) {
       .replace("#include <color_fragment>", `#include <color_fragment>
         float laneWarm=clamp(vLaneLit-0.55,0.0,1.15)*0.24;
         float laneDark=min(0.62,1.0-(1.0-clamp(vLaneAir,0.0,0.6))*(1.0-clamp(vLaneDarkness,0.0,0.58)));
+        /* negative darkness = a self-lit quad (see buildLaneGeometry): a light seen through night
+           air is still a light, so it takes neither the navy fold nor the murk floor below */
+        float laneSelf=clamp(-vLaneDarkness,0.0,1.0);
+        laneDark*=1.0-laneSelf;
         diffuseColor.rgb=mix(diffuseColor.rgb,uLaneWarm,laneWarm);
         diffuseColor.rgb=mix(diffuseColor.rgb,uLaneNight,laneDark);
         /* Round 63: the sun multiplies, it does not add.
@@ -718,9 +741,16 @@ function laneShaderMaterial(THREE, map, transparent) {
            way a street's joints do under its lamps, and the flat part of the floor is no
            brighter than it was. */
         float murkK=min(0.62,vLaneDarkness);
+        murkK=max(0.0,murkK);
         float murkTex=clamp(dot(diffuseColor.rgb,vec3(0.2126,0.7152,0.0722))*2.2,0.0,1.0);
         diffuseColor.rgb+=uLaneNight*murkK*3.2*murkTex;
         diffuseColor.a*=clamp(vLaneOpacity,0.0,1.0);
+`)
+      /* The self-lit part leaves as emission and the rest of the quad stays an albedo, so a board
+         that is half up (`self` 0.5) is half lamp and half painted board. */
+      .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
+        totalEmissiveRadiance=mix(totalEmissiveRadiance,diffuseColor.rgb,laneSelf);
+        diffuseColor.rgb*=1.0-laneSelf;
 `);
   };
   material.customProgramCacheKey = () => "huaxu-walk-lane-v1";
@@ -1270,8 +1300,15 @@ export function createSceneEffects(THREE, scene, source, materials = [], texture
     return material;
   };
   const makeSpriteMaterial = (parameters) => {
+    /* `side: DoubleSide` is load-bearing. render() mirrors the frustum left-right (see
+       makePerspective there), which reverses every triangle's winding on screen; a mesh survives
+       that because the lane's materials are double-sided, and a sprite did not -- SpriteMaterial
+       is FrontSide by default, so every lamp halo and every bulb on the site was back-face culled:
+       created, visible, positioned, lit, and never drawn. Measured on Clifton Hill at night
+       (`.verify/_lampsee.mjs` said "shows" for a halo the frame did not have; the same frame with
+       this one word added has it). */
     const material = new THREE.SpriteMaterial({ toneMapped: false, depthTest: true, depthWrite: false,
-      transparent: true, blending: THREE.AdditiveBlending, ...parameters });
+      transparent: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, ...parameters });
     materials.push(material);
     return material;
   };
@@ -1412,7 +1449,15 @@ export function createSceneEffects(THREE, scene, source, materials = [], texture
     for (const entry of lampEntries) {
       const { lamp, glow, bulb, pool, reflection, spill, beams, spot } = entry;
       const dx = sway(lamp), amount = strength(lamp), point = new THREE.Vector3(lamp.x + dx, lamp.y, lamp.z);
-      glow.position.copy(point);
+      /* A source inside its own housing (`lift`, cm): the halo and the bulb are drawn that far
+         towards the eye, so the housing's faces do not depth-test their own light away. */
+      const seen = point.clone();
+      if (lamp.lift) {
+        const eye = new THREE.Vector3(state.camera.x - point.x, state.camera.eye - point.y, state.camera.z - point.z);
+        const reach = eye.length();
+        if (reach > lamp.lift * 2) seen.addScaledVector(eye, lamp.lift / reach);
+      }
+      glow.position.copy(seen);
       const glowRadius = radialLimit(state, Math.max(6, lamp.r || 30), Math.hypot(lamp.x - state.camera.x, lamp.z - state.camera.z), 6);
       glow.scale.set(glowRadius * 2, glowRadius * 2, 1);
       const glowTint = scaledEffectTint(THREE, lamp.tint || "rgba(255,216,158,0.42)", amount, dayPage);
@@ -1420,10 +1465,15 @@ export function createSceneEffects(THREE, scene, source, materials = [], texture
       glow.visible = glowTint.opacity > 0.002;
 
       if (bulb) {
-        bulb.position.copy(point);
+        bulb.position.copy(seen);
         const depth = Math.max(1, Math.hypot(lamp.x - state.camera.x, lamp.z - state.camera.z));
         const radius = radialLimit(state, 9, depth, 1.5);
         bulb.scale.set(radius * 2, radius * 2, 1);
+        /* A bulb is a source, and under the sun a source is off: on a day page it follows the same
+           fall the halo round it does (12 % at noon, all of it after dark). It was a constant 0.92
+           while nothing drew it; drawn, a constant is a white dot on every lamp at midday. A hall
+           has no sun and keeps the constant. */
+        bulb.material.opacity = 0.92 * dayFall(1);
         bulb.visible = true;
       }
 
