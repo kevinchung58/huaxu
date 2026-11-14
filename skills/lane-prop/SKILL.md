@@ -127,6 +127,30 @@ Dressing fails in one of two ways and both are boring to fix late:
   never lifted, which is what a lantern's paper wants). Getting these wrong is invisible in a diff
   and obvious in a frame.
 
+- **Under a sky, `nolite` is not "lit" — `self` is.** `nolite` keeps a quad out of the night's
+  darkening, and in a hall (white ambient) that is the same thing as glowing. On a page with a sky
+  the quad is still an albedo: the renderer lights it with the night sky and adds the murk, and a
+  lamp glass authored `#ffdca0` at `lit` 1.3 arrived at **(84,98,135)** beside walls at (35,62,118).
+  A plane that is its own light after dark says `q.self = <0..1>` next to `nolite` (a lamp's glass, a
+  lit board's plate at its `NL`, a ride's bulbs, a cabin's window). `self` is 0 by day and in a hall,
+  so it changes nothing there; do **not** put it on the `UNDER` quads (things under a roof are
+  `nolite` so the sun and the murk skip them — they are not lamps).
+- **A halo is a depth-tested sprite: put it where it can be seen.** A `glow` sits at its prop's
+  origin, which for a shopfront is *inside* the shopfront (7–13 cm behind its own face, measured on
+  all ten of Clifton Hill's). `"out": <cm>` on the glow hangs it that far in front, on the lane's
+  side. A source inside its own housing takes `lift` (cm towards the eye) instead — a lamp post's
+  glass is a box round its light.
+- **A lamp post is a light, and the emitter makes it one.** `"kind": "lamp"` taller than 200 cm gets
+  its halo, bulb and ground pool at the middle of its glass (`LAMP_POST` in `gen/render.py`), so the
+  post and its light cannot be authored apart. Do not also list it in `lamps`
+  (`tests/night-lights.test.cjs` fails a free light that stands on no post, and a post with none).
+- **A front's `liton` lights the front.** It used to reach only the glow. An open front that carries
+  it lights its shelf, its pane and its fanlight on the board's curve; a `cloth` that carries it is
+  a cable of bulbs. A shut front (the default state) stays dark — its halo and spill still come up.
+- **When a night frame has no lights in it, ask `_lampsee.mjs` before touching a number.** It prints,
+  per halo: off, out of frame, behind what (and how far), or shows. Those four have four different
+  fixes, and a frame cannot tell them apart.
+
 ## 4. A prop that answers: `states`, and what a state may be
 
 Dressing a block means leaving things that respond, and a response has to be **geometry** — if

@@ -12,11 +12,11 @@
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、
   `rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支**：`arena/e54e5286-huaxu` → `master`；PR #22 開著，**未合併**（合併要站主一句授權）。
-- **三層驗證**：`node --test`（20 支、68 條宣告，`# tests 159`，約 55 s；其中幾條會開 Chromium）→ `.verify/` 閘門 31 支（§2.3 的清單就是
+- **三層驗證**：`node --test`（21 支、72 條宣告，`# tests 163`，約 90 s；其中幾條會開 Chromium）→ `.verify/` 閘門 31 支（§2.3 的清單就是
   「有沒有跑」的判準；整段用 `python3 bin/gate-all.py` 跑，它讀的就是那份清單）→ 量具（§2.4，只在需要
   數字時跑）。效能看 `tools/bench.mjs`（§5.6）。
-- **規模**：頁面程式 4 支共 9,617 行（載入順序在 `bin/site-sources.json`；巷道的 9,091 行仍是一個 closure，§3 P3）、
-  產生器 7,550 行、`.verify` 100 支（其中閘門 31 支）、`skills/` 19 個。
+- **規模**：頁面程式 4 支共 9,667 行（載入順序在 `bin/site-sources.json`；巷道的 9,141 行仍是一個 closure，§3 P3）、
+  產生器 7,550 行、`.verify` 103 支（其中閘門 31 支）、`skills/` 19 個。
 - **工具鏈是釘住的**：`bin/restore-env` 的那一行 `npm install` 每個套件都寫死版本（jsdom 31.0.1、
   puppeteer-core 25.17.0、@sparticuz/chromium 153.0.0、@napi-rs/canvas 1.1.1、impeccable 4.1.0），
   `tests/env.test.cjs` 對 `node_modules` 逐一核對。升版是一個有意的動作：改那一行、跑整段、把結果一起 commit。
@@ -64,7 +64,7 @@ exit 2 並點名（`tests/gatelist.test.cjs` 釘住這件事）。常用：`--li
 ```sh
 sh bin/restore-env && sh bin/preview          # 環境 + 伺服器（0.0.0.0:8080）
 # ── 不開瀏覽器（秒級）──
-node --test                                    # `# tests 159`（20 支；jsdom 巷道 9 條、環境 7 條、其餘讀檔案或開瀏覽器）
+node --test                                    # `# tests 163`（21 支；jsdom 巷道 9 條、環境 7 條、其餘讀檔案或開瀏覽器）
 node tools/bench.mjs                           # 效能基準（§5.6）；`--check` 是預設，`--write` 重錄
 node .verify/verify-shapes.mjs                 # 248 個 prop 都有形
 node .verify/verify-geometry.mjs
@@ -93,16 +93,17 @@ sh bin/gate node .verify/verify-feel.mjs          # 15/15（獨佔；轉速讀 `
 sh bin/gate node .verify/verify-look.mjs          # 5 張桌子都量到
 sh bin/gate node .verify/verify-nowebgl.mjs       # 35/35
 sh bin/gate node .verify/verify-island.cjs        # 57 站都看得到東西（門檻：empty ≤ 60 %；約 8 分鐘）
-sh bin/gate node .verify/verify-mirror.mjs        # 看到的就是按到的（73 % vs 1 %）
+sh bin/gate node .verify/verify-mirror.mjs        # 看到的就是按到的（框與鏡像框各自碰到的暖色塊，整塊算）
 sh bin/gate node .verify/verify-box.mjs           # 75/75 框坐在自己畫素上、15/15 按壓（5 頁，約 3 分鐘；`SHIFT=40` 是反測）
 sh bin/gate node .verify/verify-motion.mjs
 sh bin/gate node .verify/verify-wheel.cjs         # 三張取最大（15 車廂）
 sh bin/gate node .verify/verify-hotel.cjs
 sh bin/gate node .verify/verify-rail.mjs          # 4/4（四個起點到同一顆停止點）
 sh bin/gate node .verify/verify-objects.mjs
-sh bin/gate node .verify/verify-floor.mjs         # 8 頁的鋪面 uv：一 tile = 64 × 該層 floor 的 period（12/12）
+sh bin/gate node .verify/verify-floor.mjs         # 8 頁的鋪面 uv：一 tile = 64 × period，且畫出來的石頭數與公分＝`FLOOR_STONE`（14/14）
 sh bin/gate node bin/verify-three.mjs             # 14,924 world + 1,048 water
 sh bin/gate node .verify/verify-collision.cjs     # 32/32（8 頁，實測 12.8 分鐘；動到移動／碰撞碼才必跑）
+STRICT=1 sh bin/gate node .verify/audit-all.mjs   # 沒有不在 `flat-by-nature.json` 上的平面 prop（8 頁約 92 分鐘；動到 prop／繪法／tile 才必跑，`ROOMS=<頁>` 可只跑一頁）
 ```
 
 每支後面的數字是**最後一次跑到的**，不是保證；引用前重跑。
@@ -144,7 +145,11 @@ sh bin/gate node .verify/verify-collision.cjs     # 32/32（8 頁，實測 12.8 
   射線，回報前三個命中的 mesh 與世界座標）、`_fps.mjs`。**這幾支遇到 pageerror 一律 exit 2、不印數字**：
   空白背景配 HUD 也會量出一張表。
 - **一站一張影格**：`_stopshot.mjs`（按某一站、不瞄準，直接拍——驗收「訪客按了會看到什麼」用它，
-  不要用 `_aim` 把鏡頭調到好看為止）、`_goatcheck.mjs`（抵達後量 `blockedAt`、標記是否在框內、
+  不要用 `_aim` 把鏡頭調到好看為止；`HOUR=night` 拍夜、`STOP=0,3,6` 一次開瀏覽器拍多站、
+  `BASE=http://127.0.0.1:8081` 拍另一棵樹——`git worktree add /tmp/base <commit>` 另開一個埠，
+  就是不用 stash 的「改前」）、`_sheet.mjs`（`node .verify/_sheet.mjs OUT.png A.png B.png …`，把影格排成
+  一張有檔名的總表；`COLS=2` 排前後對照）、`_tilemean.mjs`（一張 tile 把 author 色乘掉幾成，§5.5；不用伺服器）、`_lampsee.mjs`（**夜裡沒有燈先問它**：每一顆光暈印
+  「關著／不在框內／被誰擋住、擋在幾公分／看得到」四種之一，四種的修法都不一樣）、`_goatcheck.mjs`（抵達後量 `blockedAt`、標記是否在框內、
   按標記中央打到誰）、`_flowcheck.mjs`（同一個站兩張相隔 1.2 s 的影格，比對帶狀 mean 與變動像素佔比；
   `OFF=1` 是對照組）、`_reducedstill.mjs`（reduced-motion 下兩張影格必須位元組相同）。
 - **每一站看什麼**：`_stopview.mjs`（抵達後對畫面正中央射線，回報第一個**不透明**的面、它的距離，以及
@@ -196,13 +201,13 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
 若哪天頁面真的太大，先量哪一頁超過預算——現在最大的一頁是 niagara 101.7 KB（gzip 後約 20 KB），
 不是問題。詳見 `AGENTS.md` 的「不編造、不為數字而數字」。
 
-### P3 — 給巷道一個介面（前三支已拆，剩下 9,091 行）
+### P3 — 給巷道一個介面（前三支已拆，剩下 9,141 行）
 
 - **已完成的一半**：頁面程式拆成四支經典 script，`bin/site-sources.json` 是唯一的載入順序
-  （`overlay` 133 行／`chrome` 176／`dot-game` 217／巷道 9,091）。**拆的當下四支接起來與拆之前的 607,062 B 完全相同**；
+  （`overlay` 133 行／`chrome` 176／`dot-game` 217／巷道 9,141）。**拆的當下四支接起來與拆之前的 607,062 B 完全相同**；
   `verify-sources` 10/10 守住順序、單一 `?v=`、重複頂層名字、接起來能不能 parse。18 支閘門＋
   `tests/helpers/boot.cjs` 已改成讀 `siteText()`（分開 eval 看不到前一段的 `let/const`——量過，不是猜的）。
-- **剩下的巷道**（`js/site.js`，`FILE=js/site.js node .verify/_coupling.mjs`，2026-11-14）：**9,091 行、
+- **剩下的巷道**（`js/site.js`，`FILE=js/site.js node .verify/_coupling.mjs`，2026-11-14 量在 9,091 行時）：**
   289 個宣告共用一個 closure**，其中 7 個名字被 5 個以上區塊讀（`a`、`card`、`layer`、`frames`、`view`、
   `draw`、`district`）。這是介面，不是行數。
 - **為什麼還沒拆，而且不是靠改字就能拆**：切 closure 不是搬移，是把 289 個共用名字改成介面。量過
@@ -235,51 +240,41 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
   reduced-motion 下兩張影格位元組完全相同（`_reducedstill.mjs`）。
 - 店面本體、樹線結構、東京最後一站、五重塔、廣場暗帶：更早的輪次已收，各由 `verify-shapes`、
   `_ray`、`verify-wheel` 等守住。
-- **鋪面尺度量到八頁**（原本只有 Niagara）：`street`／`rooms`／`fukuoka`／`toronto`／`journey`／
-  `cntower` 一 tile 都是 **64.0 × 64.0 cm**（period 1），`niagara`／`goat` 的三層（含遠景 tier）都是
-  **192.0 × 192.0 cm**（`FLOOR_PERIOD pavers: 3`，即四顆 48 cm 的石頭）——橫豎兩軸一致、沒有條紋。
-  `verify-floor.mjs` 是它的閘門（12/12）。
 - **量具覆蓋：248 顆 prop 全部量到「它自己的形」**：`audit-all.mjs` 的框修好兩處（未繪製的 prop 留著上一
   個視角的變換；`getBoundingClientRect()` 回的是 44 px 按壓框而非剪影，見 §5.8），八頁重掃：
   248 顆 prop、245 顆量到、18 顆在最大視角上 sd < 20、3 顆是只有文字的記錄（不是 prop）。
   `skyline-cn` 209,646 px／sd 19.2／10-of-40 → **171,456 px／sd 30.2／5-of-10**，不再被判平。
 
 還開著：
-1. **`audit-all` 的平不平清單現在是「藝術問題」**：18 顆 sd < 20 的多半天生一面（`signA-s` 空白摺牌、
-   `plinth-*` 桌面、`curtain-back` 布幕、`queue-rail-*` 欄杆、`pipe-nakamise-e` 管、`mailbox-nakamise` 信箱）。
-   判準分不出「窗簾」與「壞掉的東西」，所以 `STRICT=1` 仍未開；要開就得先決定哪幾個 kind 天生是平面
-   ——那是站主的取捨（§4）。`hall-sl` 19.8 是唯一的邊界值（差 1 %，影格顯示磚面有開間）。
-2. **鋪面的「該多大」仍然沒有表**：`verify-floor.mjs` 守住「uv 服從 `FLOOR_PERIOD`、tile 是正方形、
-   每頁的鋪面有貼圖」（8 頁、12 個 tile 層），但**它證明不了 period 對不對**——把 `FLOOR_PERIOD`
-   改 `pavers: 3 → 2`，tile 從 192 變成 128 cm，這支閘門照樣 3/3 綠（兩邊同時移動）。48 cm 的
-   paver 只存在於 `paintPavers` 的「128 px 橫放四顆石頭」裡，沒有任何表寫著它。要讓它可判，得先
-   把「一顆 paver 幾公分」寫成資料（站主的取捨，§4）。
-3. **Niagara 的夜**：`HOUR=night` 沒有夜色授權 ⇒ 整頁深藍（mean 42.1）、只有兩顆燈光暈。
-   要不要給 Clifton 一條夜色記錄是站主的決定（§4）。
-4. **Goat Island 另外兩件**（都量過了，兩件都卡在站主的取景／亮度判斷）：
-   - ①「鋪面 143.7 偏亮」**今天量不到**。`_floorband.mjs` 在 stop 0 的同一條帶（y700-734、x160-864）
-     量到 mean **100.7**／sd 22.8，而記錄的鋪面平色 `#797570` 本身就是 luma **117.6** ⇒ 現在的畫面比記錄
-     **暗**，不是亮。要嘛 143.7 量的是另一條帶／另一個 stop（要站主指認），要嘛它已經不成立——在找到那個
-     位置之前不動繪法（P6-4① 原本就寫著「共用繪法，要動先確認別的頁」）。
-   - ②「林線那帶偏暗」**已定位、未改**：goat stop 3 瀑布上方那條深帶是 `out="L"` 的美國岸林線
-     （240 m，`gen/world.py:1636`，author `#556f45`、air 6.8 %、`dg=0.45`）。`_ray.mjs` 讀到它交給 renderer
-     的頂點色 **[0.091, 0.159, 0.060]** ≈ rgb 23,41,15，是 author 值的 **0.27 倍**（`dg 0.45` × 該處的
-     light）。同一面島壁在 Niagara 頁（`gen/world.py:1083`）用的是 `air × 1.9`（round 69 修「遠岸是一條
-     黑槓」時加的），goat 這面仍是 × 1.0 —— 兩頁對同一塊林地用了兩種處理。要調哪一邊是亮度決定（§4）。
+1. **光暈現在畫得出來了，尺寸是在看不見的時候寫的**。鏡射視錐之後全站的光暈與燈泡 sprite 都被背面
+   剔除（§5.5），修好之後八頁的夜都變了：`.preview/p6/sheet-all-night-{1,2,3}.png`（左改前、右改後）。
+   要站主過目的三處：Street stop 4 巷底那顆（`x 0, y 190, z 2946, r 135`）在畫面中央是一團淡藍的霧、
+   蓋住車站招牌；Street 的門光暈 `r 150, k 0.7–0.75` 在左牆上是一大片；Fukuoka 的 `r 520／350／300`
+   被天花板與牆切出直邊。**驗收**：站主看過那三張表、指出要縮的光暈；縮的是 `gen/districts.py` 的
+   `r`／`k`，改完同一站重拍。在那之前不動數字（亮度是取捨，§4）。
+2. **Niagara 的夜仍然是深藍底**：光源現在有了（燈柱 10 顆、店面 10 顆、看板、輪圈、車廂、旋轉木馬的
+   燈泡、彩燈纜），但牆與地是全站的 fold（上限 0.62）＋夜色環境光染的，stop 7／8 的框裡幾乎沒有光源
+   （`.preview/p6/sheet-nia-678-d.png`）。試過只給 Niagara `skyEnv night 0.22`：更糟，退掉了。
+   再往下走是「fold 上限」那一項（§4），不是再加燈——加在售票亭與旋轉木馬的兩顆光暈在任何一站的
+   框裡都看不到，而且白天的殘光把售票亭洗平了（sd 21.3 → 18.2，`audit-all STRICT` 紅），已拿掉。
+3. **prim 的 `a`（空氣）與 `dg`（日間增益）是死資料**：`gen/world.py` 寫它們、四個 place 檔帶著它們
+   （`cntower.js` 44,919 B、`journey.js` 33,333、`niagara.js` 32,771、`goat.js` 4,505），renderer 不讀
+   （Goat 兩條林線 `air × 1.9` ⇒ 786,432 個像素裡 0 個變）。`gen/world.py` 的註解卻把它們當成「遠景霧」
+   的把手在調。要嘛接上（renderer 讀 `a` 把顏色往天空混——四頁的遠景全變，要站主看），要嘛刪掉
+   （`skills/dead-ballast`；用 `_scenehash.mjs` 證明四頁逐站不變）。哪一個是站主的（§4）。
+4. **平面閘門的邊界值會晃**：sd 門檻 20，同一顆 prop 兩跑差到 ±1.5（`plaza-rail` 20.0／20.1、
+   `point-rail-sw` 20.6、`plaza-ticket` 21.3／20.2）。`plaza-rail`、`point-rail-sw`／`se` 已在清單上所以不會紅；
+   `plaza-ticket` 不在（它是售票亭，不是天生一面）。它若在沒人動它的情況下掉到 20 以下，先重跑一次
+   再判——**驗收**是同一頁連兩跑一致，不是把它加進清單。
 
 ## 4. 需要站主決定（代理不能替他決定）
 
 - **瀑布的圈要不要更亮**（`.preview/r65e/`、`.preview/r65b/falls2/`）；文字要不要縮短。
-- **Goat 的林線要多亮、用哪一頁的處理**（§3 P6-4②）：現在 goat 那面是 `air × 1.0`、Niagara 同一面島壁是
-  `air × 1.9`；它交給 renderer 的顏色是 author 值的 0.27 倍。選項是「goat 也 ×1.9」「兩頁都改 author 色」
-  或「維持現狀」。
-- **夜景 fold 0.62 的上限**（全站規則；`verify-walk` 有「night fold keeps a readable floor」的斷言）。
+- **夜景 fold 0.62 的上限**（全站規則；`verify-walk` 有「night fold keeps a readable floor」的斷言）。Niagara 的夜要再亮，動的是這個（§3 P6-2）。
 - **站點 6 的 A 字架要不要進畫面**（先量那條直線，不許先改後說）。
-- **Goat 的瀑布與 Toronto 的 falls 要不要也做地標盤**（P6-1）。
-- **Niagara 要不要一條夜色記錄**（P6-3）。
-- **一顆鋪面石頭幾公分要不要寫成資料**（§3 P6-2：寫了 `verify-floor` 才驗得到 period，否則它只驗接線）。
-- **哪幾個 prop kind 天生就是一面**（`signA` 空白摺牌、`plinth` 桌面、`curtain`、欄杆、管、信箱）：
-  定了才能把 `audit-all --STRICT` 當閘門開（P6-1，§5.8）。
+- **Goat 的瀑布與 Toronto 的 falls 要不要也做地標盤**。
+- **哪幾顆光暈要縮**（§3 P6-1：Street 巷底與門、Fukuoka 的三顆大光暈；`.preview/p6/sheet-all-night-*.png`）。
+- **prim 的 `a`／`dg` 要接上還是刪掉**（§3 P6-3）。
 - **英文 CV PDF 與 ORCID iD**（`AGENTS.md` 的 backlog：站主提供檔案／網址後才加）。
 
 ## 5. 量到的常數與數字（不要重新發明）
@@ -357,6 +352,29 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
   不是照明範圍（街上的燈籠 `r:30` 配 22 cm 燈體；寫 260 會變成探照燈）。要有燈體用 `"body":"lantern"`，
   要一個亮點用 `"bulb":true`。
 - **自發光平面**：`q.nolite = true` 不吃夜色 murk 也不吃太陽（亮著的窗、燈籠紙、招牌背光用它；牆不要）。
+- **有天空的頁面上 `nolite` 不等於亮**：它仍是 albedo，被夜空的光乘過、再加上 murk——燈罩 `#ffdca0`
+  （lit 1.3）在 Clifton 的夜裡量到 **(84,98,135)**，旁邊的牆是 (35,62,118)。真的自己發光的面寫
+  `q.self = 0..1`（燈罩、亮著的看板、遊樂設施的燈泡、車廂的窗、掛 `liton` 的店面玻璃）：以**負的
+  darkness** 送進 shader（不多一個 attribute），shader 把它的顏色當 emission、不吃光。白天與 hall 一律是 0。
+  **屋簷下的 `UNDER` 面不要加**（它們是 `nolite` 但不是燈）。
+- **每一顆 sprite 都要 `side: DoubleSide`**：`render()` 把視錐左右鏡射，三角形的繞向跟著反過來，
+  `SpriteMaterial` 預設 `FrontSide` ⇒ **全站每一顆光暈與燈泡都被背面剔除**（建立了、visible、有位置、
+  有亮度，就是沒畫）。`bin/verify-three.mjs` 逐顆斷言 `side`。
+- **光暈是有深度測試的 sprite**：放在 prop 原點＝放在 prop 裡面（Clifton 十家店的光暈都在自己門面後
+  7–13 cm）。`glow` 的 `"out": <cm>` 把它掛到門面前；燈柱（`kind: lamp`、高於 200 cm）由 emitter 自動
+  變成一顆光（`LAMP_POST = {r: 45, k: 0.45, lift: 24}`，位置在玻璃中央＝柱頂下 42 cm；`lift` 是朝眼睛
+  拉近幾公分，因為玻璃是包著光的 30 cm 盒子）。**不要再把燈柱寫進 `lamps`**（`tests/night-lights.test.cjs`）。
+- **燈泡跟著時辰**：day page 上 `bulb` 的不透明度是 `0.92 × (1 − 0.88 × day)`（正午 0.11、入夜 0.92）；
+  hall 沒有太陽，維持 0.92。
+- **prim 的 `a`／`dg` renderer 不讀**：改了畫面 0 個像素變（§3 P6-3）。調遠景的明暗要動 `c`／`cn` 或 tile。
+- **tile 是乘數**：world prim 的顏色＝頂點色 × tile，在線性光裡乘，而 tile 是 sRGB 畫布。所以 tile 的
+  **線性平均**就是 author 色剩下幾成（`node .verify/_tilemean.mjs`）：`strata` 0.57、`foam` 0.37、
+  `stonewall` 0.32、`hotelw` 0.28、`canopy` **0.26**、`towerwin` 0.24、`cityn` 0.14。`canopy` 原本是
+  **0.087、72 % 的面積在 10 % 線性以下**——28 顆「樹下的暗處」畫在樹冠**上面**，面積比整張 tile 還大，
+  所以全站的林線都是「黑圓盤鑲綠邊」。現在先畫暗處、再畫樹冠（Goat stop 3 林線帶 luma < 60 的像素
+  83 % → 45 %；`.preview/p6/sheet-tree.png`）。畫一張新 tile 先跑 `_tilemean`。
+- **`_ray.mjs` 的 `vcol` 是線性的**，author 的 hex 是 sRGB：`linear(#57764a)` = [0.095, 0.181, 0.068]，
+  就是它讀到的值——沒有任何東西把它壓暗。拿 hex 直接除 `vcol` 會得到一個不存在的「0.27 倍」。
 
 ### 5.6 一幀的代價（`tools/bench.mjs --write` 的基準）
 
@@ -364,15 +382,19 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 | 頁 | frame 間隔 | render（自身） | 樣本範圍 | quads | calls | 三角形 |
 |---|---|---|---|---|---|---|
-| rooms-cntower | 17 ms | 2.4 ms | 2–3 | 158 | 45 | 10,113 |
-| rooms-goat | 20 ms | 2.7 ms | 2–4 | 321 | 43 | 3,138 |
-| street | 38 ms | 7.0 ms | 4–14 | 729 | 73 | 2,570 |
-| rooms-journey | 50 ms | 8.4 ms | 7–13 | 737 | 44 | 6,267 |
-| rooms-toronto | 35 ms | 9.1 ms | 5–12 | 958 | 64 | 3,812 |
-| rooms-fukuoka | 52 ms | 13.5 ms | 7–23 | 1367 | 60 | 4,215 |
-| rooms | 45 ms | 14.3 ms | 9–19 | 796 | 143 | 3,748 |
-| rooms-niagara | 50 ms | 17.4 ms | 14–24 | 2382 | 65 | 9,522 |
+| rooms-cntower | 18 ms | 2.4 ms | 2–6 | 158 | 54 | 10,131 |
+| rooms-goat | 17 ms | 4.9 ms | 3–11 | 321 | 49 | 3,150 |
+| rooms-journey | 50 ms | 6.5 ms | 4–11 | 737 | 51 | 6,281 |
+| street | 53 ms | 9.2 ms | 6–12 | 729 | 98 | 2,620 |
+| rooms-toronto | 47 ms | 9.9 ms | 6–12 | 958 | 80 | 3,844 |
+| rooms | 39 ms | 11.1 ms | 8–20 | 796 | 163 | 3,788 |
+| rooms-fukuoka | 48 ms | 13.0 ms | 9–16 | 1367 | 81 | 4,257 |
+| rooms-niagara | 50 ms | 28.1 ms | 21–32 | 2380 | 98 | 9,576 |
 
+- **光暈與燈泡是有價錢的**：它們畫得出來之後每頁多 6–33 個 draw call（一顆 sprite 一個 call、兩個三角形：
+  cntower +9、goat +6、journey +7、toronto +16、rooms +20、fukuoka +21、street +25、niagara +33）。
+  Niagara 的 render 從 17.4 ms（14–24）變成 24–28 ms（21–33，兩跑）——在軟體光柵化上，大張的加色 sprite
+  是填充率。其他頁的差在雜訊裡。要省，先縮 `r`（§3 P6-1），不是關掉它們。
 - **`frame` 這一欄不是效能**：靜止車道以 50 ms 的 idle 脈搏畫，`frameMs` 量到的是那個節奏。
   量畫面成本看 `render`；滑行或載入中的 frame 間隔不能當 steady state。
 - **同一台機器上 render 會晃 2–3 倍**（street 三跑 53.5／121.0／64.9 ms，程式沒動），所以 `--check`
@@ -396,25 +418,28 @@ tracked 295 支檔案：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、
 return 了），那個矩形是別的地方。面積門檻 14,400 px（120×120）、sd 門檻 20、取**面積最大**的那個視角。
 `ROOMS=<page> node .verify/audit-all.mjs`，八頁一次跑約兩小時（niagara 最久）。
 
-| 頁 | props | 量到 | sd<20 | 太小不能判 | 只有文字的記錄 |
-|---|---|---|---|---|---|
-| street | 27 | 27 | 3 | 3 | 0 |
-| rooms | 33 | 33 | 2 | 0 | 0 |
-| rooms-fukuoka | 41 | 41 | 5 | 9 | 0 |
-| rooms-toronto | 26 | 26 | 1 | 12 | 0 |
-| rooms-niagara | 100 | 100 | 7 | 49 | 0 |
-| rooms-goat | 14 | 11 | 0 | 4 | 3 |
-| rooms-journey | 3 | 3 | 0 | 0 | 0 |
-| rooms-cntower | 4 | 4 | 0 | 0 | 0 |
-| **合計** | **248** | **245** | **18** | **77** | **3** |
+| 頁 | props | 量到 | sd<20 | 其中天生一面 | 太小不能判 | 只有文字的記錄 | STRICT 一跑 |
+|---|---|---|---|---|---|---|---|
+| street | 27 | 27 | 3 | 3 | 3 | 0 | 8 分 |
+| rooms | 33 | 33 | 1 | 1 | 0 | 0 | 9 分 |
+| rooms-fukuoka | 41 | 41 | 3 | 3 | 9 | 0 | 10 分 |
+| rooms-toronto | 26 | 26 | 0 | 0 | 13 | 0 | 3 分 |
+| rooms-niagara | 100 | 100 | 5 | 5 | 49 | 0 | 28–32 分 |
+| rooms-goat | 14 | 11 | 0 | 0 | 4 | 3 | 4 分 |
+| rooms-journey | 3 | 3 | 0 | 0 | 0 | 0 | 16 分 |
+| rooms-cntower | 4 | 4 | 0 | 0 | 0 | 0 | 14 分 |
+| **合計** | **248** | **245** | **12** | **12** | **78** | **3** | **約 92 分** |
 
-- **sd 量的是面與面之間的對比**（`flatShading`，一個面一個顏色），所以天生一面的東西 sd 就低：
-  `signA-s`／`signA-s2`（空白摺牌，規則 5 不許有字）、`plinth-retrohighmart`（桌面）、`curtain-back`（布幕）、
-  `frame-bridge`（畫框）、`ac-s`（牆上冷氣）、`bin-moji`（垃圾桶）、`pipe-nakamise-e`（管）、
-  `mailbox-nakamise`（信箱）、`block-d`、`planter-strip-2`、`queue-rail-a`／`b`、`point-rail-sw`／`se`、
-  `lights-post-b2`（欄杆與燈柱）。**這 18 顆不是 18 個缺陷**，判準分不出「窗簾」與「壞掉的東西」。
-- `hall-sl`（St. Lawrence Market，19.8）是唯一的邊界值：差門檻 1 %，影格顯示磚面有開間與綠屋頂。
-  要動它之前先問這是哪個問題——模型、門檻、還是那個 3.5:1 的長條框本身。
+- **sd 量的是面與面之間的對比**（`flatShading`，一個面一個顏色），所以天生一面的東西 sd 就低。
+  **哪幾顆天生一面寫在 `.verify/flat-by-nature.json`**（站主 2026-11-14 認可；一顆一句理由，現在 15 顆：
+  street `signA-s`／`signA-s2`／`ac-s`，rooms `pipe-nakamise-e`，fukuoka `curtain-back`／`frame-bridge`／
+  `bin-moji`，niagara `block-d`、`queue-rail-a`／`b`／`c`、`plaza-rail`、`point-rail-sw`／`se`、`lights-post-b2`）。
+  `STRICT=1` 紅在三件事上：**清單外的平面 prop、沒量到的 prop、清單上指名卻不在該頁的 id**；清單上但這一跑
+  不平的只印出來（邊界值會晃，§3 P6-4）。第一次開就抓到一顆沒人列過的（`queue-rail-c` 15.9）。
+  `mailbox-nakamise`（36.1）、`plinth-retrohighmart`（32.1）、`planter-strip-2`（55.6）、`hall-sl`（46.5）
+  這一輪量起來都不平，不在清單上。
+- **白天的光暈會洗平它前面的東西**：一顆 `k 0.5` 的光暈在正午還剩 6 %，掛在售票亭前 30 cm 就把它從
+  sd 21.3 洗到 18.2。給一顆 prop 加光暈之後要重跑它那一頁。
 - 3 顆 `record-only`：`woodline-c1`、`channel-e`、`pool-lower`（`rooms-goat`）——`kind: landmark` 卻沒有
   `data-landmark="1"`，所以不畫、不給框、不回答，只在頁尾書面清單裡（`<li id="thing-…">`）。
   `verify-shapes.mjs` 現在把這件事寫成不變式：**地標記錄要嘛有標記，要嘛是 quiet 且被清單列出**。
