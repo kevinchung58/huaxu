@@ -8125,7 +8125,12 @@
         // paid the difference -- not suppressed by the fact that a frame looked at it.
         const isTurn = k === "a" || k === "arrowleft" || k === "d" || k === "arrowright";
         if (!isTurn) tap.held += elapsed * 1000;   // ms; a turn's frame share is paid above
-        tap.ms = 0;
+        /* `tap.ms` is left alone here. It is only ever non-zero on a key that is down when the last
+           release of that same key has not met a frame yet -- and zeroing it threw that release's
+           debt away while `held` kept its payments, so the new press inherited a ledger that said it
+           had been paid already. Measured (`.verify/_turnprobe.mjs`): a 40 ms tap landing within a
+           frame of releasing a 300 ms hold left the pair 1.4-1.7 degrees short of the 29.2 its own
+           key events were worth. */
         return;
       }
       /* A tap that turns and a tap that walks are not the same size of gesture: a step should carry
@@ -8135,11 +8140,12 @@
          used to be seconds against a millisecond value, so the subtraction was a no-op and every
          tap paid its full cap.) */
       const isTurn = k === "a" || k === "arrowleft" || k === "d" || k === "arrowright";
-      /* The nudge is owed ONCE, on the frame that first sees the release (`tap.ms` is cleared below);
-         without that guard the floor paid itself again on every later frame, and a tap of D measured
-         8.9 degrees instead of 3.0. A press long enough to have been paid frame by frame owes the
-         difference between its real length and what has already been paid, which is usually nothing. */
-      const cap = isTurn ? (tap.ms > 0 ? Math.max(tap.ms, TURN_TAP_MS) : 0) : Math.min(tap.ms, 120);
+      /* The release is settled ONCE, on the frame that first sees it (`tap.ms` and `tap.held` are
+         cleared below); a floor applied here without that guard paid itself again on every later
+         frame, and a tap of D measured 8.9 degrees instead of 3.0. A press long enough to have been
+         paid frame by frame owes the difference between its real length and what has already been
+         paid, which is usually nothing. */
+      const cap = isTurn ? tap.ms : Math.min(tap.ms, 120);   // a turn's floor is banked at keyup
       const owed = cap - tap.held;
       if (owed > 0) {
         const t = owed / 1000;
@@ -8317,11 +8323,19 @@
   const hideCard = () => {
     if (!card) return;
     const wasOpen = !card.hidden;
+    /* Opening the card puts focus on its close button, and a hidden button cannot keep it: the
+       browser hands focus to <body>, which is nowhere -- the next Tab starts from the top of the
+       document. The card's own close button already sent focus to the view; Esc, the back gesture
+       and a second `i` fold the card through here without that line, and measured in Chromium
+       (`.verify/_backprobe.mjs`) all three left `document.activeElement` on BODY. So the fold itself
+       returns what the card was holding, and every way of folding it lands in the same place. */
+    const heldFocus = card.contains(document.activeElement);
     card.hidden = true;
     if (card.dataset.mode !== "prop") card.dataset.mode = "prop";
     if (asideEl) asideEl.hidden = true;
     if (infoBtn) infoBtn.setAttribute("aria-expanded", "false");
     if (wasOpen) overlayLeft();
+    if (heldFocus) view.focus({ preventScroll: true });
   };
   /* Round 73: `showCard(m)` is gone. It was the window that opened over the picture with a prop's
      paragraph in it, and the owner has now ruled on it twice: 「你幫我全部拿掉這種」 and then
@@ -8736,7 +8750,15 @@
     keys.delete(k);
     // the press is over: bank how long it lasted, so a tap no frame saw can still be paid out
     const tap = tapState.get(k);
-    if (tap && tap.start) { tap.ms += performance.now() - tap.start; tap.start = 0; }
+    if (tap && tap.start) {
+      /* The nudge's floor is banked here, per press, not at settlement: two taps that end inside
+         one slow frame are two nudges, and a tap whose down and up share a timestamp (the browser
+         coarsens `performance.now()`) is still a tap. */
+      const pressed = performance.now() - tap.start;
+      const isTurn = k === "a" || k === "arrowleft" || k === "d" || k === "arrowright";
+      tap.ms += isTurn ? Math.max(pressed, TURN_TAP_MS) : pressed;
+      tap.start = 0;
+    }
     /* Round 72: the nudge is paid inside a frame, so the release has to ask for one. On a slow
        machine the frame that saw the key down ends before the key comes up, and the lane then rests
        (it runs on a timer when nothing is held) -- so a 40 ms tap of the turn key measured 0.4 deg,
@@ -8746,6 +8768,11 @@
   });
   const releaseInput = () => {
     keys.clear(); stick = null; vx = 0; vd = 0; gliding = null; last = 0;
+    /* The presses are over too, and they owe nothing. The keyup of a key held through a lost window
+       goes to whatever took the focus, so its ledger stayed open with `start` at the old press; the
+       next release of that key then banked the whole time away as one press and the head spun by it
+       (measured, `.verify/_turnprobe.mjs`: one second away, 123.0 degrees for a tap worth 2.98). */
+    tapState.clear();
     const knob = pad && pad.querySelector(".walk-knob");
     if (knob) knob.style.transform = "";
     if (down) { down = null; view.classList.remove("is-dragging"); wasDrag = false; }

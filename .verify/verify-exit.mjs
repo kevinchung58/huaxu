@@ -20,8 +20,11 @@
      3. opening two surfaces means two Backs, one layer each, and the third Back leaves;
      4. closing a surface with its own control leaves no dangling history entry: the next Back
         leaves, it does not eat a phantom layer;
-     5. focus comes back to whatever opened the surface, so a keyboard visitor is not dropped at
-        the top of the document;
+     5. focus comes back to something the visitor can see -- whatever opened the surface, or the
+        view -- so a keyboard visitor is not dropped at the top of the document. "Can see" is asked
+        of the markup (`focusDrawn`), not of jsdom: before jsdom 31 `document.activeElement` stayed
+        on the close button of a `hidden` card, and this line passed for a button no browser would
+        leave focus on (`.verify/_backprobe.mjs` is the browser's own answer);
      6. Esc still folds what is open, and on a walk page with nothing open Esc is still the door.
 
    jsdom, no browser (jsdom fires popstate on its own history, which is all this needs).
@@ -132,6 +135,19 @@ const openState = (doc) => {
   };
 };
 
+/* Where focus is, and whether a visitor could see it there. A browser moves focus to <body> when the
+   focused control stops being rendered; jsdom 31 does that for `hidden` and earlier versions do not
+   do it at all, so the question is put to the markup: focus is nowhere when it is on <body>, or
+   inside anything this site's own contract calls closed. */
+const CLOSED = "[hidden], [inert], [data-walk-listpanel].is-closed, #room-plate:not(.is-open), #featured-modal:not(.is-open)";
+const focusDrawn = (doc) => {
+  const a = doc.activeElement;
+  if (!a || a === doc.body) return { ok: false, on: a ? "body" : "none" };
+  const gone = a.closest(CLOSED);
+  const name = `${a.tagName.toLowerCase()}.${String(a.className || "").split(" ")[0]}`;
+  return { ok: !gone, on: gone ? `${name}, inside a closed ${gone.id || String(gone.className).split(" ")[0] || gone.tagName}` : name };
+};
+
 const exists = (href) => {
   if (!href || /^(#|https?:|mailto:)/.test(href)) return true;      // in-page, external: not this gate's business
   const file = href.split("#")[0];
@@ -172,8 +188,7 @@ for (const page of WALK) {
      `opened=${opened} folded=${!after.card}`);
   ok(`${page}: and the visitor was not navigated away`, env.navs.length === before,
      `${env.navs.length - before} navigations`);
-  ok(`${page}: focus came back to something on the page, not to nowhere`,
-     !!doc.activeElement && doc.activeElement !== doc.body, doc.activeElement ? doc.activeElement.className : "none");
+  ok(`${page}: focus came back to something on the page, not to nowhere`, focusDrawn(doc).ok, focusDrawn(doc).on);
   env.close();
 }
 
@@ -214,6 +229,7 @@ for (const page of ["rooms-toronto.html", "rooms.html"]) {
   env.click(doc.querySelector("[data-walk-card-close]"));
   await sleep(80);
   ok(`${page}: the card's own close folds it`, !openState(doc).card);
+  ok(`${page}: and focus is on something the visitor can see`, focusDrawn(doc).ok, focusDrawn(doc).on);
   await env.back();
   await sleep(60);
   ok(`${page}: closing it yourself leaves no phantom layer for the next Back to eat`,
@@ -253,6 +269,7 @@ out.push("\n-- 5. the reel answers Back the same way --");
   ok("rooms-toronto: Back folds the reel and keeps the visitor at the tower",
      !plate.classList.contains("is-open") && env.navs.length === navs,
      `${plate.className} / ${env.navs.length - navs} navigations`);
+  ok("rooms-toronto: and focus left the folded reel for something the visitor can see", focusDrawn(doc).ok, focusDrawn(doc).on);
   await env.back();
   await sleep(120);
   ok("rooms-toronto: with the reel folded, the next Back is not swallowed either",
@@ -279,6 +296,7 @@ out.push("\n-- 6. the reading pages' surfaces fold before they flee --");
     ok("research.html: Back folds the publication card and stays on the page",
        opened && folded && env.navs.length === navs,
        `opened=${opened} folded=${folded} navs=${env.navs.length - navs}`);
+    ok("research.html: and focus is back on the page, not in the folded card", focusDrawn(doc).ok, focusDrawn(doc).on);
   }
   env.close();
 }
@@ -300,6 +318,7 @@ out.push("\n-- 6. the reading pages' surfaces fold before they flee --");
       ok("thinking.html: Back folds the game and stays on the page",
          panel.hidden && env.navs.length === navs,
          `hidden=${panel.hidden} / ${env.navs.length - navs} navigations`);
+      ok("thinking.html: and focus is back on the page, not in the folded game", focusDrawn(doc).ok, focusDrawn(doc).on);
     }
   }
   env.close();
@@ -317,10 +336,26 @@ for (const page of ["rooms-toronto.html", "rooms-niagara.html"]) {
   await sleep(80);
   ok(`${page}: Esc folds the card and does not leave`, !openState(doc).card && env.navs.length === navs,
      `${env.navs.length - navs} navigations`);
+  ok(`${page}: and focus is on something the visitor can see`, focusDrawn(doc).ok, focusDrawn(doc).on);
   env.key("Escape");
   await sleep(120);
   ok(`${page}: and with nothing open, Esc is still the door`, env.navs.length === navs + 1,
      `${env.navs.length - navs} navigations`);
+  env.close();
+}
+
+/* ---- 8. the key that opened the card folds it too, and lands focus where the others do ---- */
+out.push("\n-- 8. a second i folds the card it opened --");
+for (const page of ["rooms-toronto.html", "rooms-goat.html"]) {
+  const env = boot(page);
+  const doc = env.doc;
+  env.key("i");
+  await sleep(60);
+  const opened = openState(doc).card;
+  env.key("i");
+  await sleep(80);
+  ok(`${page}: i opens the card and i folds it`, opened && !openState(doc).card, `opened=${opened}`);
+  ok(`${page}: and focus is on something the visitor can see`, focusDrawn(doc).ok, focusDrawn(doc).on);
   env.close();
 }
 

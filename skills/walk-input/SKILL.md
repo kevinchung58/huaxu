@@ -134,9 +134,24 @@ The head turns in real milliseconds, never in frames.
 - While a turn key is down, each frame pays
   `paidMs = min(elapsed × 1000, performance.now() − tap.start)` and banks it in `tap.held`
   (**milliseconds**, the same unit as `tap.ms`).
-- On release, the nudge is owed **once**: `cap = tap.ms > 0 ? max(tap.ms, TURN_TAP_MS) : 0`.
-  Without the `tap.ms > 0` guard the floor is paid on every later frame. `owed = cap − tap.held`,
-  and `tap.ms`/`tap.held` are zeroed when the payment lands.
+- At **keyup** the press's length is banked in `tap.ms`, floored to one nudge *per press*
+  (`max(pressed, TURN_TAP_MS)`). The first frame that sees the key up pays `owed = tap.ms − tap.held`
+  **once** and zeroes both; a floor applied at settlement instead, without a guard, was paid on every
+  later frame.
+- **A key's ledger is closed by the press that ends, never by the one that follows.** A frame that
+  sees the key *down* leaves `tap.ms` alone: it is only non-zero there when the last release of the
+  same key has not met a frame yet, and zeroing it threw that release's debt away while `held` kept
+  its payments, so the new press read as already paid. Measured: a 40 ms tap pressed straight after
+  releasing a 300 ms hold turned **27.5–27.8°** where the page's own key clock owed **29.1–29.3°**
+  (short 1.4–1.7°, 4 of 4); after, short **0.00–0.01°**. The floor being per press is
+  the same rule from the other side: two taps that end inside one slow frame are two nudges, and a
+  tap whose down and up share a timestamp (`performance.now()` is coarsened) is still a tap.
+- **A press the page stopped hearing is over, and owes nothing.** `releaseInput` (window `blur`,
+  `visibilitychange`) clears `tapState` along with the keys. The keyup of a key held through a lost
+  window goes to whatever took the focus, so the ledger used to stay open with `start` at the old
+  press and the next release of that key banked the whole time away as one press. Measured: hold
+  `ArrowRight`, lose the window for one second, come back and tap — **123.0°** for a tap worth 2.98°
+  (three seconds away: 292.8°); after, **2.98°** both.
 - Walk keys keep their own cap (120 ms), because a step should carry you somewhere and a turn should
   be a nudge you can correct.
 - **A release has to ask for the frame that pays it.** The nudge is paid inside `tick`, and a lane
@@ -148,7 +163,27 @@ The head turns in real milliseconds, never in frames.
 
 Measured with `.verify/_turnprobe.mjs` (browser, real events): tap **2.97–2.98°**, 200 ms **17.7–18.4°**,
 500 ms **43.4°**, 1000 ms **85.2°**, drag **0.065 °/px** at 60/200/400 px. Before round 71 the same
-probe read tap 7.4–9.2°, 200 ms 37.7°, 1 s 140.3°, drag 0.09 °/px.
+probe read tap 7.4–9.2°, 200 ms 37.7°, 1 s 140.3°, drag 0.09 °/px. The probe also prints the two
+ledger cases above, each beside what the page's own key events were worth, so the comparison does
+not depend on how punctual the script's sleeps were. The same four properties are arithmetic in
+`tests/turn-ledger.test.cjs` (jsdom, the harness's 17 ms clock; 0 of 4 on the unfixed lane), and
+`verify-feel` holds the two defects in a real browser.
+
+**A turn is measured after its payment has landed, against the page's own clock.** The debt is paid
+inside a frame, so a yaw read the instant `keyboard.up` returns is the yaw from before the payment —
+and a baseline taken there hands that payment to the next measurement. `verify-feel` used to read
+its tap baseline that way, straight after a 1.5 s hold: alone on an idle box it went red in 3 runs
+of 4 (a probe of the same sequence read 0.75–5.38° for a 2.98° tap), and the limitation was written
+down as "another Chromium is running". With the ledger and the baseline fixed it is 15/15 twice
+*while* `tools/bench.mjs` drives a second Chromium beside it. Wait for the yaw
+to stop changing across a frame (`settled()`), and compute what was owed from the keydown/keyup
+times the page itself received (`owedSince()`); the residual is then ≤ 0.01° and a tolerance of 0.2°
+means something.
+
+**A gate reads a constant the lane publishes; it does not keep a copy.** `verify-feel` carried
+`TURN_RATE = 120` for as long as the lane has turned at 85, and its ±35 % window (78–162) passed
+every run. It reads `__walk.turnRate` now, at ±10 %. A tolerance has to be narrower than the distance
+to the value it replaced, or the gate cannot tell the two apart.
 
 **A threshold in centimetres is a speed with a frame's length hidden inside it.** The corner assist in
 `moveStep` only helps when the press is nearly perpendicular to the face, and it asked for
@@ -238,14 +273,31 @@ gesture a phone actually has. Measured in a real browser with `.verify/_backprob
   against `_gen_html.py`.
 - Esc is unchanged and must stay so: it folds what is open, and with nothing open it is the room's
   door. `verify-walk`, `verify-overlay` and `verify-exit` all assert both halves.
+- **A fold gives focus back to something drawn, whichever gesture folded it.** Opening the card
+  focuses its close button; a hidden button cannot keep focus, so the browser hands it to `<body>`
+  and the next Tab starts from the top of the document. Only the close button's own handler sent
+  focus to the view — Esc, Back and a second `i` fold the card through `hideCard()` without that
+  line. Measured in Chromium (`_backprobe.mjs`, seven folds): those three left
+  `document.activeElement` on **BODY**; the close button and all three folds of the written lane did
+  not. `hideCard()` now returns what the card was holding (`card.contains(document.activeElement)`
+  → the view), so there is one landing place and it is in the fold, not in each caller.
+- **"Focus came back" is asked of the markup, not of jsdom.** jsdom before 31 never moves focus off
+  a control that stops being rendered, so `activeElement !== body` was true of the close button
+  inside a `hidden` card and the assertion passed on all 8 pages for a defect it names. jsdom 31
+  moves it for `hidden` and nothing else. `verify-exit`'s `focusDrawn()` therefore refuses `<body>`
+  *and* anything inside what this site's own contract calls closed (`[hidden]`, `[inert]`, the
+  folded list, a plate or modal without `is-open`): 81/93 on the unfixed lane under jsdom 30.1.3 and
+  31.0.1 alike, 93/93 after.
 
 Instruments: `.verify/_backprobe.mjs` (real browser, prints `BACK CONTRACT OK` and four verdicts:
 card folds / second Back leaves / the written lane folds / Esc with nothing open is the door) and
-`.verify/verify-exit.mjs` (jsdom, **82** assertions: every chrome link resolves, Back folds the card
+`.verify/verify-exit.mjs` (jsdom, **93** assertions: every chrome link resolves, Back folds the card
 on all 8 walk pages without navigating, two surfaces take two Backs, a self-closed surface leaves no
-phantom layer, focus returns, the reel folds, `research.html`'s publication card folds, and Esc means
-what it meant). jsdom cannot navigate, so "the Back finally leaves" is asserted in the browser probe
-and only "not swallowed by a phantom layer" in the gate — say which side holds which claim.
+phantom layer, focus lands on something drawn after every kind of fold, the reel folds,
+`research.html`'s publication card folds, and Esc means what it meant). jsdom cannot navigate, so
+"the Back finally leaves" is asserted in the browser probe and only "not swallowed by a phantom
+layer" in the gate; the probe's fifth verdict, "every fold leaves focus on something drawn", is the
+browser's side of the focus claim — say which side holds which claim.
 
 ## 6b. Round 75: reach is not one number, and a bookmark must arrive
 
@@ -287,7 +339,7 @@ and only "not swallowed by a phantom layer" in the gate — say which side holds
 2. Change `js/site.js`; `node --check js/site.js`; `python3 _gen_html.py` (the cache-buster and the
    emitted markup both come from there); re-run the probe for the "after" numbers.
 3. Update the instruments' constants, then the gates' expectations, then run the whole battery:
-   `verify-walk`, `verify-overlay`, `verify-exit`, `verify-rooms-e2e`, `verify-games`,
+   `node --test`, `verify-walk`, `verify-overlay`, `verify-exit`, `verify-rooms-e2e`, `verify-games`,
    `verify-nowebgl`, `verify-body`, `verify-feel`, `verify-story`, `_popup-audit`, `_turnprobe`,
    `_backprobe`.
 4. Only then write it down (this file), refresh `TODO.md`, and hand off.
@@ -312,3 +364,9 @@ and only "not swallowed by a phantom layer" in the gate — say which side holds
   `overlayEntered` is a surface where Back throws the visitor out of the place.
 - Never let Back *escape* the place while something is open to "keep the browser honest": Back is the
   exit of the surface first and of the place second, in that order.
+- Never accept `document.activeElement !== document.body` as "focus returned". A control inside a
+  hidden surface satisfies it in every jsdom before 31; ask whether the element is drawn.
+- Never leave a key's ledger open when the page stops hearing the key, and never let a new press
+  inherit the last one's payments: both read as a head that turns by itself.
+- Never copy a lane constant into a gate when `__walk` publishes it, and never widen a tolerance
+  until a stale constant fits inside it.

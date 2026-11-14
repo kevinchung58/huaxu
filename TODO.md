@@ -11,12 +11,15 @@
   產生（入口 721 行＋`gen/` 六個模組）；runtime 只有 vendored 的 Three.js 0.186.1。
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、
   `rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
-- **分支**：`arena/0cb70678-huaxu` → `master`；PR #21 開著，**未合併**（合併要站主一句授權）。
-- **三層驗證**：`node --test`（55 條，約 11 s，不開瀏覽器）→ `.verify/` 閘門 31 支（§2.3 的清單就是
+- **分支**：`arena/e54e5286-huaxu` → `master`（PR #17–#21 已合併；合併要站主一句授權）。
+- **三層驗證**：`node --test`（20 支、68 條宣告，`# tests 159`，約 55 s；其中幾條會開 Chromium）→ `.verify/` 閘門 31 支（§2.3 的清單就是
   「有沒有跑」的判準；整段用 `python3 bin/gate-all.py` 跑，它讀的就是那份清單）→ 量具（§2.4，只在需要
   數字時跑）。效能看 `tools/bench.mjs`（§5.6）。
-- **規模**：頁面程式 4 支共 9,552 行（載入順序在 `bin/site-sources.json`；巷道的 9,045 行仍是一個 closure，§3 P3）、
-  產生器 7,524 行、`.verify` 98 支（其中閘門 31 支）、`skills/` 19 個。
+- **規模**：頁面程式 4 支共 9,617 行（載入順序在 `bin/site-sources.json`；巷道的 9,091 行仍是一個 closure，§3 P3）、
+  產生器 7,550 行、`.verify` 100 支（其中閘門 31 支）、`skills/` 19 個。
+- **工具鏈是釘住的**：`bin/restore-env` 的那一行 `npm install` 每個套件都寫死版本（jsdom 31.0.1、
+  puppeteer-core 25.17.0、@sparticuz/chromium 153.0.0、@napi-rs/canvas 1.1.1、impeccable 4.1.0），
+  `tests/env.test.cjs` 對 `node_modules` 逐一核對。升版是一個有意的動作：改那一行、跑整段、把結果一起 commit。
 
 ## 2. 怎麼做（不變的部分）
 
@@ -54,13 +57,14 @@
 清單，所以清單不會跟磁碟漂移：磁碟上有一支 `verify-*` 而清單沒寫，或清單寫了磁碟沒有的，`--check` 直接
 exit 2 並點名（`tests/gatelist.test.cjs` 釘住這件事）。常用：`--list`、`--only=walk,box`、`--skip=collision`、
 `--stop`。清單第一行的 `sh bin/preview` 不會被執行——伺服器不會結束，需要伺服器的閘門由 `bin/gate` 起停。
-**整段一次的實測時間**（2026-10-30，本機）：35 支 32.6 分鐘（最久 `verify-island` 443 s、
-`tools/bench` 435 s、`verify-tables` 213 s）＋ `verify-collision` 31.5 分鐘 ≈ **64 分鐘**。
+**整段一次的實測時間**（2026-11-14，沙盒）：37 條 **41.0 分鐘**（最久 `verify-collision` 770 s、
+`verify-island` 501 s、`tools/bench` 255 s、`verify-tables` 200 s）。2026-10-30 在本機量到約 64 分鐘
+（`verify-collision` 31.5 分鐘）——機器差很多，排時間用長的那個。
 
 ```sh
 sh bin/restore-env && sh bin/preview          # 環境 + 伺服器（0.0.0.0:8080）
 # ── 不開瀏覽器（秒級）──
-node --test                                    # 55 條：45 條純檔案、4 條 jsdom 巷道、6 條環境（`bin/gate`）
+node --test                                    # `# tests 159`（20 支；jsdom 巷道 9 條、環境 7 條、其餘讀檔案或開瀏覽器）
 node tools/bench.mjs                           # 效能基準（§5.6）；`--check` 是預設，`--write` 重錄
 node .verify/verify-shapes.mjs                 # 248 個 prop 都有形
 node .verify/verify-geometry.mjs
@@ -74,7 +78,7 @@ node .verify/verify-sources.mjs                # 10/10（4 支組成的頁面程
 node .verify/verify-csslive.mjs                # 546 條選擇器：LIVE 400／RUNTIME 123／DORMANT 5／DEAD 0
 node .verify/verify-ux.mjs                     # 69/69（按壓的動詞表、文字只給 read）
 node .verify/verify-overlay.mjs                # 95/95（什麼可以蓋在走頁上、由哪個手勢）
-node .verify/verify-exit.mjs                   # 82/82（每一種進去都有訪客認得的出口）
+node .verify/verify-exit.mjs                   # 93/93（每一種進去都有訪客認得的出口；收合後焦點落在畫得出來的東西上）
 node .verify/verify-rooms-e2e.cjs              # 72/72（0 failures）
 node .verify/verify-body.mjs                   # 73/73
 node .verify/verify-story.mjs                  # 27/27
@@ -85,10 +89,10 @@ node_modules/.bin/impeccable detect --json .   # []
 git diff --check && python3 -m py_compile _gen_html.py bin/toronto_massing.py
 md5sum *.html > /tmp/a && python3 _gen_html.py && md5sum *.html > /tmp/b && diff /tmp/a /tmp/b   # 冪等
 # ── 真瀏覽器，順序跑（獨佔）──
-sh bin/gate node .verify/verify-feel.mjs          # 12/12（獨佔）
+sh bin/gate node .verify/verify-feel.mjs          # 15/15（獨佔；轉速讀 `__walk.turnRate`，帳本兩條）
 sh bin/gate node .verify/verify-look.mjs          # 5 張桌子都量到
 sh bin/gate node .verify/verify-nowebgl.mjs       # 35/35
-sh bin/gate node .verify/verify-island.cjs        # 47 站，每站 empty 0 %
+sh bin/gate node .verify/verify-island.cjs        # 57 站都看得到東西（門檻：empty ≤ 60 %；約 8 分鐘）
 sh bin/gate node .verify/verify-mirror.mjs        # 看到的就是按到的（73 % vs 1 %）
 sh bin/gate node .verify/verify-box.mjs           # 75/75 框坐在自己畫素上、15/15 按壓（5 頁，約 3 分鐘；`SHIFT=40` 是反測）
 sh bin/gate node .verify/verify-motion.mjs
@@ -98,7 +102,7 @@ sh bin/gate node .verify/verify-rail.mjs          # 4/4（四個起點到同一�
 sh bin/gate node .verify/verify-objects.mjs
 sh bin/gate node .verify/verify-floor.mjs         # 8 頁的鋪面 uv：一 tile = 64 × 該層 floor 的 period（12/12）
 sh bin/gate node bin/verify-three.mjs             # 14,924 world + 1,048 water
-sh bin/gate node .verify/verify-collision.cjs     # 28/28（7 頁，實測 31.5 分鐘；動到移動／碰撞碼才必跑）
+sh bin/gate node .verify/verify-collision.cjs     # 32/32（8 頁，實測 12.8 分鐘；動到移動／碰撞碼才必跑）
 ```
 
 每支後面的數字是**最後一次跑到的**，不是保證；引用前重跑。
@@ -116,14 +120,17 @@ sh bin/gate node .verify/verify-collision.cjs     # 28/28（7 頁，實測 31.5 
   四邊形、相機、`threeStats` 排序後取 sha1，逐個 stop 印 SAME／DIFFERENT；不要用整張影格的差異判，讀
   `skills/frame-evidence` §9e）、`_abdiff.mjs`（兩張影格的差異分佈＋門檻計數，**看**差異用它，判有沒有差異用
   `_scenehash`）、`_partsprobe.mjs`（四支是不是真的都載入、`__walk` 有沒有掛上、overlay 名字解不解析得到）、
-  `_shadow.py`（P3 的價錢：339 個頂層名字裡有幾個在更深層被當成參數／區域變數重用——決定「能不能只靠
+  `_shadow.py`（P3 的價錢：340 個頂層名字裡有幾個在更深層被當成參數／區域變數重用——決定「能不能只靠
   改字拆 closure」，今天 20 個，`a` 一個就 45 處）、
   `_floorband.mjs`（每頁第一站的鋪面帶 y700-734 x160-864 的 mean／sd；比亮度用它，不要用整張影格的 mean）、
   `_lane.mjs` / `_tile.mjs` 是鋪面的診斷（單頁深看）；**跨頁的尺度是閘門 `verify-floor.mjs`**、
   `verify-motion.mjs`、`audit-all.mjs`（一次載入量所有 prop 在**它被畫出來的那個最大視角**上的形：框是
   `--padx/--pady` 收回來的剪影、`visibility:hidden` 的視角不算（§5.8）；**診斷不是閘門**，`STRICT=1` 才是）、
   `cost-probe.mjs`、`make-cover.mjs`。
-- **手感與互動**：`_turn.mjs` / `_keys.mjs`、`_census.mjs`、`browser-check.py`（點擊真的落在地上；jsdom 沒有
+- **手感與互動**：`_turnprobe.mjs`（真鍵盤事件的 tap／hold／drag，外加兩個帳本情境——緊接在放手之後的
+  tap、按著鍵失去視窗再回來——每一列都印「頁面自己的按鍵時鐘說該付多少」；`ROOMS=` 選頁）、
+  `_backprobe.mjs`（真瀏覽器的 Back 契約＋七種收合之後焦點落在哪；印 `BACK CONTRACT OK/BROKEN`）、
+  `_turn.mjs` / `_keys.mjs`、`_census.mjs`、`browser-check.py`（點擊真的落在地上；jsdom 沒有
   hit-testing）、`wall-live.mjs`、`wall-pierce-live.mjs`、`walk-feel.mjs`。
 - **碰撞**：`_wedge.cjs`（寬掃描：每個 stop 16 個方位＋斜向壓牆＋每個 solid 四角，連續回報「有合法出口卻站著」）、
   `_wedge2.cjs`（把 `js/site.js` 的 `moveStep` **在記憶體裡**插旗，印 `clear`／`along`／`hop2`／`buzz`／`ok`；
@@ -189,20 +196,21 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
 若哪天頁面真的太大，先量哪一頁超過預算——現在最大的一頁是 niagara 101.7 KB（gzip 後約 20 KB），
 不是問題。詳見 `AGENTS.md` 的「不編造、不為數字而數字」。
 
-### P3 — 給巷道一個介面（前三支已拆，剩下 9,045 行）
+### P3 — 給巷道一個介面（前三支已拆，剩下 9,091 行）
 
 - **已完成的一半**：頁面程式拆成四支經典 script，`bin/site-sources.json` 是唯一的載入順序
-  （`overlay` 133 行／`chrome` 153／`dot-game` 217／巷道 9,045）。**四支接起來與拆之前的 607,062 B 完全相同**；
+  （`overlay` 133 行／`chrome` 176／`dot-game` 217／巷道 9,091）。**拆的當下四支接起來與拆之前的 607,062 B 完全相同**；
   `verify-sources` 10/10 守住順序、單一 `?v=`、重複頂層名字、接起來能不能 parse。18 支閘門＋
   `tests/helpers/boot.cjs` 已改成讀 `siteText()`（分開 eval 看不到前一段的 `let/const`——量過，不是猜的）。
-- **剩下的巷道**（`js/site.js`，`_coupling.mjs` 2026-10-30）：**9,045 行、288 個宣告共用一個 closure**，
-  其中 11 個名字被 5 個以上區塊讀。這是介面，不是行數。
-- **為什麼還沒拆，而且不是靠改字就能拆**：切 closure 不是搬移，是把 288 個共用名字改成介面。量過
-  （`_shadow.py`：339 個頂層名字，其中 **20 個在程式更深的層級又被當成參數／區域變數**，最熱的 `a`
+- **剩下的巷道**（`js/site.js`，`FILE=js/site.js node .verify/_coupling.mjs`，2026-11-14）：**9,091 行、
+  289 個宣告共用一個 closure**，其中 7 個名字被 5 個以上區塊讀（`a`、`card`、`layer`、`frames`、`view`、
+  `draw`、`district`）。這是介面，不是行數。
+- **為什麼還沒拆，而且不是靠改字就能拆**：切 closure 不是搬移，是把 289 個共用名字改成介面。量過
+  （`_shadow.py`：340 個頂層名字，其中 **20 個在程式更深的層級又被當成參數／區域變數**，最熱的 `a`
   一個就 45 處）——所以任何「把 `name` 換成 `NS.name`」的文字改寫都會把那 20 個的內層綁定一起改掉，結果是
   畫得出來、畫錯東西。正確做法需要真正的 scope 分析，而這裡不能有 parser：`acorn`／`babel`／`esbuild`
   都不在（就算裝了也是 build step，硬規則 2），自己寫一個能正確處理樣板字串與 regex/除法歧義的 lexer
-  不是這一項的價值所在。**剩下的 319 個名字可以乾淨改寫，這 20 個不行**——這就是它一直是 rewrite 而不是
+  不是這一項的價值所在。**剩下的 320 個名字可以乾淨改寫，這 20 個不行**——這就是它一直是 rewrite 而不是
   move 的原因。
 - **第二筆錢**：最快的閘門 `verify-walk`（212 條）現在把整段文字 eval 進 jsdom，而 **ES module 不能用
   這種方式 eval**，所以一次真的模組化要同時付「設計介面」與「把 212 條搬去真瀏覽器」兩筆錢。
@@ -283,6 +291,9 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 （一擊 ≈ 3.0°）、按住鍵上限 2 s、governor 下限 0.26、`?render=full`。
 轉向**用訪客的毫秒付**，不是用幀：按住時把時間記入 `tap.held`，放手時補「還欠的」那一段，而且只付一次。
 **放手要自己排一幀**（`keyup` 最後 `if (tap) loop();`），否則慢機器上那筆 nudge 欠給一個沒人排的幀。
+帳本三條（`skills/walk-input` §4）：一次按壓的下限在 **keyup** 記帳（每次按壓各一擊）；鍵按著的那一幀
+**不准**清 `tap.ms`（上一次放手還沒結的帳會被丟掉）；`blur`／`visibilitychange` 要把帳本一起清掉
+（否則離開視窗的那幾秒會在回來後的第一次放手被當成一次按壓付掉：1 s → 123°）。
 實測（idle、1024×768 SwiftShader）：W 149 cm/s、S 156 cm/s、D/A 96.3 / 89.2 °/s、latency 49–166 ms。
 
 ### 5.2 互動與 reach
@@ -371,10 +382,10 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 ### 5.7 倉庫大小
 
-tracked 支檔案（`.git` 12 MB）：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、
-產生器 552 KB／7,524 行（入口 721 ＋ `gen/` 六個模組）、
-`css/site.css` 85 KB（2,707 行）。頁面程式四支共 596 KB（`js/site.js` 577 KB／9,045 行，仍是一個 closure）。
-`.verify` 98 支，閘門 31 支，`skills/` 19 個。
+tracked 295 支檔案：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、
+產生器 542 KB／7,550 行（入口 721 ＋ `gen/` 六個模組）、
+`css/site.css` 88 KB（2,764 行）。頁面程式四支共 602 KB（`js/site.js` 581 KB／9,091 行，仍是一個 closure）。
+`.verify` 100 支，閘門 31 支，`skills/` 19 個。（2026-11-14 用 `wc` 量的；這一段每次 commit 都會動，引用前重量。）
 `image-search/`（3 張 CN Tower 參考照，**來源未追溯 → 永不入庫**）只留在磁碟。
 
 ### 5.8 每一顆 prop 的形（`audit-all.mjs`，八頁）
@@ -413,10 +424,12 @@ return 了），那個矩形是別的地方。面積門檻 14,400 px（120×120�
 - 夜裡的 fold 壓到 0.62 是全站規則（待站主決定）。
 - SkyWheel 的輪圈從廣場地板看永遠在畫面外（輪圈在頭上 71°）；站點 6 只看得到腿與排隊區。輪下的
   stop 6/7/8 看不到輪是構圖，不是缺陷，不要為此轉動地標。
-- **`verify-feel` 與 `verify-collision` 需要空閒的機器**：旁邊有別的 Chromium，`verify-feel` 會把 40 ms
-  轉向輕點量成 0.2°（應 3.0°），碰撞閘門的速度也失真。看到紅燈，先確認機器上只剩它一個。
-- **`verify-collision` 在這個沙盒要 ~50 分鐘**，輸出要導到檔案才看得到進度（`> /tmp/collision.log`），
-  接 `| tail` 會讓它 50 分鐘一片空白、看起來像卡住。
+- **`verify-feel` 與 `verify-collision` 量的是速度，所以仍然獨佔**（`bin/gate` 會拒絕）。但「旁邊有別的
+  Chromium 會把 40 ms 轉向輕點量成 0.2°」這句舊診斷是**錯的**：那是轉向帳本的缺陷加上閘門在付款前讀
+  baseline（`skills/walk-input` §4）。修掉之後，`tools/bench.mjs` 在旁邊跑著第二個 Chromium 時
+  `verify-feel` 仍是 15/15 ×2。轉向那幾條再紅，先當成程式的問題查，不要先怪機器。
+- **`verify-collision` 很長**（2026-11-14 量到 12.8 分鐘，以前量過 31.5 與 ~50；整段含它是 41.0 分鐘），
+  輸出要導到檔案才看得到進度（`> /tmp/collision.log`），接 `| tail` 會讓它整段一片空白、看起來像卡住。
 - 慢幀的根因是**瀏覽器軟體光柵化**；真正的槓桿是少畫像素，但在這個世界裡距離剔除沒有對象（§5.6）。
 
-> 最後更新：2026-10-29 · 零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 最後更新：2026-11-14 · 零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
