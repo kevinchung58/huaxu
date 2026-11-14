@@ -151,7 +151,8 @@ The head turns in real milliseconds, never in frames.
   window goes to whatever took the focus, so the ledger used to stay open with `start` at the old
   press and the next release of that key banked the whole time away as one press. Measured: hold
   `ArrowRight`, lose the window for one second, come back and tap — **123.0°** for a tap worth 2.98°
-  (three seconds away: 292.8°); after, **2.98°** both.
+  (three seconds away the probe reads −67.2°: the head went most of the way round); after, **2.98°**
+  both.
 - Walk keys keep their own cap (120 ms), because a step should carry you somewhere and a turn should
   be a nudge you can correct.
 - **A release has to ask for the frame that pays it.** The nudge is paid inside `tick`, and a lane

@@ -11,7 +11,7 @@
   產生（入口 721 行＋`gen/` 六個模組）；runtime 只有 vendored 的 Three.js 0.186.1。
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、
   `rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
-- **分支**：`arena/e54e5286-huaxu` → `master`（PR #17–#21 已合併；合併要站主一句授權）。
+- **分支**：`arena/e54e5286-huaxu` → `master`；PR #22 開著，**未合併**（合併要站主一句授權）。
 - **三層驗證**：`node --test`（20 支、68 條宣告，`# tests 159`，約 55 s；其中幾條會開 Chromium）→ `.verify/` 閘門 31 支（§2.3 的清單就是
   「有沒有跑」的判準；整段用 `python3 bin/gate-all.py` 跑，它讀的就是那份清單）→ 量具（§2.4，只在需要
   數字時跑）。效能看 `tools/bench.mjs`（§5.6）。
