@@ -174,7 +174,7 @@ The lane is still 9,091 lines and stays that way until a round is prepared to pa
 
 - every one of its 289 declarations shares one closure; cutting at a file boundary is not a move, it
   is an interface design;
-- the fastest gate in this repository, `verify-walk` (212 assertions), works by evaluating that text
+- the fastest gate in this repository, `verify-walk` (213 assertions), works by evaluating that text
   in jsdom. **ES modules cannot be evaluated that way**, so the split also costs a browser-driven
   gate — every assertion ported, not rewritten.
 

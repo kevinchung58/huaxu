@@ -24,6 +24,22 @@
       written into a region that the next frame rewrites; and the night's sentence named "the
       falls' own colours" on pages that have no falls.
 
+   5. THE LANE THAT NEVER RESTED AGAIN. A resting lane redraws about ten times a second (the idle
+      pulse) and no more. The hour button started its own timer in the pulse's handle without
+      stopping the one already in it, so every press left one more redraw chain running for the rest
+      of the visit: 9 ticks a second at rest, 19 after one press, 30 after two (measured), each a
+      full night's draw. The page still answered -- the picture did not: the browser's own frame
+      rate fell from 60 to 4 a second on the software rasteriser and stayed there. Nothing that
+      reads state or a frame sees this; the count of ticks does. The incline's pump borrowed the
+      same handle and is held to the same rule.
+
+   6. THE BAR NO FINGER COULD PRESS. The bar ("Read . The Horseshoe Falls") is the lane's one
+      control for a finger -- a phone has no E. `.walk-hud > *` turns pointer events off for the
+      layout rows and the controls opt back in by class; `.walk-open` was never on that list, so
+      every tap on the bar went through it to the scene. Every instrument that pressed the bar did
+      it with `element.click()` from inside the page, which does not hit-test. This presses it with
+      the mouse and with a touch, at the point a visitor would.
+
    This stands where a visitor stands (Niagara: stop 8 facing 180 for the carousel, stop 6 facing 90
    for the wheel), presses E, and reads the line a screen reader is given.
 
@@ -114,6 +130,51 @@ for (const [file, falls] of [["street.html", false], ["rooms-niagara.html", true
   const line = (await rec(p)).text;
   ok(/^Night comes/.test(line) && /falls/.test(line) === falls,
      `${file}: a second after the button the line still reads "${line}" (${falls ? "this place has falls" : "no falls here, none named"})`);
+  await p.close();
+}
+// 5. when it is over, the picture still moves. What a visitor loses to a lane that never rests is
+//    the browser's own frame rate, so that is what is counted: animation frames a second on the
+//    street, at rest and again after four presses of the hour button (measured on the tree that
+//    leaked: 60 at rest, then 8, 4 and 1; fixed: 60 throughout). The lane's own tick count is
+//    printed beside it and NOT judged here -- on this rasteriser five chains tick barely faster
+//    than one (8.8 a second against 12 to 14), because one already fills the machine. The exact
+//    count of chains, and the ride's, are `tests/idle-pulse.test.cjs`, where time is a number.
+{
+  const p = await openPage(browser, { rooms: "street.html", hour: "day", base: BASE });
+  await p.evaluate(() => document.querySelector("[data-walk-tutor-skip]")?.click());
+  await arrive(p, 1); await park(p);
+  await p.evaluate(() => { window.__frames = 0; const f = () => { window.__frames++; requestAnimationFrame(f); }; requestAnimationFrame(f); });
+  const rate = async (secs = 4) => {
+    const read = () => p.evaluate(() => [window.__frames, document.querySelector("[data-walk]").__walk.ticks || 0]);
+    const a = await read(); await sleep(secs * 1000); const b = await read();
+    return { frames: (b[0] - a[0]) / secs, ticks: (b[1] - a[1]) / secs };
+  };
+  const rest = await rate();
+  ok(rest.frames > 20, `street at rest: the browser draws ${rest.frames.toFixed(0)} frames a second (the lane ticks ${rest.ticks.toFixed(1)})`);
+  const q = await p.evaluate(() => { const b = document.querySelector("[data-walk-hour]").getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; });
+  for (let i = 0; i < 4; i++) { await p.mouse.click(q[0], q[1]); await sleep(1500); }
+  await sleep(4000);   // the hour's sentence is held three seconds
+  const after = await rate();
+  ok(after.frames >= rest.frames * 0.6, `street, four presses of the hour button later: ${after.frames.toFixed(0)} frames a second (the lane ticks ${after.ticks.toFixed(1)})`);
+  await p.close();
+}
+// 6. the bar, by a real mouse click and by a real touch on a phone
+for (const phone of [false, true]) {
+  const p = await openPage(browser, { rooms: "rooms-niagara.html", hour: "day", base: BASE });
+  if (phone) { await p.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); await sleep(800); }
+  await p.evaluate(() => document.querySelector("[data-walk-tutor-skip]")?.click());
+  await arrive(p, 2); await park(p);
+  const bar = await p.evaluate(() => {
+    const b = document.querySelector("[data-walk-open]"); if (!b || b.hidden) return null;
+    const q = b.getBoundingClientRect(), x = q.left + q.width / 2, y = q.top + q.height / 2, top = document.elementFromPoint(x, y);
+    return { x, y, name: b.textContent.trim(), onTop: top === b || b.contains(top), under: top ? `${top.tagName.toLowerCase()}.${String(top.className).split(" ")[0]}` : "nothing" };
+  });
+  const how = phone ? "a touch on a 390 x 844 phone" : "a mouse click";
+  if (!bar) { ok(false, `${how}: Niagara stop 2 shows the bar`); await p.close(); continue; }
+  if (phone) await p.touchscreen.tap(bar.x, bar.y); else await p.mouse.click(bar.x, bar.y);
+  await sleep(900);
+  const card = await p.evaluate(() => { const c = document.querySelector("[data-walk-card]"); return c && !c.hidden ? (c.querySelector("h2, h3, [data-walk-card-title]")?.textContent || "open").trim().slice(0, 40) : ""; });
+  ok(bar.onTop && card !== "", `${how} on the bar "${bar.name}" opens its card (${card ? `"${card}"` : `nothing opened; the point belongs to ${bar.under}`})`);
   await p.close();
 }
 await browser.close();

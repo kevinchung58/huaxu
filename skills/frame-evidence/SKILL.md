@@ -169,18 +169,17 @@ across it and see which surfaces are there.
 
 **`vcol` is linear; an authored hex is sRGB. Convert before you compare.** `_ray.mjs` reports, for a
 hit, the vertex colour the quad hands the renderer (`vcol`). The Canadian bank's woodline at Goat
-stop 3 is authored `#57764a` and reads **[0.095, 0.181, 0.068]** — and an earlier reading of this
-section called that "0.27× the author value" and went looking for the factor that was darkening it.
-There is none: `linear(#57764a)` *is* [0.095, 0.181, 0.068], to three places. The 0.27 was sRGB
-divided into linear. A ratio between a hex and a `vcol` means nothing until one of them is converted.
+stop 3 is authored `#57764a`, and an earlier reading called its `vcol` "0.27× the author value" and
+went looking for what was darkening it. Nothing was: `linear(#57764a)` is [0.095, 0.181, 0.068]
+(computed, not a kept `_ray` log). The 0.27 was sRGB divided into linear: convert one first.
 
 **A field in the data is not a field the renderer reads — prove it with a zero-pixel diff.** The same
 false reading blamed the prim's `dg: 0.45` and its `a` (air), and the owner was asked to choose
 between "Goat `air × 1.0`" and "Niagara `air × 1.9`". Applying `× 1.9` to both Goat canopy lines
 changed `"a"` in `js/places/goat.js` (0.044 → 0.084) and changed **0 of 786,432 pixels**
-(`_abdiff.mjs`, same stop, same launch conditions). `buildWorldGeometry` reads
-`c q p o t r pat cn u rot pts np il h ax w ux uz west pa al` from a prim and nothing else: `a` and
-`dg` are authored, emitted, shipped and ignored (4.5–33 KB per place file). So before a data field is
+(`_abdiff.mjs`, same stop, same launch conditions). `js/scene3d.js` reads `al ax c cn h il np o p pa
+pat pts q r rot t u ux uz w` off a prim (every `p.<name>` before `buildRenderer`, re-grepped) and has
+no `.dg` and no prim `.a`: both are authored, emitted, shipped and ignored (4.5–33 KB per place file). So before a data field is
 offered as a lever — to the owner or to yourself — change it and diff the frame. If nothing moves,
 the lever is not connected, and the finding is *that*.
 
@@ -198,6 +197,9 @@ The rule: **before quoting a painted colour, read `vcol` and linearise the hex; 
 band, read what is in it; before offering a field as the fix, show one pixel that it moves.**
 Three.js ray hits already expose resolved vertex indices in `face.a/b/c`, even for indexed geometry;
 use those indices directly rather than applying the geometry index a second time.
+
+**6f. A frame is of a state and of the road to it:** `HOUR=night` is the *reloaded* night, not the
+pressed one — `verify-hour.mjs`, `skills/ux-walkthrough` §5b.
 
 ## 6c. Project the geometry before you press the shutter
 
@@ -457,7 +459,6 @@ instrument's answer and the frame disagree, neither is wrong: something between 
 drawn. `bin/verify-three.mjs` now asserts every sprite's `side`.
 
 ## Procedure
-
 
 1. State the claim in one sentence and the page/stop/view it is about.
 2. `arrive()` → `aim()` → `park()` → shoot. Refusals are the tool working.

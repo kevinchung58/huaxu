@@ -61,11 +61,11 @@ const apart = (a, b) => {
   return { worst, mean, far, same: mean <= MEAN && far <= CELLS,
            text: `mean ${mean.toFixed(1)} (limit ${MEAN}), ${far} of ${a.length} cells over ${FAR} (limit ${CELLS}), worst ${worst.toFixed(1)} at ${at % GX},${Math.floor(at / GX)}` };
 };
-const press = async (page) => {
+const press = async (page, wait = 2500) => {
   const r = await page.evaluate(() => { const q = document.querySelector("[data-walk-hour]")?.getBoundingClientRect(); return q ? [q.left + q.width / 2, q.top + q.height / 2] : null; });
   if (!r) return false;
   await page.mouse.click(r[0], r[1]);
-  await sleep(2500);
+  await sleep(wait);
   return true;
 };
 const clock = (page) => page.evaluate(() => document.querySelector("[data-walk]").dataset.walkClock || "");
@@ -78,7 +78,7 @@ const stand = async (browser, file, stop, hour) => {
 };
 
 const browser = await launch({ width: 1024, height: 768 });
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, leakChecked = false;
 const ok = (good, text) => { console.log(`${good ? "PASS" : "FAIL"}  ${text}`); if (good) pass++; else fail++; };
 for (const { file, stop } of PAGES) {
   const n = `${file.replace(".html", "")}-s${stop}`;
@@ -94,6 +94,18 @@ for (const { file, stop } of PAGES) {
   await page.screenshot({ path: f("N0-booted-night") });
   await press(page);
   await page.screenshot({ path: f("D1-pressed-to-day") });
+  /* The light is remade on every change, so every change must give back what it took. three.js's own
+     example for a moving sun (`webgl_shaders_ocean.html`) keeps one PMREM generator and one render
+     target for exactly this reason; the lane does the same, and this counts the renderer's textures
+     across six more presses (an even number, so the hour is the one it started at). */
+  if (leakChecked === false) {
+    leakChecked = true;
+    const count = () => page.evaluate(() => document.querySelector("[data-walk]").__walk.threeStats?.textures);
+    const before = await count();
+    for (let i = 0; i < 6; i++) await press(page, 700);
+    const after = await count();
+    ok(Number.isFinite(before) && after === before, `${n}: six more presses leave the renderer's texture count where it was (${before} -> ${after})`);
+  }
   await page.close();
   ok(c1 === "night" && c0 === "night", `${n}: both ways report night (pressed "${c1}", booted "${c0}")`);
   const [D0, N1, N0, D1] = await Promise.all(["D0-booted-day", "N1-pressed-to-night", "N0-booted-night", "D1-pressed-to-day"].map((k) => cells(f(k))));

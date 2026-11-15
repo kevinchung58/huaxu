@@ -172,6 +172,82 @@ line).
    then at most three actions — and the numbers, because 「感覺不好」 on this project has always meant a
    number nobody had taken yet.
 
+## 5b. What the pass cannot see unless you make it — eight shapes found by playing
+
+A pass that walked every stop, pressed everything and printed no `?!` row still shipped all eight of
+these. Each one is a reason the table says "fine" while the visitor's experience is wrong; each has
+a gate now, and each gate was run against the tree before the fix to prove it can fail.
+
+| shape | what the table showed | what was true | how it is measured now |
+|---|---|---|---|
+| **Two ways to the same state** | `clock: night` both times | the night you press to and the night you reload into were different pictures (the sky's PMREM and hemisphere were made once, from the hour at boot); "day" after a night boot was a daylit sky over black buildings | `verify-hour.mjs`: the frame, cut into 12 × 9 cells — pressed night = booted night, pressed day = booted day. Before: mean 91.8 / 188.5 at Niagara; after: 1.2 / 0.7. And six more presses leave `threeStats.textures` where it was: the first fix made a new PMREM target per change and disposed only its texture (30 → 36); three.js's own moving-sun example keeps one generator and one target, and so does `skyLight` now |
+| **A thing that never stands still** | `carousel:try SCENE 1219->1222` | nothing read the press; the ride was turning anyway, under the drawbridge's sentence | `verify-demo.mjs` reads the words; `tests/demo-words.test.cjs` holds every authored `demo` value to its own row in `DEMOS` |
+| **A press that poisons the next ones** | every row answered | a demonstration's pump borrowed the idle pulse's timer handle; one step during the envelope cancelled it and the record line stayed held for the rest of the visit | `verify-demo.mjs`: press, step, wait out the envelope, read the hold |
+| **A ride that says it arrived** | `falls-incline:ride SCENE` (the view moved) | from the fun row it lifted the body 3.9 m and set it down where it stood; from the deck it went deck-to-deck (`height < 900`, and the deck is 553). No ride down existed | `verify-demo.mjs` reads the **body** after the ride: on the record's own deck (`data-lane-floors`), then on the ground |
+| **A sentence that lasts one frame** | the sentence was in the row | `say` rewrites the record line every frame, so a one-off written straight into it was gone before the next sample — and the line is the screen reader's live region | `verify-demo.mjs` reads the line a second later; the lane's `holdLine(text, ms)` is the only way to say a one-off |
+| **A control only a script can press** | `bar yaw 0 names "The Horseshoe Falls" -> CARD` | the bar is the one control a finger has, and it inherited `pointer-events: none` from its layout row: every tap fell through to the scene. The audit pressed it with `element.click()` inside the page, which does not hit-test | `verify-demo.mjs` 6: `page.mouse.click` and `page.touchscreen.tap` at the bar's centre, desktop and 390 × 844 |
+| **A lane that never rests again** | every row answered, every frame right | each press of the hour button left one more redraw timer running for the rest of the visit (it wrote into the idle pulse's handle without stopping the timer in it). The browser's frame rate went 60 → 8 → 4 → 1; screenshots took 2 s, then 17 s, then never | `tests/idle-pulse.test.cjs` counts ticks on a fake clock (30 in 3 s at rest, 146 after four presses); `verify-demo.mjs` 5 counts the browser's animation frames |
+| **A fix that multiplies frames** | the stranded record line was fixed | giving the demonstration its own timer kept it alive while walking — and each firing made `tick` forget the frame it had asked for and ask for another: 1,612 ticks in 118 frames, each a full redraw | `tests/idle-pulse.test.cjs`: walking during a demonstration, and a ride, are one tick a frame. The lane's timers enter through `nudge()` |
+
+What follows from them, as rules for the next pass:
+
+- **Sign off with the visitor's input, never with `evaluate`.** `page.evaluate(() => el.click())` and
+  `el.dispatchEvent` do not hit-test: they press a control that is covered, that has
+  `pointer-events: none`, or that is off the screen. Use them to *stage* (dismiss the guide, read
+  state); press with `page.mouse.click(x, y)`, `page.keyboard`, `page.touchscreen.tap`. And ask
+  `document.elementFromPoint` at the control's centre first — "who owns this point" is the whole
+  defect in one read. `PART=4 node .verify/_hands.mjs` does this for every visible button on a page.
+- **Count what a press leaves behind.** After the answer is over, the lane must be as it was before:
+  the same ticks a second (`__walk.ticks`), the same texture count (`__walk.threeStats.textures`),
+  the same frame rate. A leak looks like nothing on the first press and like a broken site on the
+  tenth; press four times and measure once.
+- **Where time is the thing measured, make time a number.** A browser pass waits on the wall clock,
+  and on this rasteriser one redraw chain already fills the machine — five chains ticked 12 to 14
+  times a second against 9, which no threshold separates. `tests/helpers/boot.cjs` already pumps
+  frames off a fake clock; `tests/idle-pulse.test.cjs` shows how to put the page's `setTimeout` on
+  the same clock (take it over after boot, wait out the one real timer, then `advance(ms)`). The
+  count is then exact and the test runs in seconds. A pass that slows down as it goes — each
+  screenshot longer than the last — is not a slow machine, it is this defect.
+
+- **Reach every state by every road.** The hour is stored, so each state has a pressed road and a
+  booted road; a page a door leads to has a walked road and a typed-URL road. Shoot both and compare
+  the *frames*; the lane's state cannot tell them apart.
+- **Walk the pass after dark as well**: `HOUR=night SHOTS=1 ROOMS=… node .verify/_uxwalk.mjs` writes
+  a before/after pair for every press. A page with an hour button is two pages.
+- **`SCENE` on a moving thing proves nothing, and `WORDS` on a thing that moves without changing its
+  count proves nothing either.** The quad count filed the carousel as answered while nothing read the
+  press, and filed the drawbridge as `WORDS`/`?!` while its leaves were rising. With `SHOTS=1` every
+  row carries `px idle>press` — the share of the picture that changed in 2.2 s untouched, then in the
+  2.2 s after the press. `px 0.3>0.4` is a press that showed nothing; `px 0.3>9.1` is an answer.
+  Read that column first; look at the pair for any row where the two numbers are close.
+- **After a press, do the next thing a visitor does** — take a step, press something else, wait —
+  and read the line again. A press is not over when its answer starts.
+- **Read where the body is, not what the line says.** "You step off at the top" was said at street
+  level.
+- **Run one browser pass at a time.** With two, the software rasteriser falls to a frame every few
+  seconds and a probe reports "walked 28 cm in 2.5 s" about a street with nothing in the way.
+- `_hands.mjs` holds what only a hand finds: the hour button under a real click, and a 390 × 844
+  touch phone (a 180 px drag turns the head 12°, so a full-width swipe is 25°; the hour button is
+  30 × 30 px). Those two are the owner's to decide, not a defect to fix quietly.
+
+### Which outside skill helps with playing the site (checked against the repositories, 2026-11-15)
+
+The owner asked this directly, twice. Three were read at the source; none is installed here, and
+none needs to be — what each one *requires* is the useful part.
+
+| skill | where it is | what it asks for | here |
+|---|---|---|---|
+| `develop-web-game` | `openai/skills`, **removed from `main`** on 2026-04-23 (commit `11c64381`); last tree `77963424`, `skills/.curated/develop-web-game/`, Apache-2.0 | the one written for a `<canvas>` game: a text state hook (`window.render_game_to_text`), a deterministic step (`window.advanceTime(ms)` — "without it, automated tests can be flaky"), a Playwright client that sends short input bursts and saves a screenshot + the text state + console errors after each, and "verify the whole chain: cause → intermediate states → outcome" | `__walk` + `_aim.mjs` `state()` is the text hook; `_uxwalk` is the burst-and-capture loop; the deterministic step exists in jsdom (`tests/helpers/boot.cjs`, `tests/idle-pulse.test.cjs`) and **not** in the browser passes, which wait on the wall clock |
+| `playwright-interactive` | `openai/skills` `main`, `skills/.curated/playwright-interactive/` | a QA inventory written first (every visible control and claim maps to a check); functional sign-off with real input only — "`page.evaluate(...)` may inspect or stage state, but does not count as signoff input"; a separate visual pass; never one screenshot for something that moves | this was the rule the bar broke (the row above). `PART=4 _hands.mjs` is the inventory by real click; `_uxwalk SHOTS=1` takes three frames a press |
+| `webapp-testing` | `anthropics/skills` `main`, `skills/webapp-testing/` | Python Playwright against a local server (`scripts/with_server.py`), load → network idle → screenshot → act | `bin/gate` is the server helper. It treats a canvas as one element: fine for the plain pages, blind inside the walk |
+
+And one that is not a skill: `mrdoob/three.js` tests its own examples (`test/e2e/puppeteer.js`,
+`deterministic-injection.js`) by freezing `performance.now`, seeding `Math.random`, rendering a
+fixed number of frames, and comparing with a per-pixel threshold of 0.1 and at most 0.1 % of pixels
+different. `verify-hour` is deliberately coarser (12 × 9 cell means, mean ≤ 4, ≤ 8 cells over 24)
+because the lane's clock is not frozen and Niagara's wheel turns between two boots; it catches a
+whole-picture difference (the defect was 91.8) and would miss a small local one.
+
 ## 6. Refusals
 
 - Never open a text surface from a press unless the verb is `read`. That is the owner's sentence and
@@ -180,6 +256,12 @@ line).
   for reading (the written lane), or change the thing so it does not need explaining.
 - Never call a press "answered" because the record line changed. Measure the scene: quads, state, body,
   height. A sentence is not a change.
+- Never call a press "answered" because the scene changed either, when the thing was already moving.
+  The carousel passed that test for as long as it had been pressable.
+- Never write a one-off sentence into the record line directly. `holdLine(text, ms)` or it is gone in
+  a frame.
+- Never give a second pump the idle pulse's handle (`pulse`). The frame loop cancels it on the first
+  step; a pump that must outlive a step owns its own timer (`demoPulse`).
 - Never call a surface "small enough" without measuring what is inside it. A full-screen surface holding
   a fifth of the picture is a pop-up with extra steps, and `cover` alone cannot tell the two apart.
 - Never let a bookmark (a stop, a chapter link, a row in a list) end anywhere but where it says it
@@ -197,10 +279,12 @@ line).
 
 0. Run `.verify/_surface.mjs`, `_stops.mjs` and `_reach.mjs` first: they answer *is there anything to
    judge* before you judge the look of it.
-1. Run `_uxwalk.mjs` on the pages you touched (or all eight) and keep the output.
+1. Run `_uxwalk.mjs` on the pages you touched (or all eight) and keep the output; run it again with
+   `HOUR=night SHOTS=1` on any page with an hour button, and look at the pairs.
 2. Classify every press by `data-verb`; anything undefined or `read`-but-should-change is a finding.
 3. Fix the generator (`press_verb`) for a wrong verb; fix `js/site.js` for a wrong answer; fix the
    record when the thing genuinely has nothing but words.
 4. `node --check js/site.js && python3 _gen_html.py`, then `node .verify/verify-ux.mjs`,
-   `verify-walk`, `verify-overlay`, `verify-exit`, `verify-games`, `verify-rooms-e2e`.
+   `verify-walk`, `verify-overlay`, `verify-exit`, `verify-games`, `verify-rooms-e2e`, and in the
+   real browser `sh bin/gate node .verify/verify-demo.mjs` and `verify-hour.mjs`.
 5. Write the numbers into `TODO.md` §1 and the PR body; say plainly what is still uncomfortable.

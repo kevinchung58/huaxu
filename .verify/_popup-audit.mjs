@@ -93,7 +93,10 @@ for (const yaw of [0, 90, 180, 270]) {
     return b && !b.hidden ? b.textContent.trim() : null;
   });
   if (!bar) { console.log(`bar yaw ${String(yaw).padStart(3)}  nothing in reach, so no bar`); continue; }
-  await page.evaluate(() => document.querySelector("[data-walk-open]").click());
+  // by the mouse, at the bar's own centre: `element.click()` does not hit-test, and for as long as
+  // this line used it the audit reported CARD for a bar no pointer could reach
+  const at = await page.evaluate(() => { const q = document.querySelector("[data-walk-open]").getBoundingClientRect(); return [q.left + q.width / 2, q.top + q.height / 2]; });
+  await page.mouse.click(at[0], at[1]);
   await sleep(300);
   const r = await read();
   console.log(`bar yaw ${String(yaw).padStart(3)}  names ${JSON.stringify(bar)} -> ${r.open ? `CARD "${r.title}"` : "-"}`);

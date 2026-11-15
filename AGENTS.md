@@ -274,11 +274,11 @@ game, and **the lane**. Round 86 split the first three out (`js/overlay.js`, `js
 are **byte-identical** to the 607,062-byte file they came from, and all four are still classic scripts
 sharing one global lexical environment, which is why `verify-sources` fails on a top-level name declared
 twice. They are *not* ES modules: every gate that reads the programme as text would have to be rewritten
-around `import`, and `w.eval` into jsdom — how the fastest gate here (212 assertions) works — cannot
+around `import`, and `w.eval` into jsdom — how the fastest gate here (213 assertions) works — cannot
 evaluate a module at all.
 
 The lane stays one file on purpose. Its 289 declarations share one closure; cutting that at a file
-boundary is not a move, it is an interface design plus 212 ported assertions plus a browser-driven gate.
+boundary is not a move, it is an interface design plus 213 ported assertions plus a browser-driven gate.
 So: **the programme is split into four, the lane is not** — do not "finish" it with a cosmetic cut that
 leaves a 9,000-line file behind.
 

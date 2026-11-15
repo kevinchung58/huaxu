@@ -757,7 +757,9 @@ ok("the ring stays on the silhouette, not on the grown box",
      && !/\.walk-hit:hover \{/.test(css));
 ok("the head-up display's rows are layout, not targets",
    /\.walk-hud > \* \{[^}]*pointer-events: none/.test(css)
-     && /\.walk-hud \.walk-icon,\n\.walk-hud \.walk-stop \{\n  pointer-events: auto/.test(css)
+     // ...and every control in them opts back in. This line used to spell the list as two classes,
+     // which pinned the bar (`.walk-open`) OUT of it: no pointer could press it, and this passed.
+     && /\.walk-hud \.walk-icon,\n\.walk-hud \.walk-stop,\n\.walk-hud \.walk-open \{\n  pointer-events: auto/.test(css)
      && !/\.walk-(top|bottom|pick|read|tools|stops) \{[^}]*pointer-events: auto/.test(css));
 ok("and the one control that must never be hunted for is louder than the tools",
    q("[data-walk-exit]").classList.contains("walk-exit")
@@ -934,7 +936,13 @@ ok("and the rail keeps up with the body, whatever the reach happens to be lit on
      && !/if \(!best\) \{ layer\.classList\.remove\("has-reach"\); markStops/.test(js),
    `here=${stops.indexOf(home)} reach=${qa(".is-reach").length} / ${status()}`);
 ok("one pump at a time: asking for a real frame cancels the idle nudge",
-   /const loop = \(\) => \{ stopPulse\(\)/.test(js) && /pulse = setTimeout\(\(\) => \{ pulse = 0; tick\(/.test(js));
+   /const loop = \(\) => \{ stopPulse\(\)/.test(js) && /pulse = setTimeout\(\(\) => \{ pulse = 0; nudge\(\)/.test(js));
+// A timer that calls `tick` itself forgets the frame already asked for and asks for another; a
+// timer written into `pulse` over a live one orphans it (tests/idle-pulse counts both).
+ok("and a timer reaches the tick only through nudge(), into a handle it has emptied first",
+   (js.match(/tick\(performance\.now\(\)\)/g) || []).length === 1 && /const nudge = \(\) => \{ if \(!raf\) tick\(performance\.now\(\)\); \};/.test(js)
+     && /stopPulse\(\);\n\s+pulse = setTimeout\(\(\) => \{ pulse = 0; nudge\(\); \}, 90\);/.test(js),
+   `${(js.match(/tick\(performance\.now\(\)\)/g) || []).length} direct call(s)`);
 
 /* Movement is expressed in the camera's horizontal basis. A fixed-world-axis walk still appears to
    move when the camera is turned, so assert the direction after a real turn, then use the same check

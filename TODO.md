@@ -12,11 +12,11 @@
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、
   `rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支**：`arena/e54e5286-huaxu` → `master`；PR #22 開著，**未合併**（合併要站主一句授權）。
-- **三層驗證**：`node --test`（21 支、72 條宣告，`# tests 163`，約 90 s；其中幾條會開 Chromium）→ `.verify/` 閘門 31 支（§2.3 的清單就是
+- **三層驗證**：`node --test`（23 支、79 條宣告，`# tests 170`，約 100 s；其中幾條會開 Chromium）→ `.verify/` 閘門 33 支（§2.3 的清單就是
   「有沒有跑」的判準；整段用 `python3 bin/gate-all.py` 跑，它讀的就是那份清單）→ 量具（§2.4，只在需要
   數字時跑）。效能看 `tools/bench.mjs`（§5.6）。
-- **規模**：頁面程式 4 支共 9,667 行（載入順序在 `bin/site-sources.json`；巷道的 9,141 行仍是一個 closure，§3 P3）、
-  產生器 7,550 行、`.verify` 103 支（其中閘門 31 支）、`skills/` 19 個。
+- **規模**：頁面程式 4 支共 9,773 行（載入順序在 `bin/site-sources.json`；巷道的 9,247 行仍是一個 closure，§3 P3）、
+  產生器 7,550 行、`.verify` 101 支（其中閘門 33 支）、`skills/` 19 個。
 - **工具鏈是釘住的**：`bin/restore-env` 的那一行 `npm install` 每個套件都寫死版本（jsdom 31.0.1、
   puppeteer-core 25.17.0、@sparticuz/chromium 153.0.0、@napi-rs/canvas 1.1.1、impeccable 4.1.0），
   `tests/env.test.cjs` 對 `node_modules` 逐一核對。升版是一個有意的動作：改那一行、跑整段、把結果一起 commit。
@@ -64,7 +64,7 @@ exit 2 並點名（`tests/gatelist.test.cjs` 釘住這件事）。常用：`--li
 ```sh
 sh bin/restore-env && sh bin/preview          # 環境 + 伺服器（0.0.0.0:8080）
 # ── 不開瀏覽器（秒級）──
-node --test                                    # `# tests 163`（21 支；jsdom 巷道 9 條、環境 7 條、其餘讀檔案或開瀏覽器）
+node --test                                    # `# tests 170`（23 支；jsdom 巷道 12 條——其中 3 條 `idle-pulse` 用假時鐘數 tick——、環境 7 條、其餘讀檔案或開瀏覽器）
 node tools/bench.mjs                           # 效能基準（§5.6）；`--check` 是預設，`--write` 重錄
 node .verify/verify-shapes.mjs                 # 248 個 prop 都有形
 node .verify/verify-geometry.mjs
@@ -73,7 +73,7 @@ node .verify/verify-tables.mjs
 node .verify/verify-chain.mjs
 node .verify/verify-games.mjs                  # 23/23
 node .verify/shader-lits.mjs                   # 6 個 shader program 完整
-node .verify/verify-walk.mjs                   # 212/212
+node .verify/verify-walk.mjs                   # 213/213
 node .verify/verify-sources.mjs                # 10/10（4 支組成的頁面程式：順序、?v= 同一顆、沒有重複頂層名字）
 node .verify/verify-csslive.mjs                # 546 條選擇器：LIVE 400／RUNTIME 123／DORMANT 5／DEAD 0
 node .verify/verify-ux.mjs                     # 69/69（按壓的動詞表、文字只給 read）
@@ -101,8 +101,8 @@ sh bin/gate node .verify/verify-hotel.cjs
 sh bin/gate node .verify/verify-rail.mjs          # 4/4（四個起點到同一顆停止點）
 sh bin/gate node .verify/verify-objects.mjs
 sh bin/gate node .verify/verify-floor.mjs         # 8 頁的鋪面 uv：一 tile = 64 × period，且畫出來的石頭數與公分＝`FLOOR_STONE`（14/14）
-sh bin/gate node .verify/verify-hour.mjs          # 24/24 一個時刻只有一張畫面：按鈕切到的夜＝開頁就是夜的夜，白天亦然（有時刻鈕的 6 頁，約 6 分鐘；`PAGES=` 可指定頁:站）
-sh bin/gate node .verify/verify-demo.mjs          # 16/16 按下去的東西說自己的話、把記錄列還回來；纜車真的上得去也下得來（約 2 分鐘）
+sh bin/gate node .verify/verify-hour.mjs          # 25/25 一個時刻只有一張畫面：按鈕切到的夜＝開頁就是夜的夜，白天亦然；再按六次 renderer 的 texture 數不變（有時刻鈕的 6 頁，約 6 分鐘；`PAGES=` 可指定頁:站）
+sh bin/gate node .verify/verify-demo.mjs          # 20/20 按下去的東西說自己的話、把記錄列還回來；纜車上得去下得來；按四次時刻鈕後瀏覽器幀率不掉；提示列用真滑鼠、真觸控按得開（約 4 分鐘）
 sh bin/gate node bin/verify-three.mjs             # 14,924 world + 1,048 water
 sh bin/gate node .verify/verify-collision.cjs     # 32/32（8 頁，實測 12.8 分鐘；動到移動／碰撞碼才必跑）
 STRICT=1 sh bin/gate node .verify/audit-all.mjs   # 沒有不在 `flat-by-nature.json` 上的平面 prop（8 頁約 92 分鐘；動到 prop／繪法／tile 才必跑，`ROOMS=<頁>` 可只跑一頁）
@@ -161,7 +161,7 @@ STRICT=1 sh bin/gate node .verify/audit-all.mjs   # 沒有不在 `flat-by-nature
   拍影格並量中央三分之一的 mean／sd／色數，用來挑取景）。
 - **表面與抵達**：`_surface.mjs`（cover／content／fill／字的 measure）、`_stops.mjs`（每站抵達誤差，等
   `__walk.glide` 收工）、`_reach.mjs`（走過去按得到嗎）、`_deadui.mjs`（每個控制元件按下去有沒有變化；
-  jsdom 不能導航是它的盲點）、`_uxwalk.mjs`、`_gap.mjs`（缺面：覆蓋圖＋向下 miss）、`_aisleprobe.cjs`。
+  jsdom 不能導航、也看不到畫面是它的盲點：`Jump` 在它那裡是 DEAD，真點擊量到跳起 21 cm——以 `_hands` `PART=4` 為準）、`_uxwalk.mjs`（每站轉四個方向、對伸手可及的東西按 E，一列一次按壓；`HOUR=night` 走夜裡那一遍、`SHOTS=1` 每次按壓留前後兩張影格）、`_hands.mjs`（只有手找得到的事：真的用滑鼠點時刻鈕、夜裡走向街牆、390×844 觸控手機的拖曳／搖桿／時刻鈕尺寸、**`PART=4` 把頁面上看得到的每一顆鈕各用真滑鼠點一次**——印「這個點是誰的」(`COVERED`)、頁面說什麼變了、畫面變了幾 %（`px idle>press`），兩欄都空的印 `NOTHING`；`PAGE4=頁:站`。`PART=1,2,3,4`，**要獨佔跑**）、`_gap.mjs`（缺面：覆蓋圖＋向下 miss）、`_aisleprobe.cjs`。
 - **診斷**：`_stuck.mjs` / `_stuck2.mjs`、`_tapdiag.mjs`、`_wallgap.mjs`、`_csscheck.mjs`、`wall-probe.cjs`、
   `verify-rooms-e2e.cjs`（jsdom 啟動樣板；`tests/helpers/boot.cjs` 是同一份）。
 - **任何「等滑行結束」都要問 `__walk.glide`**，不要用固定秒數或「看起來停了」。
@@ -203,10 +203,10 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
 若哪天頁面真的太大，先量哪一頁超過預算——現在最大的一頁是 niagara 101.7 KB（gzip 後約 20 KB），
 不是問題。詳見 `AGENTS.md` 的「不編造、不為數字而數字」。
 
-### P3 — 給巷道一個介面（前三支已拆，剩下 9,141 行）
+### P3 — 給巷道一個介面（前三支已拆，剩下 9,223 行）
 
 - **已完成的一半**：頁面程式拆成四支經典 script，`bin/site-sources.json` 是唯一的載入順序
-  （`overlay` 133 行／`chrome` 176／`dot-game` 217／巷道 9,141）。**拆的當下四支接起來與拆之前的 607,062 B 完全相同**；
+  （`overlay` 133 行／`chrome` 176／`dot-game` 217／巷道 9,223）。**拆的當下四支接起來與拆之前的 607,062 B 完全相同**；
   `verify-sources` 10/10 守住順序、單一 `?v=`、重複頂層名字、接起來能不能 parse。18 支閘門＋
   `tests/helpers/boot.cjs` 已改成讀 `siteText()`（分開 eval 看不到前一段的 `let/const`——量過，不是猜的）。
 - **剩下的巷道**（`js/site.js`，`FILE=js/site.js node .verify/_coupling.mjs`，2026-11-14 量在 9,091 行時）：**
@@ -219,8 +219,8 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
   都不在（就算裝了也是 build step，硬規則 2），自己寫一個能正確處理樣板字串與 regex/除法歧義的 lexer
   不是這一項的價值所在。**剩下的 320 個名字可以乾淨改寫，這 20 個不行**——這就是它一直是 rewrite 而不是
   move 的原因。
-- **第二筆錢**：最快的閘門 `verify-walk`（212 條）現在把整段文字 eval 進 jsdom，而 **ES module 不能用
-  這種方式 eval**，所以一次真的模組化要同時付「設計介面」與「把 212 條搬去真瀏覽器」兩筆錢。
+- **第二筆錢**：最快的閘門 `verify-walk`（213 條）現在把整段文字 eval 進 jsdom，而 **ES module 不能用
+  這種方式 eval**，所以一次真的模組化要同時付「設計介面」與「把 213 條搬去真瀏覽器」兩筆錢。
 - **範圍與驗收**（真的要做的那一輪）：先寫 scope 分析（或逐一手改那 20 個衝突名字並在 commit 裡列出）；
   維持經典 script 或把介面寫成顯式匯出，二者擇一並在 commit 裡說清楚；
   每個縫用 `_coupling.mjs` 命名；用 `verify-sources` 守；改動前後用 `_scenehash.mjs` 逐個 stop 比
@@ -257,6 +257,9 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
 2. **Niagara 的夜仍然是深藍底**：光源現在有了（燈柱 10 顆、店面 10 顆、看板、輪圈、車廂、旋轉木馬的
    燈泡、彩燈纜），但牆與地是全站的 fold（上限 0.62）＋夜色環境光染的，stop 7／8 的框裡幾乎沒有光源
    （`.preview/p6/sheet-nia-678-d.png`）。試過只給 Niagara `skyEnv night 0.22`：更糟，退掉了。
+   **按鈕切到的夜以前比較亮，那是借來的光**：開頁是白天再按到夜，牆是淡紫、讀得出來——因為天空的光
+   （PMREM 與半球光）只在開頁那一刻做一次，按鈕只重畫天幕，夜裡還照著白天的天。現在兩條路是同一張
+   （`verify-hour`），也就是開頁就是夜的那一張深藍。對照在 `.preview/hour/sheet-nia.png`。
    再往下走是「fold 上限」那一項（§4），不是再加燈——加在售票亭與旋轉木馬的兩顆光暈在任何一站的
    框裡都看不到，而且白天的殘光把售票亭洗平了（sd 21.3 → 18.2，`audit-all STRICT` 紅），已拿掉。
 3. **prim 的 `a`（空氣）與 `dg`（日間增益）是死資料**：`gen/world.py` 寫它們、四個 place 檔帶著它們
@@ -269,12 +272,40 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
    `plaza-ticket` 不在（它是售票亭，不是天生一面）。它若在沒人動它的情況下掉到 20 以下，先重跑一次
    再判——**驗收**是同一頁連兩跑一致，不是把它加進清單。
 
+### P7 — 進去玩找到、還開著的（真瀏覽器，一站一站按）
+
+1. **手機上轉頭很慢**：拖曳是 `DRAG_DEG_PER_PX 0.065`（桌機調的），390 px 寬的螢幕橫掃一整次只轉 25°，
+   量到 180 px 轉 12°（street 與 Niagara 都是）；搖桿只管走與橫移，不轉頭。轉 180° 要掃七次，或按工具列的
+   轉向鈕。**驗收**：站主選了觸控的轉速之後（§4），`PART=3 sh bin/gate node .verify/_hands.mjs` 印出的
+   「180 px 轉幾度」等於那個數字乘 180，且 `verify-feel`、`verify-look` 重跑（常數有四個地方在用，
+   `skills/walk-input` §4）。
+2. **時刻鈕在觸控上是 30 × 30 px**（量在 171.5, 815.2），低於 44 px 的按壓下限。**驗收**：`_hands.mjs`
+   `PART=3` 印出的寬高 ≥ 44，且工具列在 390 px 寬不換行（拍一張）。
+3. **看不到的東西也在提示列上**：只能「看」的東西（`LOOK_KINDS`）的面向門檻是 `facing ≥ 0.2`，也就是
+   中心偏離視線 78° 以內都算；1024 × 768 的畫面左右各只有 29°。所以 Niagara stop 5 朝 90° 提示
+   「TRY · The Niagara SkyWheel」而畫面是草地與旅館（`_uxwalk`：`WORDS`，quads 143 → 143）；Fukuoka
+   stop 3、6 朝 90° 提示水池，按了漣漪畫在框外（`?!`，335 → 335、87 → 87）。門檻寬是為了身邊的大東西
+   （中心在框外、身體在框內），所以要改的是「框內看得到才算」而不是把 0.2 調大。**驗收**：
+   `ROOMS=rooms-niagara.html STOPS=5` 與 `ROOMS=rooms-fukuoka.html STOPS=3,6` 的 `_uxwalk` 沒有 `WORDS`／`?!`
+   列，且 `verify-box`、`verify-mirror`、`verify-ux` 不變。
+4. **「纜車下站」那一站面對的是瀑布**：Niagara stop 4（z 4814、x −140、yaw −18）到站時伸手可及的是
+   `falls-horseshoe`（提示列寫 READ · The Horseshoe Falls），要轉到 90° 才是 `falls-incline`（jsdom 與瀏覽器
+   量到的一樣）。站名說纜車、手上是瀑布。**驗收**：到站不轉頭，`.walk-hit.is-reach` 是 `falls-incline`
+   （改 `gen/districts.py` 那一站的 yaw 或位置，`verify-demo`、`verify-rail`、`tests/idle-pulse` 重跑）。
+5. **瀏覽器那幾遍還是等牆上的鐘**：`_uxwalk` 等 700／2200 ms、閘門等 `sleep`。OpenAI 的
+   `develop-web-game` 要求 `window.advanceTime(ms)`、three.js 自己的截圖測試把 `performance.now` 凍住；
+   這裡只有 jsdom 那一層有假時鐘（`tests/helpers/boot.cjs`、`tests/idle-pulse`）。後果是量到的：`verify-hour`
+   Niagara 同一棵樹兩跑「超過 24 的格子」是 0 與 1（輪子在轉），`verify-demo` 5 只能判幀率、不能判 tick。
+   **驗收**（要不要做見 §4）：`__walk` 多一個 `advance(ms)`，`_uxwalk` 同一頁連跑兩次 `presses.txt` 逐字相同。
+
 ## 4. 需要站主決定（代理不能替他決定）
 
 - **瀑布的圈要不要更亮**（`.preview/r65e/`、`.preview/r65b/falls2/`）；文字要不要縮短。
 - **夜景 fold 0.62 的上限**（全站規則；`verify-walk` 有「night fold keeps a readable floor」的斷言）。Niagara 的夜要再亮，動的是這個（§3 P6-2）。
 - **站點 6 的 A 字架要不要進畫面**（先量那條直線，不許先改後說）。
 - **Goat 的瀑布與 Toronto 的 falls 要不要也做地標盤**。
+- **觸控的轉頭速度**（§3 P7-1：現在橫掃一次 25°）與**時刻鈕在手機上要不要放大**（P7-2）。
+- **瀏覽器量具要不要加一個可以數的時鐘**（§3 P7-5：`__walk.advance(ms)`；做了之後按壓表可以逐字重現，代價是巷道多一條只有測試會走的路）。
 - **哪幾顆光暈要縮**（§3 P6-1：Street 巷底與門、Fukuoka 的三顆大光暈；`.preview/p6/sheet-all-night-*.png`）。
 - **prim 的 `a`／`dg` 要接上還是刪掉**（§3 P6-3）。
 - **英文 CV PDF 與 ORCID iD**（`AGENTS.md` 的 backlog：站主提供檔案／網址後才加）。
@@ -304,6 +335,25 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
   地標盤會**夾進畫面**（`M = 8`），但那是標記，不是「站在瀑布上」。
 - 由產生器的 `is_target()` 與 `press_verb()` 決定；動詞以 `data-verb` 出貨，`VERB_WORD` 在 `js/site.js`。
   文字表面只有一個（`showWords`，只有 `read` 進得去）。
+- **按下去會演的東西**：`DEMOS`（`js/site.js`）是唯一一張「說什麼、記錄列扣住幾秒」的表——`ripple` 4.5 s、
+  `wheel` 24.5、`carousel` `CAROUSEL_ROUND`（10）＋0.5、`open` 24.5；record 寫了新的 `demo` 值就要有一列
+  （`tests/demo-words`），而且它的 shape 分支要讀 `m.el.__demoAt`，否則按了什麼都沒變。演出的 pump 用
+  `demoPulse`，**不可以借 `pulse`**（走一步就被 `stopPulse` 取消，記錄列從此卡住）；纜車的是 `ridePulse`。
+- **重畫的計時器只有兩條規矩**（各壞過一次，`tests/idle-pulse` 用假時鐘數 tick，兩條都會紅）：
+  (1) `pulse` 只有一個主人——寫 `pulse = setTimeout(…)` 之前一定先 `stopPulse()`。時刻鈕沒有，每按一次
+  多一條永遠不停的重畫鏈（靜止 3 秒 30 個 tick，按四次後 146 個；街上瀏覽器自己的幀率 60 → 8 → 4 → 1）。
+  (2) 計時器不直接叫 `tick()`，走 `nudge()`（`if (!raf) tick(…)`）——`tick` 一進來就清 `raf`，計時器在
+  一幀還沒到時叫它，結尾就再要一幀，下一次再多一幀（演出中走路：118 幀裡 1,612 個 tick，每個都重畫整張）。
+- **`pumping` 的「在空中」是離開腳下那塊地**（`Math.abs(height - floorAt(depth, x)) > 0.01`），不是
+  `height > 0`：站在 553 cm 的觀景台上，舊寫法每一幀都重畫。
+- **`.walk-top`／`.walk-bottom` 裡的控制元件要在 `css/site.css` 的 `pointer-events: auto` 名單上**
+  （`.walk-icon`、`.walk-stop`、`.walk-open`）。提示列（bar）原本不在，滑鼠與手指都按不到，而
+  `element.click()` 按得到——所以量具全綠。新控制元件要用 `page.mouse.click` 按過才算（`verify-demo` 6）。
+- **一次性的句子用 `holdLine(text, ms)`**（纜車到站 4 s、時刻 3 s）：`say` 每一幀都重寫記錄列，直接寫
+  `textContent` 只活一幀，而那一列是螢幕閱讀器的 live region。
+- **纜車**：往上是 `height < rideTop / 2`；落點是 `data-lane-floors` 裡高度等於 `rideTop` 的那塊（Niagara：
+  z 4350–6380、x 340–660、553 cm），深度夾在離邊 90 cm 內；往下落在 `incline` 那顆 prop 前 42 cm
+  （−66, 4814）。車帶著 x、**深度**、高度三個一起走。
 
 ### 5.3 幾何與碰撞
 
@@ -346,6 +396,13 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 - **夜空只有一種寫法會被畫出來**：`backdrop.sky` 是遠平面（z=120000）上的高度色帶，
   `backdrop.skyAround.stops` 是仰角表；兩者都沒有就回 `FALLBACK_COLOR`。寫色帶時 y 要落在 120000 的尺度上
   （y=1600 → 0.76°、8000 → 3.8°、42000 → 19.3°）。
+- **天空的光跟著時刻重做**：`skyLight(dayPage, day, remake)`（`js/scene3d.js`）是唯一做 PMREM 與半球光
+  兩個顏色的地方；天幕重畫時半球光跟著改，PMREM 在時刻變了超過 0.1 或停下來時重做。**一個
+  `PMREMGenerator`、一個 render target 用到底**（`fromEquirectangular(texture, target)`，和 three.js 自己的
+  `webgl_shaders_ocean.html` 同一個寫法）：每次新做一個、只 dispose 它的 texture 會漏（`verify-hour` 量到
+  按六次 texture 數 30 → 36；現在 30 → 30，讀 `__walk.threeStats.textures`）。`verify-hour` 的
+  判準是 12 × 9 格的平均色：整張平均 ≤ 4 且超過 24 的格子 ≤ 8（修之前 Niagara 91.8／188.5、street
+  66.5／105.7、Goat 17.0／39.1；修之後全部 ≤ 1.2）。
 - **`skyEnv`**（`{"day":1,"night":0.22}`）乘在 `scene.environmentIntensity` 上，隨時辰內插；沒有這個欄位的
   頁面維持 1。夜空的 PMREM 在強度 1 下不是夜（量到朱紅柱子變 (36,57,114)、地坪 (40,65,120)）。
 - **釘死的時辰**：`"night": 0.92` → `data-lane-night`，`HELD` 蓋掉訪客偏好、頁面不出現 `data-walk-hour`
@@ -406,10 +463,10 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 ### 5.7 倉庫大小
 
-tracked 295 支檔案：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、
+tracked 305 支檔案：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、
 產生器 542 KB／7,550 行（入口 721 ＋ `gen/` 六個模組）、
-`css/site.css` 88 KB（2,764 行）。頁面程式四支共 602 KB（`js/site.js` 581 KB／9,091 行，仍是一個 closure）。
-`.verify` 100 支，閘門 31 支，`skills/` 19 個。（2026-11-14 用 `wc` 量的；這一段每次 commit 都會動，引用前重量。）
+`css/site.css` 89 KB（2,770 行）。頁面程式四支共 613 KB（`js/site.js` 592 KB／9,247 行，仍是一個 closure）。
+`.verify` 101 支，閘門 33 支，`skills/` 19 個。（2026-11-15 用 `wc` 量的；這一段每次 commit 都會動，引用前重量。）
 `image-search/`（3 張 CN Tower 參考照，**來源未追溯 → 永不入庫**）只留在磁碟。
 
 ### 5.8 每一顆 prop 的形（`audit-all.mjs`，八頁）
@@ -457,6 +514,16 @@ return 了），那個矩形是別的地方。面積門檻 14,400 px（120×120�
   `verify-feel` 仍是 15/15 ×2。轉向那幾條再紅，先當成程式的問題查，不要先怪機器。
 - **`verify-collision` 很長**（2026-11-14 量到 12.8 分鐘，以前量過 31.5 與 ~50；整段含它是 41.0 分鐘），
   輸出要導到檔案才看得到進度（`> /tmp/collision.log`），接 `| tail` 會讓它整段一片空白、看起來像卡住。
+- **瀏覽器閘門量不出「多了幾條重畫鏈」**：在這台機器上一條鏈就把主執行緒吃滿，五條鏈的 tick 是每秒
+  12–14 個、一條是 9 個，沒有門檻分得開（Niagara 是 8.3 對 8.5）。要數就到 jsdom 用假時鐘數
+  （`tests/idle-pulse`）；瀏覽器那邊數的是 `requestAnimationFrame` 的幀率（60 對 3）。
+- **`node --test` 在整段的第一步紅過一次，原因沒找到**（2026-11-15）：`# tests 164`、1 fail——少掉的 6 條
+  是某一條頂層測試還沒走到自己的子測試就失敗，數目對得上 `walk-guide-visual`（4 個視窗＋2 條，開
+  Chromium 的那一支）在 `launch()` 就失敗；`gate-all` 只留最後 25 行，那一行沒留下。同一棵樹之後單獨跑
+  三次都是 170/170（其中兩次與當時相同、8080 上沒有伺服器）。再紅一次時先把整段輸出導到檔案
+  （`sh bin/gate node --test > /tmp/nt.log`）再看 `not ok`。
+- **一遍瀏覽器量具越跑越慢、截圖一張比一張久，不是機器慢**：那是上一條的症狀（修之前截圖 2 s → 17 s →
+  等不到）。先數 `__walk.ticks`。
 - 慢幀的根因是**瀏覽器軟體光柵化**；真正的槓桿是少畫像素，但在這個世界裡距離剔除沒有對象（§5.6）。
 
-> 最後更新：2026-11-14 · 零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。
+> 最後更新：2026-11-15 · 零依賴、純靜態、所有 HTML 由 `_gen_html.py` 產生。

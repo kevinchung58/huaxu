@@ -9,6 +9,13 @@
      - `a.walk-icon[Leave the lane]`, the source anchors, `story-enter`  -> navigation
      - `walk-drawer-close` / `modal-close`                              -> closing an already-closed panel
      - `walk-tutor-act[done]`                                           -> dismisses a guide already dismissed
+     - `walk-icon[Jump]`                                                -> the jump is a height, and this reads
+       the DOM: by a real click it measures 21 cm (`PART=4 node .verify/_hands.mjs`)
+     - `walk-open[...]` where nothing is in reach                       -> correctly refuses
+
+   And the blind spot that mattered: this presses with `el.click()`, which does not hit-test, so a
+   control no pointer can reach (the bar had `pointer-events: none`) reads as alive here. Whether a
+   visitor can press it is `PART=4 _hands.mjs` and `verify-demo` 6, which use the mouse.
 
    Run: node .verify/_deadui.mjs */
 import fs from "node:fs";

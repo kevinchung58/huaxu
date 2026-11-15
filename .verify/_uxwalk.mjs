@@ -21,8 +21,12 @@
    HOUR=night walks the same pass after dark (a page with an hour button is two pages). SHOTS=1
    keeps a frame before and after every press in OUT/shots, named by page, stop, heading and
    object -- the table says whether a press changed the scene, the pair says what the visitor saw.
+   With SHOTS=1 each row also carries `px idle>press`: the share of the picture that changed in 2.2 s
+   with nothing pressed, and in the 2.2 s after the press. Read that, not the quad count, for
+   anything that moves on its own or moves without changing its count.
 */
 import fs from "node:fs";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { launch, openPage as openPageRaw, arrive, aim, park, sleep } from "./_aim.mjs";
 
 const PAGES = (process.env.ROOMS || "street.html,rooms.html,rooms-fukuoka.html,rooms-toronto.html,rooms-niagara.html,rooms-goat.html,rooms-journey.html,rooms-cntower.html").split(",");
@@ -36,9 +40,32 @@ const frame = async (page, rooms, si, h, obj, when) => {
   await page.screenshot({ path: `${OUT}/shots/${rooms.replace(".html", "")}-${HOUR}-s${si}-h${h}-${obj}-${when}.png` });
 };
 
+/* How much of the picture a press changed, against how much it changes by itself.
+
+   The quad count was the only measure of "the scene changed", and it is wrong in both directions: a
+   carousel that turns on its own changes it with no press (it was filed as SCENE while nothing read
+   the press), and a drawbridge whose leaves rise changes no count at all (filed as WORDS or ?! while
+   the bridge was opening). With SHOTS=1 the pass takes three frames -- before, the same view 2.2 s
+   later with nothing pressed, and 2.2 s after the press -- and prints the share of pixels that
+   differ in each interval, above the toolbar and prompt. `px 0.3>0.4` is a press that showed
+   nothing the place was not already doing; `px 0.3>9.1` is an answer. */
+const pixels = async (buf) => {
+  const img = await loadImage(buf);
+  const c = createCanvas(img.width, img.height).getContext("2d");
+  c.drawImage(img, 0, 0);
+  return { w: img.width, h: Math.floor(img.height * 0.84), d: c.getImageData(0, 0, img.width, img.height).data };
+};
+const differ = (a, b) => {
+  let n = 0;
+  for (let i = 0, end = a.w * a.h * 4; i < end; i += 4) {
+    if (Math.abs(a.d[i] - b.d[i]) + Math.abs(a.d[i + 1] - b.d[i + 1]) + Math.abs(a.d[i + 2] - b.d[i + 2]) > 24) n++;
+  }
+  return (100 * n) / (a.w * a.h);
+};
+
 const line = (r) => `${(r.rooms + " s" + r.si + " @" + r.heading).padEnd(24)} ${((r.obj || "-") + (r.verb ? ":" + r.verb : "")).padEnd(30)} `
   + `${(r.answer || r.note || "").padEnd(11)} ${String(r.covers ?? 0).padStart(3)}%  ${(r.quads || "").padEnd(11)} `
-  + `${(r.ms ? r.ms + "ms" : "").padEnd(7)} ${r.record || ""}`;
+  + `${(r.ms ? r.ms + "ms" : "").padEnd(7)} ${r.px ? r.px.padEnd(13) : ""}${r.record || ""}`;
 
 const read = (page) => page.evaluate(() => {
   const q = (s) => document.querySelector(s);
@@ -123,6 +150,12 @@ for (const rooms of PAGES) {
         if (!before.reach) { push({ rooms, si, heading: h, reach: null, note: "nothing in reach" }); continue; }
         const url0 = page.url();
         await frame(page, rooms, si, h, before.reach, "a-before");
+        let px0 = null, px1 = null, px = "";
+        if (SHOTS) {
+          px0 = await pixels(await page.screenshot());
+          await sleep(2200);
+          px1 = await pixels(await page.screenshot());
+        }
         await page.keyboard.press("e");
         await sleep(700);
         const after = await read(page);
@@ -131,6 +164,10 @@ for (const rooms of PAGES) {
           // had time to be seen, without changing what the table measures
           if (SHOTS) await sleep(1500);
           await frame(page, rooms, si, h, before.reach, "b-after");
+          if (SHOTS && !(after.plate || after.card || after.list || after.game)) {
+            const px2 = await pixels(await page.screenshot());
+            px = `px ${differ(px0, px1).toFixed(1)}>${differ(px1, px2).toFixed(1)}`;
+          }
         }
         /* A door's answer is a different page. `page.url()` is the honest test: the old document can
            still be read for a moment after the navigation starts, and it then reports the *next*
@@ -141,7 +178,7 @@ for (const rooms of PAGES) {
           : after.record && after.record !== before.record ? "WORDS" : "?!";
         push({ rooms, si, heading: h, obj: before.reach, verb: before.verb, title: before.reachTitle,
           answer, covers: answer === "LEFT" ? 0 : Math.max(after.plate, after.card, after.list, after.game),
-          quads: `${before.quads}->${after.quads}`,
+          quads: `${before.quads}->${after.quads}`, px,
           record: answer === "LEFT" ? `left for ${page.url().replace(/^.*\//, "")}` : after.record,
           ms: Date.now() - t0,
           back: after.plate || after.card || after.list || after.game ? "Esc" : "-" });

@@ -1095,8 +1095,18 @@ function skyEnvIntensity(backdrop, dayPage, day) {
   return night + (light - night) * t;
 }
 
-function makeSkyEnvironment(THREE, renderer, backdrop, dayPage, day) {
-  if (typeof document === "undefined" || !renderer || !THREE.PMREMGenerator) return null;
+/* Returns the PMREM's render target, not its texture, and renders into `target` when given one.
+
+   This is three.js's own pattern for a sky whose hour moves (`examples/webgl_shaders_ocean.html`:
+   one generator kept for the life of the renderer, `updateSun()` re-runs it and owns the render
+   target) and the one its renderer uses internally (`fromEquirectangular(texture, renderTarget)`).
+   Two reasons it is not "make a new one and dispose the old texture", which is what this did:
+   `texture.dispose()` frees the texture and leaves the target's framebuffer (three's
+   `deallocateTexture` against `deallocateRenderTarget`), so every hour change would have leaked one;
+   and a generator per call recompiles its shaders per call. Reusing the target also keeps
+   `scene.environment` the same object, so no material is touched. */
+function makeSkyEnvironment(THREE, pmrem, backdrop, dayPage, day, target) {
+  if (typeof document === "undefined" || !pmrem) return null;
   const stops = backdropSkyStops(backdrop || {}, dayPage, day);
   if (!stops.length) return null;
   const canvas = document.createElement("canvas");
@@ -1114,11 +1124,9 @@ function makeSkyEnvironment(THREE, renderer, backdrop, dayPage, day) {
                                              // values are the working space; a decode here would dim the
                                              // reflections against the very sky they were sampled from
   try {
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    const env = pmrem.fromEquirectangular(texture).texture;
-    pmrem.dispose();
+    const made = pmrem.fromEquirectangular(texture, target || null);
     texture.dispose();
-    return env;
+    return made;
   } catch (e) {
     texture.dispose();
     return null;   // no environment is a worse-looking but complete scene; a throw is not
@@ -1642,24 +1650,24 @@ function buildRenderer(THREE, canvas, backdrop, api) {
      sky over near-black buildings). The exposed state said `night` for both nights, so no gate that
      read state could see it. `skyLight` is the one place the two are made, and the frame loop calls
      it again whenever the dome is repainted. */
-  let environment = null, envDay = NaN, envDayPage = null;
+  let pmrem = null, envTarget = null, envDay = NaN, envDayPage = null;
+  try { if (THREE.PMREMGenerator) pmrem = new THREE.PMREMGenerator(renderer); } catch (e) { pmrem = null; }
   const hemisphere = new THREE.HemisphereLight(FALLBACK_COLOR, FALLBACK_COLOR, 0.5);
   const skyLight = (dayPage, day, remake) => {
     const hs = backdropSkyStops(backdrop, dayPage, day);
     hemisphere.color.set(hs.length ? skyColorAt(hs, 45, dayPage, day) : FALLBACK_COLOR);
     hemisphere.groundColor.set(hs.length ? skyColorAt(hs, -45, dayPage, day) : FALLBACK_COLOR);
     if (remake) {
-      const next = makeSkyEnvironment(THREE, renderer, backdrop, dayPage, day);
+      const made = makeSkyEnvironment(THREE, pmrem, backdrop, dayPage, day, envTarget);
       // A failed remake keeps the map it had: an old sky's light is a wrong hour, no light is a
       // different picture.
-      if (next) {
-        if (environment) environment.dispose();
-        environment = next;
-        scene.environment = environment;
+      if (made) {
+        envTarget = made;
+        scene.environment = envTarget.texture;
       }
       envDay = day; envDayPage = dayPage;
     }
-    if (environment) scene.environmentIntensity = skyEnvIntensity(backdrop, dayPage, day);
+    if (envTarget) scene.environmentIntensity = skyEnvIntensity(backdrop, dayPage, day);
   };
   skyLight(Boolean(api.dayPage), Number(api.day) || 0, true);
   // A hemisphere light, coloured from the same elevation table as the sky and the environment:
@@ -2098,6 +2106,7 @@ function buildRenderer(THREE, canvas, backdrop, api) {
        stats because a measurement that is not readable from the page is a measurement nobody keeps
        honest. */
     stats.drawCalls = renderer.info.render.calls;
+    stats.textures = renderer.info.memory.textures;   // `verify-hour`: an hour change must not grow it
     stats.frameTriangles = renderer.info.render.triangles;
   }
 
@@ -2105,7 +2114,8 @@ function buildRenderer(THREE, canvas, backdrop, api) {
     version: THREE_VERSION,
     render,
     dispose() {
-      if (environment) environment.dispose();
+      if (envTarget) envTarget.dispose();   // the target, which owns the framebuffer and the texture
+      if (pmrem) pmrem.dispose();
       canvas.hidden = true;
       for (const entry of laneMeshes.values()) entry.mesh.geometry.dispose();
       for (const material of laneMaterials.values()) material.dispose();

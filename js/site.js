@@ -238,6 +238,7 @@
   const RIDE_T = 3.1;
   const sm01 = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
   let ride = null;
+  let ridePulse = 0;   // the ride's own pump (see `boardRide`); never the idle pulse's handle
   /* Round 72, the owner's ruling: 「很多東西因為選取會跳這種介面…有必要的在跳」.
 
      There used to be a district banner here. It appeared by itself whenever the body crossed a zone
@@ -277,6 +278,7 @@
   let zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
   let vx = 0, vd = 0, phase = 0, bob = 0, raf = 0, last = 0, here = -1, reach = null;
   let tickMs = 0;
+  let tickCount = 0;   // every pass of `tick`, whoever asked for it (`__walk.ticks`; see `verify-demo` 5)
   let gliding = null, keys = new Set(), stick = null, down = null, hereFar = Infinity, hereShown = -1;
   /* Round 65: a press that no frame saw.
 
@@ -8133,19 +8135,23 @@
     }
     // the same redraw contract the hour button and the demonstrations use: the loop must be awake
     // for the length of the ride, and the announcement must survive one frame of it
+    // Its own handle, like `demoPulse`: the tick below re-arms the idle pulse whenever the body is
+    // at rest (the first and last frames of a ride are), and a pump written over that handle is the
+    // same orphaned chain the hour button made.
     const pump = () => {
-      if (!ride) return;
-      tick(performance.now());
-      pulse = setTimeout(pump, 33);
+      if (!ride) { ridePulse = 0; return; }
+      nudge();
+      ridePulse = setTimeout(pump, 33);
     };
-    if (pulse) clearTimeout(pulse);
-    pulse = setTimeout(pump, 33);
+    if (ridePulse) clearTimeout(ridePulse);
+    ridePulse = setTimeout(pump, 33);
     return true;
   };
 
   const tick = (t) => {
     raf = 0;
     const tickT0 = performance.now();
+    tickCount++;
     /* Round 56, and this one was the difference between "slow" and "broken": the simulation used
        to throw away every part of a frame longer than 120 ms. A frame longer than 120 ms is exactly
        what a software rasteriser produces (measured here: 250 ms at 1024×640), so the body moved at
@@ -8301,7 +8307,12 @@
     // Held input keeps the pump alive at a wall; the idle pulse is for a genuinely resting walker.
     const hasWalkInput = ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"]
       .some((k) => keys.has(k)) || !!(stick && Math.hypot(stick.x, stick.y) > 0.04);
-    pumping = speed > 4 || !!gliding || height > 0 || vy !== 0 || hasWalkInput;
+    // ...and a ride: the car is moving the body even on the frames where `height` is the ground's.
+    // "In the air" is off the floor under the feet (above it, or below a step still rising to meet
+    // the body), not above zero: on the Fallsview deck (553 cm)
+    // `height > 0` was true for as long as the visitor stood there, and the lane redrew every frame
+    // of it -- 177 ticks in three seconds at rest, where the ground gets 30.
+    pumping = speed > 4 || !!gliding || Math.abs(height - floorAt(depth, x)) > 0.01 || vy !== 0 || hasWalkInput || !!ride;
     /* The tick's own cost, measured: `frameMs` is the gap between frames, `renderMs` is the
        Three.js pass, and this is everything the lane's own JavaScript costs -- the scene rebuild,
        the hit boxes, the reach. The gap minus this is the browser's own painting and the wait for
@@ -8313,6 +8324,13 @@
   // Asking for a real frame hands the pumping over to rAF, so the idle pulse is cancelled here rather
   // than at each call site: one owner for the two pumps, and never both at once.
   const loop = () => { stopPulse(); if (!raf) raf = requestAnimationFrame(tick); };
+  /* A timer's way into the tick, and the only one. `tick` is the animation-frame callback: it
+     clears `raf` because the frame it was asked for has arrived. Called from a timer while a frame
+     was still pending, it cleared the same handle, asked for a second frame at its end, and from
+     then on two callbacks ran every frame -- plus one more for each time the timer fired again.
+     Walking during a demonstration measured 1,612 ticks in 118 frames, each a full redraw
+     (`tests/idle-pulse.test.cjs`). If a frame is already on its way, the frame is the tick. */
+  const nudge = () => { if (!raf) tick(performance.now()); };
 
   /* An idle repaint, at eleven frames a second rather than sixty.
 
@@ -8334,7 +8352,7 @@
     // repaint every 90 ms: the pulse would then own the whole budget and every press would queue
     // behind it. The idle breathe keeps its authored cadence when the frame is cheap and stands
     // down to twice the measured frame on a slow one — still breathing, never starving input.
-    pulse = setTimeout(() => { pulse = 0; tick(performance.now()); }, Math.max(90, frameMs * 2));
+    pulse = setTimeout(() => { pulse = 0; nudge(); }, Math.max(90, frameMs * 2));
   };
   if ("IntersectionObserver" in window) {
     new IntersectionObserver((es) => {
@@ -8617,7 +8635,7 @@
           if (recordEl) { delete recordEl.dataset.demoHold; recordEl.textContent = ""; }
           return;
         }
-        tick(performance.now());
+        nudge();
         demoPulse = setTimeout(pump, 90);
       };
       if (demoPulse) clearTimeout(demoPulse);
@@ -8958,6 +8976,7 @@
                    // what the machine was actually asked to draw
                    get renderScale() { return renderScale; }, get frameMs() { return frameMs; },
                    get tickMs() { return tickMs; },
+                   get ticks() { return tickCount; },
                    get renderMs() { return renderMs; },
                    get renderSize() { return [RW, RH]; }, get displaySize() { return [W, H]; },
                    // The no-WebGL path is the lane's own state, not the mounted module's: the mount
@@ -8994,7 +9013,12 @@
       hourLabel();
       // the card's own nudge, for the same reason: a repaint that goes through the tick keeps a
       // gliding body gliding; a bare draw would strand it between frames.
-      pulse = setTimeout(() => { pulse = 0; tick(performance.now()); }, 90);
+      /* `stopPulse` first. The handle has one owner; writing a timer into it over the one already
+         there left that one running, and when it fired it zeroed the handle so this one could not
+         be stopped either -- one more redraw chain per press, for the rest of the visit (measured:
+         30 ticks in three seconds at rest, 146 after four presses; `tests/idle-pulse.test.cjs`). */
+      stopPulse();
+      pulse = setTimeout(() => { pulse = 0; nudge(); }, 90);
     };
     hourBtn.addEventListener("click", () => {
       hourPref = hourPref === "day" ? "night" : "day";

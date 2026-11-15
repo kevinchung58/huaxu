@@ -331,6 +331,41 @@ browser's side of the focus claim — say which side holds which claim.
   reach at all: **40/40 after the fixes, 36/43 before** (the 7 misses were billboards 88–150 m off the
   lane and two prints no stop could approach).
 
+## 6c. A press that starts something must also end it, and say so for long enough
+
+Four things in `js/site.js` that the next change to a press will trip over (all measured by
+`.verify/verify-demo.mjs`, which fails on the tree before them):
+
+- **`DEMOS`** is the one table of what a pressed model says and how long it holds the record line
+  (`ripple` 4.5 s, `wheel` 24.5, `carousel` `CAROUSEL_ROUND + 0.5`, `open` 24.5). A new `demo`
+  value in a record needs a row — `tests/demo-words.test.cjs` fails without it — **and** a reader of
+  `m.el.__demoAt` in its shape branch, or the press changes nothing. The carousel had neither.
+- **The demonstration's pump is `demoPulse`, never `pulse`.** `loop()` calls `stopPulse()` on the
+  first moving frame; a pump parked in that handle dies there with `data-demo-hold` still set, and
+  `say` refuses a held line for ever after. The ride's is `ridePulse`, for the same reason.
+- **`pulse` has one owner, and a timer enters the tick through `nudge()`.** Two rules, each broken
+  once (`tests/idle-pulse.test.cjs` fails on both): (1) nothing writes `pulse = setTimeout(…)`
+  without `stopPulse()` first — the hour button did, and every press left one more redraw chain
+  running for the rest of the visit (30 ticks in 3 s at rest, 146 after four presses); (2) no timer
+  calls `tick()` directly — `tick` clears `raf` because it *is* the frame, so a timer calling it
+  while a frame was pending asked for a second one, and the next firing for a third (1,612 ticks in
+  118 frames while walking during a demonstration). `nudge()` is `if (!raf) tick(…)`.
+- **`pumping` means "off the floor under the feet"**, `Math.abs(height - floorAt(depth, x)) > 0.01`,
+  not `height > 0`: on a raised floor (the Fallsview deck, 553 cm) the old test was true for as long
+  as the visitor stood there and the lane redrew every frame of it.
+- **A control in `.walk-top` / `.walk-bottom` must be on the `pointer-events: auto` list** in
+  `css/site.css` (`.walk-hud > *` turns the rows off; `.walk-icon`, `.walk-stop`, `.walk-open` opt
+  back in). The bar was not on it, so no mouse and no finger could press it, on any page; it reads
+  as fine to every `element.click()`. Press a new control with `page.mouse.click` before it is done
+  (`verify-demo` 6, `PART=4 _hands.mjs`).
+- **`holdLine(text, ms)`** is how a one-off is said (the ride's arrival 4 s, the hour 3 s). Writing
+  `recordEl.textContent` directly lasts one frame.
+- **`boardRide` goes to a place.** Up is `height < rideTop / 2` (not a number of centimetres), and
+  lands on the floor in `data-lane-floors` whose height is the ride's top, at the visitor's own
+  depth clamped 90 cm inside it; down lands 42 cm in front of the `incline` prop. Both are checked
+  with `collidesAt`. The car carries x, **depth** and height — the incline is a `LOOK_KINDS` thing
+  and answers from eighty metres.
+
 ## 7. Order of work for a change like this
 
 1. Write or extend the probe **first** (`_popup-audit`, `_turnprobe`, `_census` for what is pressable

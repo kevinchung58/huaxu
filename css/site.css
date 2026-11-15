@@ -2297,8 +2297,14 @@ body.shell {
      A DOM that never hit-tests cannot see this, which is how it survived a suite of 130 assertions. */
   pointer-events: none;
 }
+/* `.walk-open` is on this list because it was not: the bar is the one control a finger has (a phone
+   has no E), and for as long as it inherited the row's `none` every tap on it fell through to the
+   scene. Nothing noticed, because every instrument pressed it with `element.click()`, which does not
+   hit-test (`verify-demo` 6 presses it with a mouse and with a touch). A new control in either row
+   goes here, and gets pressed by a real pointer before it is called done. */
 .walk-hud .walk-icon,
-.walk-hud .walk-stop {
+.walk-hud .walk-stop,
+.walk-hud .walk-open {
   pointer-events: auto;
 }
 /* The bounded guide, unlike the full-width layout rows, is itself scrollable and interactive. */
