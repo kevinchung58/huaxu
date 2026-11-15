@@ -8,6 +8,9 @@ import path from "node:path";
 const [out, ...files] = process.argv.slice(2);
 if (!out || !files.length) { console.error("usage: _sheet.mjs OUT.png A.png B.png ..."); process.exit(2); }
 const COLS = Number(process.env.COLS || 3), CW = Number(process.env.CELL || 512);
+// a missing frame used to surface as loadImage's "TypeError: Invalid URL", which names no cause
+const gone = files.filter((f) => !fs.existsSync(f));
+if (gone.length) { console.error(`_sheet: no such frame: ${gone.join(", ")}`); process.exit(2); }
 const imgs = await Promise.all(files.map((f) => loadImage(f)));
 const CH = Math.round(CW * imgs[0].height / imgs[0].width), LAB = 18;
 const rows = Math.ceil(imgs.length / COLS);

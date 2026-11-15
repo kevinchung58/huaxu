@@ -16,6 +16,11 @@
 
    Run:  LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/_uxwalk.mjs
          ROOMS=rooms-goat.html STOPS=0,2 HEADINGS=0,90 node .verify/_uxwalk.mjs
+         HOUR=night SHOTS=1 ROOMS=rooms-niagara.html STOPS=6,7 node .verify/_uxwalk.mjs
+
+   HOUR=night walks the same pass after dark (a page with an hour button is two pages). SHOTS=1
+   keeps a frame before and after every press in OUT/shots, named by page, stop, heading and
+   object -- the table says whether a press changed the scene, the pair says what the visitor saw.
 */
 import fs from "node:fs";
 import { launch, openPage as openPageRaw, arrive, aim, park, sleep } from "./_aim.mjs";
@@ -23,7 +28,13 @@ import { launch, openPage as openPageRaw, arrive, aim, park, sleep } from "./_ai
 const PAGES = (process.env.ROOMS || "street.html,rooms.html,rooms-fukuoka.html,rooms-toronto.html,rooms-niagara.html,rooms-goat.html,rooms-journey.html,rooms-cntower.html").split(",");
 const HEADINGS = (process.env.HEADINGS || "0,90,180,270").split(",").map(Number);
 const OUT = process.env.OUT || ".preview/ux74";
-fs.mkdirSync(OUT, { recursive: true });
+const HOUR = process.env.HOUR === "night" ? "night" : "day";
+const SHOTS = process.env.SHOTS === "1";
+fs.mkdirSync(SHOTS ? `${OUT}/shots` : OUT, { recursive: true });
+const frame = async (page, rooms, si, h, obj, when) => {
+  if (!SHOTS) return;
+  await page.screenshot({ path: `${OUT}/shots/${rooms.replace(".html", "")}-${HOUR}-s${si}-h${h}-${obj}-${when}.png` });
+};
 
 const line = (r) => `${(r.rooms + " s" + r.si + " @" + r.heading).padEnd(24)} ${((r.obj || "-") + (r.verb ? ":" + r.verb : "")).padEnd(30)} `
   + `${(r.answer || r.note || "").padEnd(11)} ${String(r.covers ?? 0).padStart(3)}%  ${(r.quads || "").padEnd(11)} `
@@ -85,7 +96,7 @@ fs.writeFileSync(`${OUT}/presses.txt`, "");
 let page = null, atPage = "";
 const openPage = async (rooms, si) => {
   if (page) await page.close().catch(() => {});
-  page = await openPageRaw(browser, { rooms, hour: "day" });
+  page = await openPageRaw(browser, { rooms, hour: HOUR });
   atPage = rooms;
   if (si !== null) await arrive(page, si);
   return page;
@@ -111,9 +122,16 @@ for (const rooms of PAGES) {
         before = await read(page);
         if (!before.reach) { push({ rooms, si, heading: h, reach: null, note: "nothing in reach" }); continue; }
         const url0 = page.url();
+        await frame(page, rooms, si, h, before.reach, "a-before");
         await page.keyboard.press("e");
         await sleep(700);
         const after = await read(page);
+        if (page.url() === url0) {
+          // a demonstration takes longer than the 700 ms the table waits: photograph it once it has
+          // had time to be seen, without changing what the table measures
+          if (SHOTS) await sleep(1500);
+          await frame(page, rooms, si, h, before.reach, "b-after");
+        }
         /* A door's answer is a different page. `page.url()` is the honest test: the old document can
            still be read for a moment after the navigation starts, and it then reports the *next*
            room's quads, which is how a door was once classified as a scene change. */

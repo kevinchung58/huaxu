@@ -101,6 +101,8 @@ sh bin/gate node .verify/verify-hotel.cjs
 sh bin/gate node .verify/verify-rail.mjs          # 4/4（四個起點到同一顆停止點）
 sh bin/gate node .verify/verify-objects.mjs
 sh bin/gate node .verify/verify-floor.mjs         # 8 頁的鋪面 uv：一 tile = 64 × period，且畫出來的石頭數與公分＝`FLOOR_STONE`（14/14）
+sh bin/gate node .verify/verify-hour.mjs          # 24/24 一個時刻只有一張畫面：按鈕切到的夜＝開頁就是夜的夜，白天亦然（有時刻鈕的 6 頁，約 6 分鐘；`PAGES=` 可指定頁:站）
+sh bin/gate node .verify/verify-demo.mjs          # 16/16 按下去的東西說自己的話、把記錄列還回來；纜車真的上得去也下得來（約 2 分鐘）
 sh bin/gate node bin/verify-three.mjs             # 14,924 world + 1,048 water
 sh bin/gate node .verify/verify-collision.cjs     # 32/32（8 頁，實測 12.8 分鐘；動到移動／碰撞碼才必跑）
 STRICT=1 sh bin/gate node .verify/audit-all.mjs   # 沒有不在 `flat-by-nature.json` 上的平面 prop（8 頁約 92 分鐘；動到 prop／繪法／tile 才必跑，`ROOMS=<頁>` 可只跑一頁）

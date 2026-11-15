@@ -80,9 +80,19 @@ export async function openPage(browser, { rooms, hour = "day", base = "http://12
      camera was never published -- the failure printed as "NO CAMERA", which is the right alarm. */
   if (intercept) { await page.setRequestInterception(true); page.on("request", intercept); }
   page.on("console", (m) => { if (m.type() === "error") console.log("CONSOLE", m.text()); });
+  /* "day" is an hour too. This used to write the key for night and do nothing for day, and the
+     store is the browser's, not the page's: once any page in a run had pressed the sun/moon button,
+     every later `hour: "day"` page booted at night and printed its frames as day (`verify-demo`
+     caught it -- the second page it opened answered "Daylight returns" to a press that should have
+     brought the night). The hour is put in place once per tab, on its first document, so a reload
+     or a walk through a door inside the same tab keeps whatever the visitor chose after that. */
   await page.evaluateOnNewDocument((h) => {
-    try { if (h === "night") window.localStorage.setItem("huaxu.walk-hour.v1", "night"); }
-    catch (e) { /* private mode: the choice lives this visit only */ }
+    try {
+      if (window.sessionStorage.getItem("aim.hour-set")) return;
+      window.sessionStorage.setItem("aim.hour-set", "1");
+      if (h === "night") window.localStorage.setItem("huaxu.walk-hour.v1", "night");
+      else window.localStorage.removeItem("huaxu.walk-hour.v1");
+    } catch (e) { /* private mode: the choice lives this visit only */ }
   }, hour);
   /* Round 79: a measuring instrument that photographs a moving prop must not read its geometry from
      one frame and its silhouette from another. `js/site.js` reads `prefers-reduced-motion` ONCE, at

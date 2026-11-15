@@ -1632,20 +1632,40 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   // The environment is the same authored sky the backdrop is painted from — one elevation table,
   // sampled once, turned into a prefiltered radiance map by PMREM. Reflections and the visible sky
   // cannot disagree, because they read the same record (the one-world-query rule, pointed at light).
-  const environment = makeSkyEnvironment(THREE, renderer, backdrop, api.dayPage, api.day);
-  if (environment) {
-    scene.environment = environment;
-    scene.environmentIntensity = skyEnvIntensity(backdrop, api.dayPage, api.day);
-  }
+  /* The light the sky gives follows the hour the sky shows -- not the hour the page booted in.
+
+     Both halves of that light used to be made once, here, from the hour at boot: the PMREM of the
+     sky and the hemisphere's two colours. An hour change then repainted the dome and left the light
+     alone, so the same lane had two nights and two days (measured at Niagara stop 6: boot by day
+     and press to night -> pale lavender facades under a day sky's light; boot at night, which is
+     every reload once the choice is stored -> flat navy; boot at night and press to day -> a daylit
+     sky over near-black buildings). The exposed state said `night` for both nights, so no gate that
+     read state could see it. `skyLight` is the one place the two are made, and the frame loop calls
+     it again whenever the dome is repainted. */
+  let environment = null, envDay = NaN, envDayPage = null;
+  const hemisphere = new THREE.HemisphereLight(FALLBACK_COLOR, FALLBACK_COLOR, 0.5);
+  const skyLight = (dayPage, day, remake) => {
+    const hs = backdropSkyStops(backdrop, dayPage, day);
+    hemisphere.color.set(hs.length ? skyColorAt(hs, 45, dayPage, day) : FALLBACK_COLOR);
+    hemisphere.groundColor.set(hs.length ? skyColorAt(hs, -45, dayPage, day) : FALLBACK_COLOR);
+    if (remake) {
+      const next = makeSkyEnvironment(THREE, renderer, backdrop, dayPage, day);
+      // A failed remake keeps the map it had: an old sky's light is a wrong hour, no light is a
+      // different picture.
+      if (next) {
+        if (environment) environment.dispose();
+        environment = next;
+        scene.environment = environment;
+      }
+      envDay = day; envDayPage = dayPage;
+    }
+    if (environment) scene.environmentIntensity = skyEnvIntensity(backdrop, dayPage, day);
+  };
+  skyLight(Boolean(api.dayPage), Number(api.day) || 0, true);
   // A hemisphere light, coloured from the same elevation table as the sky and the environment:
   // it is the floor under which a scene may never go black — PMREM can fail on a weak software
   // renderer, and a lit-painted world must degrade to "gentle sky bounce", not to "unlit black".
-  {
-    const hs = backdropSkyStops(backdrop, api.dayPage, api.day);
-    const skyC = hs.length ? skyColorAt(hs, 45, api.dayPage, api.day) : FALLBACK_COLOR;
-    const gndC = hs.length ? skyColorAt(hs, -45, api.dayPage, api.day) : FALLBACK_COLOR;
-    scene.add(new THREE.HemisphereLight(skyC, gndC, 0.5));
-  }
+  scene.add(hemisphere);
   // Night the visitor chose must still be a picture, not a blackout: the painter folds its murk
   // as navy rather than black on purpose, and the lit path folds the same navy, continuously, as
   // the sun goes — the authored night colour, never a made-up lamp.
@@ -1879,7 +1899,7 @@ function buildRenderer(THREE, canvas, backdrop, api) {
   const fireworks = makeFireworks(THREE, scene, staged.fireworks);
   if (fireworks) fireworks.geometry.userData.object = scene.children.find((x) => x.name === "authored night bursts");
   const reducedMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let width = 0, height = 0, lastSky = "", lastDay = -1, lastHeld = -1, lastDayPage = null;
+  let width = 0, height = 0, lastSky = "", lastDay = -1, lastHeld = -1, lastDayPage = null, lastEnvSeen = NaN;
 
   const laneTextureFor = (group) => {
     if (group.textureKind === "flat") return null;
@@ -2057,9 +2077,19 @@ function buildRenderer(THREE, canvas, backdrop, api) {
       const stops = backdropSkyStops(backdrop, Boolean(state.dayPage), day);
       const horizon = skyColorAt(stops, 0, Boolean(state.dayPage), day);
       scene.fog.color.set(horizon);
-      // The same hour that changes the sky changes how much light it is worth (skyEnvIntensity).
-      if (environment) scene.environmentIntensity = skyEnvIntensity(backdrop, Boolean(state.dayPage), day);
+      // The same hour that changes the sky changes how much light it is worth (skyEnvIntensity)
+      // and what colour that light is. The hemisphere follows every repaint; the PMREM is the dear
+      // half, so while the hour is still moving it is remade only every tenth of the way.
+      skyLight(Boolean(state.dayPage), day, false);
       lastSky = `${day}|${Boolean(state.dayPage)}`;
+    }
+    {
+      const dp = Boolean(state.dayPage);
+      const off = Math.abs(day - envDay);
+      // `off > 0.004` with the hour at rest (the same `day` two frames running) is the end of a
+      // change; NaN (never made) compares false everywhere, and boot has already made it.
+      if (dp !== envDayPage || off > 0.1 || (off > 0.004 && day === lastEnvSeen)) skyLight(dp, day, true);
+      lastEnvSeen = day;
     }
     renderer.render(scene, camera);
     /* What the frame actually submitted, read from the renderer's own counter rather than counted

@@ -2338,6 +2338,19 @@
      held at its own hour (`laneNight`) keeps it and gets no button: its clock is a fact. */
   const HOUR_KEY = "huaxu.walk-hour.v1";
   const HOUR_NIGHT = 0.92;
+  /* What a pressed model says, and how long the record line is held for it. One row per `demo`
+     value a record may author, named here so a new value cannot fall through to another model's
+     sentence (the carousel spoke the drawbridge's for as long as it had been pressable). `hold` is
+     the length of what the shape branch animates plus half a second, in seconds. */
+  const CAROUSEL_ROUND = 10;
+  const DEMOS = {
+    ripple: { hold: 4.5, say: "A stone skipped across the model's basin: the rings widen and are gone." },
+    wheel: { hold: 24.5, say: "The wheel takes a courtesy turn: four seconds of the forty a real revolution needs, "
+      + "then the 1.5 rpm settle. The gondolas are on the hour, all year; this model sells no tickets." },
+    carousel: { hold: CAROUSEL_ROUND + 0.5, say: "The carousel takes one quick round: ten seconds, the horses "
+      + "rising and falling faster, then back to its own pace." },
+    open: { hold: 24.5, say: "The demonstration runs: the leaves rise, a boat takes the opening, the leaves fall." },
+  };
   let hourPref = "day";
   let hourPhaseSet = 0.5;
   /* Round 76: whether the visitor has chosen at all. A page's own opening hour (`data-lane-day-start`)
@@ -6375,7 +6388,15 @@
         const R = (m.dia || 900) / 2;                     // cm to the deck's edge
         const canopyY = m.y + (m.h || 420) - 40;          // the canopy's rim
         const mastY = m.y + (m.h || 420) + 120;
-        const th = ((T / (m.turn || 26)) * Math.PI * 2) + (m.phase0 || 0);
+        /* Pressed, the ride answers in its own body: one extra round over ten seconds, eased in and
+           out. It had `demo` in its record and nothing here read the press, so the answer was the
+           turn it was making anyway under the drawbridge's sentence -- a press that changes nothing,
+           which a quad count cannot see on a thing that never stands still. One whole round is the
+           amount that needs no memory: the canopy, the horses and their rise (`th * 2`) are all back
+           in phase when the envelope ends, so nothing jumps. The deck keeps the plain clock. */
+        const th0 = ((T / (m.turn || 26)) * Math.PI * 2) + (m.phase0 || 0);
+        const spin = m.el && m.el.__demoAt ? clamp((performance.now() - m.el.__demoAt) / 1000 / CAROUSEL_ROUND, 0, 1) : 0;
+        const th = th0 + Math.PI * 2 * spin * spin * (3 - 2 * spin);
         const night = NIGHT();
         const STRIPES = ["#c8463f", "#f0e6d2"];
         /* A point on the ring, in the ground plane, at angle `a` and radius `r`.
@@ -6386,7 +6407,7 @@
         const P = (a, r, y) => [m.x + Math.cos(a) * r, y, m.z + Math.sin(a) * r];
         // the deck: 24 sectors, so the ring is round rather than a square with corners cut off
         for (let i = 0; i < 24; i++) {
-          const a0 = th * 0.35 + (i / 24) * Math.PI * 2, a1 = th * 0.35 + ((i + 1) / 24) * Math.PI * 2;
+          const a0 = th0 * 0.35 + (i / 24) * Math.PI * 2, a1 = th0 * 0.35 + ((i + 1) / 24) * Math.PI * 2;
           const q = add(C, [P(a0, R, m.y + 14), P(a1, R, m.y + 14),
                             P(a1, R * 0.18, m.y + 18), P(a0, R * 0.18, m.y + 18)],
                         ZERO8, "flat", i % 2 ? "#7d6a55" : "#8a7660");
@@ -7519,6 +7540,24 @@
   };
 
   const liveEl = layer.querySelector("[data-walk-live]");
+  /* A sentence said once -- the car has arrived, night has come -- keeps the record line for long
+     enough to be read. `say` rewrites that line on every frame from what is in reach, so a one-off
+     written straight into it lasted until the next frame: measured, "You step off at the bottom"
+     was gone inside the first sample after the ride, and the hour's sentence never showed on the
+     street at all. The line is the screen reader's live region, and a region that changes back
+     within a frame announces nothing. The hold is the demonstrations' own flag; the timer lets go
+     only if the sentence is still the one it set, so a demonstration pressed meanwhile keeps its. */
+  let lineHold = 0;
+  const holdLine = (text, ms) => {
+    if (!recordEl) return;
+    recordEl.dataset.demoHold = "1";
+    recordEl.textContent = text;
+    if (lineHold) clearTimeout(lineHold);
+    lineHold = setTimeout(() => {
+      lineHold = 0;
+      if (recordEl.textContent === text) { delete recordEl.dataset.demoHold; recordEl.textContent = ""; }
+    }, ms);
+  };
   const say = (status, record) => {
     if (status && statusEl) statusEl.textContent = status;
     // A running demonstration owns the record line until its envelope dies (act's `data-demo`
@@ -8033,23 +8072,56 @@
     const k = sm01(Math.min(1, t));
     height = ride.h0 + (ride.h1 - ride.h0) * k;
     x = ride.x0 + (ride.x1 - ride.x0) * k;
+    depth = ride.d0 + (ride.d1 - ride.d0) * k;
     vy = 0;
     if (t >= 1) {
       const done = ride;
       ride = null;
       height = floorAt(depth, x);
       if (recordEl) { delete recordEl.dataset.demoHold; recordEl.textContent = ""; }
-      if (done.say) say("", done.say);
+      if (done.say) holdLine(done.say, 4000);
     }
   };
   const boardRide = (el) => {
     if (ride) return true;   // already in a car; a second press is the ride, not a queue
-    const up = height < 900;
+    /* Which way, and to where. Both were wrong once the deck was authored at its real 553 cm:
+
+       - "up" was `height < 900`, a number from the round the deck stood at 2990. At 553 a visitor on
+         the deck was still "at the bottom", so the car took them from the deck to the deck and the
+         line said they had stepped off at the top. There was no way down but the edge.
+       - the car carried height and x and left the depth alone. The incline answers a look from
+         eighty metres (`LOOK_KINDS`), so from the fun row it lifted the body 5.5 m over paving
+         twenty-five metres from any deck and then set it down where it was -- "onto the Fallsview
+         deck", at street level.
+
+       So the car goes somewhere: up is a place ON the deck the record authors (`data-lane-floors`,
+       the floor at the ride's own height), as near the visitor's depth as the deck reaches; down is
+       in front of the lower station. A landing a solid stands on is not a landing, so each is
+       checked against the same colliders the walk obeys. */
+    const top = Number(el.dataset.rideTop || 2990);
+    const up = height < top / 2;
     const xIn = Number(el.dataset.rideX || 300);
+    let x1 = xIn, d1 = depth;
+    if (up) {
+      const deck = FLOORS.find((f) => f[2] === top && (f.length < 4 || (xIn >= f[3] && xIn <= f[4])));
+      if (deck) {
+        const lo = Math.min(deck[0] + 90, deck[1]), hi = Math.max(deck[1] - 90, deck[0]);
+        d1 = clamp(depth, lo, hi);
+        for (let step = 0; collidesAt(x1, d1) && step < 40; step++) d1 = d1 - 60 < lo ? hi : d1 - 60;
+      }
+    } else {
+      const base = meta.find((m) => m.kind === "incline" && m.el && m.el.dataset.ride) || null;
+      const spots = base
+        ? [[base.x, base.z - base.d / 2 - 42], [base.x - base.w / 2 - 80, base.z - base.d / 2 - 42],
+           [base.x + base.w / 2 + 80, base.z - base.d / 2 - 42], [0, base.z - base.d / 2 - 120]]
+        : [[0, depth]];
+      const spot = spots.find(([px, pz]) => floorAt(pz, px) < 1 && !collidesAt(px, pz)) || spots[0];
+      x1 = spot[0]; d1 = spot[1];
+    }
     ride = {
-      t0: performance.now(), h0: height, x0: x,
-      h1: up ? Number(el.dataset.rideTop || 2990) : 0,
-      x1: xIn,
+      t0: performance.now(), h0: height, x0: x, d0: depth,
+      h1: up ? top : 0,
+      x1, d1,
       say: up ? "You step off at the top, onto the Fallsview deck, level with the bluff's lip."
               : "You step off at the bottom, by the rail, with the falls a short walk east.",
     };
@@ -8249,6 +8321,7 @@
      page scrolls away or the plate is open, and `prefers-reduced-motion` turns it off at the source
      instead of cancelling motion after the render work has already been paid for. */
   let pulse = 0, inView = true;
+  let demoPulse = 0;   // a pressed model's own pump (see `act`); never the idle pulse's handle
   const stopPulse = () => { if (pulse) { clearTimeout(pulse); pulse = 0; } };
   const startPulse = () => {
     stopPulse();
@@ -8517,33 +8590,38 @@
     // museum's own idiom: a demo button on a model does not move the thing it models.
     if (m.el.dataset.demo !== undefined) {
       m.el.__demoAt = performance.now();
+      const demo = DEMOS[m.el.dataset.demo] || DEMOS.open;
       if (recordEl) {
         recordEl.dataset.demoHold = "1";
-        recordEl.textContent = m.el.dataset.demo === "ripple"
-          ? "A stone skipped across the model's basin: the rings widen and are gone."
-          : m.el.dataset.demo === "wheel"
-          ? "The wheel takes a courtesy turn: four seconds of the forty a real revolution needs, "
-            + "then the 1.5 rpm settle. The gondolas are on the hour, all year; this model sells no tickets."
-          : "The demonstration runs: the leaves rise, a boat takes the opening, the leaves fall.";
+        recordEl.textContent = demo.say;
       }
       // the same redraw contract the hour button uses: the announcement gets one quiet moment
       // before the first pumped frame (the lane's own say() rewrites the record every tick), and
       // the pump keeps asking for frames until the envelope dies — a stopped clock draws nothing.
       // the envelope matches what the shape branch animates: a skip dies in three seconds and must
       // not hold the record line for the bridge's twenty-four
-      const ENVELOPE = m.el.dataset.demo === "ripple" ? 4.5 : 24.5;
+      const ENVELOPE = demo.hold;
+      const el = m.el, at = el.__demoAt;
+      /* The demonstration keeps its own timer. It used to borrow the idle pulse's handle, and the
+         frame loop cancels that handle the moment the walker moves (`loop` -> `stopPulse`): press a
+         model, take one step inside the envelope, and the pump died with the hold still set -- the
+         record line then kept the demonstration's sentence and refused every later one (`say`
+         skips a held record), for the rest of the visit. A second press replaces the first: the
+         stale pump sees a newer `__demoAt` and stands down without touching the record. */
       const pump = () => {
-        const t = (performance.now() - m.el.__demoAt) / 1000;
+        if (el.__demoAt !== at) return;
+        const t = (performance.now() - at) / 1000;
         if (t > ENVELOPE) {
-          delete m.el.__demoAt;
+          delete el.__demoAt;
+          demoPulse = 0;
           if (recordEl) { delete recordEl.dataset.demoHold; recordEl.textContent = ""; }
           return;
         }
         tick(performance.now());
-        pulse = setTimeout(pump, 90);
+        demoPulse = setTimeout(pump, 90);
       };
-      if (pulse) clearTimeout(pulse);
-      pulse = setTimeout(pump, 90);
+      if (demoPulse) clearTimeout(demoPulse);
+      demoPulse = setTimeout(pump, 90);
       tutorAnswered();
       return;
     }
@@ -8923,9 +9001,13 @@
       hourPhaseSet = hourPref === "night" ? HOUR_NIGHT : 0.5;
       try { window.localStorage.setItem(HOUR_KEY, hourPref); } catch (e) { /* this visit only */ }
       setHour();
-      if (recordEl) recordEl.textContent = hourPref === "night"
-        ? "Night comes: the lamps, the lit windows, and the falls' own colours."
-        : "Daylight returns over the lane.";
+      // The falls are named only where there are falls: the sentence was written at Niagara and
+      // was being read out on the street and in Tokyo as well.
+      holdLine(hourPref === "night"
+        ? (layer.querySelector('[data-obj^="falls"]')
+          ? "Night comes: the lamps, the lit windows, and the falls' own colours."
+          : "Night comes: the lamps and the lit windows.")
+        : "Daylight returns over the lane.", 3000);
     });
     layer.dataset.walkClock = hourPref;
     hourBtn.classList.toggle("is-night", hourPref === "night");
