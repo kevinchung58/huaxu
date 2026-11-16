@@ -172,10 +172,10 @@ line).
    then at most three actions — and the numbers, because 「感覺不好」 on this project has always meant a
    number nobody had taken yet.
 
-## 5b. What the pass cannot see unless you make it — eight shapes found by playing
+## 5b. What the pass cannot see unless you make it — eleven shapes found by playing
 
-A pass that walked every stop, pressed everything and printed no `?!` row still shipped all eight of
-these. Each one is a reason the table says "fine" while the visitor's experience is wrong; each has
+A pass that walked every stop, pressed everything and printed no `?!` row still shipped all eleven
+of these. Each one is a reason the table says "fine" while the visitor's experience is wrong; each has
 a gate now, and each gate was run against the tree before the fix to prove it can fail.
 
 | shape | what the table showed | what was true | how it is measured now |
@@ -188,6 +188,9 @@ a gate now, and each gate was run against the tree before the fix to prove it ca
 | **A control only a script can press** | `bar yaw 0 names "The Horseshoe Falls" -> CARD` | the bar is the one control a finger has, and it inherited `pointer-events: none` from its layout row: every tap fell through to the scene. The audit pressed it with `element.click()` inside the page, which does not hit-test | `verify-demo.mjs` 6: `page.mouse.click` and `page.touchscreen.tap` at the bar's centre, desktop and 390 × 844 |
 | **A lane that never rests again** | every row answered, every frame right | each press of the hour button left one more redraw timer running for the rest of the visit (it wrote into the idle pulse's handle without stopping the timer in it). The browser's frame rate went 60 → 8 → 4 → 1; screenshots took 2 s, then 17 s, then never | `tests/idle-pulse.test.cjs` counts ticks on a fake clock (30 in 3 s at rest, 146 after four presses); `verify-demo.mjs` 5 counts the browser's animation frames |
 | **A fix that multiplies frames** | the stranded record line was fixed | giving the demonstration its own timer kept it alive while walking — and each firing made `tick` forget the frame it had asked for and ask for another: 1,612 ticks in 118 frames, each a full redraw | `tests/idle-pulse.test.cjs`: walking during a demonstration, and a ride, are one tick a frame. The lane's timers enter through `nudge()` |
+| **A control with no area** | every pass opened and closed the written lane | its close button was 0 × 29 px: `.walk-list button` (class + element) outweighed `.walk-drawer-close` and zeroed its padding and border, and the icon had no size. On a phone the open lane covers the tools and there is no Esc: it opened and could not be closed. Every instrument had closed it with `element.click()` | `verify-press.mjs` presses it with a mouse and with a finger, open and scrolled to the end, on all 8 pages; `_hittest.mjs` reports `ZERO` |
+| **A size chosen by the window for a thing in a drawer** | the lane's frames were listed; the stops were all there | `@media (min-width: 900px)` gave the frame list three columns inside a 30rem drawer — each picture a 79 px ribbon, the lane scrolling 120 px sideways; and `46vw` squeezed Fukuoka's fourteen stop ticks to 5 px each on a phone | `verify-press.mjs` (the lane fits its width, narrowest frame ≥ 120 px, narrowest tick ≥ 16 px and a press on the last one arrives); `_hittest.mjs` reports `WIDE` |
+| **A sentence printed for every row** | the list named nine districts | every open card said "You are standing in it." — twice — on every page, and none was a way to go there; each also pointed `aria-describedby` at an id no page has (72 of them) | `verify-press.mjs` (one card says it, the others carry a link, a click on Tokyo's walks into Tokyo); `tests/page-refs.test.cjs` |
 
 What follows from them, as rules for the next pass:
 
@@ -196,7 +199,10 @@ What follows from them, as rules for the next pass:
   `pointer-events: none`, or that is off the screen. Use them to *stage* (dismiss the guide, read
   state); press with `page.mouse.click(x, y)`, `page.keyboard`, `page.touchscreen.tap`. And ask
   `document.elementFromPoint` at the control's centre first — "who owns this point" is the whole
-  defect in one read. `PART=4 node .verify/_hands.mjs` does this for every visible button on a page.
+  defect in one read. `PART=4 node .verify/_hands.mjs` does this for every visible button on a page,
+  and `node .verify/_hittest.mjs` asks it of every visible control on all 19 pages at a desk and a
+  phone size (about 5 minutes; anything it prints other than `SMALL` is a defect or an instrument
+  bug — settle which before moving on). A new lane control joins `verify-press.mjs`.
 - **Count what a press leaves behind.** After the answer is over, the lane must be as it was before:
   the same ticks a second (`__walk.ticks`), the same texture count (`__walk.threeStats.textures`),
   the same frame rate. A leak looks like nothing on the first press and like a broken site on the

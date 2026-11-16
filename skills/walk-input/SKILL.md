@@ -251,6 +251,14 @@ running anything: `grep -rn "0\.09\|14\.4" .verify/`.
 
 ## 6. Every way in needs the visitor's own way out
 
+**First, the way out has to be there.** The written lane's close button measured 0 × 29 px for as
+long as it existed (a generic `.walk-list button` reset outweighed its own rule), so on a phone —
+where the open lane covers the tools and there is no Esc — a visitor who opened the list could not
+close it. A close control is checked by pressing it: `sh bin/gate node .verify/verify-press.mjs`
+(mouse and finger, also after the surface is scrolled to its end, because a close button that
+scrolls away is the same defect one swipe later). Give it a stated width and height, and write its
+rule at least as specifically as any reset that reaches it.
+
 The site's exits were all in-page controls (Esc, a close button, a door) and none of them was the
 gesture a phone actually has. Measured in a real browser with `.verify/_backprobe.mjs`:
 

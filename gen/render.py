@@ -11,7 +11,7 @@ import json
 import math
 from gen.districts import DISTRICTS
 from gen.media import INDENT, poster_attrs
-from gen.site import ICON_BOOK, ICON_BULB, ICON_CAMERA, ICON_CASE, ICON_CHAT, ICON_EXIT, ICON_FOV_IN, ICON_FOV_OUT, ICON_OUT, ICON_UP, ICON_X, ROOT, titled
+from gen.site import ICON_BOOK, ICON_BULB, ICON_CAMERA, ICON_CASE, ICON_CHAT, ICON_EXIT, ICON_FOV_IN, ICON_FOV_OUT, ICON_OUT, ICON_RIGHT, ICON_UP, ICON_X, ROOT, ico, titled
 from gen.world import EYE, KINDS, LANE_FALLBACK, OBJ_SIZE, WALK_SOLID_KINDS, Z_SCALE
 
 # What a lamp post is worth as a light (see where the light island is built). `r` is the halo's
@@ -796,11 +796,13 @@ def walk_html(d, drawer):
     <button type="button" class="modal-close" data-walk-card-close aria-label="Close">{ICON_X}</button>
   </div>
   <aside class="walk-list" id="walk-list-{did}" data-walk-listpanel aria-label="{label}, written out">
-    <button type="button" class="walk-drawer-close" data-walk-list-close aria-label="Close the list">
-      {ICON_X}</button>
-    <p class="eyebrow">The lane, written out</p>
+    <div class="walk-list-head">
+      <p class="eyebrow">The lane, written out</p>
+      <button type="button" class="walk-drawer-close" data-walk-list-close aria-label="Close the list">
+        {ICON_X}</button>
+    </div>
     <ul class="walk-districts">
-      {INDENT.join(district_card(x) for x in DISTRICTS)}
+      {INDENT.join(district_card(x, d) for x in DISTRICTS)}
     </ul>
 {small_things}
 {drawer}
@@ -810,13 +812,24 @@ def walk_html(d, drawer):
 """
 
 
-def district_card(d):
+def district_card(d, here):
     """The card is a record first and a link second: heading and body text stay in the page's
     own colour, and only the arrow is a link, because main a is accented and underlined
     site-wide. The kind is printed here with the gate it implies, and the cover — if there is
     one — carries the kind's cover rule as its caption, so a drawn cover can never be read as
-    a photograph the owner took."""
-    state = "Not open yet." if d["status"] == "soon" else "You are standing in it."
+    a photograph the owner took.
+
+    `here` is the district whose page this list is printed on. Every open card used to say "You
+    are standing in it." -- twice, and on all nine cards of every page, eight of which the visitor
+    is not standing in -- and none of them was a way to get there. One card says it now, once;
+    the others carry the arrow this docstring always promised."""
+    if d["status"] == "soon":
+        foot = '<p class="when">Not open yet.</p>'
+    elif d["id"] == here["id"]:
+        foot = '<p class="when">You are standing in it.</p>'
+    else:
+        foot = (f'<p class="pillar-more"><a class="text-arrow" href="{escape(d["page"])}">'
+                f'Walk into {escape(d["label"])} {ico(ICON_RIGHT)}</a></p>')
     kind = d.get("kind")
     meta = KINDS.get(kind, {})
     badge = f'{escape(meta["label"])} · {escape(d["purpose"])}' if meta else escape(d["purpose"])
@@ -832,13 +845,12 @@ def district_card(d):
         # a cover named in the data but missing on disk must not draw a broken image, and
         # must not be papered over either: the empty card is the true state
         cover = '<p class="when">No cover image is available for this district.</p>'
-    return (f'<li class="district-card is-{d["status"]}" aria-describedby="room-{escape(d["id"])}">'
+    return (f'<li class="district-card is-{d["status"]}">'
             f'{cover}'
             f'<span class="badge">{badge}</span>'
             f'<h2>{escape(d["label"])}</h2>'
             f'{gate}'
-            f'<p class="when">{state}</p>'
-            f'<p class="pillar-more"><span class="when">{escape(state)}</span></p></li>')
+            f'{foot}</li>')
 
 
 def slot_row(d, sl):

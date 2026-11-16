@@ -1845,6 +1845,16 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
     grid-template-columns: repeat(3, 1fr);
   }
 }
+/* The frames are listed inside the written lane, and the lane is 30rem wide however wide the
+   window is. The three columns above are chosen by the window, so on a desk each frame was drawn
+   in a 79 px strip -- a 16:9 picture stretched into a ribbon, its caption one word to a line --
+   and the lane scrolled sideways by 120 px. On screen the lane's frames keep one column; on paper
+   the lane is the whole page and the three columns still apply. `_hittest.mjs` reports WIDE. */
+@media screen {
+  .walk-list .frame-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 
 .district-cover {
   margin: 0 0 0.9rem;
@@ -2660,19 +2670,47 @@ body.shell {
   align-items: baseline;
   gap: 0.35rem;
 }
-.walk-drawer-close {
-  position: absolute;
-  right: 0.7rem;
-  top: 0.7rem;
-  padding: 0.3rem;
+/* The list's way out. Two things made it a control nobody could see or press, on every page, for
+   as long as it existed: `.walk-list button` above (one class and one element) outweighs a bare
+   `.walk-drawer-close` and took its padding and border to zero, and the icon inside has no size
+   of its own -- so the button measured 0 x 29 px. On a phone the open list covers the tools, and
+   a phone has no Esc: the list could be opened and not closed. Hence the doubled selector, the
+   stated size (44 px, a finger's), and a head that stays (`sticky`) rather than a button placed
+   `absolute`: the list scrolls, and a close button that scrolls away with the first card is the
+   same defect one swipe later. The head carries the title and paper of its own so that the cards
+   pass under it rather than under a button floating over their words.
+   `_hittest.mjs` reports a visible control with no area as ZERO. */
+.walk-list-head {
+  position: sticky;
+  z-index: 2;
+  top: -1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin: -1.2rem -1.25rem 0.6rem;
+  padding: 0.55rem 0.7rem 0.55rem 1.25rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.walk-list .walk-list-head .eyebrow { margin: 0; }
+.walk-list .walk-drawer-close {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--line-strong);
   border-radius: 6px;
   background: var(--card);
   color: var(--ink);
+  text-decoration: none;
   cursor: pointer;
 }
-.walk-drawer-close:hover,
-.walk-drawer-close:focus-visible {
+.walk-drawer-close svg { width: 1.2rem; height: 1.2rem; }
+.walk-list .walk-drawer-close:hover,
+.walk-list .walk-drawer-close:focus-visible {
   border-color: var(--accent-ink);
   color: var(--accent-ink);
 }
@@ -2690,8 +2728,14 @@ body.shell {
    something to, rather than a thing you can look at — which is the whole difference expressed
    without a word on the screen. */
 @media (max-width: 700px) {
+  /* This was `46vw`, and nothing stands to the right of the ticks on a phone to save the room
+     for. At 390 px that is 179 px for the whole rail, and the ticks shrink to fit it: Fukuoka's
+     fourteen were 5 px wide each, the street's ten 11 px, Niagara's nine 13 px -- under a finger
+     that is one stop or its neighbour by luck. The rail takes the width the screen has: every
+     lane's ticks are their authored 24 px except Fukuoka's, which are 18 with an 8 px pad between
+     (`.walk-stop::before`), a 26 px pitch. */
   .walk-stops {
-    max-width: 46vw;
+    max-width: calc(100vw - 1.9rem);
   }
   /* Nothing here scales text down for a phone any more, because the display carries no text to
      shrink: the only sizes that matter on a small screen are the tick's hit area and the icon's,
@@ -2729,8 +2773,11 @@ body.shell {
     overflow: visible;
     border: 0;
   }
-  .walk-drawer-close {
+  .walk-list .walk-drawer-close {
     display: none;
+  }
+  .walk-list-head {
+    position: static;
   }
 }
 
