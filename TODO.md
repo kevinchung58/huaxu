@@ -12,11 +12,11 @@
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、
   `rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支**：`arena/e54e5286-huaxu` → `master`；PR #22 開著，**未合併**（合併要站主一句授權）。
-- **三層驗證**：`node --test`（24 支、83 條宣告，`# tests 174`，約 100 s；其中幾條會開 Chromium）→ `.verify/` 閘門 34 支（§2.3 的清單就是
+- **三層驗證**：`node --test`（24 支、83 條宣告，`# tests 174`，約 100 s；其中幾條會開 Chromium）→ `.verify/` 閘門 35 支（§2.3 的清單就是
   「有沒有跑」的判準；整段用 `python3 bin/gate-all.py` 跑，它讀的就是那份清單）→ 量具（§2.4，只在需要
   數字時跑）。效能看 `tools/bench.mjs`（§5.6）。
 - **規模**：頁面程式 4 支共 9,773 行（載入順序在 `bin/site-sources.json`；巷道的 9,247 行仍是一個 closure，§3 P3）、
-  產生器 7,550 行、`.verify` 103 支（其中閘門 34 支）、`skills/` 19 個。
+  產生器 7,550 行、`.verify` 103 支（其中閘門 35 支）、`skills/` 19 個。
 - **工具鏈是釘住的**：`bin/restore-env` 的那一行 `npm install` 每個套件都寫死版本（jsdom 31.0.1、
   puppeteer-core 25.17.0、@sparticuz/chromium 153.0.0、@napi-rs/canvas 1.1.1、impeccable 4.1.0），
   `tests/env.test.cjs` 對 `node_modules` 逐一核對。升版是一個有意的動作：改那一行、跑整段、把結果一起 commit。
@@ -103,7 +103,8 @@ sh bin/gate node .verify/verify-objects.mjs
 sh bin/gate node .verify/verify-floor.mjs         # 8 頁的鋪面 uv：一 tile = 64 × period，且畫出來的石頭數與公分＝`FLOOR_STONE`（14/14）
 sh bin/gate node .verify/verify-hour.mjs          # 25/25 一個時刻只有一張畫面：按鈕切到的夜＝開頁就是夜的夜，白天亦然；再按六次 renderer 的 texture 數不變（有時刻鈕的 6 頁，約 6 分鐘；`PAGES=` 可指定頁:站）
 sh bin/gate node .verify/verify-demo.mjs          # 20/20 按下去的東西說自己的話、把記錄列還回來；纜車上得去下得來；按四次時刻鈕後瀏覽器幀率不掉；提示列用真滑鼠、真觸控按得開（約 4 分鐘）
-sh bin/gate node .verify/verify-press.mjs         # 115/115 巷道自己的控制元件用真滑鼠（1280 × 800）與真手指（390 × 844）按：站點刻度夠寬且按得到站、清單開得了也關得掉（捲到底也是）、清單不橫向捲動、說明卡開關；清單裡的地區卡走得進去（8 頁 × 2，約 6 分鐘）
+sh bin/gate node .verify/verify-press.mjs         # 115/115 巷道自己的控制元件用真滑鼠（1024 × 768）與真手指（390 × 844）按：站點刻度 ≥ 24 px 且按得到站、清單開得了也關得掉（關閉鈕手機 ≥ 44 px；捲到底也是）、清單不橫向捲動、清單裡的圖畫出來的長寬比和檔案一樣（差 ≤ 3 %）、說明卡開關；清單裡的地區卡走得進去（8 頁 × 2，約 6 分鐘）
+sh bin/gate node .verify/verify-targets.mjs       # 19 頁 × 桌機與手機，每個看得見的控制元件：中心那一點是它自己的（`COVERED`／`ZERO`／`OFFSCREEN`）、頁面與清單不橫向捲（`WIDE`）、圖都載到（`IMAGE`）、會回應的面積桌機 ≥ 24 × 24、手機 ≥ 44 × 44（`SMALL`；面積是從中心往外一格一格問出來的，不是框）。站點刻度在 9 站以上的頁是 `DENSE`（≥ 24，不算紅）。約 8 分鐘；`PAGES=`、`VIEW=`、`DENSE=1`
 sh bin/gate node bin/verify-three.mjs             # 14,924 world + 1,048 water
 sh bin/gate node .verify/verify-collision.cjs     # 32/32（8 頁，實測 12.8 分鐘；動到移動／碰撞碼才必跑）
 STRICT=1 sh bin/gate node .verify/audit-all.mjs   # 沒有不在 `flat-by-nature.json` 上的平面 prop（8 頁約 92 分鐘；動到 prop／繪法／tile 才必跑，`ROOMS=<頁>` 可只跑一頁）
@@ -162,7 +163,7 @@ STRICT=1 sh bin/gate node .verify/audit-all.mjs   # 沒有不在 `flat-by-nature
   拍影格並量中央三分之一的 mean／sd／色數，用來挑取景）。
 - **表面與抵達**：`_surface.mjs`（cover／content／fill／字的 measure）、`_stops.mjs`（每站抵達誤差，等
   `__walk.glide` 收工）、`_reach.mjs`（走過去按得到嗎）、`_deadui.mjs`（每個控制元件按下去有沒有變化；
-  jsdom 不能導航、也看不到畫面是它的盲點：`Jump` 在它那裡是 DEAD，真點擊量到跳起 21 cm——以 `_hands` `PART=4` 為準）、`_uxwalk.mjs`（每站轉四個方向、對伸手可及的東西按 E，一列一次按壓；`HOUR=night` 走夜裡那一遍、`SHOTS=1` 每次按壓留前後兩張影格）、`_hittest.mjs`（19 頁 × 桌機與手機，每個看得見的控制元件問 `elementFromPoint` 它的中心是誰的；巷道頁再用真點擊打開說明卡、清單、導覽各掃一次。印 `COVERED`／`ZERO`（顯示著卻沒有面積）／`OFFSCREEN`／`WIDE`（頁面或清單橫向捲動）／`IMAGE`／`SMALL`，前五種與自家來源的錯誤讓它 exit 1；全部約 5 分鐘，`PAGES=`、`VIEW=desk|phone`。它是掃描、不是閘門：`SMALL` 399 條裡多數是站主要決定的尺寸）、`_hands.mjs`（只有手找得到的事：真的用滑鼠點時刻鈕、夜裡走向街牆、390×844 觸控手機的拖曳／搖桿／時刻鈕尺寸、**`PART=4` 把頁面上看得到的每一顆鈕各用真滑鼠點一次**——印「這個點是誰的」(`COVERED`)、頁面說什麼變了、畫面變了幾 %（`px idle>press`），兩欄都空的印 `NOTHING`；`PAGE4=頁:站`。`PART=1,2,3,4`，**要獨佔跑**）、`_gap.mjs`（缺面：覆蓋圖＋向下 miss）、`_aisleprobe.cjs`。
+  jsdom 不能導航、也看不到畫面是它的盲點：`Jump` 在它那裡是 DEAD，真點擊量到跳起 21 cm——以 `_hands` `PART=4` 為準）、`_uxwalk.mjs`（每站轉四個方向、對伸手可及的東西按 E，一列一次按壓；`HOUR=night` 走夜裡那一遍、`SHOTS=1` 每次按壓留前後兩張影格）、`_hands.mjs`（只有手找得到的事：真的用滑鼠點時刻鈕、夜裡走向街牆、390×844 觸控手機的拖曳／搖桿／時刻鈕尺寸、**`PART=4` 把頁面上看得到的每一顆鈕各用真滑鼠點一次**——印「這個點是誰的」(`COVERED`)、頁面說什麼變了、畫面變了幾 %（`px idle>press`），兩欄都空的印 `NOTHING`；`PAGE4=頁:站`。`PART=1,2,3,4`，**要獨佔跑**）、`_gap.mjs`（缺面：覆蓋圖＋向下 miss）、`_aisleprobe.cjs`。
 - **診斷**：`_stuck.mjs` / `_stuck2.mjs`、`_tapdiag.mjs`、`_wallgap.mjs`、`_csscheck.mjs`、`wall-probe.cjs`、
   `verify-rooms-e2e.cjs`（jsdom 啟動樣板；`tests/helpers/boot.cjs` 是同一份）。
 - **任何「等滑行結束」都要問 `__walk.glide`**，不要用固定秒數或「看起來停了」。
@@ -280,29 +281,29 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
    轉向鈕。**驗收**：站主選了觸控的轉速之後（§4），`PART=3 sh bin/gate node .verify/_hands.mjs` 印出的
    「180 px 轉幾度」等於那個數字乘 180，且 `verify-feel`、`verify-look` 重跑（常數有四個地方在用，
    `skills/walk-input` §4）。
-2. **時刻鈕在觸控上是 30 × 30 px**（量在 171.5, 815.2），低於 44 px 的按壓下限。**驗收**：`_hands.mjs`
-   `PART=3` 印出的寬高 ≥ 44，且工具列在 390 px 寬不換行（拍一張）。
-3. **看不到的東西也在提示列上**：只能「看」的東西（`LOOK_KINDS`）的面向門檻是 `facing ≥ 0.2`，也就是
+2. **看不到的東西也在提示列上**：只能「看」的東西（`LOOK_KINDS`）的面向門檻是 `facing ≥ 0.2`，也就是
    中心偏離視線 78° 以內都算；1024 × 768 的畫面左右各只有 29°。所以 Niagara stop 5 朝 90° 提示
    「TRY · The Niagara SkyWheel」而畫面是草地與旅館（`_uxwalk`：`WORDS`，quads 143 → 143）；Fukuoka
    stop 3、6 朝 90° 提示水池，按了漣漪畫在框外（`?!`，335 → 335、87 → 87）。門檻寬是為了身邊的大東西
    （中心在框外、身體在框內），所以要改的是「框內看得到才算」而不是把 0.2 調大。**驗收**：
    `ROOMS=rooms-niagara.html STOPS=5` 與 `ROOMS=rooms-fukuoka.html STOPS=3,6` 的 `_uxwalk` 沒有 `WORDS`／`?!`
    列，且 `verify-box`、`verify-mirror`、`verify-ux` 不變。
-4. **「纜車下站」那一站面對的是瀑布**：Niagara stop 4（z 4814、x −140、yaw −18）到站時伸手可及的是
+3. **「纜車下站」那一站面對的是瀑布**：Niagara stop 4（z 4814、x −140、yaw −18）到站時伸手可及的是
    `falls-horseshoe`（提示列寫 READ · The Horseshoe Falls），要轉到 90° 才是 `falls-incline`（jsdom 與瀏覽器
    量到的一樣）。站名說纜車、手上是瀑布。**驗收**：到站不轉頭，`.walk-hit.is-reach` 是 `falls-incline`
    （改 `gen/districts.py` 那一站的 yaw 或位置，`verify-demo`、`verify-rail`、`tests/idle-pulse` 重跑）。
-5. **瀏覽器那幾遍還是等牆上的鐘**：`_uxwalk` 等 700／2200 ms、閘門等 `sleep`。OpenAI 的
+4. **瀏覽器那幾遍還是等牆上的鐘**：`_uxwalk` 等 700／2200 ms、閘門等 `sleep`。OpenAI 的
    `develop-web-game` 要求 `window.advanceTime(ms)`、three.js 自己的截圖測試把 `performance.now` 凍住；
    這裡只有 jsdom 那一層有假時鐘（`tests/helpers/boot.cjs`、`tests/idle-pulse`）。後果是量到的：`verify-hour`
    Niagara 同一棵樹兩跑「超過 24 的格子」是 0 與 1（輪子在轉），`verify-demo` 5 只能判幀率、不能判 tick。
    **驗收**（要不要做見 §4）：`__walk` 多一個 `advance(ms)`，`_uxwalk` 同一頁連跑兩次 `presses.txt` 逐字相同。
-6. **手機上低於 44 px 的控制元件**（`_hittest.mjs` 的 `SMALL`，399 條，量的是元件自己的框）：頁尾的圖示連結
-   20 × 20、導覽列的字 63 × 23、巷道工具列 27–30 × 30（`::before` 的墊子把按壓面積撐到約 38 × 46）、站點刻度
-   24 × 30（Fukuoka 14 站是 18 × 30）、清單裡的「Play from here」103 × 21、卡片的關閉鈕 35 × 35。沒有一個按不到；
-   要不要放大是版面的決定（§4）。**驗收**：選定下限之後 `VIEW=phone sh bin/gate node .verify/_hittest.mjs` 的
-   `SMALL` 只剩句子裡的行內連結。
+5. **橫拿、高度 320 px 的手機上，導覽卡壓到站點刻度**：568 × 320（觸控）最長的那一步，導覽卡是 77–136、
+   上方那一塊（出口＋刻度）到 95，重疊 18 px（提示列加高到 44 px 之前照舊的位移算是 10 px，沒有另外量；本來就在）。量過沒有重疊的：
+   667 × 375、844 × 390、390 × 844、360 × 640、320 × 568（640 × 360 沒有量）。這個高度放不下
+   「刻度＋三行導覽＋提示列＋搖桿」四層，要改的是矮視窗的排法（導覽卡放到搖桿右邊），不是再擠 8 px。
+   **驗收**：`tests/walk-guide-visual.test.cjs` 的視窗清單加上 568 × 320 而且是綠的。
+6. **`verify-targets` 只量直拿的手機與桌機**：橫拿（667 × 375）的控制元件面積沒有量過；`tests/walk-guide-visual`
+   量的是導覽卡蓋不蓋到別人，不是面積。**驗收**：`VIEWS` 多一個橫拿的觸控視窗，`verify-targets` 仍是綠的。
 
 ## 4. 需要站主決定（代理不能替他決定）
 
@@ -310,8 +311,8 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
 - **夜景 fold 0.62 的上限**（全站規則；`verify-walk` 有「night fold keeps a readable floor」的斷言）。Niagara 的夜要再亮，動的是這個（§3 P6-2）。
 - **站點 6 的 A 字架要不要進畫面**（先量那條直線，不許先改後說）。
 - **Goat 的瀑布與 Toronto 的 falls 要不要也做地標盤**。
-- **觸控的轉頭速度**（§3 P7-1：現在橫掃一次 25°）與**時刻鈕在手機上要不要放大**（P7-2）；其餘低於 44 px 的控制元件一併決定（P7-6）。
-- **瀏覽器量具要不要加一個可以數的時鐘**（§3 P7-5：`__walk.advance(ms)`；做了之後按壓表可以逐字重現，代價是巷道多一條只有測試會走的路）。
+- **觸控的轉頭速度**（§3 P7-1：現在橫掃一次 25°）。
+- **瀏覽器量具要不要加一個可以數的時鐘**（§3 P7-4：`__walk.advance(ms)`；做了之後按壓表可以逐字重現，代價是巷道多一條只有測試會走的路）。
 - **哪幾顆光暈要縮**（§3 P6-1：Street 巷底與門、Fukuoka 的三顆大光暈；`.preview/p6/sheet-all-night-*.png`）。
 - **prim 的 `a`／`dg` 要接上還是刪掉**（§3 P6-3）。
 - **英文 CV PDF 與 ORCID iD**（`AGENTS.md` 的 backlog：站主提供檔案／網址後才加）。
@@ -471,8 +472,8 @@ W/↑ 前進、S/↓ 後退、A/← 與 D/→ 轉向、Shift 跑、Space 跳、E
 
 tracked 305 支檔案：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、
 產生器 542 KB／7,550 行（入口 721 ＋ `gen/` 六個模組）、
-`css/site.css` 89 KB（2,770 行）。頁面程式四支共 613 KB（`js/site.js` 592 KB／9,247 行，仍是一個 closure）。
-`.verify` 103 支，閘門 34 支，`skills/` 19 個。（2026-11-15 用 `wc` 量的；這一段每次 commit 都會動，引用前重量。）
+`css/site.css` 97 KB（2,949 行）。頁面程式四支共 613 KB（`js/site.js` 592 KB／9,247 行，仍是一個 closure）。
+`.verify` 103 支，閘門 35 支，`skills/` 19 個。（2026-11-16 用 `wc` 量的；這一段每次 commit 都會動，引用前重量。）
 `image-search/`（3 張 CN Tower 參考照，**來源未追溯 → 永不入庫**）只留在磁碟。
 
 ### 5.8 每一顆 prop 的形（`audit-all.mjs`，八頁）

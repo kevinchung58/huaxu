@@ -8,14 +8,15 @@
 // that is exactly how the written lane kept a close button 0 px wide for as long as it existed
 // while every instrument "closed" it.
 //
-// On each walkable page, on a desk (1280 x 800, mouse) and on a phone (390 x 844, finger):
+// On each walkable page, on a desk (1024 x 768, mouse) and on a phone (390 x 844, finger):
 //   0  the stop ticks are each wide enough to be pressed, and a press on the last one walks there
 //   1  the list button opens the written lane
-//   2  its close button is a thing a finger can find (>= 40 px on a phone, >= 24 on a desk)
+//   2  its close button is a thing a finger can find (>= 44 px on a phone, >= 24 on a desk)
 //   3  pressing it closes the lane
 //   4  after the list is scrolled to its end the close button is still there and still closes it
 //   5  the note button opens the note, and the note's close button closes it
-//   6  the open lane does not scroll sideways, and no frame in it is drawn as a ribbon
+//   6  the open lane does not scroll sideways, and no frame in it is drawn as a ribbon or at
+//      another shape than its file (within 3 %)
 // and once, on the street: a district card in the list is a way into that district.
 import { launch, openPage, sleep } from "./_aim.mjs";
 
@@ -66,7 +67,7 @@ for (const phone of [false, true]) {
     const tick = await press(`.walk-stops .walk-stop:nth-child(${last})`);
     let there = false;
     for (let i = 0; i < 100 && tick.pressed && !there; i++) { there = await page.evaluate((n) => document.querySelector(`.walk-stops .walk-stop:nth-child(${n})`).classList.contains("is-here"), last); if (!there) await sleep(200); }
-    ok(thin >= 16 && there, `${tag} ${last} stop ticks, the narrowest ${thin} px (needs 16); a press on the last one ${there ? "walks there" : `does not arrive (${why(tick)})`}`);
+    ok(thin >= 24 && there, `${tag} ${last} stop ticks, the narrowest ${thin} px (needs 24); a press on the last one ${there ? "walks there" : `does not arrive (${why(tick)})`}`);
 
     const o = await press("[data-walk-list]");
     ok(o.pressed && await listOpen(page), `${tag} the list button opens the written lane (${why(o)})`);
@@ -74,15 +75,18 @@ for (const phone of [false, true]) {
     await still(page);
 
     const shut = await at(page, "[data-walk-list-close]");
-    const floor = phone ? 40 : 24;
+    const floor = phone ? 44 : 24;
     ok(!!shut && shut.w >= floor && shut.h >= floor && shut.own, `${tag} its close button is ${shut ? `${shut.w}x${shut.h}` : "missing"} px and its own (needs ${floor}; the point belongs to ${shut ? shut.under : "nothing"})`);
     if (SHOTS) await page.screenshot({ path: `.preview/play/hands/press-${phone ? "phone" : "desk"}-${rooms.replace(".html", "")}.png` });
     const fit = await page.evaluate(() => {
       const l = document.querySelector("[data-walk-listpanel]");
-      const thin = [...l.querySelectorAll(".frame-fig img")].map((i) => Math.round(i.getBoundingClientRect().width)).filter((w) => w > 0).sort((a, b) => a - b)[0];
-      return { wide: l.scrollWidth - l.clientWidth, thin: thin === undefined ? null : thin };
+      const imgs = [...l.querySelectorAll(".frame-fig img")].map((i) => ({ r: i.getBoundingClientRect(), w: +i.getAttribute("width"), h: +i.getAttribute("height") })).filter((i) => i.r.width > 0);
+      const thin = imgs.map((i) => Math.round(i.r.width)).sort((a, b) => a - b)[0];
+      // a picture drawn at another shape than its file's: `max-width` narrows it and the `height` attribute keeps it tall
+      const bent = imgs.filter((i) => i.w && i.h).map((i) => ({ off: Math.abs((i.r.height / i.r.width) / (i.h / i.w) - 1), was: `${Math.round(i.r.width)}x${Math.round(i.r.height)} for a ${i.w}x${i.h} file` })).sort((a, b) => b.off - a.off)[0];
+      return { wide: l.scrollWidth - l.clientWidth, thin: thin === undefined ? null : thin, bent: bent || null };
     });
-    ok(fit.wide <= 1 && (fit.thin === null || fit.thin >= 120), `${tag} the lane fits its own width (${fit.wide} px sideways${fit.thin === null ? "" : `; its narrowest frame is drawn ${fit.thin} px wide`})`);
+    ok(fit.wide <= 1 && (fit.thin === null || fit.thin >= 120) && (fit.bent === null || fit.bent.off <= 0.03), `${tag} the lane fits its own width (${fit.wide} px sideways${fit.thin === null ? "" : `; its narrowest frame is drawn ${fit.thin} px wide`}${fit.bent === null ? "" : `; the frame furthest from its own shape is drawn ${fit.bent.was}`})`);
     const c1 = await press("[data-walk-list-close]");
     ok(c1.pressed && !(await listOpen(page)), `${tag} pressing it closes the lane (${why(c1)})`);
 

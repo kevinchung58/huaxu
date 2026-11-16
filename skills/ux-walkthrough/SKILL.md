@@ -188,9 +188,11 @@ a gate now, and each gate was run against the tree before the fix to prove it ca
 | **A control only a script can press** | `bar yaw 0 names "The Horseshoe Falls" -> CARD` | the bar is the one control a finger has, and it inherited `pointer-events: none` from its layout row: every tap fell through to the scene. The audit pressed it with `element.click()` inside the page, which does not hit-test | `verify-demo.mjs` 6: `page.mouse.click` and `page.touchscreen.tap` at the bar's centre, desktop and 390 × 844 |
 | **A lane that never rests again** | every row answered, every frame right | each press of the hour button left one more redraw timer running for the rest of the visit (it wrote into the idle pulse's handle without stopping the timer in it). The browser's frame rate went 60 → 8 → 4 → 1; screenshots took 2 s, then 17 s, then never | `tests/idle-pulse.test.cjs` counts ticks on a fake clock (30 in 3 s at rest, 146 after four presses); `verify-demo.mjs` 5 counts the browser's animation frames |
 | **A fix that multiplies frames** | the stranded record line was fixed | giving the demonstration its own timer kept it alive while walking — and each firing made `tick` forget the frame it had asked for and ask for another: 1,612 ticks in 118 frames, each a full redraw | `tests/idle-pulse.test.cjs`: walking during a demonstration, and a ride, are one tick a frame. The lane's timers enter through `nudge()` |
-| **A control with no area** | every pass opened and closed the written lane | its close button was 0 × 29 px: `.walk-list button` (class + element) outweighed `.walk-drawer-close` and zeroed its padding and border, and the icon had no size. On a phone the open lane covers the tools and there is no Esc: it opened and could not be closed. Every instrument had closed it with `element.click()` | `verify-press.mjs` presses it with a mouse and with a finger, open and scrolled to the end, on all 8 pages; `_hittest.mjs` reports `ZERO` |
-| **A size chosen by the window for a thing in a drawer** | the lane's frames were listed; the stops were all there | `@media (min-width: 900px)` gave the frame list three columns inside a 30rem drawer — each picture a 79 px ribbon, the lane scrolling 120 px sideways; and `46vw` squeezed Fukuoka's fourteen stop ticks to 5 px each on a phone | `verify-press.mjs` (the lane fits its width, narrowest frame ≥ 120 px, narrowest tick ≥ 16 px and a press on the last one arrives); `_hittest.mjs` reports `WIDE` |
+| **A control with no area** | every pass opened and closed the written lane | its close button was 0 × 29 px: `.walk-list button` (class + element) outweighed `.walk-drawer-close` and zeroed its padding and border, and the icon had no size. On a phone the open lane covers the tools and there is no Esc: it opened and could not be closed. Every instrument had closed it with `element.click()` | `verify-press.mjs` presses it with a mouse and with a finger, open and scrolled to the end, on all 8 pages; `verify-targets.mjs` reports `ZERO` |
+| **A size chosen by the window for a thing in a drawer** | the lane's frames were listed; the stops were all there | `@media (min-width: 900px)` gave the frame list three columns inside a 30rem drawer — each picture a 79 px ribbon, the lane scrolling 120 px sideways; and `46vw` squeezed Fukuoka's fourteen stop ticks to 5 px each on a phone | `verify-press.mjs` (the lane fits its width, narrowest frame ≥ 120 px, narrowest tick ≥ 16 px and a press on the last one arrives); `verify-targets.mjs` reports `WIDE` |
 | **A sentence printed for every row** | the list named nine districts | every open card said "You are standing in it." — twice — on every page, and none was a way to go there; each also pointed `aria-describedby` at an id no page has (72 of them) | `verify-press.mjs` (one card says it, the others carry a link, a click on Tokyo's walks into Tokyo); `tests/page-refs.test.cjs` |
+| **A picture at the right width and the wrong height** | the frames were listed, each over 120 px wide, nothing scrolling sideways | the pictures carry `width="896" height="1200"` and `img { max-width: 100% }` narrows without touching the height: every frame in the lane was drawn 325 × 1200 (204 × 1200 on a phone), 2.8 times too tall. The round before saw it and wrote "its own proportion, taller than the window" — a width check passes it, and a tall picture in a scrolling list looks like a long picture until the numbers are divided | `verify-press.mjs` compares each frame's drawn shape with its file's (within 3 %) |
+| **A pad lying on a pad** | every control owned its centre point | two 27 px buttons 2 px apart, each with a 4 px pad: the later one in the source took the shared strip and the earlier answered over 29 px. A box measurement cannot see a pad at all, so it called both small and neither colliding | `verify-targets.mjs` measures the area that answers (§5c) |
 
 What follows from them, as rules for the next pass:
 
@@ -200,9 +202,9 @@ What follows from them, as rules for the next pass:
   state); press with `page.mouse.click(x, y)`, `page.keyboard`, `page.touchscreen.tap`. And ask
   `document.elementFromPoint` at the control's centre first — "who owns this point" is the whole
   defect in one read. `PART=4 node .verify/_hands.mjs` does this for every visible button on a page,
-  and `node .verify/_hittest.mjs` asks it of every visible control on all 19 pages at a desk and a
-  phone size (about 5 minutes; anything it prints other than `SMALL` is a defect or an instrument
-  bug — settle which before moving on). A new lane control joins `verify-press.mjs`.
+  and `node .verify/verify-targets.mjs` asks it of every visible control on all 19 pages at a desk
+  and a phone size, then measures the area that answers (§5c). A new lane control joins
+  `verify-press.mjs`.
 - **Count what a press leaves behind.** After the answer is over, the lane must be as it was before:
   the same ticks a second (`__walk.ticks`), the same texture count (`__walk.threeStats.textures`),
   the same frame rate. A leak looks like nothing on the first press and like a broken site on the
@@ -233,8 +235,41 @@ What follows from them, as rules for the next pass:
 - **Run one browser pass at a time.** With two, the software rasteriser falls to a frame every few
   seconds and a probe reports "walked 28 cm in 2.5 s" about a street with nothing in the way.
 - `_hands.mjs` holds what only a hand finds: the hour button under a real click, and a 390 × 844
-  touch phone (a 180 px drag turns the head 12°, so a full-width swipe is 25°; the hour button is
-  30 × 30 px). Those two are the owner's to decide, not a defect to fix quietly.
+  touch phone (a 180 px drag turns the head 12°, so a full-width swipe is 25°). That one is the
+  owner's to decide, not a defect to fix quietly.
+
+## 5c. Sizes: the target is the area that answers, not the box that is drawn
+
+Checked against four published rule sets on GitHub (2026-11-16), all MIT, none installed here —
+they agree, and what they agree on is the rule:
+
+| where | what it says |
+|---|---|
+| `jakubkrehel/skills` `skills/better-accessibility/` (`SKILL.md`, `hit-areas.md`) | WCAG 2.5.8 (AA) is 24 × 24 CSS px with five exceptions (spacing, equivalent, inline, user-agent, essential); aim for 44 × 44 on touch and 40 × 40 on a desk "where density permits" — those are recommendations, not findings. Keep the drawing small and extend the area with a pseudo-element; **never let extended areas overlap** — where they would, shrink the pad to the largest size that does not collide. A decorative layer over a control takes `pointer-events: none` |
+| `vercel-labs/web-interface-guidelines` (`AGENTS.md`, "Targets & Input") | MUST: hit target ≥ 24 px, **mobile ≥ 44 px**; if the visual is under 24, expand the hit area. MUST: `touch-action: manipulation` on controls. (The shorter `command.md` that `vercel-labs/agent-skills` `web-design-guidelines` fetches leaves the size rule out) |
+| `addyosmani/web-quality-skills` `skills/accessibility/SKILL.md` | 2.5.8: 24 × 24 minimum; 44 × 44 "comfortable"; exceptions for inline links and for a 24 px circle that touches no other target |
+| `ibelick/ui-skills` (`fixing-accessibility`, `baseline-ui`) | read for a number; it gives none |
+
+How that is applied here (`css/site.css`, "Targets", at the end of the file):
+
+- **Measure what answers.** `verify-targets.mjs` walks outward from a control's centre one pixel
+  at a time, asking `elementFromPoint`, and stops where the point is no longer the control's. A
+  bounding box cannot see a pad, and cannot see a pad that a neighbour's pad lies on. The first
+  sweep measured boxes and called 399 things small; measured as areas, the real list was shorter
+  and different — and it found two **collisions** the boxes hid: the two view buttons were 2 px
+  apart with 4 px pads each ("Wider view" answered over 29 px of its 35), and the stop rail's pads
+  reached up into the way out (36 px tall, answering over 39).
+- **A pad is half the gap, never more.** The toolbar's gap is a custom property and the pad is
+  `calc(var(--gap) / -2)`, so the two cannot drift apart.
+- **`@media (pointer: coarse)`, not a width.** The 44 is for a finger; a narrow window with a mouse
+  keeps the desk's density. Nothing in that block resizes a glyph; it grows boxes where the layout
+  has room (the way out, the bar, the card's close button, the footer's links) and pads elsewhere.
+- **Where the room runs out, say so in the gate.** Fourteen stops on 390 px are 25.7 px each: over
+  AA's 24, under 44, and the largest that does not collide. `DENSE` in `verify-targets.mjs` names
+  that case and its reason; a `DENSE` entry under 24 still fails. Adding to that list is a decision,
+  not a way to turn a red line green.
+- **Give the walk room.** A control near the window's edge or under the fixed header measures
+  short because the walk ends at the edge; the gate scrolls it to the middle first.
 
 ### Which outside skill helps with playing the site (checked against the repositories, 2026-11-15)
 
