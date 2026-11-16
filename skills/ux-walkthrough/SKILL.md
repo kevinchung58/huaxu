@@ -202,9 +202,9 @@ What follows from them, as rules for the next pass:
   state); press with `page.mouse.click(x, y)`, `page.keyboard`, `page.touchscreen.tap`. And ask
   `document.elementFromPoint` at the control's centre first — "who owns this point" is the whole
   defect in one read. `PART=4 node .verify/_hands.mjs` does this for every visible button on a page,
-  and `node .verify/verify-targets.mjs` asks it of every visible control on all 19 pages at a desk
-  and a phone size, then measures the area that answers (§5c). A new lane control joins
-  `verify-press.mjs`.
+  and `node .verify/verify-targets.mjs` asks it of every visible control on all 19 pages at a desk,
+  a phone upright and a phone on its side, then measures the area that answers (§5c). A new lane
+  control joins `verify-press.mjs`.
 - **Count what a press leaves behind.** After the answer is over, the lane must be as it was before:
   the same ticks a second (`__walk.ticks`), the same texture count (`__walk.threeStats.textures`),
   the same frame rate. A leak looks like nothing on the first press and like a broken site on the
@@ -268,6 +268,12 @@ How that is applied here (`css/site.css`, "Targets", at the end of the file):
   AA's 24, under 44, and the largest that does not collide. `DENSE` in `verify-targets.mjs` names
   that case and its reason; a `DENSE` entry under 24 still fails. Adding to that list is a decision,
   not a way to turn a red line green.
+- **Turn the phone.** The first pass measured a desk and an upright phone and called it done. A
+  phone on its side keeps the finger and loses half the height: at 640 × 360 the guide's longest
+  step lay over the rail, at 568 × 320 every step did, and neither window was in any gate. The
+  gate's third view is 640 × 360 (`VIEW=side`), any other touch window can be asked for by size
+  (`VIEW=667x375,568x320`), and `tests/walk-guide-visual` holds the guide clear of every other
+  layer at both short sizes. A short window is fixed with its width, not by shaving 8 px.
 - **Give the walk room.** A control near the window's edge or under the fixed header measures
   short because the walk ends at the edge; the gate scrolls it to the middle first.
 

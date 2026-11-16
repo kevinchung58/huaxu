@@ -6,7 +6,8 @@
    `pointer-events: none`, that has no area, or that sits off the screen answers them and answers
    no visitor. That is how the lane's bar shipped unpressable and its list shipped unclosable. This
    asks `document.elementFromPoint` at the centre of every visible link, button, input and summary
-   on all 19 pages, at a desk (1280 x 800) and at a 390 x 844 touch phone, and on the walkable
+   on all 19 pages, at a desk (1280 x 800), at a 390 x 844 touch phone and at the same phone on
+   its side (640 x 360), and on the walkable
    pages again with each panel opened BY A REAL CLICK (the note, the written lane, the guide).
 
    Then the size. The target is the area that answers, not the box that is drawn (WCAG 2.2
@@ -22,21 +23,24 @@
      WIDE      the page or the open list scrolls sideways      -> something sticks out of the window
      IMAGE     one of the site's own pictures did not load
      OFFSCREEN its centre is outside the viewport and the page cannot scroll to it
-     SMALL     answers over less than 24 x 24 px at a desk, or 44 x 44 on the phone
+     SMALL     answers over less than 24 x 24 px at a desk, or 44 x 44 on a touch window
    and, counted but not failed (DENSE=1 prints them):
      DENSE     a control on the DENSE list that answers over at least 24 x 24: the largest area its
                row allows without lying on its neighbour (the stop rail with nine or more stops)
    A link inside a sentence is exempt from the size rule (2.5.8, "inline"). In-scene hit boxes
    (`[data-obj]`) are skipped: they answer the keyboard only, by design.
 
-     sh bin/gate node .verify/verify-targets.mjs          [PAGES=a.html,b.html] [VIEW=desk|phone] [DENSE=1]
+     sh bin/gate node .verify/verify-targets.mjs          [PAGES=a.html,b.html] [VIEW=desk,phone,side,WIDTHxHEIGHT] [DENSE=1]
    Exit 1 on any line above except DENSE, or if a page logs an error of its own. */
 import fs from "node:fs";
 import { launch, sleep } from "./_aim.mjs";
 const BASE = process.env.BASE || "http://127.0.0.1:8080";
 const PAGES = (process.env.PAGES || fs.readdirSync(".").filter((f) => f.endsWith(".html")).join(",")).split(",");
-const VIEWS = { desk: { width: 1280, height: 800 }, phone: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true } };
-const WANT = (process.env.VIEW || "desk,phone").split(",");
+const VIEWS = { desk: { width: 1280, height: 800 }, phone: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+  side: { width: 640, height: 360, deviceScaleFactor: 2, isMobile: true, hasTouch: true } };   // the same hand, the phone turned: the shortest common window
+const WANT = (process.env.VIEW || "desk,phone,side").split(",");
+// any other touch window by its size, e.g. VIEW=667x375,568x320
+for (const v of WANT) { const m = /^(\d+)x(\d+)$/.exec(v); if (m) VIEWS[v] = { width: +m[1], height: +m[2], deviceScaleFactor: 2, isMobile: true, hasTouch: true }; else if (!VIEWS[v]) throw new Error(`VIEW=${v}: not desk, phone, side or WIDTHxHEIGHT`); }
 const WALK = /^(street|rooms(-\w+)?)\.html$/;
 
 const sweep = (page, min) => page.evaluate(async (minSize) => {
@@ -137,7 +141,7 @@ for (const view of WANT) {
     page.on("response", (r) => { if (own(r.url()) && r.status() >= 400) errs.push(r.status() + " " + r.url().slice(BASE.length, BASE.length + 80)); });
     await page.goto(`${BASE}/${file}`, { waitUntil: "networkidle2", timeout: 120000 });
     await sleep(WALK.test(file) ? 2500 : 600);
-    const min = view === "phone" ? 44 : 24;
+    const min = VIEWS[view].hasTouch ? 44 : 24;
     const states = [["as loaded", null]];
     if (WALK.test(file)) states.push(["guide dismissed", async () => page.evaluate(() => document.querySelector("[data-walk-tutor-skip]")?.click())],
       ["note open", () => clickAt(page, "[data-walk-info]")], ["note closed, written lane open", async () => { await clickAt(page, "[data-walk-card-close]"); return clickAt(page, "[data-walk-list]"); }],
@@ -161,5 +165,5 @@ for (const view of WANT) {
 }
 await browser.close();
 console.log(`\nverify-targets: ${controls} control-states on ${PAGES.length} pages x ${WANT.length} views; ${failed - smalls} unreachable or erroring, ${smalls} under the size floor, ${dense} at the largest size their row allows (DENSE=1 lists them)`);
-console.log(failed ? `verify-targets: ${failed} failed` : `verify-targets: pass -- every visible control owns its point and answers over at least 24 x 24 px at a desk and 44 x 44 on a phone${dense ? `, except ${dense} on a crowded row that answer over at least 24 x 24` : ""}`);
+console.log(failed ? `verify-targets: ${failed} failed` : `verify-targets: pass -- every visible control owns its point and answers over at least 24 x 24 px at a desk and 44 x 44 under a finger${dense ? `, except ${dense} on a crowded row that answer over at least 24 x 24` : ""}`);
 process.exit(failed ? 1 : 0);

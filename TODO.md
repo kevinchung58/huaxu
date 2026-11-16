@@ -12,7 +12,7 @@
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、
   `rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
 - **分支**：`arena/e54e5286-huaxu` → `master`；PR #22 開著，**未合併**（合併要站主一句授權）。
-- **三層驗證**：`node --test`（24 支、83 條宣告，`# tests 174`，約 100 s；其中幾條會開 Chromium）→ `.verify/` 閘門 35 支（§2.3 的清單就是
+- **三層驗證**：`node --test`（24 支、83 條宣告，`# tests 176`，約 100 s；其中幾條會開 Chromium）→ `.verify/` 閘門 35 支（§2.3 的清單就是
   「有沒有跑」的判準；整段用 `python3 bin/gate-all.py` 跑，它讀的就是那份清單）→ 量具（§2.4，只在需要
   數字時跑）。效能看 `tools/bench.mjs`（§5.6）。
 - **規模**：頁面程式 4 支共 9,773 行（載入順序在 `bin/site-sources.json`；巷道的 9,247 行仍是一個 closure，§3 P3）、
@@ -64,7 +64,7 @@ exit 2 並點名（`tests/gatelist.test.cjs` 釘住這件事）。常用：`--li
 ```sh
 sh bin/restore-env && sh bin/preview          # 環境 + 伺服器（0.0.0.0:8080）
 # ── 不開瀏覽器（秒級）──
-node --test                                    # `# tests 174`（24 支；jsdom 巷道 12 條——其中 3 條 `idle-pulse` 用假時鐘數 tick——、環境 7 條、`page-refs` 4 條讀產出的頁面：id 不重複、aria 指到的 id 在、連到的檔案與錨點在；其餘讀檔案或開瀏覽器）
+node --test                                    # `# tests 176`（24 支；jsdom 巷道 12 條——其中 3 條 `idle-pulse` 用假時鐘數 tick——、環境 7 條、`page-refs` 4 條讀產出的頁面：id 不重複、aria 指到的 id 在、連到的檔案與錨點在；其餘讀檔案或開瀏覽器）
 node tools/bench.mjs                           # 效能基準（§5.6）；`--check` 是預設，`--write` 重錄
 node .verify/verify-shapes.mjs                 # 248 個 prop 都有形
 node .verify/verify-geometry.mjs
@@ -104,7 +104,7 @@ sh bin/gate node .verify/verify-floor.mjs         # 8 頁的鋪面 uv：一 tile
 sh bin/gate node .verify/verify-hour.mjs          # 25/25 一個時刻只有一張畫面：按鈕切到的夜＝開頁就是夜的夜，白天亦然；再按六次 renderer 的 texture 數不變（有時刻鈕的 6 頁，約 6 分鐘；`PAGES=` 可指定頁:站）
 sh bin/gate node .verify/verify-demo.mjs          # 20/20 按下去的東西說自己的話、把記錄列還回來；纜車上得去下得來；按四次時刻鈕後瀏覽器幀率不掉；提示列用真滑鼠、真觸控按得開（約 4 分鐘）
 sh bin/gate node .verify/verify-press.mjs         # 115/115 巷道自己的控制元件用真滑鼠（1024 × 768）與真手指（390 × 844）按：站點刻度 ≥ 24 px 且按得到站、清單開得了也關得掉（關閉鈕手機 ≥ 44 px；捲到底也是）、清單不橫向捲動、清單裡的圖畫出來的長寬比和檔案一樣（差 ≤ 3 %）、說明卡開關；清單裡的地區卡走得進去（8 頁 × 2，約 6 分鐘）
-sh bin/gate node .verify/verify-targets.mjs       # 19 頁 × 桌機與手機，每個看得見的控制元件：中心那一點是它自己的（`COVERED`／`ZERO`／`OFFSCREEN`）、頁面與清單不橫向捲（`WIDE`）、圖都載到（`IMAGE`）、會回應的面積桌機 ≥ 24 × 24、手機 ≥ 44 × 44（`SMALL`；面積是從中心往外一格一格問出來的，不是框）。站點刻度在 9 站以上的頁是 `DENSE`（≥ 24，不算紅）。約 8 分鐘；`PAGES=`、`VIEW=`、`DENSE=1`
+sh bin/gate node .verify/verify-targets.mjs       # 19 頁 × 桌機、直拿手機（390 × 844）、橫拿手機（640 × 360），每個看得見的控制元件：中心那一點是它自己的（`COVERED`／`ZERO`／`OFFSCREEN`）、頁面與清單不橫向捲（`WIDE`）、圖都載到（`IMAGE`）、會回應的面積桌機 ≥ 24 × 24、觸控 ≥ 44 × 44（`SMALL`；面積是從中心往外一格一格問出來的，不是框）。站點刻度在 9 站以上的頁是 `DENSE`（≥ 24，不算紅）。約 18 分鐘；`PAGES=`、`VIEW=desk,phone,side` 或任何 `寬x高`（當觸控視窗量）、`DENSE=1`
 sh bin/gate node bin/verify-three.mjs             # 14,924 world + 1,048 water
 sh bin/gate node .verify/verify-collision.cjs     # 32/32（8 頁，實測 12.8 分鐘；動到移動／碰撞碼才必跑）
 STRICT=1 sh bin/gate node .verify/audit-all.mjs   # 沒有不在 `flat-by-nature.json` 上的平面 prop（8 頁約 92 分鐘；動到 prop／繪法／tile 才必跑，`ROOMS=<頁>` 可只跑一頁）
@@ -297,13 +297,6 @@ fukuoka 32.4 %、street 25.5 %）。把同一批 prop 改成資料檔的位元�
    這裡只有 jsdom 那一層有假時鐘（`tests/helpers/boot.cjs`、`tests/idle-pulse`）。後果是量到的：`verify-hour`
    Niagara 同一棵樹兩跑「超過 24 的格子」是 0 與 1（輪子在轉），`verify-demo` 5 只能判幀率、不能判 tick。
    **驗收**（要不要做見 §4）：`__walk` 多一個 `advance(ms)`，`_uxwalk` 同一頁連跑兩次 `presses.txt` 逐字相同。
-5. **橫拿、高度 320 px 的手機上，導覽卡壓到站點刻度**：568 × 320（觸控）最長的那一步，導覽卡是 77–136、
-   上方那一塊（出口＋刻度）到 95，重疊 18 px（提示列加高到 44 px 之前照舊的位移算是 10 px，沒有另外量；本來就在）。量過沒有重疊的：
-   667 × 375、844 × 390、390 × 844、360 × 640、320 × 568（640 × 360 沒有量）。這個高度放不下
-   「刻度＋三行導覽＋提示列＋搖桿」四層，要改的是矮視窗的排法（導覽卡放到搖桿右邊），不是再擠 8 px。
-   **驗收**：`tests/walk-guide-visual.test.cjs` 的視窗清單加上 568 × 320 而且是綠的。
-6. **`verify-targets` 只量直拿的手機與桌機**：橫拿（667 × 375）的控制元件面積沒有量過；`tests/walk-guide-visual`
-   量的是導覽卡蓋不蓋到別人，不是面積。**驗收**：`VIEWS` 多一個橫拿的觸控視窗，`verify-targets` 仍是綠的。
 
 ## 4. 需要站主決定（代理不能替他決定）
 
@@ -513,6 +506,8 @@ return 了），那個矩形是別的地方。面積門檻 14,400 px（120×120�
 ## 6. 已知限制（不要假裝解決了）
 
 - 夜裡的 fold 壓到 0.62 是全站規則（待站主決定）。
+- **橫拿而且比 568 × 320 還小的觸控視窗**（量過 480 × 320）：導覽卡最長那一步是 148 px 的字放在 128 px 的
+  捲動框裡，沒有東西互相蓋到，但最後一行要捲才看得到，觸控上沒有捲軸提示。568 × 320 與 640 × 360 是全文。
 - SkyWheel 的輪圈從廣場地板看永遠在畫面外（輪圈在頭上 71°）；站點 6 只看得到腿與排隊區。輪下的
   stop 6/7/8 看不到輪是構圖，不是缺陷，不要為此轉動地標。
 - **`verify-feel` 與 `verify-collision` 量的是速度，所以仍然獨佔**（`bin/gate` 會拒絕）。但「旁邊有別的

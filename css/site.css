@@ -2949,3 +2949,35 @@ a, button, summary, label, [role="button"] {
   .walk-open { bottom: 9.8rem; }
   .walk-tutor { bottom: calc(13.2rem + env(safe-area-inset-bottom)); }
 }
+/* A phone on its side that is 360 px tall or less has four things to stack -- the way out over
+   the rail, the guide, the bar, the stick over the tools -- and room for three and a half. The
+   guide's longest step lay 8 px over the rail at 640 x 360; at 568 x 320 every step did, and the
+   text was cut to two lines of four (`.walk-tutor-step` scrolls, with nothing on a touch screen
+   to say so). What that window has is width: the bar goes down beside the stick, the guide stands
+   to the right of the stick above it, and the step has room for all its lines. (At 375 px tall
+   the stack fits as it is.) `tests/walk-guide-visual` holds both sizes. */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 370px) {
+  .walk-open {
+    bottom: 3.4rem;
+    max-width: calc(100vw - 15.5rem);   /* centred, so this is the stick's width kept clear on both sides */
+  }
+  .walk-tutor {
+    left: 7.75rem;
+    right: 1rem;
+    width: auto;
+    transform: none;
+    bottom: calc(6.55rem + env(safe-area-inset-bottom));
+  }
+  .walk-tutor-step { max-height: calc(100dvh - 12rem); }
+}
+/* At 320 px tall that step is six lines and still 6 px into the rail, so there the rail goes
+   beside the way out instead of under it. */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 340px) {
+  .walk-pick {
+    grid-auto-flow: column;
+    justify-content: start;
+    gap: 0.6rem;
+  }
+  .walk-stops { max-width: calc(100vw - 5.25rem); }
+}
+}
