@@ -129,7 +129,7 @@ with its source in `references/repo-survey.md`:
 ### Current contract (2026-10-17)
 
 The owner approved pinned, vendored Three.js 0.186.1 for the complete walkable-scene migration.
-All seven walkable pages use it as the primary renderer for lane surfaces, props and scene effects;
+All eight walkable pages use it as the primary renderer for lane surfaces, props and scene effects;
 sourced `backdrop.world.prims` become world-space meshes when present. There is no second picture:
 the Canvas2D lane painter was deleted in round 54, and a browser without WebGL is told so in the
 viewport while the lane's compiled state keeps answering (round 55). This is one scene render, not a

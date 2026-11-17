@@ -20,13 +20,14 @@
    Measured 2026-10-30 (stop 0, 1024 x 768): street 64.0, rooms 64.0, fukuoka 64.0, toronto 64.0,
    journey 64.0, cntower 64.0, niagara 192.0 (three layers), goat 192.0 (three layers) -- 8/8.
 
-   WHAT IT DOES NOT PROVE, measured by breaking it on purpose: `FLOOR_PERIOD` was changed from
-   `{pavers: 3}` to `{pavers: 2}` and this gate stayed green 3/3, because the constant it compares
-   against is the same constant the page read -- the tile went 192 cm to 128 cm and both sides moved
-   together. So it holds the *wiring* (uv honours the table, tile square, floor textured) and cannot
-   hold the *choice*: that a paver is 48 cm lives only in `paintPavers`'s four stones across 128 px,
-   a number no table states. A wrong period is an art decision this gate cannot see
-   (`skills/frame-evidence` section 6d).
+   THE STONE. This gate used to hold only the wiring: `FLOOR_PERIOD` changed from `{pavers: 3}` to
+   `{pavers: 2}` stayed green, because the constant it compared against was the constant the page
+   had read, and "a paver is 48 cm" lived only in `paintPavers`'s four stones across 128 px. The
+   stone is data now (`FLOOR_STONE = { pavers: { cm: 48, across: 4 } }`, the period derived from
+   it), and this gate counts the stones in the painted tile and divides the measured tile by them:
+   4 across a 192 cm tile is 48 cm. Broken on purpose two ways, each red: `across: 3` in the data
+   while the painter still draws 4 ("painted 4 stones across, FLOOR_STONE says 3"), and a period
+   written by hand as 2 ("a stone is 32.0 cm, FLOOR_STONE says 48 cm").
 
    Run:  sh bin/gate node .verify/verify-floor.mjs   (PAGES=a.html,b.html to narrow)
 */
@@ -40,9 +41,15 @@ const DPM = 2;      // js/site.js: the tile canvas's pixels per centimetre
 const TILE = 128;   // the tile canvas's side, in uv units
 /* The periods are read out of the painter rather than kept here: a gate with its own copy of the
    table would pass while the code it is checking moved. */
-const PERIOD = Object.fromEntries([...(siteText()
-  .match(/const FLOOR_PERIOD = \{([^}]*)\}/) || [, ""])[1]
-  .matchAll(/(\w+)\s*:\s*(\d+(?:\.\d+)?)/g)].map((m) => [m[1], Number(m[2])]));
+/* `FLOOR_STONE` is the datum: one stone's size in cm and how many the near tile is painted with.
+   The period is derived from it in the painter (cm x across / 64) and re-derived here, so the two
+   cannot be edited apart. */
+const STONE = Object.fromEntries([...(siteText()
+  .match(/const FLOOR_STONE = \{(.*)\};/) || [, ""])[1]
+  .matchAll(/(\w+)\s*:\s*\{\s*cm:\s*(\d+(?:\.\d+)?),\s*across:\s*(\d+)\s*\}/g)]
+  .map((m) => [m[1], { cm: Number(m[2]), across: Number(m[3]) }]));
+if (!Object.keys(STONE).length) { console.log("FAIL  verify-floor: FLOOR_STONE was not found in the painter"); process.exit(1); }
+const PERIOD = Object.fromEntries(Object.entries(STONE).map(([k, v]) => [k, (v.cm * v.across) / 64]));
 
 let pass = 0;
 const fails = [];
@@ -70,7 +77,25 @@ for (const file of PAGES) {
     return flat.map((q) => {
       const xs = q.world.map((p) => p[0]), zs = q.world.map((p) => p[2]);
       const us = q.uv.map((p) => p[0]), vs = q.uv.map((p) => p[1]);
+      /* The stones the painter actually drew, counted off the tile itself: runs of stone along
+         one row of the canvas, a quarter of a row-height down so the row is inside the first
+         course whatever the count. This is the only place a paver's size exists as pixels. */
+      let stones = null;
+      try {
+        const cv = q.textureSource;
+        const row = cv.getContext("2d").getImageData(0, 12, cv.width, 1).data;
+        /* Stone or joint is decided against the row's own range: the tile on the page has been
+           through the hour's lift and the distance fade (measured: bed 101, stones 160-168 at
+           noon, where the painter wrote 43 and 95), so no absolute level survives. */
+        const ls = [];
+        for (let i = 0; i < cv.width; i++) ls.push((row[i * 4] * 299 + row[i * 4 + 1] * 587 + row[i * 4 + 2] * 114) / 1000);
+        const lo = Math.min(...ls), hi = Math.max(...ls), mid = (lo + hi) / 2;
+        let runs = 0, inStone = false;
+        for (const l of ls) { if (l > mid && !inStone) { runs++; inStone = true; } else if (l <= mid) inStone = false; }
+        stones = hi - lo > 8 ? runs : null;
+      } catch (e) { stones = null; }
       return {
+        stones,
         key: q.textureKey || q.mode,
         wx: Math.max(...xs) - Math.min(...xs), wz: Math.max(...zs) - Math.min(...zs),
         du: Math.max(...us) - Math.min(...us), dv: Math.max(...vs) - Math.min(...vs),
@@ -84,7 +109,7 @@ for (const file of PAGES) {
      correct along one of them lays stones as stripes. */
   const byKey = new Map();
   for (const r of rows) {
-    const e = byKey.get(r.key) || { n: 0, x: [], z: [] };
+    const e = byKey.get(r.key) || { n: 0, x: [], z: [], stones: r.stones };
     e.n++;
     // One tile is 128 uv units; cm per tile on each axis is 128 x world / uv.
     if (r.dv > 0) e.x.push(TILE * r.wx / r.dv);
@@ -109,6 +134,22 @@ for (const file of PAGES) {
                  `${PERIOD[style] || 1} of 64 cm = ${want} cm`);
     } else pass++;
   }
+  /* The stone itself. The finest layer of a floor that states its stone must be painted with
+     `across` stones and each must come out at `cm`: tile / stones counted. With this, a period
+     edited on its own (3 -> 2 was the measured hole) is a 32 cm stone and a failure. */
+  if (STONE[style]) {
+    const layers = [...byKey].filter(([, e]) => e.stones && med(e.x) !== null);
+    const finest = layers.sort((a, b) => b[1].stones - a[1].stones)[0];
+    if (!finest) fails.push(`${file}: floor style "${style}" states a ${STONE[style].cm} cm stone but no painted tile could be read`);
+    else {
+      const [key, e] = finest, cm = med(e.x) / e.stones;
+      console.log(`  stone: ${key} is painted ${e.stones} across a ${med(e.x).toFixed(1)} cm tile = ${cm.toFixed(1)} cm ` +
+                  `(FLOOR_STONE says ${STONE[style].cm} cm, ${STONE[style].across} across)`);
+      if (e.stones !== STONE[style].across) fails.push(`${file} ${key}: painted ${e.stones} stones across, FLOOR_STONE says ${STONE[style].across}`);
+      else if (Math.abs(cm - STONE[style].cm) > 0.5) fails.push(`${file} ${key}: a stone is ${cm.toFixed(1)} cm, FLOOR_STONE says ${STONE[style].cm} cm`);
+      else pass++;
+    }
+  }
 }
 await browser.close();
 if (fails.length) {
@@ -117,4 +158,5 @@ if (fails.length) {
   console.log("FAIL  verify-floor");
   process.exit(1);
 }
-console.log(`\nverify-floor: ${pass}/${pass} pass -- every page's paving is 64 x its floor's period in centimetres`);
+console.log(`\nverify-floor: ${pass}/${pass} pass -- every page's paving is 64 x its floor's period in centimetres, ` +
+            `and a floor that states its stone is painted with stones of that size`);

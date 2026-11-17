@@ -43,6 +43,8 @@ test("the first-visit guide is visible and operable without covering walk contro
       { width:320, height:568, isMobile:true, hasTouch:true },
       { width:390, height:844, isMobile:true, hasTouch:true },
       { width:667, height:375, isMobile:true, hasTouch:true },
+      { width:640, height:360, isMobile:true, hasTouch:true },   // a phone on its side: the rail goes beside the way out
+      { width:568, height:320, isMobile:true, hasTouch:true },
       { width:1366, height:768 },
     ]) {
       await t.test(`${viewport.width}×${viewport.height}`, async () => {

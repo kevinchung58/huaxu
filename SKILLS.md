@@ -7,7 +7,7 @@ not have to relearn it.
 It is called SKILLS and not RULES because it is a craft rather than a checklist. Where AGENTS.md
 says what must be true of the repository, this file says how to get a district right.
 
-**Renderer decision (owner approval, 2026-10-16; full walkable migration):** all seven walkable
+**Renderer decision (owner approval, 2026-10-16; full walkable migration):** all eight walkable
 pages use the pinned, MIT-licensed Three.js 0.186.1 runtime as their primary environment/object
 renderer. Authored `backdrop.world.prims` are added when present; all scene geometry stays grounded
 in the existing records. There is no no-WebGL fallback picture: the Canvas2D painter was deleted in
@@ -57,7 +57,7 @@ with a byte-identical output, and the part that is always forgotten — every ga
 file as text keeps passing while seeing a tenth of the code, so they are re-pointed in the same
 commit (`bin/gen-source.mjs` for the generator, `bin/site-sources.mjs` for the script). Round 86 took
 the other half with the same proof: the page programme is now four classic scripts joined by text
-(607,062 bytes identical), and the lane — 9,045 lines, 288 declarations in one closure — is what
+(607,062 bytes identical), and the lane — 9,091 lines, 289 declarations in one closure — is what
 remains unsplit, on purpose. Route any round that proposes "modularise this", or a framework as the
 fix for file size, through it first (rounds 78, 86).
 
@@ -249,6 +249,15 @@ usually intact and only the branch pointer is wrong. Run it at the start of a tu
 whenever a tool call fails with a missing package.
 
 Scripts that need `node_modules` must live in `.verify/`, not `/tmp`.
+
+**The harness is pinned.** `bin/restore-env` names every package at an exact version and
+`tests/env.test.cjs` compares that line with what is installed. It was unpinned until 2026-11-14,
+and the day after jsdom 31.0.1 was published `verify-exit` went from 82/82 to 74/82 on files nobody
+had touched: jsdom 31 moves focus off a control whose surface becomes `hidden`, as a browser does,
+and 30 did not. The red was a true defect that the old version had been passing (`skills/walk-input`
+§6) — which is the reason to pin, not a reason against it: when the tool and the site can both
+change between two runs, a red light does not say which one moved. Raising a version is a change
+like any other: edit the line, run the battery, commit the two together.
 
 **Run every gate through `sh bin/gate`**, never as a bare `node .verify/...`:
 

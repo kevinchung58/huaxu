@@ -8,6 +8,13 @@
    navigation): enter a room from the street, open a surface, press Back, and report whether the
    surface folded, whether the visitor is still in the room, and whether a second Back still leaves.
 
+   It also reports where focus is after each fold, because that is the other thing only a browser
+   knows: a control that stops being rendered cannot keep focus, the browser hands it to <body>, and
+   the keyboard visitor's next Tab starts from the top of the document. jsdom before 31 kept
+   `document.activeElement` on the hidden close button, so `verify-exit`'s "focus came back" passed on
+   a button nobody could see; measured here, the card folded by Esc, by Back and by a second `i` all
+   left focus on BODY while its own close button and every fold of the written lane did not.
+
    Run: LD_LIBRARY_PATH=/tmp/al2023/lib node .verify/_backprobe.mjs
 */
 import { launch, openPage, sleep } from "./_aim.mjs";
@@ -68,12 +75,37 @@ await page.keyboard.press("Escape");
 await sleep(1200);
 out.escapeWithNothingOpen = await state();
 
+/* 4. where focus is after every fold: on something drawn, never on <body>. */
+const focusAt = () => page.evaluate(() => {
+  const a = document.activeElement;
+  const drawn = !!a && a !== document.body && a.getClientRects().length > 0;
+  return { on: a ? `${a.tagName.toLowerCase()}.${String(a.className || "").split(" ")[0]}` : "none", drawn };
+});
+out.focus = {};
+for (const [name, open, fold] of [
+  ["card, Esc", "i", () => page.keyboard.press("Escape")],
+  ["card, Back", "i", () => page.goBack()],
+  ["card, i again", "i", () => page.keyboard.press("i")],
+  ["card, its close button", "i", () => page.keyboard.press("Enter")],
+  ["written lane, Esc", "l", () => page.keyboard.press("Escape")],
+  ["written lane, Back", "l", () => page.goBack()],
+  ["written lane, l again", "l", () => page.keyboard.press("l")],
+]) {
+  await enterRoom();
+  await page.keyboard.press(open);
+  await sleep(400);
+  await fold();
+  await sleep(700);
+  out.focus[name] = await focusAt();
+}
+
 console.log(JSON.stringify(out, null, 2));
 const verdict = {
   "a card folds on Back and the room is kept": out.cardOpened && !out.cardBack.card && out.cardBack.at === `/${ROOM}`,
   "a second Back still leaves the room": out.secondBack.at === "/street.html",
   "the written lane folds on Back": out.listOpened && !out.listBack.list && out.listBack.at === `/${ROOM}`,
   "Esc with nothing open is still the door": out.escapeWithNothingOpen.at === "/street.html",
+  "every fold leaves focus on something drawn": Object.values(out.focus).every((f) => f.drawn),
 };
 console.log(JSON.stringify(verdict, null, 2));
 console.log(Object.values(verdict).every(Boolean) ? "BACK CONTRACT OK" : "BACK CONTRACT BROKEN");

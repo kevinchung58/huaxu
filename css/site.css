@@ -1845,6 +1845,16 @@ footer .social svg { width: 1.25rem; height: 1.25rem; }
     grid-template-columns: repeat(3, 1fr);
   }
 }
+/* The frames are listed inside the written lane, and the lane is 30rem wide however wide the
+   window is. The three columns above are chosen by the window, so on a desk each frame was drawn
+   in a 79 px strip -- a 16:9 picture stretched into a ribbon, its caption one word to a line --
+   and the lane scrolled sideways by 120 px. On screen the lane's frames keep one column; on paper
+   the lane is the whole page and the three columns still apply. `verify-targets.mjs` reports WIDE. */
+@media screen {
+  .walk-list .frame-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 
 .district-cover {
   margin: 0 0 0.9rem;
@@ -2297,8 +2307,14 @@ body.shell {
      A DOM that never hit-tests cannot see this, which is how it survived a suite of 130 assertions. */
   pointer-events: none;
 }
+/* `.walk-open` is on this list because it was not: the bar is the one control a finger has (a phone
+   has no E), and for as long as it inherited the row's `none` every tap on it fell through to the
+   scene. Nothing noticed, because every instrument pressed it with `element.click()`, which does not
+   hit-test (`verify-demo` 6 presses it with a mouse and with a touch). A new control in either row
+   goes here, and gets pressed by a real pointer before it is called done. */
 .walk-hud .walk-icon,
-.walk-hud .walk-stop {
+.walk-hud .walk-stop,
+.walk-hud .walk-open {
   pointer-events: auto;
 }
 /* The bounded guide, unlike the full-width layout rows, is itself scrollable and interactive. */
@@ -2654,19 +2670,47 @@ body.shell {
   align-items: baseline;
   gap: 0.35rem;
 }
-.walk-drawer-close {
-  position: absolute;
-  right: 0.7rem;
-  top: 0.7rem;
-  padding: 0.3rem;
+/* The list's way out. Two things made it a control nobody could see or press, on every page, for
+   as long as it existed: `.walk-list button` above (one class and one element) outweighs a bare
+   `.walk-drawer-close` and took its padding and border to zero, and the icon inside has no size
+   of its own -- so the button measured 0 x 29 px. On a phone the open list covers the tools, and
+   a phone has no Esc: the list could be opened and not closed. Hence the doubled selector, the
+   stated size (44 px, a finger's), and a head that stays (`sticky`) rather than a button placed
+   `absolute`: the list scrolls, and a close button that scrolls away with the first card is the
+   same defect one swipe later. The head carries the title and paper of its own so that the cards
+   pass under it rather than under a button floating over their words.
+   `verify-targets.mjs` reports a visible control with no area as ZERO. */
+.walk-list-head {
+  position: sticky;
+  z-index: 2;
+  top: -1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin: -1.2rem -1.25rem 0.6rem;
+  padding: 0.55rem 0.7rem 0.55rem 1.25rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.walk-list .walk-list-head .eyebrow { margin: 0; }
+.walk-list .walk-drawer-close {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--line-strong);
   border-radius: 6px;
   background: var(--card);
   color: var(--ink);
+  text-decoration: none;
   cursor: pointer;
 }
-.walk-drawer-close:hover,
-.walk-drawer-close:focus-visible {
+.walk-drawer-close svg { width: 1.2rem; height: 1.2rem; }
+.walk-list .walk-drawer-close:hover,
+.walk-list .walk-drawer-close:focus-visible {
   border-color: var(--accent-ink);
   color: var(--accent-ink);
 }
@@ -2684,8 +2728,14 @@ body.shell {
    something to, rather than a thing you can look at — which is the whole difference expressed
    without a word on the screen. */
 @media (max-width: 700px) {
+  /* This was `46vw`, and nothing stands to the right of the ticks on a phone to save the room
+     for. At 390 px that is 179 px for the whole rail, and the ticks shrink to fit it: Fukuoka's
+     fourteen were 5 px wide each, the street's ten 11 px, Niagara's nine 13 px -- under a finger
+     that is one stop or its neighbour by luck. The rail takes the width the screen has: every
+     lane's ticks are their authored 24 px except Fukuoka's, which are 18 with an 8 px pad between
+     (`.walk-stop::before`), a 26 px pitch. */
   .walk-stops {
-    max-width: 46vw;
+    max-width: calc(100vw - 1.9rem);
   }
   /* Nothing here scales text down for a phone any more, because the display carries no text to
      shrink: the only sizes that matter on a small screen are the tick's hit area and the icon's,
@@ -2723,8 +2773,11 @@ body.shell {
     overflow: visible;
     border: 0;
   }
-  .walk-drawer-close {
+  .walk-list .walk-drawer-close {
     display: none;
+  }
+  .walk-list-head {
+    position: static;
   }
 }
 
@@ -2761,4 +2814,170 @@ body.shell {
   font-size: 0.78rem;
   letter-spacing: 0.02em;
   color: var(--muted);
+}
+
+/* ---- Targets: the area that answers, not the box that is drawn -------------------------------
+   Sizes checked against four published rule sets (2026-11-16; `skills/ux-walkthrough` §5c):
+   WCAG 2.2 SC 2.5.8 asks for 24 x 24 CSS px (level AA, with a spacing and an inline exception);
+   on touch the working number is 44 x 44 (WCAG 2.5.5 AAA, Apple's 44 pt; Vercel's interface
+   guidelines write it as a MUST "on mobile"). All four say the same two things about how:
+   the drawing may stay small and a pseudo-element carries the area; and two areas never overlap
+   -- where they would, each gets the largest size that does not collide. So nothing below
+   resizes a glyph. Where a control can afford the box it gets the box; where it cannot, it gets
+   a pad; and the pads are sized from the gap between neighbours, never past it.
+   `verify-targets.mjs` walks outward from every control's centre and measures what answers. */
+a, button, summary, label, [role="button"] {
+  touch-action: manipulation;   /* no double-tap zoom on a control: a second tap is a second press */
+}
+/* The footer's icons are 20 px with 17.6 px between them. 8 px of pad each is the most the gap
+   holds (36 x 36); a finger gets the full box below. */
+.social a {
+  position: relative;
+  align-items: center;
+  justify-content: center;
+}
+.social a::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+/* A paper's title is one link over several lines, and an inline box is only as tall as its
+   letters: between the lines the press fell through to the heading. Inline padding paints (and
+   answers) without moving a line. */
+.pub h4 a,
+.featured-card h3 a {
+  padding-block: 0.15em;
+}
+/* "Play from here" is a 21 px pill at the end of a sentence; 3 px of pad makes it 27. */
+.frame-play {
+  position: relative;
+}
+.frame-play::before {
+  content: "";
+  position: absolute;
+  inset: -3px -2px;
+}
+/* The lane's frames carry `width` and `height` attributes (896 x 1200), and `img { max-width:
+   100% }` narrows a picture without touching its height: in the lane's list every frame was drawn
+   325 x 1200 on a desk and 204 x 1200 on a phone -- the right width, 2.8 times too tall.
+   `height: auto` gives it back its own shape (325 x 435), and it stops at 60 % of a short window.
+   `verify-press` compares the drawn shape with the file's. */
+.walk-list .frame-fig img {
+  width: auto;
+  height: auto;
+  max-height: 60vh;
+  margin-inline: auto;
+}
+
+/* The way back up is fixed 19 px from the corner, and on a narrow screen the last line of the
+   page ran under it ("All rights reserve" and a button). The footer keeps that corner clear. */
+@media (max-width: 700px) {
+  footer { padding-bottom: 4.6rem; }
+}
+
+@media (pointer: coarse) {
+  /* page chrome */
+  .menu-toggle { min-width: 2.75rem; min-height: 2.75rem; }
+  .brand { min-height: 2.75rem; }
+  .to-top { width: 2.75rem; height: 2.75rem; }
+  .social { gap: 0.25rem; }
+  .social a { min-width: 2.75rem; min-height: 2.75rem; }
+  .social a::before { inset: 0; }
+  .pub h4 a,
+  .featured-card h3 a { padding-block: 0.7em; }
+  .modal-close { width: 2.75rem; height: 2.75rem; }
+
+  /* pads on things that keep their drawing */
+  .text-arrow,
+  .chip,
+  .meta-links button,
+  .walk-links li > button,
+  .walk-links li > a {
+    position: relative;
+  }
+  .text-arrow::before,
+  .chip::before,
+  .meta-links button::before,
+  .walk-links li > button::before,
+  .walk-links li > a::before {
+    content: "";
+    position: absolute;
+  }
+  .text-arrow::before { inset: -11px 0; }
+  .chip::before { inset: -4px 0; }
+  .meta-links button::before { inset: -10px 0; }
+  .frame-play::before { inset: -12px -2px; }
+  /* two of these one under the other are 15 px apart, and each pad is 11 */
+  .pillar-more + .pillar-more { margin-top: 1.4rem; }
+  .walk-links li > button::before,
+  .walk-links li > a::before { inset: -8px 0; }
+  .walk-things summary { padding: 0.5rem 0; }
+
+  /* The lane's tools: eight 30 px glyphs in a row. Their pads were 4 px a side whatever stood
+     next to them, so each answered over 38 px, and the two view buttons (2 px apart) lay on each
+     other: "Wider view" answered over 29 px. The gap is now what a 44 px pitch needs and the pad
+     is exactly half of it, so the areas meet and never overlap. On a 360 px screen the row has
+     room for a 42.8 px pitch; the clamp gives it that rather than a second row. */
+  .walk-tools {
+    --gap: clamp(0.5rem, calc((100vw - 16.9rem) / 7), 0.875rem);
+    gap: var(--gap);
+  }
+  .walk-fov { gap: var(--gap); }
+  .walk-fov button { width: 1.9rem; }
+  .walk-tools .walk-icon::before { inset: -8px calc(var(--gap) / -2); }
+
+  /* The way out is drawn at the full size, with no pad: the rail sits 5 px under it, and the
+     rail's pads used to reach up into it (it answered over 39 px of its 36). */
+  .walk-exit { height: 2.75rem; min-width: 2.75rem; }
+  .walk-exit::before { inset: 0; }
+  /* The rail: each tick takes an equal share of the width up to 44 px, and its pad is that share
+     and no more. Four stops are 44 px each; the street's ten are 36; Fukuoka's fourteen are 25.7
+     -- under 44, over the 24 that AA asks, and the most fourteen stops can have on 390 px without
+     a second row of a ruler. The pad grows downward, away from the way out. */
+  .walk-stops { gap: 0; }
+  .walk-stop { flex: 0 1 2.75rem; width: 2.75rem; min-width: 0; }
+  .walk-stop::before { inset: -2px 0 -14px; }
+  /* The bar is the finger's only verb in the scene. Its `::before` is the verb's word and it
+     clips, so it takes the height itself; the guide moves up to stay clear of it. */
+  .walk-open { min-height: 2.75rem; }
+  .walk-tutor { bottom: calc(11.5rem + env(safe-area-inset-bottom)); }
+}
+/* Held upright, the bar is as wide as the screen allows and its foot was 20 px inside the stick's
+   box; it goes above the stick. On its side the bar is beside the stick, and a 375 px window has
+   no height to give: `tests/walk-guide-visual` holds the guide between the rail and the bar there. */
+@media (pointer: coarse) and (orientation: portrait) {
+  .walk-open { bottom: 9.8rem; }
+  .walk-tutor { bottom: calc(13.2rem + env(safe-area-inset-bottom)); }
+}
+/* A phone on its side that is 360 px tall or less has four things to stack -- the way out over
+   the rail, the guide, the bar, the stick over the tools -- and room for three and a half. The
+   guide's longest step lay 8 px over the rail at 640 x 360; at 568 x 320 every step did, and the
+   text was cut to two lines of four (`.walk-tutor-step` scrolls, with nothing on a touch screen
+   to say so). What that window has is width: the bar goes down beside the stick, the guide stands
+   to the right of the stick above it, and the step has room for all its lines. (At 375 px tall
+   the stack fits as it is.) `tests/walk-guide-visual` holds both sizes. */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 370px) {
+  .walk-open {
+    bottom: 3.4rem;
+    max-width: calc(100vw - 15.5rem);   /* centred, so this is the stick's width kept clear on both sides */
+  }
+  .walk-tutor {
+    left: 7.75rem;
+    right: 1rem;
+    width: auto;
+    transform: none;
+    bottom: calc(6.55rem + env(safe-area-inset-bottom));
+  }
+  .walk-tutor-step { max-height: calc(100dvh - 12rem); }
+}
+/* At 320 px tall that step is six lines and still 6 px into the rail, so there the rail goes
+   beside the way out instead of under it. */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 340px) {
+  .walk-pick {
+    grid-auto-flow: column;
+    justify-content: start;
+    gap: 0.6rem;
+  }
+  .walk-stops { max-width: calc(100vw - 5.25rem); }
+}
 }

@@ -43,7 +43,15 @@ if [ -n "$BRANCH" ]; then
 fi
 echo "HEAD $(git log --oneline -1)  [branch ${BRANCH:-unknown}]"
 
-npm install --no-save --silent jsdom @napi-rs/canvas impeccable@4.1.0 puppeteer-core @sparticuz/chromium
+# Every harness package is pinned to the version the battery last ran green on. Unpinned, this line
+# installed whatever was newest that day, and a gate changed colour with no change in the
+# repository: jsdom 31 began moving focus off a control that stops being rendered, so
+# `verify-exit` went 82/82 -> 74/82 between two sessions on identical files. (It was right -- the
+# card really did drop focus to <body> -- but a harness that upgrades itself cannot tell a
+# regression in the site from a release note.) Raise a version on purpose, run the battery, and
+# commit the new number with what it found; `tests/env.test.cjs` holds the pin and what is installed
+# to each other.
+npm install --no-save --silent jsdom@31.0.1 @napi-rs/canvas@1.1.1 impeccable@4.1.0 puppeteer-core@25.17.0 @sparticuz/chromium@153.0.0
 
 # Chromium's shared libraries, in the one place that knows how to unpack them (bin/chromium-libs).
 # A missing /tmp/al2023/lib is not fatal here: `bin/gate` calls the same script before any browser

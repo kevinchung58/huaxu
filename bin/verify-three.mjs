@@ -215,6 +215,26 @@ const lane = buildLaneGeometry(THREE, [
 ], { width: 1024, height: 768, focal: 620, day: 0.4, dayPage: true, night: 0.2,
   fogMax: 0.4, dayGain: 0.8, camera: { x: 0, z: 0, eye: 168, sy: 0, cy: 1, sp: 0, cp: 1 } });
 assert.equal(lane.quads, 5, "flat, patterned, photographed, and soft quads all reach Three.js");
+/* A self-lit quad (`q.self`) travels as a NEGATIVE darkness: only on a sky-lit page after dark.
+   By day, and in a hall, it is exactly the `nolite` quad it already was (darkness 0). */
+{
+  const selfQuad = [{ z: 120, world: square(120), uv: [[0, 0], [0, 0], [0, 0], [0, 0]],
+    mode: "flat", arg: "#ffdca0", lit: 1.3, nolite: true, day: false, self: 1 },
+  { z: 130, world: square(130), uv: [[0, 0], [0, 0], [0, 0], [0, 0]],
+    mode: "flat", arg: "#ffdca0", lit: 1.3, nolite: true, day: false, self: 0.5 }];
+  const base = { width: 1024, height: 768, focal: 620, fogMax: 0.4, dayGain: 1,
+    camera: { x: 0, z: 0, eye: 168, sy: 0, cy: 1, sp: 0, cp: 1 } };
+  const dark = (state) => buildLaneGeometry(THREE, selfQuad, { ...base, ...state }).groups.flatMap((g) => g.darkness);
+  const night = dark({ day: 0, dayPage: true, night: 1 });
+  assert.ok(night.length === 12 && night.slice(0, 6).every((v) => v === -1) && night.slice(6).every((v) => v === -0.5),
+    "after dark under a sky, a self-lit quad is sent as minus its own strength");
+  assert.ok(dark({ day: 1, dayPage: true, night: 0 }).every((v) => v === 0), "by day it is a plain nolite quad");
+  assert.ok(dark({ day: 0, dayPage: false, night: 0.95 }).every((v) => v === 0), "and in a hall, whatever the hour");
+  const plain = buildLaneGeometry(THREE, [{ ...selfQuad[0], self: undefined, nolite: false }],
+    { ...base, day: 0, dayPage: true, night: 0.95 }).groups.flatMap((g) => g.darkness);
+  assert.ok(plain.every((v) => v > 0), "a quad that is not self-lit keeps the night's own darkness");
+}
+console.log("PASS  self-lit quads: negative darkness after dark under a sky, untouched by day and in a hall");
 assert.equal(lane.triangles, 10, "each authored quad is triangulated into two depth-tested faces");
 assert.equal(lane.groups.length, 5, "each distinct blend/material path gets its own batch");
 assert.ok(lane.groups.some((g) => g.textureKind === "pattern" && g.uvs.includes(1) &&
@@ -254,6 +274,35 @@ const effectByName = (name) => effectScene.children.find((child) => child.name =
 const halo = effectByName("3D lamp halo 1"), pool = effectByName("3D ground pool 1");
 const spill = effectByName("3D window-light spill 2"), umbra = effectByName("3D authored wall shadow");
 assert.ok(halo && halo.visible && halo.scale.x > 0, "lamp halo is a camera-facing 3D sprite");
+/* The frustum is mirrored (render(): makePerspective with left and right swapped), which reverses
+   the winding of everything on screen. A FrontSide sprite is then a back face and is culled: the
+   halo above passed every assertion here -- it exists, it is visible, it has a size -- and was
+   never drawn on any page. Only the material's side says whether it survives the mirror. */
+for (const child of effectScene.children) {
+  if (child.isSprite) assert.equal(child.material.side, THREE.DoubleSide,
+    `${child.name}: a sprite must be double-sided or the mirrored frustum culls it`);
+}
+assert.ok(effectScene.children.some((child) => child.isSprite), "the effect scene has sprites to check");
+/* A lifted source (a lamp post's glass is a box round its own light) is drawn towards the eye. */
+{
+  const scene2 = new THREE.Scene();
+  const fx = createSceneEffects(THREE, scene2, { lamps: [{ x: 0, y: 400, z: 1000, r: 45, k: 0.45, bulb: true, lift: 24 }] }, [], new Map());
+  fx.update({ width: 1024, height: 768, focal: 620, day: 0, dayPage: true, night: 1, time: 0,
+    camera: { x: 0, eye: 160, z: 0 }, effects: { lamps: [], phase: 0.92 } });
+  const h2 = scene2.children.find((c) => c.name === "3D lamp halo 1");
+  const b2 = scene2.children.find((c) => c.name === "3D lamp source 1");
+  const moved = Math.hypot(h2.position.x, h2.position.y - 400, h2.position.z - 1000);
+  assert.ok(Math.abs(moved - 24) < 1e-6 && h2.position.z < 1000, "a lifted halo stands 24 cm nearer the eye");
+  assert.ok(b2 && Math.abs(b2.position.z - h2.position.z) < 1e-9, "and its bulb with it");
+  assert.ok(Math.abs(b2.material.opacity - 0.92) < 1e-9, "after dark a bulb is fully on");
+  fx.update({ width: 1024, height: 768, focal: 620, day: 1, dayPage: true, night: 0, time: 0,
+    camera: { x: 0, eye: 160, z: 0 }, effects: { lamps: [], phase: 0.5 } });
+  assert.ok(b2.material.opacity < 0.12, "at noon on a day page a bulb is all but off");
+  fx.update({ width: 1024, height: 768, focal: 620, day: 0, dayPage: false, night: 0, time: 0,
+    camera: { x: 0, eye: 160, z: 0 }, effects: { lamps: [], phase: 0.5 } });
+  assert.ok(Math.abs(b2.material.opacity - 0.92) < 1e-9, "a hall has no sun: its bulbs keep the constant");
+}
+console.log("PASS  sprites survive the mirrored frustum; a lifted source and its bulb follow the eye and the hour");
 assert.ok(pool && pool.visible && Math.abs(pool.position.y - 3) < 1e-8 && Math.abs(pool.rotation.x + Math.PI / 2) < 1e-8,
   "lamp pool is a depth-tested horizontal world plane");
 assert.ok(spill && spill.visible && spill.geometry.getAttribute("position").array.some((v) => v !== 0),

@@ -81,3 +81,21 @@ test("gate starts the page server a browser gate needs, and stops it again", (t)
   assert.match(r.stdout, /status 200/, "the page must have been served");
   assert.equal(listening(), false, "the server bin/gate started must not outlive the gate");
 });
+
+test("the harness is pinned, and what is installed is what is pinned", () => {
+  // `bin/restore-env` is the only installer. A package named without `@x.y.z` is whatever npm had
+  // that day: jsdom 30 -> 31 changed what `document.activeElement` is after a control is hidden, and
+  // a gate went red on files nobody had touched.
+  const line = fs.readFileSync(path.join(ROOT, "bin/restore-env"), "utf8")
+    .split("\n").find((l) => l.startsWith("npm install "));
+  assert.ok(line, "bin/restore-env installs the harness with one npm line");
+  const specs = line.split(/\s+/).slice(2).filter((w) => !w.startsWith("-"));
+  assert.ok(specs.length >= 5, `five packages are installed, found ${specs.length}`);
+  for (const spec of specs) {
+    const at = spec.lastIndexOf("@");
+    assert.ok(at > 0 && /^\d+\.\d+\.\d+$/.test(spec.slice(at + 1)), `${spec}: pinned to an exact version`);
+    const name = spec.slice(0, at), want = spec.slice(at + 1);
+    const got = JSON.parse(fs.readFileSync(path.join(ROOT, "node_modules", name, "package.json"), "utf8")).version;
+    assert.equal(got, want, `${name}: node_modules has ${got}, bin/restore-env pins ${want} -- run sh bin/restore-env`);
+  }
+});

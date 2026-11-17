@@ -253,8 +253,8 @@ Files you MAY edit directly:
 | `index/about/research/teaching/activities/service/links/404.html` | Generated output. Do not hand-edit. |
 | `css/site.css` | Single stylesheet, versioned via `?v=` query string |
 | `bin/site-sources.json` | The page programme in load order: `overlay`, `chrome`, `dot-game`, `site` (see §Layout note below) |
-| `js/overlay.js` · `js/chrome.js` · `js/dot-game.js` | Modal plumbing (134 lines) · page chrome (154) · the dot-trace game (218) |
-| `js/site.js` | The lane: 9,045 lines, 288 declarations sharing one closure |
+| `js/overlay.js` · `js/chrome.js` · `js/dot-game.js` | Modal plumbing (133 lines) · page chrome (176) · the dot-trace game (217) |
+| `js/site.js` | The lane: 9,091 lines, 289 declarations sharing one closure (`FILE=js/site.js node .verify/_coupling.mjs` prints both) |
 | `IMG/` | Portrait and gallery photos |
 | `SPEC-gallery-3d.md` | **Not built.** The owner-facing proposal for a walkable Activities archive, written from a first-hand read of his reference site; read it before any 3D work or any change to the dependency rule |
 | `.nojekyll` | Keeps GitHub Pages from running Jekyll — do not delete |
@@ -274,11 +274,11 @@ game, and **the lane**. Round 86 split the first three out (`js/overlay.js`, `js
 are **byte-identical** to the 607,062-byte file they came from, and all four are still classic scripts
 sharing one global lexical environment, which is why `verify-sources` fails on a top-level name declared
 twice. They are *not* ES modules: every gate that reads the programme as text would have to be rewritten
-around `import`, and `w.eval` into jsdom — how the fastest gate here (212 assertions) works — cannot
+around `import`, and `w.eval` into jsdom — how the fastest gate here (213 assertions) works — cannot
 evaluate a module at all.
 
-The lane stays one file on purpose. Its 288 declarations share one closure; cutting that at a file
-boundary is not a move, it is an interface design plus 212 ported assertions plus a browser-driven gate.
+The lane stays one file on purpose. Its 289 declarations share one closure; cutting that at a file
+boundary is not a move, it is an interface design plus 213 ported assertions plus a browser-driven gate.
 So: **the programme is split into four, the lane is not** — do not "finish" it with a cosmetic cut that
 leaves a 9,000-line file behind.
 

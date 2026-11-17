@@ -177,8 +177,8 @@ build look healthy. Grep the artefact the browser fetches.
 `.claude/` and `node_modules/` are gitignored and the sandbox wipes them between turns — it wipes
 `.claude/` reliably, which is why the harness lives in `.verify/` (also gitignored, but it has
 survived). The sandbox can also move `HEAD` under you, which is how a `git checkout -- _gen_html.py` once silently replaced the
-generator with an older commit's copy. `npm install --no-save jsdom impeccable@4.1.0` restores both
-tools (`impeccable install` cannot reach its bundle from here), and nothing may leave a
+generator with an older commit's copy. `sh bin/restore-env` restores the tools at their pinned
+versions (`impeccable install` cannot reach its bundle from here), and nothing may leave a
 `package.json` behind in the repo. If the tooling is gone, say so in the commit message instead of
 quietly downgrading to grep, and check `git rev-parse HEAD` before trusting any diff — a re-cloned
 sandbox has dropped this session's commits twice, and the only thing that survived was the working

@@ -238,6 +238,7 @@
   const RIDE_T = 3.1;
   const sm01 = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
   let ride = null;
+  let ridePulse = 0;   // the ride's own pump (see `boardRide`); never the idle pulse's handle
   /* Round 72, the owner's ruling: 「很多東西因為選取會跳這種介面…有必要的在跳」.
 
      There used to be a district banner here. It appeared by itself whenever the body crossed a zone
@@ -277,6 +278,7 @@
   let zoom = 1, yaw = -4, pitch = -2, x = 0, depth = 60, height = 0, vy = 0;
   let vx = 0, vd = 0, phase = 0, bob = 0, raf = 0, last = 0, here = -1, reach = null;
   let tickMs = 0;
+  let tickCount = 0;   // every pass of `tick`, whoever asked for it (`__walk.ticks`; see `verify-demo` 5)
   let gliding = null, keys = new Set(), stick = null, down = null, hereFar = Infinity, hereShown = -1;
   /* Round 65: a press that no frame saw.
 
@@ -815,7 +817,18 @@
      tile above is drawn for 48 cm stones, so the floor that lays it down draws it three times
      larger: 192 cm to the tile, four pavers across. Without this the plaza's paving was half a
      paver wide at the size the canvas was drawn, and the mipmap averaged it away. */
-  const FLOOR_PERIOD = { pavers: 3 };
+  /* What one stone measures, written down (TODO §3 P6-2).
+
+     The period used to be the literal `{ pavers: 3 }`, and the 48 cm lived only in the painter's
+     loop -- "four stones across 128 px" -- so no table said how big a paver is and nothing could
+     check it: `verify-floor` stayed green with the period changed to 2 (a 32 cm stone), because
+     it compared the page against the same constant the page had read. The stone is the fact, so
+     the stone is the datum: `cm` is one stone and its joint, `across` is how many the near tile
+     is painted with, and the period is derived from the two. `verify-floor` counts the stones in
+     the painted tile and divides the measured tile by them. */
+  const FLOOR_STONE = { pavers: { cm: 48, across: 4 } };
+  const FLOOR_PERIOD = Object.fromEntries(Object.entries(FLOOR_STONE)
+    .map(([style, stone]) => [style, (stone.cm * stone.across) / 64]));
   /* A lit city seen down from 346 m: a dark ground with a scatter of street lights and windows.
      The scatter is a texture and says so in the room's caveat -- the lights are drawn at a lit
      city's density, not surveyed street by street. */
@@ -2300,6 +2313,9 @@
        than a pool under a fitting. A field the emitter stamps and this map drops is the trap
        `skills/lane-prop` §7 was written about, seen from the other end. */
     liton: L.liton || 0, spill: L.spill || 0,
+    // `lift`: cm towards the eye, for a source that stands inside its own housing (a lamp post's
+    // glass). The halo is a depth-tested sprite; without it the housing hides its own light.
+    lift: L.lift || 0,
   }));
   // Time, sampled once per frame: a lantern that swings on a clock of its own while everything else
   // uses another is how a scene starts to shimmer.
@@ -2324,6 +2340,19 @@
      held at its own hour (`laneNight`) keeps it and gets no button: its clock is a fact. */
   const HOUR_KEY = "huaxu.walk-hour.v1";
   const HOUR_NIGHT = 0.92;
+  /* What a pressed model says, and how long the record line is held for it. One row per `demo`
+     value a record may author, named here so a new value cannot fall through to another model's
+     sentence (the carousel spoke the drawbridge's for as long as it had been pressable). `hold` is
+     the length of what the shape branch animates plus half a second, in seconds. */
+  const CAROUSEL_ROUND = 10;
+  const DEMOS = {
+    ripple: { hold: 4.5, say: "A stone skipped across the model's basin: the rings widen and are gone." },
+    wheel: { hold: 24.5, say: "The wheel takes a courtesy turn: four seconds of the forty a real revolution needs, "
+      + "then the 1.5 rpm settle. The gondolas are on the hour, all year; this model sells no tickets." },
+    carousel: { hold: CAROUSEL_ROUND + 0.5, say: "The carousel takes one quick round: ten seconds, the horses "
+      + "rising and falling faster, then back to its own pace." },
+    open: { hold: 24.5, say: "The demonstration runs: the leaves rise, a boat takes the opening, the leaves fall." },
+  };
   let hourPref = "day";
   let hourPhaseSet = 0.5;
   /* Round 76: whether the visitor has chosen at all. A page's own opening hour (`data-lane-day-start`)
@@ -3863,7 +3892,9 @@
             const q = add(C, f.p, ZERO8, "flat", glow ? col : mix(col, f.k + (lit - 0.7) * 0.24));
             if (!q) return;
             q.lit = glow ? 1.3 : lit;
-            if (glow) { q.nolite = true; q.day = false; }
+            // `self`: the glass is the lamp. Under a sky `nolite` alone left it an albedo lit by
+            // the night (grey-blue, measured 84,98,135 for #ffdca0); see buildLaneGeometry.
+            if (glow) { q.nolite = true; q.day = false; q.self = 1; }
             drawn.push(q);
           });
           part(-72, 7, 26, base, false);                                   // the collar
@@ -3889,10 +3920,11 @@
         const P = (u, v, y) => (along ? [m.x + dir * v, y, m.z + u] : [m.x + u, y, m.z + dir * v]);
         const Q = (pts, col, l, keep) => {
           const q = add(C, pts, ZERO8, "flat", col);
-          if (!q) return;
+          if (!q) return null;
           q.lit = l;
           if (keep) { q.nolite = true; q.day = false; }
           drawn.push(q);
+          return q;
         };
         const y0 = m.y, y1 = m.y + m.h;
         /* The board keeps the district's clock: it comes up at its own phase, as the record's
@@ -3902,8 +3934,9 @@
         const ez = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
         const NL = m.liton ? NIGHT() * ez((np - (m.liton - 0.7) / 0.6) / 0.05) : NIGHT();
         // the face: a plate lit from within after dark, and a painted board by day
-        Q([P(-half, dep, y0), P(half, dep, y0), P(half, dep, y1), P(-half, dep, y1)],
+        const plate = Q([P(-half, dep, y0), P(half, dep, y0), P(half, dep, y1), P(-half, dep, y1)],
           blendHex(base, "#ffe0a8", NL * 0.82), 0.66 + 0.78 * NL, true);
+        if (plate) plate.self = NL;          // as far up as its own phase says, and no further
         // the frame: a lip round the face, so the board is joinery and not a rectangle of colour
         Q([P(-half - 4, dep + 2, y1 - 10), P(half + 4, dep + 2, y1 - 10),
            P(half + 4, dep + 2, y1 + 4), P(-half - 4, dep + 2, y1 + 4)], mix(base, 0.16), lit);
@@ -4277,6 +4310,26 @@
                       [m.x + a0, m.y + m.h, m.z]], ZERO8, "flat", mix(base, i % 2 ? -0.1 : 0.06));
           if (q) { q.lit = lit + 0.2; drawn.push(q); }
         }
+        /* A cloth that carries `liton` is a cable of bulbs (Clifton Hill's three spans: "a cable
+           of bulbs, post to post, the way a fun row is lit after dark"). By day it is the strip
+           above and nothing else; after its own phase each bulb is a small self-lit plane hung
+           under the cable, one every 72 cm -- drawn as bulbs because a lit strip seventeen metres
+           long is a neon bar, which is not what the record says is there. */
+        if (m.liton) {
+          const ph = ((((dayPhase() - 0.7) % 1) + 1) % 1) / 0.6;
+          const on = NIGHT() * clamp((ph - (m.liton - 0.7) / 0.6) / 0.05, 0, 1);
+          if (on > 0.02) {
+            const count = Math.max(2, Math.round(len / 72));
+            for (let i = 0; i < count; i++) {
+              const u = ((i + 0.5) / count) * len - len / 2, r = 7;
+              const bx = along ? m.x : m.x + u, bz = along ? m.z + u : m.z, by = m.y - 4;
+              const b = add(C, [[bx - r, by - r, bz - r], [bx + r, by - r, bz + r],
+                                [bx + r, by + r, bz + r], [bx - r, by + r, bz - r]],
+                            ZERO8, "flat", i % 2 ? "#ffe6b0" : "#ffd07a");
+              if (b) { b.lit = 1.5; b.nolite = true; b.day = false; b.self = on; drawn.push(b); }
+            }
+          }
+        }
       } else if (shape === "front") {
         // Two kinds of front. Without an `awn` colour this is the old closed front: a box standing
         // proud of the wall, because a true recess would need a hole in a wall that is one surface.
@@ -4292,9 +4345,19 @@
         const Q = (pts, col, l, air) => {
           const q = add(C, pts, ZERO8, "flat", col);
           if (q) { q.lit = l; if (air !== undefined) q.air = air; drawn.push(q); }
+          return q;
         };
         const up = S && S.shut !== undefined ? S.shut : 0;
         const yA = m.h * 0.8;                       // the head of the unit's own wall
+        /* The shop's own evening. `liton` is "the phase at which this prop's own windows come up"
+           (see where the record is read), and until now a front handed it to its halo and did
+           nothing with it itself: after dark every open unit on Clifton Hill was a dark pane with
+           a halo hidden behind it. A front that carries the field lights what the drawing already
+           says is lit -- the shelf behind the glass, the pane it is seen through, the fanlight --
+           on the same curve the lit boards use. A front without it is unchanged. */
+        const fnp = ((((dayPhase() - 0.7) % 1) + 1) % 1) / 0.6;
+        const fez = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+        const NLF = m.liton ? NIGHT() * fez((fnp - (m.liton - 0.7) / 0.6) / 0.05) * fez(up * 2 - 1) : 0;
         /* Round 64: a shopfront is a wall with a hole in it, and the hole has two parts.
 
            The strip's units had one: a window bay across the whole frontage. At three metres --
@@ -4347,14 +4410,16 @@
             Q([P(w0, 3, 0), P(w1, 3, 0), P(w1, 3, yA - 6), P(w0, 3, yA - 6)],
               mix(base, -0.52), lit * 0.5);                     // the interior behind the glass
             const gl = add(C, [P(w0 + 6, 4, 46), P(w1 - 6, 4, 46), P(w1 - 6, 4, yA - 10),
-                               P(w0 + 6, 4, yA - 10)], ZERO8, "flat", blendHex("#243146", "#7c8ea3", DAY()));
-            if (gl) { gl.lit = 0.52 + 0.22 * DAY(); gl.daygain = 0.5; drawn.push(gl); }
+                               P(w0 + 6, 4, yA - 10)], ZERO8, "flat",
+                           blendHex(blendHex("#243146", "#7c8ea3", DAY()), "#c08f52", NLF * 0.7));
+            if (gl) { gl.lit = 0.52 + 0.22 * DAY(); gl.daygain = 0.5; gl.self = NLF; drawn.push(gl); }
             // What is behind the glass: a lit shelf of hangs, low, so the interior is not a void.
             const wspan = w1 - w0;
             for (let i = 0; i < 3; i++) {
               const u0 = w0 + (i / 3) * wspan;
-              Q([P(u0, 7, 88), P(u0 + wspan * 0.26, 7, 88), P(u0 + wspan * 0.26, 7, 132), P(u0, 7, 132)],
-                i % 2 ? "#c9a06a" : "#d8b483", (0.42 + up * 0.5) * dl, 0.05);
+              const hang = Q([P(u0, 7, 88), P(u0 + wspan * 0.26, 7, 88), P(u0 + wspan * 0.26, 7, 132),
+                              P(u0, 7, 132)], i % 2 ? "#c9a06a" : "#d8b483", (0.42 + up * 0.5) * dl, 0.05);
+              if (hang) hang.self = NLF;
             }
             for (let i = 0; i <= 5; i++) {
               const u0 = w0 + (i / 5) * wspan - 4;
@@ -4388,7 +4453,7 @@
             const fan = add(C, [P(dIn + 9, 4, doorH + 12), P(dOut - 9, 4, doorH + 12),
                                 P(dOut - 9, 4, doorH + 40), P(dIn + 9, 4, doorH + 40)], ZERO8, "flat",
                              blendHex("#5d6a7c", "#ffce8e", NIGHT() * 0.92));
-            if (fan) { fan.lit = 0.45 + 0.85 * NIGHT(); fan.daygain = 0.35; drawn.push(fan); }
+            if (fan) { fan.lit = 0.45 + 0.85 * NIGHT(); fan.daygain = 0.35; fan.self = NLF; drawn.push(fan); }
           } else {
             // Shut: the blade across the face, the same shutter as the cladding.
             const blade = add(C, [P(-half, 6, 0), P(half, 6, 0), P(half, 6, yA - 4), P(-half, 6, yA - 4)],
@@ -6205,7 +6270,7 @@
             const lp = Q([[a1[0] - 55, a1[1] - 55, a1[2] - 55], [a1[0] + 55, a1[1] - 55, a1[2] - 55],
                           [a1[0] + 55, a1[1] + 55, a1[2] + 55], [a1[0] - 55, a1[1] + 55, a1[2] + 55]],
                          WHEELC[(i + beat) % WHEELC.length], 1.5);
-            if (lp) lp.nolite = true;
+            if (lp) { lp.nolite = true; lp.self = 1; }
           }
         }
         // the hub, both faces, and the 21 spokes that carry the rim
@@ -6276,7 +6341,7 @@
               };
               const q = [inset(a0, a1, y0), inset(a1, a0, y0), inset(a1, a0, y1), inset(a0, a1, y1)];
               const out = Q(q, col, l);
-              if (out && night > 0.15) out.nolite = true;
+              if (out && night > 0.15) { out.nolite = true; out.self = 1; }   // a cabin lit from inside
               return out;
             };
             const glass = night > 0.15 ? "rgba(255,217,160,0.86)" : "#42525f";
@@ -6325,7 +6390,15 @@
         const R = (m.dia || 900) / 2;                     // cm to the deck's edge
         const canopyY = m.y + (m.h || 420) - 40;          // the canopy's rim
         const mastY = m.y + (m.h || 420) + 120;
-        const th = ((T / (m.turn || 26)) * Math.PI * 2) + (m.phase0 || 0);
+        /* Pressed, the ride answers in its own body: one extra round over ten seconds, eased in and
+           out. It had `demo` in its record and nothing here read the press, so the answer was the
+           turn it was making anyway under the drawbridge's sentence -- a press that changes nothing,
+           which a quad count cannot see on a thing that never stands still. One whole round is the
+           amount that needs no memory: the canopy, the horses and their rise (`th * 2`) are all back
+           in phase when the envelope ends, so nothing jumps. The deck keeps the plain clock. */
+        const th0 = ((T / (m.turn || 26)) * Math.PI * 2) + (m.phase0 || 0);
+        const spin = m.el && m.el.__demoAt ? clamp((performance.now() - m.el.__demoAt) / 1000 / CAROUSEL_ROUND, 0, 1) : 0;
+        const th = th0 + Math.PI * 2 * spin * spin * (3 - 2 * spin);
         const night = NIGHT();
         const STRIPES = ["#c8463f", "#f0e6d2"];
         /* A point on the ring, in the ground plane, at angle `a` and radius `r`.
@@ -6336,7 +6409,7 @@
         const P = (a, r, y) => [m.x + Math.cos(a) * r, y, m.z + Math.sin(a) * r];
         // the deck: 24 sectors, so the ring is round rather than a square with corners cut off
         for (let i = 0; i < 24; i++) {
-          const a0 = th * 0.35 + (i / 24) * Math.PI * 2, a1 = th * 0.35 + ((i + 1) / 24) * Math.PI * 2;
+          const a0 = th0 * 0.35 + (i / 24) * Math.PI * 2, a1 = th0 * 0.35 + ((i + 1) / 24) * Math.PI * 2;
           const q = add(C, [P(a0, R, m.y + 14), P(a1, R, m.y + 14),
                             P(a1, R * 0.18, m.y + 18), P(a0, R * 0.18, m.y + 18)],
                         ZERO8, "flat", i % 2 ? "#7d6a55" : "#8a7660");
@@ -6385,7 +6458,7 @@
             const b = add(C, [[p[0] - 22, p[1] - 22, p[2] - 22], [p[0] + 22, p[1] - 22, p[2] - 22],
                               [p[0] + 22, p[1] + 22, p[2] + 22], [p[0] - 22, p[1] + 22, p[2] + 22]],
                           ZERO8, "flat", i % 3 ? "#ffe6b0" : "#ffd07a");
-            if (b) { b.lit = 1.5; b.nolite = true; drawn.push(b); }
+            if (b) { b.lit = 1.5; b.nolite = true; b.self = 1; drawn.push(b); }
           }
         }
       } else if (shape === "incline") {
@@ -7469,6 +7542,24 @@
   };
 
   const liveEl = layer.querySelector("[data-walk-live]");
+  /* A sentence said once -- the car has arrived, night has come -- keeps the record line for long
+     enough to be read. `say` rewrites that line on every frame from what is in reach, so a one-off
+     written straight into it lasted until the next frame: measured, "You step off at the bottom"
+     was gone inside the first sample after the ride, and the hour's sentence never showed on the
+     street at all. The line is the screen reader's live region, and a region that changes back
+     within a frame announces nothing. The hold is the demonstrations' own flag; the timer lets go
+     only if the sentence is still the one it set, so a demonstration pressed meanwhile keeps its. */
+  let lineHold = 0;
+  const holdLine = (text, ms) => {
+    if (!recordEl) return;
+    recordEl.dataset.demoHold = "1";
+    recordEl.textContent = text;
+    if (lineHold) clearTimeout(lineHold);
+    lineHold = setTimeout(() => {
+      lineHold = 0;
+      if (recordEl.textContent === text) { delete recordEl.dataset.demoHold; recordEl.textContent = ""; }
+    }, ms);
+  };
   const say = (status, record) => {
     if (status && statusEl) statusEl.textContent = status;
     // A running demonstration owns the record line until its envelope dies (act's `data-demo`
@@ -7983,23 +8074,56 @@
     const k = sm01(Math.min(1, t));
     height = ride.h0 + (ride.h1 - ride.h0) * k;
     x = ride.x0 + (ride.x1 - ride.x0) * k;
+    depth = ride.d0 + (ride.d1 - ride.d0) * k;
     vy = 0;
     if (t >= 1) {
       const done = ride;
       ride = null;
       height = floorAt(depth, x);
       if (recordEl) { delete recordEl.dataset.demoHold; recordEl.textContent = ""; }
-      if (done.say) say("", done.say);
+      if (done.say) holdLine(done.say, 4000);
     }
   };
   const boardRide = (el) => {
     if (ride) return true;   // already in a car; a second press is the ride, not a queue
-    const up = height < 900;
+    /* Which way, and to where. Both were wrong once the deck was authored at its real 553 cm:
+
+       - "up" was `height < 900`, a number from the round the deck stood at 2990. At 553 a visitor on
+         the deck was still "at the bottom", so the car took them from the deck to the deck and the
+         line said they had stepped off at the top. There was no way down but the edge.
+       - the car carried height and x and left the depth alone. The incline answers a look from
+         eighty metres (`LOOK_KINDS`), so from the fun row it lifted the body 5.5 m over paving
+         twenty-five metres from any deck and then set it down where it was -- "onto the Fallsview
+         deck", at street level.
+
+       So the car goes somewhere: up is a place ON the deck the record authors (`data-lane-floors`,
+       the floor at the ride's own height), as near the visitor's depth as the deck reaches; down is
+       in front of the lower station. A landing a solid stands on is not a landing, so each is
+       checked against the same colliders the walk obeys. */
+    const top = Number(el.dataset.rideTop || 2990);
+    const up = height < top / 2;
     const xIn = Number(el.dataset.rideX || 300);
+    let x1 = xIn, d1 = depth;
+    if (up) {
+      const deck = FLOORS.find((f) => f[2] === top && (f.length < 4 || (xIn >= f[3] && xIn <= f[4])));
+      if (deck) {
+        const lo = Math.min(deck[0] + 90, deck[1]), hi = Math.max(deck[1] - 90, deck[0]);
+        d1 = clamp(depth, lo, hi);
+        for (let step = 0; collidesAt(x1, d1) && step < 40; step++) d1 = d1 - 60 < lo ? hi : d1 - 60;
+      }
+    } else {
+      const base = meta.find((m) => m.kind === "incline" && m.el && m.el.dataset.ride) || null;
+      const spots = base
+        ? [[base.x, base.z - base.d / 2 - 42], [base.x - base.w / 2 - 80, base.z - base.d / 2 - 42],
+           [base.x + base.w / 2 + 80, base.z - base.d / 2 - 42], [0, base.z - base.d / 2 - 120]]
+        : [[0, depth]];
+      const spot = spots.find(([px, pz]) => floorAt(pz, px) < 1 && !collidesAt(px, pz)) || spots[0];
+      x1 = spot[0]; d1 = spot[1];
+    }
     ride = {
-      t0: performance.now(), h0: height, x0: x,
-      h1: up ? Number(el.dataset.rideTop || 2990) : 0,
-      x1: xIn,
+      t0: performance.now(), h0: height, x0: x, d0: depth,
+      h1: up ? top : 0,
+      x1, d1,
       say: up ? "You step off at the top, onto the Fallsview deck, level with the bluff's lip."
               : "You step off at the bottom, by the rail, with the falls a short walk east.",
     };
@@ -8011,19 +8135,23 @@
     }
     // the same redraw contract the hour button and the demonstrations use: the loop must be awake
     // for the length of the ride, and the announcement must survive one frame of it
+    // Its own handle, like `demoPulse`: the tick below re-arms the idle pulse whenever the body is
+    // at rest (the first and last frames of a ride are), and a pump written over that handle is the
+    // same orphaned chain the hour button made.
     const pump = () => {
-      if (!ride) return;
-      tick(performance.now());
-      pulse = setTimeout(pump, 33);
+      if (!ride) { ridePulse = 0; return; }
+      nudge();
+      ridePulse = setTimeout(pump, 33);
     };
-    if (pulse) clearTimeout(pulse);
-    pulse = setTimeout(pump, 33);
+    if (ridePulse) clearTimeout(ridePulse);
+    ridePulse = setTimeout(pump, 33);
     return true;
   };
 
   const tick = (t) => {
     raf = 0;
     const tickT0 = performance.now();
+    tickCount++;
     /* Round 56, and this one was the difference between "slow" and "broken": the simulation used
        to throw away every part of a frame longer than 120 ms. A frame longer than 120 ms is exactly
        what a software rasteriser produces (measured here: 250 ms at 1024×640), so the body moved at
@@ -8125,7 +8253,12 @@
         // paid the difference -- not suppressed by the fact that a frame looked at it.
         const isTurn = k === "a" || k === "arrowleft" || k === "d" || k === "arrowright";
         if (!isTurn) tap.held += elapsed * 1000;   // ms; a turn's frame share is paid above
-        tap.ms = 0;
+        /* `tap.ms` is left alone here. It is only ever non-zero on a key that is down when the last
+           release of that same key has not met a frame yet -- and zeroing it threw that release's
+           debt away while `held` kept its payments, so the new press inherited a ledger that said it
+           had been paid already. Measured (`.verify/_turnprobe.mjs`): a 40 ms tap landing within a
+           frame of releasing a 300 ms hold left the pair 1.4-1.7 degrees short of the 29.2 its own
+           key events were worth. */
         return;
       }
       /* A tap that turns and a tap that walks are not the same size of gesture: a step should carry
@@ -8135,11 +8268,12 @@
          used to be seconds against a millisecond value, so the subtraction was a no-op and every
          tap paid its full cap.) */
       const isTurn = k === "a" || k === "arrowleft" || k === "d" || k === "arrowright";
-      /* The nudge is owed ONCE, on the frame that first sees the release (`tap.ms` is cleared below);
-         without that guard the floor paid itself again on every later frame, and a tap of D measured
-         8.9 degrees instead of 3.0. A press long enough to have been paid frame by frame owes the
-         difference between its real length and what has already been paid, which is usually nothing. */
-      const cap = isTurn ? (tap.ms > 0 ? Math.max(tap.ms, TURN_TAP_MS) : 0) : Math.min(tap.ms, 120);
+      /* The release is settled ONCE, on the frame that first sees it (`tap.ms` and `tap.held` are
+         cleared below); a floor applied here without that guard paid itself again on every later
+         frame, and a tap of D measured 8.9 degrees instead of 3.0. A press long enough to have been
+         paid frame by frame owes the difference between its real length and what has already been
+         paid, which is usually nothing. */
+      const cap = isTurn ? tap.ms : Math.min(tap.ms, 120);   // a turn's floor is banked at keyup
       const owed = cap - tap.held;
       if (owed > 0) {
         const t = owed / 1000;
@@ -8173,7 +8307,12 @@
     // Held input keeps the pump alive at a wall; the idle pulse is for a genuinely resting walker.
     const hasWalkInput = ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"]
       .some((k) => keys.has(k)) || !!(stick && Math.hypot(stick.x, stick.y) > 0.04);
-    pumping = speed > 4 || !!gliding || height > 0 || vy !== 0 || hasWalkInput;
+    // ...and a ride: the car is moving the body even on the frames where `height` is the ground's.
+    // "In the air" is off the floor under the feet (above it, or below a step still rising to meet
+    // the body), not above zero: on the Fallsview deck (553 cm)
+    // `height > 0` was true for as long as the visitor stood there, and the lane redrew every frame
+    // of it -- 177 ticks in three seconds at rest, where the ground gets 30.
+    pumping = speed > 4 || !!gliding || Math.abs(height - floorAt(depth, x)) > 0.01 || vy !== 0 || hasWalkInput || !!ride;
     /* The tick's own cost, measured: `frameMs` is the gap between frames, `renderMs` is the
        Three.js pass, and this is everything the lane's own JavaScript costs -- the scene rebuild,
        the hit boxes, the reach. The gap minus this is the browser's own painting and the wait for
@@ -8185,6 +8324,13 @@
   // Asking for a real frame hands the pumping over to rAF, so the idle pulse is cancelled here rather
   // than at each call site: one owner for the two pumps, and never both at once.
   const loop = () => { stopPulse(); if (!raf) raf = requestAnimationFrame(tick); };
+  /* A timer's way into the tick, and the only one. `tick` is the animation-frame callback: it
+     clears `raf` because the frame it was asked for has arrived. Called from a timer while a frame
+     was still pending, it cleared the same handle, asked for a second frame at its end, and from
+     then on two callbacks ran every frame -- plus one more for each time the timer fired again.
+     Walking during a demonstration measured 1,612 ticks in 118 frames, each a full redraw
+     (`tests/idle-pulse.test.cjs`). If a frame is already on its way, the frame is the tick. */
+  const nudge = () => { if (!raf) tick(performance.now()); };
 
   /* An idle repaint, at eleven frames a second rather than sixty.
 
@@ -8193,6 +8339,7 @@
      page scrolls away or the plate is open, and `prefers-reduced-motion` turns it off at the source
      instead of cancelling motion after the render work has already been paid for. */
   let pulse = 0, inView = true;
+  let demoPulse = 0;   // a pressed model's own pump (see `act`); never the idle pulse's handle
   const stopPulse = () => { if (pulse) { clearTimeout(pulse); pulse = 0; } };
   const startPulse = () => {
     stopPulse();
@@ -8205,7 +8352,7 @@
     // repaint every 90 ms: the pulse would then own the whole budget and every press would queue
     // behind it. The idle breathe keeps its authored cadence when the frame is cheap and stands
     // down to twice the measured frame on a slow one — still breathing, never starving input.
-    pulse = setTimeout(() => { pulse = 0; tick(performance.now()); }, Math.max(90, frameMs * 2));
+    pulse = setTimeout(() => { pulse = 0; nudge(); }, Math.max(90, frameMs * 2));
   };
   if ("IntersectionObserver" in window) {
     new IntersectionObserver((es) => {
@@ -8317,11 +8464,19 @@
   const hideCard = () => {
     if (!card) return;
     const wasOpen = !card.hidden;
+    /* Opening the card puts focus on its close button, and a hidden button cannot keep it: the
+       browser hands focus to <body>, which is nowhere -- the next Tab starts from the top of the
+       document. The card's own close button already sent focus to the view; Esc, the back gesture
+       and a second `i` fold the card through here without that line, and measured in Chromium
+       (`.verify/_backprobe.mjs`) all three left `document.activeElement` on BODY. So the fold itself
+       returns what the card was holding, and every way of folding it lands in the same place. */
+    const heldFocus = card.contains(document.activeElement);
     card.hidden = true;
     if (card.dataset.mode !== "prop") card.dataset.mode = "prop";
     if (asideEl) asideEl.hidden = true;
     if (infoBtn) infoBtn.setAttribute("aria-expanded", "false");
     if (wasOpen) overlayLeft();
+    if (heldFocus) view.focus({ preventScroll: true });
   };
   /* Round 73: `showCard(m)` is gone. It was the window that opened over the picture with a prop's
      paragraph in it, and the owner has now ruled on it twice: 「你幫我全部拿掉這種」 and then
@@ -8453,33 +8608,38 @@
     // museum's own idiom: a demo button on a model does not move the thing it models.
     if (m.el.dataset.demo !== undefined) {
       m.el.__demoAt = performance.now();
+      const demo = DEMOS[m.el.dataset.demo] || DEMOS.open;
       if (recordEl) {
         recordEl.dataset.demoHold = "1";
-        recordEl.textContent = m.el.dataset.demo === "ripple"
-          ? "A stone skipped across the model's basin: the rings widen and are gone."
-          : m.el.dataset.demo === "wheel"
-          ? "The wheel takes a courtesy turn: four seconds of the forty a real revolution needs, "
-            + "then the 1.5 rpm settle. The gondolas are on the hour, all year; this model sells no tickets."
-          : "The demonstration runs: the leaves rise, a boat takes the opening, the leaves fall.";
+        recordEl.textContent = demo.say;
       }
       // the same redraw contract the hour button uses: the announcement gets one quiet moment
       // before the first pumped frame (the lane's own say() rewrites the record every tick), and
       // the pump keeps asking for frames until the envelope dies — a stopped clock draws nothing.
       // the envelope matches what the shape branch animates: a skip dies in three seconds and must
       // not hold the record line for the bridge's twenty-four
-      const ENVELOPE = m.el.dataset.demo === "ripple" ? 4.5 : 24.5;
+      const ENVELOPE = demo.hold;
+      const el = m.el, at = el.__demoAt;
+      /* The demonstration keeps its own timer. It used to borrow the idle pulse's handle, and the
+         frame loop cancels that handle the moment the walker moves (`loop` -> `stopPulse`): press a
+         model, take one step inside the envelope, and the pump died with the hold still set -- the
+         record line then kept the demonstration's sentence and refused every later one (`say`
+         skips a held record), for the rest of the visit. A second press replaces the first: the
+         stale pump sees a newer `__demoAt` and stands down without touching the record. */
       const pump = () => {
-        const t = (performance.now() - m.el.__demoAt) / 1000;
+        if (el.__demoAt !== at) return;
+        const t = (performance.now() - at) / 1000;
         if (t > ENVELOPE) {
-          delete m.el.__demoAt;
+          delete el.__demoAt;
+          demoPulse = 0;
           if (recordEl) { delete recordEl.dataset.demoHold; recordEl.textContent = ""; }
           return;
         }
-        tick(performance.now());
-        pulse = setTimeout(pump, 90);
+        nudge();
+        demoPulse = setTimeout(pump, 90);
       };
-      if (pulse) clearTimeout(pulse);
-      pulse = setTimeout(pump, 90);
+      if (demoPulse) clearTimeout(demoPulse);
+      demoPulse = setTimeout(pump, 90);
       tutorAnswered();
       return;
     }
@@ -8736,7 +8896,15 @@
     keys.delete(k);
     // the press is over: bank how long it lasted, so a tap no frame saw can still be paid out
     const tap = tapState.get(k);
-    if (tap && tap.start) { tap.ms += performance.now() - tap.start; tap.start = 0; }
+    if (tap && tap.start) {
+      /* The nudge's floor is banked here, per press, not at settlement: two taps that end inside
+         one slow frame are two nudges, and a tap whose down and up share a timestamp (the browser
+         coarsens `performance.now()`) is still a tap. */
+      const pressed = performance.now() - tap.start;
+      const isTurn = k === "a" || k === "arrowleft" || k === "d" || k === "arrowright";
+      tap.ms += isTurn ? Math.max(pressed, TURN_TAP_MS) : pressed;
+      tap.start = 0;
+    }
     /* Round 72: the nudge is paid inside a frame, so the release has to ask for one. On a slow
        machine the frame that saw the key down ends before the key comes up, and the lane then rests
        (it runs on a timer when nothing is held) -- so a 40 ms tap of the turn key measured 0.4 deg,
@@ -8746,6 +8914,11 @@
   });
   const releaseInput = () => {
     keys.clear(); stick = null; vx = 0; vd = 0; gliding = null; last = 0;
+    /* The presses are over too, and they owe nothing. The keyup of a key held through a lost window
+       goes to whatever took the focus, so its ledger stayed open with `start` at the old press; the
+       next release of that key then banked the whole time away as one press and the head spun by it
+       (measured, `.verify/_turnprobe.mjs`: one second away, 123.0 degrees for a tap worth 2.98). */
+    tapState.clear();
     const knob = pad && pad.querySelector(".walk-knob");
     if (knob) knob.style.transform = "";
     if (down) { down = null; view.classList.remove("is-dragging"); wasDrag = false; }
@@ -8803,6 +8976,7 @@
                    // what the machine was actually asked to draw
                    get renderScale() { return renderScale; }, get frameMs() { return frameMs; },
                    get tickMs() { return tickMs; },
+                   get ticks() { return tickCount; },
                    get renderMs() { return renderMs; },
                    get renderSize() { return [RW, RH]; }, get displaySize() { return [W, H]; },
                    // The no-WebGL path is the lane's own state, not the mounted module's: the mount
@@ -8839,16 +9013,25 @@
       hourLabel();
       // the card's own nudge, for the same reason: a repaint that goes through the tick keeps a
       // gliding body gliding; a bare draw would strand it between frames.
-      pulse = setTimeout(() => { pulse = 0; tick(performance.now()); }, 90);
+      /* `stopPulse` first. The handle has one owner; writing a timer into it over the one already
+         there left that one running, and when it fired it zeroed the handle so this one could not
+         be stopped either -- one more redraw chain per press, for the rest of the visit (measured:
+         30 ticks in three seconds at rest, 146 after four presses; `tests/idle-pulse.test.cjs`). */
+      stopPulse();
+      pulse = setTimeout(() => { pulse = 0; nudge(); }, 90);
     };
     hourBtn.addEventListener("click", () => {
       hourPref = hourPref === "day" ? "night" : "day";
       hourPhaseSet = hourPref === "night" ? HOUR_NIGHT : 0.5;
       try { window.localStorage.setItem(HOUR_KEY, hourPref); } catch (e) { /* this visit only */ }
       setHour();
-      if (recordEl) recordEl.textContent = hourPref === "night"
-        ? "Night comes: the lamps, the lit windows, and the falls' own colours."
-        : "Daylight returns over the lane.";
+      // The falls are named only where there are falls: the sentence was written at Niagara and
+      // was being read out on the street and in Tokyo as well.
+      holdLine(hourPref === "night"
+        ? (layer.querySelector('[data-obj^="falls"]')
+          ? "Night comes: the lamps, the lit windows, and the falls' own colours."
+          : "Night comes: the lamps and the lit windows.")
+        : "Daylight returns over the lane.", 3000);
     });
     layer.dataset.walkClock = hourPref;
     hourBtn.classList.toggle("is-night", hourPref === "night");

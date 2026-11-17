@@ -39,6 +39,14 @@ opposite sign, and the lane clamps it to ±24°. Distances are centimetres — p
 heading or place was missed is a **refusal**, not a slightly-off picture: name it and take the frame
 again. `.verify/_aim.mjs` is the single implementation; do not write a fourth wait loop.
 
+**The fast way to a whole view set** is one launch and one image: `FILE=<page> HOUR=day|night
+STOP=0,2,5,6 OUT=x.png sh bin/gate node .verify/_stopshot.mjs` writes `x-<stop>.png` for each stop in
+its authored view, and `node .verify/_sheet.mjs sheet.png x-*.png` (`COLS=2` for before/after pairs)
+lays them out labelled. `BASE=http://127.0.0.1:8081` shoots another tree — `git worktree add
+/tmp/base <commit>` served on its own port — which is how a before/after pair is taken without
+stashing the work. **A page with an hour button is two pages**: shoot the night set too. Clifton
+Hill's night had no light anywhere in it and nobody had looked, because every sheet was of noon.
+
 For the changed page, capture:
 
 1. the entrance and every authored stop in its intended view;

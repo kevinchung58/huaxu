@@ -167,21 +167,39 @@ rest, averaged together. The strip's own top colours were near-neutral (46,54,54
 material produces. A horizontal band must be *located* before it is averaged: ray several pixels
 across it and see which surfaces are there.
 
-**The authored colour is a starting point, not the paint.** `_ray.mjs` reports, for a hit, the vertex
-colour the quad actually hands the renderer (`vcol`). On the same frame the American bank's woodline is
-authored `#556f45` (85,111,69) and reaches the renderer at **[0.091, 0.159, 0.060]** — rgb 23,41,15,
-about **0.27×** its author value, because that prim carries `dg: 0.45` (a day gain) and the light at
-that point is ~0.6, and the two multiply. So "the author says mid-green, why is it dark" has an
-answer that can be read, and "raise the author colour until it looks right" is the wrong lever when a
-per-prim factor is doing the darkening — and the wrong first move regardless, because brightness is a
-look decision.
+**`vcol` is linear; an authored hex is sRGB. Convert before you compare.** `_ray.mjs` reports, for a
+hit, the vertex colour the quad hands the renderer (`vcol`). The Canadian bank's woodline at Goat
+stop 3 is authored `#57764a`, and an earlier reading called its `vcol` "0.27× the author value" and
+went looking for what was darkening it. Nothing was: `linear(#57764a)` is [0.095, 0.181, 0.068]
+(computed, not a kept `_ray` log). The 0.27 was sRGB divided into linear: convert one first.
 
-The rule: **before quoting a painted colour, read `vcol`; before quoting a band, read what is in it.**
+**A field in the data is not a field the renderer reads — prove it with a zero-pixel diff.** The same
+false reading blamed the prim's `dg: 0.45` and its `a` (air), and the owner was asked to choose
+between "Goat `air × 1.0`" and "Niagara `air × 1.9`". Applying `× 1.9` to both Goat canopy lines
+changed `"a"` in `js/places/goat.js` (0.044 → 0.084) and changed **0 of 786,432 pixels**
+(`_abdiff.mjs`, same stop, same launch conditions). `js/scene3d.js` reads `al ax c cn h il np o p pa
+pat pts q r rot t u ux uz w` off a prim (every `p.<name>` before `buildRenderer`, re-grepped) and has
+no `.dg` and no prim `.a`: both are authored, emitted, shipped and ignored (4.5–33 KB per place file). So before a data field is
+offered as a lever — to the owner or to yourself — change it and diff the frame. If nothing moves,
+the lever is not connected, and the finding is *that*.
+
+**And a tile is a multiplier.** What did darken that woodline was the one factor nobody had read: the
+colour reaches the screen as `vcol × tile`, in linear light, and the tile is an sRGB canvas. A tile
+painted "mid grey" (`#6d`) is **0.15**, not 0.43. `node .verify/_tilemean.mjs` prints each tile's
+linear mean and the share of it under 10 % linear; `canopy` came back **0.087 and 72 %** — its 28
+"hollows under the crowns" were drawn *after* the crowns and cover more area than the tile has. The
+frame had said so all along (black discs with a green rim); the numbers being quoted were about
+something else. Crowns over hollows gives 0.26, beside `hotelw` 0.28. So the order of questions for
+"this surface is darker than its record" is: the tile's mean, then `vcol` against the *linearised*
+hex, then the light — and a per-prim field only after a pixel has moved.
+
+The rule: **before quoting a painted colour, read `vcol` and linearise the hex; before quoting a
+band, read what is in it; before offering a field as the fix, show one pixel that it moves.**
 Three.js ray hits already expose resolved vertex indices in `face.a/b/c`, even for indexed geometry;
 use those indices directly rather than applying the geometry index a second time.
-And when two pages paint the same thing differently — this wall is hazed `air × 1.9` on one page and
-`air × 1.0` on the other, from the same generator — that is a finding to write down, not a bug to
-silently harmonise: which direction is right is the owner's.
+
+**6f. A frame is of a state and of the road to it:** `HOUR=night` is the *reloaded* night, not the
+pressed one — `verify-hour.mjs`, `skills/ux-walkthrough` §5b.
 
 ## 6c. Project the geometry before you press the shutter
 
@@ -429,8 +447,18 @@ And after the flip, re-check everything the mirror was silently protecting: phot
 (un-mirror their uv), compositions that put a subject at a screen edge, and every gate that quoted a
 left or right. The flip itself is two lines; the proof is the frames.
 
-## Procedure
+**And everything single-sided.** Mirroring the frustum reverses the winding of every triangle on
+screen, so a `FrontSide` material becomes a back face and is culled. The lane's meshes are
+`DoubleSide` and never noticed; `SpriteMaterial` defaults to `FrontSide`, so from the flip onwards
+**every lamp halo and every bulb on the site was created, positioned, lit, `visible: true`, and not
+drawn** — on eight pages, by day and by night, for as long as the mirror had been in. No gate saw it
+(`verify-three` asserted the halo existed and had a size), and no frame review did either, because a
+missing halo looks like a dim lamp. It was found by an instrument that said "shows" about a halo the
+frame did not have (`_lampsee.mjs`: off / out of frame / behind something / shows). When an
+instrument's answer and the frame disagree, neither is wrong: something between them is not being
+drawn. `bin/verify-three.mjs` now asserts every sprite's `side`.
 
+## Procedure
 
 1. State the claim in one sentence and the page/stop/view it is about.
 2. `arrive()` → `aim()` → `park()` → shoot. Refusals are the tool working.

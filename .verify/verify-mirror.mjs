@@ -54,16 +54,16 @@ for (let p = 0, i = 0; i < px.length; i += 4, p++) {
   if (px[i] - px[i + 2] > 8 && (px[i] + px[i + 1] + px[i + 2]) / 3 > 60) warm[p] = 1;
 }
 // Largest connected cluster (4-way, over every pixel; the floor overlay excludes the HUD's corners).
-const seen = new Uint8Array(W * H);
+const seen = new Uint16Array(W * H);
 let best = null;
-const stack = [];
+const stack = [], members = [], clusters = [];
 for (let p = 0; p < W * H; p++) {
   if (seen[p] || !warm[p]) continue;
   let n = 0, sx = 0, x0 = W, x1 = 0, y0 = H, y1 = 0;
   stack.push(p); seen[p] = 1;
   while (stack.length) {
     const q = stack.pop(), qx = q % W, qy = (q - qx) / W;
-    n++; sx += qx;
+    n++; sx += qx; members.push(q);
     if (qx < x0) x0 = qx; if (qx > x1) x1 = qx; if (qy < y0) y0 = qy; if (qy > y1) y1 = qy;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = qx + dx, ny = qy + dy;
@@ -74,6 +74,10 @@ for (let p = 0; p < W * H; p++) {
     }
   }
   if (!best || n > best.n) best = { n, cx: sx / n, x0, x1, y0, y1 };
+  if (n >= 2000) clusters.push({ id: clusters.length + 2, n, x0, x1, y0, y1 });
+  // (a second pass below needs to know which cluster a pixel is in: `seen` carries the id)
+  if (n >= 2000) { const id = clusters[clusters.length - 1].id; for (const q of members) seen[q] = id; }
+  members.length = 0;
 }
 if (!best || best.n < 2000) { console.log(`FAIL  nothing warm on screen to locate the towers (${best ? best.n : 0} px)`); process.exit(1); }
 
@@ -90,9 +94,18 @@ if (!rect) { console.log(`FAIL  ${IDS} has no hit box at this heading -- it woul
    holds most of the towers; a box on the other side of the frame holds none of them. */
 const inRect = (x, y, [rx, ry, rw, rh]) => x >= rx && x < rx + rw && y >= ry && y < ry + rh;
 const mirror = [W - rect[0] - rect[2], rect[1], rect[2], rect[3]];
+/* The paint under test is every warm mass the box or its mirror lays a claim to -- each counted
+   WHOLE, so a box that has slid off its towers still loses the part it left behind. It used to be
+   every warm pixel in the frame, on the premise that the towers were the only warm things in it.
+   That stopped being true the day the hall's lamps were drawn (their sprites had been culled since
+   the mirror fix itself -- skills/frame-evidence §10): the plinth's own light now falls on the
+   concrete shaft standing left of the skyline, which is another prop, 38,000 px of it, outside both
+   boxes, and it took the share from 73% to 68% without anything having moved. */
+const touches = (c, [rx, ry, rw, rh]) => c.x1 >= rx && c.x0 < rx + rw && c.y1 >= ry && c.y0 < ry + rh;
+const claimed = new Set(clusters.filter((c) => touches(c, rect) || touches(c, mirror)).map((c) => c.id));
 let insideBox = 0, insideMirror = 0, total = 0;
 for (let p = 0, i = 0; i < px.length; i += 4, p++) {
-  if (!warm[p]) continue;
+  if (!warm[p] || !claimed.has(seen[p])) continue;
   const x = p % W, y = (p - x) / W;
   total++;
   if (inRect(x, y, rect)) insideBox++;
@@ -100,7 +113,7 @@ for (let p = 0, i = 0; i < px.length; i += 4, p++) {
 }
 const shareBox = insideBox / Math.max(1, total), shareMirror = insideMirror / Math.max(1, total);
 const ok = shareBox >= 0.7 && shareBox > shareMirror * 2;
-console.log(`  paint: ${best.n} px, x ${best.x0}-${best.x1}, y ${best.y0}-${best.y1}`);
+console.log(`  paint: ${total} px in ${claimed.size} of ${clusters.length} warm masses (largest ${best.n} px, x ${best.x0}-${best.x1}, y ${best.y0}-${best.y1})`);
 console.log(`  hit box: ${rect.join(",")}; its mirror: ${mirror.join(",")}`);
 console.log(`${ok ? "PASS" : "FAIL"}  the box covers ${(100 * shareBox).toFixed(0)} % of the paint; ` +
             `the mirrored box covers ${(100 * shareMirror).toFixed(0)} % (needs >= 70 % and twice the mirror)`);

@@ -157,7 +157,7 @@ Consequences that are now structural, not stylistic:
   `#frame-tokyo-*` still marks the row it names. A visit is not a fact worth linking.
 
 The walkable view now uses one Three.js renderer, not a WebGL backdrop behind a 2D room. Every one
-of the seven walkable pages mounts the pinned, vendored Three.js 0.186.1 runtime. It triangulates the
+of the eight walkable pages mounts the pinned, vendored Three.js 0.186.1 runtime. It triangulates the
 lane and object quads into dynamic world-space buffer geometry, builds sourced `backdrop.world.prims`
 as static 3D geometry, and renders the sky, patterns, water, spray, clouds, and scene lights in the
 same camera. No scene facts are invented by the conversion: procedural material maps are surface

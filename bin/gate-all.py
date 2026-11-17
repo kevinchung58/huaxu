@@ -72,6 +72,20 @@ def commands(text):
     return out
 
 
+def shell_line(c):
+    """The line a command is run as. `bin/gate` goes in front of every command once -- and behind
+    any `NAME=value` the command starts with. `STRICT=1 sh bin/gate node .verify/audit-all.mjs` was
+    wrapped as `sh bin/gate STRICT=1 sh bin/gate node ...`, which asks the shell to run a program
+    called `STRICT=1`: the one gate the battery always skipped was the one it could not have run.
+    Strips the trailing `# comment` so `sh -c` never sees a backtick from it."""
+    c = c.split("#", 1)[0].rstrip()
+    m = re.match(r"((?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*)(.*)", c, re.S)
+    env, body = m.group(1), m.group(2)
+    if body.startswith("sh bin/gate "):
+        body = body[len("sh bin/gate "):]
+    return env + "sh bin/gate " + body
+
+
 def gates_in(line):
     return set(GATE_RE.findall(line))
 
@@ -115,7 +129,9 @@ def main(argv):
     ap.add_argument("--only", action="append", default=[], help="run lines containing this substring")
     ap.add_argument("--skip", action="append", default=[], help="skip lines containing this substring")
     ap.add_argument("--stop", action="store_true", help="stop at the first failure")
-    ap.add_argument("--timeout", type=int, default=5400, help="seconds per gate (default 5400)")
+    # audit-all is 92 minutes on a good day; 5400 would have stopped it two minutes short
+    ap.add_argument("--timeout", type=int, default=9000, help="seconds per gate (default 9000)")
+    ap.add_argument("--shell", action="store_true", help="with --list: print each command as the shell line it is run as")
     ap.add_argument("--tail", type=int, default=25, help="lines of a failing gate to print")
     args = ap.parse_args(argv)
     # `--only=walk,box` -- a filter is a list, and a filter that matches nothing must not look
@@ -154,7 +170,7 @@ def main(argv):
         print(f"skipping (does not exit; bin/gate starts a server when a gate needs one): {c}")
     if args.list:
         for i, c in enumerate(run, 1):
-            print(f"{i:2}. {c}")
+            print(f"{i:2}. {shell_line(c) if args.shell else c}")
         return 0
 
     results, t_all = [], time.time()
@@ -162,9 +178,7 @@ def main(argv):
         print(f"\n▶ [{i}/{len(run)}] {c}", flush=True)
         t0 = time.time()
         try:
-            # The browser section of TODO already writes `sh bin/gate node ...`; do not wrap twice.
-            body = c[len("sh bin/gate "):] if c.startswith("sh bin/gate ") else c
-            r = subprocess.run(["sh", "-c", "sh bin/gate " + body], cwd=ROOT,
+            r = subprocess.run(["sh", "-c", shell_line(c)], cwd=ROOT,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                text=True, timeout=args.timeout)
             code, out = r.returncode, r.stdout
