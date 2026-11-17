@@ -19,14 +19,37 @@
    flat is reported as such and does not fail; any other flat prop does. The list is checked the
    other way too: an entry naming no prop on its page fails, so it cannot outlive what it excuses.
 
-   Run:  LD_LIBRARY_PATH=/tmp/al2023/lib ROOMS=rooms-toronto.html node .verify/audit-all.mjs
+   Run:  STRICT=1 sh bin/gate node .verify/audit-all.mjs                     (all eight pages)
+         ROOMS=rooms-toronto.html sh bin/gate node .verify/audit-all.mjs       (one, or a,b,c)
          YAWS='-165,-135,-105,-75,-45,-15,15,45,75,105,135,165' for a finer sweep.
 */
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import fs from "node:fs";
 import { launch, openPage, arrive, aim, park, state, sleep } from "./_aim.mjs";
 
-const ROOMS = process.env.ROOMS || "rooms-toronto.html";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+/* One process measures one page. With no `ROOMS`, or with several, this process is only the roll
+   call: it runs itself once per page and fails if any page does. The battery's line says "eight
+   pages"; until this, `ROOMS` unset meant `rooms-toronto.html` and nothing else, so the line that
+   was listed as the audit of every prop was an audit of one page in eight. */
+const EIGHT = "street.html,rooms.html,rooms-fukuoka.html,rooms-toronto.html,rooms-niagara.html,rooms-goat.html,rooms-journey.html,rooms-cntower.html";
+const WANTED = (process.env.ROOMS || EIGHT).split(",").map((r) => r.trim()).filter(Boolean);
+if (WANTED.length > 1) {
+  const bad = [];
+  for (const room of WANTED) {
+    const t0 = Date.now();
+    console.log(`\n=== ${room} ===`);
+    const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url)], { env: { ...process.env, ROOMS: room }, stdio: "inherit" });
+    console.log(`=== ${room}: ${r.status === 0 ? "ok" : `exit ${r.status}${r.signal ? ` (${r.signal})` : ""}`} in ${((Date.now() - t0) / 60000).toFixed(1)} min`);
+    if (r.status !== 0) bad.push(room);
+  }
+  console.log(bad.length ? `\naudit-all: FAIL on ${bad.length} of ${WANTED.length} pages (${bad.join(", ")})`
+                         : `\naudit-all: ${WANTED.length} of ${WANTED.length} pages; no prop is flat that is not listed as flat by nature, none unseen, no stale entry`);
+  process.exit(bad.length ? 1 : 0);
+}
+const ROOMS = WANTED[0];
 const OUT = process.env.OUT || "";
 if (OUT) fs.mkdirSync(OUT, { recursive: true });
 const YAWS = (process.env.YAWS || "-150,-105,-60,-15,30,75,120,165").split(",").map(Number);

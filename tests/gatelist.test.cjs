@@ -71,3 +71,19 @@ test("a gate on disk that no line runs is reported as drift (the negative case)"
   }
   assert.equal(run(["--check"]).code, 0, "and removing it restores the list");
 });
+
+test("a command that starts with NAME=value keeps it in front of bin/gate", () => {
+  /* `STRICT=1 sh bin/gate node .verify/audit-all.mjs` was run as `sh bin/gate STRICT=1 sh bin/gate
+     node ...` -- "STRICT=1: not found", in 0.1 s. Every battery skipped that line (it is 92
+     minutes), so the first run that did not skip it was the first to find out. */
+  const r = run(["--list", "--shell"]);
+  assert.equal(r.code, 0, r.stdout);
+  const lines = r.stdout.split("\n").map((l) => l.replace(/^\s*\d+\.\s/, "")).filter((l) => l.includes("bin/gate ") && !l.startsWith("skipping"));
+  assert.ok(lines.length >= 25, r.stdout);
+  for (const l of lines) {
+    assert.match(l, /^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*sh bin\/gate (?![A-Za-z_][A-Za-z0-9_]*=)/, `runs as a command, not as an assignment handed to bin/gate: ${l}`);
+    assert.equal(l.split("sh bin/gate ").length, 2, `bin/gate wraps once: ${l}`);
+    assert.ok(!l.includes("#"), `the comment is not part of the shell line: ${l}`);
+  }
+  assert.ok(lines.some((l) => l === "STRICT=1 sh bin/gate node .verify/audit-all.mjs"), "the strict audit is run with STRICT=1 in its environment:\n" + lines.join("\n"));
+});

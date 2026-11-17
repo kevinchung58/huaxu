@@ -11,8 +11,10 @@
   產生（入口 721 行＋`gen/` 六個模組）；runtime 只有 vendored 的 Three.js 0.186.1。
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、
   `rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
-- **分支**：`arena/e54e5286-huaxu` → `master`；PR #22 開著，**未合併**（合併要站主一句授權）。
-- **三層驗證**：`node --test`（24 支、83 條宣告，`# tests 176`，約 100 s；其中幾條會開 Chromium）→ `.verify/` 閘門 35 支（§2.3 的清單就是
+- **分支**：工作在 Arena 的 session 分支上做，開 PR 進 `master`。PR #22 是站主 2026-11-16 把「要不要合併」交給
+  代理決定之後合併的（合併前：整段閘門 41 支綠、`audit-all` 八頁綠、夜景與 `master` 並排看過）。之後的 PR
+  一樣要站主授權或明確交辦才合併。
+- **三層驗證**：`node --test`（24 支、83 條宣告，`# tests 177`，約 100 s；其中幾條會開 Chromium）→ `.verify/` 閘門 35 支（§2.3 的清單就是
   「有沒有跑」的判準；整段用 `python3 bin/gate-all.py` 跑，它讀的就是那份清單）→ 量具（§2.4，只在需要
   數字時跑）。效能看 `tools/bench.mjs`（§5.6）。
 - **規模**：頁面程式 4 支共 9,773 行（載入順序在 `bin/site-sources.json`；巷道的 9,247 行仍是一個 closure，§3 P3）、
@@ -64,7 +66,7 @@ exit 2 並點名（`tests/gatelist.test.cjs` 釘住這件事）。常用：`--li
 ```sh
 sh bin/restore-env && sh bin/preview          # 環境 + 伺服器（0.0.0.0:8080）
 # ── 不開瀏覽器（秒級）──
-node --test                                    # `# tests 176`（24 支；jsdom 巷道 12 條——其中 3 條 `idle-pulse` 用假時鐘數 tick——、環境 7 條、`page-refs` 4 條讀產出的頁面：id 不重複、aria 指到的 id 在、連到的檔案與錨點在；其餘讀檔案或開瀏覽器）
+node --test                                    # `# tests 177`（24 支；jsdom 巷道 12 條——其中 3 條 `idle-pulse` 用假時鐘數 tick——、環境 7 條、`page-refs` 4 條讀產出的頁面：id 不重複、aria 指到的 id 在、連到的檔案與錨點在；其餘讀檔案或開瀏覽器）
 node tools/bench.mjs                           # 效能基準（§5.6）；`--check` 是預設，`--write` 重錄
 node .verify/verify-shapes.mjs                 # 248 個 prop 都有形
 node .verify/verify-geometry.mjs
@@ -107,7 +109,7 @@ sh bin/gate node .verify/verify-press.mjs         # 115/115 巷道自己的控�
 sh bin/gate node .verify/verify-targets.mjs       # 19 頁 × 桌機、直拿手機（390 × 844）、橫拿手機（640 × 360），每個看得見的控制元件：中心那一點是它自己的（`COVERED`／`ZERO`／`OFFSCREEN`）、頁面與清單不橫向捲（`WIDE`）、圖都載到（`IMAGE`）、會回應的面積桌機 ≥ 24 × 24、觸控 ≥ 44 × 44（`SMALL`；面積是從中心往外一格一格問出來的，不是框）。站點刻度在 9 站以上的頁是 `DENSE`（≥ 24，不算紅）。約 18 分鐘；`PAGES=`、`VIEW=desk,phone,side` 或任何 `寬x高`（當觸控視窗量）、`DENSE=1`
 sh bin/gate node bin/verify-three.mjs             # 14,924 world + 1,048 water
 sh bin/gate node .verify/verify-collision.cjs     # 32/32（8 頁，實測 12.8 分鐘；動到移動／碰撞碼才必跑）
-STRICT=1 sh bin/gate node .verify/audit-all.mjs   # 沒有不在 `flat-by-nature.json` 上的平面 prop（8 頁約 92 分鐘；動到 prop／繪法／tile 才必跑，`ROOMS=<頁>` 可只跑一頁）
+STRICT=1 sh bin/gate node .verify/audit-all.mjs   # 沒有不在 `flat-by-nature.json` 上的平面 prop（8 頁，2026-11-16 實測 41 分鐘；動到 prop／繪法／tile 才必跑，`ROOMS=<頁>` 或 `ROOMS=a,b` 可只跑其中幾頁；不給就是八頁，一頁一個行程）
 ```
 
 每支後面的數字是**最後一次跑到的**，不是保證；引用前重跑。
@@ -475,19 +477,19 @@ tracked 305 支檔案：`js/vendor/three-0.186.1/three.core.js` 1.42 MB、
 `--padx/--pady`（`js/site.js` 把框長到 `HIT = 44`，再用 inset 把圈收回剪影上），而且
 `visibility:hidden` 的視角不算——沒被畫出來的 prop 留著上一個視角的變換（`js/site.js` 在寫新變換之前就
 return 了），那個矩形是別的地方。面積門檻 14,400 px（120×120）、sd 門檻 20、取**面積最大**的那個視角。
-`ROOMS=<page> node .verify/audit-all.mjs`，八頁一次跑約兩小時（niagara 最久）。
+`STRICT=1 sh bin/gate node .verify/audit-all.mjs` 八頁一次跑（niagara 最久）；`ROOMS=<page>` 只跑一頁。
 
 | 頁 | props | 量到 | sd<20 | 其中天生一面 | 太小不能判 | 只有文字的記錄 | STRICT 一跑 |
 |---|---|---|---|---|---|---|---|
-| street | 27 | 27 | 3 | 3 | 3 | 0 | 8 分 |
-| rooms | 33 | 33 | 1 | 1 | 0 | 0 | 9 分 |
-| rooms-fukuoka | 41 | 41 | 3 | 3 | 9 | 0 | 10 分 |
-| rooms-toronto | 26 | 26 | 0 | 0 | 13 | 0 | 3 分 |
-| rooms-niagara | 100 | 100 | 5 | 5 | 49 | 0 | 28–32 分 |
-| rooms-goat | 14 | 11 | 0 | 0 | 4 | 3 | 4 分 |
-| rooms-journey | 3 | 3 | 0 | 0 | 0 | 0 | 16 分 |
-| rooms-cntower | 4 | 4 | 0 | 0 | 0 | 0 | 14 分 |
-| **合計** | **248** | **245** | **12** | **12** | **78** | **3** | **約 92 分** |
+| street | 27 | 27 | 3 | 3 | 3 | 0 | 6.9 分 |
+| rooms | 33 | 33 | 1 | 1 | 0 | 0 | 4.4 分 |
+| rooms-fukuoka | 41 | 41 | 3 | 3 | 9 | 0 | 9.7 分 |
+| rooms-toronto | 26 | 26 | 0 | 0 | 12 | 0 | 3.3 分 |
+| rooms-niagara | 100 | 100 | 5 | 5 | 49 | 0 | 8.3 分 |
+| rooms-goat | 14 | 11 | 0 | 0 | 4 | 3 | 2.8 分 |
+| rooms-journey | 3 | 3 | 0 | 0 | 0 | 0 | 2.9 分 |
+| rooms-cntower | 4 | 4 | 0 | 0 | 0 | 0 | 3.1 分 |
+| **合計** | **248** | **245** | **12** | **12** | **77** | **3** | **41 分** |
 
 - **sd 量的是面與面之間的對比**（`flatShading`，一個面一個顏色），所以天生一面的東西 sd 就低。
   **哪幾顆天生一面寫在 `.verify/flat-by-nature.json`**（站主 2026-11-14 認可；一顆一句理由，現在 15 顆：
@@ -506,6 +508,11 @@ return 了），那個矩形是別的地方。面積門檻 14,400 px（120×120�
 ## 6. 已知限制（不要假裝解決了）
 
 - 夜裡的 fold 壓到 0.62 是全站規則（待站主決定）。
+- **站點刻度維持一排，不為了 44 px 拆成兩排**（站主 2026-11-16 把這個決定交給代理）：Fukuoka 14 站在直拿
+  390 px 上每格 26 × 48、street 10 站 36、Niagara 9 站 40；橫拿 640 px 上 Fukuoka 43.5。理由：刻度的高度是
+  那一站的深度，一排才讀得出「這條巷子有多長、我在哪裡」，拆成兩排就只是兩排按鈕；查到的規則把 44 寫成
+  「密度允許時」的建議、把 24 × 24 且互不重疊寫成底線，現況過底線；按錯的代價是走到隔壁那一站，再按一次
+  就回來。`verify-targets` 把它們記成 `DENSE`，低於 24 仍是紅的。要改這個決定，改的是站數或版面，不是墊子。
 - **橫拿而且比 568 × 320 還小的觸控視窗**（量過 480 × 320）：導覽卡最長那一步是 148 px 的字放在 128 px 的
   捲動框裡，沒有東西互相蓋到，但最後一行要捲才看得到，觸控上沒有捲軸提示。568 × 320 與 640 × 360 是全文。
 - SkyWheel 的輪圈從廣場地板看永遠在畫面外（輪圈在頭上 71°）；站點 6 只看得到腿與排隊區。輪下的
