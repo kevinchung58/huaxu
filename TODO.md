@@ -11,7 +11,7 @@
   產生（入口 721 行＋`gen/` 六個模組）；runtime 只有 vendored 的 Three.js 0.186.1。
 - **可走的頁面（8）**：`street.html`、`rooms.html`、`rooms-fukuoka.html`、`rooms-toronto.html`、
   `rooms-niagara.html`、`rooms-goat.html`、`rooms-journey.html`、`rooms-cntower.html`。
-- **分支**：工作在 Arena 的 session 分支上做，開 PR 進 `master`。PR #22 是站主 2026-11-16 把「要不要合併」交給
+- **分支**：工作在 Arena 的 session 分支上做，開 PR 進 `master`。PR #22 是站主 2026-11-17 把「要不要合併」交給
   代理決定之後合併的（合併前：整段閘門 41 支綠、`audit-all` 八頁綠、夜景與 `master` 並排看過）。之後的 PR
   一樣要站主授權或明確交辦才合併。
 - **三層驗證**：`node --test`（24 支、83 條宣告，`# tests 177`，約 100 s；其中幾條會開 Chromium）→ `.verify/` 閘門 35 支（§2.3 的清單就是
@@ -109,7 +109,7 @@ sh bin/gate node .verify/verify-press.mjs         # 115/115 巷道自己的控�
 sh bin/gate node .verify/verify-targets.mjs       # 19 頁 × 桌機、直拿手機（390 × 844）、橫拿手機（640 × 360），每個看得見的控制元件：中心那一點是它自己的（`COVERED`／`ZERO`／`OFFSCREEN`）、頁面與清單不橫向捲（`WIDE`）、圖都載到（`IMAGE`）、會回應的面積桌機 ≥ 24 × 24、觸控 ≥ 44 × 44（`SMALL`；面積是從中心往外一格一格問出來的，不是框）。站點刻度在 9 站以上的頁是 `DENSE`（≥ 24，不算紅）。約 18 分鐘；`PAGES=`、`VIEW=desk,phone,side` 或任何 `寬x高`（當觸控視窗量）、`DENSE=1`
 sh bin/gate node bin/verify-three.mjs             # 14,924 world + 1,048 water
 sh bin/gate node .verify/verify-collision.cjs     # 32/32（8 頁，實測 12.8 分鐘；動到移動／碰撞碼才必跑）
-STRICT=1 sh bin/gate node .verify/audit-all.mjs   # 沒有不在 `flat-by-nature.json` 上的平面 prop（8 頁，2026-11-16 實測 41 分鐘；動到 prop／繪法／tile 才必跑，`ROOMS=<頁>` 或 `ROOMS=a,b` 可只跑其中幾頁；不給就是八頁，一頁一個行程）
+STRICT=1 sh bin/gate node .verify/audit-all.mjs   # 沒有不在 `flat-by-nature.json` 上的平面 prop（8 頁，2026-11-17 實測 41 分鐘；動到 prop／繪法／tile 才必跑，`ROOMS=<頁>` 或 `ROOMS=a,b` 可只跑其中幾頁；不給就是八頁，一頁一個行程）
 ```
 
 每支後面的數字是**最後一次跑到的**，不是保證；引用前重跑。
@@ -508,7 +508,7 @@ return 了），那個矩形是別的地方。面積門檻 14,400 px（120×120�
 ## 6. 已知限制（不要假裝解決了）
 
 - 夜裡的 fold 壓到 0.62 是全站規則（待站主決定）。
-- **站點刻度維持一排，不為了 44 px 拆成兩排**（站主 2026-11-16 把這個決定交給代理）：Fukuoka 14 站在直拿
+- **站點刻度維持一排，不為了 44 px 拆成兩排**（站主 2026-11-17 把這個決定交給代理）：Fukuoka 14 站在直拿
   390 px 上每格 26 × 48、street 10 站 36、Niagara 9 站 40；橫拿 640 px 上 Fukuoka 43.5。理由：刻度的高度是
   那一站的深度，一排才讀得出「這條巷子有多長、我在哪裡」，拆成兩排就只是兩排按鈕；查到的規則把 44 寫成
   「密度允許時」的建議、把 24 × 24 且互不重疊寫成底線，現況過底線；按錯的代價是走到隔壁那一站，再按一次
